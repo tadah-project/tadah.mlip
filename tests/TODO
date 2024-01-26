@@ -1,0 +1,1 @@
+Add tests to check BF and Kernel labels. If DM_<function>.cpp does not implement get_label() the label of Function_Base is returned which is incorrect.

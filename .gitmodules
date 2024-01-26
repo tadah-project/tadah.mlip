@@ -1,0 +1,12 @@
+[submodule "CORE"]
+	path = CORE
+	url = https://git.ecdf.ed.ac.uk/tadah/core.git
+[submodule "HPO"]
+	path = HPO
+	url = https://git.ecdf.ed.ac.uk/tadah/hpo.git
+[submodule "LIBS"]
+	path = LIBS
+	url = https://git.ecdf.ed.ac.uk/tadah/libs.git
+[submodule "MODELS"]
+	path = MODELS
+	url = https://git.ecdf.ed.ac.uk/tadah/models.git

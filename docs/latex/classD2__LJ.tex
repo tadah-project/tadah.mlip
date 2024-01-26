@@ -1,0 +1,93 @@
+\hypertarget{classD2__LJ}{}\doxysection{D2\+\_\+\+LJ Class Reference}
+\label{classD2__LJ}\index{D2\_LJ@{D2\_LJ}}
+
+
+Standard Lennard -\/ Jones descriptor.  
+
+
+
+
+{\ttfamily \#include $<$d2\+\_\+lj.\+h$>$}
+
+Inheritance diagram for D2\+\_\+\+LJ\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=3.000000cm]{classD2__LJ}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classD2__LJ_afb48ad59dbc192599a893e543a603ae5}\label{classD2__LJ_afb48ad59dbc192599a893e543a603ae5}} 
+{\bfseries D2\+\_\+\+LJ} (\mbox{\hyperlink{classConfig}{Config}} \&config)
+\item 
+void \mbox{\hyperlink{classD2__LJ_aa2e2c56974973b21ce5b28407debb89a}{calc\+\_\+aed}} (const double, const double rij\+\_\+sq, const double fc\+\_\+ij, \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&aed)
+\begin{DoxyCompactList}\small\item\em Calculate A\+ED. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classD2__LJ_ac82577e96799673fc30ef2445f05cd44}{calc\+\_\+d\+Xijdri}} (const double rij, const double rij\+\_\+sq, const double fc\+\_\+ij, const double fcp\+\_\+ij, \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&fd\+\_\+ij)
+\begin{DoxyCompactList}\small\item\em Calculate FD. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classD2__LJ_a53af814308fed8dfe158fd9da4f8fcb7}\label{classD2__LJ_a53af814308fed8dfe158fd9da4f8fcb7}} 
+void \mbox{\hyperlink{classD2__LJ_a53af814308fed8dfe158fd9da4f8fcb7}{calc\+\_\+all}} (const double rij, const double rij\+\_\+sq, const double fc\+\_\+ij, const double fcp\+\_\+ij, \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&aed, \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&fd\+\_\+ij)
+\begin{DoxyCompactList}\small\item\em Calculate A\+ED + FD. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classD2__LJ_a6ffe5156a9df6e8a5ed7e86f15cc1794}\label{classD2__LJ_a6ffe5156a9df6e8a5ed7e86f15cc1794}} 
+size\+\_\+t \mbox{\hyperlink{classD2__LJ_a6ffe5156a9df6e8a5ed7e86f15cc1794}{size}} ()
+\begin{DoxyCompactList}\small\item\em Return dimension of the descriptor. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classD2__LJ_a5462cdd7b2b0ff1d842b2712dcb6885c}\label{classD2__LJ_a5462cdd7b2b0ff1d842b2712dcb6885c}} 
+std\+::string \mbox{\hyperlink{classD2__LJ_a5462cdd7b2b0ff1d842b2712dcb6885c}{label}} ()
+\begin{DoxyCompactList}\small\item\em Return label of this descriptor. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Additional Inherited Members}
+
+
+\doxysubsection{Detailed Description}
+Standard Lennard -\/ Jones descriptor. 
+
+\[ V_i = \sum_{j \neq i} 4 \epsilon \Bigg(\Big(\frac{\sigma}{r_{ij}}\Big)^{12} - \Big(\frac{\sigma}{r_{ij}}\Big)^6\Bigg) \]
+
+or equivalently\+:
+
+\[ V_i = \sum_{j \neq i} \frac{C_{12}}{r_{ij}^{12}} - \frac{C_6}{r_{ij}^6} \]
+
+No cutoff function is used.
+
+Note that machined learned coefficients $C_6$ and $C_{12}$ corresponds to $\sigma$ and $\epsilon$ through the following relation\+:
+
+\[ \sigma = \Big(\frac{C_{12}}{C_6}\Big)^{1/6} \] \[ \epsilon = \frac{1}{4} \frac{C_6^2}{C_{12}} \]
+
+The machine learned $\sigma$ and $\epsilon$ only make sense (say to compare with the literature ones) when \mbox{\hyperlink{classConfig_BIAS}{B\+I\+AS}} false and \mbox{\hyperlink{classConfig_NORM}{N\+O\+RM}} false. It is ok thought to set them to true it\textquotesingle{}s just that numerical values are different.
+
+Required \mbox{\hyperlink{classConfig}{Config}} Key\+: \mbox{\hyperlink{classConfig_INIT2B}{I\+N\+I\+T2B}} 
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classD2__LJ_aa2e2c56974973b21ce5b28407debb89a}\label{classD2__LJ_aa2e2c56974973b21ce5b28407debb89a}} 
+\index{D2\_LJ@{D2\_LJ}!calc\_aed@{calc\_aed}}
+\index{calc\_aed@{calc\_aed}!D2\_LJ@{D2\_LJ}}
+\doxysubsubsection{\texorpdfstring{calc\_aed()}{calc\_aed()}}
+{\footnotesize\ttfamily void D2\+\_\+\+L\+J\+::calc\+\_\+aed (\begin{DoxyParamCaption}\item[{const double}]{rij,  }\item[{const double}]{rij\+\_\+sq,  }\item[{const double}]{fc\+\_\+ij,  }\item[{\mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&}]{aed }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+
+
+Calculate A\+ED. 
+
+Calculate Atomic Energy Descriptor for the atom local environment. 
+
+Implements \mbox{\hyperlink{classD2__Base_a00def8ce32e48fdfb2815a43e6cda8a1}{D2\+\_\+\+Base}}.
+
+\mbox{\Hypertarget{classD2__LJ_ac82577e96799673fc30ef2445f05cd44}\label{classD2__LJ_ac82577e96799673fc30ef2445f05cd44}} 
+\index{D2\_LJ@{D2\_LJ}!calc\_dXijdri@{calc\_dXijdri}}
+\index{calc\_dXijdri@{calc\_dXijdri}!D2\_LJ@{D2\_LJ}}
+\doxysubsubsection{\texorpdfstring{calc\_dXijdri()}{calc\_dXijdri()}}
+{\footnotesize\ttfamily void D2\+\_\+\+L\+J\+::calc\+\_\+d\+Xijdri (\begin{DoxyParamCaption}\item[{const double}]{rij,  }\item[{const double}]{rij\+\_\+sq,  }\item[{const double}]{fc\+\_\+ij,  }\item[{const double}]{fcp\+\_\+ij,  }\item[{\mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&}]{fd\+\_\+ij }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+
+
+Calculate FD. 
+
+Calculate Force Descriptor for the atom local environment. 
+
+Implements \mbox{\hyperlink{classD2__Base_aae6943d8aaee729e6892ac0ca7f6a68d}{D2\+\_\+\+Base}}.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/descriptors/d2/d2\+\_\+lj.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/descriptors/d2/d2\+\_\+lj.\+cpp\end{DoxyCompactItemize}

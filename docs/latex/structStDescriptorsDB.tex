@@ -1,0 +1,70 @@
+\hypertarget{structStDescriptorsDB}{}\doxysection{St\+Descriptors\+DB Struct Reference}
+\label{structStDescriptorsDB}\index{StDescriptorsDB@{StDescriptorsDB}}
+
+
+Container for \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}}.  
+
+
+
+
+{\ttfamily \#include $<$st\+\_\+descriptors\+\_\+db.\+h$>$}
+
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{structStDescriptorsDB_af60f5959d61231d3972763bc646aa378}{St\+Descriptors\+DB}} (const \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&stdb, \mbox{\hyperlink{classConfig}{Config}} \&config)
+\item 
+\mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \& \mbox{\hyperlink{structStDescriptorsDB_a4acab176720d5f9b99951f6fdc099f11}{operator()}} (const size\+\_\+t n)
+\item 
+const size\+\_\+t \mbox{\hyperlink{structStDescriptorsDB_adbd21c6dcfcef2c447d9544c7c95599b}{size}} () const
+\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structStDescriptorsDB_a685ca80a773360ca62975fa3740de628}\label{structStDescriptorsDB_a685ca80a773360ca62975fa3740de628}} 
+std\+::vector$<$ \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} $>$ {\bfseries st\+\_\+descs}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Container for \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}}. 
+
+\begin{DoxyNote}{Note}
+Required \mbox{\hyperlink{classConfig}{Config}} keys\+: \mbox{\hyperlink{classConfig_FORCE}{F\+O\+R\+CE}} \mbox{\hyperlink{classConfig_STRESS}{S\+T\+R\+E\+SS}} \mbox{\hyperlink{classConfig_INTERNAL_KEY}{I\+N\+T\+E\+R\+N\+A\+L\+\_\+\+K\+EY}} \mbox{\hyperlink{classConfig_DSIZE}{D\+S\+I\+ZE}}. 
+\end{DoxyNote}
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\mbox{\Hypertarget{structStDescriptorsDB_af60f5959d61231d3972763bc646aa378}\label{structStDescriptorsDB_af60f5959d61231d3972763bc646aa378}} 
+\index{StDescriptorsDB@{StDescriptorsDB}!StDescriptorsDB@{StDescriptorsDB}}
+\index{StDescriptorsDB@{StDescriptorsDB}!StDescriptorsDB@{StDescriptorsDB}}
+\doxysubsubsection{\texorpdfstring{StDescriptorsDB()}{StDescriptorsDB()}}
+{\footnotesize\ttfamily St\+Descriptors\+D\+B\+::\+St\+Descriptors\+DB (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&}]{stdb,  }\item[{\mbox{\hyperlink{classConfig}{Config}} \&}]{config }\end{DoxyParamCaption})}
+
+This constructor fully initialise this object
+
+Requires\+:
+\begin{DoxyItemize}
+\item \mbox{\hyperlink{structStructureDB}{Structure\+DB}} st to have all nearest neighbours calculated
+\item \mbox{\hyperlink{classConfig}{Config}} to contain keys\+: \mbox{\hyperlink{classConfig_FORCE}{F\+O\+R\+CE}}, \mbox{\hyperlink{classConfig_STRESS}{S\+T\+R\+E\+SS}} and \mbox{\hyperlink{classConfig_INTERNAL_KEY}{I\+N\+T\+E\+R\+N\+A\+L\+\_\+\+K\+EY}} \mbox{\hyperlink{classConfig_DSIZE}{D\+S\+I\+ZE}} 
+\end{DoxyItemize}
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{structStDescriptorsDB_a4acab176720d5f9b99951f6fdc099f11}\label{structStDescriptorsDB_a4acab176720d5f9b99951f6fdc099f11}} 
+\index{StDescriptorsDB@{StDescriptorsDB}!operator()@{operator()}}
+\index{operator()@{operator()}!StDescriptorsDB@{StDescriptorsDB}}
+\doxysubsubsection{\texorpdfstring{operator()()}{operator()()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \& St\+Descriptors\+D\+B\+::operator() (\begin{DoxyParamCaption}\item[{const size\+\_\+t}]{n }\end{DoxyParamCaption})}
+
+Return reference to the n-\/th \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} stored by this object \mbox{\Hypertarget{structStDescriptorsDB_adbd21c6dcfcef2c447d9544c7c95599b}\label{structStDescriptorsDB_adbd21c6dcfcef2c447d9544c7c95599b}} 
+\index{StDescriptorsDB@{StDescriptorsDB}!size@{size}}
+\index{size@{size}!StDescriptorsDB@{StDescriptorsDB}}
+\doxysubsubsection{\texorpdfstring{size()}{size()}}
+{\footnotesize\ttfamily const size\+\_\+t St\+Descriptors\+D\+B\+::size (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption}) const}
+
+Return number of \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} stored 
+
+The documentation for this struct was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/st\+\_\+descriptors\+\_\+db.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/st\+\_\+descriptors\+\_\+db.\+cpp\end{DoxyCompactItemize}

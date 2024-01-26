@@ -1,0 +1,216 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="ex2_8cpp" kind="file" language="C++">
+    <compoundname>ex2.cpp</compoundname>
+    <includes local="no">tadah/cutoffs/cut_all.h</includes>
+    <includes local="no">tadah/descriptors/d_all.h</includes>
+    <includes local="no">tadah/models/m_all.h</includes>
+    <includes local="no">tadah/descriptors_calc.h</includes>
+    <includes local="no">tadah/config.h</includes>
+    <includes local="no">tadah/structure.h</includes>
+    <includes local="no">tadah/nn_finder.h</includes>
+    <includes local="no">fstream</includes>
+    <incdepgraph>
+      <node id="2">
+        <label>tadah/cutoffs/cut_all.h</label>
+      </node>
+      <node id="1">
+        <label>/home/s1351949/PROJECTS/tadah/examples/ex_2/ex2.cpp</label>
+        <link refid="ex2_8cpp"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="9">
+        <label>fstream</label>
+      </node>
+      <node id="6">
+        <label>tadah/config.h</label>
+      </node>
+      <node id="4">
+        <label>tadah/models/m_all.h</label>
+      </node>
+      <node id="3">
+        <label>tadah/descriptors/d_all.h</label>
+      </node>
+      <node id="7">
+        <label>tadah/structure.h</label>
+      </node>
+      <node id="5">
+        <label>tadah/descriptors_calc.h</label>
+      </node>
+      <node id="8">
+        <label>tadah/nn_finder.h</label>
+      </node>
+    </incdepgraph>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="ex2_8cpp_1ae66f6b31b5ad750f1fe042a706a4e3d4" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int main</definition>
+        <argsstring>()</argsstring>
+        <name>main</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/examples/ex_2/ex2.cpp" line="39" column="5" bodyfile="/home/s1351949/PROJECTS/tadah/examples/ex_2/ex2.cpp" bodystart="39" bodyend="150"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>This example shows how to predict with a trained model. Example model is provided in a <computeroutput>pot.tadah</computeroutput> file.</para>
+<para>To compile with <computeroutput>g++</computeroutput> and run:</para>
+<para><programlisting filename=".sh"><codeline><highlight class="normal">$<sp/>g++<sp/>-O3<sp/>ex2.cpp<sp/>-o<sp/>ex2.out<sp/>-ltadah<sp/>-fopenmp</highlight></codeline>
+<codeline><highlight class="normal">$<sp/>./ex2.out</highlight></codeline>
+</programlisting></para>
+<para>Ta-dah! models and descriptors are selected at compile time but all model parameters are provided in the <computeroutput>pot.tadah</computeroutput> file. Model, cutoff and descriptors in the <computeroutput><ref refid="ex2_8cpp" kindref="compound">ex2.cpp</ref></computeroutput> file must match those in the <computeroutput>pot.tadah</computeroutput> file. See code comment bellow for more detail.</para>
+<para>Files:</para>
+<para><itemizedlist>
+<listitem><para><computeroutput><ref refid="ex2_8cpp" kindref="compound">ex2.cpp</ref></computeroutput> Example c++ script for prediction using already available model.</para>
+</listitem><listitem><para><computeroutput>config_pred</computeroutput> List of datasets used for prediction (<ref refid="classConfig_1DBFILE" kindref="member">DBFILE</ref> key). Keys <ref refid="classConfig_1FORCE" kindref="member">FORCE</ref> and <ref refid="classConfig_1STRESS" kindref="member">STRESS</ref> controls whether forces and stresses are predicted.</para>
+</listitem><listitem><para><computeroutput>tdata.db</computeroutput> Dataset which we will use for prediction. The dataset is generated using EAM model for Ta by R.Ravelo. <ulink url="https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.134101">https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.134101</ulink> </para>
+</listitem></itemizedlist>
+</para>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="preprocessor">#include<sp/>&lt;tadah/cutoffs/cut_all.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="2"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;tadah/descriptors/d_all.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="3"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;tadah/models/m_all.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="4"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;tadah/descriptors_calc.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;tadah/config.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;tadah/structure.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;tadah/nn_finder.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;fstream&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="39"><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>main()<sp/>{</highlight></codeline>
+<codeline lineno="40"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="41"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>STEP<sp/>0:<sp/>Load<sp/>model<sp/>saved<sp/>in<sp/>a<sp/>`pot.tadah`<sp/>as<sp/>a<sp/>Config<sp/>object.</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="42"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="classConfig" kindref="compound">Config</ref><sp/>param_file(</highlight><highlight class="stringliteral">&quot;pot.tadah&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="43"><highlight class="normal"></highlight></codeline>
+<codeline lineno="44"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>STEP<sp/>1a:<sp/>Select<sp/>descriptors.<sp/>All<sp/>three<sp/>types<sp/>must<sp/>be<sp/>specified.</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="45"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>Use<sp/>Dummy<sp/>if<sp/>given<sp/>type<sp/>is<sp/>not<sp/>required.</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="46"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>Look<sp/>for<sp/>keywords<sp/>`TYPE2B`<sp/>`TYPE3B`<sp/>and<sp/>`TYPEMB`<sp/>in<sp/>a<sp/>`pot.tadah`</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="47"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>If<sp/>keyword<sp/>is<sp/>not<sp/>listed<sp/>use<sp/>`D2_Dummy`<sp/>as<sp/>a<sp/>descriptor.</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="48"><highlight class="normal"></highlight></codeline>
+<codeline lineno="49"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>D2<sp/>-<sp/>TWO-BODY</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="50"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>`pot.tadah`:<sp/>TYPE2B<sp/><sp/><sp/><sp/><sp/><sp/>D2_Blip</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="51"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">using</highlight><highlight class="normal"><sp/>D2=<ref refid="classD2__Blip" kindref="compound">D2_Blip</ref>;</highlight></codeline>
+<codeline lineno="52"><highlight class="normal"></highlight></codeline>
+<codeline lineno="53"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>D3<sp/>-<sp/>THREE-BODY</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="54"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>`pot.tadah`<sp/>no<sp/>keyword</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="55"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">using</highlight><highlight class="normal"><sp/>D3=<ref refid="classD3__Dummy" kindref="compound">D3_Dummy</ref>;</highlight></codeline>
+<codeline lineno="56"><highlight class="normal"></highlight></codeline>
+<codeline lineno="57"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>DM<sp/>-<sp/>MANY-BODY</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="58"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>`pot.tadah`<sp/>no<sp/>keyword</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="59"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">using</highlight><highlight class="normal"><sp/>DM=<ref refid="classDM__Dummy" kindref="compound">DM_Dummy</ref>;</highlight></codeline>
+<codeline lineno="60"><highlight class="normal"></highlight></codeline>
+<codeline lineno="61"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>STEP<sp/>2b:<sp/>Select<sp/>cutoffs<sp/>for<sp/>descriptors,<sp/>C2<sp/>for<sp/>D2,<sp/>etc</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="62"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>Look<sp/>for<sp/>keywords<sp/>`RCTYPE2B`<sp/>`RCTYPE3B`<sp/>and<sp/>`RCTYPEMB`<sp/>in<sp/>the<sp/>`pot.tadah`</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="63"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>If<sp/>keyword<sp/>is<sp/>not<sp/>listed<sp/>use<sp/>`Cut_Dummy`.</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="64"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>`pot.tadah`:<sp/>RCTYPE2B<sp/><sp/><sp/><sp/><sp/><sp/>Cut_Cos</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="65"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">using</highlight><highlight class="normal"><sp/>C2=<ref refid="classCut__Cos" kindref="compound">Cut_Cos</ref>;</highlight></codeline>
+<codeline lineno="66"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>`pot.tadah`<sp/>no<sp/>keywords<sp/>ofr<sp/>three-body<sp/>and<sp/>many-body</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="67"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">using</highlight><highlight class="normal"><sp/>C3=<ref refid="classCut__Dummy" kindref="compound">Cut_Dummy</ref>;</highlight></codeline>
+<codeline lineno="68"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">using</highlight><highlight class="normal"><sp/>CM=<ref refid="classCut__Dummy" kindref="compound">Cut_Dummy</ref>;</highlight></codeline>
+<codeline lineno="69"><highlight class="normal"></highlight></codeline>
+<codeline lineno="70"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>STEP<sp/>2a:<sp/>Select<sp/>Basis<sp/>Function<sp/>(BF)<sp/>or<sp/>Kernels<sp/>(K).</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="71"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>BF<sp/>is<sp/>used<sp/>for<sp/>M_BLR<sp/>-<sp/>Bayesian<sp/>Linear<sp/>Regression</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="72"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>K<sp/>is<sp/>used<sp/>with<sp/>M_KRR<sp/>-<sp/>Kernel<sp/>Ridge<sp/>Regression</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="73"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>KEYWORD<sp/>`MODEL`:<sp/>first<sp/>argument<sp/>is<sp/>model,<sp/>second<sp/>BF/Kernel</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="74"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>`pot.tadah`:<sp/>MODEL<sp/><sp/><sp/><sp/><sp/>M_KRR<sp/><sp/><sp/><sp/><sp/>Kern_Linear</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="75"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">using</highlight><highlight class="normal"><sp/>K=<ref refid="classKern__Linear" kindref="compound">Kern_Linear</ref>;</highlight></codeline>
+<codeline lineno="76"><highlight class="normal"></highlight></codeline>
+<codeline lineno="77"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>STEP<sp/>2b:<sp/>Select<sp/>Model<sp/>and<sp/>instantiate<sp/>object.</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="78"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>`pot.tadah`:<sp/>MODEL<sp/><sp/><sp/><sp/><sp/>M_KRR<sp/><sp/><sp/><sp/><sp/>Kern_Linear</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="79"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">using</highlight><highlight class="normal"><sp/>M=<ref refid="classM__KRR" kindref="compound">M_KRR&lt;K&gt;</ref>;</highlight></codeline>
+<codeline lineno="80"><highlight class="normal"><sp/><sp/><sp/><sp/>M<sp/>model(param_file);</highlight></codeline>
+<codeline lineno="81"><highlight class="normal"></highlight></codeline>
+<codeline lineno="82"><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;PREDICTION<sp/>STAGE&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="83"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>We<sp/>will<sp/>reuse<sp/>param_file<sp/>Config<sp/>file<sp/>and<sp/>add<sp/>to<sp/>it</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="84"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>DBFILE(s)<sp/>from<sp/>config_pred<sp/>file.</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="85"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>config_pred<sp/>contain<sp/></highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="86"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>As<sp/>we<sp/>are<sp/>reusing<sp/>existing<sp/>config<sp/>we<sp/>have</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="87"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>to<sp/>remove<sp/>FORCE<sp/>and<sp/>STRESS<sp/>keys<sp/>first</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="88"><highlight class="normal"><sp/><sp/><sp/><sp/>param_file.remove(</highlight><highlight class="stringliteral">&quot;FORCE&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="89"><highlight class="normal"><sp/><sp/><sp/><sp/>param_file.remove(</highlight><highlight class="stringliteral">&quot;STRESS&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="90"><highlight class="normal"><sp/><sp/><sp/><sp/>param_file.add(</highlight><highlight class="stringliteral">&quot;config_pred&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="91"><highlight class="normal"></highlight></codeline>
+<codeline lineno="92"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>Load<sp/>DBFILE<sp/>from<sp/>config_pred</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="93"><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;StructureDB<sp/>loading<sp/>data...&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::flush;</highlight></codeline>
+<codeline lineno="94"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="structStructureDB" kindref="compound">StructureDB</ref><sp/>stdb(param_file);</highlight></codeline>
+<codeline lineno="95"><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Done!&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="96"><highlight class="normal"></highlight></codeline>
+<codeline lineno="97"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>Calculate<sp/>nearest<sp/>neighbours</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="98"><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Calculating<sp/>nearest<sp/>neighbours...&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::flush;</highlight></codeline>
+<codeline lineno="99"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="classNNFinder" kindref="compound">NNFinder</ref><sp/>nnf2(param_file);</highlight></codeline>
+<codeline lineno="100"><highlight class="normal"><sp/><sp/><sp/><sp/>nnf2.calc(stdb);</highlight></codeline>
+<codeline lineno="101"><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Done!&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="102"><highlight class="normal"></highlight></codeline>
+<codeline lineno="103"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>Calculate<sp/>descriptors<sp/>and<sp/>store<sp/>them<sp/>in<sp/>StDescriptorsDB</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="104"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//std::cout<sp/>&lt;&lt;<sp/>&quot;Calculating<sp/>descriptors...&quot;<sp/>&lt;&lt;<sp/>std::flush;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="105"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="classDescriptorsCalc" kindref="compound">DescriptorsCalc&lt;D2,D3,DM,C2,C3,CM&gt;</ref><sp/>dc2(param_file);</highlight></codeline>
+<codeline lineno="106"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//StDescriptorsDB<sp/>st_desc_db<sp/>=<sp/>dc2.calc(stdb);</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="107"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//std::cout<sp/>&lt;&lt;<sp/>&quot;Done!&quot;<sp/>&lt;&lt;<sp/>std::endl;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="108"><highlight class="normal"></highlight></codeline>
+<codeline lineno="109"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>open<sp/>file<sp/>streams<sp/>for<sp/>energy<sp/>and<sp/>force<sp/>prediction</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="110"><highlight class="normal"><sp/><sp/><sp/><sp/>std::ofstream<sp/>out_force(</highlight><highlight class="stringliteral">&quot;forces.pred&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="111"><highlight class="normal"><sp/><sp/><sp/><sp/>std::ofstream<sp/>out_energy(</highlight><highlight class="stringliteral">&quot;energy.pred&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="112"><highlight class="normal"><sp/><sp/><sp/><sp/>std::ofstream<sp/>out_stress(</highlight><highlight class="stringliteral">&quot;stress.pred&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="113"><highlight class="normal"></highlight></codeline>
+<codeline lineno="114"><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Predicting...&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::flush;</highlight></codeline>
+<codeline lineno="115"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>predict<sp/>energies<sp/>(and<sp/>forces<sp/>if<sp/>FORCE<sp/>true).<sp/>Result<sp/>is<sp/>saved</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="116"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>to<sp/>new<sp/>StructureDB<sp/>object<sp/>-<sp/>it<sp/>will<sp/>only<sp/>contain<sp/>predicted<sp/>values</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="117"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>so<sp/>there<sp/>are<sp/>no<sp/>atom<sp/>positions,<sp/>etc...</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="118"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="structStructureDB" kindref="compound">StructureDB</ref><sp/>stpred<sp/>=<sp/>model.predict(param_file,<sp/>stdb,dc2);</highlight></codeline>
+<codeline lineno="119"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//StructureDB<sp/>stpred<sp/>=<sp/>model.predict(param_file,st_desc_db,<sp/>stdb);</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="120"><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Done!&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="121"><highlight class="normal"></highlight></codeline>
+<codeline lineno="122"><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Dumping<sp/>results<sp/>to<sp/>disk...&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::flush;</highlight></codeline>
+<codeline lineno="123"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>i=0;<sp/>i&lt;stdb.size();<sp/>++i)<sp/>{</highlight></codeline>
+<codeline lineno="124"><highlight class="normal"></highlight></codeline>
+<codeline lineno="125"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>out_energy<sp/>&lt;&lt;<sp/>stdb(i).energy/stdb(i).natoms()<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;<sp/><sp/><sp/><sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>stpred(i).energy/stpred(i).natoms()<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="126"><highlight class="normal"></highlight></codeline>
+<codeline lineno="127"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(param_file.get&lt;</highlight><highlight class="keywordtype">bool</highlight><highlight class="normal">&gt;(</highlight><highlight class="stringliteral">&quot;FORCE&quot;</highlight><highlight class="normal">))<sp/>{</highlight></codeline>
+<codeline lineno="128"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>a=0;<sp/>a&lt;stdb(i).natoms();<sp/>++a)<sp/>{</highlight></codeline>
+<codeline lineno="129"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>Eigen::Vector3d<sp/>&amp;f<sp/>=<sp/>stdb(i).atoms[a].force;</highlight></codeline>
+<codeline lineno="130"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>Eigen::Vector3d<sp/>&amp;fp<sp/>=<sp/>stpred(i).atoms[a].force;</highlight></codeline>
+<codeline lineno="131"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>k=0;<sp/>k&lt;3;<sp/>++k)</highlight></codeline>
+<codeline lineno="132"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>out_force<sp/>&lt;&lt;<sp/>f[k]<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;<sp/><sp/><sp/><sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>fp[k]<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="133"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="134"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="135"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(param_file.get&lt;</highlight><highlight class="keywordtype">bool</highlight><highlight class="normal">&gt;(</highlight><highlight class="stringliteral">&quot;STRESS&quot;</highlight><highlight class="normal">))<sp/>{</highlight></codeline>
+<codeline lineno="136"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>Eigen::Matrix3d<sp/>&amp;s<sp/>=<sp/>stdb(i).stress;</highlight></codeline>
+<codeline lineno="137"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>Eigen::Matrix3d<sp/>&amp;sp<sp/>=<sp/>stpred(i).stress;</highlight></codeline>
+<codeline lineno="138"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>x=0;<sp/>x&lt;3;<sp/>++x)</highlight></codeline>
+<codeline lineno="139"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>y=x;<sp/>y&lt;3;<sp/>++y)</highlight></codeline>
+<codeline lineno="140"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>out_stress<sp/>&lt;&lt;<sp/>s(x,y)<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;<sp/><sp/><sp/><sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>sp(x,y)<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="141"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="142"><highlight class="normal"></highlight></codeline>
+<codeline lineno="143"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="144"><highlight class="normal"><sp/><sp/><sp/><sp/>out_force.close();</highlight></codeline>
+<codeline lineno="145"><highlight class="normal"><sp/><sp/><sp/><sp/>out_energy.close();</highlight></codeline>
+<codeline lineno="146"><highlight class="normal"><sp/><sp/><sp/><sp/>out_stress.close();</highlight></codeline>
+<codeline lineno="147"><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Done!&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="148"><highlight class="normal"></highlight></codeline>
+<codeline lineno="149"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>0;</highlight></codeline>
+<codeline lineno="150"><highlight class="normal">}</highlight></codeline>
+    </programlisting>
+    <location file="/home/s1351949/PROJECTS/tadah/examples/ex_2/ex2.cpp"/>
+  </compounddef>
+</doxygen>

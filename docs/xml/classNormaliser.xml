@@ -1,0 +1,229 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classNormaliser" kind="class" language="C++" prot="public">
+    <compoundname>Normaliser</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classNormaliser_1a0b70761aef155b46d7e913155dc89798" prot="public" static="no" mutable="no">
+        <type>Eigen::VectorXd</type>
+        <definition>Eigen::VectorXd Normaliser::std_dev</definition>
+        <argsstring></argsstring>
+        <name>std_dev</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="16" column="25" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="16" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classNormaliser_1afabfdd42f61a8ac29624ce37e836185c" prot="public" static="no" mutable="no">
+        <type>Eigen::VectorXd</type>
+        <definition>Eigen::VectorXd Normaliser::mean</definition>
+        <argsstring></argsstring>
+        <name>mean</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="17" column="25" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="17" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classNormaliser_1a2c842c6bc08f523497ee628daed6380f" prot="private" static="no" mutable="no">
+        <type>int</type>
+        <definition>int Normaliser::verbose</definition>
+        <argsstring></argsstring>
+        <name>verbose</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="109" column="13" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="109" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classNormaliser_1a0b3681de25d840c9e8be8bba44206119" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>Normaliser::Normaliser</definition>
+        <argsstring>()</argsstring>
+        <name>Normaliser</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="19" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="19" bodyend="19"/>
+      </memberdef>
+      <memberdef kind="function" id="classNormaliser_1a96e169a0f8c0183732300d35debb36ef" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>Normaliser::Normaliser</definition>
+        <argsstring>(Config &amp;c)</argsstring>
+        <name>Normaliser</name>
+        <param>
+          <type><ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="20" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="20" bodyend="22"/>
+      </memberdef>
+      <memberdef kind="function" id="classNormaliser_1afd3941d13542e96ebcb3561646ec64b0" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>Normaliser::Normaliser</definition>
+        <argsstring>(Config &amp;c, StDescriptorsDB &amp;st_desc_db)</argsstring>
+        <name>Normaliser</name>
+        <param>
+          <type><ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>c</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptorsDB" kindref="compound">StDescriptorsDB</ref> &amp;</type>
+          <declname>st_desc_db</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="23" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="23" bodyend="28"/>
+      </memberdef>
+      <memberdef kind="function" id="classNormaliser_1a8e186f379a2cf8832307f78bf9446253" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void Normaliser::learn</definition>
+        <argsstring>(StDescriptorsDB &amp;st_desc_db)</argsstring>
+        <name>learn</name>
+        <param>
+          <type><ref refid="structStDescriptorsDB" kindref="compound">StDescriptorsDB</ref> &amp;</type>
+          <declname>st_desc_db</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="29" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="29" bodyend="56"/>
+      </memberdef>
+      <memberdef kind="function" id="classNormaliser_1a2550a2bb0e2093c4d919870c21115982" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void Normaliser::normalise</definition>
+        <argsstring>(StDescriptors::aed_type &amp;aed)</argsstring>
+        <name>normalise</name>
+        <param>
+          <type><ref refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" kindref="member">StDescriptors::aed_type</ref> &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Normalise AED </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="60" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="60" bodyend="66"/>
+      </memberdef>
+      <memberdef kind="function" id="classNormaliser_1a7370e71eecbdedbfea5b747dd9cc51af" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void Normaliser::normalise</definition>
+        <argsstring>(StDescriptors::fd_type &amp;fd)</argsstring>
+        <name>normalise</name>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Normalise FD </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="69" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="69" bodyend="80"/>
+      </memberdef>
+      <memberdef kind="function" id="classNormaliser_1ac3eaead152ec7012c7c68b314c6f8725" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void Normaliser::normalise</definition>
+        <argsstring>(StDescriptors::fd_type &amp;fd, size_t k)</argsstring>
+        <name>normalise</name>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>k</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="81" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="81" bodyend="90"/>
+      </memberdef>
+      <memberdef kind="function" id="classNormaliser_1a210c32654984aaa8b351c74298163ff1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void Normaliser::normalise</definition>
+        <argsstring>(StDescriptors &amp;st_d)</argsstring>
+        <name>normalise</name>
+        <param>
+          <type><ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="92" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="92" bodyend="101"/>
+      </memberdef>
+      <memberdef kind="function" id="classNormaliser_1a85d456295a16c65114bde586a410db2b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void Normaliser::normalise</definition>
+        <argsstring>(StDescriptorsDB &amp;st_desc_db)</argsstring>
+        <name>normalise</name>
+        <param>
+          <type><ref refid="structStDescriptorsDB" kindref="compound">StDescriptorsDB</ref> &amp;</type>
+          <declname>st_desc_db</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="103" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="103" bodyend="106"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/normaliser.h" line="14" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/normaliser.h" bodystart="14" bodyend="110"/>
+    <listofallmembers>
+      <member refid="classNormaliser_1a8e186f379a2cf8832307f78bf9446253" prot="public" virt="non-virtual"><scope>Normaliser</scope><name>learn</name></member>
+      <member refid="classNormaliser_1afabfdd42f61a8ac29624ce37e836185c" prot="public" virt="non-virtual"><scope>Normaliser</scope><name>mean</name></member>
+      <member refid="classNormaliser_1a2550a2bb0e2093c4d919870c21115982" prot="public" virt="non-virtual"><scope>Normaliser</scope><name>normalise</name></member>
+      <member refid="classNormaliser_1a7370e71eecbdedbfea5b747dd9cc51af" prot="public" virt="non-virtual"><scope>Normaliser</scope><name>normalise</name></member>
+      <member refid="classNormaliser_1ac3eaead152ec7012c7c68b314c6f8725" prot="public" virt="non-virtual"><scope>Normaliser</scope><name>normalise</name></member>
+      <member refid="classNormaliser_1a210c32654984aaa8b351c74298163ff1" prot="public" virt="non-virtual"><scope>Normaliser</scope><name>normalise</name></member>
+      <member refid="classNormaliser_1a85d456295a16c65114bde586a410db2b" prot="public" virt="non-virtual"><scope>Normaliser</scope><name>normalise</name></member>
+      <member refid="classNormaliser_1a0b3681de25d840c9e8be8bba44206119" prot="public" virt="non-virtual"><scope>Normaliser</scope><name>Normaliser</name></member>
+      <member refid="classNormaliser_1a96e169a0f8c0183732300d35debb36ef" prot="public" virt="non-virtual"><scope>Normaliser</scope><name>Normaliser</name></member>
+      <member refid="classNormaliser_1afd3941d13542e96ebcb3561646ec64b0" prot="public" virt="non-virtual"><scope>Normaliser</scope><name>Normaliser</name></member>
+      <member refid="classNormaliser_1a0b70761aef155b46d7e913155dc89798" prot="public" virt="non-virtual"><scope>Normaliser</scope><name>std_dev</name></member>
+      <member refid="classNormaliser_1a2c842c6bc08f523497ee628daed6380f" prot="private" virt="non-virtual"><scope>Normaliser</scope><name>verbose</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

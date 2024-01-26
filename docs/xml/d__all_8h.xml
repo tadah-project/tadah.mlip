@@ -1,0 +1,371 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="d__all_8h" kind="file" language="C++">
+    <compoundname>d_all.h</compoundname>
+    <includes refid="d2__all_8h" local="yes">d2/d2_all.h</includes>
+    <includes refid="d3__all_8h" local="yes">d3/d3_all.h</includes>
+    <includes refid="dm__all_8h" local="yes">dm/dm_all.h</includes>
+    <includedby refid="m__blr_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/models/m_blr.h</includedby>
+    <includedby refid="m__krr_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/models/m_krr.h</includedby>
+    <includedby refid="lammps__tadah_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/lammps/lammps_tadah.h</includedby>
+    <includedby refid="m__base_8cpp" local="yes">/home/s1351949/PROJECTS/tadah/src/models/m_base.cpp</includedby>
+    <includedby refid="DX__FD_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h</includedby>
+    <incdepgraph>
+      <node id="5">
+        <label>../d_base.h</label>
+        <link refid="d__base_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="21" relation="include">
+        </childnode>
+        <childnode refid="27" relation="include">
+        </childnode>
+        <childnode refid="28" relation="include">
+        </childnode>
+      </node>
+      <node id="23">
+        <label>libs/Eigen/src/Core/util/Constants.h</label>
+      </node>
+      <node id="20">
+        <label>libs/Eigen/Dense</label>
+      </node>
+      <node id="29">
+        <label>functional</label>
+      </node>
+      <node id="19">
+        <label>iomanip</label>
+      </node>
+      <node id="15">
+        <label>iterator</label>
+      </node>
+      <node id="25">
+        <label>atom.h</label>
+        <link refid="atom_8h_source"/>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="20" relation="include">
+        </childnode>
+        <childnode refid="26" relation="include">
+        </childnode>
+      </node>
+      <node id="38">
+        <label>dm_dummy.h</label>
+        <link refid="dm__dummy_8h_source"/>
+        <childnode refid="39" relation="include">
+        </childnode>
+      </node>
+      <node id="30">
+        <label>d2_blip.h</label>
+        <link refid="d2__blip_8h_source"/>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+      </node>
+      <node id="17">
+        <label>cmath</label>
+      </node>
+      <node id="22">
+        <label>libs/Eigen/src/Core/Array.h</label>
+      </node>
+      <node id="8">
+        <label>stdexcept</label>
+      </node>
+      <node id="32">
+        <label>d2_eam.h</label>
+        <link refid="d2__eam_8h_source"/>
+        <childnode refid="4" relation="include">
+        </childnode>
+      </node>
+      <node id="34">
+        <label>d3/d3_all.h</label>
+        <link refid="d3__all_8h_source"/>
+        <childnode refid="35" relation="include">
+        </childnode>
+      </node>
+      <node id="39">
+        <label>dm_base.h</label>
+        <link refid="dm__base_8h_source"/>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+      <node id="21">
+        <label>../st_descriptors.h</label>
+        <link refid="st__descriptors_8h_source"/>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="20" relation="include">
+        </childnode>
+        <childnode refid="22" relation="include">
+        </childnode>
+        <childnode refid="23" relation="include">
+        </childnode>
+        <childnode refid="24" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="9">
+        <label>string</label>
+      </node>
+      <node id="13">
+        <label>map</label>
+      </node>
+      <node id="11">
+        <label>fstream</label>
+      </node>
+      <node id="6">
+        <label>../config.h</label>
+        <link refid="config_8h_source"/>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+        <childnode refid="20" relation="include">
+        </childnode>
+      </node>
+      <node id="35">
+        <label>d3_dummy.h</label>
+        <link refid="d3__dummy_8h_source"/>
+        <childnode refid="36" relation="include">
+        </childnode>
+      </node>
+      <node id="33">
+        <label>d2_lj.h</label>
+        <link refid="d2__lj_8h_source"/>
+        <childnode refid="4" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>d2/d2_all.h</label>
+        <link refid="d2__all_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="30" relation="include">
+        </childnode>
+        <childnode refid="31" relation="include">
+        </childnode>
+        <childnode refid="32" relation="include">
+        </childnode>
+        <childnode refid="33" relation="include">
+        </childnode>
+      </node>
+      <node id="31">
+        <label>d2_bp.h</label>
+        <link refid="d2__bp_8h_source"/>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+      </node>
+      <node id="28">
+        <label>../utils/registry.h</label>
+        <link refid="registry_8h_source"/>
+        <childnode refid="13" relation="include">
+        </childnode>
+        <childnode refid="29" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="18" relation="include">
+        </childnode>
+      </node>
+      <node id="36">
+        <label>d3_base.h</label>
+        <link refid="d3__base_8h_source"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+      <node id="12">
+        <label>vector</label>
+      </node>
+      <node id="4">
+        <label>d2_base.h</label>
+        <link refid="d2__base_8h_source"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+      <node id="37">
+        <label>dm/dm_all.h</label>
+        <link refid="dm__all_8h_source"/>
+        <childnode refid="38" relation="include">
+        </childnode>
+        <childnode refid="40" relation="include">
+        </childnode>
+        <childnode refid="41" relation="include">
+        </childnode>
+      </node>
+      <node id="41">
+        <label>dm_ead.h</label>
+        <link refid="dm__ead_8h_source"/>
+        <childnode refid="39" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+      </node>
+      <node id="18">
+        <label>sstream</label>
+      </node>
+      <node id="27">
+        <label>../libs/Eigen/Dense</label>
+      </node>
+      <node id="14">
+        <label>utils/utils.h</label>
+        <link refid="utils_8h_source"/>
+        <childnode refid="15" relation="include">
+        </childnode>
+        <childnode refid="16" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="17" relation="include">
+        </childnode>
+        <childnode refid="18" relation="include">
+        </childnode>
+        <childnode refid="19" relation="include">
+        </childnode>
+      </node>
+      <node id="26">
+        <label>element.h</label>
+        <link refid="element_8h_source"/>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+      </node>
+      <node id="10">
+        <label>iostream</label>
+      </node>
+      <node id="24">
+        <label>structure.h</label>
+        <link refid="structure_8h_source"/>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+        <childnode refid="19" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="20" relation="include">
+        </childnode>
+        <childnode refid="25" relation="include">
+        </childnode>
+        <childnode refid="23" relation="include">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d_all.h</label>
+        <link refid="d__all_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="34" relation="include">
+        </childnode>
+        <childnode refid="37" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>type_traits</label>
+      </node>
+      <node id="16">
+        <label>algorithm</label>
+      </node>
+      <node id="40">
+        <label>dm_eam.h</label>
+        <link refid="dm__eam_8h_source"/>
+        <childnode refid="39" relation="include">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>d2_dummy.h</label>
+        <link refid="d2__dummy_8h_source"/>
+        <childnode refid="4" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="2">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/m_blr.h</label>
+        <link refid="m__blr_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+      </node>
+      <node id="4">
+        <label>/home/s1351949/PROJECTS/tadah/src/dc_selector.h</label>
+        <link refid="dc__selector_8h_source"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/m_all.h</label>
+        <link refid="m__all_8h_source"/>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/m_krr.h</label>
+        <link refid="m__krr_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h</label>
+        <link refid="DX__FD_8h_source"/>
+      </node>
+      <node id="1">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d_all.h</label>
+        <link refid="d__all_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>/home/s1351949/PROJECTS/tadah/src/lammps/lammps_tadah.h</label>
+        <link refid="lammps__tadah_8h_source"/>
+      </node>
+    </invincdepgraph>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="preprocessor">#include<sp/>&quot;d2/d2_all.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="2"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;d3/d3_all.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="3"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;dm/dm_all.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+    </programlisting>
+    <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d_all.h"/>
+  </compounddef>
+</doxygen>

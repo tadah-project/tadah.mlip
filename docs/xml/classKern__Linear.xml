@@ -1,0 +1,447 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classKern__Linear" kind="class" language="C++" prot="public">
+    <compoundname>Kern_Linear</compoundname>
+    <basecompoundref refid="classKern__Base" prot="public" virt="non-virtual">Kern_Base</basecompoundref>
+    <includes refid="kern__linear_8h" local="no">kern_linear.h</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classKern__Linear_1a23400587d270ebebc7d9ca1044a05651" prot="public" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string Kern_Linear::label</definition>
+        <argsstring></argsstring>
+        <name>label</name>
+        <initializer>= &quot;Kern_Linear&quot;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Label used for this class </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="30" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" bodystart="30" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classKern__Linear_1a525b255927be1ca8b0ae4c4f7fd0001a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>Kern_Linear::Kern_Linear</definition>
+        <argsstring>()</argsstring>
+        <name>Kern_Linear</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="24" column="5" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="6" bodyend="6"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1a9c943c6db2bda4776c74af9f0bed6c4e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>Kern_Linear::Kern_Linear</definition>
+        <argsstring>(const Config &amp;c)</argsstring>
+        <name>Kern_Linear</name>
+        <param>
+          <type>const <ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="25" column="5" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="7" bodyend="11"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1a3bf19b7d903b34be1e9c4a09e14bfbee" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double Kern_Linear::operator()</definition>
+        <argsstring>(const aed_type &amp;b, const aed_type &amp;af)</argsstring>
+        <name>operator()</name>
+        <reimplements refid="classKern__Base_1addb3ad5509b3d128dd12f01f854b533c">operator()</reimplements>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>af</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate kernel value given two vectors</para>
+<para><itemizedlist>
+<listitem><para>b = basis vector</para>
+</listitem><listitem><para>af = atomic energy descriptor </para>
+</listitem></itemizedlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="31" column="12" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="12" bodyend="15"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1aaf5a623bb354f41d54a0a03d002da637" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>aed_type</type>
+        <definition>aed_type Kern_Linear::derivative</definition>
+        <argsstring>(const aed_type &amp;b, const aed_type &amp;)</argsstring>
+        <name>derivative</name>
+        <reimplements refid="classKern__Base_1a9a6a4482e80ade5d1f8579986863d075">derivative</reimplements>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>af</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate the kernel derivative wrt to the second argument</para>
+<para><itemizedlist>
+<listitem><para>b = basis vector</para>
+</listitem><listitem><para>af = atomic energy descriptor </para>
+</listitem></itemizedlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="32" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="16" bodyend="19"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1af963374ae396a3f6d53bd0f2f7fa3367" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double Kern_Linear::prime</definition>
+        <argsstring>(const aed_type &amp;b, const aed_type &amp;af, const aed_type &amp;ff)</argsstring>
+        <name>prime</name>
+        <reimplements refid="classKern__Base_1a3655c75015f64f44b2c0d884d1d156b1">prime</reimplements>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>af</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>ff</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate inner product of the kernel derivative wrt to the second argument (b wrt af) with the force descriptor</para>
+<para><itemizedlist>
+<listitem><para>b = basis vector</para>
+</listitem><listitem><para>af = atomic energy descriptor</para>
+</listitem><listitem><para>ff = force descriptor (TODO i-th dir component of it) TODO consider calculating all 3-directions at once </para>
+</listitem></itemizedlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="33" column="12" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="20" bodyend="24"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1af308dbf710904c693e1ebdfab31c6384" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>std::string</type>
+        <definition>std::string Kern_Linear::get_label</definition>
+        <argsstring>()</argsstring>
+        <name>get_label</name>
+        <reimplements refid="classKern__Base_1a4dc88c30557303ca426f5175f91fed5a">get_label</reimplements>
+        <briefdescription>
+<para>Return label of this object. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="34" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="25" bodyend="28"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1ad5c543e0c23325d3c349d27ee2cab1e7" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>void</type>
+        <definition>void Kern_Linear::set_basis</definition>
+        <argsstring>(const std::vector&lt; aed_type &gt; b)</argsstring>
+        <name>set_basis</name>
+        <reimplements refid="classKern__Base_1a535beb13bd2154389721aa3585b4546d">set_basis</reimplements>
+        <param>
+          <type>const std::vector&lt; aed_type &gt;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+<para>Set basis for calculations. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="35" column="10" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" bodystart="35" bodyend="35"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1a90578b0c5f032103382888107a148d90" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double Kern_Linear::epredict</definition>
+        <argsstring>(const t_type &amp;weights, const aed_type &amp;aed)</argsstring>
+        <name>epredict</name>
+        <reimplements refid="classKern__Base_1a0bf229903b2f826bbda74fc65efd56d8">epredict</reimplements>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="37" column="12" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="29" bodyend="32"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1a29970b44f108e8adc19255fd94d8023f" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double Kern_Linear::fpredict</definition>
+        <argsstring>(const t_type &amp;weights, const fd_type &amp;fdij, const aed_type &amp;aedi, const size_t k)</argsstring>
+        <name>fpredict</name>
+        <reimplements refid="classKern__Base_1a8ce2ac032a2dfe2fde02a44c01454c56">fpredict</reimplements>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const fd_type &amp;</type>
+          <declname>fdij</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aedi</declname>
+        </param>
+        <param>
+          <type>const size_t</type>
+          <declname>k</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="38" column="12" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="33" bodyend="37"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1ae0a7b1f5c7d0de243c54e3c530f0e7a3" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>force_type</type>
+        <definition>force_type Kern_Linear::fpredict</definition>
+        <argsstring>(const t_type &amp;weights, const fd_type &amp;fdij, const aed_type &amp;aedi)</argsstring>
+        <name>fpredict</name>
+        <reimplements refid="classKern__Base_1aa8c5f6fd8c3151d8ca8d142a9cf9f62c">fpredict</reimplements>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const fd_type &amp;</type>
+          <declname>fdij</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aedi</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="40" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="38" bodyend="42"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1a4d8719eec305e557f80109be5265067e" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>size_t</type>
+        <definition>size_t Kern_Linear::get_phi_cols</definition>
+        <argsstring>(const Config &amp;config)</argsstring>
+        <name>get_phi_cols</name>
+        <reimplements refid="classKern__Base_1af70579ef3b176b73674e1711e55aca23">get_phi_cols</reimplements>
+        <param>
+          <type>const <ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>config</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="42" column="12" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="43" bodyend="47"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1a10e6904a4f30a07d1f39c9160988a97c" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void Kern_Linear::calc_phi_energy_row</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac, const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_energy_row</name>
+        <reimplements refid="classKern__Base_1ada89257424dae4cb7a8fd43fbfae8ae7">calc_phi_energy_row</reimplements>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="43" column="10" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="48" bodyend="55"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1ae4d175229a5427ac31843127a11face6" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void Kern_Linear::calc_phi_force_rows</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac, const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_force_rows</name>
+        <reimplements refid="classKern__Base_1a2434db2a8b2eaefa9397a377ac254bf9">calc_phi_force_rows</reimplements>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="45" column="10" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="56" bodyend="71"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Linear_1a05ea79f86a4613c8c97bc8354c2919b5" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void Kern_Linear::calc_phi_stress_rows</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac[6], const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_stress_rows</name>
+        <reimplements refid="classKern__Base_1a5688c48ce0b86b11a06c076ba0b35b7b">calc_phi_stress_rows</reimplements>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+          <array>[6]</array>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="47" column="10" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.cpp" bodystart="72" bodyend="93"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Linear kernel also knows as dot product kernel</para>
+<para>Defined for two vectors <bold>x</bold> and <bold>y</bold>:</para>
+<para><formula id="35">\[ K(\mathbf{x}, \mathbf{y}) = \mathbf{x}^T \mathbf{y} = \sum_i x^{(i)} y^{(i)} \]</formula></para>
+<para><simplesect kind="see"><para><ref refid="classKern__Base" kindref="compound">Kern_Base</ref> <ref refid="structBF__Linear" kindref="compound">BF_Linear</ref> </para>
+</simplesect>
+</para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="3">
+        <label>Func_Base</label>
+        <link refid="structFunc__Base"/>
+      </node>
+      <node id="1">
+        <label>Kern_Linear</label>
+        <link refid="classKern__Linear"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>Kern_Base</label>
+        <link refid="classKern__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="3">
+        <label>Func_Base</label>
+        <link refid="structFunc__Base"/>
+      </node>
+      <node id="1">
+        <label>Kern_Linear</label>
+        <link refid="classKern__Linear"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>Kern_Base</label>
+        <link refid="classKern__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" line="15" column="36" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h" bodystart="15" bodyend="49"/>
+    <listofallmembers>
+      <member refid="classKern__Base_1a74e1a2c8814eb9eef0ecb27bcdb9a600" prot="public" virt="non-virtual"><scope>Kern_Linear</scope><name>basis</name></member>
+      <member refid="classKern__Linear_1a10e6904a4f30a07d1f39c9160988a97c" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>calc_phi_energy_row</name></member>
+      <member refid="classKern__Linear_1ae4d175229a5427ac31843127a11face6" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>calc_phi_force_rows</name></member>
+      <member refid="classKern__Linear_1a05ea79f86a4613c8c97bc8354c2919b5" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>calc_phi_stress_rows</name></member>
+      <member refid="classKern__Linear_1aaf5a623bb354f41d54a0a03d002da637" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>derivative</name></member>
+      <member refid="classKern__Linear_1a90578b0c5f032103382888107a148d90" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>epredict</name></member>
+      <member refid="classKern__Linear_1a29970b44f108e8adc19255fd94d8023f" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>fpredict</name></member>
+      <member refid="classKern__Linear_1ae0a7b1f5c7d0de243c54e3c530f0e7a3" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>fpredict</name></member>
+      <member refid="classKern__Linear_1af308dbf710904c693e1ebdfab31c6384" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>get_label</name></member>
+      <member refid="classKern__Linear_1a4d8719eec305e557f80109be5265067e" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>get_phi_cols</name></member>
+      <member refid="classKern__Linear_1a525b255927be1ca8b0ae4c4f7fd0001a" prot="public" virt="non-virtual"><scope>Kern_Linear</scope><name>Kern_Linear</name></member>
+      <member refid="classKern__Linear_1a9c943c6db2bda4776c74af9f0bed6c4e" prot="public" virt="non-virtual"><scope>Kern_Linear</scope><name>Kern_Linear</name></member>
+      <member refid="classKern__Linear_1a23400587d270ebebc7d9ca1044a05651" prot="public" virt="non-virtual"><scope>Kern_Linear</scope><name>label</name></member>
+      <member refid="classKern__Linear_1a3bf19b7d903b34be1e9c4a09e14bfbee" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>operator()</name></member>
+      <member refid="classKern__Linear_1af963374ae396a3f6d53bd0f2f7fa3367" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>prime</name></member>
+      <member refid="classKern__Linear_1ad5c543e0c23325d3c349d27ee2cab1e7" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>set_basis</name></member>
+      <member refid="classKern__Base_1aa2d57e305473593742ccacf825dd0ca0" prot="public" virt="non-virtual"><scope>Kern_Linear</scope><name>verbose</name></member>
+      <member refid="structFunc__Base_1ad5e024d08c74e3085f1bd9a91bec0538" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>~Func_Base</name></member>
+      <member refid="classKern__Base_1afc0cd9ac3fb625775b23548c42e73431" prot="public" virt="virtual"><scope>Kern_Linear</scope><name>~Kern_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

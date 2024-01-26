@@ -1,0 +1,138 @@
+\hypertarget{classLinearKernel}{}\doxysection{Linear\+Kernel Class Reference}
+\label{classLinearKernel}\index{LinearKernel@{LinearKernel}}
+
+
+{\ttfamily \#include $<$kernel.\+h$>$}
+
+Inheritance diagram for Linear\+Kernel\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=4.000000cm]{classLinearKernel}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classLinearKernel_af646ed14a6e63b1b615407eb2d0b8935}\label{classLinearKernel_af646ed14a6e63b1b615407eb2d0b8935}} 
+{\bfseries Linear\+Kernel} (const \mbox{\hyperlink{classConfig}{Config}} \&c)
+\item 
+double \mbox{\hyperlink{classLinearKernel_acf8ccae8f3a4ec00890acecb73b77e2e}{operator()}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af)
+\item 
+aed\+\_\+type \mbox{\hyperlink{classLinearKernel_aa62d663fc3908fc77e39fde074dacf69}{derivative}} (const aed\+\_\+type \&b, const aed\+\_\+type \&)
+\item 
+double \mbox{\hyperlink{classLinearKernel_a5ee91d4c89e1543e2990d602de7272cf}{prime}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af, const aed\+\_\+type \&ff)
+\item 
+\mbox{\Hypertarget{classLinearKernel_a7a8c2e6ec12b4a8735dcbe53ee3dd74b}\label{classLinearKernel_a7a8c2e6ec12b4a8735dcbe53ee3dd74b}} 
+std\+::string \mbox{\hyperlink{classLinearKernel_a7a8c2e6ec12b4a8735dcbe53ee3dd74b}{get\+\_\+label}} ()
+\begin{DoxyCompactList}\small\item\em Return label of this object. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classLinearKernel_a02d1675dcf49dcdf377429d52e496360}\label{classLinearKernel_a02d1675dcf49dcdf377429d52e496360}} 
+void \mbox{\hyperlink{classLinearKernel_a02d1675dcf49dcdf377429d52e496360}{set\+\_\+basis}} (const std\+::vector$<$ aed\+\_\+type $>$ b)
+\begin{DoxyCompactList}\small\item\em Set basis for calculations. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classLinearKernel_a56484294f868d034563d5171ca7e366c}\label{classLinearKernel_a56484294f868d034563d5171ca7e366c}} 
+static double {\bfseries epredict} (const t\+\_\+type \&weights, const aed\+\_\+type \&aed)
+\item 
+\mbox{\Hypertarget{classLinearKernel_a14a39c707e44d4a37820f1161c7638b3}\label{classLinearKernel_a14a39c707e44d4a37820f1161c7638b3}} 
+static double {\bfseries fpredict} (const t\+\_\+type \&weights, const fd\+\_\+type \&fdij, const aed\+\_\+type \&aedi, const aed\+\_\+type \&aedj, const size\+\_\+t k)
+\item 
+\mbox{\Hypertarget{classLinearKernel_a5748d90d9b8c5fb9554034601ff7fdd0}\label{classLinearKernel_a5748d90d9b8c5fb9554034601ff7fdd0}} 
+static force\+\_\+type {\bfseries fpredict} (const t\+\_\+type \&weights, const fd\+\_\+type \&fdij, const aed\+\_\+type \&aedi, const aed\+\_\+type \&aedj)
+\item 
+\mbox{\Hypertarget{classLinearKernel_a665a087ad56d2ca2b3a1ae0acfbc27e6}\label{classLinearKernel_a665a087ad56d2ca2b3a1ae0acfbc27e6}} 
+static void {\bfseries calc\+\_\+phi\+\_\+energy\+\_\+row} (phi\+\_\+type \&Phi, size\+\_\+t \&row, const double fac, const \mbox{\hyperlink{structStructure}{Structure}} \&st, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&st\+\_\+d)
+\item 
+\mbox{\Hypertarget{classLinearKernel_a7b5d86356500f16f0d01ede212502695}\label{classLinearKernel_a7b5d86356500f16f0d01ede212502695}} 
+static void {\bfseries calc\+\_\+phi\+\_\+force\+\_\+rows} (phi\+\_\+type \&Phi, size\+\_\+t \&row, const double fac, const \mbox{\hyperlink{structStructure}{Structure}} \&st, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&st\+\_\+d)
+\item 
+\mbox{\Hypertarget{classLinearKernel_a79582443cc99353d6b56b6d9ea245aeb}\label{classLinearKernel_a79582443cc99353d6b56b6d9ea245aeb}} 
+static void {\bfseries calc\+\_\+phi\+\_\+stress\+\_\+rows} (phi\+\_\+type \&Phi, size\+\_\+t \&row, const double fac, const \mbox{\hyperlink{structStructure}{Structure}} \&st, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&st\+\_\+d)
+\item 
+\mbox{\Hypertarget{classLinearKernel_a27a79eafd60037bfc1d91012d0b556c0}\label{classLinearKernel_a27a79eafd60037bfc1d91012d0b556c0}} 
+static size\+\_\+t {\bfseries get\+\_\+phi\+\_\+cols} (const \mbox{\hyperlink{classConfig}{Config}} \&config)
+\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std\+::string \mbox{\hyperlink{classLinearKernel_a6f5bb94bcf44f15717d915f1162dfe3f}{label}} = \char`\"{}Linear\+Kernel\char`\"{}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\mbox{\hyperlink{structLinear}{Linear}} kernel also knows as dot product kernel
+
+Defined for two vectors {\bfseries{x}} and {\bfseries{y}}\+:
+
+\[ K(\mathbf{x}, \mathbf{y}) = \mathbf{x}^T \mathbf{y} = \sum_i x^{(i)} y^{(i)} \]
+
+\begin{DoxySeeAlso}{See also}
+\mbox{\hyperlink{classKernel}{Kernel}} \mbox{\hyperlink{structLinear}{Linear}} 
+\end{DoxySeeAlso}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classLinearKernel_aa62d663fc3908fc77e39fde074dacf69}\label{classLinearKernel_aa62d663fc3908fc77e39fde074dacf69}} 
+\index{LinearKernel@{LinearKernel}!derivative@{derivative}}
+\index{derivative@{derivative}!LinearKernel@{LinearKernel}}
+\doxysubsubsection{\texorpdfstring{derivative()}{derivative()}}
+{\footnotesize\ttfamily aed\+\_\+type Linear\+Kernel\+::derivative (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate the kernel derivative wrt to the second argument
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKernel_ab36c347c07516218712fb077859fa891}{Kernel}}.
+
+\mbox{\Hypertarget{classLinearKernel_acf8ccae8f3a4ec00890acecb73b77e2e}\label{classLinearKernel_acf8ccae8f3a4ec00890acecb73b77e2e}} 
+\index{LinearKernel@{LinearKernel}!operator()@{operator()}}
+\index{operator()@{operator()}!LinearKernel@{LinearKernel}}
+\doxysubsubsection{\texorpdfstring{operator()()}{operator()()}}
+{\footnotesize\ttfamily double Linear\+Kernel\+::operator() (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate kernel value given two vectors
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKernel_a72d0324a625f7e2c3284ce787d75d4de}{Kernel}}.
+
+\mbox{\Hypertarget{classLinearKernel_a5ee91d4c89e1543e2990d602de7272cf}\label{classLinearKernel_a5ee91d4c89e1543e2990d602de7272cf}} 
+\index{LinearKernel@{LinearKernel}!prime@{prime}}
+\index{prime@{prime}!LinearKernel@{LinearKernel}}
+\doxysubsubsection{\texorpdfstring{prime()}{prime()}}
+{\footnotesize\ttfamily double Linear\+Kernel\+::prime (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af,  }\item[{const aed\+\_\+type \&}]{ff }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate inner product of the kernel derivative wrt to the second argument (b wrt af) with the force descriptor
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor
+\item ff = force descriptor (T\+O\+DO i-\/th dir component of it) T\+O\+DO consider calculating all 3-\/directions at once 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKernel_ac703581b5179ae8270134b3d458279cf}{Kernel}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{classLinearKernel_a6f5bb94bcf44f15717d915f1162dfe3f}\label{classLinearKernel_a6f5bb94bcf44f15717d915f1162dfe3f}} 
+\index{LinearKernel@{LinearKernel}!label@{label}}
+\index{label@{label}!LinearKernel@{LinearKernel}}
+\doxysubsubsection{\texorpdfstring{label}{label}}
+{\footnotesize\ttfamily std\+::string Linear\+Kernel\+::label = \char`\"{}Linear\+Kernel\char`\"{}}
+
+Label used for this class 
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/kernels/kernel.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/kernels/kernel.\+cpp\end{DoxyCompactItemize}

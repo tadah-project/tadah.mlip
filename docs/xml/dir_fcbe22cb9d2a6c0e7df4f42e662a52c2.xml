@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="dir_fcbe22cb9d2a6c0e7df4f42e662a52c2" kind="dir">
+    <compoundname>/home/s1351949/PROJECTS/tadah/src/descriptors</compoundname>
+    <innerdir refid="dir_13c934bdffaa327b61c0cde605f329e6">/home/s1351949/PROJECTS/tadah/src/descriptors/d2</innerdir>
+    <innerdir refid="dir_102e606192bbbe7dc48d47f90bdf1b65">/home/s1351949/PROJECTS/tadah/src/descriptors/d3</innerdir>
+    <innerdir refid="dir_915c59dd967f473d815244dd160c0bc5">/home/s1351949/PROJECTS/tadah/src/descriptors/dm</innerdir>
+    <innerfile refid="d__all_8h">d_all.h</innerfile>
+    <innerfile refid="d__base_8h">d_base.h</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/"/>
+  </compounddef>
+</doxygen>

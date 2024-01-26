@@ -1,0 +1,331 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structBF__Linear" kind="struct" language="C++" prot="public">
+    <compoundname>BF_Linear</compoundname>
+    <basecompoundref refid="structBF__Base" prot="public" virt="non-virtual">BF_Base</basecompoundref>
+    <includes refid="bf__linear_8h" local="no">bf_linear.h</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structBF__Linear_1ad244e3c78ebe48c3ddc7c4c245a29d1d" prot="public" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string BF_Linear::label</definition>
+        <argsstring></argsstring>
+        <name>label</name>
+        <initializer>= &quot;BF_Linear&quot;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="10" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" bodystart="10" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structBF__Linear_1a12c384f8c2fd57f0f16af16dd9128fec" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>BF_Linear::BF_Linear</definition>
+        <argsstring>()</argsstring>
+        <name>BF_Linear</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="7" column="5" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.cpp" bodystart="6" bodyend="6"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Linear_1a2923a3c790e5ee236be0d9f73ff3c53e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>BF_Linear::BF_Linear</definition>
+        <argsstring>(const Config &amp;c)</argsstring>
+        <name>BF_Linear</name>
+        <param>
+          <type>const <ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="8" column="5" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.cpp" bodystart="7" bodyend="11"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Linear_1a9f8775ced2dab8cd7740ca50c4a8d044" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>std::string</type>
+        <definition>std::string BF_Linear::get_label</definition>
+        <argsstring>()</argsstring>
+        <name>get_label</name>
+        <reimplements refid="structBF__Base_1a9b53aa0f172b1dd8f19e07806ecc6d8b">get_label</reimplements>
+        <briefdescription>
+<para>Return label of this object. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="9" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.cpp" bodystart="12" bodyend="14"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Linear_1afeb537af2cab47c01b395b4d00fdf9b8" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double BF_Linear::epredict</definition>
+        <argsstring>(const t_type &amp;weights, const aed_type &amp;aed)</argsstring>
+        <name>epredict</name>
+        <reimplements refid="structBF__Base_1a292e3f61450613a390915fb75ef86816">epredict</reimplements>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="11" column="12" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.cpp" bodystart="15" bodyend="18"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Linear_1aa5a186233f0d0d65f6131862decabdf8" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double BF_Linear::fpredict</definition>
+        <argsstring>(const t_type &amp;weights, const fd_type &amp;fdij, const aed_type &amp;aedi, const size_t k)</argsstring>
+        <name>fpredict</name>
+        <reimplements refid="structBF__Base_1a3aa36ab2eb38770d149244f1cabda048">fpredict</reimplements>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const fd_type &amp;</type>
+          <declname>fdij</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aedi</declname>
+        </param>
+        <param>
+          <type>const size_t</type>
+          <declname>k</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="12" column="12" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.cpp" bodystart="19" bodyend="23"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Linear_1af99910e527ffaf4836cad616399eb5db" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>force_type</type>
+        <definition>force_type BF_Linear::fpredict</definition>
+        <argsstring>(const t_type &amp;weights, const fd_type &amp;fdij, const aed_type &amp;aedi)</argsstring>
+        <name>fpredict</name>
+        <reimplements refid="structBF__Base_1a86f083df8d5c9dc943bf4e9c43889406">fpredict</reimplements>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const fd_type &amp;</type>
+          <declname>fdij</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aedi</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="14" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.cpp" bodystart="24" bodyend="28"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Linear_1a955cc765270a5833f44c5fa6c4e87355" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>size_t</type>
+        <definition>size_t BF_Linear::get_phi_cols</definition>
+        <argsstring>(const Config &amp;config)</argsstring>
+        <name>get_phi_cols</name>
+        <reimplements refid="structBF__Base_1a2db80104401e05da6b3774a7e1c26a8d">get_phi_cols</reimplements>
+        <param>
+          <type>const <ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>config</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="16" column="12" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.cpp" bodystart="29" bodyend="33"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Linear_1a3e80b07b8e03a37b635d899f75aa8718" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void BF_Linear::calc_phi_energy_row</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac, const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_energy_row</name>
+        <reimplements refid="structBF__Base_1a447b5837731836b9a38a3c9807c3d1ec">calc_phi_energy_row</reimplements>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="17" column="10" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.cpp" bodystart="34" bodyend="41"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Linear_1a4030989d6d502ca8fc456bd0741d4a41" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void BF_Linear::calc_phi_force_rows</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac, const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_force_rows</name>
+        <reimplements refid="structBF__Base_1a14d9ee0250c57271741e4d36137cb350">calc_phi_force_rows</reimplements>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="19" column="10" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.cpp" bodystart="42" bodyend="57"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Linear_1a1a6693cd27c1cdda1aec876f8747e9be" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void BF_Linear::calc_phi_stress_rows</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac[6], const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_stress_rows</name>
+        <reimplements refid="structBF__Base_1a2200071bd5336c222edf897020926b00">calc_phi_stress_rows</reimplements>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+          <array>[6]</array>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="21" column="10" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.cpp" bodystart="58" bodyend="79"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Linear basis function </para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="3">
+        <label>Func_Base</label>
+        <link refid="structFunc__Base"/>
+      </node>
+      <node id="1">
+        <label>BF_Linear</label>
+        <link refid="structBF__Linear"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>BF_Base</label>
+        <link refid="structBF__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="3">
+        <label>Func_Base</label>
+        <link refid="structFunc__Base"/>
+      </node>
+      <node id="1">
+        <label>BF_Linear</label>
+        <link refid="structBF__Linear"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>BF_Base</label>
+        <link refid="structBF__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" line="6" column="1" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h" bodystart="5" bodyend="23"/>
+    <listofallmembers>
+      <member refid="structBF__Linear_1a12c384f8c2fd57f0f16af16dd9128fec" prot="public" virt="non-virtual"><scope>BF_Linear</scope><name>BF_Linear</name></member>
+      <member refid="structBF__Linear_1a2923a3c790e5ee236be0d9f73ff3c53e" prot="public" virt="non-virtual"><scope>BF_Linear</scope><name>BF_Linear</name></member>
+      <member refid="structBF__Linear_1a3e80b07b8e03a37b635d899f75aa8718" prot="public" virt="virtual"><scope>BF_Linear</scope><name>calc_phi_energy_row</name></member>
+      <member refid="structBF__Linear_1a4030989d6d502ca8fc456bd0741d4a41" prot="public" virt="virtual"><scope>BF_Linear</scope><name>calc_phi_force_rows</name></member>
+      <member refid="structBF__Linear_1a1a6693cd27c1cdda1aec876f8747e9be" prot="public" virt="virtual"><scope>BF_Linear</scope><name>calc_phi_stress_rows</name></member>
+      <member refid="structFunc__Base_1a840a28ccef5e2a1664c6329ac338df54" prot="public" virt="virtual"><scope>BF_Linear</scope><name>derivative</name></member>
+      <member refid="structBF__Linear_1afeb537af2cab47c01b395b4d00fdf9b8" prot="public" virt="virtual"><scope>BF_Linear</scope><name>epredict</name></member>
+      <member refid="structBF__Linear_1aa5a186233f0d0d65f6131862decabdf8" prot="public" virt="virtual"><scope>BF_Linear</scope><name>fpredict</name></member>
+      <member refid="structBF__Linear_1af99910e527ffaf4836cad616399eb5db" prot="public" virt="virtual"><scope>BF_Linear</scope><name>fpredict</name></member>
+      <member refid="structBF__Linear_1a9f8775ced2dab8cd7740ca50c4a8d044" prot="public" virt="virtual"><scope>BF_Linear</scope><name>get_label</name></member>
+      <member refid="structBF__Linear_1a955cc765270a5833f44c5fa6c4e87355" prot="public" virt="virtual"><scope>BF_Linear</scope><name>get_phi_cols</name></member>
+      <member refid="structBF__Linear_1ad244e3c78ebe48c3ddc7c4c245a29d1d" prot="public" virt="non-virtual"><scope>BF_Linear</scope><name>label</name></member>
+      <member refid="structFunc__Base_1a0831694fbcfe3b58f60086a6080cfaa6" prot="public" virt="virtual"><scope>BF_Linear</scope><name>operator()</name></member>
+      <member refid="structFunc__Base_1a1d4107fc3ed70e79e0126a112242aab7" prot="public" virt="virtual"><scope>BF_Linear</scope><name>prime</name></member>
+      <member refid="structFunc__Base_1ada732e44cd10ffb2f7f537629d8b1407" prot="public" virt="virtual"><scope>BF_Linear</scope><name>set_basis</name></member>
+      <member refid="structBF__Base_1ad8fd9b246277bc0e6648b8b5dcf49175" prot="public" virt="non-virtual"><scope>BF_Linear</scope><name>verbose</name></member>
+      <member refid="structFunc__Base_1ad5e024d08c74e3085f1bd9a91bec0538" prot="public" virt="virtual"><scope>BF_Linear</scope><name>~Func_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

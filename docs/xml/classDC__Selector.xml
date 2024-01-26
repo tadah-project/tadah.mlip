@@ -1,0 +1,246 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classDC__Selector" kind="class" language="C++" prot="public">
+    <compoundname>DC_Selector</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classDC__Selector_1a2daf2d104ee9f4bcb051c308a13311ca" prot="public" static="no" mutable="no">
+        <type><ref refid="classD2__Base" kindref="compound">D2_Base</ref> *</type>
+        <definition>D2_Base* DC_Selector::d2b</definition>
+        <argsstring></argsstring>
+        <name>d2b</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="10" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="10" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classDC__Selector_1ab2450e891800b638656f6b60e4ba3586" prot="public" static="no" mutable="no">
+        <type><ref refid="classCut__Base" kindref="compound">Cut_Base</ref> *</type>
+        <definition>Cut_Base* DC_Selector::c2b</definition>
+        <argsstring></argsstring>
+        <name>c2b</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="11" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="11" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classDC__Selector_1ae35a97f9b1d13c8ca9a39a3f968e74ce" prot="public" static="no" mutable="no">
+        <type><ref refid="classCut__Base" kindref="compound">Cut_Base</ref> *</type>
+        <definition>Cut_Base* DC_Selector::c3b</definition>
+        <argsstring></argsstring>
+        <name>c3b</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="12" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="12" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classDC__Selector_1a9d6f708b4fbd0906cf95b4ead405f2db" prot="public" static="no" mutable="no">
+        <type><ref refid="classD3__Base" kindref="compound">D3_Base</ref> *</type>
+        <definition>D3_Base* DC_Selector::d3b</definition>
+        <argsstring></argsstring>
+        <name>d3b</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="13" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="13" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classDC__Selector_1a70187069ba3364d3917f1b0e759f0653" prot="public" static="no" mutable="no">
+        <type><ref refid="classCut__Base" kindref="compound">Cut_Base</ref> *</type>
+        <definition>Cut_Base* DC_Selector::cmb</definition>
+        <argsstring></argsstring>
+        <name>cmb</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="14" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="14" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classDC__Selector_1a8e7f9c394d2ece951132ec7d8ebe1230" prot="public" static="no" mutable="no">
+        <type><ref refid="classDM__Base" kindref="compound">DM_Base</ref> *</type>
+        <definition>DM_Base* DC_Selector::dmb</definition>
+        <argsstring></argsstring>
+        <name>dmb</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="15" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="15" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classDC__Selector_1a73ca3117bb8dbe1cd8f9e7b1436c964c" prot="public" static="no" mutable="no">
+        <type><ref refid="classConfig" kindref="compound">Config</ref></type>
+        <definition>Config DC_Selector::config</definition>
+        <argsstring></argsstring>
+        <name>config</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="17" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="17" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classDC__Selector_1a0a67e9d5380bc71f4c9386690cc55310" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>DC_Selector::DC_Selector</definition>
+        <argsstring>()</argsstring>
+        <name>DC_Selector</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="19" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="19" bodyend="19"/>
+      </memberdef>
+      <memberdef kind="function" id="classDC__Selector_1a81fd5586fdbd0c14bfda1f3f562c1018" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classDC__Selector" kindref="compound">DC_Selector</ref> &amp;</type>
+        <definition>DC_Selector&amp; DC_Selector::operator=</definition>
+        <argsstring>(const DC_Selector &amp;dc)</argsstring>
+        <name>operator=</name>
+        <param>
+          <type>const <ref refid="classDC__Selector" kindref="compound">DC_Selector</ref> &amp;</type>
+          <declname>dc</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="21" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="21" bodyend="27"/>
+      </memberdef>
+      <memberdef kind="function" id="classDC__Selector_1ae98bd691095b4e29dc7acdf31ee1d263" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>DC_Selector::DC_Selector</definition>
+        <argsstring>(Config &amp;c)</argsstring>
+        <name>DC_Selector</name>
+        <param>
+          <type><ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="29" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="29" bodyend="33"/>
+      </memberdef>
+      <memberdef kind="function" id="classDC__Selector_1ab25aeff54dcfd95b0b188996d6f26ba5" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void DC_Selector::init</definition>
+        <argsstring>()</argsstring>
+        <name>init</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="34" column="10" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="34" bodyend="76"/>
+      </memberdef>
+      <memberdef kind="function" id="classDC__Selector_1a871f9fe696c15918d7710129c4c5900e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>DC_Selector::~DC_Selector</definition>
+        <argsstring>()</argsstring>
+        <name>~DC_Selector</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="77" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="77" bodyend="91"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="4">
+        <label>D_Base</label>
+        <link refid="classD__Base"/>
+      </node>
+      <node id="1">
+        <label>DC_Selector</label>
+        <link refid="classDC__Selector"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>config</edgelabel>
+        </childnode>
+        <childnode refid="3" relation="usage">
+          <edgelabel>dmb</edgelabel>
+        </childnode>
+        <childnode refid="5" relation="usage">
+          <edgelabel>d3b</edgelabel>
+        </childnode>
+        <childnode refid="6" relation="usage">
+          <edgelabel>cmb</edgelabel>
+          <edgelabel>c3b</edgelabel>
+          <edgelabel>c2b</edgelabel>
+        </childnode>
+        <childnode refid="7" relation="usage">
+          <edgelabel>d2b</edgelabel>
+        </childnode>
+      </node>
+      <node id="7">
+        <label>D2_Base</label>
+        <link refid="classD2__Base"/>
+        <childnode refid="4" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>DM_Base</label>
+        <link refid="classDM__Base"/>
+        <childnode refid="4" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>Cut_Base</label>
+        <link refid="classCut__Base"/>
+      </node>
+      <node id="5">
+        <label>D3_Base</label>
+        <link refid="classD3__Base"/>
+        <childnode refid="4" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>Config</label>
+        <link refid="classConfig"/>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" line="8" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/dc_selector.h" bodystart="8" bodyend="92"/>
+    <listofallmembers>
+      <member refid="classDC__Selector_1ab2450e891800b638656f6b60e4ba3586" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>c2b</name></member>
+      <member refid="classDC__Selector_1ae35a97f9b1d13c8ca9a39a3f968e74ce" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>c3b</name></member>
+      <member refid="classDC__Selector_1a70187069ba3364d3917f1b0e759f0653" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>cmb</name></member>
+      <member refid="classDC__Selector_1a73ca3117bb8dbe1cd8f9e7b1436c964c" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>config</name></member>
+      <member refid="classDC__Selector_1a2daf2d104ee9f4bcb051c308a13311ca" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>d2b</name></member>
+      <member refid="classDC__Selector_1a9d6f708b4fbd0906cf95b4ead405f2db" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>d3b</name></member>
+      <member refid="classDC__Selector_1a0a67e9d5380bc71f4c9386690cc55310" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>DC_Selector</name></member>
+      <member refid="classDC__Selector_1ae98bd691095b4e29dc7acdf31ee1d263" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>DC_Selector</name></member>
+      <member refid="classDC__Selector_1a8e7f9c394d2ece951132ec7d8ebe1230" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>dmb</name></member>
+      <member refid="classDC__Selector_1ab25aeff54dcfd95b0b188996d6f26ba5" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>init</name></member>
+      <member refid="classDC__Selector_1a81fd5586fdbd0c14bfda1f3f562c1018" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>operator=</name></member>
+      <member refid="classDC__Selector_1a871f9fe696c15918d7710129c4c5900e" prot="public" virt="non-virtual"><scope>DC_Selector</scope><name>~DC_Selector</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="dir_102e606192bbbe7dc48d47f90bdf1b65" kind="dir">
+    <compoundname>/home/s1351949/PROJECTS/tadah/src/descriptors/d3</compoundname>
+    <innerfile refid="d3__all_8h">d3_all.h</innerfile>
+    <innerfile refid="d3__base_8cpp">d3_base.cpp</innerfile>
+    <innerfile refid="d3__base_8h">d3_base.h</innerfile>
+    <innerfile refid="d3__dummy_8cpp">d3_dummy.cpp</innerfile>
+    <innerfile refid="d3__dummy_8h">d3_dummy.h</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/"/>
+  </compounddef>
+</doxygen>

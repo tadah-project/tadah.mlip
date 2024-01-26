@@ -1,0 +1,5 @@
+StructureDB
+===========
+
+.. doxygenstruct:: StructureDB
+    :members:

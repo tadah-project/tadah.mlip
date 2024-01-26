@@ -1,0 +1,54 @@
+\hypertarget{classCut__BP}{}\doxysection{Cut\+\_\+\+BP Class Reference}
+\label{classCut__BP}\index{Cut\_BP@{Cut\_BP}}
+
+
+Behler-\/\+Parrinello cutoff function.  
+
+
+
+
+{\ttfamily \#include $<$cutoffs.\+h$>$}
+
+Inheritance diagram for Cut\+\_\+\+BP\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{classCut__BP}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classCut__BP_a448014e4d758ebbbb2635a3f2aaa6c44}\label{classCut__BP_a448014e4d758ebbbb2635a3f2aaa6c44}} 
+{\bfseries Cut\+\_\+\+BP} (double rcut)
+\item 
+\mbox{\Hypertarget{classCut__BP_ac96aae1bdd5aa3602f85d91566b901a8}\label{classCut__BP_ac96aae1bdd5aa3602f85d91566b901a8}} 
+std\+::string {\bfseries label} ()
+\item 
+\mbox{\Hypertarget{classCut__BP_a73b9c2c1997ea24725ad2a6ce098e591}\label{classCut__BP_a73b9c2c1997ea24725ad2a6ce098e591}} 
+void {\bfseries set\+\_\+rcut} (const double r)
+\item 
+\mbox{\Hypertarget{classCut__BP_ad7ca3de8bbc8a102db0301e0435f6a87}\label{classCut__BP_ad7ca3de8bbc8a102db0301e0435f6a87}} 
+double {\bfseries get\+\_\+rcut} ()
+\item 
+\mbox{\Hypertarget{classCut__BP_ad104c2bf8f170c7159ad77cdb10d0001}\label{classCut__BP_ad104c2bf8f170c7159ad77cdb10d0001}} 
+double {\bfseries get\+\_\+rcut\+\_\+sq} ()
+\item 
+\mbox{\Hypertarget{classCut__BP_acae4ad95b2cfda8e20ec40298efb8449}\label{classCut__BP_acae4ad95b2cfda8e20ec40298efb8449}} 
+double {\bfseries calc} (double r)
+\item 
+\mbox{\Hypertarget{classCut__BP_ad2ad18622adf9525787cecc15c388875}\label{classCut__BP_ad2ad18622adf9525787cecc15c388875}} 
+double {\bfseries calc\+\_\+prime} (double r)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Behler-\/\+Parrinello cutoff function. 
+
+\[ f_c(r) = \begin{equation} \begin{cases} \frac{1}{2}\big[ \cos\big( \frac{\pi r}{r_c} \big)+1 \big] & \text{if } r \leq r_c\\ 0 & \text{otherwise}\\ \end{cases} \end{equation} \]
+
+Behler, J., Parrinello, M. (2007). Generalized neural-\/network representation of high-\/dimensional potential-\/energy surfaces. {\itshape Physical Review Letters}, {\itshape 98}(14), 146401. \href{https://doi.org/10.1103/PhysRevLett.98.146401}{\texttt{ https\+://doi.\+org/10.\+1103/\+Phys\+Rev\+Lett.\+98.\+146401}} 
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/cutoffs/cutoffs.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/cutoffs/cutoffs.\+cpp\end{DoxyCompactItemize}

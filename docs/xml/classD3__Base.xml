@@ -1,0 +1,235 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classD3__Base" kind="class" language="C++" prot="public" abstract="yes">
+    <compoundname>D3_Base</compoundname>
+    <basecompoundref refid="classD__Base" prot="public" virt="non-virtual">D_Base</basecompoundref>
+    <derivedcompoundref refid="classD3__Dummy" prot="public" virt="non-virtual">D3_Dummy</derivedcompoundref>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classD3__Base_1aaab44842190eae7345058d5d8071126e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type></type>
+        <definition>virtual D3_Base::~D3_Base</definition>
+        <argsstring>()</argsstring>
+        <name>~D3_Base</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.h" line="7" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.h" bodystart="7" bodyend="7"/>
+      </memberdef>
+      <memberdef kind="function" id="classD3__Base_1a0018635826c867f8d717d97bde0a6123" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>void</type>
+        <definition>virtual void D3_Base::calc_aed</definition>
+        <argsstring>(const size_t fidx, const double rij, const double rik, const double fc_ij, const double fc_ik, StDescriptors::aed_type &amp;aed)=0</argsstring>
+        <name>calc_aed</name>
+        <reimplementedby refid="classD3__Dummy_1a516480b23ab1e75c2e13b2835235a1bc">calc_aed</reimplementedby>
+        <param>
+          <type>const size_t</type>
+          <declname>fidx</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rik</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ik</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" kindref="member">StDescriptors::aed_type</ref> &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.h" line="9" column="22"/>
+      </memberdef>
+      <memberdef kind="function" id="classD3__Base_1af6bdf00e45fca904314cb04ff3b5ad35" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>void</type>
+        <definition>virtual void D3_Base::calc_fd</definition>
+        <argsstring>(const size_t fidx, const double rij, const double rik, const double fc_ij, const double fc_ik, const double fcp_ij, const double fcp_ik, StDescriptors::fd_type &amp;fd_ij)=0</argsstring>
+        <name>calc_fd</name>
+        <reimplementedby refid="classD3__Dummy_1a0771a39c5f9f10781eb30be6e31e294a">calc_fd</reimplementedby>
+        <param>
+          <type>const size_t</type>
+          <declname>fidx</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rik</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ik</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ik</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd_ij</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.h" line="16" column="22"/>
+      </memberdef>
+      <memberdef kind="function" id="classD3__Base_1a6e4eefdb70f83a4b6624a15219c2bf65" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>void</type>
+        <definition>virtual void D3_Base::calc_all</definition>
+        <argsstring>(const size_t fidx, const double rij, const double rik, const double fc_ij, const double fc_ik, const double fcp_ij, const double fcp_ik, StDescriptors::aed_type &amp;aed, StDescriptors::fd_type &amp;fd_ij)=0</argsstring>
+        <name>calc_all</name>
+        <reimplementedby refid="classD3__Dummy_1a90f7d6967b4448f718bf9a2306ae97c5">calc_all</reimplementedby>
+        <param>
+          <type>const size_t</type>
+          <declname>fidx</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rik</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ik</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ik</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" kindref="member">StDescriptors::aed_type</ref> &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd_ij</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.h" line="25" column="22"/>
+      </memberdef>
+      <memberdef kind="function" id="classD3__Base_1aca3faa9c6184b0d3b8f4ca50aaaea5b6" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>size_t</type>
+        <definition>virtual size_t D3_Base::size</definition>
+        <argsstring>()=0</argsstring>
+        <name>size</name>
+        <reimplements refid="classD__Base_1a5e222a94a9cccf43700df92ef17e2c07">size</reimplements>
+        <reimplementedby refid="classD3__Dummy_1aa1ee724f21c3b4f6f07fda6d160a76b5">size</reimplementedby>
+        <briefdescription>
+<para>Return dimension of the descriptor. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.h" line="35" column="24"/>
+      </memberdef>
+      <memberdef kind="function" id="classD3__Base_1a8d55c71cf65ac735796ab953e0a888a5" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>std::string</type>
+        <definition>virtual std::string D3_Base::label</definition>
+        <argsstring>()=0</argsstring>
+        <name>label</name>
+        <reimplements refid="classD__Base_1af42581f7ad051e050caf82b77cebf0b8">label</reimplements>
+        <reimplementedby refid="classD3__Dummy_1ad335d048d6757b33e26a355d0be6deb0">label</reimplementedby>
+        <briefdescription>
+<para>Return label of this descriptor. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.h" line="36" column="29"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="2">
+        <label>D_Base</label>
+        <link refid="classD__Base"/>
+      </node>
+      <node id="3">
+        <label>D3_Dummy</label>
+        <link refid="classD3__Dummy"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>D3_Base</label>
+        <link refid="classD3__Base"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="2">
+        <label>D_Base</label>
+        <link refid="classD__Base"/>
+      </node>
+      <node id="1">
+        <label>D3_Base</label>
+        <link refid="classD3__Base"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.h" line="5" column="28" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.h" bodystart="5" bodyend="37"/>
+    <listofallmembers>
+      <member refid="classD3__Base_1a0018635826c867f8d717d97bde0a6123" prot="public" virt="pure-virtual"><scope>D3_Base</scope><name>calc_aed</name></member>
+      <member refid="classD3__Base_1a6e4eefdb70f83a4b6624a15219c2bf65" prot="public" virt="pure-virtual"><scope>D3_Base</scope><name>calc_all</name></member>
+      <member refid="classD3__Base_1af6bdf00e45fca904314cb04ff3b5ad35" prot="public" virt="pure-virtual"><scope>D3_Base</scope><name>calc_fd</name></member>
+      <member refid="classD__Base_1a384d9d370b34aa54f88c582fca5625d6" prot="public" virt="non-virtual"><scope>D3_Base</scope><name>get_grid</name></member>
+      <member refid="classD3__Base_1a8d55c71cf65ac735796ab953e0a888a5" prot="public" virt="pure-virtual"><scope>D3_Base</scope><name>label</name></member>
+      <member refid="classD3__Base_1aca3faa9c6184b0d3b8f4ca50aaaea5b6" prot="public" virt="pure-virtual"><scope>D3_Base</scope><name>size</name></member>
+      <member refid="classD__Base_1ae4e2501555b9be957f87ae4cba520532" prot="public" virt="non-virtual"><scope>D3_Base</scope><name>verbose</name></member>
+      <member refid="classD3__Base_1aaab44842190eae7345058d5d8071126e" prot="public" virt="virtual"><scope>D3_Base</scope><name>~D3_Base</name></member>
+      <member refid="classD__Base_1ad1a85cef6c0066181d03600128fcfb6b" prot="public" virt="virtual"><scope>D3_Base</scope><name>~D_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

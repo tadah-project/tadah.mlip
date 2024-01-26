@@ -1,0 +1,111 @@
+\hypertarget{classLQKernel}{}\doxysection{L\+Q\+Kernel Class Reference}
+\label{classLQKernel}\index{LQKernel@{LQKernel}}
+
+
+{\ttfamily \#include $<$kernel.\+h$>$}
+
+Inheritance diagram for L\+Q\+Kernel\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{classLQKernel}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classLQKernel_ac1f21127c64f6b719931784d690e4c67}\label{classLQKernel_ac1f21127c64f6b719931784d690e4c67}} 
+{\bfseries L\+Q\+Kernel} (const \mbox{\hyperlink{classConfig}{Config}} \&c)
+\item 
+double \mbox{\hyperlink{classLQKernel_a41516cb5d51c4287d4df87f6db161d18}{operator()}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af)
+\item 
+aed\+\_\+type \mbox{\hyperlink{classLQKernel_a2a5cc8cc1c1075f9f9b7abe0f4f2cc8a}{derivative}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af)
+\item 
+double \mbox{\hyperlink{classLQKernel_abaaf23968e64d1934ca7d2531656b80c}{prime}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af, const aed\+\_\+type \&ff)
+\item 
+\mbox{\Hypertarget{classLQKernel_a7004fac276c72f9d1fc8b12dfab57c40}\label{classLQKernel_a7004fac276c72f9d1fc8b12dfab57c40}} 
+std\+::string \mbox{\hyperlink{classLQKernel_a7004fac276c72f9d1fc8b12dfab57c40}{get\+\_\+label}} ()
+\begin{DoxyCompactList}\small\item\em Return label of this object. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std\+::string \mbox{\hyperlink{classLQKernel_a27f2f6e8819cb0c73c9a011973819f1c}{label}} = \char`\"{}L\+Q\+Kernel\char`\"{}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\mbox{\hyperlink{structLinear}{Linear}} + Quadratic kernel
+
+Defined for two vectors {\bfseries{x}} and {\bfseries{y}}\+:
+
+\[ K(\mathbf{x}, \mathbf{y}) = \mathbf{x}^T \mathbf{y} + \Big(\mathbf{x}^T \mathbf{y} \Big)^2 = \sum_i x^{(i)} y^{(i)} + \Big(\sum_i x^{(i)} y^{(i)} \Big)^2 \]
+
+\begin{DoxySeeAlso}{See also}
+\mbox{\hyperlink{classKernel}{Kernel}} \mbox{\hyperlink{classLinearKernel}{Linear\+Kernel}} \mbox{\hyperlink{classQuadraticKernel}{Quadratic\+Kernel}} 
+\end{DoxySeeAlso}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classLQKernel_a2a5cc8cc1c1075f9f9b7abe0f4f2cc8a}\label{classLQKernel_a2a5cc8cc1c1075f9f9b7abe0f4f2cc8a}} 
+\index{LQKernel@{LQKernel}!derivative@{derivative}}
+\index{derivative@{derivative}!LQKernel@{LQKernel}}
+\doxysubsubsection{\texorpdfstring{derivative()}{derivative()}}
+{\footnotesize\ttfamily aed\+\_\+type L\+Q\+Kernel\+::derivative (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate the kernel derivative wrt to the second argument
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKernel_ab36c347c07516218712fb077859fa891}{Kernel}}.
+
+\mbox{\Hypertarget{classLQKernel_a41516cb5d51c4287d4df87f6db161d18}\label{classLQKernel_a41516cb5d51c4287d4df87f6db161d18}} 
+\index{LQKernel@{LQKernel}!operator()@{operator()}}
+\index{operator()@{operator()}!LQKernel@{LQKernel}}
+\doxysubsubsection{\texorpdfstring{operator()()}{operator()()}}
+{\footnotesize\ttfamily double L\+Q\+Kernel\+::operator() (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate kernel value given two vectors
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKernel_a72d0324a625f7e2c3284ce787d75d4de}{Kernel}}.
+
+\mbox{\Hypertarget{classLQKernel_abaaf23968e64d1934ca7d2531656b80c}\label{classLQKernel_abaaf23968e64d1934ca7d2531656b80c}} 
+\index{LQKernel@{LQKernel}!prime@{prime}}
+\index{prime@{prime}!LQKernel@{LQKernel}}
+\doxysubsubsection{\texorpdfstring{prime()}{prime()}}
+{\footnotesize\ttfamily double L\+Q\+Kernel\+::prime (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af,  }\item[{const aed\+\_\+type \&}]{ff }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate inner product of the kernel derivative wrt to the second argument (b wrt af) with the force descriptor
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor
+\item ff = force descriptor (T\+O\+DO i-\/th dir component of it) T\+O\+DO consider calculating all 3-\/directions at once 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKernel_ac703581b5179ae8270134b3d458279cf}{Kernel}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{classLQKernel_a27f2f6e8819cb0c73c9a011973819f1c}\label{classLQKernel_a27f2f6e8819cb0c73c9a011973819f1c}} 
+\index{LQKernel@{LQKernel}!label@{label}}
+\index{label@{label}!LQKernel@{LQKernel}}
+\doxysubsubsection{\texorpdfstring{label}{label}}
+{\footnotesize\ttfamily std\+::string L\+Q\+Kernel\+::label = \char`\"{}L\+Q\+Kernel\char`\"{}}
+
+Label used for this class 
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/kernels/kernel.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/kernels/kernel.\+cpp\end{DoxyCompactItemize}

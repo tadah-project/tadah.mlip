@@ -1,0 +1,451 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structure__db_8h" kind="file" language="C++">
+    <compoundname>structure_db.h</compoundname>
+    <includes local="no">string</includes>
+    <includes local="no">iostream</includes>
+    <includes local="no">fstream</includes>
+    <includes local="no">vector</includes>
+    <includes refid="structure_8h" local="yes">structure.h</includes>
+    <includes refid="config_8h" local="yes">config.h</includes>
+    <includedby refid="m__base_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/models/m_base.h</includedby>
+    <includedby refid="st__descriptors__db_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/st_descriptors_db.h</includedby>
+    <includedby refid="descriptors__calc_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/descriptors_calc.h</includedby>
+    <includedby refid="design__matrix_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/models/design_matrix.h</includedby>
+    <includedby refid="nn__finder_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/nn_finder.h</includedby>
+    <includedby refid="structure__db_8cpp" local="yes">/home/s1351949/PROJECTS/tadah/src/structure_db.cpp</includedby>
+    <includedby refid="tadah_8cpp" local="yes">/home/s1351949/PROJECTS/tadah/src/tadah.cpp</includedby>
+    <incdepgraph>
+      <node id="12">
+        <label>libs/Eigen/src/Core/util/Constants.h</label>
+      </node>
+      <node id="8">
+        <label>libs/Eigen/Dense</label>
+      </node>
+      <node id="7">
+        <label>iomanip</label>
+      </node>
+      <node id="17">
+        <label>iterator</label>
+      </node>
+      <node id="9">
+        <label>atom.h</label>
+        <link refid="atom_8h_source"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+      </node>
+      <node id="19">
+        <label>cmath</label>
+      </node>
+      <node id="15">
+        <label>stdexcept</label>
+      </node>
+      <node id="2">
+        <label>string</label>
+      </node>
+      <node id="11">
+        <label>map</label>
+      </node>
+      <node id="4">
+        <label>fstream</label>
+      </node>
+      <node id="13">
+        <label>config.h</label>
+        <link refid="config_8h_source"/>
+        <childnode refid="14" relation="include">
+        </childnode>
+        <childnode refid="15" relation="include">
+        </childnode>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+        <childnode refid="16" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>vector</label>
+      </node>
+      <node id="20">
+        <label>sstream</label>
+      </node>
+      <node id="16">
+        <label>utils/utils.h</label>
+        <link refid="utils_8h_source"/>
+        <childnode refid="17" relation="include">
+        </childnode>
+        <childnode refid="18" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="19" relation="include">
+        </childnode>
+        <childnode refid="20" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+      </node>
+      <node id="10">
+        <label>element.h</label>
+        <link refid="element_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>iostream</label>
+      </node>
+      <node id="1">
+        <label>/home/s1351949/PROJECTS/tadah/src/structure_db.h</label>
+        <link refid="structure__db_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>structure.h</label>
+        <link refid="structure_8h_source"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+      </node>
+      <node id="14">
+        <label>type_traits</label>
+      </node>
+      <node id="18">
+        <label>algorithm</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="11">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_all.h</label>
+        <link refid="kern__all_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/m_base.h</label>
+        <link refid="m__base_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="20" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="21" relation="include">
+        </childnode>
+      </node>
+      <node id="4">
+        <label>/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h</label>
+        <link refid="bf__linear_8h_source"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_base.h</label>
+        <link refid="bf__base_8h_source"/>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="19" relation="include">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/m_blr.h</label>
+        <link refid="m__blr_8h_source"/>
+        <childnode refid="7" relation="include">
+        </childnode>
+      </node>
+      <node id="20">
+        <label>/home/s1351949/PROJECTS/tadah/src/func_base.h</label>
+        <link refid="func__base_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+      </node>
+      <node id="18">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h</label>
+        <link refid="kern__quadratic_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="23">
+        <label>/home/s1351949/PROJECTS/tadah/src/normaliser.h</label>
+        <link refid="normaliser_8h_source"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="24" relation="include">
+        </childnode>
+      </node>
+      <node id="15">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_lq.h</label>
+        <link refid="kern__lq_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="28">
+        <label>/home/s1351949/PROJECTS/tadah/src/nn_finder.h</label>
+        <link refid="nn__finder_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="13">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h</label>
+        <link refid="kern__linear_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="16">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_polynomial.h</label>
+        <link refid="kern__polynomial_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="19">
+        <label>/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h</label>
+        <link refid="bf__polynomial2_8h_source"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+      <node id="8">
+        <label>/home/s1351949/PROJECTS/tadah/src/dc_selector.h</label>
+        <link refid="dc__selector_8h_source"/>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="10">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_base.h</label>
+        <link refid="kern__base_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+        <childnode refid="15" relation="include">
+        </childnode>
+        <childnode refid="16" relation="include">
+        </childnode>
+        <childnode refid="17" relation="include">
+        </childnode>
+        <childnode refid="18" relation="include">
+        </childnode>
+      </node>
+      <node id="17">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_sigmoid.h</label>
+        <link refid="kern__sigmoid_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="27">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/basis.h</label>
+        <link refid="basis_8h_source"/>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+      </node>
+      <node id="14">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_rbf.h</label>
+        <link refid="kern__rbf_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="21">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/ekm.h</label>
+        <link refid="ekm_8h_source"/>
+        <childnode refid="12" relation="include">
+        </childnode>
+      </node>
+      <node id="22">
+        <label>/home/s1351949/PROJECTS/tadah/src/st_descriptors_db.h</label>
+        <link refid="st__descriptors__db_8h_source"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="23" relation="include">
+        </childnode>
+        <childnode refid="25" relation="include">
+        </childnode>
+        <childnode refid="27" relation="include">
+        </childnode>
+        <childnode refid="24" relation="include">
+        </childnode>
+      </node>
+      <node id="24">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/design_matrix.h</label>
+        <link refid="design__matrix_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="21" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/m_all.h</label>
+        <link refid="m__all_8h_source"/>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="12">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/m_krr.h</label>
+        <link refid="m__krr_8h_source"/>
+        <childnode refid="7" relation="include">
+        </childnode>
+      </node>
+      <node id="26">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors_calc.hpp</label>
+        <link refid="descriptors__calc_8hpp_source"/>
+        <childnode refid="25" relation="include">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>/home/s1351949/PROJECTS/tadah/src/structure_db.h</label>
+        <link refid="structure__db_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="22" relation="include">
+        </childnode>
+        <childnode refid="25" relation="include">
+        </childnode>
+        <childnode refid="24" relation="include">
+        </childnode>
+        <childnode refid="28" relation="include">
+        </childnode>
+      </node>
+      <node id="25">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors_calc.h</label>
+        <link refid="descriptors__calc_8h_source"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="26" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="24" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_all.h</label>
+        <link refid="bf__all_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="9">
+        <label>/home/s1351949/PROJECTS/tadah/src/lammps/lammps_tadah.h</label>
+        <link refid="lammps__tadah_8h_source"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structStructureDB" prot="public">StructureDB</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="preprocessor">#ifndef<sp/>STRUCTURE_DB_h</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="2"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>STRUCTURE_DB_h</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="3"><highlight class="normal"></highlight></codeline>
+<codeline lineno="4"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;string&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;iostream&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;fstream&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;vector&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;structure.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;config.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight></codeline>
+<codeline lineno="38" refid="structStructureDB" refkind="compound"><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structStructureDB" kindref="compound">StructureDB</ref><sp/>{</highlight></codeline>
+<codeline lineno="39"><highlight class="normal"><sp/><sp/><sp/><sp/>std::vector&lt;Structure&gt;<sp/>structures;</highlight></codeline>
+<codeline lineno="40"><highlight class="normal"></highlight></codeline>
+<codeline lineno="42"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="structStructureDB_1a45b1efec5a44399b6a872bbf2cdf053b" kindref="member">StructureDB</ref>();</highlight></codeline>
+<codeline lineno="43"><highlight class="normal"></highlight></codeline>
+<codeline lineno="50"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="structStructureDB_1a45b1efec5a44399b6a872bbf2cdf053b" kindref="member">StructureDB</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="classConfig" kindref="compound">Config</ref><sp/>&amp;config);</highlight></codeline>
+<codeline lineno="51"><highlight class="normal"></highlight></codeline>
+<codeline lineno="58"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="structStructureDB_1ac4ff6c88379571383f707120968b2a61" kindref="member">add</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="classConfig" kindref="compound">Config</ref><sp/>&amp;config);</highlight></codeline>
+<codeline lineno="59"><highlight class="normal"></highlight></codeline>
+<codeline lineno="61"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="structStructureDB_1ac4ff6c88379571383f707120968b2a61" kindref="member">add</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>std::string<sp/>fn);</highlight></codeline>
+<codeline lineno="62"><highlight class="normal"></highlight></codeline>
+<codeline lineno="64"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="structStructureDB_1ac4ff6c88379571383f707120968b2a61" kindref="member">add</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="structStructure" kindref="compound">Structure</ref><sp/>&amp;s);</highlight></codeline>
+<codeline lineno="65"><highlight class="normal"></highlight></codeline>
+<codeline lineno="67"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="structStructureDB_1ad073bac2df958ce6ba2bc9d27a831ae7" kindref="member">remove</ref>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>i);</highlight></codeline>
+<codeline lineno="68"><highlight class="normal"></highlight></codeline>
+<codeline lineno="70"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structStructureDB_1a8b8c793468056d360776345a5cc21b94" kindref="member">size</ref>()<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="71"><highlight class="normal"></highlight></codeline>
+<codeline lineno="80"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="structStructure" kindref="compound">Structure</ref>&amp;<sp/><ref refid="structStructureDB_1a7a495954827061cc71562c2b923d8f60" kindref="member">operator()</ref>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>s);</highlight></codeline>
+<codeline lineno="81"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="structStructure" kindref="compound">Structure</ref>&amp;<sp/><ref refid="structStructureDB_1a7a495954827061cc71562c2b923d8f60" kindref="member">operator()</ref>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>s)<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="82"><highlight class="normal"></highlight></codeline>
+<codeline lineno="91"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="structAtom" kindref="compound">Atom</ref>&amp;<sp/><ref refid="structStructureDB_1a7a495954827061cc71562c2b923d8f60" kindref="member">operator()</ref>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>s,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>a);</highlight></codeline>
+<codeline lineno="92"><highlight class="normal"></highlight></codeline>
+<codeline lineno="93"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Print<sp/>this<sp/>object<sp/>summary<sp/>to<sp/>the<sp/>stream<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="94"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">friend</highlight><highlight class="normal"><sp/>std::ostream&amp;<sp/>operator&lt;&lt;(std::ostream&amp;<sp/>os,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="structStructureDB" kindref="compound">StructureDB</ref>&amp;<sp/>stdb)</highlight></codeline>
+<codeline lineno="95"><highlight class="normal"><sp/><sp/><sp/><sp/>{</highlight></codeline>
+<codeline lineno="96"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;#<sp/>of<sp/>structures<sp/><sp/>:<sp/><sp/><sp/><sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::left<sp/>&lt;&lt;<sp/>stdb.structures.size()<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="97"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>os;</highlight></codeline>
+<codeline lineno="98"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="99"><highlight class="normal"></highlight></codeline>
+<codeline lineno="100"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Store<sp/>first<sp/>index<sp/>for<sp/>each<sp/>dataset.</highlight></codeline>
+<codeline lineno="101"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*</highlight></codeline>
+<codeline lineno="102"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>e.g.<sp/>if<sp/>3<sp/>datasets<sp/>of<sp/>sizes<sp/>11,13,15</highlight></codeline>
+<codeline lineno="103"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>dbidx=={0,11,24}</highlight></codeline>
+<codeline lineno="104"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="105"><highlight class="normal"><sp/><sp/><sp/><sp/>std::vector&lt;size_t&gt;<sp/>dbidx;</highlight></codeline>
+<codeline lineno="106"><highlight class="normal"></highlight></codeline>
+<codeline lineno="107"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Calculate<sp/>total<sp/>number<sp/>of<sp/>atoms<sp/>stored<sp/>by<sp/>this<sp/>object<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="108"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>calc_natoms();</highlight></codeline>
+<codeline lineno="109"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="110"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="/home/s1351949/PROJECTS/tadah/src/structure_db.h"/>
+  </compounddef>
+</doxygen>

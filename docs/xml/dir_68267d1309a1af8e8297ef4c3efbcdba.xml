@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="dir_68267d1309a1af8e8297ef4c3efbcdba" kind="dir">
+    <compoundname>/home/s1351949/PROJECTS/tadah/src</compoundname>
+    <innerdir refid="dir_baaa544da24285b569fd561158e5e5ce">/home/s1351949/PROJECTS/tadah/src/basis_functions</innerdir>
+    <innerdir refid="dir_239d929d421714b6a6f643651ad44e68">/home/s1351949/PROJECTS/tadah/src/cutoffs</innerdir>
+    <innerdir refid="dir_fcbe22cb9d2a6c0e7df4f42e662a52c2">/home/s1351949/PROJECTS/tadah/src/descriptors</innerdir>
+    <innerdir refid="dir_40856f0cdd4bcafd28810d9265a200f7">/home/s1351949/PROJECTS/tadah/src/kernels</innerdir>
+    <innerdir refid="dir_eead56b9ff514cd51bfecf4a37da5515">/home/s1351949/PROJECTS/tadah/src/lammps</innerdir>
+    <innerdir refid="dir_bdeba5f06b852fec80257c0bf4c3c36e">/home/s1351949/PROJECTS/tadah/src/models</innerdir>
+    <innerdir refid="dir_313caf1132e152dd9b58bea13a4052ca">/home/s1351949/PROJECTS/tadah/src/utils</innerdir>
+    <innerfile refid="atom_8cpp">atom.cpp</innerfile>
+    <innerfile refid="atom_8h">atom.h</innerfile>
+    <innerfile refid="config_8cpp">config.cpp</innerfile>
+    <innerfile refid="config_8h">config.h</innerfile>
+    <innerfile refid="dc__selector_8h">dc_selector.h</innerfile>
+    <innerfile refid="descriptors__calc_8h">descriptors_calc.h</innerfile>
+    <innerfile refid="descriptors__calc_8hpp">descriptors_calc.hpp</innerfile>
+    <innerfile refid="element_8h">element.h</innerfile>
+    <innerfile refid="func__base_8cpp">func_base.cpp</innerfile>
+    <innerfile refid="func__base_8h">func_base.h</innerfile>
+    <innerfile refid="nn__finder_8cpp">nn_finder.cpp</innerfile>
+    <innerfile refid="nn__finder_8h">nn_finder.h</innerfile>
+    <innerfile refid="normaliser_8h">normaliser.h</innerfile>
+    <innerfile refid="st__descriptors_8cpp">st_descriptors.cpp</innerfile>
+    <innerfile refid="st__descriptors_8h">st_descriptors.h</innerfile>
+    <innerfile refid="st__descriptors__db_8cpp">st_descriptors_db.cpp</innerfile>
+    <innerfile refid="st__descriptors__db_8h">st_descriptors_db.h</innerfile>
+    <innerfile refid="structure_8cpp">structure.cpp</innerfile>
+    <innerfile refid="structure_8h">structure.h</innerfile>
+    <innerfile refid="structure__db_8cpp">structure_db.cpp</innerfile>
+    <innerfile refid="structure__db_8h">structure_db.h</innerfile>
+    <innerfile refid="tadah_8cpp">tadah.cpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/"/>
+  </compounddef>
+</doxygen>

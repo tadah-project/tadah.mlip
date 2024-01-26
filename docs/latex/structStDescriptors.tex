@@ -1,0 +1,168 @@
+\hypertarget{structStDescriptors}{}\doxysection{St\+Descriptors Struct Reference}
+\label{structStDescriptors}\index{StDescriptors@{StDescriptors}}
+
+
+Container for a structure descriptors.  
+
+
+
+
+{\ttfamily \#include $<$st\+\_\+descriptors.\+h$>$}
+
+\doxysubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+typedef Eigen\+::\+Vector\+Xd \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{aed\+\_\+type}}
+\item 
+typedef Eigen\+::\+Matrix$<$ double, Eigen\+::\+Dynamic, 3 $>$ \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{fd\+\_\+type}}
+\item 
+typedef Eigen\+::\+Matrix$<$ double, Eigen\+::\+Dynamic, 6 $>$ \mbox{\hyperlink{structStDescriptors_a00fc0048418851297c9a91976b8beb24}{sd\+\_\+type}}
+\item 
+typedef Eigen\+::\+Vector\+Xd \mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{rhoi\+\_\+type}}
+\item 
+\mbox{\Hypertarget{structStDescriptors_ab9a06235cf87070dc27ed925c0c48a14}\label{structStDescriptors_ab9a06235cf87070dc27ed925c0c48a14}} 
+typedef std\+::vector$<$ \mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{rhoi\+\_\+type}} $>$ {\bfseries rho\+\_\+type}
+\end{DoxyCompactItemize}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{structStDescriptors_a05cad1626b2e9cecf5a86aa70b5d8a7a}{St\+Descriptors}} (const \mbox{\hyperlink{structStructure}{Structure}} \&s, const \mbox{\hyperlink{classConfig}{Config}} \&c)
+\item 
+\mbox{\hyperlink{structStDescriptors_a9f704920b709c61b099d5fab429a8b00}{St\+Descriptors}} ()
+\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std\+::vector$<$ \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{aed\+\_\+type}} $>$ \mbox{\hyperlink{structStDescriptors_ae63227242c0fe62ef33154c47a25a504}{aed}}
+\item 
+std\+::vector$<$ std\+::vector$<$ \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{fd\+\_\+type}} $>$ $>$ \mbox{\hyperlink{structStDescriptors_a48dbc11966718bca1291ba123b1aa4bb}{fd}}
+\item 
+\mbox{\hyperlink{structStDescriptors_a00fc0048418851297c9a91976b8beb24}{sd\+\_\+type}} \mbox{\hyperlink{structStDescriptors_a5125b3e53e450c58a16f217c4af02d12}{sd}}
+\item 
+bool \mbox{\hyperlink{structStDescriptors_ad86223531b01554c77fb35bc0975dd29}{normalised}} =false
+\item 
+\mbox{\Hypertarget{structStDescriptors_ad1f633cf7f8125a1b4f9a86578ea3f0e}\label{structStDescriptors_ad1f633cf7f8125a1b4f9a86578ea3f0e}} 
+rho\+\_\+type {\bfseries rho}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Container for a structure descriptors. 
+
+Contains\+:
+\begin{DoxyItemize}
+\item Atomic Energy Descriptors
+\item Force Descriptors (Optional)
+\item Stress Descriptors (Optional)
+\end{DoxyItemize}
+
+To fully initialise this object it needs to know\+:
+\begin{DoxyItemize}
+\item number of atoms in a structure (from \mbox{\hyperlink{structStructure}{Structure}})
+\item number of nn for every atom (from \mbox{\hyperlink{structStructure}{Structure}})
+\item dimension of the descriptor vector (\mbox{\hyperlink{classConfig}{Config}})
+\item whether force and stress is being calculated (from \mbox{\hyperlink{classConfig}{Config}})
+
+\begin{DoxyNote}{Note}
+Required \mbox{\hyperlink{classConfig}{Config}} keys\+: \mbox{\hyperlink{classConfig_FORCE}{F\+O\+R\+CE}} \mbox{\hyperlink{classConfig_STRESS}{S\+T\+R\+E\+SS}}. \mbox{\hyperlink{classConfig_INTERNAL_KEY}{I\+N\+T\+E\+R\+N\+A\+L\+\_\+\+K\+EY}} \mbox{\hyperlink{classConfig_DSIZE}{D\+S\+I\+ZE}}. 
+\end{DoxyNote}
+
+\end{DoxyItemize}
+
+\doxysubsection{Member Typedef Documentation}
+\mbox{\Hypertarget{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}\label{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}} 
+\index{StDescriptors@{StDescriptors}!aed\_type@{aed\_type}}
+\index{aed\_type@{aed\_type}!StDescriptors@{StDescriptors}}
+\doxysubsubsection{\texorpdfstring{aed\_type}{aed\_type}}
+{\footnotesize\ttfamily typedef Eigen\+::\+Vector\+Xd \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}}}
+
+Atomic Energy Descriptor (A\+ED) type
+
+Dimensions\+: \mbox{[}descriptor size\mbox{]} \mbox{\Hypertarget{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}\label{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}} 
+\index{StDescriptors@{StDescriptors}!fd\_type@{fd\_type}}
+\index{fd\_type@{fd\_type}!StDescriptors@{StDescriptors}}
+\doxysubsubsection{\texorpdfstring{fd\_type}{fd\_type}}
+{\footnotesize\ttfamily typedef Eigen\+::\+Matrix$<$double, Eigen\+::\+Dynamic, 3$>$ \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}}}
+
+Force Descriptor (FD) type
+
+Dimensions\+: \mbox{[}descriptor size, 3\mbox{]} \mbox{\Hypertarget{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}\label{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}} 
+\index{StDescriptors@{StDescriptors}!rhoi\_type@{rhoi\_type}}
+\index{rhoi\_type@{rhoi\_type}!StDescriptors@{StDescriptors}}
+\doxysubsubsection{\texorpdfstring{rhoi\_type}{rhoi\_type}}
+{\footnotesize\ttfamily typedef Eigen\+::\+Vector\+Xd \mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{St\+Descriptors\+::rhoi\+\_\+type}}}
+
+Density array to be used by many-\/body descriptors... T\+O\+DO
+
+Dimensions\+: \mbox{[}atom i\mbox{]}\mbox{[}n\mbox{]}
+
+where n is specific to given descriptor \mbox{\Hypertarget{structStDescriptors_a00fc0048418851297c9a91976b8beb24}\label{structStDescriptors_a00fc0048418851297c9a91976b8beb24}} 
+\index{StDescriptors@{StDescriptors}!sd\_type@{sd\_type}}
+\index{sd\_type@{sd\_type}!StDescriptors@{StDescriptors}}
+\doxysubsubsection{\texorpdfstring{sd\_type}{sd\_type}}
+{\footnotesize\ttfamily typedef Eigen\+::\+Matrix$<$double, Eigen\+::\+Dynamic, 6$>$ \mbox{\hyperlink{structStDescriptors_a00fc0048418851297c9a91976b8beb24}{St\+Descriptors\+::sd\+\_\+type}}}
+
+Stress Descriptor (SD) type
+
+Dimensions\+: \mbox{[}descriptor size,6\mbox{]} 
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\mbox{\Hypertarget{structStDescriptors_a05cad1626b2e9cecf5a86aa70b5d8a7a}\label{structStDescriptors_a05cad1626b2e9cecf5a86aa70b5d8a7a}} 
+\index{StDescriptors@{StDescriptors}!StDescriptors@{StDescriptors}}
+\index{StDescriptors@{StDescriptors}!StDescriptors@{StDescriptors}}
+\doxysubsubsection{\texorpdfstring{StDescriptors()}{StDescriptors()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily St\+Descriptors\+::\+St\+Descriptors (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{structStructure}{Structure}} \&}]{s,  }\item[{const \mbox{\hyperlink{classConfig}{Config}} \&}]{c }\end{DoxyParamCaption})}
+
+This constructor fully initialise this object
+
+Requires\+:
+\begin{DoxyItemize}
+\item \mbox{\hyperlink{structStructure}{Structure}} st to have NN calculated
+\item \mbox{\hyperlink{classConfig}{Config}} c to contain keys\+: \mbox{\hyperlink{classConfig_DSIZE}{D\+S\+I\+ZE}}, \mbox{\hyperlink{classConfig_FORCE}{F\+O\+R\+CE}}, \mbox{\hyperlink{classConfig_STRESS}{S\+T\+R\+E\+SS}} 
+\end{DoxyItemize}\mbox{\Hypertarget{structStDescriptors_a9f704920b709c61b099d5fab429a8b00}\label{structStDescriptors_a9f704920b709c61b099d5fab429a8b00}} 
+\index{StDescriptors@{StDescriptors}!StDescriptors@{StDescriptors}}
+\index{StDescriptors@{StDescriptors}!StDescriptors@{StDescriptors}}
+\doxysubsubsection{\texorpdfstring{StDescriptors()}{StDescriptors()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily St\+Descriptors\+::\+St\+Descriptors (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+Default constructor. Object is left uninitialised 
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structStDescriptors_ae63227242c0fe62ef33154c47a25a504}\label{structStDescriptors_ae63227242c0fe62ef33154c47a25a504}} 
+\index{StDescriptors@{StDescriptors}!aed@{aed}}
+\index{aed@{aed}!StDescriptors@{StDescriptors}}
+\doxysubsubsection{\texorpdfstring{aed}{aed}}
+{\footnotesize\ttfamily std\+::vector$<$\mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{aed\+\_\+type}}$>$ St\+Descriptors\+::aed}
+
+A\+ED for all atoms
+
+This object will always be initialised given provided \mbox{\hyperlink{structStructure}{Structure}} contains atoms.
+
+Dimensions\+: \mbox{[}number of atoms, descriptor size\mbox{]} \mbox{\Hypertarget{structStDescriptors_a48dbc11966718bca1291ba123b1aa4bb}\label{structStDescriptors_a48dbc11966718bca1291ba123b1aa4bb}} 
+\index{StDescriptors@{StDescriptors}!fd@{fd}}
+\index{fd@{fd}!StDescriptors@{StDescriptors}}
+\doxysubsubsection{\texorpdfstring{fd}{fd}}
+{\footnotesize\ttfamily std\+::vector$<$std\+::vector$<$\mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{fd\+\_\+type}}$>$ $>$ St\+Descriptors\+::fd}
+
+FD for all atoms
+
+Dimensions\+: \mbox{[}number of atoms, number of atom NN, descriptor size, 3\mbox{]} \mbox{\Hypertarget{structStDescriptors_ad86223531b01554c77fb35bc0975dd29}\label{structStDescriptors_ad86223531b01554c77fb35bc0975dd29}} 
+\index{StDescriptors@{StDescriptors}!normalised@{normalised}}
+\index{normalised@{normalised}!StDescriptors@{StDescriptors}}
+\doxysubsubsection{\texorpdfstring{normalised}{normalised}}
+{\footnotesize\ttfamily bool St\+Descriptors\+::normalised =false}
+
+True if descriptors are normalised \mbox{\Hypertarget{structStDescriptors_a5125b3e53e450c58a16f217c4af02d12}\label{structStDescriptors_a5125b3e53e450c58a16f217c4af02d12}} 
+\index{StDescriptors@{StDescriptors}!sd@{sd}}
+\index{sd@{sd}!StDescriptors@{StDescriptors}}
+\doxysubsubsection{\texorpdfstring{sd}{sd}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structStDescriptors_a00fc0048418851297c9a91976b8beb24}{sd\+\_\+type}} St\+Descriptors\+::sd}
+
+SD for a \mbox{\hyperlink{structStructure}{Structure}}
+
+Dimensions\+: \mbox{[}descriptor size, 6\mbox{]} 
+
+The documentation for this struct was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/st\+\_\+descriptors.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/st\+\_\+descriptors.\+cpp\end{DoxyCompactItemize}

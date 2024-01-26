@@ -1,0 +1,329 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="C++" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>DescriptorsCalc &mdash; Ta-dah!  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Cutoffs" href="cutoffs.html" />
+    <link rel="prev" title="NNFiner" href="nn_finder.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Ta-dah!
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">General</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">API Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contact &amp; Contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LICENCE.html">MIT Licence</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="atom.html">Atom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure.html">Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure_db.html">StructureDB</a></li>
+<li class="toctree-l1"><a class="reference internal" href="st_descriptors.html">StDescriptors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="st_descriptors_db.html">StDescriptorsDB</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nn_finder.html">NNFiner</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">DescriptorsCalc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cutoffs.html">Cutoffs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="descriptors.html">Descriptors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kernels.html">Kernels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basisfunctions.html">Basis Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design_matrix.html">DesignMatrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="func_base.html">Func_Base</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Ta-dah!</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>DescriptorsCalc</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/descriptors_calc.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="descriptorscalc">
+<h1>DescriptorsCalc<a class="headerlink" href="#descriptorscalc" title="Permalink to this headline">¶</a></h1>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4I000000E15DescriptorsCalc">
+<span id="_CPPv3I000000E15DescriptorsCalc"></span><span id="_CPPv2I000000E15DescriptorsCalc"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">D2</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="descriptors.html#_CPPv47D2_Base" title="D2_Base"><span class="n"><span class="pre">D2_Base</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">D3</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">D3_Base</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DM</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="descriptors.html#_CPPv47DM_Base" title="DM_Base"><span class="n"><span class="pre">DM_Base</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">C2</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="cutoffs.html#_CPPv48Cut_Base" title="Cut_Base"><span class="n"><span class="pre">Cut_Base</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">C3</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="cutoffs.html#_CPPv48Cut_Base" title="Cut_Base"><span class="n"><span class="pre">Cut_Base</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CM</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="cutoffs.html#_CPPv48Cut_Base" title="Cut_Base"><span class="n"><span class="pre">Cut_Base</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classDescriptorsCalc"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DescriptorsCalc</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">DC_Base</span></span><a class="headerlink" href="#_CPPv4I000000E15DescriptorsCalc" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Descriptors calculator. </p>
+<p>This object does not store any data.</p>
+<p>Usage example: <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build calculator using Config object.</span>
+<span class="n">DescriptorsCalc</span><span class="o">&lt;</span><span class="n">D2_LJ</span><span class="p">,</span> <span class="n">D3_Dummy</span><span class="p">,</span> <span class="n">DM_Dummy</span><span class="o">&gt;</span> <span class="n">dc</span><span class="p">(</span><span class="n">config</span><span class="p">);</span>
+
+<span class="c1"># Calculate all descriptors in a Structure st</span>
+<span class="n">StDescriptors</span> <span class="n">std</span> <span class="o">=</span> <span class="n">dc</span><span class="o">.</span><span class="n">calc</span><span class="p">(</span><span class="n">st</span><span class="p">);</span>
+
+<span class="c1"># Calculate all descriptors in a StructureDB st_db</span>
+<span class="n">StDescriptorsDB</span> <span class="n">std_db</span> <span class="o">=</span> <span class="n">dc</span><span class="o">.</span><span class="n">calc</span><span class="p">(</span><span class="n">st_db</span><span class="p">);</span>
+</pre></div>
+</div>
+</p>
+<p>This object sets the following INTERNAL_KEYS to the provided <a class="reference internal" href="config.html#classConfig"><span class="std std-ref">Config</span></a> object:</p>
+<p><a class="reference internal" href="config.html#classConfig_1SIZE2B"><span class="std std-ref">SIZE2B</span></a>,<a class="reference internal" href="config.html#classConfig_1SIZE3B"><span class="std std-ref">SIZE3B</span></a>,<a class="reference internal" href="config.html#classConfig_1SIZEMB"><span class="std std-ref">SIZEMB</span></a>,<a class="reference internal" href="config.html#classConfig_1DSIZE"><span class="std std-ref">DSIZE</span></a></p>
+<p>Required keys: <a class="reference internal" href="config.html#classConfig_1INIT2B"><span class="std std-ref">INIT2B</span></a>,<a class="reference internal" href="config.html#classConfig_1INIT3B"><span class="std std-ref">INIT3B</span></a>,<a class="reference internal" href="config.html#classConfig_1INITMB"><span class="std std-ref">INITMB</span></a>, <a class="reference internal" href="config.html#classConfig_1RCUT2B"><span class="std std-ref">RCUT2B</span></a>,<a class="reference internal" href="config.html#classConfig_1RCUT3B"><span class="std std-ref">RCUT3B</span></a>,<a class="reference internal" href="config.html#classConfig_1RCUTMB"><span class="std std-ref">RCUTMB</span></a> (for initialised ones)</p>
+<p><dl class="field-list simple">
+<dt class="field-odd">tparam D2</dt>
+<dd class="field-odd"><p><a class="reference internal" href="descriptors.html#classD2__Base"><span class="std std-ref">D2_Base</span></a> child, two-body type calculator. </p>
+</dd>
+<dt class="field-even">tparam D3</dt>
+<dd class="field-even"><p>D3_Base child, three-body type calculator. </p>
+</dd>
+<dt class="field-odd">tparam DM</dt>
+<dd class="field-odd"><p><a class="reference internal" href="descriptors.html#classDM__Base"><span class="std std-ref">DM_Base</span></a> child, many-body type calculator. </p>
+</dd>
+<dt class="field-even">tparam C2</dt>
+<dd class="field-even"><p><a class="reference internal" href="cutoffs.html#classCut__Base"><span class="std std-ref">Cut_Base</span></a> child, two-body cutoff function. </p>
+</dd>
+<dt class="field-odd">tparam C3</dt>
+<dd class="field-odd"><p><a class="reference internal" href="cutoffs.html#classCut__Base"><span class="std std-ref">Cut_Base</span></a> child, three-body cutoff function. </p>
+</dd>
+<dt class="field-even">tparam CM</dt>
+<dd class="field-even"><p><a class="reference internal" href="cutoffs.html#classCut__Base"><span class="std std-ref">Cut_Base</span></a> child, many-body cutoff function. </p>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N15DescriptorsCalc15DescriptorsCalcER6Config">
+<span id="_CPPv3N15DescriptorsCalc15DescriptorsCalcER6Config"></span><span id="_CPPv2N15DescriptorsCalc15DescriptorsCalcER6Config"></span><span id="DescriptorsCalc::DescriptorsCalc__ConfigR"></span><span class="target" id="classDescriptorsCalc_1a09f5d297522a44ee4e4c994d68d1ae72"></span><span class="sig-name descname"><span class="n"><span class="pre">DescriptorsCalc</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="config.html#_CPPv46Config" title="Config"><span class="n"><span class="pre">Config</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">c</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N15DescriptorsCalc15DescriptorsCalcER6Config" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Constructor to fully initialise this object.</p>
+<p>REQUIRED CONFIG KEYS: <a class="reference internal" href="config.html#classConfig_1FORCE"><span class="std std-ref">FORCE</span></a>, <a class="reference internal" href="config.html#classConfig_1STRESS"><span class="std std-ref">STRESS</span></a>, at least one of: <a class="reference internal" href="config.html#classConfig_1RCUT2B"><span class="std std-ref">RCUT2B</span></a>, <a class="reference internal" href="config.html#classConfig_1RCUT3B"><span class="std std-ref">RCUT3B</span></a>,<a class="reference internal" href="config.html#classConfig_1RCUTMB"><span class="std std-ref">RCUTMB</span></a> </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I000000EN15DescriptorsCalc15DescriptorsCalcER6ConfigR2T1R2T2R2T3R2T4R2T5R2T6">
+<span id="_CPPv3I000000EN15DescriptorsCalc15DescriptorsCalcER6ConfigR2T1R2T2R2T3R2T4R2T5R2T6"></span><span id="_CPPv2I000000EN15DescriptorsCalc15DescriptorsCalcER6ConfigR2T1R2T2R2T3R2T4R2T5R2T6"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T1</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T2</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T3</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T4</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T5</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T6</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classDescriptorsCalc_1a6f3fd74fa01cf409552d08a0c17ecaaf"></span><span class="sig-name descname"><span class="n"><span class="pre">DescriptorsCalc</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="config.html#_CPPv46Config" title="Config"><span class="n"><span class="pre">Config</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">c</span></span>, <a class="reference internal" href="#_CPPv4I000000EN15DescriptorsCalc15DescriptorsCalcER6ConfigR2T1R2T2R2T3R2T4R2T5R2T6" title="DescriptorsCalc::DescriptorsCalc::T1"><span class="n"><span class="pre">T1</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">d2</span></span>, <a class="reference internal" href="#_CPPv4I000000EN15DescriptorsCalc15DescriptorsCalcER6ConfigR2T1R2T2R2T3R2T4R2T5R2T6" title="DescriptorsCalc::DescriptorsCalc::T2"><span class="n"><span class="pre">T2</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">d3</span></span>, <a class="reference internal" href="#_CPPv4I000000EN15DescriptorsCalc15DescriptorsCalcER6ConfigR2T1R2T2R2T3R2T4R2T5R2T6" title="DescriptorsCalc::DescriptorsCalc::T3"><span class="n"><span class="pre">T3</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">dm</span></span>, <a class="reference internal" href="#_CPPv4I000000EN15DescriptorsCalc15DescriptorsCalcER6ConfigR2T1R2T2R2T3R2T4R2T5R2T6" title="DescriptorsCalc::DescriptorsCalc::T4"><span class="n"><span class="pre">T4</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">c2</span></span>, <a class="reference internal" href="#_CPPv4I000000EN15DescriptorsCalc15DescriptorsCalcER6ConfigR2T1R2T2R2T3R2T4R2T5R2T6" title="DescriptorsCalc::DescriptorsCalc::T5"><span class="n"><span class="pre">T5</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">c3</span></span>, <a class="reference internal" href="#_CPPv4I000000EN15DescriptorsCalc15DescriptorsCalcER6ConfigR2T1R2T2R2T3R2T4R2T5R2T6" title="DescriptorsCalc::DescriptorsCalc::T6"><span class="n"><span class="pre">T6</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">cm</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I000000EN15DescriptorsCalc15DescriptorsCalcER6ConfigR2T1R2T2R2T3R2T4R2T5R2T6" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>This constructor is equivalent to the main constructor above.</p>
+<p>The difference is technical in nature. Here we use OOP with generic programming to call virtual functions to calculate descriptors - this incurs small efficiency penalty but makes selecting of descriptors somewhat easier at runtime.</p>
+<p>In contrast, the main constructor above is purely generic.</p>
+<p>The rule of thumb is: Use the main contructor unless it's a pain.</p>
+<p>Usage example: <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build calculator using Config object.</span>
+<span class="n">D2_Base</span> <span class="o">*</span><span class="n">d2</span> <span class="o">=</span> <span class="n">new</span> <span class="n">D2_LJ</span><span class="p">(</span><span class="n">config</span><span class="p">);</span>
+<span class="n">D2_Base</span> <span class="o">*</span><span class="n">d3</span> <span class="o">=</span> <span class="n">new</span> <span class="n">D3_Dummy</span><span class="p">(</span><span class="n">config</span><span class="p">);</span>
+<span class="n">D2_Base</span> <span class="o">*</span><span class="n">dm</span> <span class="o">=</span> <span class="n">new</span> <span class="n">DM_Dummy</span><span class="p">(</span><span class="n">config</span><span class="p">);</span>
+<span class="n">DescriptorsCalc</span><span class="o">&lt;&gt;</span> <span class="n">dc</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">d2</span><span class="p">,</span> <span class="n">d3</span><span class="p">,</span> <span class="n">dm</span><span class="p">);</span>
+
+<span class="c1"># Calculate all descriptors in a Structure st</span>
+<span class="n">StDescriptors</span> <span class="n">std</span> <span class="o">=</span> <span class="n">dc</span><span class="o">.</span><span class="n">calc</span><span class="p">(</span><span class="n">st</span><span class="p">);</span>
+
+<span class="c1"># Calculate all descriptors in a StructureDB st_db</span>
+<span class="n">StDescriptorsDB</span> <span class="n">std_db</span> <span class="o">=</span> <span class="n">dc</span><span class="o">.</span><span class="n">calc</span><span class="p">(</span><span class="n">st_db</span><span class="p">);</span>
+</pre></div>
+</div>
+</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>{ The unfortunate consequence is that you might want to try this <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">DescriptorsCalc</span><span class="o">&lt;&gt;</span> <span class="n">dc</span><span class="p">(</span><span class="n">config</span><span class="p">);</span>
+</pre></div>
+</div>
+ Basically you are trying to init abstract classes with config object. It won't compile! } </p>
+</div>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N15DescriptorsCalc4calcERK9Structure">
+<span id="_CPPv3N15DescriptorsCalc4calcERK9Structure"></span><span id="_CPPv2N15DescriptorsCalc4calcERK9Structure"></span><span id="DescriptorsCalc::calc__StructureCR"></span><span class="target" id="classDescriptorsCalc_1a4f50908556a38ddecf23fc53474bbd4e"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><a class="reference internal" href="st_descriptors.html#_CPPv413StDescriptors" title="StDescriptors"><span class="n"><span class="pre">StDescriptors</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">calc</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="structure.html#_CPPv49Structure" title="Structure"><span class="n"><span class="pre">Structure</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">st</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N15DescriptorsCalc4calcERK9Structure" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Calculate all descriptors in a <a class="reference internal" href="structure.html#structStructure"><span class="std std-ref">Structure</span></a> st </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N15DescriptorsCalc4calcERK11StructureDB">
+<span id="_CPPv3N15DescriptorsCalc4calcERK11StructureDB"></span><span id="_CPPv2N15DescriptorsCalc4calcERK11StructureDB"></span><span id="DescriptorsCalc::calc__StructureDBCR"></span><span class="target" id="classDescriptorsCalc_1a7dcbf5c65a6dc29c58ab0dd85ce0187e"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><a class="reference internal" href="st_descriptors_db.html#_CPPv415StDescriptorsDB" title="StDescriptorsDB"><span class="n"><span class="pre">StDescriptorsDB</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">calc</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="structure_db.html#_CPPv411StructureDB" title="StructureDB"><span class="n"><span class="pre">StructureDB</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">st_db</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N15DescriptorsCalc4calcERK11StructureDB" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Calculate all descriptors in a <a class="reference internal" href="structure_db.html#structStructureDB"><span class="std std-ref">StructureDB</span></a> st_db </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="cutoffs.html" class="btn btn-neutral float-right" title="Cutoffs" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="nn_finder.html" class="btn btn-neutral float-left" title="NNFiner" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Marcin Kirsz.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

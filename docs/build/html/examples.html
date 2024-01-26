@@ -1,0 +1,716 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="C++" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>API Examples &mdash; Ta-dah!  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Contact &amp; Contribute" href="contribute.html" />
+    <link rel="prev" title="Glossary" href="glossary.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Ta-dah!
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">General</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#example-1-traininig-process-and-simple-prediction">Example 1 - Traininig Process and Simple Prediction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-2-prediction-using-existing-model">Example 2 - Prediction using existing model</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contact &amp; Contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LICENCE.html">MIT Licence</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="atom.html">Atom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure.html">Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure_db.html">StructureDB</a></li>
+<li class="toctree-l1"><a class="reference internal" href="st_descriptors.html">StDescriptors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="st_descriptors_db.html">StDescriptorsDB</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nn_finder.html">NNFiner</a></li>
+<li class="toctree-l1"><a class="reference internal" href="descriptors_calc.html">DescriptorsCalc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cutoffs.html">Cutoffs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="descriptors.html">Descriptors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kernels.html">Kernels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basisfunctions.html">Basis Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design_matrix.html">DesignMatrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="func_base.html">Func_Base</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Ta-dah!</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>API Examples</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/examples.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="api-examples">
+<span id="examples"></span><h1>API Examples<a class="headerlink" href="#api-examples" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="example-1-traininig-process-and-simple-prediction">
+<span id="ex1"></span><h2>Example 1 - Traininig Process and Simple Prediction<a class="headerlink" href="#example-1-traininig-process-and-simple-prediction" title="Permalink to this headline">¶</a></h2>
+<p>This example shows how to perform training and how to predict with a trained model.</p>
+<p>To compile with <code class="docutils literal notranslate"><span class="pre">g++</span></code> and run:</p>
+<p><div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ g++ -O3 ex1.cpp -o ex1.out -ltadah -fopenmp
+$ ./ex1.out
+</pre></div>
+</div>
+</p>
+<p>Ta-dah! models and descriptors are selected at compile time but all model parameters are provided in the config file.</p>
+<p>Here we use Blip2B two-body descriptor and train using both energies and virial stresses.</p>
+<p>Files:</p>
+<p><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ex1.cpp</span></code> Example c++ script for training and prediction.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">config</span></code> <a class="reference internal" href="config.html#classConfig"><span class="std std-ref">Config</span></a> file used for training, contains all model parameters.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">config_pred</span></code> List of datasets used for prediction (<a class="reference internal" href="config.html#classConfig_1DBFILE"><span class="std std-ref">DBFILE</span></a> key). Keys <a class="reference internal" href="config.html#classConfig_1FORCE"><span class="std std-ref">FORCE</span></a> and <a class="reference internal" href="config.html#classConfig_1STRESS"><span class="std std-ref">STRESS</span></a> controls whether forces and stresses are predicted.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tdata.db</span></code> Dataset which we will use for both training and prediction. The dataset is generated using EAM model for Ta by R.Ravelo. <a class="reference external" href="https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.134101">https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.134101</a> </p></li>
+</ul>
+</p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">main</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><br /></dt>
+<dd></dd></dl>
+
+</div>
+<p>Example 1 c++ file:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;tadah/cutoffs/cut_all.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/descriptors/d_all.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/models/m_all.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/basis_functions/bf_all.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/kernels/kern_all.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/config.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/structure.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/descriptors_calc.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/nn_finder.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;fstream&gt;</span><span class="cp"></span>
+
+<span class="cm">/**  @file ex1.cpp</span>
+<span class="cm"> * This example shows how to perform training and</span>
+<span class="cm"> * how to predict with a trained model.</span>
+<span class="cm"> *</span>
+<span class="cm"> * To compile with `g++` and run:</span>
+<span class="cm"> *</span>
+<span class="cm"> * \code{.sh}</span>
+<span class="cm"> *  $ g++ -O3 ex1.cpp -o ex1.out -ltadah -fopenmp</span>
+<span class="cm"> *  $ ./ex1.out</span>
+<span class="cm"> * \endcode</span>
+<span class="cm"> *</span>
+<span class="cm"> * Ta-dah! models and descriptors are selected at compile time but all model</span>
+<span class="cm"> * parameters are provided in the config file.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Here we use Blip2B two-body descriptor and train using both energies</span>
+<span class="cm"> * and virial stresses.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Files:</span>
+<span class="cm"> *</span>
+<span class="cm"> *   - `ex1.cpp`</span>
+<span class="cm"> *      Example c++ script for training and prediction.</span>
+<span class="cm"> *   - `config`</span>
+<span class="cm"> *      Config file used for training, contains all model parameters.</span>
+<span class="cm"> *   - `config_pred` </span>
+<span class="cm"> *      List of datasets used for prediction (\ref DBFILE key).</span>
+<span class="cm"> *      Keys \ref FORCE and \ref STRESS controls whether forces and stresses</span>
+<span class="cm"> *      are predicted.</span>
+<span class="cm"> *   - `tdata.db`</span>
+<span class="cm"> *      Dataset which we will use for both training and prediction.</span>
+<span class="cm"> *      The dataset is generated using EAM model for Ta by R.Ravelo.</span>
+<span class="cm"> *      https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.134101</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;TRAINING STAGE&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="c1">// Config file configures almost all model parameters.</span>
+    <span class="c1">// See below for a more detailed explanation of used key-value(s) pairs.</span>
+	<span class="n">Config</span> <span class="n">config</span><span class="p">(</span><span class="s">&quot;config&quot;</span><span class="p">);</span>
+
+    <span class="c1">// First we load all training data from a list</span>
+    <span class="c1">// of training datasets into StrutureDB object.</span>
+    <span class="c1">// Paths to datasets are specified with a key DBFILE in a config file.</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;StructureDB loading data...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+    <span class="n">StructureDB</span> <span class="n">stdb</span><span class="p">(</span><span class="n">config</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="c1">// Next we pass StructureDB object to the nearest neighbour calculator.</span>
+    <span class="c1">// NNFinder will create full nearest neighbours lists for every atom</span>
+    <span class="c1">// in every structure. These lists will be stored by individual Structures</span>
+    <span class="c1">// in a StructureDB object.</span>
+    <span class="c1">// The lists are calculated up to the max cutoff from the config file:</span>
+    <span class="c1">// cutoff_max = max(RCUT2B, RCUT3B, RCUTMB).</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Calculating nearest neighbours...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+    <span class="n">NNFinder</span> <span class="n">nnf</span><span class="p">(</span><span class="n">config</span><span class="p">);</span>
+    <span class="n">nnf</span><span class="p">.</span><span class="n">calc</span><span class="p">(</span><span class="n">stdb</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="c1">// STEP 1a: Select descriptors.</span>
+    <span class="c1">// All three types must be specified.</span>
+    <span class="c1">// Use Dummy if given type is not required.</span>
+
+    <span class="c1">// D2 - TWO-BODY</span>
+    <span class="c1">//using D2=D2_LJ;</span>
+    <span class="c1">//using D2=D2_BP;</span>
+    <span class="k">using</span> <span class="n">D2</span><span class="o">=</span><span class="n">D2_Blip</span><span class="p">;</span>
+    <span class="c1">//using D2=D2_Dummy;</span>
+    <span class="c1">//using D2=D2_EAM;</span>
+
+    <span class="c1">// D3 - THREE-BODY</span>
+    <span class="k">using</span> <span class="n">D3</span><span class="o">=</span><span class="n">D3_Dummy</span><span class="p">;</span>
+
+    <span class="c1">// DM - MANY-BODY</span>
+    <span class="c1">//using DM=DM_EAM;</span>
+    <span class="c1">//using DM=DM_EAD;</span>
+    <span class="k">using</span> <span class="n">DM</span><span class="o">=</span><span class="n">DM_Dummy</span><span class="p">;</span>
+
+    <span class="c1">// STEP 1b: Select cutoffs, C2 for D2, etc</span>
+    <span class="k">using</span> <span class="n">C2</span><span class="o">=</span><span class="n">Cut_Cos</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">C3</span><span class="o">=</span><span class="n">Cut_Dummy</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">CM</span><span class="o">=</span><span class="n">Cut_Cos</span><span class="p">;</span>
+
+    <span class="c1">// STEP 1c: Prepare descriptor calculator</span>
+    <span class="n">DescriptorsCalc</span><span class="o">&lt;</span><span class="n">D2</span><span class="p">,</span><span class="n">D3</span><span class="p">,</span><span class="n">DM</span><span class="p">,</span><span class="n">C2</span><span class="p">,</span><span class="n">C3</span><span class="p">,</span><span class="n">CM</span><span class="o">&gt;</span> <span class="n">dc</span><span class="p">(</span><span class="n">config</span><span class="p">);</span>
+
+    <span class="c1">// STEP 2a: Select Basis Function (BF) or Kernels (K).</span>
+    <span class="c1">// BF is used for M_BLR - Bayesian Linear Regression</span>
+    <span class="c1">// K is used with M_KRR - Kernel Ridge Regression</span>
+    <span class="c1">// See documentation for more BF and K</span>
+    <span class="k">using</span> <span class="n">BF</span><span class="o">=</span><span class="n">BF_Linear</span><span class="p">;</span>
+    <span class="c1">//using BF=BF_Polynomial2;</span>
+    <span class="c1">//using K=Kern_Linear;</span>
+    <span class="c1">//using K=Kern_Quadratic;</span>
+
+    <span class="c1">// STEP 2b: Select Model</span>
+    <span class="k">using</span> <span class="n">M</span><span class="o">=</span><span class="n">M_BLR</span><span class="o">&lt;</span><span class="n">BF</span><span class="o">&gt;</span><span class="p">;</span>
+    <span class="c1">//using M=M_KRR&lt;K&gt;;</span>
+
+    <span class="c1">// STEP 2c: Instantiate a model</span>
+    <span class="n">M</span> <span class="n">model</span><span class="p">(</span><span class="n">config</span><span class="p">);</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;TRAINING STAGE...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+
+    <span class="c1">// STEP 3: Training - Option 1.</span>
+    <span class="c1">// Train with StructureDB only. We have to provide calculators here.</span>
+    <span class="c1">// Descriptors are calculated in batches to construct a design matrix</span>
+    <span class="c1">// and then are discarded.</span>
+    <span class="c1">// This is usually the best choice unless you need descriptors for something else</span>
+    <span class="c1">// after the training is done.</span>
+    <span class="n">model</span><span class="p">.</span><span class="n">train</span><span class="p">(</span><span class="n">stdb</span><span class="p">,</span><span class="n">dc</span><span class="p">);</span>
+
+    <span class="c1">// STEP 3: Training - Option 2.</span>
+    <span class="c1">// Train with StructureDB and precalcualted StDescriptorsDB.</span>
+    <span class="c1">//StDescriptorsDB st_desc_db = dc.calc(stdb);</span>
+    <span class="c1">//model.train(st_desc_db,stdb);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="c1">// STEP 4: Save model to a text file.</span>
+    <span class="c1">// Once model is trained we can dump it to a file. </span>
+    <span class="c1">// Saved models can be used with LAMMPS or can be reloaded</span>
+    <span class="c1">// to make predictions.</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Saving LAMMPS pot.tadah file...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+    <span class="n">Config</span> <span class="n">param_file</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="n">get_param_file</span><span class="p">();</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">outfile</span><span class="p">(</span><span class="s">&quot;pot.tadah&quot;</span><span class="p">);</span>
+    <span class="n">outfile</span> <span class="o">&lt;&lt;</span> <span class="n">param_file</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="n">outfile</span><span class="p">.</span><span class="n">close</span><span class="p">();</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;PREDICTION STAGE...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="c1">// STEP 1: We will reuse LAMMPS param file and add to it</span>
+    <span class="c1">// DBFILE(s) from config_pred file.</span>
+    <span class="c1">// In other words training datasets go to the config file</span>
+    <span class="c1">// and validation datasets are in the config_pred</span>
+    <span class="n">param_file</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;config_pred&quot;</span><span class="p">);</span>
+
+    <span class="c1">// STEP 2: Load DBFILE from config_pred</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;StructureDB loading data...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+    <span class="n">StructureDB</span> <span class="n">stdb2</span><span class="p">(</span><span class="n">param_file</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="c1">// STEP 3: Calculate nearest neighbours</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Calculating nearest neighbours...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+    <span class="n">NNFinder</span> <span class="n">nnf2</span><span class="p">(</span><span class="n">param_file</span><span class="p">);</span>
+    <span class="n">nnf2</span><span class="p">.</span><span class="n">calc</span><span class="p">(</span><span class="n">stdb2</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="c1">// STEP 4: Prepare DescriptorCalc</span>
+    <span class="n">DescriptorsCalc</span><span class="o">&lt;</span><span class="n">D2</span><span class="p">,</span><span class="n">D3</span><span class="p">,</span><span class="n">DM</span><span class="p">,</span><span class="n">C2</span><span class="p">,</span><span class="n">C3</span><span class="p">,</span><span class="n">CM</span><span class="o">&gt;</span> <span class="n">dc2</span><span class="p">(</span><span class="n">param_file</span><span class="p">);</span>
+
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Predicting...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+    <span class="c1">// STEP 5: Results are saved to new StructureDB object </span>
+    <span class="c1">// - it will only contain predicted values</span>
+    <span class="c1">// so there are no atom positions, etc...</span>
+    <span class="n">StructureDB</span> <span class="n">stpred</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="n">predict</span><span class="p">(</span><span class="n">param_file</span><span class="p">,</span><span class="n">stdb2</span><span class="p">,</span><span class="n">dc2</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Dumping results to disk...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+
+    <span class="c1">// STEP 6: open file streams for energy/force/stress predicted values</span>
+    <span class="c1">// and dump result</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">out_force</span><span class="p">(</span><span class="s">&quot;forces.pred&quot;</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">out_energy</span><span class="p">(</span><span class="s">&quot;energy.pred&quot;</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">out_stress</span><span class="p">(</span><span class="s">&quot;stress.pred&quot;</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">stdb2</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="n">out_energy</span> <span class="o">&lt;&lt;</span> <span class="n">stdb2</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">energy</span><span class="o">/</span><span class="n">stdb2</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">natoms</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;    &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">stpred</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">energy</span><span class="o">/</span><span class="n">stpred</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">natoms</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">param_file</span><span class="p">.</span><span class="n">get</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;FORCE&quot;</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">a</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">a</span><span class="o">&lt;</span><span class="n">stdb2</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">natoms</span><span class="p">();</span> <span class="o">++</span><span class="n">a</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">Eigen</span><span class="o">::</span><span class="n">Vector3d</span> <span class="o">&amp;</span><span class="n">f</span> <span class="o">=</span> <span class="n">stdb2</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">atoms</span><span class="p">[</span><span class="n">a</span><span class="p">].</span><span class="n">force</span><span class="p">;</span>
+                <span class="n">Eigen</span><span class="o">::</span><span class="n">Vector3d</span> <span class="o">&amp;</span><span class="n">fp</span> <span class="o">=</span> <span class="n">stpred</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">atoms</span><span class="p">[</span><span class="n">a</span><span class="p">].</span><span class="n">force</span><span class="p">;</span>
+                <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">k</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">k</span><span class="o">&lt;</span><span class="mi">3</span><span class="p">;</span> <span class="o">++</span><span class="n">k</span><span class="p">)</span>
+                    <span class="n">out_force</span> <span class="o">&lt;&lt;</span> <span class="n">f</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;    &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">fp</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">param_file</span><span class="p">.</span><span class="n">get</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;STRESS&quot;</span><span class="p">))</span> <span class="p">{</span>
+            <span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix3d</span> <span class="o">&amp;</span><span class="n">s</span> <span class="o">=</span> <span class="n">stdb2</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">stress</span><span class="p">;</span>
+            <span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix3d</span> <span class="o">&amp;</span><span class="n">sp</span> <span class="o">=</span> <span class="n">stpred</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">stress</span><span class="p">;</span>
+            <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">x</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">x</span><span class="o">&lt;</span><span class="mi">3</span><span class="p">;</span> <span class="o">++</span><span class="n">x</span><span class="p">)</span>
+                <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">y</span><span class="o">=</span><span class="n">x</span><span class="p">;</span> <span class="n">y</span><span class="o">&lt;</span><span class="mi">3</span><span class="p">;</span> <span class="o">++</span><span class="n">y</span><span class="p">)</span>
+                    <span class="n">out_stress</span> <span class="o">&lt;&lt;</span> <span class="n">s</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;    &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">sp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+        <span class="p">}</span>
+
+    <span class="p">}</span>
+    <span class="n">out_force</span><span class="p">.</span><span class="n">close</span><span class="p">();</span>
+    <span class="n">out_energy</span><span class="p">.</span><span class="n">close</span><span class="p">();</span>
+    <span class="n">out_stress</span><span class="p">.</span><span class="n">close</span><span class="p">();</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Config file used for training:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># For description of KEYS and corresponding values  see Config documentation:</span>
+<span class="c1"># https://ta-dah.readthedocs.io/en/latest/config.html</span>
+
+DBFILE tdata.db
+
+INIT2B <span class="nb">true</span>
+INIT3B <span class="nb">false</span>
+INITMB <span class="nb">false</span>
+
+RCUT2B <span class="m">5</span>.3
+
+FORCE <span class="nb">false</span>
+STRESS <span class="nb">true</span>
+
+SBASIS <span class="m">15</span>
+
+SGRID2B <span class="m">3</span>
+CGRID2B -1 <span class="m">8</span> <span class="m">1</span>.0 <span class="m">5</span>.3
+
+LAMBDA -1
+BIAS <span class="nb">true</span>
+NORM <span class="nb">true</span>
+VERBOSE <span class="m">1</span>
+
+EWEIGHT <span class="m">1</span>.0
+FWEIGHT 1e-2
+SWEIGHT 1e-3
+</pre></div>
+</div>
+<p>Config file used for prediction:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>DBFILE tdata.db
+FORCE <span class="nb">true</span>
+Stress <span class="nb">true</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-2-prediction-using-existing-model">
+<span id="ex2"></span><h2>Example 2 - Prediction using existing model<a class="headerlink" href="#example-2-prediction-using-existing-model" title="Permalink to this headline">¶</a></h2>
+<p>This example shows how to predict with a trained model. Example model is provided in a <code class="docutils literal notranslate"><span class="pre">pot.tadah</span></code> file.</p>
+<p>To compile with <code class="docutils literal notranslate"><span class="pre">g++</span></code> and run:</p>
+<p><div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ g++ -O3 ex2.cpp -o ex2.out -ltadah -fopenmp
+$ ./ex2.out
+</pre></div>
+</div>
+</p>
+<p>Ta-dah! models and descriptors are selected at compile time but all model parameters are provided in the <code class="docutils literal notranslate"><span class="pre">pot.tadah</span></code> file. Model, cutoff and descriptors in the <code class="docutils literal notranslate"><span class="pre">ex2.cpp</span></code> file must match those in the <code class="docutils literal notranslate"><span class="pre">pot.tadah</span></code> file. See code comment bellow for more detail.</p>
+<p>Files:</p>
+<p><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ex2.cpp</span></code> Example c++ script for prediction using already available model.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">config_pred</span></code> List of datasets used for prediction (<a class="reference internal" href="config.html#classConfig_1DBFILE"><span class="std std-ref">DBFILE</span></a> key). Keys <a class="reference internal" href="config.html#classConfig_1FORCE"><span class="std std-ref">FORCE</span></a> and <a class="reference internal" href="config.html#classConfig_1STRESS"><span class="std std-ref">STRESS</span></a> controls whether forces and stresses are predicted.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tdata.db</span></code> Dataset which we will use for prediction. The dataset is generated using EAM model for Ta by R.Ravelo. <a class="reference external" href="https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.134101">https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.134101</a> </p></li>
+</ul>
+</p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">main</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><br /></dt>
+<dd></dd></dl>
+
+</div>
+<p>Example 2 c++ file:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;tadah/cutoffs/cut_all.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/descriptors/d_all.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/models/m_all.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/descriptors_calc.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/config.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/structure.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;tadah/nn_finder.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;fstream&gt;</span><span class="cp"></span>
+
+<span class="cm">/**  @file ex2.cpp</span>
+<span class="cm"> * This example shows how to predict with a trained model.</span>
+<span class="cm"> * Example model is provided in a `pot.tadah` file.</span>
+<span class="cm"> *</span>
+<span class="cm"> * To compile with `g++` and run:</span>
+<span class="cm"> *</span>
+<span class="cm"> * \code{.sh}</span>
+<span class="cm"> *  $ g++ -O3 ex2.cpp -o ex2.out -ltadah -fopenmp</span>
+<span class="cm"> *  $ ./ex2.out</span>
+<span class="cm"> * \endcode</span>
+<span class="cm"> *</span>
+<span class="cm"> * Ta-dah! models and descriptors are selected at compile time but all model</span>
+<span class="cm"> * parameters are provided in the `pot.tadah` file. Model, cutoff and descriptors</span>
+<span class="cm"> * in the `ex2.cpp` file must match those in the `pot.tadah` file.</span>
+<span class="cm"> * See code comment bellow for more detail.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Files:</span>
+<span class="cm"> *</span>
+<span class="cm"> *   - `ex2.cpp`</span>
+<span class="cm"> *      Example c++ script for prediction using already available model.</span>
+<span class="cm"> *   - `config_pred` </span>
+<span class="cm"> *      List of datasets used for prediction (\ref DBFILE key).</span>
+<span class="cm"> *      Keys \ref FORCE and \ref STRESS controls whether forces and stresses</span>
+<span class="cm"> *      are predicted.</span>
+<span class="cm"> *   - `tdata.db`</span>
+<span class="cm"> *      Dataset which we will use for prediction.</span>
+<span class="cm"> *      The dataset is generated using EAM model for Ta by R.Ravelo.</span>
+<span class="cm"> *      https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.134101</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    
+    <span class="c1">// STEP 0: Load model saved in a `pot.tadah` as a Config object.</span>
+    <span class="n">Config</span> <span class="n">param_file</span><span class="p">(</span><span class="s">&quot;pot.tadah&quot;</span><span class="p">);</span>
+
+    <span class="c1">// STEP 1a: Select descriptors. All three types must be specified.</span>
+    <span class="c1">// Use Dummy if given type is not required.</span>
+    <span class="c1">// Look for keywords `TYPE2B` `TYPE3B` and `TYPEMB` in a `pot.tadah`</span>
+    <span class="c1">// If keyword is not listed use `D2_Dummy` as a descriptor.</span>
+
+    <span class="c1">// D2 - TWO-BODY</span>
+    <span class="c1">// `pot.tadah`: TYPE2B      D2_Blip</span>
+    <span class="k">using</span> <span class="n">D2</span><span class="o">=</span><span class="n">D2_Blip</span><span class="p">;</span>
+
+    <span class="c1">// D3 - THREE-BODY</span>
+    <span class="c1">// `pot.tadah` no keyword</span>
+    <span class="k">using</span> <span class="n">D3</span><span class="o">=</span><span class="n">D3_Dummy</span><span class="p">;</span>
+
+    <span class="c1">// DM - MANY-BODY</span>
+    <span class="c1">// `pot.tadah` no keyword</span>
+    <span class="k">using</span> <span class="n">DM</span><span class="o">=</span><span class="n">DM_Dummy</span><span class="p">;</span>
+
+    <span class="c1">// STEP 2b: Select cutoffs for descriptors, C2 for D2, etc</span>
+    <span class="c1">// Look for keywords `RCTYPE2B` `RCTYPE3B` and `RCTYPEMB` in the `pot.tadah`</span>
+    <span class="c1">// If keyword is not listed use `Cut_Dummy`.</span>
+    <span class="c1">// `pot.tadah`: RCTYPE2B      Cut_Cos</span>
+    <span class="k">using</span> <span class="n">C2</span><span class="o">=</span><span class="n">Cut_Cos</span><span class="p">;</span>
+    <span class="c1">// `pot.tadah` no keywords ofr three-body and many-body</span>
+    <span class="k">using</span> <span class="n">C3</span><span class="o">=</span><span class="n">Cut_Dummy</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">CM</span><span class="o">=</span><span class="n">Cut_Dummy</span><span class="p">;</span>
+
+    <span class="c1">// STEP 2a: Select Basis Function (BF) or Kernels (K).</span>
+    <span class="c1">// BF is used for M_BLR - Bayesian Linear Regression</span>
+    <span class="c1">// K is used with M_KRR - Kernel Ridge Regression</span>
+    <span class="c1">// KEYWORD `MODEL`: first argument is model, second BF/Kernel</span>
+    <span class="c1">// `pot.tadah`: MODEL     M_KRR     Kern_Linear</span>
+    <span class="k">using</span> <span class="n">K</span><span class="o">=</span><span class="n">Kern_Linear</span><span class="p">;</span>
+
+    <span class="c1">// STEP 2b: Select Model and instantiate object.</span>
+    <span class="c1">// `pot.tadah`: MODEL     M_KRR     Kern_Linear</span>
+    <span class="k">using</span> <span class="n">M</span><span class="o">=</span><span class="n">M_KRR</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span><span class="p">;</span>
+    <span class="n">M</span> <span class="n">model</span><span class="p">(</span><span class="n">param_file</span><span class="p">);</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;PREDICTION STAGE&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="c1">// We will reuse param_file Config file and add to it</span>
+    <span class="c1">// DBFILE(s) from config_pred file.</span>
+    <span class="c1">// config_pred contain </span>
+    <span class="c1">// As we are reusing existing config we have</span>
+    <span class="c1">// to remove FORCE and STRESS keys first</span>
+    <span class="n">param_file</span><span class="p">.</span><span class="n">remove</span><span class="p">(</span><span class="s">&quot;FORCE&quot;</span><span class="p">);</span>
+    <span class="n">param_file</span><span class="p">.</span><span class="n">remove</span><span class="p">(</span><span class="s">&quot;STRESS&quot;</span><span class="p">);</span>
+    <span class="n">param_file</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;config_pred&quot;</span><span class="p">);</span>
+
+    <span class="c1">// Load DBFILE from config_pred</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;StructureDB loading data...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+    <span class="n">StructureDB</span> <span class="n">stdb</span><span class="p">(</span><span class="n">param_file</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="c1">// Calculate nearest neighbours</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Calculating nearest neighbours...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+    <span class="n">NNFinder</span> <span class="n">nnf2</span><span class="p">(</span><span class="n">param_file</span><span class="p">);</span>
+    <span class="n">nnf2</span><span class="p">.</span><span class="n">calc</span><span class="p">(</span><span class="n">stdb</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="c1">// Calculate descriptors and store them in StDescriptorsDB</span>
+    <span class="c1">//std::cout &lt;&lt; &quot;Calculating descriptors...&quot; &lt;&lt; std::flush;</span>
+    <span class="n">DescriptorsCalc</span><span class="o">&lt;</span><span class="n">D2</span><span class="p">,</span><span class="n">D3</span><span class="p">,</span><span class="n">DM</span><span class="p">,</span><span class="n">C2</span><span class="p">,</span><span class="n">C3</span><span class="p">,</span><span class="n">CM</span><span class="o">&gt;</span> <span class="n">dc2</span><span class="p">(</span><span class="n">param_file</span><span class="p">);</span>
+    <span class="c1">//StDescriptorsDB st_desc_db = dc2.calc(stdb);</span>
+    <span class="c1">//std::cout &lt;&lt; &quot;Done!&quot; &lt;&lt; std::endl;</span>
+
+    <span class="c1">// open file streams for energy and force prediction</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">out_force</span><span class="p">(</span><span class="s">&quot;forces.pred&quot;</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">out_energy</span><span class="p">(</span><span class="s">&quot;energy.pred&quot;</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">out_stress</span><span class="p">(</span><span class="s">&quot;stress.pred&quot;</span><span class="p">);</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Predicting...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+    <span class="c1">// predict energies (and forces if FORCE true). Result is saved</span>
+    <span class="c1">// to new StructureDB object - it will only contain predicted values</span>
+    <span class="c1">// so there are no atom positions, etc...</span>
+    <span class="n">StructureDB</span> <span class="n">stpred</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="n">predict</span><span class="p">(</span><span class="n">param_file</span><span class="p">,</span> <span class="n">stdb</span><span class="p">,</span><span class="n">dc2</span><span class="p">);</span>
+    <span class="c1">//StructureDB stpred = model.predict(param_file,st_desc_db, stdb);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Dumping results to disk...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">flush</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">stdb</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="n">out_energy</span> <span class="o">&lt;&lt;</span> <span class="n">stdb</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">energy</span><span class="o">/</span><span class="n">stdb</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">natoms</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;    &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">stpred</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">energy</span><span class="o">/</span><span class="n">stpred</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">natoms</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">param_file</span><span class="p">.</span><span class="n">get</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;FORCE&quot;</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">a</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">a</span><span class="o">&lt;</span><span class="n">stdb</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">natoms</span><span class="p">();</span> <span class="o">++</span><span class="n">a</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">Eigen</span><span class="o">::</span><span class="n">Vector3d</span> <span class="o">&amp;</span><span class="n">f</span> <span class="o">=</span> <span class="n">stdb</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">atoms</span><span class="p">[</span><span class="n">a</span><span class="p">].</span><span class="n">force</span><span class="p">;</span>
+                <span class="n">Eigen</span><span class="o">::</span><span class="n">Vector3d</span> <span class="o">&amp;</span><span class="n">fp</span> <span class="o">=</span> <span class="n">stpred</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">atoms</span><span class="p">[</span><span class="n">a</span><span class="p">].</span><span class="n">force</span><span class="p">;</span>
+                <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">k</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">k</span><span class="o">&lt;</span><span class="mi">3</span><span class="p">;</span> <span class="o">++</span><span class="n">k</span><span class="p">)</span>
+                    <span class="n">out_force</span> <span class="o">&lt;&lt;</span> <span class="n">f</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;    &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">fp</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">param_file</span><span class="p">.</span><span class="n">get</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;STRESS&quot;</span><span class="p">))</span> <span class="p">{</span>
+            <span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix3d</span> <span class="o">&amp;</span><span class="n">s</span> <span class="o">=</span> <span class="n">stdb</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">stress</span><span class="p">;</span>
+            <span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix3d</span> <span class="o">&amp;</span><span class="n">sp</span> <span class="o">=</span> <span class="n">stpred</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">stress</span><span class="p">;</span>
+            <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">x</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">x</span><span class="o">&lt;</span><span class="mi">3</span><span class="p">;</span> <span class="o">++</span><span class="n">x</span><span class="p">)</span>
+                <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">y</span><span class="o">=</span><span class="n">x</span><span class="p">;</span> <span class="n">y</span><span class="o">&lt;</span><span class="mi">3</span><span class="p">;</span> <span class="o">++</span><span class="n">y</span><span class="p">)</span>
+                    <span class="n">out_stress</span> <span class="o">&lt;&lt;</span> <span class="n">s</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;    &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">sp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+        <span class="p">}</span>
+
+    <span class="p">}</span>
+    <span class="n">out_force</span><span class="p">.</span><span class="n">close</span><span class="p">();</span>
+    <span class="n">out_energy</span><span class="p">.</span><span class="n">close</span><span class="p">();</span>
+    <span class="n">out_stress</span><span class="p">.</span><span class="n">close</span><span class="p">();</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Done!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Trained model used for prediction:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>BIAS      <span class="nb">true</span>
+CGRID2B     -1     <span class="m">8</span>     <span class="m">1</span>.0     <span class="m">5</span>.3
+DIMER      <span class="nb">false</span>
+EWEIGHT      <span class="m">1</span>.0
+FWEIGHT      1e-2
+INIT2B      <span class="nb">true</span>
+INIT3B      <span class="nb">false</span>
+INITMB      <span class="nb">false</span>
+LAMBDA      -1
+MODEL     M_BLR     BF_Linear
+NMEAN     <span class="m">1</span>     <span class="m">0</span>.357351044677351     <span class="m">28</span>.1750906280303     <span class="m">171</span>.875337825775     <span class="m">347</span>.435704554962     <span class="m">292</span>.539071632571     <span class="m">114</span>.734986052353     <span class="m">37</span>.7105450226703     <span class="m">16</span>.4854091122593
+NORM      <span class="nb">true</span>
+NSTDEV     <span class="m">0</span>     <span class="m">0</span>.191299527861454     <span class="m">3</span>.28096141712362     <span class="m">8</span>.91742738380954     <span class="m">7</span>.47844262027612     <span class="m">4</span>.63228298652339     <span class="m">3</span>.59849545583138     <span class="m">2</span>.16516747835162     <span class="m">0</span>.645040451790542
+RCTYPE2B      Cut_Cos
+RCUT2B      <span class="m">5</span>.3
+SBASIS      <span class="m">15</span>
+SGRID2B     <span class="m">3</span>
+SWEIGHT      1e-3
+TYPE2B      D2_Blip
+WEIGHTS     -5.72288428961173     <span class="m">0</span>.0861373511683484     -0.00896666789433982     <span class="m">0</span>.00294966595482491     -7.34476007322109e-06     -0.01273914751222     <span class="m">0</span>.0115525987095093     -0.00558906968073512     <span class="m">0</span>.00115981190747442
+</pre></div>
+</div>
+<p>Config file used for prediction:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>DBFILE tdata.db
+FORCE <span class="nb">true</span>
+STRESS <span class="nb">true</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="contribute.html" class="btn btn-neutral float-right" title="Contact &amp; Contribute" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="glossary.html" class="btn btn-neutral float-left" title="Glossary" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Marcin Kirsz.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

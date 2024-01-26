@@ -1,0 +1,156 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structRegistry" kind="struct" language="C++" prot="public">
+    <compoundname>Registry</compoundname>
+    <innerclass refid="structRegistry_1_1Register" prot="public">Registry::Register</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename Base</type>
+      </param>
+      <param>
+        <type>typename ...</type>
+        <declname>Args</declname>
+        <defname>Args</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structRegistry_1a7578b2f4ba58a7dc457d80bb71f88e23" prot="public" static="no">
+        <type>std::map&lt; std::string, Factory&lt; Base, Args... &gt; &gt;</type>
+        <definition>using Registry&lt; Base, Args &gt;::Map =  std::map&lt;std::string,Factory&lt;Base,Args...&gt; &gt;</definition>
+        <argsstring></argsstring>
+        <name>Map</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/registry.h" line="15" column="5" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/registry.h" bodystart="15" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structRegistry_1a37296e025104a721026f8d840d5ca051" prot="public" static="yes" mutable="no">
+        <type>Map</type>
+        <definition>Map Registry&lt; Base, Args &gt;::registry</definition>
+        <argsstring></argsstring>
+        <name>registry</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/registry.h" line="16" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/registry.h" bodystart="16" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structRegistry_1ab92bbea5f7023f40ce173abc827c1477" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="structRegistry" kindref="compound">Registry</ref>&lt; <ref refid="classCut__Base" kindref="compound">Cut_Base</ref>, double &gt;::Map</type>
+        <definition>Registry&lt; Cut_Base, double &gt;::Map Registry&lt; Cut_Base, double &gt;::registry</definition>
+        <argsstring></argsstring>
+        <name>registry</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" line="5" column="35" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" bodystart="5" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="function" id="structRegistry_1abae71e64632498fc58df46a3c17283d5" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="structRegistry" kindref="compound">Registry</ref>&lt; <ref refid="classD2__Base" kindref="compound">D2_Base</ref>, <ref refid="classConfig" kindref="compound">Config</ref> &gt;::Map</type>
+        <definition>Registry&lt; D2_Base, Config &gt;::Map Registry&lt; D2_Base, Config &gt;::registry</definition>
+        <argsstring></argsstring>
+        <name>registry</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_base.cpp" line="2" column="35" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_base.cpp" bodystart="2" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="function" id="structRegistry_1ae43737e644b0dd8a42bf3c2812eac371" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="structRegistry" kindref="compound">Registry</ref>&lt; <ref refid="classD3__Base" kindref="compound">D3_Base</ref>, <ref refid="classConfig" kindref="compound">Config</ref> &gt;::Map</type>
+        <definition>Registry&lt; D3_Base, Config &gt;::Map Registry&lt; D3_Base, Config &gt;::registry</definition>
+        <argsstring></argsstring>
+        <name>registry</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.cpp" line="2" column="35" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.cpp" bodystart="2" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="function" id="structRegistry_1abf4117e94ec37dde38fd15f8af4ccd71" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="structRegistry" kindref="compound">Registry</ref>&lt; <ref refid="classDM__Base" kindref="compound">DM_Base</ref>, <ref refid="classConfig" kindref="compound">Config</ref> &gt;::Map</type>
+        <definition>Registry&lt; DM_Base, Config &gt;::Map Registry&lt; DM_Base, Config &gt;::registry</definition>
+        <argsstring></argsstring>
+        <name>registry</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.cpp" line="2" column="35" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.cpp" bodystart="2" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="function" id="structRegistry_1a44b6e418fa98033ef00a6356219697a0" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="structRegistry" kindref="compound">Registry</ref>&lt; <ref refid="structFunc__Base" kindref="compound">Func_Base</ref> &gt;::Map</type>
+        <definition>Registry&lt; Func_Base &gt;::Map Registry&lt; Func_Base &gt;::registry</definition>
+        <argsstring></argsstring>
+        <name>registry</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.cpp" line="3" column="35" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.cpp" bodystart="3" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="function" id="structRegistry_1acada09344ede2e8879e9636bfe0fa08e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="structRegistry" kindref="compound">Registry</ref>&lt; <ref refid="structFunc__Base" kindref="compound">Func_Base</ref>, <ref refid="classConfig" kindref="compound">Config</ref> &gt;::Map</type>
+        <definition>Registry&lt; Func_Base, Config &gt;::Map Registry&lt; Func_Base, Config &gt;::registry</definition>
+        <argsstring></argsstring>
+        <name>registry</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.cpp" line="4" column="35" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.cpp" bodystart="4" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="function" id="structRegistry_1af014add9cb2b53a6046d24137caac125" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="structRegistry" kindref="compound">Registry</ref>&lt; <ref refid="classM__Base" kindref="compound">M_Base</ref>, <ref refid="structFunc__Base" kindref="compound">Func_Base</ref>, <ref refid="classConfig" kindref="compound">Config</ref> &gt;::Map</type>
+        <definition>Registry&lt; M_Base, Func_Base, Config &gt;::Map Registry&lt; M_Base, Func_Base, Config &gt;::registry</definition>
+        <argsstring></argsstring>
+        <name>registry</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_base.cpp" line="8" column="35" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_base.cpp" bodystart="8" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/utils/registry.h" line="13" column="15" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/registry.h" bodystart="13" bodyend="24"/>
+    <listofallmembers>
+      <member refid="structRegistry_1a7578b2f4ba58a7dc457d80bb71f88e23" prot="public" virt="non-virtual"><scope>Registry</scope><name>Map</name></member>
+      <member refid="structRegistry_1a37296e025104a721026f8d840d5ca051" prot="public" virt="non-virtual"><scope>Registry</scope><name>registry</name></member>
+      <member refid="structRegistry_1ab92bbea5f7023f40ce173abc827c1477" prot="public" virt="non-virtual"><scope>Registry</scope><name>registry</name></member>
+      <member refid="structRegistry_1abae71e64632498fc58df46a3c17283d5" prot="public" virt="non-virtual"><scope>Registry</scope><name>registry</name></member>
+      <member refid="structRegistry_1ae43737e644b0dd8a42bf3c2812eac371" prot="public" virt="non-virtual"><scope>Registry</scope><name>registry</name></member>
+      <member refid="structRegistry_1abf4117e94ec37dde38fd15f8af4ccd71" prot="public" virt="non-virtual"><scope>Registry</scope><name>registry</name></member>
+      <member refid="structRegistry_1a44b6e418fa98033ef00a6356219697a0" prot="public" virt="non-virtual"><scope>Registry</scope><name>registry</name></member>
+      <member refid="structRegistry_1acada09344ede2e8879e9636bfe0fa08e" prot="public" virt="non-virtual"><scope>Registry</scope><name>registry</name></member>
+      <member refid="structRegistry_1af014add9cb2b53a6046d24137caac125" prot="public" virt="non-virtual"><scope>Registry</scope><name>registry</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

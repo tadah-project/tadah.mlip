@@ -1,0 +1,149 @@
+\hypertarget{classM__Base}{}\doxysection{M\+\_\+\+Base Class Reference}
+\label{classM__Base}\index{M\_Base@{M\_Base}}
+
+
+{\ttfamily \#include $<$m\+\_\+base.\+h$>$}
+
+Inheritance diagram for M\+\_\+\+Base\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{classM__Base}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual double \mbox{\hyperlink{classM__Base_a1768d56d8ddfc44fc82caf9f605fd19d}{epredict}} (const aed\+\_\+type \&aed)=0
+\begin{DoxyCompactList}\small\item\em Predict local energy of an atom or bond energy. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classM__Base_ac83ebf4f0844dc2636f13af42701f4ac}\label{classM__Base_ac83ebf4f0844dc2636f13af42701f4ac}} 
+double \mbox{\hyperlink{classM__Base_ac83ebf4f0844dc2636f13af42701f4ac}{epredict}} (const std\+::vector$<$ aed\+\_\+type $>$ aedv)
+\begin{DoxyCompactList}\small\item\em Predict total energy for a set of atoms. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classM__Base_a12fc3ff7093a8c21419a64b5e114813a}\label{classM__Base_a12fc3ff7093a8c21419a64b5e114813a}} 
+virtual double \mbox{\hyperlink{classM__Base_a12fc3ff7093a8c21419a64b5e114813a}{fpredict}} (const fd\+\_\+type \&fdij, const aed\+\_\+type \&aedi, size\+\_\+t k)=0
+\begin{DoxyCompactList}\small\item\em Predict force between a pair of atoms in a k-\/direction. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classM__Base_af83b374bd65dad9e0befe3d9e33c9392}\label{classM__Base_af83b374bd65dad9e0befe3d9e33c9392}} 
+virtual force\+\_\+type \mbox{\hyperlink{classM__Base_af83b374bd65dad9e0befe3d9e33c9392}{fpredict}} (const fd\+\_\+type \&fdij, const aed\+\_\+type \&aedi)=0
+\begin{DoxyCompactList}\small\item\em Predict force between a pair of atoms. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classM__Base_a72f70440f7daafc3a803ff90a38443c4}\label{classM__Base_a72f70440f7daafc3a803ff90a38443c4}} 
+virtual void \mbox{\hyperlink{classM__Base_a72f70440f7daafc3a803ff90a38443c4}{fpredict}} (const size\+\_\+t a, force\+\_\+type \&v, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict total force on an atom a. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classM__Base_a01321e335f930e79dd920d6863ad6378}\label{classM__Base_a01321e335f930e79dd920d6863ad6378}} 
+virtual force\+\_\+type \mbox{\hyperlink{classM__Base_a01321e335f930e79dd920d6863ad6378}{fpredict}} (const size\+\_\+t a, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict total force on an atom a. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classM__Base_ad9f4b951596e31351330d7f57f48a41e}\label{classM__Base_ad9f4b951596e31351330d7f57f48a41e}} 
+virtual \mbox{\hyperlink{structStructure}{Structure}} \mbox{\hyperlink{classM__Base_ad9f4b951596e31351330d7f57f48a41e}{predict}} (const \mbox{\hyperlink{classConfig}{Config}} \&c, \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict energy, forces and stresses for the \mbox{\hyperlink{structStructure}{Structure}} st. \end{DoxyCompactList}\item 
+virtual \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \mbox{\hyperlink{classM__Base_acc6af2d0ed47cfa44cad6d7ba5d13b28}{predict}} (const \mbox{\hyperlink{classConfig}{Config}} \&c, \mbox{\hyperlink{structStDescriptorsDB}{St\+Descriptors\+DB}} \&st\+\_\+desc\+\_\+db, const \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&stdb)
+\begin{DoxyCompactList}\small\item\em Predict energy, forces and stresses for a set of Structures. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classM__Base_a362b90fe7752ab609cdb428ea80bd6d4}\label{classM__Base_a362b90fe7752ab609cdb428ea80bd6d4}} 
+virtual \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \mbox{\hyperlink{classM__Base_a362b90fe7752ab609cdb428ea80bd6d4}{predict}} (\mbox{\hyperlink{classConfig}{Config}} \&c, const \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&stdb, \mbox{\hyperlink{classDC__Base}{D\+C\+\_\+\+Base}} \&dc)
+\begin{DoxyCompactList}\small\item\em Predict energy, forces and stresses for a set of Structures. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classM__Base_a3b7e64524aa00b61309f1aa6dd849fd9}\label{classM__Base_a3b7e64524aa00b61309f1aa6dd849fd9}} 
+virtual stress\+\_\+type \mbox{\hyperlink{classM__Base_a3b7e64524aa00b61309f1aa6dd849fd9}{spredict}} (const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict virial stresses in a \mbox{\hyperlink{structStructure}{Structure}} st. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classM__Base_ac38a254afd0291edd7354b9326910e7e}\label{classM__Base_ac38a254afd0291edd7354b9326910e7e}} 
+virtual stress\+\_\+type \mbox{\hyperlink{classM__Base_ac38a254afd0291edd7354b9326910e7e}{spredict}} (const size\+\_\+t a, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict virial stresses in all Structures. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classM__Base_a855b84ff328de25c9e73859e51e465c7}\label{classM__Base_a855b84ff328de25c9e73859e51e465c7}} 
+virtual void \mbox{\hyperlink{classM__Base_a855b84ff328de25c9e73859e51e465c7}{spredict}} (const size\+\_\+t a, stress\+\_\+type \&s, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict virial stress for atom a in a \mbox{\hyperlink{structStructure}{Structure}} st. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classM__Base_ab278f6d3bd5fd50f3ceed7d0c49c2a0b}\label{classM__Base_ab278f6d3bd5fd50f3ceed7d0c49c2a0b}} 
+virtual t\+\_\+type {\bfseries get\+\_\+weights} ()=0
+\item 
+\mbox{\Hypertarget{classM__Base_a1f0234eeafc91f34bf8941ffd7e4829f}\label{classM__Base_a1f0234eeafc91f34bf8941ffd7e4829f}} 
+virtual t\+\_\+type {\bfseries get\+\_\+weights\+\_\+uncertainty} ()=0
+\item 
+\mbox{\Hypertarget{classM__Base_a2ca511a1d05777d2697aad6ef740bcd9}\label{classM__Base_a2ca511a1d05777d2697aad6ef740bcd9}} 
+virtual void {\bfseries set\+\_\+weights} (t\+\_\+type w)=0
+\item 
+\mbox{\Hypertarget{classM__Base_a93b4fedd1fa36697b7aae04062c1f4cc}\label{classM__Base_a93b4fedd1fa36697b7aae04062c1f4cc}} 
+virtual \mbox{\hyperlink{classConfig}{Config}} {\bfseries get\+\_\+param\+\_\+file} ()=0
+\item 
+virtual void \mbox{\hyperlink{classM__Base_a686dfe2d202072f2d17c19b730d39bcf}{train}} (\mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&stdb, \mbox{\hyperlink{classDC__Base}{D\+C\+\_\+\+Base}} \&dc)
+\item 
+virtual void \mbox{\hyperlink{classM__Base_a8bf7316481159687640bddf1ae01eabd}{train}} (\mbox{\hyperlink{structStDescriptorsDB}{St\+Descriptors\+DB}} \&st\+\_\+desc\+\_\+db, const \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&stdb)
+\item 
+\mbox{\Hypertarget{classM__Base_adf48875b4c344d636a16bfcf0ee5985d}\label{classM__Base_adf48875b4c344d636a16bfcf0ee5985d}} 
+virtual \mbox{\hyperlink{structStructureDB}{Structure\+DB}} {\bfseries predict} (\mbox{\hyperlink{classConfig}{Config}} config\+\_\+pred, \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&stdb, \mbox{\hyperlink{classDC__Base}{D\+C\+\_\+\+Base}} \&dc, t\+\_\+type \&predicted\+\_\+error)=0
+\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classM__Base_a515626d97be7664c9288b86c01166f97}\label{classM__Base_a515626d97be7664c9288b86c01166f97}} 
+\mbox{\hyperlink{classNormaliser}{Normaliser}} {\bfseries norm}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Base class for all models.
+
+All models {\bfseries{must}} inherit this class and implement all methods.
+
+Naming convention used\+: M\+\_\+\+Model\+Name 
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classM__Base_a1768d56d8ddfc44fc82caf9f605fd19d}\label{classM__Base_a1768d56d8ddfc44fc82caf9f605fd19d}} 
+\index{M\_Base@{M\_Base}!epredict@{epredict}}
+\index{epredict@{epredict}!M\_Base@{M\_Base}}
+\doxysubsubsection{\texorpdfstring{epredict()}{epredict()}}
+{\footnotesize\ttfamily virtual double M\+\_\+\+Base\+::epredict (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{aed }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Predict local energy of an atom or bond energy. 
+
+The result depends on how aed is computed.
+
+If it is computed between a pair of atoms than the result is a bond energy.
+
+If aed contains sum over all nearest neighbours than the result is a local atomic energy $ E_i $. 
+
+Implemented in \mbox{\hyperlink{classM__BLR_a5fb80fec5d095c765d1a0ce7649c8ccd}{M\+\_\+\+B\+L\+R$<$ B\+F $>$}}, and \mbox{\hyperlink{classM__KRR_a73872d2e996f22327c15fd89302fab2c}{M\+\_\+\+K\+R\+R$<$ K $>$}}.
+
+\mbox{\Hypertarget{classM__Base_acc6af2d0ed47cfa44cad6d7ba5d13b28}\label{classM__Base_acc6af2d0ed47cfa44cad6d7ba5d13b28}} 
+\index{M\_Base@{M\_Base}!predict@{predict}}
+\index{predict@{predict}!M\_Base@{M\_Base}}
+\doxysubsubsection{\texorpdfstring{predict()}{predict()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structStructureDB}{Structure\+DB}} M\+\_\+\+Base\+::predict (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{classConfig}{Config}} \&}]{c,  }\item[{\mbox{\hyperlink{structStDescriptorsDB}{St\+Descriptors\+DB}} \&}]{st\+\_\+desc\+\_\+db,  }\item[{const \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&}]{stdb }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+
+
+Predict energy, forces and stresses for a set of Structures. 
+
+Use precalculated descriptors. \mbox{\Hypertarget{classM__Base_a8bf7316481159687640bddf1ae01eabd}\label{classM__Base_a8bf7316481159687640bddf1ae01eabd}} 
+\index{M\_Base@{M\_Base}!train@{train}}
+\index{train@{train}!M\_Base@{M\_Base}}
+\doxysubsubsection{\texorpdfstring{train()}{train()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily virtual void M\+\_\+\+Base\+::train (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structStDescriptorsDB}{St\+Descriptors\+DB}} \&}]{st\+\_\+desc\+\_\+db,  }\item[{const \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&}]{stdb }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}
+
+This will fit a model with precalculated \mbox{\hyperlink{structStDescriptorsDB}{St\+Descriptors\+DB}} object.
+
+\mbox{\hyperlink{structStructure}{Structure}} stdb object must have all nearest neighbours calculated with N\+N\+\_\+\+Finder. 
+
+Reimplemented in \mbox{\hyperlink{classM__KRR_a4b78e1ba12159722ef08ab0f0cebcbe5}{M\+\_\+\+K\+R\+R$<$ K $>$}}, and \mbox{\hyperlink{classM__BLR_a92d1bfe688a6e9e3326fec707858fa35}{M\+\_\+\+B\+L\+R$<$ B\+F $>$}}.
+
+\mbox{\Hypertarget{classM__Base_a686dfe2d202072f2d17c19b730d39bcf}\label{classM__Base_a686dfe2d202072f2d17c19b730d39bcf}} 
+\index{M\_Base@{M\_Base}!train@{train}}
+\index{train@{train}!M\_Base@{M\_Base}}
+\doxysubsubsection{\texorpdfstring{train()}{train()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily virtual void M\+\_\+\+Base\+::train (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&}]{stdb,  }\item[{\mbox{\hyperlink{classDC__Base}{D\+C\+\_\+\+Base}} \&}]{dc }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}
+
+This will fit a model without precalculated \mbox{\hyperlink{structStDescriptorsDB}{St\+Descriptors\+DB}} object.
+
+\mbox{\hyperlink{structStructure}{Structure}} stdb object must have all nearest neighbours calculated with N\+N\+\_\+\+Finder.
+
+
+\begin{DoxyParams}{Parameters}
+{\em dc} & is a Descriptor\+Calc object \\
+\hline
+\end{DoxyParams}
+
+
+Reimplemented in \mbox{\hyperlink{classM__BLR_ae4dea3d0d1a41b0628639a239b1fbff2}{M\+\_\+\+B\+L\+R$<$ B\+F $>$}}, and \mbox{\hyperlink{classM__KRR_a00bc87831094a0c5bdf904fb9999941c}{M\+\_\+\+K\+R\+R$<$ K $>$}}.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/models/m\+\_\+base.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/models/m\+\_\+base.\+cpp\end{DoxyCompactItemize}

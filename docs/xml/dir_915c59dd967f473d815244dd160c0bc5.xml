@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="dir_915c59dd967f473d815244dd160c0bc5" kind="dir">
+    <compoundname>/home/s1351949/PROJECTS/tadah/src/descriptors/dm</compoundname>
+    <innerfile refid="dm__all_8h">dm_all.h</innerfile>
+    <innerfile refid="dm__base_8cpp">dm_base.cpp</innerfile>
+    <innerfile refid="dm__base_8h">dm_base.h</innerfile>
+    <innerfile refid="dm__dummy_8cpp">dm_dummy.cpp</innerfile>
+    <innerfile refid="dm__dummy_8h">dm_dummy.h</innerfile>
+    <innerfile refid="dm__ead_8cpp">dm_ead.cpp</innerfile>
+    <innerfile refid="dm__ead_8h">dm_ead.h</innerfile>
+    <innerfile refid="dm__eam_8cpp">dm_eam.cpp</innerfile>
+    <innerfile refid="dm__eam_8h">dm_eam.h</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/"/>
+  </compounddef>
+</doxygen>

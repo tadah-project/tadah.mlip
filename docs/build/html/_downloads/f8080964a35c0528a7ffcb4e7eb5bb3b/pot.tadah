@@ -1,0 +1,15 @@
+BIAS      true
+DIMER      false
+EWEIGHT      1.0
+FWEIGHT      1.0
+INIT2B      true
+INIT3B      false
+INITMB      false
+LAMBDA      0
+MODEL     M_KRR     Kern_Linear
+NORM      false
+RCTYPE2B      Cut_Dummy
+RCUT2B      5.3
+SWEIGHT      1.0
+TYPE2B      D2_LJ      D2_LJ
+WEIGHTS     -11.3156087822153     -333.105132092738     -3715.65989778249

@@ -1,0 +1,469 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structFunc__Base" kind="struct" language="C++" prot="public">
+    <compoundname>Func_Base</compoundname>
+    <derivedcompoundref refid="structBF__Base" prot="public" virt="non-virtual">BF_Base</derivedcompoundref>
+    <derivedcompoundref refid="classKern__Base" prot="public" virt="non-virtual">Kern_Base</derivedcompoundref>
+    <includes refid="func__base_8h" local="no">func_base.h</includes>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structFunc__Base_1ad5e024d08c74e3085f1bd9a91bec0538" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type></type>
+        <definition>virtual Func_Base::~Func_Base</definition>
+        <argsstring>()</argsstring>
+        <name>~Func_Base</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="17" column="13" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="17" bodyend="17"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1a0831694fbcfe3b58f60086a6080cfaa6" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>double</type>
+        <definition>virtual double Func_Base::operator()</definition>
+        <argsstring>(const aed_type &amp;b, const aed_type &amp;af)</argsstring>
+        <name>operator()</name>
+        <reimplementedby refid="classKern__Quadratic_1a9b44597996b11017af513d8a0bd84c3c">operator()</reimplementedby>
+        <reimplementedby refid="classKern__RBF_1a8dfd101e81e6da19e78b0aa9d2780d43">operator()</reimplementedby>
+        <reimplementedby refid="classKern__LQ_1a96e3c209f045fdd6cb4141638397a2f4">operator()</reimplementedby>
+        <reimplementedby refid="classKern__Sigmoid_1a5bd481793580f518bbe169a58fccb3f9">operator()</reimplementedby>
+        <reimplementedby refid="classKern__Polynomial_1af3187240cd3bc75cfa2926e931c0a83d">operator()</reimplementedby>
+        <reimplementedby refid="classKern__Linear_1a3bf19b7d903b34be1e9c4a09e14bfbee">operator()</reimplementedby>
+        <reimplementedby refid="classKern__Base_1addb3ad5509b3d128dd12f01f854b533c">operator()</reimplementedby>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>af</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="20" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="20" bodyend="20"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1a840a28ccef5e2a1664c6329ac338df54" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>aed_type</type>
+        <definition>virtual aed_type Func_Base::derivative</definition>
+        <argsstring>(const aed_type &amp;b, const aed_type &amp;af)</argsstring>
+        <name>derivative</name>
+        <reimplementedby refid="classKern__Linear_1aaf5a623bb354f41d54a0a03d002da637">derivative</reimplementedby>
+        <reimplementedby refid="classKern__Quadratic_1a911944e2d45225efbf5b09d6c2c4ee69">derivative</reimplementedby>
+        <reimplementedby refid="classKern__RBF_1ade8ad4161223b94df58bb8335cbef2a3">derivative</reimplementedby>
+        <reimplementedby refid="classKern__LQ_1a90ee3f967e89da91e0f7cc2d8ce5acca">derivative</reimplementedby>
+        <reimplementedby refid="classKern__Sigmoid_1a81b9fe4448b5924ca57d5c02e2a8ac32">derivative</reimplementedby>
+        <reimplementedby refid="classKern__Polynomial_1aa00365fd822d918bee028234c4796a9a">derivative</reimplementedby>
+        <reimplementedby refid="classKern__Base_1a9a6a4482e80ade5d1f8579986863d075">derivative</reimplementedby>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>af</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="21" column="22" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="21" bodyend="21"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1a1d4107fc3ed70e79e0126a112242aab7" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>double</type>
+        <definition>virtual double Func_Base::prime</definition>
+        <argsstring>(const aed_type &amp;b, const aed_type &amp;af, const aed_type &amp;ff)</argsstring>
+        <name>prime</name>
+        <reimplementedby refid="classKern__Quadratic_1af4552634009424b6853c9582b4f68f76">prime</reimplementedby>
+        <reimplementedby refid="classKern__RBF_1ad30c8e49365e2826a37b85b6cfd911f8">prime</reimplementedby>
+        <reimplementedby refid="classKern__LQ_1aa5046e0eb9fde54b5e9a9b0d68fd3030">prime</reimplementedby>
+        <reimplementedby refid="classKern__Sigmoid_1ae1aed86bde54852e2de8278f9868ac0b">prime</reimplementedby>
+        <reimplementedby refid="classKern__Polynomial_1a16ed59adee2d92247bb6256e0bae6ed8">prime</reimplementedby>
+        <reimplementedby refid="classKern__Linear_1af963374ae396a3f6d53bd0f2f7fa3367">prime</reimplementedby>
+        <reimplementedby refid="classKern__Base_1a3655c75015f64f44b2c0d884d1d156b1">prime</reimplementedby>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>af</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>ff</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="22" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="22" bodyend="23"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1ada732e44cd10ffb2f7f537629d8b1407" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>void</type>
+        <definition>virtual void Func_Base::set_basis</definition>
+        <argsstring>(const std::vector&lt; aed_type &gt; b)</argsstring>
+        <name>set_basis</name>
+        <reimplementedby refid="classKern__Linear_1ad5c543e0c23325d3c349d27ee2cab1e7">set_basis</reimplementedby>
+        <reimplementedby refid="classKern__Base_1a535beb13bd2154389721aa3585b4546d">set_basis</reimplementedby>
+        <param>
+          <type>const std::vector&lt; aed_type &gt;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="24" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="24" bodyend="24"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1a79140083a4dff5dc69f09acd9bf4c35f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>std::string</type>
+        <definition>virtual std::string Func_Base::get_label</definition>
+        <argsstring>()</argsstring>
+        <name>get_label</name>
+        <reimplementedby refid="structBF__Linear_1a9f8775ced2dab8cd7740ca50c4a8d044">get_label</reimplementedby>
+        <reimplementedby refid="structBF__Polynomial2_1a9031c3c6df9c651a89e83c398b774298">get_label</reimplementedby>
+        <reimplementedby refid="classKern__Quadratic_1ac91ad8e82db9ab9d9855f6afa160e1ec">get_label</reimplementedby>
+        <reimplementedby refid="classKern__RBF_1a409079cf5ac6307381e15d821179514b">get_label</reimplementedby>
+        <reimplementedby refid="classKern__LQ_1a1d243e57b2b37b356d070cec390806fd">get_label</reimplementedby>
+        <reimplementedby refid="classKern__Sigmoid_1a92b64a1de7a2bf5e4754619b81a15995">get_label</reimplementedby>
+        <reimplementedby refid="classKern__Polynomial_1ad4f7a21f383b2ec6d2371dbd07d83465">get_label</reimplementedby>
+        <reimplementedby refid="classKern__Linear_1af308dbf710904c693e1ebdfab31c6384">get_label</reimplementedby>
+        <reimplementedby refid="structBF__Base_1a9b53aa0f172b1dd8f19e07806ecc6d8b">get_label</reimplementedby>
+        <reimplementedby refid="classKern__Base_1a4dc88c30557303ca426f5175f91fed5a">get_label</reimplementedby>
+        <briefdescription>
+<para>Return label of this object. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="27" column="25" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="27" bodyend="27"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1a2fab62a5e6ca6a93a2fc52f107f00fd6" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>double</type>
+        <definition>virtual double Func_Base::epredict</definition>
+        <argsstring>(const t_type &amp;weights, const aed_type &amp;aed)</argsstring>
+        <name>epredict</name>
+        <reimplementedby refid="classKern__Base_1a0bf229903b2f826bbda74fc65efd56d8">epredict</reimplementedby>
+        <reimplementedby refid="structBF__Linear_1afeb537af2cab47c01b395b4d00fdf9b8">epredict</reimplementedby>
+        <reimplementedby refid="structBF__Polynomial2_1af0b7454d7bcb557c8cf60d636c66e108">epredict</reimplementedby>
+        <reimplementedby refid="classKern__Linear_1a90578b0c5f032103382888107a148d90">epredict</reimplementedby>
+        <reimplementedby refid="structBF__Base_1a292e3f61450613a390915fb75ef86816">epredict</reimplementedby>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="28" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="28" bodyend="28"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1abb9c075f1b1ae369f73d2e776b5e25bb" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>double</type>
+        <definition>virtual double Func_Base::fpredict</definition>
+        <argsstring>(const t_type &amp;weights, const fd_type &amp;fdij, const aed_type &amp;aedi, const size_t k)</argsstring>
+        <name>fpredict</name>
+        <reimplementedby refid="classKern__Base_1a8ce2ac032a2dfe2fde02a44c01454c56">fpredict</reimplementedby>
+        <reimplementedby refid="structBF__Linear_1aa5a186233f0d0d65f6131862decabdf8">fpredict</reimplementedby>
+        <reimplementedby refid="structBF__Polynomial2_1a3159d35f2f59f2617c495935bf4f01ee">fpredict</reimplementedby>
+        <reimplementedby refid="classKern__Linear_1a29970b44f108e8adc19255fd94d8023f">fpredict</reimplementedby>
+        <reimplementedby refid="structBF__Base_1a3aa36ab2eb38770d149244f1cabda048">fpredict</reimplementedby>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const fd_type &amp;</type>
+          <declname>fdij</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aedi</declname>
+        </param>
+        <param>
+          <type>const size_t</type>
+          <declname>k</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="29" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="29" bodyend="30"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1a518fb9dc65bfe5d15bf21876191a287b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>force_type</type>
+        <definition>virtual force_type Func_Base::fpredict</definition>
+        <argsstring>(const t_type &amp;weights, const fd_type &amp;fdij, const aed_type &amp;aedi)</argsstring>
+        <name>fpredict</name>
+        <reimplementedby refid="classKern__Base_1aa8c5f6fd8c3151d8ca8d142a9cf9f62c">fpredict</reimplementedby>
+        <reimplementedby refid="structBF__Linear_1af99910e527ffaf4836cad616399eb5db">fpredict</reimplementedby>
+        <reimplementedby refid="structBF__Polynomial2_1ae6dccaf967dfa31357c8a0fffa04e7f6">fpredict</reimplementedby>
+        <reimplementedby refid="classKern__Linear_1ae0a7b1f5c7d0de243c54e3c530f0e7a3">fpredict</reimplementedby>
+        <reimplementedby refid="structBF__Base_1a86f083df8d5c9dc943bf4e9c43889406">fpredict</reimplementedby>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const fd_type &amp;</type>
+          <declname>fdij</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aedi</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="31" column="24" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="31" bodyend="32"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1ab3662c206c7435be5e4e7b236bf104ab" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>size_t</type>
+        <definition>virtual size_t Func_Base::get_phi_cols</definition>
+        <argsstring>(const Config &amp;config)</argsstring>
+        <name>get_phi_cols</name>
+        <reimplementedby refid="structBF__Linear_1a955cc765270a5833f44c5fa6c4e87355">get_phi_cols</reimplementedby>
+        <reimplementedby refid="structBF__Polynomial2_1a17dce6439d26cb7384017f95ab325f37">get_phi_cols</reimplementedby>
+        <reimplementedby refid="classKern__Linear_1a4d8719eec305e557f80109be5265067e">get_phi_cols</reimplementedby>
+        <reimplementedby refid="classKern__Base_1af70579ef3b176b73674e1711e55aca23">get_phi_cols</reimplementedby>
+        <reimplementedby refid="structBF__Base_1a2db80104401e05da6b3774a7e1c26a8d">get_phi_cols</reimplementedby>
+        <param>
+          <type>const <ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>config</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="33" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="33" bodyend="33"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1ae9015795066119c7b8c09ae6a6b065a1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>void</type>
+        <definition>virtual void Func_Base::calc_phi_energy_row</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac, const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_energy_row</name>
+        <reimplementedby refid="structBF__Linear_1a3e80b07b8e03a37b635d899f75aa8718">calc_phi_energy_row</reimplementedby>
+        <reimplementedby refid="structBF__Polynomial2_1a5f5ceacf9899bef7f1dc3e3e68d865ca">calc_phi_energy_row</reimplementedby>
+        <reimplementedby refid="classKern__Linear_1a10e6904a4f30a07d1f39c9160988a97c">calc_phi_energy_row</reimplementedby>
+        <reimplementedby refid="classKern__Base_1ada89257424dae4cb7a8fd43fbfae8ae7">calc_phi_energy_row</reimplementedby>
+        <reimplementedby refid="structBF__Base_1a447b5837731836b9a38a3c9807c3d1ec">calc_phi_energy_row</reimplementedby>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="34" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="34" bodyend="35"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1af5a78f61b756fa847b9f30e8d24205a0" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>void</type>
+        <definition>virtual void Func_Base::calc_phi_force_rows</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac, const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_force_rows</name>
+        <reimplementedby refid="structBF__Linear_1a4030989d6d502ca8fc456bd0741d4a41">calc_phi_force_rows</reimplementedby>
+        <reimplementedby refid="structBF__Polynomial2_1aeddb447eb8529d09da521d3cfb3a4989">calc_phi_force_rows</reimplementedby>
+        <reimplementedby refid="classKern__Linear_1ae4d175229a5427ac31843127a11face6">calc_phi_force_rows</reimplementedby>
+        <reimplementedby refid="classKern__Base_1a2434db2a8b2eaefa9397a377ac254bf9">calc_phi_force_rows</reimplementedby>
+        <reimplementedby refid="structBF__Base_1a14d9ee0250c57271741e4d36137cb350">calc_phi_force_rows</reimplementedby>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="36" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="36" bodyend="37"/>
+      </memberdef>
+      <memberdef kind="function" id="structFunc__Base_1a96e8b0477e0e736710fb9f971a428178" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>void</type>
+        <definition>virtual void Func_Base::calc_phi_stress_rows</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac[6], const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_stress_rows</name>
+        <reimplementedby refid="structBF__Linear_1a1a6693cd27c1cdda1aec876f8747e9be">calc_phi_stress_rows</reimplementedby>
+        <reimplementedby refid="structBF__Polynomial2_1aa95f3f1df1a6731bc70efd9db35ee718">calc_phi_stress_rows</reimplementedby>
+        <reimplementedby refid="classKern__Linear_1a05ea79f86a4613c8c97bc8354c2919b5">calc_phi_stress_rows</reimplementedby>
+        <reimplementedby refid="classKern__Base_1a5688c48ce0b86b11a06c076ba0b35b7b">calc_phi_stress_rows</reimplementedby>
+        <reimplementedby refid="structBF__Base_1a2200071bd5336c222edf897020926b00">calc_phi_stress_rows</reimplementedby>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+          <array>[6]</array>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="38" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="38" bodyend="39"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Base class for Kernels and <ref refid="classBasis" kindref="compound">Basis</ref> Functions </para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="7">
+        <label>Kern_LQ</label>
+        <link refid="classKern__LQ"/>
+        <childnode refid="5" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="8">
+        <label>Kern_Polynomial</label>
+        <link refid="classKern__Polynomial"/>
+        <childnode refid="5" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>Func_Base</label>
+        <link refid="structFunc__Base"/>
+      </node>
+      <node id="6">
+        <label>Kern_Linear</label>
+        <link refid="classKern__Linear"/>
+        <childnode refid="5" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>BF_Linear</label>
+        <link refid="structBF__Linear"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>BF_Base</label>
+        <link refid="structBF__Base"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="9">
+        <label>Kern_Quadratic</label>
+        <link refid="classKern__Quadratic"/>
+        <childnode refid="5" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="10">
+        <label>Kern_RBF</label>
+        <link refid="classKern__RBF"/>
+        <childnode refid="5" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="11">
+        <label>Kern_Sigmoid</label>
+        <link refid="classKern__Sigmoid"/>
+        <childnode refid="5" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="4">
+        <label>BF_Polynomial2</label>
+        <link refid="structBF__Polynomial2"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>Kern_Base</label>
+        <link refid="classKern__Base"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/func_base.h" line="14" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/func_base.h" bodystart="14" bodyend="40"/>
+    <listofallmembers>
+      <member refid="structFunc__Base_1ae9015795066119c7b8c09ae6a6b065a1" prot="public" virt="virtual"><scope>Func_Base</scope><name>calc_phi_energy_row</name></member>
+      <member refid="structFunc__Base_1af5a78f61b756fa847b9f30e8d24205a0" prot="public" virt="virtual"><scope>Func_Base</scope><name>calc_phi_force_rows</name></member>
+      <member refid="structFunc__Base_1a96e8b0477e0e736710fb9f971a428178" prot="public" virt="virtual"><scope>Func_Base</scope><name>calc_phi_stress_rows</name></member>
+      <member refid="structFunc__Base_1a840a28ccef5e2a1664c6329ac338df54" prot="public" virt="virtual"><scope>Func_Base</scope><name>derivative</name></member>
+      <member refid="structFunc__Base_1a2fab62a5e6ca6a93a2fc52f107f00fd6" prot="public" virt="virtual"><scope>Func_Base</scope><name>epredict</name></member>
+      <member refid="structFunc__Base_1abb9c075f1b1ae369f73d2e776b5e25bb" prot="public" virt="virtual"><scope>Func_Base</scope><name>fpredict</name></member>
+      <member refid="structFunc__Base_1a518fb9dc65bfe5d15bf21876191a287b" prot="public" virt="virtual"><scope>Func_Base</scope><name>fpredict</name></member>
+      <member refid="structFunc__Base_1a79140083a4dff5dc69f09acd9bf4c35f" prot="public" virt="virtual"><scope>Func_Base</scope><name>get_label</name></member>
+      <member refid="structFunc__Base_1ab3662c206c7435be5e4e7b236bf104ab" prot="public" virt="virtual"><scope>Func_Base</scope><name>get_phi_cols</name></member>
+      <member refid="structFunc__Base_1a0831694fbcfe3b58f60086a6080cfaa6" prot="public" virt="virtual"><scope>Func_Base</scope><name>operator()</name></member>
+      <member refid="structFunc__Base_1a1d4107fc3ed70e79e0126a112242aab7" prot="public" virt="virtual"><scope>Func_Base</scope><name>prime</name></member>
+      <member refid="structFunc__Base_1ada732e44cd10ffb2f7f537629d8b1407" prot="public" virt="virtual"><scope>Func_Base</scope><name>set_basis</name></member>
+      <member refid="structFunc__Base_1ad5e024d08c74e3085f1bd9a91bec0538" prot="public" virt="virtual"><scope>Func_Base</scope><name>~Func_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

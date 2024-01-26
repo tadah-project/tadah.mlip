@@ -1,0 +1,92 @@
+\hypertarget{classD2__Base}{}\doxysection{D2\+\_\+\+Base Class Reference}
+\label{classD2__Base}\index{D2\_Base@{D2\_Base}}
+
+
+Base class for all two-\/body type descriptors.  
+
+
+
+
+{\ttfamily \#include $<$d2\+\_\+base.\+h$>$}
+
+Inheritance diagram for D2\+\_\+\+Base\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=3.000000cm]{classD2__Base}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual void \mbox{\hyperlink{classD2__Base_a00def8ce32e48fdfb2815a43e6cda8a1}{calc\+\_\+aed}} (const double rij, const double rij\+\_\+sq, const double fc\+\_\+ij, \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&aed)=0
+\begin{DoxyCompactList}\small\item\em Calculate A\+ED. \end{DoxyCompactList}\item 
+virtual void \mbox{\hyperlink{classD2__Base_aae6943d8aaee729e6892ac0ca7f6a68d}{calc\+\_\+d\+Xijdri}} (const double rij, const double rij\+\_\+sq, const double fc\+\_\+ij, const double fcp\+\_\+ij, \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&fd\+\_\+ij)=0
+\begin{DoxyCompactList}\small\item\em Calculate FD. \end{DoxyCompactList}\item 
+virtual void \mbox{\hyperlink{classD2__Base_a21a79b4945c440a6ce5d0d930e79e264}{calc\+\_\+fd\+\_\+approx}} (const double rij, const double fcijp, const double fcijn, \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&aedp, \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&aedn, \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&fd\+\_\+ij, const double h)
+\begin{DoxyCompactList}\small\item\em Calculate approximation to FD. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classD2__Base_abd6758f59daf4cca3d5463d932ccf47c}\label{classD2__Base_abd6758f59daf4cca3d5463d932ccf47c}} 
+virtual void \mbox{\hyperlink{classD2__Base_abd6758f59daf4cca3d5463d932ccf47c}{calc\+\_\+all}} (const double rij, const double rij\+\_\+sq, const double fc\+\_\+ij, const double fcp\+\_\+ij, \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&aed, \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&fd\+\_\+ij)=0
+\begin{DoxyCompactList}\small\item\em Calculate A\+ED + FD. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classD2__Base_af0e0e608f19159d9b64ff6b400e3362a}\label{classD2__Base_af0e0e608f19159d9b64ff6b400e3362a}} 
+virtual std\+::string \mbox{\hyperlink{classD2__Base_af0e0e608f19159d9b64ff6b400e3362a}{label}} ()=0
+\begin{DoxyCompactList}\small\item\em Return label of this descriptor. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classD2__Base_a9fa130af5612f18f65bfb6debc10876f}\label{classD2__Base_a9fa130af5612f18f65bfb6debc10876f}} 
+size\+\_\+t {\bfseries fidx} =0
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Base class for all two-\/body type descriptors. 
+
+All two-\/body descriptors {\bfseries{must}} inherit this class. 
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classD2__Base_a00def8ce32e48fdfb2815a43e6cda8a1}\label{classD2__Base_a00def8ce32e48fdfb2815a43e6cda8a1}} 
+\index{D2\_Base@{D2\_Base}!calc\_aed@{calc\_aed}}
+\index{calc\_aed@{calc\_aed}!D2\_Base@{D2\_Base}}
+\doxysubsubsection{\texorpdfstring{calc\_aed()}{calc\_aed()}}
+{\footnotesize\ttfamily virtual void D2\+\_\+\+Base\+::calc\+\_\+aed (\begin{DoxyParamCaption}\item[{const double}]{rij,  }\item[{const double}]{rij\+\_\+sq,  }\item[{const double}]{fc\+\_\+ij,  }\item[{\mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&}]{aed }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Calculate A\+ED. 
+
+Calculate Atomic Energy Descriptor for the atom local environment. 
+
+Implemented in \mbox{\hyperlink{classD2__EAM_a03f04976644336b17759a7d2bfc01222}{D2\+\_\+\+E\+AM}}, \mbox{\hyperlink{classD2__Dummy_a06b2d8c562e05bd805a9ff820f87e8b9}{D2\+\_\+\+Dummy}}, \mbox{\hyperlink{classD2__LJ_aa2e2c56974973b21ce5b28407debb89a}{D2\+\_\+\+LJ}}, \mbox{\hyperlink{classD2__BP_a31cd091e1466aaccb968cab5348533c2}{D2\+\_\+\+BP}}, and \mbox{\hyperlink{classD2__Blip_a374221e4419bdd17392078e9478f41e5}{D2\+\_\+\+Blip}}.
+
+\mbox{\Hypertarget{classD2__Base_aae6943d8aaee729e6892ac0ca7f6a68d}\label{classD2__Base_aae6943d8aaee729e6892ac0ca7f6a68d}} 
+\index{D2\_Base@{D2\_Base}!calc\_dXijdri@{calc\_dXijdri}}
+\index{calc\_dXijdri@{calc\_dXijdri}!D2\_Base@{D2\_Base}}
+\doxysubsubsection{\texorpdfstring{calc\_dXijdri()}{calc\_dXijdri()}}
+{\footnotesize\ttfamily virtual void D2\+\_\+\+Base\+::calc\+\_\+d\+Xijdri (\begin{DoxyParamCaption}\item[{const double}]{rij,  }\item[{const double}]{rij\+\_\+sq,  }\item[{const double}]{fc\+\_\+ij,  }\item[{const double}]{fcp\+\_\+ij,  }\item[{\mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&}]{fd\+\_\+ij }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Calculate FD. 
+
+Calculate Force Descriptor for the atom local environment. 
+
+Implemented in \mbox{\hyperlink{classD2__EAM_a2ff53da487983d516611a1a33d59fbfb}{D2\+\_\+\+E\+AM}}, \mbox{\hyperlink{classD2__Dummy_a3af46c1a1e6b6bfa90938ce905ae51c8}{D2\+\_\+\+Dummy}}, \mbox{\hyperlink{classD2__BP_aec5bfd6ff5a4e6345dba8c706cf11689}{D2\+\_\+\+BP}}, \mbox{\hyperlink{classD2__Blip_a6f41e878e02b7718e6f4f111f01898c8}{D2\+\_\+\+Blip}}, and \mbox{\hyperlink{classD2__LJ_ac82577e96799673fc30ef2445f05cd44}{D2\+\_\+\+LJ}}.
+
+\mbox{\Hypertarget{classD2__Base_a21a79b4945c440a6ce5d0d930e79e264}\label{classD2__Base_a21a79b4945c440a6ce5d0d930e79e264}} 
+\index{D2\_Base@{D2\_Base}!calc\_fd\_approx@{calc\_fd\_approx}}
+\index{calc\_fd\_approx@{calc\_fd\_approx}!D2\_Base@{D2\_Base}}
+\doxysubsubsection{\texorpdfstring{calc\_fd\_approx()}{calc\_fd\_approx()}}
+{\footnotesize\ttfamily void D2\+\_\+\+Base\+::calc\+\_\+fd\+\_\+approx (\begin{DoxyParamCaption}\item[{const double}]{rij,  }\item[{const double}]{fcijp,  }\item[{const double}]{fcijn,  }\item[{\mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&}]{aedp,  }\item[{\mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&}]{aedn,  }\item[{\mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&}]{fd\+\_\+ij,  }\item[{const double}]{h }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+
+
+Calculate approximation to FD. 
+
+Calculate Force Descriptor for the atom local environment using central difference approximation.
+
+h -\/$>$ something small e.\+g. 1e-\/8 fcijp -\/$>$ cutoff(rij+h,...) fcijn -\/$>$ cutoff(rij-\/h,...) aedp -\/$>$ calc\+\_\+aed(rij+h,...) aedn -\/$>$ calc\+\_\+aed(rij-\/h,...) fd\+\_\+ij -\/ descriptor derivative 
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/descriptors/d2/d2\+\_\+base.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/descriptors/d2/d2\+\_\+base.\+cpp\end{DoxyCompactItemize}

@@ -1,0 +1,621 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classM__KRR" kind="class" language="C++" prot="public">
+    <compoundname>M_KRR</compoundname>
+    <basecompoundref refid="classM__Base" prot="public" virt="non-virtual">M_Base</basecompoundref>
+    <basecompoundref refid="classLinearRegressor" prot="public" virt="non-virtual">LinearRegressor</basecompoundref>
+    <includes refid="m__krr_8h" local="no">m_krr.h</includes>
+    <templateparamlist>
+      <param>
+        <type>typename K</type>
+        <defval><ref refid="structFunc__Base" kindref="compound">Func_Base</ref>&amp;</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classM__KRR_1a5c5433f1c98987434d3e9ebaae431d05" prot="private" static="no">
+        <type>Eigen::MatrixXd</type>
+        <definition>using M_KRR&lt; K &gt;::mat =  Eigen::MatrixXd</definition>
+        <argsstring></argsstring>
+        <name>mat</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="251" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="251" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classM__KRR_1a4303661fc609ee021c7312843ab0ecf9" prot="private" static="no" mutable="no">
+        <type>K</type>
+        <definition>K M_KRR&lt; K &gt;::kernel</definition>
+        <argsstring></argsstring>
+        <name>kernel</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="252" column="11" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="252" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classM__KRR_1ac71a55288e777257243c4abb2329fed2" prot="private" static="no" mutable="no">
+        <type><ref refid="classBasis" kindref="compound">Basis</ref>&lt; K &gt;</type>
+        <definition>Basis&lt;K&gt; M_KRR&lt; K &gt;::basis</definition>
+        <argsstring></argsstring>
+        <name>basis</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="253" column="15" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="253" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classM__KRR_1a8afbc9f507e0103cd874d746aea4a300" prot="private" static="no" mutable="no">
+        <type><ref refid="classEKM" kindref="compound">EKM</ref>&lt; K &gt;</type>
+        <definition>EKM&lt;K&gt; M_KRR&lt; K &gt;::ekm</definition>
+        <argsstring></argsstring>
+        <name>ekm</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="254" column="13" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="254" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classM__KRR_1a5bd5284a546c211b4471bcfc743906e5" prot="private" static="no" mutable="no">
+        <type><ref refid="classDesignMatrix" kindref="compound">DesignMatrix</ref>&lt; K &gt;</type>
+        <definition>DesignMatrix&lt;K&gt; M_KRR&lt; K &gt;::desmat</definition>
+        <argsstring></argsstring>
+        <name>desmat</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="255" column="22" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="255" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classM__KRR_1a0427931add1375c294d5f6ea1db96145" prot="private" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string M_KRR&lt; K &gt;::label</definition>
+        <argsstring></argsstring>
+        <name>label</name>
+        <initializer>=&quot;M_KRR&quot;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="256" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="256" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classM__KRR_1af6e581753d9b4ec0145c705eda42c381" prot="private" static="no" mutable="no">
+        <type><ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+        <definition>Config&amp; M_KRR&lt; K &gt;::config</definition>
+        <argsstring></argsstring>
+        <name>config</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="257" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="257" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classM__KRR_1a2112611b12c5964e1d5a581bacf842f8" prot="private" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool M_KRR&lt; K &gt;::trained</definition>
+        <argsstring></argsstring>
+        <name>trained</name>
+        <initializer>=false</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="258" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="258" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classM__KRR_1a77304f4eeb544ec8ab9d06f7f524722c" prot="private" static="no" mutable="no">
+        <type>t_type</type>
+        <definition>t_type M_KRR&lt; K &gt;::weights</definition>
+        <argsstring></argsstring>
+        <name>weights</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="259" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="259" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classM__KRR_1a1c4d4040ce8b72197db0a6bf33aab3fe" prot="private" static="no" mutable="no">
+        <type>t_type</type>
+        <definition>t_type M_KRR&lt; K &gt;::kweights</definition>
+        <argsstring></argsstring>
+        <name>kweights</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="260" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="260" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classM__KRR_1a6d8d4c1ca1e046b1cb34acd7aae8a29f" prot="private" static="no" mutable="no">
+        <type>mat</type>
+        <definition>mat M_KRR&lt; K &gt;::Sigma</definition>
+        <argsstring></argsstring>
+        <name>Sigma</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="261" column="13" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="261" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classM__KRR_1a35c607d3a6acd5455922c526ec609725" prot="private" static="no" mutable="no">
+        <type>int</type>
+        <definition>int M_KRR&lt; K &gt;::verbose</definition>
+        <argsstring></argsstring>
+        <name>verbose</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="262" column="13" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="262" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classM__KRR_1ac0c657bc2b78be18ebdb168cbe585f94" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>M_KRR&lt; K &gt;::M_KRR</definition>
+        <argsstring>(Config &amp;c)</argsstring>
+        <name>M_KRR</name>
+        <param>
+          <type><ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This constructor will preapare this object for either training or prediction (if potential is provides as a <ref refid="classConfig" kindref="compound">Config</ref>)</para>
+<para>Usage example:</para>
+<para><programlisting filename=".cpp"><codeline><highlight class="normal"><ref refid="classConfig" kindref="compound">Config</ref><sp/>config(</highlight><highlight class="stringliteral">&quot;Config&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline><highlight class="normal"><ref refid="classM__KRR" kindref="compound">M_KRR&lt;Kern_Linear&gt;</ref><sp/>blr(config);</highlight></codeline>
+</programlisting> </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="45" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="45" bodyend="61"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1ac5a69b35690e54e0b2eac8770e1d1b59" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>M_KRR&lt; K &gt;::M_KRR</definition>
+        <argsstring>(K &amp;k, Config &amp;c)</argsstring>
+        <name>M_KRR</name>
+        <param>
+          <type>K &amp;</type>
+          <declname>k</declname>
+        </param>
+        <param>
+          <type><ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This constructor will preapare this object for either training or prediction (if potential is provides as a <ref refid="classConfig" kindref="compound">Config</ref>)</para>
+<para>Usage example:</para>
+<para><programlisting filename=".cpp"><codeline><highlight class="normal"><ref refid="classConfig" kindref="compound">Config</ref><sp/>config(</highlight><highlight class="stringliteral">&quot;Config&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline><highlight class="normal"><ref refid="classKern__Linear" kindref="compound">Kern_Linear</ref><sp/>kern(config);</highlight></codeline>
+<codeline><highlight class="normal"><ref refid="classM__KRR" kindref="compound">M_KRR&lt;&gt;</ref><sp/>krr(kern,<sp/>config);</highlight></codeline>
+</programlisting> </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="75" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="75" bodyend="92"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1a00bc87831094a0c5bdf904fb9999941c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>void</type>
+        <definition>void M_KRR&lt; K &gt;::train</definition>
+        <argsstring>(StructureDB &amp;stdb, DC_Base &amp;dc)</argsstring>
+        <name>train</name>
+        <reimplements refid="classM__Base_1a686dfe2d202072f2d17c19b730d39bcf">train</reimplements>
+        <param>
+          <type><ref refid="structStructureDB" kindref="compound">StructureDB</ref> &amp;</type>
+          <declname>stdb</declname>
+        </param>
+        <param>
+          <type><ref refid="classDC__Base" kindref="compound">DC_Base</ref> &amp;</type>
+          <declname>dc</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This will fit a model without precalculated <ref refid="structStDescriptorsDB" kindref="compound">StDescriptorsDB</ref> object.</para>
+<para><ref refid="structStructure" kindref="compound">Structure</ref> stdb object must have all nearest neighbours calculated with NN_Finder.</para>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>dc</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>is a DescriptorCalc object </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="95" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="95" bodyend="144"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1a4b78e1ba12159722ef08ab0f0cebcbe5" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>void</type>
+        <definition>void M_KRR&lt; K &gt;::train</definition>
+        <argsstring>(StDescriptorsDB &amp;st_desc_db, const StructureDB &amp;stdb)</argsstring>
+        <name>train</name>
+        <reimplements refid="classM__Base_1a8bf7316481159687640bddf1ae01eabd">train</reimplements>
+        <param>
+          <type><ref refid="structStDescriptorsDB" kindref="compound">StDescriptorsDB</ref> &amp;</type>
+          <declname>st_desc_db</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStructureDB" kindref="compound">StructureDB</ref> &amp;</type>
+          <declname>stdb</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This will fit a model with precalculated <ref refid="structStDescriptorsDB" kindref="compound">StDescriptorsDB</ref> object.</para>
+<para><ref refid="structStructure" kindref="compound">Structure</ref> stdb object must have all nearest neighbours calculated with NN_Finder. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="146" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="146" bodyend="164"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1a73872d2e996f22327c15fd89302fab2c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>double</type>
+        <definition>double M_KRR&lt; K &gt;::epredict</definition>
+        <argsstring>(const aed_type &amp;aed)</argsstring>
+        <name>epredict</name>
+        <reimplements refid="classM__Base_1a1768d56d8ddfc44fc82caf9f605fd19d">epredict</reimplements>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <briefdescription>
+<para>Predict local energy of an atom or bond energy. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>The result depends on how aed is computed.</para>
+<para>If it is computed between a pair of atoms than the result is a bond energy.</para>
+<para>If aed contains sum over all nearest neighbours than the result is a local atomic energy <formula id="46">$ E_i $</formula>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="167" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="167" bodyend="169"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1a8a964fc3a367f24c00376b873a85d5f7" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>double</type>
+        <definition>double M_KRR&lt; K &gt;::fpredict</definition>
+        <argsstring>(const fd_type &amp;fdij, const aed_type &amp;aedi, const size_t k)</argsstring>
+        <name>fpredict</name>
+        <reimplements refid="classM__Base_1a12fc3ff7093a8c21419a64b5e114813a">fpredict</reimplements>
+        <param>
+          <type>const fd_type &amp;</type>
+          <declname>fdij</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aedi</declname>
+        </param>
+        <param>
+          <type>const size_t</type>
+          <declname>k</declname>
+        </param>
+        <briefdescription>
+<para>Predict force between a pair of atoms in a k-direction. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="171" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="171" bodyend="173"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1a48f6294d8271608c111b903f2fa562b3" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>force_type</type>
+        <definition>force_type M_KRR&lt; K &gt;::fpredict</definition>
+        <argsstring>(const fd_type &amp;fdij, const aed_type &amp;aedi)</argsstring>
+        <name>fpredict</name>
+        <reimplements refid="classM__Base_1af83b374bd65dad9e0befe3d9e33c9392">fpredict</reimplements>
+        <param>
+          <type>const fd_type &amp;</type>
+          <declname>fdij</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aedi</declname>
+        </param>
+        <briefdescription>
+<para>Predict force between a pair of atoms. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="175" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="175" bodyend="177"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1aaa84cb7ce12cc7a4392ad08e87a3e528" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>t_type</type>
+        <definition>t_type M_KRR&lt; K &gt;::get_weights</definition>
+        <argsstring>()</argsstring>
+        <name>get_weights</name>
+        <reimplements refid="classM__Base_1ab278f6d3bd5fd50f3ceed7d0c49c2a0b">get_weights</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="198" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="198" bodyend="200"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1a3c267cccf1d4e80de4716588fcd4b72e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>t_type</type>
+        <definition>t_type M_KRR&lt; K &gt;::get_weights_uncertainty</definition>
+        <argsstring>()</argsstring>
+        <name>get_weights_uncertainty</name>
+        <reimplements refid="classM__Base_1a1f0234eeafc91f34bf8941ffd7e4829f">get_weights_uncertainty</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="201" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="201" bodyend="203"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1a441a19e27fffabf09bf692da00082c74" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type>void</type>
+        <definition>void M_KRR&lt; K &gt;::set_weights</definition>
+        <argsstring>(t_type w)</argsstring>
+        <name>set_weights</name>
+        <reimplements refid="classM__Base_1a2ca511a1d05777d2697aad6ef740bcd9">set_weights</reimplements>
+        <param>
+          <type>t_type</type>
+          <declname>w</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="204" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="204" bodyend="206"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1a6604511ccbcd0d74aa8ef387582f61ee" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type><ref refid="classConfig" kindref="compound">Config</ref></type>
+        <definition>Config M_KRR&lt; K &gt;::get_param_file</definition>
+        <argsstring>()</argsstring>
+        <name>get_param_file</name>
+        <reimplements refid="classM__Base_1a93b4fedd1fa36697b7aae04062c1f4cc">get_param_file</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="207" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="207" bodyend="248"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classM__KRR_1a81f325ea846188c8922cec9505a930da" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void M_KRR&lt; K &gt;::read_pot</definition>
+        <argsstring>()</argsstring>
+        <name>read_pot</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="264" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="264" bodyend="280"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1a28872f2b5df47f67dc3eb4ec7fe42eb0" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void M_KRR&lt; K &gt;::train</definition>
+        <argsstring>(phi_type &amp;Phi, t_type &amp;T)</argsstring>
+        <name>train</name>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>t_type &amp;</type>
+          <declname>T</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="282" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="282" bodyend="295"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1aac4497c1e0dec1fc04430d31c6e49c6d" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void M_KRR&lt; K &gt;::convert_to_nweights</definition>
+        <argsstring>()</argsstring>
+        <name>convert_to_nweights</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="297" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="297" bodyend="321"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1ad19e3cbc2bac894c7ce2ba67fc9d6e21" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void M_KRR&lt; K &gt;::convert_to_weights</definition>
+        <argsstring>()</argsstring>
+        <name>convert_to_weights</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="323" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="323" bodyend="343"/>
+      </memberdef>
+      <memberdef kind="function" id="classM__KRR_1a380527c821a7d8ae4f67981dce969e09" prot="private" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type><ref refid="structStructureDB" kindref="compound">StructureDB</ref></type>
+        <definition>StructureDB M_KRR&lt; K &gt;::predict</definition>
+        <argsstring>(Config config_pred, StructureDB &amp;stdb, DC_Base &amp;dc, t_type &amp;predicted_error)</argsstring>
+        <name>predict</name>
+        <reimplements refid="classM__Base_1adf48875b4c344d636a16bfcf0ee5985d">predict</reimplements>
+        <param>
+          <type><ref refid="classConfig" kindref="compound">Config</ref></type>
+          <declname>config_pred</declname>
+        </param>
+        <param>
+          <type><ref refid="structStructureDB" kindref="compound">StructureDB</ref> &amp;</type>
+          <declname>stdb</declname>
+        </param>
+        <param>
+          <type><ref refid="classDC__Base" kindref="compound">DC_Base</ref> &amp;</type>
+          <declname>dc</declname>
+        </param>
+        <param>
+          <type>t_type &amp;</type>
+          <declname>predicted_error</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="344" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="344" bodyend="392"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Kernel Ridge Regression implemented via Empirical Kernel Map</para>
+<para><bold>Optional <ref refid="classConfig" kindref="compound">Config</ref> keys</bold>:</para>
+<para><itemizedlist>
+<listitem><para><ref refid="classConfig_1LAMBDA" kindref="member">LAMBDA</ref> = 0 -&gt; use OLS</para>
+</listitem><listitem><para><ref refid="classConfig_1LAMBDA" kindref="member">LAMBDA</ref> &gt; 0 -&gt; manually set to given value</para>
+</listitem><listitem><para><ref refid="classConfig_1LAMBDA" kindref="member">LAMBDA</ref> = -1 -&gt; use evidence approximation to find <formula id="0">$\lambda$</formula></para>
+</listitem><listitem><para><ref refid="classConfig_1SBASIS" kindref="member">SBASIS</ref> N -&gt; Use N basis functions when nonlinear K is used</para>
+</listitem></itemizedlist>
+</para>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>K</parametername>
+</parameternamelist>
+<parameterdescription>
+<para><ref refid="classKern__Base" kindref="compound">Kern_Base</ref> child, Kernel function </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="2">
+        <label>M_Base</label>
+        <link refid="classM__Base"/>
+      </node>
+      <node id="1">
+        <label>M_KRR&lt; K &gt;</label>
+        <link refid="classM__KRR"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>LinearRegressor</label>
+        <link refid="classLinearRegressor"/>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="2">
+        <label>M_Base</label>
+        <link refid="classM__Base"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>norm</edgelabel>
+        </childnode>
+      </node>
+      <node id="3">
+        <label>Normaliser</label>
+        <link refid="classNormaliser"/>
+      </node>
+      <node id="1">
+        <label>M_KRR&lt; K &gt;</label>
+        <link refid="classM__KRR"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+        <childnode refid="4" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="4">
+        <label>LinearRegressor</label>
+        <link refid="classLinearRegressor"/>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" line="29" column="50" bodyfile="/home/s1351949/PROJECTS/tadah/src/models/m_krr.h" bodystart="29" bodyend="393"/>
+    <listofallmembers>
+      <member refid="classM__KRR_1ac71a55288e777257243c4abb2329fed2" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>basis</name></member>
+      <member refid="classM__KRR_1af6e581753d9b4ec0145c705eda42c381" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>config</name></member>
+      <member refid="classM__KRR_1aac4497c1e0dec1fc04430d31c6e49c6d" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>convert_to_nweights</name></member>
+      <member refid="classM__KRR_1ad19e3cbc2bac894c7ce2ba67fc9d6e21" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>convert_to_weights</name></member>
+      <member refid="classM__KRR_1a5bd5284a546c211b4471bcfc743906e5" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>desmat</name></member>
+      <member refid="classLinearRegressor_1a58cfc71f3135b27b7d4baf424c143a14" prot="public" virt="non-virtual"><scope>M_KRR</scope><name>dump_sigma</name></member>
+      <member refid="classM__KRR_1a8afbc9f507e0103cd874d746aea4a300" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>ekm</name></member>
+      <member refid="classM__KRR_1a73872d2e996f22327c15fd89302fab2c" prot="public" virt="virtual"><scope>M_KRR</scope><name>epredict</name></member>
+      <member refid="classM__Base_1ac83ebf4f0844dc2636f13af42701f4ac" prot="public" virt="non-virtual" ambiguityscope="M_Base::"><scope>M_KRR</scope><name>epredict</name></member>
+      <member refid="classM__KRR_1a8a964fc3a367f24c00376b873a85d5f7" prot="public" virt="virtual"><scope>M_KRR</scope><name>fpredict</name></member>
+      <member refid="classM__KRR_1a48f6294d8271608c111b903f2fa562b3" prot="public" virt="virtual"><scope>M_KRR</scope><name>fpredict</name></member>
+      <member refid="classM__Base_1a72f70440f7daafc3a803ff90a38443c4" prot="public" virt="virtual" ambiguityscope="M_Base::"><scope>M_KRR</scope><name>fpredict</name></member>
+      <member refid="classM__Base_1a01321e335f930e79dd920d6863ad6378" prot="public" virt="virtual" ambiguityscope="M_Base::"><scope>M_KRR</scope><name>fpredict</name></member>
+      <member refid="classM__KRR_1a6604511ccbcd0d74aa8ef387582f61ee" prot="public" virt="virtual"><scope>M_KRR</scope><name>get_param_file</name></member>
+      <member refid="classM__KRR_1aaa84cb7ce12cc7a4392ad08e87a3e528" prot="public" virt="virtual"><scope>M_KRR</scope><name>get_weights</name></member>
+      <member refid="classM__KRR_1a3c267cccf1d4e80de4716588fcd4b72e" prot="public" virt="virtual"><scope>M_KRR</scope><name>get_weights_uncertainty</name></member>
+      <member refid="classM__KRR_1a4303661fc609ee021c7312843ab0ecf9" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>kernel</name></member>
+      <member refid="classM__KRR_1a1c4d4040ce8b72197db0a6bf33aab3fe" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>kweights</name></member>
+      <member refid="classM__KRR_1a0427931add1375c294d5f6ea1db96145" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>label</name></member>
+      <member refid="classM__KRR_1ac0c657bc2b78be18ebdb168cbe585f94" prot="public" virt="non-virtual"><scope>M_KRR</scope><name>M_KRR</name></member>
+      <member refid="classM__KRR_1ac5a69b35690e54e0b2eac8770e1d1b59" prot="public" virt="non-virtual"><scope>M_KRR</scope><name>M_KRR</name></member>
+      <member refid="classM__KRR_1a5c5433f1c98987434d3e9ebaae431d05" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>mat</name></member>
+      <member refid="classM__Base_1a515626d97be7664c9288b86c01166f97" prot="public" virt="non-virtual"><scope>M_KRR</scope><name>norm</name></member>
+      <member refid="classM__KRR_1a380527c821a7d8ae4f67981dce969e09" prot="private" virt="virtual"><scope>M_KRR</scope><name>predict</name></member>
+      <member refid="classM__Base_1ad9f4b951596e31351330d7f57f48a41e" prot="public" virt="virtual" ambiguityscope="M_Base::"><scope>M_KRR</scope><name>predict</name></member>
+      <member refid="classM__Base_1acc6af2d0ed47cfa44cad6d7ba5d13b28" prot="public" virt="virtual" ambiguityscope="M_Base::"><scope>M_KRR</scope><name>predict</name></member>
+      <member refid="classM__Base_1a362b90fe7752ab609cdb428ea80bd6d4" prot="public" virt="virtual" ambiguityscope="M_Base::"><scope>M_KRR</scope><name>predict</name></member>
+      <member refid="classM__KRR_1a81f325ea846188c8922cec9505a930da" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>read_pot</name></member>
+      <member refid="classLinearRegressor_1a52963b2b789d354a120093ddc61010fa" prot="public" virt="non-virtual"><scope>M_KRR</scope><name>read_sigma</name></member>
+      <member refid="classM__KRR_1a441a19e27fffabf09bf692da00082c74" prot="public" virt="virtual"><scope>M_KRR</scope><name>set_weights</name></member>
+      <member refid="classM__KRR_1a6d8d4c1ca1e046b1cb34acd7aae8a29f" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>Sigma</name></member>
+      <member refid="classM__Base_1a3b7e64524aa00b61309f1aa6dd849fd9" prot="public" virt="virtual"><scope>M_KRR</scope><name>spredict</name></member>
+      <member refid="classM__Base_1ac38a254afd0291edd7354b9326910e7e" prot="public" virt="virtual"><scope>M_KRR</scope><name>spredict</name></member>
+      <member refid="classM__Base_1a855b84ff328de25c9e73859e51e465c7" prot="public" virt="virtual"><scope>M_KRR</scope><name>spredict</name></member>
+      <member refid="classM__KRR_1a00bc87831094a0c5bdf904fb9999941c" prot="public" virt="virtual"><scope>M_KRR</scope><name>train</name></member>
+      <member refid="classM__KRR_1a4b78e1ba12159722ef08ab0f0cebcbe5" prot="public" virt="virtual"><scope>M_KRR</scope><name>train</name></member>
+      <member refid="classM__KRR_1a28872f2b5df47f67dc3eb4ec7fe42eb0" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>train</name></member>
+      <member refid="classLinearRegressor_1a3a3c5cc5328fa5bd7270d1e5aad27de4" prot="public" virt="non-virtual" ambiguityscope="LinearRegressor::"><scope>M_KRR</scope><name>train</name></member>
+      <member refid="classM__KRR_1a2112611b12c5964e1d5a581bacf842f8" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>trained</name></member>
+      <member refid="classM__KRR_1a35c607d3a6acd5455922c526ec609725" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>verbose</name></member>
+      <member refid="classM__KRR_1a77304f4eeb544ec8ab9d06f7f524722c" prot="private" virt="non-virtual"><scope>M_KRR</scope><name>weights</name></member>
+      <member refid="classM__Base_1a6b0acce82546bd841749348c85c9ffab" prot="public" virt="virtual"><scope>M_KRR</scope><name>~M_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

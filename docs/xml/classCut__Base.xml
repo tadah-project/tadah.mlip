@@ -1,0 +1,203 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classCut__Base" kind="class" language="C++" prot="public" abstract="yes">
+    <compoundname>Cut_Base</compoundname>
+    <derivedcompoundref refid="classCut__Cos" prot="public" virt="non-virtual">Cut_Cos</derivedcompoundref>
+    <derivedcompoundref refid="classCut__Dummy" prot="public" virt="non-virtual">Cut_Dummy</derivedcompoundref>
+    <derivedcompoundref refid="classCut__Poly2" prot="public" virt="non-virtual">Cut_Poly2</derivedcompoundref>
+    <derivedcompoundref refid="classCut__Tanh" prot="public" virt="non-virtual">Cut_Tanh</derivedcompoundref>
+    <includes refid="cutoffs_8h" local="no">cutoffs.h</includes>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classCut__Base_1aa8d76a5924b6fcd43eadeaa06b3c58b2" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type></type>
+        <definition>Cut_Base::~Cut_Base</definition>
+        <argsstring>()</argsstring>
+        <name>~Cut_Base</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="11" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" bodystart="12" bodyend="12"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Base_1a98c6cd7a1bead5c5741f1dc0f5f7f345" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>std::string</type>
+        <definition>virtual std::string Cut_Base::label</definition>
+        <argsstring>()=0</argsstring>
+        <name>label</name>
+        <reimplementedby refid="classCut__Dummy_1add0ae4f06c53d6f0f25dac1ab1d6fa40">label</reimplementedby>
+        <reimplementedby refid="classCut__Cos_1a34ced7ba74b6dc497372e2920b519af1">label</reimplementedby>
+        <reimplementedby refid="classCut__Tanh_1aa2bdbd1fddafde12672c9c827628cacf">label</reimplementedby>
+        <reimplementedby refid="classCut__Poly2_1a2b3add48ccdc68158c411de65b055647">label</reimplementedby>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="12" column="29"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Base_1a64e34b2871cf191facfdf9c0800c4737" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>double</type>
+        <definition>virtual double Cut_Base::calc</definition>
+        <argsstring>(double r)=0</argsstring>
+        <name>calc</name>
+        <reimplementedby refid="classCut__Dummy_1afc6db069f4f66a78aa589b78afef5fce">calc</reimplementedby>
+        <reimplementedby refid="classCut__Cos_1a0890a193603534b5fa25559bccc60ba2">calc</reimplementedby>
+        <reimplementedby refid="classCut__Tanh_1aee0c25bc395b196d2ca0442c1c578fe6">calc</reimplementedby>
+        <reimplementedby refid="classCut__Poly2_1a9ee8c11d03da5e340165d70762e14f11">calc</reimplementedby>
+        <param>
+          <type>double</type>
+          <declname>r</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="13" column="24"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Base_1a906786b4ac309be8a40091ae06f3e01e" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>double</type>
+        <definition>virtual double Cut_Base::get_rcut</definition>
+        <argsstring>()=0</argsstring>
+        <name>get_rcut</name>
+        <reimplementedby refid="classCut__Dummy_1a5ac596cfe82ecd79c2626112876a16a8">get_rcut</reimplementedby>
+        <reimplementedby refid="classCut__Cos_1aa1254ce73f48063d96df1416b1142fe8">get_rcut</reimplementedby>
+        <reimplementedby refid="classCut__Tanh_1a8edfa55f3ba06ce0c1079b70f0a45ca5">get_rcut</reimplementedby>
+        <reimplementedby refid="classCut__Poly2_1a4ab5da7e37ab42bc5f0860d572bbb69e">get_rcut</reimplementedby>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="14" column="24"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Base_1a4f5216ca8d2d1b654db9d85807c461fd" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>void</type>
+        <definition>virtual void Cut_Base::set_rcut</definition>
+        <argsstring>(const double r)=0</argsstring>
+        <name>set_rcut</name>
+        <reimplementedby refid="classCut__Dummy_1a730e3df516628de12717b4e2c6549dbf">set_rcut</reimplementedby>
+        <reimplementedby refid="classCut__Cos_1afe03ec6d58368d66a54a945f2618ac4e">set_rcut</reimplementedby>
+        <reimplementedby refid="classCut__Tanh_1a3b73f352fbf7fa3cd054f8c02223da66">set_rcut</reimplementedby>
+        <reimplementedby refid="classCut__Poly2_1a6ae88f6eb3b32c03cd1f5c247c1c678c">set_rcut</reimplementedby>
+        <param>
+          <type>const double</type>
+          <declname>r</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="15" column="22"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Base_1ab9a0c6271948f70dfb1394cde2818c35" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>double</type>
+        <definition>virtual double Cut_Base::get_rcut_sq</definition>
+        <argsstring>()=0</argsstring>
+        <name>get_rcut_sq</name>
+        <reimplementedby refid="classCut__Dummy_1a255ecbc444842edbfde30aef83f1ace3">get_rcut_sq</reimplementedby>
+        <reimplementedby refid="classCut__Cos_1a293f114da8b6468aa3f7278fcad606fe">get_rcut_sq</reimplementedby>
+        <reimplementedby refid="classCut__Tanh_1aee29d0251d7e14756d0a6678f12e3cab">get_rcut_sq</reimplementedby>
+        <reimplementedby refid="classCut__Poly2_1af9f51662fc3662a6d496308f33b8d591">get_rcut_sq</reimplementedby>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="16" column="24"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Base_1a3df217213ac9a8a9c070700940c92e3a" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>double</type>
+        <definition>virtual double Cut_Base::calc_prime</definition>
+        <argsstring>(double r)=0</argsstring>
+        <name>calc_prime</name>
+        <reimplementedby refid="classCut__Dummy_1abc173dbc41470e4230fa137c1600f7c3">calc_prime</reimplementedby>
+        <reimplementedby refid="classCut__Cos_1abea80a0be7675a2fbdc6341c9a7c30dd">calc_prime</reimplementedby>
+        <reimplementedby refid="classCut__Tanh_1aaca4d6eba7737e16ee12aea5eb323939">calc_prime</reimplementedby>
+        <reimplementedby refid="classCut__Poly2_1a28802cbe00c40907b70b936eb2aa2f67">calc_prime</reimplementedby>
+        <param>
+          <type>double</type>
+          <declname>r</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="17" column="24"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Base_1a09552f75ad8d755343fd86bd92bbe862" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void Cut_Base::test_rcut</definition>
+        <argsstring>(const double r)</argsstring>
+        <name>test_rcut</name>
+        <param>
+          <type>const double</type>
+          <declname>r</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="18" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" bodystart="13" bodyend="17"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Base class to be inherited by all cutoffs </para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="3">
+        <label>Cut_Dummy</label>
+        <link refid="classCut__Dummy"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>Cut_Base</label>
+        <link refid="classCut__Base"/>
+      </node>
+      <node id="2">
+        <label>Cut_Cos</label>
+        <link refid="classCut__Cos"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="4">
+        <label>Cut_Poly2</label>
+        <link refid="classCut__Poly2"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>Cut_Tanh</label>
+        <link refid="classCut__Tanh"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="9" column="15" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" bodystart="9" bodyend="19"/>
+    <listofallmembers>
+      <member refid="classCut__Base_1a64e34b2871cf191facfdf9c0800c4737" prot="public" virt="pure-virtual"><scope>Cut_Base</scope><name>calc</name></member>
+      <member refid="classCut__Base_1a3df217213ac9a8a9c070700940c92e3a" prot="public" virt="pure-virtual"><scope>Cut_Base</scope><name>calc_prime</name></member>
+      <member refid="classCut__Base_1a906786b4ac309be8a40091ae06f3e01e" prot="public" virt="pure-virtual"><scope>Cut_Base</scope><name>get_rcut</name></member>
+      <member refid="classCut__Base_1ab9a0c6271948f70dfb1394cde2818c35" prot="public" virt="pure-virtual"><scope>Cut_Base</scope><name>get_rcut_sq</name></member>
+      <member refid="classCut__Base_1a98c6cd7a1bead5c5741f1dc0f5f7f345" prot="public" virt="pure-virtual"><scope>Cut_Base</scope><name>label</name></member>
+      <member refid="classCut__Base_1a4f5216ca8d2d1b654db9d85807c461fd" prot="public" virt="pure-virtual"><scope>Cut_Base</scope><name>set_rcut</name></member>
+      <member refid="classCut__Base_1a09552f75ad8d755343fd86bd92bbe862" prot="public" virt="non-virtual"><scope>Cut_Base</scope><name>test_rcut</name></member>
+      <member refid="classCut__Base_1aa8d76a5924b6fcd43eadeaa06b3c58b2" prot="public" virt="virtual"><scope>Cut_Base</scope><name>~Cut_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

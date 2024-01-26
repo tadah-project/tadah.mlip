@@ -1,0 +1,143 @@
+\hypertarget{classKern__Base}{}\doxysection{Kern\+\_\+\+Base Class Reference}
+\label{classKern__Base}\index{Kern\_Base@{Kern\_Base}}
+
+
+Abstract class to be used as a base for all kernels.  
+
+
+
+
+{\ttfamily \#include $<$kern\+\_\+base.\+h$>$}
+
+Inheritance diagram for Kern\+\_\+\+Base\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.434783cm]{classKern__Base}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual double \mbox{\hyperlink{classKern__Base_addb3ad5509b3d128dd12f01f854b533c}{operator()}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af)=0
+\item 
+virtual aed\+\_\+type \mbox{\hyperlink{classKern__Base_a9a6a4482e80ade5d1f8579986863d075}{derivative}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af)=0
+\item 
+virtual double \mbox{\hyperlink{classKern__Base_a3655c75015f64f44b2c0d884d1d156b1}{prime}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af, const aed\+\_\+type \&ff)=0
+\item 
+\mbox{\Hypertarget{classKern__Base_a535beb13bd2154389721aa3585b4546d}\label{classKern__Base_a535beb13bd2154389721aa3585b4546d}} 
+virtual void \mbox{\hyperlink{classKern__Base_a535beb13bd2154389721aa3585b4546d}{set\+\_\+basis}} (const std\+::vector$<$ aed\+\_\+type $>$ b)
+\begin{DoxyCompactList}\small\item\em Set basis for calculations. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classKern__Base_a4dc88c30557303ca426f5175f91fed5a}\label{classKern__Base_a4dc88c30557303ca426f5175f91fed5a}} 
+virtual std\+::string \mbox{\hyperlink{classKern__Base_a4dc88c30557303ca426f5175f91fed5a}{get\+\_\+label}} ()=0
+\begin{DoxyCompactList}\small\item\em Return label of this object. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classKern__Base_a0bf229903b2f826bbda74fc65efd56d8}\label{classKern__Base_a0bf229903b2f826bbda74fc65efd56d8}} 
+virtual double {\bfseries epredict} (const t\+\_\+type \&kweights, const aed\+\_\+type \&aed)
+\item 
+\mbox{\Hypertarget{classKern__Base_a8ce2ac032a2dfe2fde02a44c01454c56}\label{classKern__Base_a8ce2ac032a2dfe2fde02a44c01454c56}} 
+virtual double {\bfseries fpredict} (const t\+\_\+type \&kweights, const fd\+\_\+type \&fdij, const aed\+\_\+type \&aedi, const size\+\_\+t k)
+\item 
+\mbox{\Hypertarget{classKern__Base_aa8c5f6fd8c3151d8ca8d142a9cf9f62c}\label{classKern__Base_aa8c5f6fd8c3151d8ca8d142a9cf9f62c}} 
+virtual force\+\_\+type {\bfseries fpredict} (const t\+\_\+type \&kweights, const fd\+\_\+type \&fdij, const aed\+\_\+type \&aedi)
+\item 
+\mbox{\Hypertarget{classKern__Base_af70579ef3b176b73674e1711e55aca23}\label{classKern__Base_af70579ef3b176b73674e1711e55aca23}} 
+virtual size\+\_\+t {\bfseries get\+\_\+phi\+\_\+cols} (const \mbox{\hyperlink{classConfig}{Config}} \&config)
+\item 
+\mbox{\Hypertarget{classKern__Base_ada89257424dae4cb7a8fd43fbfae8ae7}\label{classKern__Base_ada89257424dae4cb7a8fd43fbfae8ae7}} 
+virtual void {\bfseries calc\+\_\+phi\+\_\+energy\+\_\+row} (phi\+\_\+type \&Phi, size\+\_\+t \&row, const double fac, const \mbox{\hyperlink{structStructure}{Structure}} \&st, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&st\+\_\+d)
+\item 
+\mbox{\Hypertarget{classKern__Base_a2434db2a8b2eaefa9397a377ac254bf9}\label{classKern__Base_a2434db2a8b2eaefa9397a377ac254bf9}} 
+virtual void {\bfseries calc\+\_\+phi\+\_\+force\+\_\+rows} (phi\+\_\+type \&Phi, size\+\_\+t \&row, const double fac, const \mbox{\hyperlink{structStructure}{Structure}} \&st, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&st\+\_\+d)
+\item 
+\mbox{\Hypertarget{classKern__Base_a5688c48ce0b86b11a06c076ba0b35b7b}\label{classKern__Base_a5688c48ce0b86b11a06c076ba0b35b7b}} 
+virtual void {\bfseries calc\+\_\+phi\+\_\+stress\+\_\+rows} (phi\+\_\+type \&Phi, size\+\_\+t \&row, const double fac\mbox{[}6\mbox{]}, const \mbox{\hyperlink{structStructure}{Structure}} \&st, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&st\+\_\+d)
+\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classKern__Base_aa2d57e305473593742ccacf825dd0ca0}\label{classKern__Base_aa2d57e305473593742ccacf825dd0ca0}} 
+int {\bfseries verbose}
+\item 
+\mbox{\Hypertarget{classKern__Base_a74e1a2c8814eb9eef0ecb27bcdb9a600}\label{classKern__Base_a74e1a2c8814eb9eef0ecb27bcdb9a600}} 
+std\+::vector$<$ aed\+\_\+type $>$ {\bfseries basis}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Abstract class to be used as a base for all kernels. 
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor
+\item ff = force descriptor
+\item all derivatives are defined wrt to the second argument 
+\end{DoxyItemize}
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classKern__Base_a9a6a4482e80ade5d1f8579986863d075}\label{classKern__Base_a9a6a4482e80ade5d1f8579986863d075}} 
+\index{Kern\_Base@{Kern\_Base}!derivative@{derivative}}
+\index{derivative@{derivative}!Kern\_Base@{Kern\_Base}}
+\doxysubsubsection{\texorpdfstring{derivative()}{derivative()}}
+{\footnotesize\ttfamily virtual aed\+\_\+type Kern\+\_\+\+Base\+::derivative (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+Calculate the kernel derivative wrt to the second argument
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor 
+\end{DoxyItemize}
+
+Reimplemented from \mbox{\hyperlink{structFunc__Base}{Func\+\_\+\+Base}}.
+
+
+
+Implemented in \mbox{\hyperlink{classKern__Polynomial_aa00365fd822d918bee028234c4796a9a}{Kern\+\_\+\+Polynomial}}, \mbox{\hyperlink{classKern__Sigmoid_a81b9fe4448b5924ca57d5c02e2a8ac32}{Kern\+\_\+\+Sigmoid}}, \mbox{\hyperlink{classKern__LQ_a90ee3f967e89da91e0f7cc2d8ce5acca}{Kern\+\_\+\+LQ}}, \mbox{\hyperlink{classKern__RBF_ade8ad4161223b94df58bb8335cbef2a3}{Kern\+\_\+\+R\+BF}}, \mbox{\hyperlink{classKern__Quadratic_a911944e2d45225efbf5b09d6c2c4ee69}{Kern\+\_\+\+Quadratic}}, and \mbox{\hyperlink{classKern__Linear_aaf5a623bb354f41d54a0a03d002da637}{Kern\+\_\+\+Linear}}.
+
+\mbox{\Hypertarget{classKern__Base_addb3ad5509b3d128dd12f01f854b533c}\label{classKern__Base_addb3ad5509b3d128dd12f01f854b533c}} 
+\index{Kern\_Base@{Kern\_Base}!operator()@{operator()}}
+\index{operator()@{operator()}!Kern\_Base@{Kern\_Base}}
+\doxysubsubsection{\texorpdfstring{operator()()}{operator()()}}
+{\footnotesize\ttfamily virtual double Kern\+\_\+\+Base\+::operator() (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+Calculate kernel value given two vectors
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor 
+\end{DoxyItemize}
+
+Reimplemented from \mbox{\hyperlink{structFunc__Base}{Func\+\_\+\+Base}}.
+
+
+
+Implemented in \mbox{\hyperlink{classKern__Linear_a3bf19b7d903b34be1e9c4a09e14bfbee}{Kern\+\_\+\+Linear}}, \mbox{\hyperlink{classKern__Polynomial_af3187240cd3bc75cfa2926e931c0a83d}{Kern\+\_\+\+Polynomial}}, \mbox{\hyperlink{classKern__Sigmoid_a5bd481793580f518bbe169a58fccb3f9}{Kern\+\_\+\+Sigmoid}}, \mbox{\hyperlink{classKern__LQ_a96e3c209f045fdd6cb4141638397a2f4}{Kern\+\_\+\+LQ}}, \mbox{\hyperlink{classKern__RBF_a8dfd101e81e6da19e78b0aa9d2780d43}{Kern\+\_\+\+R\+BF}}, and \mbox{\hyperlink{classKern__Quadratic_a9b44597996b11017af513d8a0bd84c3c}{Kern\+\_\+\+Quadratic}}.
+
+\mbox{\Hypertarget{classKern__Base_a3655c75015f64f44b2c0d884d1d156b1}\label{classKern__Base_a3655c75015f64f44b2c0d884d1d156b1}} 
+\index{Kern\_Base@{Kern\_Base}!prime@{prime}}
+\index{prime@{prime}!Kern\_Base@{Kern\_Base}}
+\doxysubsubsection{\texorpdfstring{prime()}{prime()}}
+{\footnotesize\ttfamily virtual double Kern\+\_\+\+Base\+::prime (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af,  }\item[{const aed\+\_\+type \&}]{ff }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+Calculate inner product of the kernel derivative wrt to the second argument (b wrt af) with the force descriptor
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor
+\item ff = force descriptor (T\+O\+DO i-\/th dir component of it) T\+O\+DO consider calculating all 3-\/directions at once 
+\end{DoxyItemize}
+
+Reimplemented from \mbox{\hyperlink{structFunc__Base}{Func\+\_\+\+Base}}.
+
+
+
+Implemented in \mbox{\hyperlink{classKern__Linear_af963374ae396a3f6d53bd0f2f7fa3367}{Kern\+\_\+\+Linear}}, \mbox{\hyperlink{classKern__Polynomial_a16ed59adee2d92247bb6256e0bae6ed8}{Kern\+\_\+\+Polynomial}}, \mbox{\hyperlink{classKern__Sigmoid_ae1aed86bde54852e2de8278f9868ac0b}{Kern\+\_\+\+Sigmoid}}, \mbox{\hyperlink{classKern__LQ_aa5046e0eb9fde54b5e9a9b0d68fd3030}{Kern\+\_\+\+LQ}}, \mbox{\hyperlink{classKern__RBF_ad30c8e49365e2826a37b85b6cfd911f8}{Kern\+\_\+\+R\+BF}}, and \mbox{\hyperlink{classKern__Quadratic_af4552634009424b6853c9582b4f68f76}{Kern\+\_\+\+Quadratic}}.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/kernels/kern\+\_\+base.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/kernels/kern\+\_\+base.\+cpp\end{DoxyCompactItemize}

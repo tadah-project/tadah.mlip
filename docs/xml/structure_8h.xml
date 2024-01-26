@@ -1,0 +1,613 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structure_8h" kind="file" language="C++">
+    <compoundname>structure.h</compoundname>
+    <includes local="no">string</includes>
+    <includes local="no">iostream</includes>
+    <includes local="no">fstream</includes>
+    <includes local="no">iomanip</includes>
+    <includes local="no">vector</includes>
+    <includes local="yes">libs/Eigen/Dense</includes>
+    <includes refid="atom_8h" local="yes">atom.h</includes>
+    <includes local="yes">libs/Eigen/src/Core/util/Constants.h</includes>
+    <includedby refid="m__base_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/models/m_base.h</includedby>
+    <includedby refid="structure__db_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/structure_db.h</includedby>
+    <includedby refid="st__descriptors_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/st_descriptors.h</includedby>
+    <includedby refid="descriptors__calc_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/descriptors_calc.h</includedby>
+    <includedby refid="nn__finder_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/nn_finder.h</includedby>
+    <includedby refid="structure_8cpp" local="yes">/home/s1351949/PROJECTS/tadah/src/structure.cpp</includedby>
+    <includedby refid="DX__FD_8h" local="yes">/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h</includedby>
+    <incdepgraph>
+      <node id="11">
+        <label>libs/Eigen/src/Core/util/Constants.h</label>
+      </node>
+      <node id="7">
+        <label>libs/Eigen/Dense</label>
+      </node>
+      <node id="5">
+        <label>iomanip</label>
+      </node>
+      <node id="8">
+        <label>atom.h</label>
+        <link refid="atom_8h_source"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>string</label>
+      </node>
+      <node id="10">
+        <label>map</label>
+      </node>
+      <node id="4">
+        <label>fstream</label>
+      </node>
+      <node id="6">
+        <label>vector</label>
+      </node>
+      <node id="9">
+        <label>element.h</label>
+        <link refid="element_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>iostream</label>
+      </node>
+      <node id="1">
+        <label>/home/s1351949/PROJECTS/tadah/src/structure.h</label>
+        <link refid="structure_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="31">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d_base.h</label>
+        <link refid="d__base_8h_source"/>
+        <childnode refid="32" relation="include">
+        </childnode>
+        <childnode refid="41" relation="include">
+        </childnode>
+        <childnode refid="44" relation="include">
+        </childnode>
+      </node>
+      <node id="11">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_all.h</label>
+        <link refid="kern__all_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/m_base.h</label>
+        <link refid="m__base_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="20" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="21" relation="include">
+        </childnode>
+      </node>
+      <node id="45">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_dummy.h</label>
+        <link refid="dm__dummy_8h_source"/>
+        <childnode refid="46" relation="include">
+        </childnode>
+      </node>
+      <node id="37">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_blip.h</label>
+        <link refid="d2__blip_8h_source"/>
+        <childnode refid="34" relation="include">
+        </childnode>
+      </node>
+      <node id="4">
+        <label>/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_linear.h</label>
+        <link refid="bf__linear_8h_source"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_base.h</label>
+        <link refid="bf__base_8h_source"/>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="19" relation="include">
+        </childnode>
+      </node>
+      <node id="39">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h</label>
+        <link refid="d2__eam_8h_source"/>
+        <childnode refid="34" relation="include">
+        </childnode>
+      </node>
+      <node id="43">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_all.h</label>
+        <link refid="d3__all_8h_source"/>
+        <childnode refid="35" relation="include">
+        </childnode>
+      </node>
+      <node id="44">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h</label>
+        <link refid="dm__base_8h_source"/>
+        <childnode refid="26" relation="include">
+        </childnode>
+        <childnode refid="45" relation="include">
+        </childnode>
+        <childnode refid="47" relation="include">
+        </childnode>
+        <childnode refid="48" relation="include">
+        </childnode>
+      </node>
+      <node id="30">
+        <label>/home/s1351949/PROJECTS/tadah/src/st_descriptors.h</label>
+        <link refid="st__descriptors_8h_source"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="23" relation="include">
+        </childnode>
+        <childnode refid="26" relation="include">
+        </childnode>
+        <childnode refid="31" relation="include">
+        </childnode>
+        <childnode refid="20" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="28" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/m_blr.h</label>
+        <link refid="m__blr_8h_source"/>
+        <childnode refid="7" relation="include">
+        </childnode>
+      </node>
+      <node id="20">
+        <label>/home/s1351949/PROJECTS/tadah/src/func_base.h</label>
+        <link refid="func__base_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+      </node>
+      <node id="18">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h</label>
+        <link refid="kern__quadratic_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="24">
+        <label>/home/s1351949/PROJECTS/tadah/src/normaliser.h</label>
+        <link refid="normaliser_8h_source"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="25" relation="include">
+        </childnode>
+      </node>
+      <node id="42">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_dummy.h</label>
+        <link refid="d3__dummy_8h_source"/>
+        <childnode refid="43" relation="include">
+        </childnode>
+      </node>
+      <node id="40">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h</label>
+        <link refid="d2__lj_8h_source"/>
+        <childnode refid="34" relation="include">
+        </childnode>
+      </node>
+      <node id="34">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_all.h</label>
+        <link refid="d2__all_8h_source"/>
+        <childnode refid="35" relation="include">
+        </childnode>
+      </node>
+      <node id="15">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_lq.h</label>
+        <link refid="kern__lq_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="38">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_bp.h</label>
+        <link refid="d2__bp_8h_source"/>
+        <childnode refid="34" relation="include">
+        </childnode>
+      </node>
+      <node id="29">
+        <label>/home/s1351949/PROJECTS/tadah/src/nn_finder.h</label>
+        <link refid="nn__finder_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="13">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_linear.h</label>
+        <link refid="kern__linear_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="16">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_polynomial.h</label>
+        <link refid="kern__polynomial_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="19">
+        <label>/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h</label>
+        <link refid="bf__polynomial2_8h_source"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+      <node id="8">
+        <label>/home/s1351949/PROJECTS/tadah/src/dc_selector.h</label>
+        <link refid="dc__selector_8h_source"/>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="10">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_base.h</label>
+        <link refid="kern__base_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+        <childnode refid="15" relation="include">
+        </childnode>
+        <childnode refid="16" relation="include">
+        </childnode>
+        <childnode refid="17" relation="include">
+        </childnode>
+        <childnode refid="18" relation="include">
+        </childnode>
+      </node>
+      <node id="17">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_sigmoid.h</label>
+        <link refid="kern__sigmoid_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="28">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/basis.h</label>
+        <link refid="basis_8h_source"/>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+      </node>
+      <node id="14">
+        <label>/home/s1351949/PROJECTS/tadah/src/kernels/kern_rbf.h</label>
+        <link refid="kern__rbf_8h_source"/>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="21">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/ekm.h</label>
+        <link refid="ekm_8h_source"/>
+        <childnode refid="12" relation="include">
+        </childnode>
+      </node>
+      <node id="41">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d3/d3_base.h</label>
+        <link refid="d3__base_8h_source"/>
+        <childnode refid="26" relation="include">
+        </childnode>
+        <childnode refid="42" relation="include">
+        </childnode>
+      </node>
+      <node id="23">
+        <label>/home/s1351949/PROJECTS/tadah/src/st_descriptors_db.h</label>
+        <link refid="st__descriptors__db_8h_source"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="24" relation="include">
+        </childnode>
+        <childnode refid="26" relation="include">
+        </childnode>
+        <childnode refid="28" relation="include">
+        </childnode>
+        <childnode refid="25" relation="include">
+        </childnode>
+      </node>
+      <node id="32">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_base.h</label>
+        <link refid="d2__base_8h_source"/>
+        <childnode refid="26" relation="include">
+        </childnode>
+        <childnode refid="33" relation="include">
+        </childnode>
+        <childnode refid="37" relation="include">
+        </childnode>
+        <childnode refid="38" relation="include">
+        </childnode>
+        <childnode refid="39" relation="include">
+        </childnode>
+        <childnode refid="40" relation="include">
+        </childnode>
+      </node>
+      <node id="25">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/design_matrix.h</label>
+        <link refid="design__matrix_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="21" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/m_all.h</label>
+        <link refid="m__all_8h_source"/>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="46">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_all.h</label>
+        <link refid="dm__all_8h_source"/>
+        <childnode refid="35" relation="include">
+        </childnode>
+      </node>
+      <node id="48">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_ead.h</label>
+        <link refid="dm__ead_8h_source"/>
+        <childnode refid="46" relation="include">
+        </childnode>
+      </node>
+      <node id="12">
+        <label>/home/s1351949/PROJECTS/tadah/src/models/m_krr.h</label>
+        <link refid="m__krr_8h_source"/>
+        <childnode refid="7" relation="include">
+        </childnode>
+      </node>
+      <node id="36">
+        <label>/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h</label>
+        <link refid="DX__FD_8h_source"/>
+      </node>
+      <node id="27">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors_calc.hpp</label>
+        <link refid="descriptors__calc_8hpp_source"/>
+        <childnode refid="26" relation="include">
+        </childnode>
+      </node>
+      <node id="22">
+        <label>/home/s1351949/PROJECTS/tadah/src/structure_db.h</label>
+        <link refid="structure__db_8h_source"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="23" relation="include">
+        </childnode>
+        <childnode refid="26" relation="include">
+        </childnode>
+        <childnode refid="25" relation="include">
+        </childnode>
+        <childnode refid="29" relation="include">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>/home/s1351949/PROJECTS/tadah/src/structure.h</label>
+        <link refid="structure_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="22" relation="include">
+        </childnode>
+        <childnode refid="30" relation="include">
+        </childnode>
+        <childnode refid="26" relation="include">
+        </childnode>
+        <childnode refid="29" relation="include">
+        </childnode>
+        <childnode refid="36" relation="include">
+        </childnode>
+      </node>
+      <node id="35">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d_all.h</label>
+        <link refid="d__all_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="36" relation="include">
+        </childnode>
+      </node>
+      <node id="26">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors_calc.h</label>
+        <link refid="descriptors__calc_8h_source"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="27" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="25" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_all.h</label>
+        <link refid="bf__all_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="47">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_eam.h</label>
+        <link refid="dm__eam_8h_source"/>
+        <childnode refid="46" relation="include">
+        </childnode>
+      </node>
+      <node id="33">
+        <label>/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h</label>
+        <link refid="d2__dummy_8h_source"/>
+        <childnode refid="34" relation="include">
+        </childnode>
+      </node>
+      <node id="9">
+        <label>/home/s1351949/PROJECTS/tadah/src/lammps/lammps_tadah.h</label>
+        <link refid="lammps__tadah_8h_source"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structStructure" prot="public">Structure</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="preprocessor">#ifndef<sp/>STRUCTURE_h</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="2"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>STRUCTURE_h</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="3"><highlight class="normal"></highlight></codeline>
+<codeline lineno="4"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;string&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;iostream&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;fstream&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;iomanip&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;vector&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;libs/Eigen/Dense&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;atom.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;libs/Eigen/src/Core/util/Constants.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight></codeline>
+<codeline lineno="40" refid="structStructure" refkind="compound"><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structStructure" kindref="compound">Structure</ref><sp/>{</highlight></codeline>
+<codeline lineno="41"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>Eigen::Matrix3d<sp/>stress_type;</highlight></codeline>
+<codeline lineno="43"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="structStructure_1ac6c101b28efea5a150cce3bb8948f8d1" kindref="member">Structure</ref>();</highlight></codeline>
+<codeline lineno="44"><highlight class="normal"></highlight></codeline>
+<codeline lineno="45"><highlight class="normal"><sp/><sp/><sp/><sp/>std::string<sp/>label;</highlight></codeline>
+<codeline lineno="46"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>energy;</highlight></codeline>
+<codeline lineno="47"><highlight class="normal"><sp/><sp/><sp/><sp/>Eigen::Matrix3d<sp/>cell;</highlight></codeline>
+<codeline lineno="48"><highlight class="normal"><sp/><sp/><sp/><sp/>stress_type<sp/>stress;</highlight></codeline>
+<codeline lineno="49"><highlight class="normal"><sp/><sp/><sp/><sp/>std::vector&lt;Atom&gt;<sp/>atoms;</highlight></codeline>
+<codeline lineno="50"><highlight class="normal"><sp/><sp/><sp/><sp/>std::vector&lt;std::vector&lt;Atom&gt;&gt;<sp/>near_neigh_atoms;</highlight></codeline>
+<codeline lineno="51"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//std::vector&lt;std::vector&lt;Eigen::Vector3d&gt;&gt;<sp/>near_neigh_pos;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="52"><highlight class="normal"><sp/><sp/><sp/><sp/>std::vector&lt;std::vector&lt;Eigen::Vector3d&gt;&gt;<sp/>near_neigh_shift;</highlight></codeline>
+<codeline lineno="53"><highlight class="normal"><sp/><sp/><sp/><sp/>std::vector&lt;std::vector&lt;size_t&gt;&gt;<sp/>near_neigh_idx;</highlight></codeline>
+<codeline lineno="54"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>eweight=1.0;</highlight></codeline>
+<codeline lineno="55"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>fweight=1.0;</highlight></codeline>
+<codeline lineno="56"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>sweight=1.0;</highlight></codeline>
+<codeline lineno="57"><highlight class="normal"></highlight></codeline>
+<codeline lineno="66"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="structAtom" kindref="compound">Atom</ref>&amp;<sp/><ref refid="structStructure_1a23deb791570c74379f7fcce19a768246" kindref="member">operator()</ref>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>i)<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="67"><highlight class="normal"></highlight></codeline>
+<codeline lineno="69"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="structStructure_1ab0baabe3b407c3479a9178671465e536" kindref="member">add_atom</ref>(<ref refid="structAtom" kindref="compound">Atom</ref><sp/>a);</highlight></codeline>
+<codeline lineno="70"><highlight class="normal"></highlight></codeline>
+<codeline lineno="72"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="structStructure_1ad6d3c582104948a84e9c4270d2564bc1" kindref="member">remove_atom</ref>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>i);</highlight></codeline>
+<codeline lineno="73"><highlight class="normal"></highlight></codeline>
+<codeline lineno="75"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structStructure_1acbda00d3acc1fe2f7f4a49f43a348022" kindref="member">natoms</ref>()<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="76"><highlight class="normal"></highlight></codeline>
+<codeline lineno="78"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>Eigen::Vector3d&amp;<sp/><ref refid="structStructure_1ad02e71ff3da0b4bbf56ad6a6b1ac8228" kindref="member">nn_pos</ref>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>i,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>n)<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="79"><highlight class="normal"></highlight></codeline>
+<codeline lineno="81"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structStructure_1adbf51a727b4fa3e55e8879a0bba9984a" kindref="member">nn_size</ref>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>i)<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="82"><highlight class="normal"></highlight></codeline>
+<codeline lineno="90"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structStructure_1af31a827df8374c737b93df0d5ceea76a" kindref="member">read</ref>(std::ifstream<sp/>&amp;ifs);</highlight></codeline>
+<codeline lineno="91"><highlight class="normal"></highlight></codeline>
+<codeline lineno="97"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="structStructure_1af31a827df8374c737b93df0d5ceea76a" kindref="member">read</ref>(std::string<sp/>fn);</highlight></codeline>
+<codeline lineno="98"><highlight class="normal"></highlight></codeline>
+<codeline lineno="100"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="structStructure_1a8a01d79bae83ab9f9a13d2e16077c5d7" kindref="member">save</ref>(std::ofstream<sp/>&amp;ofs);</highlight></codeline>
+<codeline lineno="101"><highlight class="normal"></highlight></codeline>
+<codeline lineno="107"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="structStructure_1a8a01d79bae83ab9f9a13d2e16077c5d7" kindref="member">save</ref>(std::string<sp/>fn);</highlight></codeline>
+<codeline lineno="108"><highlight class="normal"></highlight></codeline>
+<codeline lineno="109"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/><sp/>Return<sp/>corresponding<sp/>ii<sp/>index<sp/>of<sp/>i-j<sp/>(jj)<sp/>atom<sp/>interaction.</highlight></codeline>
+<codeline lineno="110"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*</highlight></codeline>
+<codeline lineno="111"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>The<sp/>ii<sp/>index<sp/>is<sp/>used<sp/>with<sp/>nearest<sp/>neighour<sp/>lists.</highlight></codeline>
+<codeline lineno="112"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>i,j<sp/>are<sp/>atom<sp/>global<sp/>indices;<sp/>ii,jj<sp/>are<sp/>neighbour<sp/>lists<sp/>indices.</highlight></codeline>
+<codeline lineno="113"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*</highlight></codeline>
+<codeline lineno="114"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>This<sp/>method<sp/>is<sp/>required<sp/>to<sp/>fully<sp/>specify<sp/>interacton<sp/>of<sp/>two<sp/>atoms</highlight></codeline>
+<codeline lineno="115"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>when<sp/>predicting<sp/>force<sp/>on<sp/>the<sp/>i-th<sp/>atom.<sp/>In<sp/>particular<sp/>in<sp/>the<sp/>case<sp/>when</highlight></codeline>
+<codeline lineno="116"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>atom<sp/>i-j<sp/>interaction<sp/>is<sp/>specified<sp/>more<sp/>than<sp/>once.<sp/>e.g.<sp/>one<sp/>i-j<sp/>interaction</highlight></codeline>
+<codeline lineno="117"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>in<sp/>the<sp/>main<sp/>box<sp/>and<sp/>another<sp/>one<sp/>coming<sp/>from<sp/>the<sp/>periodic<sp/>shift.</highlight></codeline>
+<codeline lineno="118"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>The<sp/>critical<sp/>condition<sp/>for<sp/>this<sp/>to<sp/>happen<sp/>for<sp/>the<sp/>square<sp/>box<sp/>is:</highlight></codeline>
+<codeline lineno="119"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>rcut<sp/>&gt;<sp/>box<sp/>length<sp/>/<sp/>2.</highlight></codeline>
+<codeline lineno="120"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*</highlight></codeline>
+<codeline lineno="121"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>e.g.</highlight></codeline>
+<codeline lineno="122"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>To<sp/>get<sp/>a<sp/>force<sp/>on<sp/>atom<sp/>i.<sp/>We<sp/>loop<sp/>over<sp/>nn<sp/>of<sp/>i<sp/>-&gt;<sp/>gives<sp/>jj<sp/>index.</highlight></codeline>
+<codeline lineno="123"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>For<sp/>many-body<sp/>potentials<sp/>we<sp/>also<sp/>need<sp/>to<sp/>know<sp/>the<sp/>density<sp/>for<sp/>atom<sp/>at<sp/>jj,</highlight></codeline>
+<codeline lineno="124"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>hence<sp/>we<sp/>need<sp/>j<sp/>index.<sp/>This<sp/>is<sp/>stored<sp/>by:</highlight></codeline>
+<codeline lineno="125"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*</highlight></codeline>
+<codeline lineno="126"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/><sp/><sp/><sp/><sp/>j=near_neigh_idx[a][jj]</highlight></codeline>
+<codeline lineno="127"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*</highlight></codeline>
+<codeline lineno="128"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>Moreover<sp/>we<sp/>need<sp/>to<sp/>know<sp/>derivatives<sp/>(descriptor<sp/>derivatives<sp/>wrt<sp/>to<sp/>rij)</highlight></codeline>
+<codeline lineno="129"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>at<sp/>both<sp/>i<sp/>and<sp/>j<sp/>atoms.<sp/>However<sp/>if<sp/>jj<sp/>atom<sp/>is<sp/>outside<sp/>of<sp/>the<sp/>main<sp/>box</highlight></codeline>
+<codeline lineno="130"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>we<sp/>do<sp/>not<sp/>calculate<sp/>derivative<sp/>for<sp/>this<sp/>atom<sp/>but<sp/>we<sp/>can<sp/>use<sp/>derivative</highlight></codeline>
+<codeline lineno="131"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/>for<sp/>the<sp/>j-ii<sp/>interaction.<sp/>Hence<sp/>we<sp/>need<sp/>to<sp/>find<sp/>ii<sp/>index<sp/>here...<sp/>phew...</highlight></codeline>
+<codeline lineno="132"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*</highlight></codeline>
+<codeline lineno="133"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/><sp/><sp/><sp/><sp/><sp/>ii<sp/>=<sp/>get_nn_iindex(i,j,jj)</highlight></codeline>
+<codeline lineno="134"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="135"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>get_nn_iindex(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>i,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>j,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>jj)<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="136"><highlight class="normal"></highlight></codeline>
+<codeline lineno="137"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">friend</highlight><highlight class="normal"><sp/>std::ostream&amp;<sp/>operator&lt;&lt;(std::ostream&amp;<sp/>os,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="structStructure" kindref="compound">Structure</ref>&amp;<sp/>st)</highlight></codeline>
+<codeline lineno="138"><highlight class="normal"><sp/><sp/><sp/><sp/>{</highlight></codeline>
+<codeline lineno="139"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Structure<sp/><sp/>:<sp/><sp/><sp/><sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::left<sp/>&lt;&lt;<sp/>st.label<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="140"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;#<sp/>atoms<sp/><sp/><sp/><sp/>:<sp/><sp/><sp/><sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::left<sp/>&lt;&lt;<sp/>st.atoms.size()<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="141"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Energy<sp/><sp/><sp/><sp/><sp/>:&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::right<sp/>&lt;&lt;<sp/>std::setw(w)</highlight></codeline>
+<codeline lineno="142"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>&lt;&lt;<sp/>std::setprecision(p)<sp/>&lt;&lt;<sp/>std::fixed<sp/>&lt;&lt;<sp/>st.energy<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="143"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Cell<sp/><sp/><sp/><sp/><sp/><sp/><sp/>:&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="144"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>i=0;<sp/>i&lt;3;<sp/>++i)<sp/>{</highlight></codeline>
+<codeline lineno="145"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/>std::right<sp/>&lt;&lt;<sp/>std::fixed<sp/>&lt;&lt;<sp/>std::setw(w+10)</highlight></codeline>
+<codeline lineno="146"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>&lt;&lt;<sp/>std::setprecision(p)<sp/>&lt;&lt;<sp/>st.cell(i,0);</highlight></codeline>
+<codeline lineno="147"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/>std::right<sp/>&lt;&lt;<sp/>std::fixed<sp/>&lt;&lt;<sp/>std::setw(w)</highlight></codeline>
+<codeline lineno="148"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>&lt;&lt;<sp/>std::setprecision(p)<sp/>&lt;&lt;<sp/>st.cell(i,1);</highlight></codeline>
+<codeline lineno="149"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/>std::right<sp/>&lt;&lt;<sp/>std::fixed<sp/>&lt;&lt;<sp/>std::setw(w)</highlight></codeline>
+<codeline lineno="150"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>&lt;&lt;<sp/>std::setprecision(p)<sp/>&lt;&lt;<sp/>st.cell(i,2);</highlight></codeline>
+<codeline lineno="151"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="152"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="153"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Stress<sp/><sp/><sp/><sp/><sp/>:&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="154"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>i=0;<sp/>i&lt;3;<sp/>++i)<sp/>{</highlight></codeline>
+<codeline lineno="155"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/>std::right<sp/>&lt;&lt;<sp/>std::fixed<sp/>&lt;&lt;<sp/>std::setw(w+10)</highlight></codeline>
+<codeline lineno="156"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>&lt;&lt;<sp/>std::setprecision(p)<sp/>&lt;&lt;<sp/>st.stress(i,0);</highlight></codeline>
+<codeline lineno="157"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/>std::right<sp/>&lt;&lt;<sp/>std::fixed<sp/>&lt;&lt;<sp/>std::setw(w)</highlight></codeline>
+<codeline lineno="158"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>&lt;&lt;<sp/>std::setprecision(p)<sp/>&lt;&lt;<sp/>st.stress(i,1);</highlight></codeline>
+<codeline lineno="159"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/>std::right<sp/>&lt;&lt;<sp/>std::fixed<sp/>&lt;&lt;<sp/>std::setw(w)</highlight></codeline>
+<codeline lineno="160"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>&lt;&lt;<sp/>std::setprecision(p)<sp/>&lt;&lt;<sp/>st.stress(i,2);</highlight></codeline>
+<codeline lineno="161"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>os<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline lineno="162"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="163"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>os;</highlight></codeline>
+<codeline lineno="164"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="165"><highlight class="normal"></highlight></codeline>
+<codeline lineno="166"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">private</highlight><highlight class="normal">:</highlight></codeline>
+<codeline lineno="167"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>w=15;<sp/><sp/></highlight><highlight class="comment">//<sp/>controls<sp/>output<sp/>width</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="168"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>p=6;<sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>controls<sp/>output<sp/>precision</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="169"><highlight class="normal"></highlight></codeline>
+<codeline lineno="170"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="171"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="/home/s1351949/PROJECTS/tadah/src/structure.h"/>
+  </compounddef>
+</doxygen>

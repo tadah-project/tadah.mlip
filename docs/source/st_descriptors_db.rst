@@ -1,0 +1,5 @@
+StDescriptorsDB
+===============
+
+.. doxygenstruct:: StDescriptorsDB
+    :members:

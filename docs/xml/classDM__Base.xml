@@ -1,0 +1,369 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classDM__Base" kind="class" language="C++" prot="public" abstract="yes">
+    <compoundname>DM_Base</compoundname>
+    <basecompoundref refid="classD__Base" prot="public" virt="non-virtual">D_Base</basecompoundref>
+    <derivedcompoundref refid="classDM__Dummy" prot="public" virt="non-virtual">DM_Dummy</derivedcompoundref>
+    <derivedcompoundref refid="classDM__EAD" prot="public" virt="non-virtual">DM_EAD</derivedcompoundref>
+    <derivedcompoundref refid="classDM__EAM" prot="public" virt="non-virtual">DM_EAM</derivedcompoundref>
+    <includes refid="dm__base_8h" local="no">dm_base.h</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classDM__Base_1a4bd2e723953de198d3b8fa93748d2198" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t DM_Base::fidx</definition>
+        <argsstring></argsstring>
+        <name>fidx</name>
+        <initializer>=0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="13" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" bodystart="13" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classDM__Base_1ac9e803bcd310af3fd49e8eec4efc409d" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type></type>
+        <definition>virtual DM_Base::~DM_Base</definition>
+        <argsstring>()</argsstring>
+        <name>~DM_Base</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="14" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" bodystart="14" bodyend="14"/>
+      </memberdef>
+      <memberdef kind="function" id="classDM__Base_1aa3a222e89524ddec2a919807e75845ef" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>void</type>
+        <definition>virtual void DM_Base::calc_aed</definition>
+        <argsstring>(StDescriptors::rhoi_type &amp;rho, StDescriptors::aed_type &amp;aed)=0</argsstring>
+        <name>calc_aed</name>
+        <reimplementedby refid="classDM__Dummy_1a57e0d8bd8eb9c59810296f72c301dd5b">calc_aed</reimplementedby>
+        <reimplementedby refid="classDM__EAD_1aa1c0dae3dbb6fa23591c1df440afd68c">calc_aed</reimplementedby>
+        <reimplementedby refid="classDM__EAM_1ad48f944fb8d1dff400df614246ae9a53">calc_aed</reimplementedby>
+        <param>
+          <type><ref refid="structStDescriptors_1a8f75f69116e01ba20dd7f00a50a7bca1" kindref="member">StDescriptors::rhoi_type</ref> &amp;</type>
+          <declname>rho</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" kindref="member">StDescriptors::aed_type</ref> &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <briefdescription>
+<para>Calculate AED. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate Atomic Energy Descriptor for the atom local environment. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="20" column="22"/>
+      </memberdef>
+      <memberdef kind="function" id="classDM__Base_1a4e26e811684a5e2c80af1ef839884302" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>int</type>
+        <definition>virtual int DM_Base::calc_dXijdri_dXjidri</definition>
+        <argsstring>(const double rij, const double rij_sq, const Eigen::Vector3d &amp;vec_ij, const double fc_ij, const double fcp_ij, StDescriptors::rhoi_type &amp;rhoi, StDescriptors::rhoi_type &amp;rhoj, StDescriptors::fd_type &amp;fd_ij, const double wi, const double wj)=0</argsstring>
+        <name>calc_dXijdri_dXjidri</name>
+        <reimplementedby refid="classDM__Dummy_1aa4f1b0469e0ba7cac01a563f926e9255">calc_dXijdri_dXjidri</reimplementedby>
+        <reimplementedby refid="classDM__EAD_1a35a64a4dae41f993e08f12c244846bcc">calc_dXijdri_dXjidri</reimplementedby>
+        <reimplementedby refid="classDM__EAM_1a24c0d40254f105bb54f324dd228f52ea">calc_dXijdri_dXjidri</reimplementedby>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const Eigen::Vector3d &amp;</type>
+          <declname>vec_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a8f75f69116e01ba20dd7f00a50a7bca1" kindref="member">StDescriptors::rhoi_type</ref> &amp;</type>
+          <declname>rhoi</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a8f75f69116e01ba20dd7f00a50a7bca1" kindref="member">StDescriptors::rhoi_type</ref> &amp;</type>
+          <declname>rhoj</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>wi</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>wj</declname>
+        </param>
+        <briefdescription>
+<para>Calculate FD. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate Force Descriptor between to atoms.</para>
+<para>This method works for half NN lists and linear models.</para>
+<para><formula id="25">\[ \mathbf{fd}_{ij} \mathrel{+}= \frac{\partial \mathbf{X}_{ij}}{\partial \mathbf{r}_i} + \frac{\partial \mathbf{X}_{ji}}{\partial \mathbf{r}_i} \]</formula> </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="37" column="21"/>
+      </memberdef>
+      <memberdef kind="function" id="classDM__Base_1af212f306eaae951132fd8d36cab04ef1" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>int</type>
+        <definition>virtual int DM_Base::calc_dXijdri</definition>
+        <argsstring>(const double rij, const double rij_sq, const Eigen::Vector3d &amp;vec_ij, const double fc_ij, const double fcp_ij, StDescriptors::rhoi_type &amp;rhoi, StDescriptors::fd_type &amp;fd_ij)=0</argsstring>
+        <name>calc_dXijdri</name>
+        <reimplementedby refid="classDM__Dummy_1a131872d5333b604ac6bdf1b85e7b52bf">calc_dXijdri</reimplementedby>
+        <reimplementedby refid="classDM__EAD_1ae6727418eab586b6351609e7a0142fb3">calc_dXijdri</reimplementedby>
+        <reimplementedby refid="classDM__EAM_1aa77a37792abee3e54d9b974be0e2576c">calc_dXijdri</reimplementedby>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const Eigen::Vector3d &amp;</type>
+          <declname>vec_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a8f75f69116e01ba20dd7f00a50a7bca1" kindref="member">StDescriptors::rhoi_type</ref> &amp;</type>
+          <declname>rhoi</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd_ij</declname>
+        </param>
+        <briefdescription>
+<para>Calculate FD. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate Force Descriptor between to atoms.</para>
+<para>This method works for full NN lists and all models.</para>
+<para><formula id="26">\[ \mathbf{fd}_{ij} \mathrel{+}= \frac{\partial \mathbf{X}_{ij}}{\partial \mathbf{r}_i} \]</formula> </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="61" column="21"/>
+      </memberdef>
+      <memberdef kind="function" id="classDM__Base_1af94f2f095c2f608e48547bfa213c059b" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>void</type>
+        <definition>virtual void DM_Base::init_rhoi</definition>
+        <argsstring>(StDescriptors::rhoi_type &amp;rhoi)=0</argsstring>
+        <name>init_rhoi</name>
+        <reimplementedby refid="classDM__Dummy_1ab76a083489f4b262f360b829fb590ec7">init_rhoi</reimplementedby>
+        <reimplementedby refid="classDM__EAD_1a54d5666a5774b6fb9347df36fc252fb8">init_rhoi</reimplementedby>
+        <reimplementedby refid="classDM__EAM_1a6f822ed42d6e8a3c9b98538848bab96f">init_rhoi</reimplementedby>
+        <param>
+          <type><ref refid="structStDescriptors_1a8f75f69116e01ba20dd7f00a50a7bca1" kindref="member">StDescriptors::rhoi_type</ref> &amp;</type>
+          <declname>rhoi</declname>
+        </param>
+        <briefdescription>
+<para>Resize arrays for a density and F&apos;. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="71" column="22"/>
+      </memberdef>
+      <memberdef kind="function" id="classDM__Base_1a2043fdbbc6c526fe48265372ceb1edc0" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>void</type>
+        <definition>virtual void DM_Base::calc_rho</definition>
+        <argsstring>(const double rij, const double rij_sq, const double fc_ij, const Eigen::Vector3d &amp;vec_ij, StDescriptors::rhoi_type &amp;rho)=0</argsstring>
+        <name>calc_rho</name>
+        <reimplementedby refid="classDM__Dummy_1aa99ed38a29d369868f4dbaf8f973d625">calc_rho</reimplementedby>
+        <reimplementedby refid="classDM__EAD_1a51bc5fe250475b8d76c012795f63a5d4">calc_rho</reimplementedby>
+        <reimplementedby refid="classDM__EAM_1a843ca76b4dcf0228a269d4212753f1ae">calc_rho</reimplementedby>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const Eigen::Vector3d &amp;</type>
+          <declname>vec_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a8f75f69116e01ba20dd7f00a50a7bca1" kindref="member">StDescriptors::rhoi_type</ref> &amp;</type>
+          <declname>rho</declname>
+        </param>
+        <briefdescription>
+<para>Calculate density. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="74" column="22"/>
+      </memberdef>
+      <memberdef kind="function" id="classDM__Base_1ae9dcfa1090642f4ebbb3f098c7b33035" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>size_t</type>
+        <definition>virtual size_t DM_Base::rhoi_size</definition>
+        <argsstring>()=0</argsstring>
+        <name>rhoi_size</name>
+        <reimplementedby refid="classDM__Dummy_1ade81a4e68c9c1c4bb608c5d554564074">rhoi_size</reimplementedby>
+        <reimplementedby refid="classDM__EAD_1a5133ec60c1c055109e874a7517462b9e">rhoi_size</reimplementedby>
+        <reimplementedby refid="classDM__EAM_1a4403db19fbcacb77ca55d4e448a08219">rhoi_size</reimplementedby>
+        <briefdescription>
+<para>Return size of the density array. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="82" column="24"/>
+      </memberdef>
+      <memberdef kind="function" id="classDM__Base_1a25c46735716dcc9e52ecd6eaf70a683e" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>size_t</type>
+        <definition>virtual size_t DM_Base::rhoip_size</definition>
+        <argsstring>()=0</argsstring>
+        <name>rhoip_size</name>
+        <reimplementedby refid="classDM__Dummy_1aa8fa6fd574f0d7186aebc3c7afb5df63">rhoip_size</reimplementedby>
+        <reimplementedby refid="classDM__EAD_1aef741ce1dcb80de3eb8f294a3f5b23ee">rhoip_size</reimplementedby>
+        <reimplementedby refid="classDM__EAM_1a3217bfaeb3f843a904397b06c3f28080">rhoip_size</reimplementedby>
+        <briefdescription>
+<para>Return size of the derivative of the embedding energy array. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="85" column="24"/>
+      </memberdef>
+      <memberdef kind="function" id="classDM__Base_1ac4fcc5f4e96ac7cfd0d68df1d8a7a3ce" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>size_t</type>
+        <definition>virtual size_t DM_Base::size</definition>
+        <argsstring>()=0</argsstring>
+        <name>size</name>
+        <reimplements refid="classD__Base_1a5e222a94a9cccf43700df92ef17e2c07">size</reimplements>
+        <reimplementedby refid="classDM__Dummy_1ab3cd74846b3a55bb20709a2390ceabf3">size</reimplementedby>
+        <reimplementedby refid="classDM__EAD_1a86626e003acd18760547a247e9bd62a1">size</reimplementedby>
+        <reimplementedby refid="classDM__EAM_1a9d29eb0b34acf7374c2f1c5f8dfbaf75">size</reimplementedby>
+        <briefdescription>
+<para>Return dimension of the descriptor. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="86" column="24"/>
+      </memberdef>
+      <memberdef kind="function" id="classDM__Base_1ae0b6eb8104ec9c4f6675adf3821fe62f" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>std::string</type>
+        <definition>virtual std::string DM_Base::label</definition>
+        <argsstring>()=0</argsstring>
+        <name>label</name>
+        <reimplements refid="classD__Base_1af42581f7ad051e050caf82b77cebf0b8">label</reimplements>
+        <reimplementedby refid="classDM__Dummy_1a7f6ab75ee95f8f8090ac53c2185406a0">label</reimplementedby>
+        <reimplementedby refid="classDM__EAD_1a61e36bc7bd9445a14d22cfe7b535c64e">label</reimplementedby>
+        <reimplementedby refid="classDM__EAM_1a119c7977089437618213759752bf1154">label</reimplementedby>
+        <briefdescription>
+<para>Return label of this descriptor. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="87" column="29"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Base class for all many-body type descriptors. </para>
+    </briefdescription>
+    <detaileddescription>
+<para>All many-body descriptors <bold>must</bold> inherit this class. </para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="2">
+        <label>D_Base</label>
+        <link refid="classD__Base"/>
+      </node>
+      <node id="1">
+        <label>DM_Base</label>
+        <link refid="classDM__Base"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="4">
+        <label>DM_EAD</label>
+        <link refid="classDM__EAD"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>DM_EAM</label>
+        <link refid="classDM__EAM"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>DM_Dummy</label>
+        <link refid="classDM__Dummy"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="2">
+        <label>D_Base</label>
+        <link refid="classD__Base"/>
+      </node>
+      <node id="1">
+        <label>DM_Base</label>
+        <link refid="classDM__Base"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" line="11" column="28" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/dm/dm_base.h" bodystart="11" bodyend="88"/>
+    <listofallmembers>
+      <member refid="classDM__Base_1aa3a222e89524ddec2a919807e75845ef" prot="public" virt="pure-virtual"><scope>DM_Base</scope><name>calc_aed</name></member>
+      <member refid="classDM__Base_1af212f306eaae951132fd8d36cab04ef1" prot="public" virt="pure-virtual"><scope>DM_Base</scope><name>calc_dXijdri</name></member>
+      <member refid="classDM__Base_1a4e26e811684a5e2c80af1ef839884302" prot="public" virt="pure-virtual"><scope>DM_Base</scope><name>calc_dXijdri_dXjidri</name></member>
+      <member refid="classDM__Base_1a2043fdbbc6c526fe48265372ceb1edc0" prot="public" virt="pure-virtual"><scope>DM_Base</scope><name>calc_rho</name></member>
+      <member refid="classDM__Base_1a4bd2e723953de198d3b8fa93748d2198" prot="public" virt="non-virtual"><scope>DM_Base</scope><name>fidx</name></member>
+      <member refid="classD__Base_1a384d9d370b34aa54f88c582fca5625d6" prot="public" virt="non-virtual"><scope>DM_Base</scope><name>get_grid</name></member>
+      <member refid="classDM__Base_1af94f2f095c2f608e48547bfa213c059b" prot="public" virt="pure-virtual"><scope>DM_Base</scope><name>init_rhoi</name></member>
+      <member refid="classDM__Base_1ae0b6eb8104ec9c4f6675adf3821fe62f" prot="public" virt="pure-virtual"><scope>DM_Base</scope><name>label</name></member>
+      <member refid="classDM__Base_1ae9dcfa1090642f4ebbb3f098c7b33035" prot="public" virt="pure-virtual"><scope>DM_Base</scope><name>rhoi_size</name></member>
+      <member refid="classDM__Base_1a25c46735716dcc9e52ecd6eaf70a683e" prot="public" virt="pure-virtual"><scope>DM_Base</scope><name>rhoip_size</name></member>
+      <member refid="classDM__Base_1ac4fcc5f4e96ac7cfd0d68df1d8a7a3ce" prot="public" virt="pure-virtual"><scope>DM_Base</scope><name>size</name></member>
+      <member refid="classD__Base_1ae4e2501555b9be957f87ae4cba520532" prot="public" virt="non-virtual"><scope>DM_Base</scope><name>verbose</name></member>
+      <member refid="classD__Base_1ad1a85cef6c0066181d03600128fcfb6b" prot="public" virt="virtual"><scope>DM_Base</scope><name>~D_Base</name></member>
+      <member refid="classDM__Base_1ac9e803bcd310af3fd49e8eec4efc409d" prot="public" virt="virtual"><scope>DM_Base</scope><name>~DM_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

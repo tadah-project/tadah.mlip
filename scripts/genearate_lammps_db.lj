@@ -1,0 +1,60 @@
+variable   a equal sqrt(3.0)
+variable   b equal 1.0/6
+variable   c equal 2.0/3
+variable   d equal -1.0*$a
+
+variable  Tstart equal 500
+variable  Tstop equal 500
+variable  Pstart equal 1
+variable  Pstop equal 1
+variable  THERMO equal 100
+
+units           metal
+newton          on
+boundary        p p p
+atom_modify map yes
+atom_style      atomic
+
+lattice         custom 3.33 a1 1.0 0.0 0.0  a2 0.0 1.0 0.0  a3 0.0 0.0 1.0 basis 0.0 0.0 0.0 basis 0.5 0.5 0.5
+region          box block 0 3 0 3 0 3
+create_box      1 box
+create_atoms    1 box
+
+mass 1 180.95
+
+timestep        0.006
+pair_style lj/cut 6.5
+pair_coeff * * 1 1
+
+neighbor        1.0 bin
+neigh_modify    every 3 delay 0 check yes
+
+velocity        all  create ${Tstart} 4981299 dist gaussian
+
+log log.eq
+thermo          ${THERMO}
+fix             fixNPT all npt temp ${Tstart} ${Tstop} $(100*dt) iso ${Pstart} ${Pstop} $(1000*dt)
+thermo_style    custom step temp vol pe ke etotal press cella
+dump            dumpEQ all custom ${THERMO} eqrun.xyz element xs ys zs
+dump_modify     dumpEQ element Ti sort id
+run             100000
+unfix           fixNPT
+
+log LJ_T_${Tstop}K_P_${Pstop}bars.log
+
+compute S all stress/atom NULL virial
+#compute S all stress/atom thermo_temp
+# xx yy zz xy xz yz
+compute 1 all reduce sum c_S[1] c_S[2] c_S[3] c_S[4] c_S[5] c_S[6]
+#variable press1 equal -(c_1[1]+c_1[2]+c_1[3])
+
+#compute P all pressure NULL virial
+#variable press2 equal (c_P[1]+c_P[2]+c_P[3])*vol
+
+thermo_style    custom step temp vol pe ke etotal press c_1[1] c_1[2] c_1[3] c_1[4] c_1[5] c_1[6]
+thermo_modify format line "%d %f %f %.13f %f %f %f %.13f %.13f %.13f %.13f %.13f %.13f" 
+fix             fixNVT all nvt temp ${Tstop} ${Tstop} $(20*dt)
+dump            4 all custom ${THERMO} LJ_T_${Tstop}K_P_${Pstop}bars.lammps element x y z fx fy fz
+dump_modify     4 element Ti sort id format line "%s %.13f %.13f %.13f %.13f %.13f %.13f"
+run             1000000
+unfix           fixNVT

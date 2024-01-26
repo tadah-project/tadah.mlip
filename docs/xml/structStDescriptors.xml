@@ -1,0 +1,238 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structStDescriptors" kind="struct" language="C++" prot="public">
+    <compoundname>StDescriptors</compoundname>
+    <includes refid="st__descriptors_8h" local="no">st_descriptors.h</includes>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" prot="public" static="no">
+        <type>Eigen::VectorXd</type>
+        <definition>typedef Eigen::VectorXd StDescriptors::aed_type</definition>
+        <argsstring></argsstring>
+        <name>aed_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Atomic Energy Descriptor (AED) type</para>
+<para>Dimensions: [descriptor size] </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="40" column="29" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" bodystart="40" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" prot="public" static="no">
+        <type>Eigen::Matrix&lt; double, Eigen::Dynamic, 3 &gt;</type>
+        <definition>typedef Eigen::Matrix&lt;double, Eigen::Dynamic, 3&gt; StDescriptors::fd_type</definition>
+        <argsstring></argsstring>
+        <name>fd_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Force Descriptor (FD) type</para>
+<para>Dimensions: [descriptor size, 3] </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="48" column="27" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" bodystart="48" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structStDescriptors_1a00fc0048418851297c9a91976b8beb24" prot="public" static="no">
+        <type>Eigen::Matrix&lt; double, Eigen::Dynamic, 6 &gt;</type>
+        <definition>typedef Eigen::Matrix&lt;double, Eigen::Dynamic, 6&gt; StDescriptors::sd_type</definition>
+        <argsstring></argsstring>
+        <name>sd_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Stress Descriptor (SD) type</para>
+<para>Dimensions: [descriptor size,6] </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="56" column="27" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" bodystart="56" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structStDescriptors_1a8f75f69116e01ba20dd7f00a50a7bca1" prot="public" static="no">
+        <type>Eigen::VectorXd</type>
+        <definition>typedef Eigen::VectorXd StDescriptors::rhoi_type</definition>
+        <argsstring></argsstring>
+        <name>rhoi_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Density array to be used by many-body descriptors... TODO</para>
+<para>Dimensions: [atom i][n]</para>
+<para>where n is specific to given descriptor </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="66" column="29" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" bodystart="66" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structStDescriptors_1ab9a06235cf87070dc27ed925c0c48a14" prot="public" static="no">
+        <type>std::vector&lt; <ref refid="structStDescriptors_1a8f75f69116e01ba20dd7f00a50a7bca1" kindref="member">rhoi_type</ref> &gt;</type>
+        <definition>typedef std::vector&lt;rhoi_type&gt; StDescriptors::rho_type</definition>
+        <argsstring></argsstring>
+        <name>rho_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="67" column="25" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" bodystart="67" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structStDescriptors_1ae63227242c0fe62ef33154c47a25a504" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; <ref refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" kindref="member">aed_type</ref> &gt;</type>
+        <definition>std::vector&lt;aed_type&gt; StDescriptors::aed</definition>
+        <argsstring></argsstring>
+        <name>aed</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>AED for all atoms</para>
+<para>This object will always be initialised given provided <ref refid="structStructure" kindref="compound">Structure</ref> contains atoms.</para>
+<para>Dimensions: [number of atoms, descriptor size] </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="88" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" bodystart="88" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structStDescriptors_1a48dbc11966718bca1291ba123b1aa4bb" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; std::vector&lt; <ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">fd_type</ref> &gt; &gt;</type>
+        <definition>std::vector&lt;std::vector&lt;fd_type&gt; &gt; StDescriptors::fd</definition>
+        <argsstring></argsstring>
+        <name>fd</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>FD for all atoms</para>
+<para>Dimensions: [number of atoms, number of atom NN, descriptor size, 3] </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="95" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" bodystart="95" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structStDescriptors_1a5125b3e53e450c58a16f217c4af02d12" prot="public" static="no" mutable="no">
+        <type><ref refid="structStDescriptors_1a00fc0048418851297c9a91976b8beb24" kindref="member">sd_type</ref></type>
+        <definition>sd_type StDescriptors::sd</definition>
+        <argsstring></argsstring>
+        <name>sd</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>SD for a <ref refid="structStructure" kindref="compound">Structure</ref></para>
+<para>Dimensions: [descriptor size, 6] </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="102" column="13" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" bodystart="102" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structStDescriptors_1ad86223531b01554c77fb35bc0975dd29" prot="public" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool StDescriptors::normalised</definition>
+        <argsstring></argsstring>
+        <name>normalised</name>
+        <initializer>=false</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>True if descriptors are normalised </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="105" column="10" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" bodystart="105" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structStDescriptors_1ad1f633cf7f8125a1b4f9a86578ea3f0e" prot="public" static="no" mutable="no">
+        <type>rho_type</type>
+        <definition>rho_type StDescriptors::rho</definition>
+        <argsstring></argsstring>
+        <name>rho</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="107" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" bodystart="107" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structStDescriptors_1a05cad1626b2e9cecf5a86aa70b5d8a7a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>StDescriptors::StDescriptors</definition>
+        <argsstring>(const Structure &amp;s, const Config &amp;c)</argsstring>
+        <name>StDescriptors</name>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>s</declname>
+        </param>
+        <param>
+          <type>const <ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This constructor fully initialise this object</para>
+<para>Requires:<itemizedlist>
+<listitem><para><ref refid="structStructure" kindref="compound">Structure</ref> st to have NN calculated</para>
+</listitem><listitem><para><ref refid="classConfig" kindref="compound">Config</ref> c to contain keys: <ref refid="classConfig_1DSIZE" kindref="member">DSIZE</ref>, <ref refid="classConfig_1FORCE" kindref="member">FORCE</ref>, <ref refid="classConfig_1STRESS" kindref="member">STRESS</ref> </para>
+</listitem></itemizedlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="75" column="5" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.cpp" bodystart="3" bodyend="31"/>
+      </memberdef>
+      <memberdef kind="function" id="structStDescriptors_1a9f704920b709c61b099d5fab429a8b00" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>StDescriptors::StDescriptors</definition>
+        <argsstring>()</argsstring>
+        <name>StDescriptors</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Default constructor. Object is left uninitialised </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="78" column="5" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.cpp" bodystart="32" bodyend="32"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Container for a structure descriptors. </para>
+    </briefdescription>
+    <detaileddescription>
+<para>Contains:<itemizedlist>
+<listitem><para>Atomic Energy Descriptors</para>
+</listitem><listitem><para>Force Descriptors (Optional)</para>
+</listitem><listitem><para>Stress Descriptors (Optional)</para>
+</listitem></itemizedlist>
+</para>
+<para>To fully initialise this object it needs to know:<itemizedlist>
+<listitem><para>number of atoms in a structure (from <ref refid="structStructure" kindref="compound">Structure</ref>)</para>
+</listitem><listitem><para>number of nn for every atom (from <ref refid="structStructure" kindref="compound">Structure</ref>)</para>
+</listitem><listitem><para>dimension of the descriptor vector (<ref refid="classConfig" kindref="compound">Config</ref>)</para>
+</listitem><listitem><para>whether force and stress is being calculated (from <ref refid="classConfig" kindref="compound">Config</ref>)</para>
+<para><simplesect kind="note"><para>Required <ref refid="classConfig" kindref="compound">Config</ref> keys: <ref refid="classConfig_1FORCE" kindref="member">FORCE</ref> <ref refid="classConfig_1STRESS" kindref="member">STRESS</ref>. <ref refid="classConfig_1INTERNAL_KEY" kindref="member">INTERNAL_KEY</ref> <ref refid="classConfig_1DSIZE" kindref="member">DSIZE</ref>. </para>
+</simplesect>
+</para>
+</listitem></itemizedlist>
+</para>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" line="31" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/st_descriptors.h" bodystart="31" bodyend="109"/>
+    <listofallmembers>
+      <member refid="structStDescriptors_1ae63227242c0fe62ef33154c47a25a504" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>aed</name></member>
+      <member refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>aed_type</name></member>
+      <member refid="structStDescriptors_1a48dbc11966718bca1291ba123b1aa4bb" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>fd</name></member>
+      <member refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>fd_type</name></member>
+      <member refid="structStDescriptors_1ad86223531b01554c77fb35bc0975dd29" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>normalised</name></member>
+      <member refid="structStDescriptors_1ad1f633cf7f8125a1b4f9a86578ea3f0e" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>rho</name></member>
+      <member refid="structStDescriptors_1ab9a06235cf87070dc27ed925c0c48a14" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>rho_type</name></member>
+      <member refid="structStDescriptors_1a8f75f69116e01ba20dd7f00a50a7bca1" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>rhoi_type</name></member>
+      <member refid="structStDescriptors_1a5125b3e53e450c58a16f217c4af02d12" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>sd</name></member>
+      <member refid="structStDescriptors_1a00fc0048418851297c9a91976b8beb24" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>sd_type</name></member>
+      <member refid="structStDescriptors_1a05cad1626b2e9cecf5a86aa70b5d8a7a" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>StDescriptors</name></member>
+      <member refid="structStDescriptors_1a9f704920b709c61b099d5fab429a8b00" prot="public" virt="non-virtual"><scope>StDescriptors</scope><name>StDescriptors</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

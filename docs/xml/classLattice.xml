@@ -1,0 +1,99 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classLattice" kind="class" language="C++" prot="public">
+    <compoundname>Lattice</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classLattice_1a64e23e1be6e1ba3898b2d64ad4d4dcaf" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double Lattice::a</definition>
+        <argsstring></argsstring>
+        <name>a</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" line="267" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" bodystart="267" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classLattice_1a3f0344c0d3921cc2303a0ac2412201a7" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double Lattice::b</definition>
+        <argsstring></argsstring>
+        <name>b</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" line="268" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" bodystart="268" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classLattice_1a5c3a186a33de6c55e1f1ffff508dcce7" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double Lattice::c</definition>
+        <argsstring></argsstring>
+        <name>c</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" line="269" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" bodystart="269" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classLattice_1ab4953479152b6c45fff210a59e8d9d13" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double Lattice::alpha</definition>
+        <argsstring></argsstring>
+        <name>alpha</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" line="270" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" bodystart="270" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classLattice_1ad142d9510e0214449cdbf845855403aa" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double Lattice::betta</definition>
+        <argsstring></argsstring>
+        <name>betta</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" line="271" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" bodystart="271" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classLattice_1a6460e9bdbe2de3bdbe1437598262f646" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double Lattice::gamma</definition>
+        <argsstring></argsstring>
+        <name>gamma</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" line="272" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" bodystart="272" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" line="265" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/DX_FD.h" bodystart="265" bodyend="273"/>
+    <listofallmembers>
+      <member refid="classLattice_1a64e23e1be6e1ba3898b2d64ad4d4dcaf" prot="public" virt="non-virtual"><scope>Lattice</scope><name>a</name></member>
+      <member refid="classLattice_1ab4953479152b6c45fff210a59e8d9d13" prot="public" virt="non-virtual"><scope>Lattice</scope><name>alpha</name></member>
+      <member refid="classLattice_1a3f0344c0d3921cc2303a0ac2412201a7" prot="public" virt="non-virtual"><scope>Lattice</scope><name>b</name></member>
+      <member refid="classLattice_1ad142d9510e0214449cdbf845855403aa" prot="public" virt="non-virtual"><scope>Lattice</scope><name>betta</name></member>
+      <member refid="classLattice_1a5c3a186a33de6c55e1f1ffff508dcce7" prot="public" virt="non-virtual"><scope>Lattice</scope><name>c</name></member>
+      <member refid="classLattice_1a6460e9bdbe2de3bdbe1437598262f646" prot="public" virt="non-virtual"><scope>Lattice</scope><name>gamma</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

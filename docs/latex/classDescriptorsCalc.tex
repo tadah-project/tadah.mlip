@@ -1,0 +1,160 @@
+\hypertarget{classDescriptorsCalc}{}\doxysection{Descriptors\+Calc$<$ D2, D3, DM, C2, C3, CM $>$ Class Template Reference}
+\label{classDescriptorsCalc}\index{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$@{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$}}
+
+
+Descriptors calculator.  
+
+
+
+
+{\ttfamily \#include $<$descriptors\+\_\+calc.\+h$>$}
+
+Inheritance diagram for Descriptors\+Calc$<$ D2, D3, DM, C2, C3, CM $>$\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{classDescriptorsCalc}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{classDescriptorsCalc_a09f5d297522a44ee4e4c994d68d1ae72}{Descriptors\+Calc}} (\mbox{\hyperlink{classConfig}{Config}} \&c)
+\item 
+{\footnotesize template$<$typename T1 , typename T2 , typename T3 , typename T4 , typename T5 , typename T6 $>$ }\\\mbox{\hyperlink{classDescriptorsCalc_a6f3fd74fa01cf409552d08a0c17ecaaf}{Descriptors\+Calc}} (\mbox{\hyperlink{classConfig}{Config}} \&c, T1 \&d2, T2 \&d3, T3 \&dm, T4 \&c2, T5 \&c3, T6 \&cm)
+\item 
+\mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \mbox{\hyperlink{classDescriptorsCalc_a4f50908556a38ddecf23fc53474bbd4e}{calc}} (const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\item 
+\mbox{\hyperlink{structStDescriptorsDB}{St\+Descriptors\+DB}} \mbox{\hyperlink{classDescriptorsCalc_a7dcbf5c65a6dc29c58ab0dd85ce0187e}{calc}} (const \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&st\+\_\+db)
+\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classDescriptorsCalc_a601ba173ca2b9cac2de412883b640dac}\label{classDescriptorsCalc_a601ba173ca2b9cac2de412883b640dac}} 
+\mbox{\hyperlink{classConfig}{Config}} \& {\bfseries config}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\subsubsection*{template$<$typename D2 = D2\+\_\+\+Base\&, typename D3 = D3\+\_\+\+Base\&, typename DM = D\+M\+\_\+\+Base\&, typename C2 = Cut\+\_\+\+Base\&, typename C3 = Cut\+\_\+\+Base\&, typename CM = Cut\+\_\+\+Base\&$>$\newline
+class Descriptors\+Calc$<$ D2, D3, D\+M, C2, C3, C\+M $>$}
+
+Descriptors calculator. 
+
+This object does not store any data.
+
+Usage example\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{preprocessor}{\# Build calculator using Config object.}}
+\DoxyCodeLine{\mbox{\hyperlink{classDescriptorsCalc}{DescriptorsCalc<D2\_LJ, D3\_Dummy, DM\_Dummy>}} dc(config);}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{preprocessor}{\# Calculate all descriptors in a Structure st}}
+\DoxyCodeLine{\mbox{\hyperlink{structStDescriptors}{StDescriptors}} std = dc.calc(st);}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{preprocessor}{\# Calculate all descriptors in a StructureDB st\_db}}
+\DoxyCodeLine{\textcolor{preprocessor}{StDescriptorsDB std\_db = dc.calc(st\_db);}}
+\end{DoxyCode}
+
+
+This object sets the following I\+N\+T\+E\+R\+N\+A\+L\+\_\+\+K\+E\+YS to the provided \mbox{\hyperlink{classConfig}{Config}} object\+:
+
+\mbox{\hyperlink{classConfig_SIZE2B}{S\+I\+Z\+E2B}},\mbox{\hyperlink{classConfig_SIZE3B}{S\+I\+Z\+E3B}},\mbox{\hyperlink{classConfig_SIZEMB}{S\+I\+Z\+E\+MB}},\mbox{\hyperlink{classConfig_DSIZE}{D\+S\+I\+ZE}}
+
+Required keys\+: \mbox{\hyperlink{classConfig_INIT2B}{I\+N\+I\+T2B}},\mbox{\hyperlink{classConfig_INIT3B}{I\+N\+I\+T3B}},\mbox{\hyperlink{classConfig_INITMB}{I\+N\+I\+T\+MB}}, \mbox{\hyperlink{classConfig_RCUT2B}{R\+C\+U\+T2B}},\mbox{\hyperlink{classConfig_RCUT3B}{R\+C\+U\+T3B}},\mbox{\hyperlink{classConfig_RCUTMB}{R\+C\+U\+T\+MB}} (for initialised ones)
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em D2} & \mbox{\hyperlink{classD2__Base}{D2\+\_\+\+Base}} child, two-\/body type calculator. \\
+\hline
+{\em D3} & \mbox{\hyperlink{classD3__Base}{D3\+\_\+\+Base}} child, three-\/body type calculator. \\
+\hline
+{\em DM} & \mbox{\hyperlink{classDM__Base}{D\+M\+\_\+\+Base}} child, many-\/body type calculator. \\
+\hline
+{\em C2} & \mbox{\hyperlink{classCut__Base}{Cut\+\_\+\+Base}} child, two-\/body cutoff function. \\
+\hline
+{\em C3} & \mbox{\hyperlink{classCut__Base}{Cut\+\_\+\+Base}} child, three-\/body cutoff function. \\
+\hline
+{\em CM} & \mbox{\hyperlink{classCut__Base}{Cut\+\_\+\+Base}} child, many-\/body cutoff function. \\
+\hline
+\end{DoxyTemplParams}
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\mbox{\Hypertarget{classDescriptorsCalc_a09f5d297522a44ee4e4c994d68d1ae72}\label{classDescriptorsCalc_a09f5d297522a44ee4e4c994d68d1ae72}} 
+\index{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$@{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$}!DescriptorsCalc@{DescriptorsCalc}}
+\index{DescriptorsCalc@{DescriptorsCalc}!DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$@{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$}}
+\doxysubsubsection{\texorpdfstring{DescriptorsCalc()}{DescriptorsCalc()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename D2 , typename D3 , typename DM , typename C2 , typename C3 , typename CM $>$ \\
+\mbox{\hyperlink{classDescriptorsCalc}{Descriptors\+Calc}}$<$ D2, D3, DM, C2, C3, CM $>$\+::\mbox{\hyperlink{classDescriptorsCalc}{Descriptors\+Calc}} (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{classConfig}{Config}} \&}]{c }\end{DoxyParamCaption})}
+
+Constructor to fully initialise this object.
+
+R\+E\+Q\+U\+I\+R\+ED C\+O\+N\+F\+IG K\+E\+YS\+: \mbox{\hyperlink{classConfig_FORCE}{F\+O\+R\+CE}}, \mbox{\hyperlink{classConfig_STRESS}{S\+T\+R\+E\+SS}}, at least one of\+: \mbox{\hyperlink{classConfig_RCUT2B}{R\+C\+U\+T2B}}, \mbox{\hyperlink{classConfig_RCUT3B}{R\+C\+U\+T3B}},\mbox{\hyperlink{classConfig_RCUTMB}{R\+C\+U\+T\+MB}} \mbox{\Hypertarget{classDescriptorsCalc_a6f3fd74fa01cf409552d08a0c17ecaaf}\label{classDescriptorsCalc_a6f3fd74fa01cf409552d08a0c17ecaaf}} 
+\index{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$@{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$}!DescriptorsCalc@{DescriptorsCalc}}
+\index{DescriptorsCalc@{DescriptorsCalc}!DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$@{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$}}
+\doxysubsubsection{\texorpdfstring{DescriptorsCalc()}{DescriptorsCalc()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename D2 , typename D3 , typename DM , typename C2 , typename C3 , typename CM $>$ \\
+template$<$typename T1 , typename T2 , typename T3 , typename T4 , typename T5 , typename T6 $>$ \\
+\mbox{\hyperlink{classDescriptorsCalc}{Descriptors\+Calc}}$<$ D2, D3, DM, C2, C3, CM $>$\+::\mbox{\hyperlink{classDescriptorsCalc}{Descriptors\+Calc}} (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{classConfig}{Config}} \&}]{c,  }\item[{T1 \&}]{d2,  }\item[{T2 \&}]{d3,  }\item[{T3 \&}]{dm,  }\item[{T4 \&}]{c2,  }\item[{T5 \&}]{c3,  }\item[{T6 \&}]{cm }\end{DoxyParamCaption})}
+
+This constructor is equivalent to the main constructor above.
+
+The difference is technical in nature. Here we use O\+OP with generic programming to call virtual functions to calculate descriptors -\/ this incurs small efficiency penalty but makes selecting of descriptors somewhat easier at runtime.
+
+In contrast, the main constructor above is purely generic.
+
+The rule of thumb is\+: Use the main contructor unless it\textquotesingle{}s a pain.
+
+Usage example\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{preprocessor}{\# Build calculator using Config object.}}
+\DoxyCodeLine{\mbox{\hyperlink{classD2__Base}{D2\_Base}} *d2 = \textcolor{keyword}{new} \mbox{\hyperlink{classD2__LJ}{D2\_LJ}}(config);}
+\DoxyCodeLine{\mbox{\hyperlink{classD2__Base}{D2\_Base}} *d3 = \textcolor{keyword}{new} \mbox{\hyperlink{classD3__Dummy}{D3\_Dummy}}(config);}
+\DoxyCodeLine{\mbox{\hyperlink{classD2__Base}{D2\_Base}} *dm = \textcolor{keyword}{new} \mbox{\hyperlink{classDM__Dummy}{DM\_Dummy}}(config);}
+\DoxyCodeLine{\mbox{\hyperlink{classDescriptorsCalc}{DescriptorsCalc<>}} dc(config, d2, d3, dm);}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{preprocessor}{\# Calculate all descriptors in a Structure st}}
+\DoxyCodeLine{\mbox{\hyperlink{structStDescriptors}{StDescriptors}} std = dc.calc(st);}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{preprocessor}{\# Calculate all descriptors in a StructureDB st\_db}}
+\DoxyCodeLine{\textcolor{preprocessor}{StDescriptorsDB std\_db = dc.calc(st\_db);}}
+\end{DoxyCode}
+
+
+\begin{DoxyWarning}{Warning}
+\{ The unfortunate consequence is that you might want to try this 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\mbox{\hyperlink{classDescriptorsCalc}{DescriptorsCalc<>}} dc(config);}
+\end{DoxyCode}
+ Basically you are trying to init abstract classes with config object. It won\textquotesingle{}t compile! \} 
+\end{DoxyWarning}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classDescriptorsCalc_a4f50908556a38ddecf23fc53474bbd4e}\label{classDescriptorsCalc_a4f50908556a38ddecf23fc53474bbd4e}} 
+\index{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$@{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$}!calc@{calc}}
+\index{calc@{calc}!DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$@{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$}}
+\doxysubsubsection{\texorpdfstring{calc()}{calc()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename D2 , typename D3 , typename DM , typename C2 , typename C3 , typename CM $>$ \\
+\mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \mbox{\hyperlink{classDescriptorsCalc}{Descriptors\+Calc}}$<$ D2, D3, DM, C2, C3, CM $>$\+::calc (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{structStructure}{Structure}} \&}]{st }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate all descriptors in a \mbox{\hyperlink{structStructure}{Structure}} st 
+
+Reimplemented from \mbox{\hyperlink{classDC__Base}{D\+C\+\_\+\+Base}}.
+
+\mbox{\Hypertarget{classDescriptorsCalc_a7dcbf5c65a6dc29c58ab0dd85ce0187e}\label{classDescriptorsCalc_a7dcbf5c65a6dc29c58ab0dd85ce0187e}} 
+\index{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$@{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$}!calc@{calc}}
+\index{calc@{calc}!DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$@{DescriptorsCalc$<$ D2, D3, DM, C2, C3, CM $>$}}
+\doxysubsubsection{\texorpdfstring{calc()}{calc()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename D2 , typename D3 , typename DM , typename C2 , typename C3 , typename CM $>$ \\
+\mbox{\hyperlink{structStDescriptorsDB}{St\+Descriptors\+DB}} \mbox{\hyperlink{classDescriptorsCalc}{Descriptors\+Calc}}$<$ D2, D3, DM, C2, C3, CM $>$\+::calc (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&}]{st\+\_\+db }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate all descriptors in a \mbox{\hyperlink{structStructureDB}{Structure\+DB}} st\+\_\+db 
+
+Reimplemented from \mbox{\hyperlink{classDC__Base}{D\+C\+\_\+\+Base}}.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/descriptors\+\_\+calc.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/descriptors\+\_\+calc.\+hpp\end{DoxyCompactItemize}

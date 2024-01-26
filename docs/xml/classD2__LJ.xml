@@ -1,0 +1,273 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classD2__LJ" kind="class" language="C++" prot="public">
+    <compoundname>D2_LJ</compoundname>
+    <basecompoundref refid="classD2__Base" prot="public" virt="non-virtual">D2_Base</basecompoundref>
+    <includes refid="d2__lj_8h" local="no">d2_lj.h</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classD2__LJ_1ae25ccf303577071375b3784508befc14" prot="private" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t D2_LJ::s</definition>
+        <argsstring></argsstring>
+        <name>s</name>
+        <initializer>=2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" line="33" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" bodystart="33" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classD2__LJ_1a5d50934b44d9e18f120c72d710cba1ab" prot="private" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string D2_LJ::lab</definition>
+        <argsstring></argsstring>
+        <name>lab</name>
+        <initializer>=&quot;D2_LJ&quot;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" line="34" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classD2__LJ_1aaf2a0fa3404b5e27c34f40b0f31d3f69" prot="private" static="no" mutable="no">
+        <type>int</type>
+        <definition>int D2_LJ::verbose</definition>
+        <argsstring></argsstring>
+        <name>verbose</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" line="35" column="13" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" bodystart="35" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classD2__LJ_1afb48ad59dbc192599a893e543a603ae5" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>D2_LJ::D2_LJ</definition>
+        <argsstring>(Config &amp;config)</argsstring>
+        <name>D2_LJ</name>
+        <param>
+          <type><ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>config</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" line="37" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.cpp" bodystart="5" bodyend="11"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__LJ_1aa2e2c56974973b21ce5b28407debb89a" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void D2_LJ::calc_aed</definition>
+        <argsstring>(const double, const double rij_sq, const double fc_ij, StDescriptors::aed_type &amp;aed)</argsstring>
+        <name>calc_aed</name>
+        <reimplements refid="classD2__Base_1a00def8ce32e48fdfb2815a43e6cda8a1">calc_aed</reimplements>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" kindref="member">StDescriptors::aed_type</ref> &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <briefdescription>
+<para>Calculate AED. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate Atomic Energy Descriptor for the atom local environment. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" line="38" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.cpp" bodystart="13" bodyend="24"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__LJ_1ac82577e96799673fc30ef2445f05cd44" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void D2_LJ::calc_dXijdri</definition>
+        <argsstring>(const double rij, const double rij_sq, const double fc_ij, const double fcp_ij, StDescriptors::fd_type &amp;fd_ij)</argsstring>
+        <name>calc_dXijdri</name>
+        <reimplements refid="classD2__Base_1aae6943d8aaee729e6892ac0ca7f6a68d">calc_dXijdri</reimplements>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd_ij</declname>
+        </param>
+        <briefdescription>
+<para>Calculate FD. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate Force Descriptor for the atom local environment. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" line="43" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.cpp" bodystart="25" bodyend="38"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__LJ_1a53af814308fed8dfe158fd9da4f8fcb7" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void D2_LJ::calc_all</definition>
+        <argsstring>(const double rij, const double rij_sq, const double fc_ij, const double fcp_ij, StDescriptors::aed_type &amp;aed, StDescriptors::fd_type &amp;fd_ij)</argsstring>
+        <name>calc_all</name>
+        <reimplements refid="classD2__Base_1abd6758f59daf4cca3d5463d932ccf47c">calc_all</reimplements>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" kindref="member">StDescriptors::aed_type</ref> &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd_ij</declname>
+        </param>
+        <briefdescription>
+<para>Calculate AED + FD. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" line="49" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.cpp" bodystart="39" bodyend="55"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__LJ_1a6ffe5156a9df6e8a5ed7e86f15cc1794" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>size_t</type>
+        <definition>size_t D2_LJ::size</definition>
+        <argsstring>()</argsstring>
+        <name>size</name>
+        <reimplements refid="classD__Base_1a5e222a94a9cccf43700df92ef17e2c07">size</reimplements>
+        <briefdescription>
+<para>Return dimension of the descriptor. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" line="56" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.cpp" bodystart="56" bodyend="58"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__LJ_1a5462cdd7b2b0ff1d842b2712dcb6885c" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>std::string</type>
+        <definition>std::string D2_LJ::label</definition>
+        <argsstring>()</argsstring>
+        <name>label</name>
+        <reimplements refid="classD2__Base_1af0e0e608f19159d9b64ff6b400e3362a">label</reimplements>
+        <briefdescription>
+<para>Return label of this descriptor. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" line="57" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.cpp" bodystart="59" bodyend="61"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Standard Lennard - Jones descriptor. </para>
+    </briefdescription>
+    <detaileddescription>
+<para><formula id="17">\[ V_i = \sum_{j \neq i} 4 \epsilon \Bigg(\Big(\frac{\sigma}{r_{ij}}\Big)^{12} - \Big(\frac{\sigma}{r_{ij}}\Big)^6\Bigg) \]</formula></para>
+<para>or equivalently:</para>
+<para><formula id="18">\[ V_i = \sum_{j \neq i} \frac{C_{12}}{r_{ij}^{12}} - \frac{C_6}{r_{ij}^6} \]</formula></para>
+<para>No cutoff function is used.</para>
+<para>Note that machined learned coefficients <formula id="19">$C_6$</formula> and <formula id="20">$C_{12}$</formula> corresponds to <formula id="21">$\sigma$</formula> and <formula id="22">$\epsilon$</formula> through the following relation:</para>
+<para><formula id="23">\[ \sigma = \Big(\frac{C_{12}}{C_6}\Big)^{1/6} \]</formula> <formula id="24">\[ \epsilon = \frac{1}{4} \frac{C_6^2}{C_{12}} \]</formula></para>
+<para>The machine learned <formula id="21">$\sigma$</formula> and <formula id="22">$\epsilon$</formula> only make sense (say to compare with the literature ones) when <ref refid="classConfig_1BIAS" kindref="member">BIAS</ref> false and <ref refid="classConfig_1NORM" kindref="member">NORM</ref> false. It is ok thought to set them to true it&apos;s just that numerical values are different.</para>
+<para>Required <ref refid="classConfig" kindref="compound">Config</ref> Key: <ref refid="classConfig_1INIT2B" kindref="member">INIT2B</ref> </para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="3">
+        <label>D_Base</label>
+        <link refid="classD__Base"/>
+      </node>
+      <node id="1">
+        <label>D2_LJ</label>
+        <link refid="classD2__LJ"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>D2_Base</label>
+        <link refid="classD2__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="3">
+        <label>D_Base</label>
+        <link refid="classD__Base"/>
+      </node>
+      <node id="1">
+        <label>D2_LJ</label>
+        <link refid="classD2__LJ"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>D2_Base</label>
+        <link refid="classD2__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" line="31" column="27" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_lj.h" bodystart="31" bodyend="58"/>
+    <listofallmembers>
+      <member refid="classD2__LJ_1aa2e2c56974973b21ce5b28407debb89a" prot="public" virt="virtual"><scope>D2_LJ</scope><name>calc_aed</name></member>
+      <member refid="classD2__LJ_1a53af814308fed8dfe158fd9da4f8fcb7" prot="public" virt="virtual"><scope>D2_LJ</scope><name>calc_all</name></member>
+      <member refid="classD2__LJ_1ac82577e96799673fc30ef2445f05cd44" prot="public" virt="virtual"><scope>D2_LJ</scope><name>calc_dXijdri</name></member>
+      <member refid="classD2__Base_1a21a79b4945c440a6ce5d0d930e79e264" prot="public" virt="virtual"><scope>D2_LJ</scope><name>calc_fd_approx</name></member>
+      <member refid="classD2__LJ_1afb48ad59dbc192599a893e543a603ae5" prot="public" virt="non-virtual"><scope>D2_LJ</scope><name>D2_LJ</name></member>
+      <member refid="classD2__Base_1a9fa130af5612f18f65bfb6debc10876f" prot="public" virt="non-virtual"><scope>D2_LJ</scope><name>fidx</name></member>
+      <member refid="classD__Base_1a384d9d370b34aa54f88c582fca5625d6" prot="public" virt="non-virtual"><scope>D2_LJ</scope><name>get_grid</name></member>
+      <member refid="classD2__LJ_1a5d50934b44d9e18f120c72d710cba1ab" prot="private" virt="non-virtual"><scope>D2_LJ</scope><name>lab</name></member>
+      <member refid="classD2__LJ_1a5462cdd7b2b0ff1d842b2712dcb6885c" prot="public" virt="virtual"><scope>D2_LJ</scope><name>label</name></member>
+      <member refid="classD2__LJ_1ae25ccf303577071375b3784508befc14" prot="private" virt="non-virtual"><scope>D2_LJ</scope><name>s</name></member>
+      <member refid="classD2__LJ_1a6ffe5156a9df6e8a5ed7e86f15cc1794" prot="public" virt="virtual"><scope>D2_LJ</scope><name>size</name></member>
+      <member refid="classD2__LJ_1aaf2a0fa3404b5e27c34f40b0f31d3f69" prot="private" virt="non-virtual"><scope>D2_LJ</scope><name>verbose</name></member>
+      <member refid="classD2__Base_1a29533c768afefb735344ab9fc10ea845" prot="public" virt="virtual"><scope>D2_LJ</scope><name>~D2_Base</name></member>
+      <member refid="classD__Base_1ad1a85cef6c0066181d03600128fcfb6b" prot="public" virt="virtual"><scope>D2_LJ</scope><name>~D_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

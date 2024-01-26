@@ -1,0 +1,272 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="C++" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>StDescriptorsDB &mdash; Ta-dah!  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="NNFiner" href="nn_finder.html" />
+    <link rel="prev" title="StDescriptors" href="st_descriptors.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Ta-dah!
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">General</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">API Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contact &amp; Contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LICENCE.html">MIT Licence</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="atom.html">Atom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure.html">Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure_db.html">StructureDB</a></li>
+<li class="toctree-l1"><a class="reference internal" href="st_descriptors.html">StDescriptors</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">StDescriptorsDB</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nn_finder.html">NNFiner</a></li>
+<li class="toctree-l1"><a class="reference internal" href="descriptors_calc.html">DescriptorsCalc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cutoffs.html">Cutoffs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="descriptors.html">Descriptors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kernels.html">Kernels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basisfunctions.html">Basis Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design_matrix.html">DesignMatrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="func_base.html">Func_Base</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Ta-dah!</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>StDescriptorsDB</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/st_descriptors_db.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="stdescriptorsdb">
+<h1>StDescriptorsDB<a class="headerlink" href="#stdescriptorsdb" title="Permalink to this headline">¶</a></h1>
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv415StDescriptorsDB">
+<span id="_CPPv315StDescriptorsDB"></span><span id="_CPPv215StDescriptorsDB"></span><span id="StDescriptorsDB"></span><span class="target" id="structStDescriptorsDB"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">StDescriptorsDB</span></span></span><a class="headerlink" href="#_CPPv415StDescriptorsDB" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Container for <a class="reference internal" href="st_descriptors.html#structStDescriptors"><span class="std std-ref">StDescriptors</span></a>. </p>
+<p><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Required <a class="reference internal" href="config.html#classConfig"><span class="std std-ref">Config</span></a> keys: <a class="reference internal" href="config.html#classConfig_1FORCE"><span class="std std-ref">FORCE</span></a> <a class="reference internal" href="config.html#classConfig_1STRESS"><span class="std std-ref">STRESS</span></a> <a class="reference internal" href="config.html#classConfig_1INTERNAL_KEY"><span class="std std-ref">INTERNAL_KEY</span></a> <a class="reference internal" href="config.html#classConfig_1DSIZE"><span class="std std-ref">DSIZE</span></a>. </p>
+</div>
+</p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N15StDescriptorsDB15StDescriptorsDBERK11StructureDBR6Config">
+<span id="_CPPv3N15StDescriptorsDB15StDescriptorsDBERK11StructureDBR6Config"></span><span id="_CPPv2N15StDescriptorsDB15StDescriptorsDBERK11StructureDBR6Config"></span><span id="StDescriptorsDB::StDescriptorsDB__StructureDBCR.ConfigR"></span><span class="target" id="structStDescriptorsDB_1af60f5959d61231d3972763bc646aa378"></span><span class="sig-name descname"><span class="n"><span class="pre">StDescriptorsDB</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="structure_db.html#_CPPv411StructureDB" title="StructureDB"><span class="n"><span class="pre">StructureDB</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">stdb</span></span>, <a class="reference internal" href="config.html#_CPPv46Config" title="Config"><span class="n"><span class="pre">Config</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">config</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N15StDescriptorsDB15StDescriptorsDBERK11StructureDBR6Config" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>This constructor fully initialise this object</p>
+<p>Requires:<ul class="simple">
+<li><p><a class="reference internal" href="structure_db.html#structStructureDB"><span class="std std-ref">StructureDB</span></a> st to have all nearest neighbours calculated</p></li>
+<li><p><a class="reference internal" href="config.html#classConfig"><span class="std std-ref">Config</span></a> to contain keys: <a class="reference internal" href="config.html#classConfig_1FORCE"><span class="std std-ref">FORCE</span></a>, <a class="reference internal" href="config.html#classConfig_1STRESS"><span class="std std-ref">STRESS</span></a> and <a class="reference internal" href="config.html#classConfig_1INTERNAL_KEY"><span class="std std-ref">INTERNAL_KEY</span></a> <a class="reference internal" href="config.html#classConfig_1DSIZE"><span class="std std-ref">DSIZE</span></a> </p></li>
+</ul>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N15StDescriptorsDBclEK6size_t">
+<span id="_CPPv3N15StDescriptorsDBclEK6size_t"></span><span id="_CPPv2N15StDescriptorsDBclEK6size_t"></span><span id="StDescriptorsDB::call-operator__sC"></span><span class="target" id="structStDescriptorsDB_1a4acab176720d5f9b99951f6fdc099f11"></span><a class="reference internal" href="st_descriptors.html#_CPPv413StDescriptors" title="StDescriptors"><span class="n"><span class="pre">StDescriptors</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">()</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">n</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N15StDescriptorsDBclEK6size_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Return reference to the n-th <a class="reference internal" href="st_descriptors.html#structStDescriptors"><span class="std std-ref">StDescriptors</span></a> stored by this object </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK15StDescriptorsDB4sizeEv">
+<span id="_CPPv3NK15StDescriptorsDB4sizeEv"></span><span id="_CPPv2NK15StDescriptorsDB4sizeEv"></span><span id="StDescriptorsDB::sizeC"></span><span class="target" id="structStDescriptorsDB_1adbd21c6dcfcef2c447d9544c7c95599b"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">size</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK15StDescriptorsDB4sizeEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Return number of <a class="reference internal" href="st_descriptors.html#structStDescriptors"><span class="std std-ref">StDescriptors</span></a> stored </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="nn_finder.html" class="btn btn-neutral float-right" title="NNFiner" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="st_descriptors.html" class="btn btn-neutral float-left" title="StDescriptors" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Marcin Kirsz.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

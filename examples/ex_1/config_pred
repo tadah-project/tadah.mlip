@@ -1,0 +1,3 @@
+DBFILE tdata.db
+FORCE true
+Stress true

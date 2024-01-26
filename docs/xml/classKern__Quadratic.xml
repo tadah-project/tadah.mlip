@@ -1,0 +1,229 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classKern__Quadratic" kind="class" language="C++" prot="public">
+    <compoundname>Kern_Quadratic</compoundname>
+    <basecompoundref refid="classKern__Base" prot="public" virt="non-virtual">Kern_Base</basecompoundref>
+    <includes refid="kern__quadratic_8h" local="no">kern_quadratic.h</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classKern__Quadratic_1aa33e2902c695a57ba5a9963838daf7c7" prot="public" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string Kern_Quadratic::label</definition>
+        <argsstring></argsstring>
+        <name>label</name>
+        <initializer>= &quot;Kern_Quadratic&quot;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Label used for this class </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h" line="23" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h" bodystart="23" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classKern__Quadratic_1a7c9ada36252794c57fbc8d03bcebca8a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>Kern_Quadratic::Kern_Quadratic</definition>
+        <argsstring>()</argsstring>
+        <name>Kern_Quadratic</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h" line="18" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.cpp" bodystart="6" bodyend="6"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Quadratic_1ac9fdac7b50ceda673af33e4da629e7ca" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>Kern_Quadratic::Kern_Quadratic</definition>
+        <argsstring>(const Config &amp;c)</argsstring>
+        <name>Kern_Quadratic</name>
+        <param>
+          <type>const <ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h" line="19" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.cpp" bodystart="7" bodyend="11"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Quadratic_1a9b44597996b11017af513d8a0bd84c3c" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double Kern_Quadratic::operator()</definition>
+        <argsstring>(const aed_type &amp;b, const aed_type &amp;af)</argsstring>
+        <name>operator()</name>
+        <reimplements refid="classKern__Base_1addb3ad5509b3d128dd12f01f854b533c">operator()</reimplements>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>af</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate kernel value given two vectors</para>
+<para><itemizedlist>
+<listitem><para>b = basis vector</para>
+</listitem><listitem><para>af = atomic energy descriptor </para>
+</listitem></itemizedlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h" line="24" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.cpp" bodystart="12" bodyend="16"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Quadratic_1a911944e2d45225efbf5b09d6c2c4ee69" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>aed_type</type>
+        <definition>aed_type Kern_Quadratic::derivative</definition>
+        <argsstring>(const aed_type &amp;b, const aed_type &amp;af)</argsstring>
+        <name>derivative</name>
+        <reimplements refid="classKern__Base_1a9a6a4482e80ade5d1f8579986863d075">derivative</reimplements>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>af</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate the kernel derivative wrt to the second argument</para>
+<para><itemizedlist>
+<listitem><para>b = basis vector</para>
+</listitem><listitem><para>af = atomic energy descriptor </para>
+</listitem></itemizedlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h" line="25" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.cpp" bodystart="17" bodyend="21"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Quadratic_1af4552634009424b6853c9582b4f68f76" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double Kern_Quadratic::prime</definition>
+        <argsstring>(const aed_type &amp;b, const aed_type &amp;af, const aed_type &amp;ff)</argsstring>
+        <name>prime</name>
+        <reimplements refid="classKern__Base_1a3655c75015f64f44b2c0d884d1d156b1">prime</reimplements>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>af</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>ff</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate inner product of the kernel derivative wrt to the second argument (b wrt af) with the force descriptor</para>
+<para><itemizedlist>
+<listitem><para>b = basis vector</para>
+</listitem><listitem><para>af = atomic energy descriptor</para>
+</listitem><listitem><para>ff = force descriptor (TODO i-th dir component of it) TODO consider calculating all 3-directions at once </para>
+</listitem></itemizedlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h" line="26" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.cpp" bodystart="22" bodyend="28"/>
+      </memberdef>
+      <memberdef kind="function" id="classKern__Quadratic_1ac91ad8e82db9ab9d9855f6afa160e1ec" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>std::string</type>
+        <definition>std::string Kern_Quadratic::get_label</definition>
+        <argsstring>()</argsstring>
+        <name>get_label</name>
+        <reimplements refid="classKern__Base_1a4dc88c30557303ca426f5175f91fed5a">get_label</reimplements>
+        <briefdescription>
+<para>Return label of this object. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h" line="27" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.cpp" bodystart="29" bodyend="32"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Quadratic kernel - special case of 2nd order polynomial kernel</para>
+<para>Defined for two vectors <bold>x</bold> and <bold>y</bold>:</para>
+<para><formula id="39">\[ K(\mathbf{x}, \mathbf{y}) = \Big( \mathbf{x}^T \mathbf{y} \Big)^2 = \Big( \sum_i x^{(i)} y^{(i)} \Big)^2 \]</formula></para>
+<para><simplesect kind="see"><para><ref refid="classKern__Base" kindref="compound">Kern_Base</ref> </para>
+</simplesect>
+</para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="3">
+        <label>Func_Base</label>
+        <link refid="structFunc__Base"/>
+      </node>
+      <node id="1">
+        <label>Kern_Quadratic</label>
+        <link refid="classKern__Quadratic"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>Kern_Base</label>
+        <link refid="classKern__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="3">
+        <label>Func_Base</label>
+        <link refid="structFunc__Base"/>
+      </node>
+      <node id="1">
+        <label>Kern_Quadratic</label>
+        <link refid="classKern__Quadratic"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>Kern_Base</label>
+        <link refid="classKern__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h" line="16" column="38" bodyfile="/home/s1351949/PROJECTS/tadah/src/kernels/kern_quadratic.h" bodystart="16" bodyend="29"/>
+    <listofallmembers>
+      <member refid="classKern__Base_1a74e1a2c8814eb9eef0ecb27bcdb9a600" prot="public" virt="non-virtual"><scope>Kern_Quadratic</scope><name>basis</name></member>
+      <member refid="classKern__Base_1ada89257424dae4cb7a8fd43fbfae8ae7" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>calc_phi_energy_row</name></member>
+      <member refid="classKern__Base_1a2434db2a8b2eaefa9397a377ac254bf9" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>calc_phi_force_rows</name></member>
+      <member refid="classKern__Base_1a5688c48ce0b86b11a06c076ba0b35b7b" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>calc_phi_stress_rows</name></member>
+      <member refid="classKern__Quadratic_1a911944e2d45225efbf5b09d6c2c4ee69" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>derivative</name></member>
+      <member refid="classKern__Base_1a0bf229903b2f826bbda74fc65efd56d8" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>epredict</name></member>
+      <member refid="classKern__Base_1a8ce2ac032a2dfe2fde02a44c01454c56" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>fpredict</name></member>
+      <member refid="classKern__Base_1aa8c5f6fd8c3151d8ca8d142a9cf9f62c" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>fpredict</name></member>
+      <member refid="classKern__Quadratic_1ac91ad8e82db9ab9d9855f6afa160e1ec" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>get_label</name></member>
+      <member refid="classKern__Base_1af70579ef3b176b73674e1711e55aca23" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>get_phi_cols</name></member>
+      <member refid="classKern__Quadratic_1a7c9ada36252794c57fbc8d03bcebca8a" prot="public" virt="non-virtual"><scope>Kern_Quadratic</scope><name>Kern_Quadratic</name></member>
+      <member refid="classKern__Quadratic_1ac9fdac7b50ceda673af33e4da629e7ca" prot="public" virt="non-virtual"><scope>Kern_Quadratic</scope><name>Kern_Quadratic</name></member>
+      <member refid="classKern__Quadratic_1aa33e2902c695a57ba5a9963838daf7c7" prot="public" virt="non-virtual"><scope>Kern_Quadratic</scope><name>label</name></member>
+      <member refid="classKern__Quadratic_1a9b44597996b11017af513d8a0bd84c3c" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>operator()</name></member>
+      <member refid="classKern__Quadratic_1af4552634009424b6853c9582b4f68f76" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>prime</name></member>
+      <member refid="classKern__Base_1a535beb13bd2154389721aa3585b4546d" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>set_basis</name></member>
+      <member refid="classKern__Base_1aa2d57e305473593742ccacf825dd0ca0" prot="public" virt="non-virtual"><scope>Kern_Quadratic</scope><name>verbose</name></member>
+      <member refid="structFunc__Base_1ad5e024d08c74e3085f1bd9a91bec0538" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>~Func_Base</name></member>
+      <member refid="classKern__Base_1afc0cd9ac3fb625775b23548c42e73431" prot="public" virt="virtual"><scope>Kern_Quadratic</scope><name>~Kern_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

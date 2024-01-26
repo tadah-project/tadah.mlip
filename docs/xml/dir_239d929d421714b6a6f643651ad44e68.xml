@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="dir_239d929d421714b6a6f643651ad44e68" kind="dir">
+    <compoundname>/home/s1351949/PROJECTS/tadah/src/cutoffs</compoundname>
+    <innerfile refid="cut__all_8h">cut_all.h</innerfile>
+    <innerfile refid="cutoffs_8cpp">cutoffs.cpp</innerfile>
+    <innerfile refid="cutoffs_8h">cutoffs.h</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/"/>
+  </compounddef>
+</doxygen>

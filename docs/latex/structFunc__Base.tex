@@ -1,0 +1,59 @@
+\hypertarget{structFunc__Base}{}\doxysection{Func\+\_\+\+Base Struct Reference}
+\label{structFunc__Base}\index{Func\_Base@{Func\_Base}}
+
+
+{\ttfamily \#include $<$func\+\_\+base.\+h$>$}
+
+Inheritance diagram for Func\+\_\+\+Base\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=8.000000cm]{structFunc__Base}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structFunc__Base_a0831694fbcfe3b58f60086a6080cfaa6}\label{structFunc__Base_a0831694fbcfe3b58f60086a6080cfaa6}} 
+virtual double {\bfseries operator()} (const aed\+\_\+type \&b, const aed\+\_\+type \&af)
+\item 
+\mbox{\Hypertarget{structFunc__Base_a840a28ccef5e2a1664c6329ac338df54}\label{structFunc__Base_a840a28ccef5e2a1664c6329ac338df54}} 
+virtual aed\+\_\+type {\bfseries derivative} (const aed\+\_\+type \&b, const aed\+\_\+type \&af)
+\item 
+\mbox{\Hypertarget{structFunc__Base_a1d4107fc3ed70e79e0126a112242aab7}\label{structFunc__Base_a1d4107fc3ed70e79e0126a112242aab7}} 
+virtual double {\bfseries prime} (const aed\+\_\+type \&b, const aed\+\_\+type \&af, const aed\+\_\+type \&ff)
+\item 
+\mbox{\Hypertarget{structFunc__Base_ada732e44cd10ffb2f7f537629d8b1407}\label{structFunc__Base_ada732e44cd10ffb2f7f537629d8b1407}} 
+virtual void {\bfseries set\+\_\+basis} (const std\+::vector$<$ aed\+\_\+type $>$ b)
+\item 
+\mbox{\Hypertarget{structFunc__Base_a79140083a4dff5dc69f09acd9bf4c35f}\label{structFunc__Base_a79140083a4dff5dc69f09acd9bf4c35f}} 
+virtual std\+::string \mbox{\hyperlink{structFunc__Base_a79140083a4dff5dc69f09acd9bf4c35f}{get\+\_\+label}} ()
+\begin{DoxyCompactList}\small\item\em Return label of this object. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structFunc__Base_a2fab62a5e6ca6a93a2fc52f107f00fd6}\label{structFunc__Base_a2fab62a5e6ca6a93a2fc52f107f00fd6}} 
+virtual double {\bfseries epredict} (const t\+\_\+type \&weights, const aed\+\_\+type \&aed)
+\item 
+\mbox{\Hypertarget{structFunc__Base_abb9c075f1b1ae369f73d2e776b5e25bb}\label{structFunc__Base_abb9c075f1b1ae369f73d2e776b5e25bb}} 
+virtual double {\bfseries fpredict} (const t\+\_\+type \&weights, const fd\+\_\+type \&fdij, const aed\+\_\+type \&aedi, const size\+\_\+t k)
+\item 
+\mbox{\Hypertarget{structFunc__Base_a518fb9dc65bfe5d15bf21876191a287b}\label{structFunc__Base_a518fb9dc65bfe5d15bf21876191a287b}} 
+virtual force\+\_\+type {\bfseries fpredict} (const t\+\_\+type \&weights, const fd\+\_\+type \&fdij, const aed\+\_\+type \&aedi)
+\item 
+\mbox{\Hypertarget{structFunc__Base_ab3662c206c7435be5e4e7b236bf104ab}\label{structFunc__Base_ab3662c206c7435be5e4e7b236bf104ab}} 
+virtual size\+\_\+t {\bfseries get\+\_\+phi\+\_\+cols} (const \mbox{\hyperlink{classConfig}{Config}} \&config)
+\item 
+\mbox{\Hypertarget{structFunc__Base_ae9015795066119c7b8c09ae6a6b065a1}\label{structFunc__Base_ae9015795066119c7b8c09ae6a6b065a1}} 
+virtual void {\bfseries calc\+\_\+phi\+\_\+energy\+\_\+row} (phi\+\_\+type \&Phi, size\+\_\+t \&row, const double fac, const \mbox{\hyperlink{structStructure}{Structure}} \&st, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&st\+\_\+d)
+\item 
+\mbox{\Hypertarget{structFunc__Base_af5a78f61b756fa847b9f30e8d24205a0}\label{structFunc__Base_af5a78f61b756fa847b9f30e8d24205a0}} 
+virtual void {\bfseries calc\+\_\+phi\+\_\+force\+\_\+rows} (phi\+\_\+type \&Phi, size\+\_\+t \&row, const double fac, const \mbox{\hyperlink{structStructure}{Structure}} \&st, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&st\+\_\+d)
+\item 
+\mbox{\Hypertarget{structFunc__Base_a96e8b0477e0e736710fb9f971a428178}\label{structFunc__Base_a96e8b0477e0e736710fb9f971a428178}} 
+virtual void {\bfseries calc\+\_\+phi\+\_\+stress\+\_\+rows} (phi\+\_\+type \&Phi, size\+\_\+t \&row, const double fac\mbox{[}6\mbox{]}, const \mbox{\hyperlink{structStructure}{Structure}} \&st, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&st\+\_\+d)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Base class for Kernels and \mbox{\hyperlink{classBasis}{Basis}} Functions 
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/func\+\_\+base.\+h\end{DoxyCompactItemize}

@@ -1,0 +1,373 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classD2__EAM" kind="class" language="C++" prot="public">
+    <compoundname>D2_EAM</compoundname>
+    <basecompoundref refid="classD2__Base" prot="public" virt="non-virtual">D2_Base</basecompoundref>
+    <includes refid="d2__eam_8h" local="no">d2_eam.h</includes>
+    <innerclass refid="structD2__EAM_1_1eam__file" prot="private">D2_EAM::eam_file</innerclass>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classD2__EAM_1ab077541993f72e868d510809670747d3" prot="private" static="no" mutable="no">
+        <type>eam_file</type>
+        <definition>eam_file D2_EAM::ef</definition>
+        <argsstring></argsstring>
+        <name>ef</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="43" column="10" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="43" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classD2__EAM_1a2606526eb44318811e5673dbb61ab022" prot="private" static="no" mutable="no">
+        <type>std::vector&lt; std::vector&lt; double &gt; &gt;</type>
+        <definition>std::vector&lt;std::vector&lt;double&gt; &gt; D2_EAM::frho_spline</definition>
+        <argsstring></argsstring>
+        <name>frho_spline</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="45" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="45" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classD2__EAM_1a9b32fb4b09a782d4a81beaf0a5a4a5c1" prot="private" static="no" mutable="no">
+        <type>std::vector&lt; std::vector&lt; double &gt; &gt;</type>
+        <definition>std::vector&lt;std::vector&lt;double&gt; &gt; D2_EAM::rhor_spline</definition>
+        <argsstring></argsstring>
+        <name>rhor_spline</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="46" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="46" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classD2__EAM_1a0cae4d87fe47ba7d83704da4609384a1" prot="private" static="no" mutable="no">
+        <type>std::vector&lt; std::vector&lt; double &gt; &gt;</type>
+        <definition>std::vector&lt;std::vector&lt;double&gt; &gt; D2_EAM::z2r_spline</definition>
+        <argsstring></argsstring>
+        <name>z2r_spline</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="47" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="47" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classD2__EAM_1a5f7130f0fb9bec28ecfce9d34888c67c" prot="private" static="no" mutable="no">
+        <type>int</type>
+        <definition>int D2_EAM::verbose</definition>
+        <argsstring></argsstring>
+        <name>verbose</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="49" column="13" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="49" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classD2__EAM_1a18bc4b50101900879f8ad4ac11b245c3" prot="private" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t D2_EAM::s</definition>
+        <argsstring></argsstring>
+        <name>s</name>
+        <initializer>=1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="51" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="51" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classD2__EAM_1a9cab05a587dad45287c657d83db04b27" prot="private" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string D2_EAM::lab</definition>
+        <argsstring></argsstring>
+        <name>lab</name>
+        <initializer>=&quot;D2_EAM&quot;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="52" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="52" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classD2__EAM_1ac1febf23cf25f1e190ab5e1bdf2f9f88" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void D2_EAM::read_setfl</definition>
+        <argsstring>()</argsstring>
+        <name>read_setfl</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="53" column="6" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.cpp" bodystart="112" bodyend="144"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__EAM_1a13b806957887a124d3143c10bc590bfa" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void D2_EAM::gen_splines</definition>
+        <argsstring>(int &amp;n, double &amp;delta, std::vector&lt; double &gt; &amp;f, std::vector&lt; std::vector&lt; double &gt;&gt; &amp;spline)</argsstring>
+        <name>gen_splines</name>
+        <param>
+          <type>int &amp;</type>
+          <declname>n</declname>
+        </param>
+        <param>
+          <type>double &amp;</type>
+          <declname>delta</declname>
+        </param>
+        <param>
+          <type>std::vector&lt; double &gt; &amp;</type>
+          <declname>f</declname>
+        </param>
+        <param>
+          <type>std::vector&lt; std::vector&lt; double &gt;&gt; &amp;</type>
+          <declname>spline</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="54" column="6" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.cpp" bodystart="145" bodyend="173"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classD2__EAM_1a3ea96d1f05e394e4a456ee7c6ac9071a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>D2_EAM::D2_EAM</definition>
+        <argsstring>(Config &amp;config)</argsstring>
+        <name>D2_EAM</name>
+        <param>
+          <type><ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>config</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="57" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.cpp" bodystart="5" bodyend="37"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__EAM_1a03f04976644336b17759a7d2bfc01222" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void D2_EAM::calc_aed</definition>
+        <argsstring>(double rij, const double rij_sq, const double, StDescriptors::aed_type &amp;aed)</argsstring>
+        <name>calc_aed</name>
+        <reimplements refid="classD2__Base_1a00def8ce32e48fdfb2815a43e6cda8a1">calc_aed</reimplements>
+        <param>
+          <type>double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" kindref="member">StDescriptors::aed_type</ref> &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <briefdescription>
+<para>Calculate AED. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate Atomic Energy Descriptor for the atom local environment. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="58" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.cpp" bodystart="39" bodyend="56"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__EAM_1a2ff53da487983d516611a1a33d59fbfb" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void D2_EAM::calc_dXijdri</definition>
+        <argsstring>(double rij, const double rij_sq, const double, const double, StDescriptors::fd_type &amp;fd_ij)</argsstring>
+        <name>calc_dXijdri</name>
+        <reimplements refid="classD2__Base_1aae6943d8aaee729e6892ac0ca7f6a68d">calc_dXijdri</reimplements>
+        <param>
+          <type>double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd_ij</declname>
+        </param>
+        <briefdescription>
+<para>Calculate FD. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate Force Descriptor for the atom local environment. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="63" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.cpp" bodystart="57" bodyend="80"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__EAM_1a8012c60f7665760c27192d00247c6076" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void D2_EAM::calc_all</definition>
+        <argsstring>(double rij, const double rij_sq, const double, const double, StDescriptors::aed_type &amp;aed, StDescriptors::fd_type &amp;fd_ij)</argsstring>
+        <name>calc_all</name>
+        <reimplements refid="classD2__Base_1abd6758f59daf4cca3d5463d932ccf47c">calc_all</reimplements>
+        <param>
+          <type>double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" kindref="member">StDescriptors::aed_type</ref> &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd_ij</declname>
+        </param>
+        <briefdescription>
+<para>Calculate AED + FD. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="69" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.cpp" bodystart="81" bodyend="104"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__EAM_1acae7d6bc48ec2b908f7a7084a1e89785" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>size_t</type>
+        <definition>size_t D2_EAM::size</definition>
+        <argsstring>()</argsstring>
+        <name>size</name>
+        <reimplements refid="classD__Base_1a5e222a94a9cccf43700df92ef17e2c07">size</reimplements>
+        <briefdescription>
+<para>Return dimension of the descriptor. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="76" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.cpp" bodystart="105" bodyend="107"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__EAM_1a8ca5776c9c93b58c48239ed6fd7ecd5c" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>std::string</type>
+        <definition>std::string D2_EAM::label</definition>
+        <argsstring>()</argsstring>
+        <name>label</name>
+        <reimplements refid="classD2__Base_1af0e0e608f19159d9b64ff6b400e3362a">label</reimplements>
+        <briefdescription>
+<para>Return label of this descriptor. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="77" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.cpp" bodystart="108" bodyend="110"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Pair-wise part for the Embedded <ref refid="structAtom" kindref="compound">Atom</ref> Method descriptor. </para>
+    </briefdescription>
+    <detaileddescription>
+<para><formula id="15">\[ V_i = \frac{1}{2} \sum_{j \neq i} \psi(r_{ij}) \]</formula></para>
+<para>This descriptor will load tabulated values for the two-body potential <formula id="16">$ \phi $</formula> from the provided <ref refid="classConfig_1SETFL" kindref="member">SETFL</ref> file.</para>
+<para>This descriptor is usually used together with the many-body descriptor <ref refid="classDM__EAM" kindref="compound">DM_EAM</ref> although this is not required and user can mix it with any other descriptors or use it on its own.</para>
+<para>This descriptor will enforce cutoff distance as specified in a <ref refid="classConfig_1SETFL" kindref="member">SETFL</ref> file. Set <ref refid="classConfig_1RCUT2B" kindref="member">RCUT2B</ref> to the same value to suppress the warning message.</para>
+<para>Required <ref refid="classConfig" kindref="compound">Config</ref> keys: <ref refid="classConfig_1INIT2B" kindref="member">INIT2B</ref> <ref refid="classConfig_1SETFL" kindref="member">SETFL</ref> </para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="3">
+        <label>D_Base</label>
+        <link refid="classD__Base"/>
+      </node>
+      <node id="2">
+        <label>D2_Base</label>
+        <link refid="classD2__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>D2_EAM</label>
+        <link refid="classD2__EAM"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="3">
+        <label>D_Base</label>
+        <link refid="classD__Base"/>
+      </node>
+      <node id="2">
+        <label>D2_Base</label>
+        <link refid="classD2__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>D2_EAM</label>
+        <link refid="classD2__EAM"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="24" column="28" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="24" bodyend="78"/>
+    <listofallmembers>
+      <member refid="classD2__EAM_1a03f04976644336b17759a7d2bfc01222" prot="public" virt="virtual"><scope>D2_EAM</scope><name>calc_aed</name></member>
+      <member refid="classD2__EAM_1a8012c60f7665760c27192d00247c6076" prot="public" virt="virtual"><scope>D2_EAM</scope><name>calc_all</name></member>
+      <member refid="classD2__EAM_1a2ff53da487983d516611a1a33d59fbfb" prot="public" virt="virtual"><scope>D2_EAM</scope><name>calc_dXijdri</name></member>
+      <member refid="classD2__Base_1a21a79b4945c440a6ce5d0d930e79e264" prot="public" virt="virtual"><scope>D2_EAM</scope><name>calc_fd_approx</name></member>
+      <member refid="classD2__EAM_1a3ea96d1f05e394e4a456ee7c6ac9071a" prot="public" virt="non-virtual"><scope>D2_EAM</scope><name>D2_EAM</name></member>
+      <member refid="classD2__EAM_1ab077541993f72e868d510809670747d3" prot="private" virt="non-virtual"><scope>D2_EAM</scope><name>ef</name></member>
+      <member refid="classD2__Base_1a9fa130af5612f18f65bfb6debc10876f" prot="public" virt="non-virtual"><scope>D2_EAM</scope><name>fidx</name></member>
+      <member refid="classD2__EAM_1a2606526eb44318811e5673dbb61ab022" prot="private" virt="non-virtual"><scope>D2_EAM</scope><name>frho_spline</name></member>
+      <member refid="classD2__EAM_1a13b806957887a124d3143c10bc590bfa" prot="private" virt="non-virtual"><scope>D2_EAM</scope><name>gen_splines</name></member>
+      <member refid="classD__Base_1a384d9d370b34aa54f88c582fca5625d6" prot="public" virt="non-virtual"><scope>D2_EAM</scope><name>get_grid</name></member>
+      <member refid="classD2__EAM_1a9cab05a587dad45287c657d83db04b27" prot="private" virt="non-virtual"><scope>D2_EAM</scope><name>lab</name></member>
+      <member refid="classD2__EAM_1a8ca5776c9c93b58c48239ed6fd7ecd5c" prot="public" virt="virtual"><scope>D2_EAM</scope><name>label</name></member>
+      <member refid="classD2__EAM_1ac1febf23cf25f1e190ab5e1bdf2f9f88" prot="private" virt="non-virtual"><scope>D2_EAM</scope><name>read_setfl</name></member>
+      <member refid="classD2__EAM_1a9b32fb4b09a782d4a81beaf0a5a4a5c1" prot="private" virt="non-virtual"><scope>D2_EAM</scope><name>rhor_spline</name></member>
+      <member refid="classD2__EAM_1a18bc4b50101900879f8ad4ac11b245c3" prot="private" virt="non-virtual"><scope>D2_EAM</scope><name>s</name></member>
+      <member refid="classD2__EAM_1acae7d6bc48ec2b908f7a7084a1e89785" prot="public" virt="virtual"><scope>D2_EAM</scope><name>size</name></member>
+      <member refid="classD2__EAM_1a5f7130f0fb9bec28ecfce9d34888c67c" prot="private" virt="non-virtual"><scope>D2_EAM</scope><name>verbose</name></member>
+      <member refid="classD2__EAM_1a0cae4d87fe47ba7d83704da4609384a1" prot="private" virt="non-virtual"><scope>D2_EAM</scope><name>z2r_spline</name></member>
+      <member refid="classD2__Base_1a29533c768afefb735344ab9fc10ea845" prot="public" virt="virtual"><scope>D2_EAM</scope><name>~D2_Base</name></member>
+      <member refid="classD__Base_1ad1a85cef6c0066181d03600128fcfb6b" prot="public" virt="virtual"><scope>D2_EAM</scope><name>~D_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

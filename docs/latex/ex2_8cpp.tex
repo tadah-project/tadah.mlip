@@ -1,0 +1,40 @@
+\hypertarget{ex2_8cpp}{}\doxysection{/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/examples/ex\+\_\+2/ex2.cpp File Reference}
+\label{ex2_8cpp}\index{/home/s1351949/PROJECTS/tadah/examples/ex\_2/ex2.cpp@{/home/s1351949/PROJECTS/tadah/examples/ex\_2/ex2.cpp}}
+{\ttfamily \#include $<$tadah/cutoffs/cut\+\_\+all.\+h$>$}\newline
+{\ttfamily \#include $<$tadah/descriptors/d\+\_\+all.\+h$>$}\newline
+{\ttfamily \#include $<$tadah/models/m\+\_\+all.\+h$>$}\newline
+{\ttfamily \#include $<$tadah/descriptors\+\_\+calc.\+h$>$}\newline
+{\ttfamily \#include $<$tadah/config.\+h$>$}\newline
+{\ttfamily \#include $<$tadah/structure.\+h$>$}\newline
+{\ttfamily \#include $<$tadah/nn\+\_\+finder.\+h$>$}\newline
+{\ttfamily \#include $<$fstream$>$}\newline
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{ex2_8cpp_ae66f6b31b5ad750f1fe042a706a4e3d4}\label{ex2_8cpp_ae66f6b31b5ad750f1fe042a706a4e3d4}} 
+int {\bfseries main} ()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+This example shows how to predict with a trained model. Example model is provided in a {\ttfamily pot.\+tadah} file.
+
+To compile with {\ttfamily g++} and run\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ g++ -\/O3 ex2.cpp -\/o ex2.out -\/ltadah -\/fopenmp}
+\DoxyCodeLine{\$ ./ex2.out}
+\end{DoxyCode}
+
+
+Ta-\/dah! models and descriptors are selected at compile time but all model parameters are provided in the {\ttfamily pot.\+tadah} file. Model, cutoff and descriptors in the {\ttfamily \mbox{\hyperlink{ex2_8cpp}{ex2.\+cpp}}} file must match those in the {\ttfamily pot.\+tadah} file. See code comment bellow for more detail.
+
+Files\+:
+
+
+\begin{DoxyItemize}
+\item {\ttfamily \mbox{\hyperlink{ex2_8cpp}{ex2.\+cpp}}} Example c++ script for prediction using already available model.
+\item {\ttfamily config\+\_\+pred} List of datasets used for prediction (\mbox{\hyperlink{classConfig_DBFILE}{D\+B\+F\+I\+LE}} key). Keys \mbox{\hyperlink{classConfig_FORCE}{F\+O\+R\+CE}} and \mbox{\hyperlink{classConfig_STRESS}{S\+T\+R\+E\+SS}} controls whether forces and stresses are predicted.
+\item {\ttfamily tdata.\+db} Dataset which we will use for prediction. The dataset is generated using E\+AM model for Ta by R.\+Ravelo. \href{https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.134101}{\texttt{ https\+://journals.\+aps.\+org/prb/abstract/10.\+1103/\+Phys\+Rev\+B.\+88.\+134101}} 
+\end{DoxyItemize}

@@ -1,0 +1,111 @@
+\hypertarget{classKern__Quadratic}{}\doxysection{Kern\+\_\+\+Quadratic Class Reference}
+\label{classKern__Quadratic}\index{Kern\_Quadratic@{Kern\_Quadratic}}
+
+
+{\ttfamily \#include $<$kern\+\_\+quadratic.\+h$>$}
+
+Inheritance diagram for Kern\+\_\+\+Quadratic\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=3.000000cm]{classKern__Quadratic}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classKern__Quadratic_ac9fdac7b50ceda673af33e4da629e7ca}\label{classKern__Quadratic_ac9fdac7b50ceda673af33e4da629e7ca}} 
+{\bfseries Kern\+\_\+\+Quadratic} (const \mbox{\hyperlink{classConfig}{Config}} \&c)
+\item 
+double \mbox{\hyperlink{classKern__Quadratic_a9b44597996b11017af513d8a0bd84c3c}{operator()}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af)
+\item 
+aed\+\_\+type \mbox{\hyperlink{classKern__Quadratic_a911944e2d45225efbf5b09d6c2c4ee69}{derivative}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af)
+\item 
+double \mbox{\hyperlink{classKern__Quadratic_af4552634009424b6853c9582b4f68f76}{prime}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af, const aed\+\_\+type \&ff)
+\item 
+\mbox{\Hypertarget{classKern__Quadratic_ac91ad8e82db9ab9d9855f6afa160e1ec}\label{classKern__Quadratic_ac91ad8e82db9ab9d9855f6afa160e1ec}} 
+std\+::string \mbox{\hyperlink{classKern__Quadratic_ac91ad8e82db9ab9d9855f6afa160e1ec}{get\+\_\+label}} ()
+\begin{DoxyCompactList}\small\item\em Return label of this object. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std\+::string \mbox{\hyperlink{classKern__Quadratic_aa33e2902c695a57ba5a9963838daf7c7}{label}} = \char`\"{}Kern\+\_\+\+Quadratic\char`\"{}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Quadratic kernel -\/ special case of 2nd order polynomial kernel
+
+Defined for two vectors {\bfseries{x}} and {\bfseries{y}}\+:
+
+\[ K(\mathbf{x}, \mathbf{y}) = \Big( \mathbf{x}^T \mathbf{y} \Big)^2 = \Big( \sum_i x^{(i)} y^{(i)} \Big)^2 \]
+
+\begin{DoxySeeAlso}{See also}
+\mbox{\hyperlink{classKern__Base}{Kern\+\_\+\+Base}} 
+\end{DoxySeeAlso}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classKern__Quadratic_a911944e2d45225efbf5b09d6c2c4ee69}\label{classKern__Quadratic_a911944e2d45225efbf5b09d6c2c4ee69}} 
+\index{Kern\_Quadratic@{Kern\_Quadratic}!derivative@{derivative}}
+\index{derivative@{derivative}!Kern\_Quadratic@{Kern\_Quadratic}}
+\doxysubsubsection{\texorpdfstring{derivative()}{derivative()}}
+{\footnotesize\ttfamily aed\+\_\+type Kern\+\_\+\+Quadratic\+::derivative (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate the kernel derivative wrt to the second argument
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKern__Base_a9a6a4482e80ade5d1f8579986863d075}{Kern\+\_\+\+Base}}.
+
+\mbox{\Hypertarget{classKern__Quadratic_a9b44597996b11017af513d8a0bd84c3c}\label{classKern__Quadratic_a9b44597996b11017af513d8a0bd84c3c}} 
+\index{Kern\_Quadratic@{Kern\_Quadratic}!operator()@{operator()}}
+\index{operator()@{operator()}!Kern\_Quadratic@{Kern\_Quadratic}}
+\doxysubsubsection{\texorpdfstring{operator()()}{operator()()}}
+{\footnotesize\ttfamily double Kern\+\_\+\+Quadratic\+::operator() (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate kernel value given two vectors
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKern__Base_addb3ad5509b3d128dd12f01f854b533c}{Kern\+\_\+\+Base}}.
+
+\mbox{\Hypertarget{classKern__Quadratic_af4552634009424b6853c9582b4f68f76}\label{classKern__Quadratic_af4552634009424b6853c9582b4f68f76}} 
+\index{Kern\_Quadratic@{Kern\_Quadratic}!prime@{prime}}
+\index{prime@{prime}!Kern\_Quadratic@{Kern\_Quadratic}}
+\doxysubsubsection{\texorpdfstring{prime()}{prime()}}
+{\footnotesize\ttfamily double Kern\+\_\+\+Quadratic\+::prime (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af,  }\item[{const aed\+\_\+type \&}]{ff }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate inner product of the kernel derivative wrt to the second argument (b wrt af) with the force descriptor
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor
+\item ff = force descriptor (T\+O\+DO i-\/th dir component of it) T\+O\+DO consider calculating all 3-\/directions at once 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKern__Base_a3655c75015f64f44b2c0d884d1d156b1}{Kern\+\_\+\+Base}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{classKern__Quadratic_aa33e2902c695a57ba5a9963838daf7c7}\label{classKern__Quadratic_aa33e2902c695a57ba5a9963838daf7c7}} 
+\index{Kern\_Quadratic@{Kern\_Quadratic}!label@{label}}
+\index{label@{label}!Kern\_Quadratic@{Kern\_Quadratic}}
+\doxysubsubsection{\texorpdfstring{label}{label}}
+{\footnotesize\ttfamily std\+::string Kern\+\_\+\+Quadratic\+::label = \char`\"{}Kern\+\_\+\+Quadratic\char`\"{}}
+
+Label used for this class 
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/kernels/kern\+\_\+quadratic.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/kernels/kern\+\_\+quadratic.\+cpp\end{DoxyCompactItemize}

@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classNNFinder" kind="class" language="C++" prot="public">
+    <compoundname>NNFinder</compoundname>
+    <includes refid="nn__finder_8h" local="no">nn_finder.h</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classNNFinder_1a51ce4668f173de0845ec9291dba33b86" prot="private" static="no" mutable="no">
+        <type>double</type>
+        <definition>double NNFinder::cutoff_sq</definition>
+        <argsstring></argsstring>
+        <name>cutoff_sq</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/nn_finder.h" line="20" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/nn_finder.h" bodystart="20" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classNNFinder_1a242fc34164ab594fe34b69bdf3b54fdd" prot="private" static="no" mutable="no">
+        <type>double</type>
+        <definition>double NNFinder::cutoff</definition>
+        <argsstring></argsstring>
+        <name>cutoff</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/nn_finder.h" line="21" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/nn_finder.h" bodystart="21" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classNNFinder_1a5f30c2601a4fb2a504be42d2bbfb9980" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool NNFinder::check_box</definition>
+        <argsstring>(Structure &amp;st)</argsstring>
+        <name>check_box</name>
+        <param>
+          <type><ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Return false if cutoff is larger than one of cell dimensions. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/nn_finder.h" line="25" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/nn_finder.cpp" bodystart="65" bodyend="71"/>
+      </memberdef>
+      <memberdef kind="function" id="classNNFinder_1a6e0a620725cc01fdd7f5bdb3a13923b4" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void NNFinder::num_shifts</definition>
+        <argsstring>(Structure &amp;st, int N[3])</argsstring>
+        <name>num_shifts</name>
+        <param>
+          <type><ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>N</declname>
+          <array>[3]</array>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/nn_finder.h" line="26" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/nn_finder.cpp" bodystart="72" bodyend="91"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classNNFinder_1aabbbacb385a14b2ab1de31226dc92aac" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>NNFinder::NNFinder</definition>
+        <argsstring>(Config &amp;config)</argsstring>
+        <name>NNFinder</name>
+        <param>
+          <type><ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>config</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Constructor to initalise this object</para>
+<para>Required keys: at least one of: <ref refid="classConfig_1RCUT2B" kindref="member">RCUT2B</ref>,<ref refid="classConfig_1RCUT3B" kindref="member">RCUT3B</ref>,<ref refid="classConfig_1RCUTMB" kindref="member">RCUTMB</ref> </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/nn_finder.h" line="33" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/nn_finder.cpp" bodystart="4" bodyend="7"/>
+      </memberdef>
+      <memberdef kind="function" id="classNNFinder_1abb0480c48b7627bb9c0487cf0ee9f113" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void NNFinder::calc</definition>
+        <argsstring>(Structure &amp;st)</argsstring>
+        <name>calc</name>
+        <param>
+          <type><ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <briefdescription>
+<para>Find nearest neighbours for all atoms in a <ref refid="structStructure" kindref="compound">Structure</ref>. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/nn_finder.h" line="36" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/nn_finder.cpp" bodystart="9" bodyend="57"/>
+      </memberdef>
+      <memberdef kind="function" id="classNNFinder_1aa3e6d13b4400866eb2dec5fc1071b997" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void NNFinder::calc</definition>
+        <argsstring>(StructureDB &amp;stdb)</argsstring>
+        <name>calc</name>
+        <param>
+          <type><ref refid="structStructureDB" kindref="compound">StructureDB</ref> &amp;</type>
+          <declname>stdb</declname>
+        </param>
+        <briefdescription>
+<para>Find nearest neighbours for all atoms in all <ref refid="structStructure" kindref="compound">Structure(s)</ref> </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/nn_finder.h" line="39" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/nn_finder.cpp" bodystart="58" bodyend="64"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Nearest Neighbour Finder</para>
+<para>Construct a full nearest neighbour list for every atom in a structure.</para>
+<para>The lists are ststored with a <ref refid="structStructure" kindref="compound">Structure</ref> object provided.</para>
+<para>The cutoff used is max(<ref refid="classConfig_1RCUT2B" kindref="member">RCUT2B</ref>,<ref refid="classConfig_1RCUT3B" kindref="member">RCUT3B</ref>,<ref refid="classConfig_1RCUTMB" kindref="member">RCUTMB</ref>) </para>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/nn_finder.h" line="18" column="15" bodyfile="/home/s1351949/PROJECTS/tadah/src/nn_finder.h" bodystart="18" bodyend="40"/>
+    <listofallmembers>
+      <member refid="classNNFinder_1abb0480c48b7627bb9c0487cf0ee9f113" prot="public" virt="non-virtual"><scope>NNFinder</scope><name>calc</name></member>
+      <member refid="classNNFinder_1aa3e6d13b4400866eb2dec5fc1071b997" prot="public" virt="non-virtual"><scope>NNFinder</scope><name>calc</name></member>
+      <member refid="classNNFinder_1a5f30c2601a4fb2a504be42d2bbfb9980" prot="private" virt="non-virtual"><scope>NNFinder</scope><name>check_box</name></member>
+      <member refid="classNNFinder_1a242fc34164ab594fe34b69bdf3b54fdd" prot="private" virt="non-virtual"><scope>NNFinder</scope><name>cutoff</name></member>
+      <member refid="classNNFinder_1a51ce4668f173de0845ec9291dba33b86" prot="private" virt="non-virtual"><scope>NNFinder</scope><name>cutoff_sq</name></member>
+      <member refid="classNNFinder_1aabbbacb385a14b2ab1de31226dc92aac" prot="public" virt="non-virtual"><scope>NNFinder</scope><name>NNFinder</name></member>
+      <member refid="classNNFinder_1a6e0a620725cc01fdd7f5bdb3a13923b4" prot="private" virt="non-virtual"><scope>NNFinder</scope><name>num_shifts</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

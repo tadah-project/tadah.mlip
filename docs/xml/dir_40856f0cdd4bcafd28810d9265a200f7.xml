@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="dir_40856f0cdd4bcafd28810d9265a200f7" kind="dir">
+    <compoundname>/home/s1351949/PROJECTS/tadah/src/kernels</compoundname>
+    <innerfile refid="kern__all_8h">kern_all.h</innerfile>
+    <innerfile refid="kern__base_8cpp">kern_base.cpp</innerfile>
+    <innerfile refid="kern__base_8h">kern_base.h</innerfile>
+    <innerfile refid="kern__linear_8cpp">kern_linear.cpp</innerfile>
+    <innerfile refid="kern__linear_8h">kern_linear.h</innerfile>
+    <innerfile refid="kern__lq_8cpp">kern_lq.cpp</innerfile>
+    <innerfile refid="kern__lq_8h">kern_lq.h</innerfile>
+    <innerfile refid="kern__polynomial_8cpp">kern_polynomial.cpp</innerfile>
+    <innerfile refid="kern__polynomial_8h">kern_polynomial.h</innerfile>
+    <innerfile refid="kern__quadratic_8cpp">kern_quadratic.cpp</innerfile>
+    <innerfile refid="kern__quadratic_8h">kern_quadratic.h</innerfile>
+    <innerfile refid="kern__rbf_8cpp">kern_rbf.cpp</innerfile>
+    <innerfile refid="kern__rbf_8h">kern_rbf.h</innerfile>
+    <innerfile refid="kern__sigmoid_8cpp">kern_sigmoid.cpp</innerfile>
+    <innerfile refid="kern__sigmoid_8h">kern_sigmoid.h</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/kernels/"/>
+  </compounddef>
+</doxygen>

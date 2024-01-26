@@ -1,0 +1,279 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classD2__Dummy" kind="class" language="C++" prot="public">
+    <compoundname>D2_Dummy</compoundname>
+    <basecompoundref refid="classD2__Base" prot="public" virt="non-virtual">D2_Base</basecompoundref>
+    <includes refid="d2__dummy_8h" local="no">d2_dummy.h</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classD2__Dummy_1a79f176eaae225e1f1670fb8175bf1293" prot="private" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t D2_Dummy::s</definition>
+        <argsstring></argsstring>
+        <name>s</name>
+        <initializer>=0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" line="14" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" bodystart="14" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classD2__Dummy_1a8ea451ebdfe5e76865308aa041e8445e" prot="private" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string D2_Dummy::lab</definition>
+        <argsstring></argsstring>
+        <name>lab</name>
+        <initializer>=&quot;D2_Dummy&quot;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" line="15" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" bodystart="15" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classD2__Dummy_1a28a3bef75f2ff1af01fca4f32358b9a2" prot="private" static="no" mutable="no">
+        <type>int</type>
+        <definition>int D2_Dummy::verbose</definition>
+        <argsstring></argsstring>
+        <name>verbose</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" line="16" column="13" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" bodystart="16" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classD2__Dummy_1a58a18707cd9e51b91a9debcf4cd36a1e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>D2_Dummy::D2_Dummy</definition>
+        <argsstring>()</argsstring>
+        <name>D2_Dummy</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" line="18" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.cpp" bodystart="5" bodyend="5"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__Dummy_1a9ccaba776175d65a3378676e4df597b3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>D2_Dummy::D2_Dummy</definition>
+        <argsstring>(Config &amp;)</argsstring>
+        <name>D2_Dummy</name>
+        <param>
+          <type><ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" line="19" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.cpp" bodystart="6" bodyend="6"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__Dummy_1a06b2d8c562e05bd805a9ff820f87e8b9" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void D2_Dummy::calc_aed</definition>
+        <argsstring>(const double, const double, const double, StDescriptors::aed_type &amp;aed)</argsstring>
+        <name>calc_aed</name>
+        <reimplements refid="classD2__Base_1a00def8ce32e48fdfb2815a43e6cda8a1">calc_aed</reimplements>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" kindref="member">StDescriptors::aed_type</ref> &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <briefdescription>
+<para>Calculate AED. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate Atomic Energy Descriptor for the atom local environment. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" line="20" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.cpp" bodystart="8" bodyend="12"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__Dummy_1a3af46c1a1e6b6bfa90938ce905ae51c8" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void D2_Dummy::calc_dXijdri</definition>
+        <argsstring>(const double, const double, const double, const double, StDescriptors::fd_type &amp;fd_ij)</argsstring>
+        <name>calc_dXijdri</name>
+        <reimplements refid="classD2__Base_1aae6943d8aaee729e6892ac0ca7f6a68d">calc_dXijdri</reimplements>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd_ij</declname>
+        </param>
+        <briefdescription>
+<para>Calculate FD. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Calculate Force Descriptor for the atom local environment. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" line="25" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.cpp" bodystart="13" bodyend="18"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__Dummy_1a57fe4e32f861184d0c9b3f9536fbbb4d" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void D2_Dummy::calc_all</definition>
+        <argsstring>(const double, const double, const double, const double, StDescriptors::aed_type &amp;aed, StDescriptors::fd_type &amp;fd_ij)</argsstring>
+        <name>calc_all</name>
+        <reimplements refid="classD2__Base_1abd6758f59daf4cca3d5463d932ccf47c">calc_all</reimplements>
+        <param>
+          <type>const double</type>
+          <declname>rij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>rij_sq</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fc_ij</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fcp_ij</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1ac50a773e50c852ebe4b5be4a5eee8c08" kindref="member">StDescriptors::aed_type</ref> &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <param>
+          <type><ref refid="structStDescriptors_1a689e731579ff1bf9d45202e1d7d42e23" kindref="member">StDescriptors::fd_type</ref> &amp;</type>
+          <declname>fd_ij</declname>
+        </param>
+        <briefdescription>
+<para>Calculate AED + FD. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" line="31" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.cpp" bodystart="19" bodyend="25"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__Dummy_1a79538a84bf695cfd55b29ac5d61c08d5" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>size_t</type>
+        <definition>size_t D2_Dummy::size</definition>
+        <argsstring>()</argsstring>
+        <name>size</name>
+        <reimplements refid="classD__Base_1a5e222a94a9cccf43700df92ef17e2c07">size</reimplements>
+        <briefdescription>
+<para>Return dimension of the descriptor. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" line="38" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.cpp" bodystart="26" bodyend="26"/>
+      </memberdef>
+      <memberdef kind="function" id="classD2__Dummy_1afc7167a66271f86abff8da25884e7c8d" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>std::string</type>
+        <definition>std::string D2_Dummy::label</definition>
+        <argsstring>()</argsstring>
+        <name>label</name>
+        <reimplements refid="classD2__Base_1af0e0e608f19159d9b64ff6b400e3362a">label</reimplements>
+        <briefdescription>
+<para>Return label of this descriptor. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" line="39" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.cpp" bodystart="27" bodyend="27"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Dummy two-body descriptor.</para>
+<para>Use it to satisfy <ref refid="classDescriptorsCalc" kindref="compound">DescriptorsCalc</ref> requirements in case when two-body descriptor is not required. </para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="3">
+        <label>D_Base</label>
+        <link refid="classD__Base"/>
+      </node>
+      <node id="2">
+        <label>D2_Base</label>
+        <link refid="classD2__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>D2_Dummy</label>
+        <link refid="classD2__Dummy"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="3">
+        <label>D_Base</label>
+        <link refid="classD__Base"/>
+      </node>
+      <node id="2">
+        <label>D2_Base</label>
+        <link refid="classD2__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>D2_Dummy</label>
+        <link refid="classD2__Dummy"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" line="12" column="30" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_dummy.h" bodystart="12" bodyend="40"/>
+    <listofallmembers>
+      <member refid="classD2__Dummy_1a06b2d8c562e05bd805a9ff820f87e8b9" prot="public" virt="virtual"><scope>D2_Dummy</scope><name>calc_aed</name></member>
+      <member refid="classD2__Dummy_1a57fe4e32f861184d0c9b3f9536fbbb4d" prot="public" virt="virtual"><scope>D2_Dummy</scope><name>calc_all</name></member>
+      <member refid="classD2__Dummy_1a3af46c1a1e6b6bfa90938ce905ae51c8" prot="public" virt="virtual"><scope>D2_Dummy</scope><name>calc_dXijdri</name></member>
+      <member refid="classD2__Base_1a21a79b4945c440a6ce5d0d930e79e264" prot="public" virt="virtual"><scope>D2_Dummy</scope><name>calc_fd_approx</name></member>
+      <member refid="classD2__Dummy_1a58a18707cd9e51b91a9debcf4cd36a1e" prot="public" virt="non-virtual"><scope>D2_Dummy</scope><name>D2_Dummy</name></member>
+      <member refid="classD2__Dummy_1a9ccaba776175d65a3378676e4df597b3" prot="public" virt="non-virtual"><scope>D2_Dummy</scope><name>D2_Dummy</name></member>
+      <member refid="classD2__Base_1a9fa130af5612f18f65bfb6debc10876f" prot="public" virt="non-virtual"><scope>D2_Dummy</scope><name>fidx</name></member>
+      <member refid="classD__Base_1a384d9d370b34aa54f88c582fca5625d6" prot="public" virt="non-virtual"><scope>D2_Dummy</scope><name>get_grid</name></member>
+      <member refid="classD2__Dummy_1a8ea451ebdfe5e76865308aa041e8445e" prot="private" virt="non-virtual"><scope>D2_Dummy</scope><name>lab</name></member>
+      <member refid="classD2__Dummy_1afc7167a66271f86abff8da25884e7c8d" prot="public" virt="virtual"><scope>D2_Dummy</scope><name>label</name></member>
+      <member refid="classD2__Dummy_1a79f176eaae225e1f1670fb8175bf1293" prot="private" virt="non-virtual"><scope>D2_Dummy</scope><name>s</name></member>
+      <member refid="classD2__Dummy_1a79538a84bf695cfd55b29ac5d61c08d5" prot="public" virt="virtual"><scope>D2_Dummy</scope><name>size</name></member>
+      <member refid="classD2__Dummy_1a28a3bef75f2ff1af01fca4f32358b9a2" prot="private" virt="non-virtual"><scope>D2_Dummy</scope><name>verbose</name></member>
+      <member refid="classD2__Base_1a29533c768afefb735344ab9fc10ea845" prot="public" virt="virtual"><scope>D2_Dummy</scope><name>~D2_Base</name></member>
+      <member refid="classD__Base_1ad1a85cef6c0066181d03600128fcfb6b" prot="public" virt="virtual"><scope>D2_Dummy</scope><name>~D_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="dir_baaa544da24285b569fd561158e5e5ce" kind="dir">
+    <compoundname>/home/s1351949/PROJECTS/tadah/src/basis_functions</compoundname>
+    <innerfile refid="bf__all_8h">bf_all.h</innerfile>
+    <innerfile refid="bf__base_8cpp">bf_base.cpp</innerfile>
+    <innerfile refid="bf__base_8h">bf_base.h</innerfile>
+    <innerfile refid="bf__linear_8cpp">bf_linear.cpp</innerfile>
+    <innerfile refid="bf__linear_8h">bf_linear.h</innerfile>
+    <innerfile refid="bf__polynomial2_8cpp">bf_polynomial2.cpp</innerfile>
+    <innerfile refid="bf__polynomial2_8h">bf_polynomial2.h</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/"/>
+  </compounddef>
+</doxygen>

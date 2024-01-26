@@ -1,0 +1,113 @@
+\hypertarget{classDM__Base}{}\doxysection{D\+M\+\_\+\+Base Class Reference}
+\label{classDM__Base}\index{DM\_Base@{DM\_Base}}
+
+
+Base class for all many-\/body type descriptors.  
+
+
+
+
+{\ttfamily \#include $<$dm\+\_\+base.\+h$>$}
+
+Inheritance diagram for D\+M\+\_\+\+Base\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=3.000000cm]{classDM__Base}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual void \mbox{\hyperlink{classDM__Base_aa3a222e89524ddec2a919807e75845ef}{calc\+\_\+aed}} (\mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{St\+Descriptors\+::rhoi\+\_\+type}} \&rho, \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&aed)=0
+\begin{DoxyCompactList}\small\item\em Calculate A\+ED. \end{DoxyCompactList}\item 
+virtual int \mbox{\hyperlink{classDM__Base_a4e26e811684a5e2c80af1ef839884302}{calc\+\_\+d\+Xijdri\+\_\+d\+Xjidri}} (const double rij, const double rij\+\_\+sq, const Eigen\+::\+Vector3d \&vec\+\_\+ij, const double fc\+\_\+ij, const double fcp\+\_\+ij, \mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{St\+Descriptors\+::rhoi\+\_\+type}} \&rhoi, \mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{St\+Descriptors\+::rhoi\+\_\+type}} \&rhoj, \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&fd\+\_\+ij, const double wi, const double wj)=0
+\begin{DoxyCompactList}\small\item\em Calculate FD. \end{DoxyCompactList}\item 
+virtual int \mbox{\hyperlink{classDM__Base_af212f306eaae951132fd8d36cab04ef1}{calc\+\_\+d\+Xijdri}} (const double rij, const double rij\+\_\+sq, const Eigen\+::\+Vector3d \&vec\+\_\+ij, const double fc\+\_\+ij, const double fcp\+\_\+ij, \mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{St\+Descriptors\+::rhoi\+\_\+type}} \&rhoi, \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&fd\+\_\+ij)=0
+\begin{DoxyCompactList}\small\item\em Calculate FD. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classDM__Base_af94f2f095c2f608e48547bfa213c059b}\label{classDM__Base_af94f2f095c2f608e48547bfa213c059b}} 
+virtual void \mbox{\hyperlink{classDM__Base_af94f2f095c2f608e48547bfa213c059b}{init\+\_\+rhoi}} (\mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{St\+Descriptors\+::rhoi\+\_\+type}} \&rhoi)=0
+\begin{DoxyCompactList}\small\item\em Resize arrays for a density and F\textquotesingle{}. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classDM__Base_a2043fdbbc6c526fe48265372ceb1edc0}\label{classDM__Base_a2043fdbbc6c526fe48265372ceb1edc0}} 
+virtual void \mbox{\hyperlink{classDM__Base_a2043fdbbc6c526fe48265372ceb1edc0}{calc\+\_\+rho}} (const double rij, const double rij\+\_\+sq, const double fc\+\_\+ij, const Eigen\+::\+Vector3d \&vec\+\_\+ij, \mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{St\+Descriptors\+::rhoi\+\_\+type}} \&rho)=0
+\begin{DoxyCompactList}\small\item\em Calculate density. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classDM__Base_ae9dcfa1090642f4ebbb3f098c7b33035}\label{classDM__Base_ae9dcfa1090642f4ebbb3f098c7b33035}} 
+virtual size\+\_\+t \mbox{\hyperlink{classDM__Base_ae9dcfa1090642f4ebbb3f098c7b33035}{rhoi\+\_\+size}} ()=0
+\begin{DoxyCompactList}\small\item\em Return size of the density array. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classDM__Base_a25c46735716dcc9e52ecd6eaf70a683e}\label{classDM__Base_a25c46735716dcc9e52ecd6eaf70a683e}} 
+virtual size\+\_\+t \mbox{\hyperlink{classDM__Base_a25c46735716dcc9e52ecd6eaf70a683e}{rhoip\+\_\+size}} ()=0
+\begin{DoxyCompactList}\small\item\em Return size of the derivative of the embedding energy array. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classDM__Base_ac4fcc5f4e96ac7cfd0d68df1d8a7a3ce}\label{classDM__Base_ac4fcc5f4e96ac7cfd0d68df1d8a7a3ce}} 
+virtual size\+\_\+t \mbox{\hyperlink{classDM__Base_ac4fcc5f4e96ac7cfd0d68df1d8a7a3ce}{size}} ()=0
+\begin{DoxyCompactList}\small\item\em Return dimension of the descriptor. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classDM__Base_ae0b6eb8104ec9c4f6675adf3821fe62f}\label{classDM__Base_ae0b6eb8104ec9c4f6675adf3821fe62f}} 
+virtual std\+::string \mbox{\hyperlink{classDM__Base_ae0b6eb8104ec9c4f6675adf3821fe62f}{label}} ()=0
+\begin{DoxyCompactList}\small\item\em Return label of this descriptor. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classDM__Base_a4bd2e723953de198d3b8fa93748d2198}\label{classDM__Base_a4bd2e723953de198d3b8fa93748d2198}} 
+size\+\_\+t {\bfseries fidx} =0
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Base class for all many-\/body type descriptors. 
+
+All many-\/body descriptors {\bfseries{must}} inherit this class. 
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classDM__Base_aa3a222e89524ddec2a919807e75845ef}\label{classDM__Base_aa3a222e89524ddec2a919807e75845ef}} 
+\index{DM\_Base@{DM\_Base}!calc\_aed@{calc\_aed}}
+\index{calc\_aed@{calc\_aed}!DM\_Base@{DM\_Base}}
+\doxysubsubsection{\texorpdfstring{calc\_aed()}{calc\_aed()}}
+{\footnotesize\ttfamily virtual void D\+M\+\_\+\+Base\+::calc\+\_\+aed (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{St\+Descriptors\+::rhoi\+\_\+type}} \&}]{rho,  }\item[{\mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&}]{aed }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Calculate A\+ED. 
+
+Calculate Atomic Energy Descriptor for the atom local environment. 
+
+Implemented in \mbox{\hyperlink{classDM__EAM_ad48f944fb8d1dff400df614246ae9a53}{D\+M\+\_\+\+E\+AM}}, \mbox{\hyperlink{classDM__EAD_aa1c0dae3dbb6fa23591c1df440afd68c}{D\+M\+\_\+\+E\+AD}}, and \mbox{\hyperlink{classDM__Dummy_a57e0d8bd8eb9c59810296f72c301dd5b}{D\+M\+\_\+\+Dummy}}.
+
+\mbox{\Hypertarget{classDM__Base_af212f306eaae951132fd8d36cab04ef1}\label{classDM__Base_af212f306eaae951132fd8d36cab04ef1}} 
+\index{DM\_Base@{DM\_Base}!calc\_dXijdri@{calc\_dXijdri}}
+\index{calc\_dXijdri@{calc\_dXijdri}!DM\_Base@{DM\_Base}}
+\doxysubsubsection{\texorpdfstring{calc\_dXijdri()}{calc\_dXijdri()}}
+{\footnotesize\ttfamily virtual int D\+M\+\_\+\+Base\+::calc\+\_\+d\+Xijdri (\begin{DoxyParamCaption}\item[{const double}]{rij,  }\item[{const double}]{rij\+\_\+sq,  }\item[{const Eigen\+::\+Vector3d \&}]{vec\+\_\+ij,  }\item[{const double}]{fc\+\_\+ij,  }\item[{const double}]{fcp\+\_\+ij,  }\item[{\mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{St\+Descriptors\+::rhoi\+\_\+type}} \&}]{rhoi,  }\item[{\mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&}]{fd\+\_\+ij }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Calculate FD. 
+
+Calculate Force Descriptor between to atoms.
+
+This method works for full NN lists and all models.
+
+\[ \mathbf{fd}_{ij} \mathrel{+}= \frac{\partial \mathbf{X}_{ij}}{\partial \mathbf{r}_i} \] 
+
+Implemented in \mbox{\hyperlink{classDM__EAM_aa77a37792abee3e54d9b974be0e2576c}{D\+M\+\_\+\+E\+AM}}, \mbox{\hyperlink{classDM__EAD_ae6727418eab586b6351609e7a0142fb3}{D\+M\+\_\+\+E\+AD}}, and \mbox{\hyperlink{classDM__Dummy_a131872d5333b604ac6bdf1b85e7b52bf}{D\+M\+\_\+\+Dummy}}.
+
+\mbox{\Hypertarget{classDM__Base_a4e26e811684a5e2c80af1ef839884302}\label{classDM__Base_a4e26e811684a5e2c80af1ef839884302}} 
+\index{DM\_Base@{DM\_Base}!calc\_dXijdri\_dXjidri@{calc\_dXijdri\_dXjidri}}
+\index{calc\_dXijdri\_dXjidri@{calc\_dXijdri\_dXjidri}!DM\_Base@{DM\_Base}}
+\doxysubsubsection{\texorpdfstring{calc\_dXijdri\_dXjidri()}{calc\_dXijdri\_dXjidri()}}
+{\footnotesize\ttfamily virtual int D\+M\+\_\+\+Base\+::calc\+\_\+d\+Xijdri\+\_\+d\+Xjidri (\begin{DoxyParamCaption}\item[{const double}]{rij,  }\item[{const double}]{rij\+\_\+sq,  }\item[{const Eigen\+::\+Vector3d \&}]{vec\+\_\+ij,  }\item[{const double}]{fc\+\_\+ij,  }\item[{const double}]{fcp\+\_\+ij,  }\item[{\mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{St\+Descriptors\+::rhoi\+\_\+type}} \&}]{rhoi,  }\item[{\mbox{\hyperlink{structStDescriptors_a8f75f69116e01ba20dd7f00a50a7bca1}{St\+Descriptors\+::rhoi\+\_\+type}} \&}]{rhoj,  }\item[{\mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&}]{fd\+\_\+ij,  }\item[{const double}]{wi,  }\item[{const double}]{wj }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Calculate FD. 
+
+Calculate Force Descriptor between to atoms.
+
+This method works for half NN lists and linear models.
+
+\[ \mathbf{fd}_{ij} \mathrel{+}= \frac{\partial \mathbf{X}_{ij}}{\partial \mathbf{r}_i} + \frac{\partial \mathbf{X}_{ji}}{\partial \mathbf{r}_i} \] 
+
+Implemented in \mbox{\hyperlink{classDM__EAM_a24c0d40254f105bb54f324dd228f52ea}{D\+M\+\_\+\+E\+AM}}, \mbox{\hyperlink{classDM__EAD_a35a64a4dae41f993e08f12c244846bcc}{D\+M\+\_\+\+E\+AD}}, and \mbox{\hyperlink{classDM__Dummy_aa4f1b0469e0ba7cac01a563f926e9255}{D\+M\+\_\+\+Dummy}}.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/descriptors/dm/dm\+\_\+base.\+h\end{DoxyCompactItemize}

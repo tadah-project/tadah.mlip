@@ -1,0 +1,98 @@
+\hypertarget{classModel}{}\doxysection{Model Class Reference}
+\label{classModel}\index{Model@{Model}}
+
+
+{\ttfamily \#include $<$model.\+h$>$}
+
+Inheritance diagram for Model\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{classModel}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual double \mbox{\hyperlink{classModel_a6522764f1a6c8cf3ffb90e47ae5b59b5}{epredict}} (const aed\+\_\+type \&aed)=0
+\begin{DoxyCompactList}\small\item\em Predict local energy of an atom or bond energy. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classModel_ae2d4daf35d894786b9fbb15e6355f354}\label{classModel_ae2d4daf35d894786b9fbb15e6355f354}} 
+double \mbox{\hyperlink{classModel_ae2d4daf35d894786b9fbb15e6355f354}{epredict}} (const std\+::vector$<$ aed\+\_\+type $>$ aedv)
+\begin{DoxyCompactList}\small\item\em Predict total energy for a set of atoms. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classModel_ac614aaadce1436f3f0c503c35ac1d6c7}\label{classModel_ac614aaadce1436f3f0c503c35ac1d6c7}} 
+virtual double \mbox{\hyperlink{classModel_ac614aaadce1436f3f0c503c35ac1d6c7}{fpredict}} (const fd\+\_\+type \&fdij, const aed\+\_\+type \&aedi, const aed\+\_\+type \&aedj, size\+\_\+t k)=0
+\begin{DoxyCompactList}\small\item\em Predict force between a pair of atoms in a k-\/direction. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classModel_a22dd0fe8093a75c5ba7480521dbc2416}\label{classModel_a22dd0fe8093a75c5ba7480521dbc2416}} 
+virtual force\+\_\+type \mbox{\hyperlink{classModel_a22dd0fe8093a75c5ba7480521dbc2416}{fpredict}} (const fd\+\_\+type \&fdij, const aed\+\_\+type \&aedi, const aed\+\_\+type \&aedj)=0
+\begin{DoxyCompactList}\small\item\em Predict force between a pair of atoms. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classModel_a18770a4e1cc2d83af7ed73072f37d645}\label{classModel_a18770a4e1cc2d83af7ed73072f37d645}} 
+virtual void \mbox{\hyperlink{classModel_a18770a4e1cc2d83af7ed73072f37d645}{fpredict}} (const size\+\_\+t a, force\+\_\+type \&v, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict total force on an atom a. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classModel_a065211fe51adc7d14b63fa40b2ccd342}\label{classModel_a065211fe51adc7d14b63fa40b2ccd342}} 
+virtual force\+\_\+type \mbox{\hyperlink{classModel_a065211fe51adc7d14b63fa40b2ccd342}{fpredict}} (const size\+\_\+t a, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict total force on an atom a. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classModel_a45389552d8e89bd845534a1074cedf4f}\label{classModel_a45389552d8e89bd845534a1074cedf4f}} 
+virtual \mbox{\hyperlink{structStructure}{Structure}} \mbox{\hyperlink{classModel_a45389552d8e89bd845534a1074cedf4f}{predict}} (const \mbox{\hyperlink{classConfig}{Config}} \&c, \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict energy, forces and stresses for the \mbox{\hyperlink{structStructure}{Structure}} st. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classModel_ab4ee0699356dbca4e0cdc8294370355d}\label{classModel_ab4ee0699356dbca4e0cdc8294370355d}} 
+virtual \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \mbox{\hyperlink{classModel_ab4ee0699356dbca4e0cdc8294370355d}{predict}} (const \mbox{\hyperlink{classConfig}{Config}} \&c, \mbox{\hyperlink{structStDescriptorsDB}{St\+Descriptors\+DB}} \&st\+\_\+desc\+\_\+db, const \mbox{\hyperlink{structStructureDB}{Structure\+DB}} \&stdb)
+\begin{DoxyCompactList}\small\item\em Predict energy, forces and stresses for a set of Structures. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classModel_a9c433f7e217883f672847621768c6a57}\label{classModel_a9c433f7e217883f672847621768c6a57}} 
+virtual stress\+\_\+type \mbox{\hyperlink{classModel_a9c433f7e217883f672847621768c6a57}{spredict}} (const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict virial stresses in a \mbox{\hyperlink{structStructure}{Structure}} st. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classModel_ae5cbe0e487d0548a341af190686b961e}\label{classModel_ae5cbe0e487d0548a341af190686b961e}} 
+virtual stress\+\_\+type \mbox{\hyperlink{classModel_ae5cbe0e487d0548a341af190686b961e}{spredict}} (const size\+\_\+t a, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict virial stresses in all Structures. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classModel_a13d934102b22f35ab520b2c8c17687cd}\label{classModel_a13d934102b22f35ab520b2c8c17687cd}} 
+virtual void \mbox{\hyperlink{classModel_a13d934102b22f35ab520b2c8c17687cd}{spredict}} (const size\+\_\+t a, stress\+\_\+type \&s, const \mbox{\hyperlink{structStDescriptors}{St\+Descriptors}} \&std, const \mbox{\hyperlink{structStructure}{Structure}} \&st)
+\begin{DoxyCompactList}\small\item\em Predict virial stress for atom a in a \mbox{\hyperlink{structStructure}{Structure}} st. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classModel_a10cdf54ae136dd33f85e5671067235e8}\label{classModel_a10cdf54ae136dd33f85e5671067235e8}} 
+virtual t\+\_\+type {\bfseries get\+\_\+weights} ()=0
+\item 
+\mbox{\Hypertarget{classModel_a9dce03fdc1eece9f528597f3af337987}\label{classModel_a9dce03fdc1eece9f528597f3af337987}} 
+virtual void {\bfseries set\+\_\+weights} (t\+\_\+type w)=0
+\item 
+\mbox{\Hypertarget{classModel_aa63e3e02e5f6bd6753f28104dbcf244f}\label{classModel_aa63e3e02e5f6bd6753f28104dbcf244f}} 
+virtual \mbox{\hyperlink{classConfig}{Config}} {\bfseries get\+\_\+param\+\_\+file} ()=0
+\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classModel_aa886e8af44abcf45fa4cfd64fddc31d1}\label{classModel_aa886e8af44abcf45fa4cfd64fddc31d1}} 
+\mbox{\hyperlink{classNormaliser}{Normaliser}} {\bfseries norm}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Base class for all models.
+
+All models {\bfseries{must}} inherit this class and implement all methods.
+
+Note that training is meant to be done by a constructor hence there is no training methods to implement.
+
+Naming convention used\+: M\+\_\+\+Model\+Name 
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classModel_a6522764f1a6c8cf3ffb90e47ae5b59b5}\label{classModel_a6522764f1a6c8cf3ffb90e47ae5b59b5}} 
+\index{Model@{Model}!epredict@{epredict}}
+\index{epredict@{epredict}!Model@{Model}}
+\doxysubsubsection{\texorpdfstring{epredict()}{epredict()}}
+{\footnotesize\ttfamily virtual double Model\+::epredict (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{aed }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Predict local energy of an atom or bond energy. 
+
+The result depends on how aed is computed.
+
+If it is computed between a pair of atoms than the result is a bond energy.
+
+If aed contains sum over all nearest neighbours than the result is a local atomic energy $ E_i $. 
+
+Implemented in \mbox{\hyperlink{classM__KRR_a99eca8e17ea7c93a71c595c374eb3728}{M\+\_\+\+K\+R\+R$<$ K, D2, D3, D\+M, C2, C3, C\+M $>$}}, and \mbox{\hyperlink{classM__BLR_acc18cc44d71c556e2795503384a41a5a}{M\+\_\+\+B\+L\+R$<$ B\+F, D2, D3, D\+M, C2, C3, C\+M $>$}}.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/models/model.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/models/model.\+cpp\end{DoxyCompactItemize}

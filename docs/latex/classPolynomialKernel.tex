@@ -1,0 +1,130 @@
+\hypertarget{classPolynomialKernel}{}\doxysection{Polynomial\+Kernel Class Reference}
+\label{classPolynomialKernel}\index{PolynomialKernel@{PolynomialKernel}}
+
+
+Polynomial kernel.  
+
+
+
+
+{\ttfamily \#include $<$kernel.\+h$>$}
+
+Inheritance diagram for Polynomial\+Kernel\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{classPolynomialKernel}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{classPolynomialKernel_ae7014732fdf36d59e7da4838fcd77331}{Polynomial\+Kernel}} ()
+\item 
+\mbox{\Hypertarget{classPolynomialKernel_a60ab0330593d2bfb2402d63d00fc2dc7}\label{classPolynomialKernel_a60ab0330593d2bfb2402d63d00fc2dc7}} 
+{\bfseries Polynomial\+Kernel} (const \mbox{\hyperlink{classConfig}{Config}} \&c)
+\item 
+double \mbox{\hyperlink{classPolynomialKernel_a27c1769495b829497308018ffa710703}{operator()}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af)
+\item 
+aed\+\_\+type \mbox{\hyperlink{classPolynomialKernel_a03838ae4e63aca9a1bc0bf7377acdf45}{derivative}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af)
+\item 
+double \mbox{\hyperlink{classPolynomialKernel_af4a86e44cf6ed36fffbdaf4ff857ac02}{prime}} (const aed\+\_\+type \&b, const aed\+\_\+type \&af, const aed\+\_\+type \&ff)
+\item 
+\mbox{\Hypertarget{classPolynomialKernel_afeac1041f931f2438b7a3ba0dcfa365a}\label{classPolynomialKernel_afeac1041f931f2438b7a3ba0dcfa365a}} 
+std\+::string \mbox{\hyperlink{classPolynomialKernel_afeac1041f931f2438b7a3ba0dcfa365a}{get\+\_\+label}} ()
+\begin{DoxyCompactList}\small\item\em Return label of this object. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classPolynomialKernel_ac14dd76d55571038bfde058b899cae70}\label{classPolynomialKernel_ac14dd76d55571038bfde058b899cae70}} 
+int {\bfseries d}
+\item 
+\mbox{\Hypertarget{classPolynomialKernel_a9c5e79a23d23484504b30dcddb3e3c5c}\label{classPolynomialKernel_a9c5e79a23d23484504b30dcddb3e3c5c}} 
+double {\bfseries gamma}
+\item 
+\mbox{\Hypertarget{classPolynomialKernel_a913222d410e223bb76b10540a4cdeb8d}\label{classPolynomialKernel_a913222d410e223bb76b10540a4cdeb8d}} 
+double {\bfseries c}
+\item 
+\mbox{\Hypertarget{classPolynomialKernel_aa4fa2f677e3c96e46eacd93813a43ce4}\label{classPolynomialKernel_aa4fa2f677e3c96e46eacd93813a43ce4}} 
+std\+::string {\bfseries label} = \char`\"{}Polynomial\+Kernel\char`\"{}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Polynomial kernel. 
+
+Defined for two vectors {\bfseries{x}} and {\bfseries{y}}\+:
+
+\[ K(\mathbf{x}, \mathbf{y}) = \big( \gamma*\mathbf{x}^T \mathbf{y} + \mathrm{c} \big)^{\mathrm{d}} \]
+
+Required \mbox{\hyperlink{classConfig}{Config}} key\+: \mbox{\hyperlink{classConfig_MPARAMS}{M\+P\+A\+R\+A\+MS}} $<$int$>$ d $<$double$>$ $ \gamma $ c
+
+\begin{DoxySeeAlso}{See also}
+\mbox{\hyperlink{classKernel}{Kernel}} 
+\end{DoxySeeAlso}
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\mbox{\Hypertarget{classPolynomialKernel_ae7014732fdf36d59e7da4838fcd77331}\label{classPolynomialKernel_ae7014732fdf36d59e7da4838fcd77331}} 
+\index{PolynomialKernel@{PolynomialKernel}!PolynomialKernel@{PolynomialKernel}}
+\index{PolynomialKernel@{PolynomialKernel}!PolynomialKernel@{PolynomialKernel}}
+\doxysubsubsection{\texorpdfstring{PolynomialKernel()}{PolynomialKernel()}}
+{\footnotesize\ttfamily Polynomial\+Kernel\+::\+Polynomial\+Kernel (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Label used for this class 
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classPolynomialKernel_a03838ae4e63aca9a1bc0bf7377acdf45}\label{classPolynomialKernel_a03838ae4e63aca9a1bc0bf7377acdf45}} 
+\index{PolynomialKernel@{PolynomialKernel}!derivative@{derivative}}
+\index{derivative@{derivative}!PolynomialKernel@{PolynomialKernel}}
+\doxysubsubsection{\texorpdfstring{derivative()}{derivative()}}
+{\footnotesize\ttfamily aed\+\_\+type Polynomial\+Kernel\+::derivative (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate the kernel derivative wrt to the second argument
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKernel_ab36c347c07516218712fb077859fa891}{Kernel}}.
+
+\mbox{\Hypertarget{classPolynomialKernel_a27c1769495b829497308018ffa710703}\label{classPolynomialKernel_a27c1769495b829497308018ffa710703}} 
+\index{PolynomialKernel@{PolynomialKernel}!operator()@{operator()}}
+\index{operator()@{operator()}!PolynomialKernel@{PolynomialKernel}}
+\doxysubsubsection{\texorpdfstring{operator()()}{operator()()}}
+{\footnotesize\ttfamily double Polynomial\+Kernel\+::operator() (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate kernel value given two vectors
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKernel_a72d0324a625f7e2c3284ce787d75d4de}{Kernel}}.
+
+\mbox{\Hypertarget{classPolynomialKernel_af4a86e44cf6ed36fffbdaf4ff857ac02}\label{classPolynomialKernel_af4a86e44cf6ed36fffbdaf4ff857ac02}} 
+\index{PolynomialKernel@{PolynomialKernel}!prime@{prime}}
+\index{prime@{prime}!PolynomialKernel@{PolynomialKernel}}
+\doxysubsubsection{\texorpdfstring{prime()}{prime()}}
+{\footnotesize\ttfamily double Polynomial\+Kernel\+::prime (\begin{DoxyParamCaption}\item[{const aed\+\_\+type \&}]{b,  }\item[{const aed\+\_\+type \&}]{af,  }\item[{const aed\+\_\+type \&}]{ff }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Calculate inner product of the kernel derivative wrt to the second argument (b wrt af) with the force descriptor
+
+
+\begin{DoxyItemize}
+\item b = basis vector
+\item af = atomic energy descriptor
+\item ff = force descriptor (T\+O\+DO i-\/th dir component of it) T\+O\+DO consider calculating all 3-\/directions at once 
+\end{DoxyItemize}
+
+Implements \mbox{\hyperlink{classKernel_ac703581b5179ae8270134b3d458279cf}{Kernel}}.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/kernels/kernel.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/kernels/kernel.\+cpp\end{DoxyCompactItemize}

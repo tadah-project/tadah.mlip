@@ -1,0 +1,227 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structD2__EAM_1_1eam__file" kind="struct" language="C++" prot="private">
+    <compoundname>D2_EAM::eam_file</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1a45b3f121a5973ecaefd574b530332896" prot="public" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string D2_EAM::eam_file::file_path</definition>
+        <argsstring></argsstring>
+        <name>file_path</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="27" column="25" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="27" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1a8bbcf41e7072c985f944e8c889d7ca6c" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; double &gt;</type>
+        <definition>std::vector&lt;double&gt; D2_EAM::eam_file::frho</definition>
+        <argsstring></argsstring>
+        <name>frho</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="28" column="25" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="28" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1a4e8027c13ecc640bd1ad10a8a2ce9e79" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; double &gt;</type>
+        <definition>std::vector&lt;double&gt; D2_EAM::eam_file::rhor</definition>
+        <argsstring></argsstring>
+        <name>rhor</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="29" column="25" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="29" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1a183028563598275ef129520cc90afd0e" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; double &gt;</type>
+        <definition>std::vector&lt;double&gt; D2_EAM::eam_file::z2r</definition>
+        <argsstring></argsstring>
+        <name>z2r</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="30" column="25" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="30" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1ae404214160d036b933398a4351a03aac" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int D2_EAM::eam_file::nrho</definition>
+        <argsstring></argsstring>
+        <name>nrho</name>
+        <initializer>=0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="31" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="31" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1a2ca4760817486d9cf3766a1e2e447f1f" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double D2_EAM::eam_file::drho</definition>
+        <argsstring></argsstring>
+        <name>drho</name>
+        <initializer>=0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="32" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="32" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1ab246d725cccd0e54ddfc5bb5ca62e018" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int D2_EAM::eam_file::nr</definition>
+        <argsstring></argsstring>
+        <name>nr</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="33" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="33" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1ab4d46f23cb674b9f55b494fc87b35d9d" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double D2_EAM::eam_file::dr</definition>
+        <argsstring></argsstring>
+        <name>dr</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="34" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1ad479ec854ee91fed28174ff85e536c20" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double D2_EAM::eam_file::rdr</definition>
+        <argsstring></argsstring>
+        <name>rdr</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="35" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="35" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1a9439d719969cfe2fb18badd8eb88cd73" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double D2_EAM::eam_file::rdrho</definition>
+        <argsstring></argsstring>
+        <name>rdrho</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="36" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="36" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1a280b0db4949908b71f5e3be2797d18c2" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double D2_EAM::eam_file::rcut</definition>
+        <argsstring></argsstring>
+        <name>rcut</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="37" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="37" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1a967b90ac69656d82c35aa73ec4ae420a" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int D2_EAM::eam_file::atomic_number</definition>
+        <argsstring></argsstring>
+        <name>atomic_number</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="38" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="38" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1a04683dd22e62ff0b0c17d81049bf18d6" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double D2_EAM::eam_file::atomic_mass</definition>
+        <argsstring></argsstring>
+        <name>atomic_mass</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="39" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="39" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1ab5dbbeb48d5db31b6651cbc11cf50684" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double D2_EAM::eam_file::lattice_param</definition>
+        <argsstring></argsstring>
+        <name>lattice_param</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="40" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="40" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structD2__EAM_1_1eam__file_1abc2a2d924cd05290f3251b4788c2fbf6" prot="public" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string D2_EAM::eam_file::lattice</definition>
+        <argsstring></argsstring>
+        <name>lattice</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="41" column="25" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="41" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" line="26" column="23" bodyfile="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/d2_eam.h" bodystart="26" bodyend="42"/>
+    <listofallmembers>
+      <member refid="structD2__EAM_1_1eam__file_1a04683dd22e62ff0b0c17d81049bf18d6" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>atomic_mass</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1a967b90ac69656d82c35aa73ec4ae420a" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>atomic_number</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1ab4d46f23cb674b9f55b494fc87b35d9d" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>dr</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1a2ca4760817486d9cf3766a1e2e447f1f" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>drho</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1a45b3f121a5973ecaefd574b530332896" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>file_path</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1a8bbcf41e7072c985f944e8c889d7ca6c" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>frho</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1abc2a2d924cd05290f3251b4788c2fbf6" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>lattice</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1ab5dbbeb48d5db31b6651cbc11cf50684" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>lattice_param</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1ab246d725cccd0e54ddfc5bb5ca62e018" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>nr</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1ae404214160d036b933398a4351a03aac" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>nrho</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1a280b0db4949908b71f5e3be2797d18c2" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>rcut</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1ad479ec854ee91fed28174ff85e536c20" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>rdr</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1a9439d719969cfe2fb18badd8eb88cd73" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>rdrho</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1a4e8027c13ecc640bd1ad10a8a2ce9e79" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>rhor</name></member>
+      <member refid="structD2__EAM_1_1eam__file_1a183028563598275ef129520cc90afd0e" prot="public" virt="non-virtual"><scope>D2_EAM::eam_file</scope><name>z2r</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

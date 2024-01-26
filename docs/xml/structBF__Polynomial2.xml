@@ -1,0 +1,331 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structBF__Polynomial2" kind="struct" language="C++" prot="public">
+    <compoundname>BF_Polynomial2</compoundname>
+    <basecompoundref refid="structBF__Base" prot="public" virt="non-virtual">BF_Base</basecompoundref>
+    <includes refid="bf__polynomial2_8h" local="no">bf_polynomial2.h</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structBF__Polynomial2_1ab37e96c88d1bfc6e1c5e264bc2faf3fd" prot="public" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string BF_Polynomial2::label</definition>
+        <argsstring></argsstring>
+        <name>label</name>
+        <initializer>= &quot;BF_Polynomial2&quot;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="10" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" bodystart="10" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structBF__Polynomial2_1ae7511f4b66d8f648de744adb767379bb" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>BF_Polynomial2::BF_Polynomial2</definition>
+        <argsstring>()</argsstring>
+        <name>BF_Polynomial2</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="8" column="5" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.cpp" bodystart="6" bodyend="6"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Polynomial2_1a915bfb13480f59b971158561780e2e93" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>BF_Polynomial2::BF_Polynomial2</definition>
+        <argsstring>(const Config &amp;c)</argsstring>
+        <name>BF_Polynomial2</name>
+        <param>
+          <type>const <ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="9" column="5" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.cpp" bodystart="7" bodyend="11"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Polynomial2_1a9031c3c6df9c651a89e83c398b774298" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>std::string</type>
+        <definition>std::string BF_Polynomial2::get_label</definition>
+        <argsstring>()</argsstring>
+        <name>get_label</name>
+        <reimplements refid="structBF__Base_1a9b53aa0f172b1dd8f19e07806ecc6d8b">get_label</reimplements>
+        <briefdescription>
+<para>Return label of this object. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="11" column="17" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.cpp" bodystart="12" bodyend="15"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Polynomial2_1af0b7454d7bcb557c8cf60d636c66e108" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double BF_Polynomial2::epredict</definition>
+        <argsstring>(const t_type &amp;weights, const aed_type &amp;aed)</argsstring>
+        <name>epredict</name>
+        <reimplements refid="structBF__Base_1a292e3f61450613a390915fb75ef86816">epredict</reimplements>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aed</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="12" column="12" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.cpp" bodystart="16" bodyend="26"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Polynomial2_1a3159d35f2f59f2617c495935bf4f01ee" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double BF_Polynomial2::fpredict</definition>
+        <argsstring>(const t_type &amp;weights, const fd_type &amp;fdij, const aed_type &amp;aedi, const size_t k)</argsstring>
+        <name>fpredict</name>
+        <reimplements refid="structBF__Base_1a3aa36ab2eb38770d149244f1cabda048">fpredict</reimplements>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const fd_type &amp;</type>
+          <declname>fdij</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aedi</declname>
+        </param>
+        <param>
+          <type>const size_t</type>
+          <declname>k</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="13" column="12" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.cpp" bodystart="27" bodyend="39"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Polynomial2_1ae6dccaf967dfa31357c8a0fffa04e7f6" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>force_type</type>
+        <definition>force_type BF_Polynomial2::fpredict</definition>
+        <argsstring>(const t_type &amp;weights, const fd_type &amp;fdij, const aed_type &amp;aedi)</argsstring>
+        <name>fpredict</name>
+        <reimplements refid="structBF__Base_1a86f083df8d5c9dc943bf4e9c43889406">fpredict</reimplements>
+        <param>
+          <type>const t_type &amp;</type>
+          <declname>weights</declname>
+        </param>
+        <param>
+          <type>const fd_type &amp;</type>
+          <declname>fdij</declname>
+        </param>
+        <param>
+          <type>const aed_type &amp;</type>
+          <declname>aedi</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="15" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.cpp" bodystart="40" bodyend="55"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Polynomial2_1a17dce6439d26cb7384017f95ab325f37" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>size_t</type>
+        <definition>size_t BF_Polynomial2::get_phi_cols</definition>
+        <argsstring>(const Config &amp;config)</argsstring>
+        <name>get_phi_cols</name>
+        <reimplements refid="structBF__Base_1a2db80104401e05da6b3774a7e1c26a8d">get_phi_cols</reimplements>
+        <param>
+          <type>const <ref refid="classConfig" kindref="compound">Config</ref> &amp;</type>
+          <declname>config</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="17" column="12" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.cpp" bodystart="56" bodyend="60"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Polynomial2_1a5f5ceacf9899bef7f1dc3e3e68d865ca" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void BF_Polynomial2::calc_phi_energy_row</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac, const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_energy_row</name>
+        <reimplements refid="structBF__Base_1a447b5837731836b9a38a3c9807c3d1ec">calc_phi_energy_row</reimplements>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="18" column="11" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.cpp" bodystart="61" bodyend="73"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Polynomial2_1aeddb447eb8529d09da521d3cfb3a4989" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void BF_Polynomial2::calc_phi_force_rows</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac, const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_force_rows</name>
+        <reimplements refid="structBF__Base_1a14d9ee0250c57271741e4d36137cb350">calc_phi_force_rows</reimplements>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="20" column="11" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.cpp" bodystart="74" bodyend="99"/>
+      </memberdef>
+      <memberdef kind="function" id="structBF__Polynomial2_1aa95f3f1df1a6731bc70efd9db35ee718" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void BF_Polynomial2::calc_phi_stress_rows</definition>
+        <argsstring>(phi_type &amp;Phi, size_t &amp;row, const double fac[6], const Structure &amp;st, const StDescriptors &amp;st_d)</argsstring>
+        <name>calc_phi_stress_rows</name>
+        <reimplements refid="structBF__Base_1a2200071bd5336c222edf897020926b00">calc_phi_stress_rows</reimplements>
+        <param>
+          <type>phi_type &amp;</type>
+          <declname>Phi</declname>
+        </param>
+        <param>
+          <type>size_t &amp;</type>
+          <declname>row</declname>
+        </param>
+        <param>
+          <type>const double</type>
+          <declname>fac</declname>
+          <array>[6]</array>
+        </param>
+        <param>
+          <type>const <ref refid="structStructure" kindref="compound">Structure</ref> &amp;</type>
+          <declname>st</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structStDescriptors" kindref="compound">StDescriptors</ref> &amp;</type>
+          <declname>st_d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="22" column="11" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.cpp" bodystart="100" bodyend="131"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Polynomial order 2 basis function with c=0 </para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="3">
+        <label>Func_Base</label>
+        <link refid="structFunc__Base"/>
+      </node>
+      <node id="2">
+        <label>BF_Base</label>
+        <link refid="structBF__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>BF_Polynomial2</label>
+        <link refid="structBF__Polynomial2"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="3">
+        <label>Func_Base</label>
+        <link refid="structFunc__Base"/>
+      </node>
+      <node id="2">
+        <label>BF_Base</label>
+        <link refid="structBF__Base"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>BF_Polynomial2</label>
+        <link refid="structBF__Polynomial2"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" line="7" column="1" bodyfile="/home/s1351949/PROJECTS/tadah/src/basis_functions/bf_polynomial2.h" bodystart="6" bodyend="24"/>
+    <listofallmembers>
+      <member refid="structBF__Polynomial2_1ae7511f4b66d8f648de744adb767379bb" prot="public" virt="non-virtual"><scope>BF_Polynomial2</scope><name>BF_Polynomial2</name></member>
+      <member refid="structBF__Polynomial2_1a915bfb13480f59b971158561780e2e93" prot="public" virt="non-virtual"><scope>BF_Polynomial2</scope><name>BF_Polynomial2</name></member>
+      <member refid="structBF__Polynomial2_1a5f5ceacf9899bef7f1dc3e3e68d865ca" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>calc_phi_energy_row</name></member>
+      <member refid="structBF__Polynomial2_1aeddb447eb8529d09da521d3cfb3a4989" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>calc_phi_force_rows</name></member>
+      <member refid="structBF__Polynomial2_1aa95f3f1df1a6731bc70efd9db35ee718" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>calc_phi_stress_rows</name></member>
+      <member refid="structFunc__Base_1a840a28ccef5e2a1664c6329ac338df54" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>derivative</name></member>
+      <member refid="structBF__Polynomial2_1af0b7454d7bcb557c8cf60d636c66e108" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>epredict</name></member>
+      <member refid="structBF__Polynomial2_1a3159d35f2f59f2617c495935bf4f01ee" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>fpredict</name></member>
+      <member refid="structBF__Polynomial2_1ae6dccaf967dfa31357c8a0fffa04e7f6" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>fpredict</name></member>
+      <member refid="structBF__Polynomial2_1a9031c3c6df9c651a89e83c398b774298" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>get_label</name></member>
+      <member refid="structBF__Polynomial2_1a17dce6439d26cb7384017f95ab325f37" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>get_phi_cols</name></member>
+      <member refid="structBF__Polynomial2_1ab37e96c88d1bfc6e1c5e264bc2faf3fd" prot="public" virt="non-virtual"><scope>BF_Polynomial2</scope><name>label</name></member>
+      <member refid="structFunc__Base_1a0831694fbcfe3b58f60086a6080cfaa6" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>operator()</name></member>
+      <member refid="structFunc__Base_1a1d4107fc3ed70e79e0126a112242aab7" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>prime</name></member>
+      <member refid="structFunc__Base_1ada732e44cd10ffb2f7f537629d8b1407" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>set_basis</name></member>
+      <member refid="structBF__Base_1ad8fd9b246277bc0e6648b8b5dcf49175" prot="public" virt="non-virtual"><scope>BF_Polynomial2</scope><name>verbose</name></member>
+      <member refid="structFunc__Base_1ad5e024d08c74e3085f1bd9a91bec0538" prot="public" virt="virtual"><scope>BF_Polynomial2</scope><name>~Func_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

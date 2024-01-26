@@ -1,0 +1,74 @@
+\hypertarget{classD2__Dummy}{}\doxysection{D2\+\_\+\+Dummy Class Reference}
+\label{classD2__Dummy}\index{D2\_Dummy@{D2\_Dummy}}
+
+
+{\ttfamily \#include $<$d2\+\_\+dummy.\+h$>$}
+
+Inheritance diagram for D2\+\_\+\+Dummy\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=3.000000cm]{classD2__Dummy}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classD2__Dummy_a9ccaba776175d65a3378676e4df597b3}\label{classD2__Dummy_a9ccaba776175d65a3378676e4df597b3}} 
+{\bfseries D2\+\_\+\+Dummy} (\mbox{\hyperlink{classConfig}{Config}} \&)
+\item 
+void \mbox{\hyperlink{classD2__Dummy_a06b2d8c562e05bd805a9ff820f87e8b9}{calc\+\_\+aed}} (const double, const double, const double, \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&aed)
+\begin{DoxyCompactList}\small\item\em Calculate A\+ED. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classD2__Dummy_a3af46c1a1e6b6bfa90938ce905ae51c8}{calc\+\_\+d\+Xijdri}} (const double, const double, const double, const double, \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&fd\+\_\+ij)
+\begin{DoxyCompactList}\small\item\em Calculate FD. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classD2__Dummy_a57fe4e32f861184d0c9b3f9536fbbb4d}\label{classD2__Dummy_a57fe4e32f861184d0c9b3f9536fbbb4d}} 
+void \mbox{\hyperlink{classD2__Dummy_a57fe4e32f861184d0c9b3f9536fbbb4d}{calc\+\_\+all}} (const double, const double, const double, const double, \mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&aed, \mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&fd\+\_\+ij)
+\begin{DoxyCompactList}\small\item\em Calculate A\+ED + FD. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classD2__Dummy_a79538a84bf695cfd55b29ac5d61c08d5}\label{classD2__Dummy_a79538a84bf695cfd55b29ac5d61c08d5}} 
+size\+\_\+t \mbox{\hyperlink{classD2__Dummy_a79538a84bf695cfd55b29ac5d61c08d5}{size}} ()
+\begin{DoxyCompactList}\small\item\em Return dimension of the descriptor. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classD2__Dummy_afc7167a66271f86abff8da25884e7c8d}\label{classD2__Dummy_afc7167a66271f86abff8da25884e7c8d}} 
+std\+::string \mbox{\hyperlink{classD2__Dummy_afc7167a66271f86abff8da25884e7c8d}{label}} ()
+\begin{DoxyCompactList}\small\item\em Return label of this descriptor. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Additional Inherited Members}
+
+
+\doxysubsection{Detailed Description}
+Dummy two-\/body descriptor.
+
+Use it to satisfy \mbox{\hyperlink{classDescriptorsCalc}{Descriptors\+Calc}} requirements in case when two-\/body descriptor is not required. 
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classD2__Dummy_a06b2d8c562e05bd805a9ff820f87e8b9}\label{classD2__Dummy_a06b2d8c562e05bd805a9ff820f87e8b9}} 
+\index{D2\_Dummy@{D2\_Dummy}!calc\_aed@{calc\_aed}}
+\index{calc\_aed@{calc\_aed}!D2\_Dummy@{D2\_Dummy}}
+\doxysubsubsection{\texorpdfstring{calc\_aed()}{calc\_aed()}}
+{\footnotesize\ttfamily void D2\+\_\+\+Dummy\+::calc\+\_\+aed (\begin{DoxyParamCaption}\item[{const double}]{rij,  }\item[{const double}]{rij\+\_\+sq,  }\item[{const double}]{fc\+\_\+ij,  }\item[{\mbox{\hyperlink{structStDescriptors_ac50a773e50c852ebe4b5be4a5eee8c08}{St\+Descriptors\+::aed\+\_\+type}} \&}]{aed }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+
+
+Calculate A\+ED. 
+
+Calculate Atomic Energy Descriptor for the atom local environment. 
+
+Implements \mbox{\hyperlink{classD2__Base_a00def8ce32e48fdfb2815a43e6cda8a1}{D2\+\_\+\+Base}}.
+
+\mbox{\Hypertarget{classD2__Dummy_a3af46c1a1e6b6bfa90938ce905ae51c8}\label{classD2__Dummy_a3af46c1a1e6b6bfa90938ce905ae51c8}} 
+\index{D2\_Dummy@{D2\_Dummy}!calc\_dXijdri@{calc\_dXijdri}}
+\index{calc\_dXijdri@{calc\_dXijdri}!D2\_Dummy@{D2\_Dummy}}
+\doxysubsubsection{\texorpdfstring{calc\_dXijdri()}{calc\_dXijdri()}}
+{\footnotesize\ttfamily void D2\+\_\+\+Dummy\+::calc\+\_\+d\+Xijdri (\begin{DoxyParamCaption}\item[{const double}]{rij,  }\item[{const double}]{rij\+\_\+sq,  }\item[{const double}]{fc\+\_\+ij,  }\item[{const double}]{fcp\+\_\+ij,  }\item[{\mbox{\hyperlink{structStDescriptors_a689e731579ff1bf9d45202e1d7d42e23}{St\+Descriptors\+::fd\+\_\+type}} \&}]{fd\+\_\+ij }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+
+
+
+Calculate FD. 
+
+Calculate Force Descriptor for the atom local environment. 
+
+Implements \mbox{\hyperlink{classD2__Base_aae6943d8aaee729e6892ac0ca7f6a68d}{D2\+\_\+\+Base}}.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/descriptors/d2/d2\+\_\+dummy.\+h\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/descriptors/d2/d2\+\_\+dummy.\+cpp\end{DoxyCompactItemize}

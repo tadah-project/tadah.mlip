@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="dir_13c934bdffaa327b61c0cde605f329e6" kind="dir">
+    <compoundname>/home/s1351949/PROJECTS/tadah/src/descriptors/d2</compoundname>
+    <innerfile refid="d2__all_8h">d2_all.h</innerfile>
+    <innerfile refid="d2__base_8cpp">d2_base.cpp</innerfile>
+    <innerfile refid="d2__base_8h">d2_base.h</innerfile>
+    <innerfile refid="d2__blip_8cpp">d2_blip.cpp</innerfile>
+    <innerfile refid="d2__blip_8h">d2_blip.h</innerfile>
+    <innerfile refid="d2__bp_8cpp">d2_bp.cpp</innerfile>
+    <innerfile refid="d2__bp_8h">d2_bp.h</innerfile>
+    <innerfile refid="d2__dummy_8cpp">d2_dummy.cpp</innerfile>
+    <innerfile refid="d2__dummy_8h">d2_dummy.h</innerfile>
+    <innerfile refid="d2__eam_8cpp">d2_eam.cpp</innerfile>
+    <innerfile refid="d2__eam_8h">d2_eam.h</innerfile>
+    <innerfile refid="d2__lj_8cpp">d2_lj.cpp</innerfile>
+    <innerfile refid="d2__lj_8h">d2_lj.h</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/descriptors/d2/"/>
+  </compounddef>
+</doxygen>

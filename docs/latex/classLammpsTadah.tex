@@ -1,0 +1,95 @@
+\hypertarget{classLammpsTadah}{}\doxysection{Lammps\+Tadah Class Reference}
+\label{classLammpsTadah}\index{LammpsTadah@{LammpsTadah}}
+
+
+{\ttfamily \#include $<$lammps\+\_\+tadah.\+h$>$}
+
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_ad60a57fb4efbd932f1737c6aeab9bdf6}\label{classLammpsTadah_ad60a57fb4efbd932f1737c6aeab9bdf6}} 
+\mbox{\hyperlink{classLammpsTadah}{Lammps\+Tadah}} \& {\bfseries operator=} (const \mbox{\hyperlink{classLammpsTadah}{Lammps\+Tadah}} \&lt)
+\item 
+\mbox{\Hypertarget{classLammpsTadah_ad5d7b88fa143713540c63058e9b37750}\label{classLammpsTadah_ad5d7b88fa143713540c63058e9b37750}} 
+{\bfseries Lammps\+Tadah} (int narg, char $\ast$$\ast$arg)
+\item 
+\mbox{\Hypertarget{classLammpsTadah_ac43d25bd5377af93b441bb25e3970fa1}\label{classLammpsTadah_ac43d25bd5377af93b441bb25e3970fa1}} 
+int {\bfseries pack\+\_\+reverse\+\_\+linear} (int n, int first, double $\ast$buf)
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a90b1be6fb2a5be62030595a53b7e8c89}\label{classLammpsTadah_a90b1be6fb2a5be62030595a53b7e8c89}} 
+void {\bfseries unpack\+\_\+reverse\+\_\+linear} (int n, int $\ast$list, double $\ast$buf)
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a8e970f1c358734ce6fedcf464f9f4ce0}\label{classLammpsTadah_a8e970f1c358734ce6fedcf464f9f4ce0}} 
+int {\bfseries pack\+\_\+reverse\+\_\+nonlinear} (int n, int first, double $\ast$buf)
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a6ae27501817c5d5535bd42fe4491565a}\label{classLammpsTadah_a6ae27501817c5d5535bd42fe4491565a}} 
+void {\bfseries unpack\+\_\+reverse\+\_\+nonlinear} (int n, int $\ast$list, double $\ast$buf)
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a5bea310958be27907ce0e89cec2cf51a}\label{classLammpsTadah_a5bea310958be27907ce0e89cec2cf51a}} 
+int {\bfseries pack\+\_\+forward\+\_\+linear} (int n, int $\ast$list, double $\ast$buf)
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a1b0a7ca8d021d8f1820da9655021aa2d}\label{classLammpsTadah_a1b0a7ca8d021d8f1820da9655021aa2d}} 
+void {\bfseries unpack\+\_\+forward\+\_\+linear} (int n, int first, double $\ast$buf)
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a257cb61e343872f1359ba2d5755cb85f}\label{classLammpsTadah_a257cb61e343872f1359ba2d5755cb85f}} 
+int {\bfseries pack\+\_\+forward\+\_\+nonlinear} (int n, int $\ast$list, double $\ast$buf)
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a1524a3c2e494ce3035afa07fc52b62ef}\label{classLammpsTadah_a1524a3c2e494ce3035afa07fc52b62ef}} 
+void {\bfseries unpack\+\_\+forward\+\_\+nonlinear} (int n, int first, double $\ast$buf)
+\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a7ea204b0e286caeed7ebf52eae8f7620}\label{classLammpsTadah_a7ea204b0e286caeed7ebf52eae8f7620}} 
+\mbox{\hyperlink{classConfig}{Config}} {\bfseries c}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_ad5ab53bb4ff4739700b4de67e18a84c6}\label{classLammpsTadah_ad5ab53bb4ff4739700b4de67e18a84c6}} 
+\mbox{\hyperlink{classM__Base}{M\+\_\+\+Base}} $\ast$ {\bfseries model} =nullptr
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a9e3f90521426cfbd411bf1ef859b7742}\label{classLammpsTadah_a9e3f90521426cfbd411bf1ef859b7742}} 
+bool {\bfseries norm}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_ae0f95cd9f29e92367cd9fec69921429e}\label{classLammpsTadah_ae0f95cd9f29e92367cd9fec69921429e}} 
+bool {\bfseries bias}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_afaa05f31cc7d585eafeb634e8eb7ea8d}\label{classLammpsTadah_afaa05f31cc7d585eafeb634e8eb7ea8d}} 
+double {\bfseries cutoff\+\_\+max\+\_\+sq}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_afd3d2fe425d0a7165e7e23579f3faa14}\label{classLammpsTadah_afd3d2fe425d0a7165e7e23579f3faa14}} 
+double {\bfseries cutoff\+\_\+max}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a3d21920faa980e335f2c87bc0a894de8}\label{classLammpsTadah_a3d21920faa980e335f2c87bc0a894de8}} 
+St\+Descriptors\+::rho\+\_\+type {\bfseries rho}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a0335968f125a49006bf78e6efe93850e}\label{classLammpsTadah_a0335968f125a49006bf78e6efe93850e}} 
+St\+Descriptors\+::rho\+\_\+type {\bfseries fp}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a97245468c85534bdc60462b3f0da00b3}\label{classLammpsTadah_a97245468c85534bdc60462b3f0da00b3}} 
+std\+::vector$<$ aed\+\_\+type $>$ {\bfseries aeds}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_ac35cd95152707c625815ba239414fd94}\label{classLammpsTadah_ac35cd95152707c625815ba239414fd94}} 
+bool {\bfseries linear}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a85403eb1722d39168bd023f617f411f0}\label{classLammpsTadah_a85403eb1722d39168bd023f617f411f0}} 
+bool {\bfseries dimer}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a8b0fd5403f1320cc03f569c009102307}\label{classLammpsTadah_a8b0fd5403f1320cc03f569c009102307}} 
+bool {\bfseries initmb}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a8878eef808027da7ff1d07aed2cf7a39}\label{classLammpsTadah_a8878eef808027da7ff1d07aed2cf7a39}} 
+bool {\bfseries init2b}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_a40456a14da83b5f8c0a81111824fc79f}\label{classLammpsTadah_a40456a14da83b5f8c0a81111824fc79f}} 
+\mbox{\hyperlink{classDC__Selector}{D\+C\+\_\+\+Selector}} {\bfseries S}
+\item 
+\mbox{\Hypertarget{classLammpsTadah_ac15e38725169cd97afa2f6710f22bf14}\label{classLammpsTadah_ac15e38725169cd97afa2f6710f22bf14}} 
+std\+::vector$<$ double $>$ {\bfseries weights}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+L\+A\+M\+M\+PS I\+N\+T\+E\+R\+F\+A\+CE 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/home/s1351949/\+P\+R\+O\+J\+E\+C\+T\+S/tadah/src/lammps/lammps\+\_\+tadah.\+h\end{DoxyCompactItemize}

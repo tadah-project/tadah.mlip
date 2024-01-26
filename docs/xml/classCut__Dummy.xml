@@ -1,0 +1,238 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classCut__Dummy" kind="class" language="C++" prot="public">
+    <compoundname>Cut_Dummy</compoundname>
+    <basecompoundref refid="classCut__Base" prot="public" virt="non-virtual">Cut_Base</basecompoundref>
+    <includes refid="cutoffs_8h" local="no">cutoffs.h</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classCut__Dummy_1a6338ce01ed239998f8cc69353395a5d6" prot="private" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string Cut_Dummy::lab</definition>
+        <argsstring></argsstring>
+        <name>lab</name>
+        <initializer>= &quot;Cut_Dummy&quot;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="34" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCut__Dummy_1a17eeeaa2a8565e894ccbfb89c34a9196" prot="private" static="no" mutable="no">
+        <type>double</type>
+        <definition>double Cut_Dummy::rcut</definition>
+        <argsstring></argsstring>
+        <name>rcut</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="35" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" bodystart="35" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCut__Dummy_1a79cf65f707e4ebac6d298328a2947058" prot="private" static="no" mutable="no">
+        <type>double</type>
+        <definition>double Cut_Dummy::rcut_sq</definition>
+        <argsstring></argsstring>
+        <name>rcut_sq</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="35" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" bodystart="35" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCut__Dummy_1a4355c2ea9bb0ae70906fcc13d86cb023" prot="private" static="no" mutable="no">
+        <type>double</type>
+        <definition>double Cut_Dummy::rcut_inv</definition>
+        <argsstring></argsstring>
+        <name>rcut_inv</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="35" column="29" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" bodystart="35" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classCut__Dummy_1add072808b40521bf0c227c1b659c412d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>Cut_Dummy::Cut_Dummy</definition>
+        <argsstring>()</argsstring>
+        <name>Cut_Dummy</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="37" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" bodystart="58" bodyend="58"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Dummy_1adbed1425171b576f666ab8b29c2c05a5" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>Cut_Dummy::Cut_Dummy</definition>
+        <argsstring>(double rcut)</argsstring>
+        <name>Cut_Dummy</name>
+        <param>
+          <type>double</type>
+          <declname>rcut</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="38" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" bodystart="59" bodyend="65"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Dummy_1add0ae4f06c53d6f0f25dac1ab1d6fa40" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>std::string</type>
+        <definition>std::string Cut_Dummy::label</definition>
+        <argsstring>()</argsstring>
+        <name>label</name>
+        <reimplements refid="classCut__Base_1a98c6cd7a1bead5c5741f1dc0f5f7f345">label</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="39" column="21" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" bodystart="67" bodyend="69"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Dummy_1a730e3df516628de12717b4e2c6549dbf" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void Cut_Dummy::set_rcut</definition>
+        <argsstring>(const double r)</argsstring>
+        <name>set_rcut</name>
+        <reimplements refid="classCut__Base_1a4f5216ca8d2d1b654db9d85807c461fd">set_rcut</reimplements>
+        <param>
+          <type>const double</type>
+          <declname>r</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="40" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" bodystart="71" bodyend="76"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Dummy_1a5ac596cfe82ecd79c2626112876a16a8" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double Cut_Dummy::get_rcut</definition>
+        <argsstring>()</argsstring>
+        <name>get_rcut</name>
+        <reimplements refid="classCut__Base_1a906786b4ac309be8a40091ae06f3e01e">get_rcut</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="41" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" bodystart="77" bodyend="79"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Dummy_1a255ecbc444842edbfde30aef83f1ace3" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double Cut_Dummy::get_rcut_sq</definition>
+        <argsstring>()</argsstring>
+        <name>get_rcut_sq</name>
+        <reimplements refid="classCut__Base_1ab9a0c6271948f70dfb1394cde2818c35">get_rcut_sq</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="42" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" bodystart="81" bodyend="83"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Dummy_1afc6db069f4f66a78aa589b78afef5fce" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double Cut_Dummy::calc</definition>
+        <argsstring>(double r)</argsstring>
+        <name>calc</name>
+        <reimplements refid="classCut__Base_1a64e34b2871cf191facfdf9c0800c4737">calc</reimplements>
+        <param>
+          <type>double</type>
+          <declname>r</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="43" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" bodystart="85" bodyend="88"/>
+      </memberdef>
+      <memberdef kind="function" id="classCut__Dummy_1abc173dbc41470e4230fa137c1600f7c3" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>double</type>
+        <definition>double Cut_Dummy::calc_prime</definition>
+        <argsstring>(double r)</argsstring>
+        <name>calc_prime</name>
+        <reimplements refid="classCut__Base_1a3df217213ac9a8a9c070700940c92e3a">calc_prime</reimplements>
+        <param>
+          <type>double</type>
+          <declname>r</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="44" column="16" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.cpp" bodystart="89" bodyend="92"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Dummy cutoff function. </para>
+    </briefdescription>
+    <detaileddescription>
+<para><formula id="1">\[ f_c(r) = \begin{equation} \begin{cases} 1 &amp; \text{if } r \leq r_c\\ 0 &amp; \text{otherwise}\\ \end{cases} \end{equation} \]</formula> </para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1">
+        <label>Cut_Dummy</label>
+        <link refid="classCut__Dummy"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>Cut_Base</label>
+        <link refid="classCut__Base"/>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1">
+        <label>Cut_Dummy</label>
+        <link refid="classCut__Dummy"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>Cut_Base</label>
+        <link refid="classCut__Base"/>
+      </node>
+    </collaborationgraph>
+    <location file="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" line="32" column="32" bodyfile="/home/s1351949/PROJECTS/tadah/src/cutoffs/cutoffs.h" bodystart="32" bodyend="45"/>
+    <listofallmembers>
+      <member refid="classCut__Dummy_1afc6db069f4f66a78aa589b78afef5fce" prot="public" virt="virtual"><scope>Cut_Dummy</scope><name>calc</name></member>
+      <member refid="classCut__Dummy_1abc173dbc41470e4230fa137c1600f7c3" prot="public" virt="virtual"><scope>Cut_Dummy</scope><name>calc_prime</name></member>
+      <member refid="classCut__Dummy_1add072808b40521bf0c227c1b659c412d" prot="public" virt="non-virtual"><scope>Cut_Dummy</scope><name>Cut_Dummy</name></member>
+      <member refid="classCut__Dummy_1adbed1425171b576f666ab8b29c2c05a5" prot="public" virt="non-virtual"><scope>Cut_Dummy</scope><name>Cut_Dummy</name></member>
+      <member refid="classCut__Dummy_1a5ac596cfe82ecd79c2626112876a16a8" prot="public" virt="virtual"><scope>Cut_Dummy</scope><name>get_rcut</name></member>
+      <member refid="classCut__Dummy_1a255ecbc444842edbfde30aef83f1ace3" prot="public" virt="virtual"><scope>Cut_Dummy</scope><name>get_rcut_sq</name></member>
+      <member refid="classCut__Dummy_1a6338ce01ed239998f8cc69353395a5d6" prot="private" virt="non-virtual"><scope>Cut_Dummy</scope><name>lab</name></member>
+      <member refid="classCut__Dummy_1add0ae4f06c53d6f0f25dac1ab1d6fa40" prot="public" virt="virtual"><scope>Cut_Dummy</scope><name>label</name></member>
+      <member refid="classCut__Dummy_1a17eeeaa2a8565e894ccbfb89c34a9196" prot="private" virt="non-virtual"><scope>Cut_Dummy</scope><name>rcut</name></member>
+      <member refid="classCut__Dummy_1a4355c2ea9bb0ae70906fcc13d86cb023" prot="private" virt="non-virtual"><scope>Cut_Dummy</scope><name>rcut_inv</name></member>
+      <member refid="classCut__Dummy_1a79cf65f707e4ebac6d298328a2947058" prot="private" virt="non-virtual"><scope>Cut_Dummy</scope><name>rcut_sq</name></member>
+      <member refid="classCut__Dummy_1a730e3df516628de12717b4e2c6549dbf" prot="public" virt="virtual"><scope>Cut_Dummy</scope><name>set_rcut</name></member>
+      <member refid="classCut__Base_1a09552f75ad8d755343fd86bd92bbe862" prot="public" virt="non-virtual"><scope>Cut_Dummy</scope><name>test_rcut</name></member>
+      <member refid="classCut__Base_1aa8d76a5924b6fcd43eadeaa06b3c58b2" prot="public" virt="virtual"><scope>Cut_Dummy</scope><name>~Cut_Base</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

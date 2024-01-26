@@ -1,0 +1,187 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structPeriodicTable" kind="struct" language="C++" prot="public">
+    <compoundname>PeriodicTable</compoundname>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="structPeriodicTable_1a7cfee4efe7e898f427e1c2f21c63d2bd" prot="private" static="no" mutable="no">
+        <type>std::map&lt; std::string, <ref refid="structElement" kindref="compound">Element</ref> &gt;</type>
+        <definition>std::map&lt;std::string, Element&gt; PeriodicTable::symbol</definition>
+        <argsstring></argsstring>
+        <name>symbol</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" line="36" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" bodystart="36" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPeriodicTable_1a3a05cc080999b55cac259ca9c9efff1e" prot="private" static="no" mutable="no">
+        <type>std::map&lt; std::string, <ref refid="structElement" kindref="compound">Element</ref> &gt;</type>
+        <definition>std::map&lt;std::string, Element&gt; PeriodicTable::name</definition>
+        <argsstring></argsstring>
+        <name>name</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" line="37" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" bodystart="37" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPeriodicTable_1add955799e0b416a10a69c4e452b0a08e" prot="private" static="no" mutable="no">
+        <type>std::map&lt; int, <ref refid="structElement" kindref="compound">Element</ref> &gt;</type>
+        <definition>std::map&lt;int, Element&gt; PeriodicTable::Z</definition>
+        <argsstring></argsstring>
+        <name>Z</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" line="38" column="18" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" bodystart="38" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structPeriodicTable_1aaa43631fae258176bf47032dce28053d" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>PeriodicTable::PeriodicTable</definition>
+        <argsstring>()</argsstring>
+        <name>PeriodicTable</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" line="11" column="9" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" bodystart="11" bodyend="13"/>
+      </memberdef>
+      <memberdef kind="function" id="structPeriodicTable_1a85e1917f8ac0f04fa8b27c59e5609a6b" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>const <ref refid="structElement" kindref="compound">Element</ref> &amp;</type>
+        <definition>const Element&amp; PeriodicTable::find_by_name</definition>
+        <argsstring>(const std::string &amp;s) const</argsstring>
+        <name>find_by_name</name>
+        <param>
+          <type>const std::string &amp;</type>
+          <declname>s</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" line="14" column="23" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" bodystart="14" bodyend="16"/>
+      </memberdef>
+      <memberdef kind="function" id="structPeriodicTable_1a553a5cb92c74fca646c221f559dbaf48" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>const <ref refid="structElement" kindref="compound">Element</ref> &amp;</type>
+        <definition>const Element&amp; PeriodicTable::find_by_symbol</definition>
+        <argsstring>(const std::string &amp;s) const</argsstring>
+        <name>find_by_symbol</name>
+        <param>
+          <type>const std::string &amp;</type>
+          <declname>s</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" line="17" column="23" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" bodystart="17" bodyend="19"/>
+      </memberdef>
+      <memberdef kind="function" id="structPeriodicTable_1a9dc9e7e97f46d7d85d80d506db9e347a" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>const <ref refid="structElement" kindref="compound">Element</ref> &amp;</type>
+        <definition>const Element&amp; PeriodicTable::find_by_Z</definition>
+        <argsstring>(const int &amp;s) const</argsstring>
+        <name>find_by_Z</name>
+        <param>
+          <type>const int &amp;</type>
+          <declname>s</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" line="20" column="23" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" bodystart="20" bodyend="22"/>
+      </memberdef>
+      <memberdef kind="function" id="structPeriodicTable_1a1e548de52601f7dc1159d6bfca80da61" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void PeriodicTable::add</definition>
+        <argsstring>(const Element e)</argsstring>
+        <name>add</name>
+        <param>
+          <type>const <ref refid="structElement" kindref="compound">Element</ref></type>
+          <declname>e</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" line="24" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" bodystart="24" bodyend="28"/>
+      </memberdef>
+      <memberdef kind="function" id="structPeriodicTable_1af3e544c5978418b74c44bd29af2fc5bd" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void PeriodicTable::add</definition>
+        <argsstring>(const std::string &amp;symbol_, const std::string &amp;name_, const int Z_)</argsstring>
+        <name>add</name>
+        <param>
+          <type>const std::string &amp;</type>
+          <declname>symbol_</declname>
+        </param>
+        <param>
+          <type>const std::string &amp;</type>
+          <declname>name_</declname>
+        </param>
+        <param>
+          <type>const int</type>
+          <declname>Z_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" line="29" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" bodystart="29" bodyend="34"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="structPeriodicTable_1a249646ca508810300b1eace822c22010" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void PeriodicTable::fill</definition>
+        <argsstring>()</argsstring>
+        <name>fill</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" line="39" column="14" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" bodystart="39" bodyend="159"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" line="9" column="20" bodyfile="/home/s1351949/PROJECTS/tadah/src/utils/periodic_table.h" bodystart="9" bodyend="160"/>
+    <listofallmembers>
+      <member refid="structPeriodicTable_1a1e548de52601f7dc1159d6bfca80da61" prot="public" virt="non-virtual"><scope>PeriodicTable</scope><name>add</name></member>
+      <member refid="structPeriodicTable_1af3e544c5978418b74c44bd29af2fc5bd" prot="public" virt="non-virtual"><scope>PeriodicTable</scope><name>add</name></member>
+      <member refid="structPeriodicTable_1a249646ca508810300b1eace822c22010" prot="private" virt="non-virtual"><scope>PeriodicTable</scope><name>fill</name></member>
+      <member refid="structPeriodicTable_1a85e1917f8ac0f04fa8b27c59e5609a6b" prot="public" virt="non-virtual"><scope>PeriodicTable</scope><name>find_by_name</name></member>
+      <member refid="structPeriodicTable_1a553a5cb92c74fca646c221f559dbaf48" prot="public" virt="non-virtual"><scope>PeriodicTable</scope><name>find_by_symbol</name></member>
+      <member refid="structPeriodicTable_1a9dc9e7e97f46d7d85d80d506db9e347a" prot="public" virt="non-virtual"><scope>PeriodicTable</scope><name>find_by_Z</name></member>
+      <member refid="structPeriodicTable_1a3a05cc080999b55cac259ca9c9efff1e" prot="private" virt="non-virtual"><scope>PeriodicTable</scope><name>name</name></member>
+      <member refid="structPeriodicTable_1aaa43631fae258176bf47032dce28053d" prot="public" virt="non-virtual"><scope>PeriodicTable</scope><name>PeriodicTable</name></member>
+      <member refid="structPeriodicTable_1a7cfee4efe7e898f427e1c2f21c63d2bd" prot="private" virt="non-virtual"><scope>PeriodicTable</scope><name>symbol</name></member>
+      <member refid="structPeriodicTable_1add955799e0b416a10a69c4e452b0a08e" prot="private" virt="non-virtual"><scope>PeriodicTable</scope><name>Z</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

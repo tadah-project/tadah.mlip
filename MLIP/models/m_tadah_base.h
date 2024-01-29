@@ -15,18 +15,24 @@
 
 /** This interface provides functionality required from all models.
  */
-class M_Tadah_Base: public M_Base, public virtual M_Core {
+class M_Tadah_Base:
+    //public M_Base,
+    public virtual M_Core,
+    //public virtual M_Train,
+    public virtual M_Predict
+    {
 
-    private:
-        using M_Core::predict;
-        using M_Core::train;
+    //private:
+        //using M_Core::predict;
+        //using M_Train::train;
     public:
 
         Normaliser norm;    // TODO?
         virtual ~M_Tadah_Base() {};
 
         /** \brief Predict total energy for a set of atoms. */
-        using M_Base::epredict;
+        //using M_Base::epredict;
+        using M_Predict::epredict;
         double epredict(const StDescriptors &std);
 
         /** \brief Predict force between a pair of atoms in a k-direction. */

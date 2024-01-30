@@ -1,14 +1,13 @@
 #ifndef M_KRR_H
 #define M_KRR_H
 
-#include "m_tadah_base.h"
-#include "../../MODELS/m_krr_core.h"
 #include "basis.h"
-#include "../../MODELS/linear_regressor.h"
-#include "../../CORE/config/config.h"
+#include "m_tadah_base.h"
 #include "../descriptors_calc.h"
 #include "../design_matrix/design_matrix.h"
 #include "../design_matrix/functions/dm_function_base.h"
+#include "../../MODELS/m_krr_train.h"
+#include "../../CORE/config/config.h"
 
 #include <limits>
 #include <stdexcept>

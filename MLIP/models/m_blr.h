@@ -54,13 +54,12 @@
 #define M_BLR_H
 
 #include "m_tadah_base.h"
-#include "../../MODELS/m_blr_core.h"
-#include "../../MODELS/linear_regressor.h"
-#include "../../CORE/config/config.h"
 #include "../descriptors_calc.h"
 #include "../design_matrix/design_matrix.h"
 #include "../design_matrix/functions/dm_function_base.h"
 #include "../normaliser.h"
+#include "../../MODELS/m_blr_train.h"
+#include "../../CORE/config/config.h"
 
 #include <limits>
 #include <stdexcept>

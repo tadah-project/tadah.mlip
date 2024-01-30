@@ -1,16 +1,16 @@
 #ifndef M_TADAH_BASE_H
 #define M_TADAH_BASE_H
 
-#include "../../LIBS/Eigen/Dense"
 #include "../structure.h"
 #include "../structure_db.h"
 #include "../st_descriptors.h"
 #include "../st_descriptors_db.h"
 #include "../normaliser.h"
 #include "../descriptors_calc_base.h"
+#include "../design_matrix/functions/dm_function_base.h"
 #include "../../CORE/typedefs.h"
 #include "../../MODELS/m_core.h"
-#include "../design_matrix/functions/dm_function_base.h"
+#include "../../LIBS/Eigen/Dense"
 
 /** This interface provides functionality required from all models.
  */

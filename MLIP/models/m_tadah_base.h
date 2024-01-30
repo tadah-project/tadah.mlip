@@ -9,38 +9,32 @@
 #include "../normaliser.h"
 #include "../descriptors_calc_base.h"
 #include "../../CORE/typedefs.h"
-#include "../../MODELS/m_base.h"
 #include "../../MODELS/m_core.h"
 #include "../design_matrix/functions/dm_function_base.h"
 
 /** This interface provides functionality required from all models.
  */
 class M_Tadah_Base:
-    //public M_Base,
     public virtual M_Core,
-    //public virtual M_Train,
     public virtual M_Predict
     {
 
-    //private:
-        //using M_Core::predict;
-        //using M_Train::train;
     public:
 
         Normaliser norm;    // TODO?
         virtual ~M_Tadah_Base() {};
 
         /** \brief Predict total energy for a set of atoms. */
-        //using M_Base::epredict;
         using M_Predict::epredict;
+        using M_Predict::fpredict;
         double epredict(const StDescriptors &std);
 
-        /** \brief Predict force between a pair of atoms in a k-direction. */
-        virtual double fpredict(const fd_type &fdij, const aed_rctype &aedi, size_t k)=0;
+        ///** \brief Predict force between a pair of atoms in a k-direction. */
+        //virtual double fpredict(const fd_type &fdij, const aed_rctype &aedi, size_t k)=0;
 
-        /** \brief Predict force between a pair of atoms. */
-        virtual force_type fpredict(const fd_type &fdij,
-                const aed_rctype &aedi)=0;
+        ///** \brief Predict force between a pair of atoms. */
+        //virtual force_type fpredict(const fd_type &fdij,
+        //        const aed_rctype &aedi)=0;
 
         /** \brief Predict total force on an atom a. */
         virtual void fpredict(const size_t a, force_type &v,

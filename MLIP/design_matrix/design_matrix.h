@@ -46,15 +46,15 @@
  *  - Stresses are scaled by 1/6.
  *  - Energies are scaled by 1/N_i
  *
- * @tparam Mode Function_Base child -> BF_Base or Kern_Base
+ * @tparam F Function_Base child -> BF_Base or Kern_Base
  *
  */
-template <typename Mode>
+template <typename F>
 class DesignMatrix {
 
     public:
 
-        Mode mode;
+        F f;
         phi_type Phi;
         t_type T;
         t_type Tlabels; // 0-Energy, 1-Force, 2-Stress
@@ -76,8 +76,8 @@ class DesignMatrix {
          *
          * \endcode
          */
-        DesignMatrix(Mode &bf, Config &c):
-            mode(bf),
+        DesignMatrix(F &f, Config &c):
+            f(f),
             config(c),
             force(config.get<bool>("FORCE")),
             stress(config.get<bool>("STRESS")),
@@ -176,7 +176,7 @@ class DesignMatrix {
         // resize Phi and T and set all elements to zero
         void resize(const StructureDB &stdb) {
             rows=0;
-            cols = mode.get_phi_cols(config);
+            cols = f.get_phi_cols(config);
 
             for (size_t s=0; s<stdb.size(); ++s) {
                 rows++;
@@ -292,18 +292,18 @@ class DesignMatrix {
             double escale = 1;
 
             if (scale) escale = st.eweight*eweightglob/st.natoms();
-            mode.calc_phi_energy_row(Phi,row,escale,st,st_d);
+            f.calc_phi_energy_row(Phi,row,escale,st,st_d);
             if (force) {
                 double fscale = 1;
                 if (scale) fscale = st.fweight*fweightglob/st.natoms()/3.0;///f_std_dev;
-                mode.calc_phi_force_rows(Phi,row,fscale,st,st_d);
+                f.calc_phi_force_rows(Phi,row,fscale,st,st_d);
             }
             if (stress) {
                 double sscale_arr[6] {1,1,1,1,1,1};
                 if (scale)
                     for(size_t xy=0;xy<6;++xy)
                         sscale_arr[xy] = st.sweight*sweightglob/6.0;///s_std_dev[xy];
-                mode.calc_phi_stress_rows(Phi,row,sscale_arr,st,st_d);
+                f.calc_phi_stress_rows(Phi,row,sscale_arr,st,st_d);
             }
         }
 };

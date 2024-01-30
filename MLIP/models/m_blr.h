@@ -69,7 +69,7 @@
 
 template
 <class BF=DM_Function_Base&>
-class M_BLR: public M_Tadah_Base, public M_BLR_Core<BF> {
+class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
 
     public:
 
@@ -84,11 +84,11 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Core<BF> {
          * \endcode
          *
          */
-        using M_BLR_Core<BF>::config;
-        using M_BLR_Core<BF>::bf;
+        using M_BLR_Train<BF>::config;
+        using M_BLR_Train<BF>::bf;
         M_BLR(Config &c):
-            M_BLR_Core<BF>(c),
-            desmat(M_BLR_Core<BF>::bf,c)
+            M_BLR_Train<BF>(c),
+            desmat(M_BLR_Train<BF>::bf,c)
     {
         norm = Normaliser(c);
     }
@@ -106,7 +106,7 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Core<BF> {
          *
          */
         M_BLR(BF &bf, Config &c):
-            M_BLR_Core<BF>(bf,c),
+            M_BLR_Train<BF>(bf,c),
             desmat(bf,c)
     {
         norm = Normaliser(c);
@@ -344,7 +344,7 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Core<BF> {
             void train(D &desmat) {
                 phi_type &Phi = desmat.Phi;
                 t_type &T = desmat.T;
-                M_BLR_Core<BF>::train(Phi,T);
+                M_BLR_Train<BF>::train(Phi,T);
 
                 if (config.template get<bool>("NORM") &&
                         bf.get_label()=="BF_Linear") {
@@ -354,10 +354,10 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Core<BF> {
 
         // Do we want to confuse user with those and make them public?
         // Either way they must be stated as below to silence clang warning
-        using M_BLR_Core<BF>::predict;
-        using M_BLR_Core<BF>::train;
-        using M_BLR_Core<BF>::trained;
-        using M_BLR_Core<BF>::weights;
-        using M_BLR_Core<BF>::Sigma;
+        using M_BLR_Train<BF>::predict;
+        using M_BLR_Train<BF>::train;
+        using M_BLR_Train<BF>::trained;
+        using M_BLR_Train<BF>::weights;
+        using M_BLR_Train<BF>::Sigma;
 };
 #endif

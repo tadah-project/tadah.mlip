@@ -28,7 +28,10 @@
  */
 template
 <class K=DM_Function_Base&>
-class M_KRR: public M_Tadah_Base, public M_KRR_Core<K> {
+class M_KRR: public M_Tadah_Base,
+    public M_KRR_Train<K>
+    //public M_KRR_Predict<K>
+{
 
     public:
 
@@ -43,11 +46,11 @@ class M_KRR: public M_Tadah_Base, public M_KRR_Core<K> {
          * \endcode
          *
          */
-        using M_KRR_Core<K>::config;
-        using M_KRR_Core<K>::kernel;
-        using M_KRR_Core<K>::ekm;
+        using M_KRR_Train<K>::config;
+        using M_KRR_Train<K>::kernel;
+        using M_KRR_Train<K>::ekm;
         M_KRR(Config &c):
-            M_KRR_Core<K>(c),
+            M_KRR_Train<K>(c),
             basis(c),
             desmat(kernel,c)
     {
@@ -71,7 +74,7 @@ class M_KRR: public M_Tadah_Base, public M_KRR_Core<K> {
          *
          */
         M_KRR(K &kernel, Config &c):
-            M_KRR_Core<K>(kernel,c),
+            M_KRR_Train<K>(kernel,c),
             basis(c),
             desmat(kernel,c)
     {
@@ -130,7 +133,7 @@ class M_KRR: public M_Tadah_Base, public M_KRR_Core<K> {
 
                 if (kernel.get_label()!="Kern_Linear") {
                     basis.build_random_basis(config.template get<size_t>("SBASIS"),st_desc_db_temp);
-                    desmat.mode.set_basis(basis.b);
+                    desmat.f.set_basis(basis.b);
                     kernel.set_basis(basis.b);
                     // to configure ekm, we need basis vectors
                     ekm.configure(basis.b);
@@ -339,7 +342,7 @@ class M_KRR: public M_Tadah_Base, public M_KRR_Core<K> {
             void train(D &desmat) {
                 phi_type &Phi = desmat.Phi;
                 t_type &T = desmat.T;
-                M_KRR_Core<K>::train(Phi,T);
+                M_KRR_Train<K>::train(Phi,T);
 
                 if (config.template get<bool>("NORM") &&
                         kernel.get_label()=="Kern_Linear") {
@@ -349,10 +352,10 @@ class M_KRR: public M_Tadah_Base, public M_KRR_Core<K> {
 
         // Do we want to confuse user with those and make them public?
         // Either way they must be stated as below to silence clang warning
-        using M_KRR_Core<K>::predict;
-        using M_KRR_Core<K>::train;
-        using M_KRR_Core<K>::trained;
-        using M_KRR_Core<K>::weights;
-        using M_KRR_Core<K>::Sigma;
+        using M_KRR_Train<K>::predict;
+        using M_KRR_Train<K>::train;
+        using M_KRR_Train<K>::trained;
+        using M_KRR_Train<K>::weights;
+        using M_KRR_Train<K>::Sigma;
 };
 #endif

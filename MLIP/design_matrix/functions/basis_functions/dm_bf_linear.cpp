@@ -33,8 +33,13 @@ void DM_BF_Linear::calc_phi_force_rows(phi_type &Phi, size_t &row,
             const size_t j=st.near_neigh_idx[a][jj];
             const size_t aa = st.get_nn_iindex(a,j,jj);
             for (size_t k=0; k<3; ++k) {
-                Phi.row(row+k) -= fac*(st_d.fd[a][jj].col(k)-
+                //Phi.row(row+k) -= fac*(st_d.fd[a][jj].col(k)-
+                //        st_d.fd[j][aa].col(k));
+                aed_type2 temp = fac*(st_d.fd[a][jj].col(k)-
                         st_d.fd[j][aa].col(k));
+                for (size_t d=0; d<temp.size(); ++d) {
+                    Phi.row(row+k)[d] -= temp[d];
+                }
             }
         }
         row+=3;
@@ -54,7 +59,11 @@ void DM_BF_Linear::calc_phi_stress_rows(phi_type &Phi, size_t &row,
             size_t mn=0;
             for (size_t x=0; x<3; ++x) {
                 for (size_t y=x; y<3; ++y) {
-                    Phi.row(row+mn) += 0.5*fac[mn]*(ri(x)-rj(x))*(fdij.col(y)-fdji.col(y));
+                    //Phi.row(row+mn) += 0.5*fac[mn]*(ri(x)-rj(x))*(fdij.col(y)-fdji.col(y));
+                    aed_type2 temp = 0.5*fac[mn]*(ri(x)-rj(x))*(fdij.col(y)-fdji.col(y));
+                    for (size_t d=0; d<temp.size(); ++d) {
+                        Phi.row(row+mn)[d] += temp[d];
+                    }
                     mn++;
                 }
             }

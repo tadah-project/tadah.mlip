@@ -44,7 +44,7 @@ class Basis {
 
             b.resize(st_desc_db(0).dim(),s);
             // set first basis function as "bias vector"
-            aed_type temp(st_desc_db(0).dim());
+            aed_type2 temp(st_desc_db(0).dim());
             temp.setZero();
             temp(0) = 1;
             b.col(0)=temp;

@@ -15,6 +15,7 @@ class Analytics {
         const StructureDB &stp;   // predicted data
 
     public:
+        typedef Eigen::VectorXd vec;
         Analytics(const StructureDB &st, const StructureDB &stp);
 
         /** Return Energy/atom Mean Absolute Error for each DBFILE. */

@@ -204,7 +204,7 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc(const Structure &st, StDescriptors
     if (initmb) {
         for (size_t i=0; i<st.natoms(); ++i) {
             aed_type2 &aed = st_d.get_aed(i);
-            const rho_rtype rhoi = st_d.get_rho(i);
+            rho_type& rhoi = st_d.get_rho(i);
             dm.calc_aed(rhoi,aed);
         }
     }
@@ -247,7 +247,7 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc(const Structure &st, StDescriptors
                 if (rij_sq <= rcut_mb_sq && initmb) {
                     double fc_ij = Zj*cm.calc(rij);
                     double fcp_ij = Zj*cm.calc_prime(rij);
-                    const rho_rtype rhoi = st_d.get_rho(i);
+                    rho_type& rhoi = st_d.get_rho(i);
                     int mode = dm.calc_dXijdri(rij,rij_sq,delij,
                             fc_ij,fcp_ij,rhoi,fd_ij);
                     if (mode==0) {
@@ -393,7 +393,7 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc_dimer(const Structure &st, StDescr
     if (initmb) {
         for (size_t i=0; i<4; ++i) {
             aed_type2 &aed = st_d.get_aed(i);
-            const rho_rtype rhoi = st_d.get_rho(i);
+            rho_type& rhoi = st_d.get_rho(i);
             dm.calc_aed(rhoi,aed);
         }
     }

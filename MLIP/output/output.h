@@ -140,8 +140,8 @@ class Output {
                     if (newline)
                         out_force << std::endl << std::endl;
                     for (size_t a=0; a<stdb(i).natoms(); ++a) {
-                        Eigen::Vector3d &f = stdb(i).atoms[a].force;
-                        Eigen::Vector3d &fp = stpred(i).atoms[a].force;
+                        Vec3d &f = stdb(i).atoms[a].force;
+                        Vec3d &fp = stpred(i).atoms[a].force;
                         for (size_t k=0; k<3; ++k) {
                             out_force << std::setw(iwf) << fidx++ << std::setw(nw)
                                 << f[k] << std::setw(nw) << fp[k];

@@ -154,7 +154,7 @@ struct Structure {
     double get_pressure(const double T, const double kB=8.617333262145e-5) const;
 
     /** @return position of the n-th nearest neighbour of the i-th Atom. */
-    const Eigen::Vector3d& nn_pos(const size_t i, const size_t n) const;
+    const Vec3d& nn_pos(const size_t i, const size_t n) const;
 
     /** @return a number of nearest neighbours of the i-th Atom. */
     size_t nn_size(const size_t i) const;

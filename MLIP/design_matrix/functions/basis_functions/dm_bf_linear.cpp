@@ -39,13 +39,13 @@ void DM_BF_Linear::calc_phi_stress_rows(phi_type &Phi, size_t &row,
         const double fac[6], const Structure &st, const StDescriptors &st_d)
 {
     for (size_t i=0; i<st.natoms(); ++i) {
-        const Eigen::Vector3d &ri = st(i).position;
+        const Vec3d &ri = st(i).position;
         for (size_t jj=0; jj<st_d.fd[i].size(); ++jj) {
             const size_t j=st.near_neigh_idx[i][jj];
             const size_t ii = st.get_nn_iindex(i,j,jj);
             const fd_type &fdij = st_d.fd[i][jj];
             const fd_type &fdji = st_d.fd[j][ii];
-            const Eigen::Vector3d &rj = st.nn_pos(i,jj);
+            const Vec3d &rj = st.nn_pos(i,jj);
             size_t mn=0;
             for (size_t x=0; x<3; ++x) {
                 for (size_t y=x; y<3; ++y) {

@@ -149,10 +149,10 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc_rho(const Structure &st, StDescrip
         const Atom &a1 = st(i);
 
         for (size_t jj=0; jj<st.nn_size(i); ++jj) {
-            const Eigen::Vector3d &a2pos = st.nn_pos(i,jj);
-            Eigen::Vector3d delij = a1.position - a2pos;
+            const Vec3d &a2pos = st.nn_pos(i,jj);
+            Vec3d delij = a1.position - a2pos;
 
-            double rij_sq = delij.transpose() * delij;
+            double rij_sq = delij * delij;
             if (rij_sq > rcut_mb_sq) continue;
             int Zj = st.near_neigh_atoms[i][jj].Z;
             double rij = sqrt(rij_sq);
@@ -214,11 +214,11 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc(const Structure &st, StDescriptors
         aed_rtype aed = st_d.get_aed(i);
 
         for (size_t jj=0; jj<st.nn_size(i); ++jj) {
-            const Eigen::Vector3d &a2pos = st.nn_pos(i,jj);
+            const Vec3d &a2pos = st.nn_pos(i,jj);
             //size_t j = st.near_neigh_idx[i][jj];
-            Eigen::Vector3d delij = a1.position - a2pos;
+            Vec3d delij = a1.position - a2pos;
 
-            double rij_sq = delij.transpose() * delij;
+            double rij_sq = delij * delij;
             if (rij_sq > rcut_max_sq) continue;
             int Zj = st.near_neigh_atoms[i][jj].Z;
             double rij = sqrt(rij_sq);
@@ -318,7 +318,7 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc_dimer(const Structure &st, StDescr
 
     // Not that this differ to how lammps implements this
     // TODO make it consistent between those two
-    Eigen::MatrixXd delM(6,3);  //i1-j1,i2-j1,i1-j2,i2-j2,i1-i2,j1-j2
+    Mat6R3C delM;  //i1-j1,i2-j1,i1-j2,i2-j2,i1-i2,j1-j2
     double r_sq[6];
     double r[6];
 
@@ -355,11 +355,11 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc_dimer(const Structure &st, StDescr
         st_d.rhos.setZero();
     }
 
-    Eigen::Vector3d xicom = 0.5*(atoms[0].position + atoms[1].position);
-    Eigen::Vector3d xjcom = 0.5*(atoms[2].position + atoms[3].position);
+    Vec3d xicom = 0.5*(atoms[0].position + atoms[1].position);
+    Vec3d xjcom = 0.5*(atoms[2].position + atoms[3].position);
 
-    Eigen::Vector3d del_com = xicom-xjcom;;
-    double r_com_sq = del_com.transpose() * del_com;
+    Vec3d del_com = xicom-xjcom;;
+    double r_com_sq = del_com * del_com;
     if (r_com_sq > rcut_com_sq) {
         return;
     }
@@ -367,7 +367,7 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc_dimer(const Structure &st, StDescr
     // compute all 6 distances
     for (size_t n=0; n<6; ++n) {
         delM.row(n) = atoms[idx[n].first].position - atoms[idx[n].second].position;
-        r_sq[n] =  delM.row(n) * delM.row(n).transpose();
+        r_sq[n] =  delM.row(n) * delM.row(n);
         r[n] = sqrt(r_sq[n]);
     }
 

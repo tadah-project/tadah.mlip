@@ -2,20 +2,19 @@
 #include "../MLIP/atom.h"
 #include <string>
 
-using vec=Eigen::Vector3d;
 
 std::string symbol1="Ti";
 std::string name1="Titanium";
 int Z1 = 22;
-vec pos1(1.0,2.0,3.0);
-vec force1(4.0,5.0,6.0);
+Vec3d pos1(1.0,2.0,3.0);
+Vec3d force1(4.0,5.0,6.0);
 Element element1(symbol1,name1,Z1);
 
 std::string symbol2="Nb";
 std::string name2="Niobium";
 int Z2 = 41;
-vec pos2(-1.0,-2.0,-3.0);
-vec force2(-4.0,-5.0,-6.0);
+Vec3d pos2(-1.0,-2.0,-3.0);
+Vec3d force2(-4.0,-5.0,-6.0);
 Element element2(symbol2,name2,Z2);
 
 TEST_CASE( "Testing Atom class constructor", "[atom]" ) {

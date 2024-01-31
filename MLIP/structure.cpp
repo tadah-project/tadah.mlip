@@ -15,7 +15,7 @@ void Structure::remove_atom(const size_t i) {
     atoms.erase(atoms.begin()+i);
 }
 
-const Eigen::Vector3d& Structure::nn_pos(const size_t i, const size_t n) const {
+const Vec3d& Structure::nn_pos(const size_t i, const size_t n) const {
     return near_neigh_atoms[i][n].position;
 }
 

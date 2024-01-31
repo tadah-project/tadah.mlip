@@ -120,7 +120,7 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
         }
 
         force_type fpredict(const fd_type &fdij, const aed_rctype &aedi) {
-            return bf.fpredict(weights,fdij,aedi).array();
+            return bf.fpredict(weights,fdij,aedi);
         }
 
         void train(StDescriptorsDB &st_desc_db, const StructureDB &stdb) {

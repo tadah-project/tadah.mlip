@@ -93,7 +93,7 @@ class M_KRR: public M_Tadah_Base,
         }
 
         force_type fpredict(const fd_type &fdij, const aed_rctype &aedi) {
-            return kernel.fpredict(weights,fdij,aedi).array();
+            return kernel.fpredict(weights,fdij,aedi);
         }
 
         void train(StDescriptorsDB &st_desc_db, const StructureDB &stdb) {

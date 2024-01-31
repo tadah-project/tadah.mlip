@@ -5,6 +5,7 @@
 #include <iostream>
 #include "../LIBS/Eigen/Dense"
 #include "../CORE/element.h"
+#include "../CORE/typedefs.h"
 
 /**
  * Container to represent atom properties
@@ -64,10 +65,10 @@ struct Atom: public Element {
             const double fx, const double fy, const double fz);
 
     /** Hold position of the atom. */
-    Eigen::Vector3d position;
+    Vec3d position;
 
     /** Hold force on the atom. */
-    Eigen::Vector3d force;
+    Vec3d force;
 
     /** Print object summary to the stream */
     friend std::ostream& operator<<(std::ostream& os, const Atom& atom);

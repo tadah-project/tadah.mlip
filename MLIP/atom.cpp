@@ -15,8 +15,8 @@ Atom::Atom(const Element &element,
 std::ostream& operator<<(std::ostream& os, const Atom& atom)
 {
     os     << (Element&)atom;
-    os     << "Coordinates:  " << std::left << atom.position.transpose() << std::endl;
-    os     << "Force:        " << std::left << atom.force.transpose() << std::endl;
+    os     << "Coordinates:  " << std::left << atom.position << std::endl;
+    os     << "Force:        " << std::left << atom.force << std::endl;
     return os;
 }
 bool Atom::operator==(const Atom &a) const {

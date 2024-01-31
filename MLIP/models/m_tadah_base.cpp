@@ -90,12 +90,12 @@ stress_type M_Tadah_Base::spredict(const size_t a, const StDescriptors &std, con
 }
 void M_Tadah_Base::spredict(const size_t a, stress_type &s, const StDescriptors &std, const Structure &st)
 {
-    const Eigen::Vector3d &ri = st.atoms[a].position;
+    const Vec3d &ri = st.atoms[a].position;
     const aed_rctype aedi = std.get_aed(a);
     for (size_t jj=0; jj<std.fd[a].size(); ++jj) {
         size_t j=st.near_neigh_idx[a][jj];
         const size_t aa = st.get_nn_iindex(a,j,jj);
-        const Eigen::Vector3d &rj = st.nn_pos(a,jj);
+        const Vec3d &rj = st.nn_pos(a,jj);
         const fd_type &fdij = std.fd[a][jj];
         const fd_type &fdji = std.fd[j][aa];
         const aed_rctype aedj = std.get_aed(j);
@@ -104,7 +104,9 @@ void M_Tadah_Base::spredict(const size_t a, stress_type &s, const StDescriptors 
         const force_type fIJ = fij - fji;
         // fJI = -fIJ
 
-        s -= 0.5*(ri-rj)*fIJ.transpose();
+        s -= 0.5*(Eigen::Map<const Eigen::Vector3d>(ri.v)
+                -Eigen::Map<const Eigen::Vector3d>(rj.v))
+            *(Eigen::Map<const Eigen::Vector3d>(fIJ.v)).transpose();
     }
     //for(size_t i=0;i<6;++i) s(i) *= s_std_dev[i];
 

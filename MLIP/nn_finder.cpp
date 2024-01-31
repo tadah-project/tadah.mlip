@@ -29,13 +29,13 @@ void NNFinder::calc(Structure &st) {
                 Eigen::Vector3d displacement = st.cell.transpose()*shift;
 
                 for (size_t a=0; a<st.natoms(); ++a) {
-                    shiftedpos.row(a) = st(a).position + displacement;
+                    shiftedpos.row(a) = Eigen::Map<const Eigen::Vector3d>(st(a).position.v) + displacement;
                 }
 
                 // calculate all neighbours of a1 for this shift
                 for (size_t a1=0; a1<st.natoms(); ++a1) {
                     for (size_t a2=0; a2<st.natoms(); ++a2) {
-                        Eigen::Vector3d delij = st(a1).position
+                        Eigen::Vector3d delij = Eigen::Map<const Eigen::Vector3d>(st(a1).position.v)
                             - shiftedpos.row(a2).transpose();
                         double rij_sq = delij.transpose() * delij;
                         if(rij_sq<cutoff_sq && rij_sq>std::numeric_limits<double>::min()) {

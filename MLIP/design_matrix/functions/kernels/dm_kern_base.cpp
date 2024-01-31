@@ -39,7 +39,7 @@ void  DM_Kern_Base::calc_phi_stress_rows(phi_type &Phi, size_t &row, const doubl
         const Structure &st, const StDescriptors &st_d)
 {
     for (size_t i=0; i<st.natoms(); ++i) {
-        const Eigen::Vector3d &ri = st(i).position;
+        const Vec3d &ri = st(i).position;
         const aed_rctype& aedi = st_d.get_aed(i);
         for (size_t jj=0; jj<st_d.fd[i].size(); ++jj) {
             size_t j=st.near_neigh_idx[i][jj];
@@ -47,7 +47,7 @@ void  DM_Kern_Base::calc_phi_stress_rows(phi_type &Phi, size_t &row, const doubl
             const fd_type &fdji = st_d.fd[j][ii];
             const fd_type &fdij = st_d.fd[i][jj];
             const aed_rctype& aedj = st_d.get_aed(j);
-            const Eigen::Vector3d &rj = st.nn_pos(i,jj);
+            const Vec3d &rj = st.nn_pos(i,jj);
             size_t mn=0;
             for (size_t x=0; x<3; ++x) {
                 for (size_t y=x; y<3; ++y) {

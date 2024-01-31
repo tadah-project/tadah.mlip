@@ -98,12 +98,12 @@ TEST_CASE( "Testing Structure compare", "[structure_compare]" ) {
     }
     SECTION("Compare position") {
         REQUIRE(st==st_temp);
-        st_temp.atoms[0].position << 0.12,0.13,10.14;
+        st_temp.atoms[0].position(0.12,0.13,10.14);
         REQUIRE(!(st==st_temp));
     }
     SECTION("Compare force") {
         REQUIRE(st==st_temp);
-        st_temp.atoms[0].force << 1.12, 0.13, 0.134;
+        st_temp.atoms[0].force(1.12, 0.13, 0.134);
         REQUIRE(!(st==st_temp));
     }
 

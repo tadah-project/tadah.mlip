@@ -15,8 +15,13 @@ void DM_Kern_Linear::calc_phi_energy_row(phi_type &Phi, size_t &row,
         const double fac, const Structure &, const StDescriptors &st_d)
 {
     for (size_t a=0; a<st_d.naed();++a) {
-        const aed_rctype& aed = st_d.get_aed(a);
-        Phi.row(row) += aed;
+        const aed_type2 &aed = st_d.get_aed(a);  // TODO
+        //Eigen::VectorXd t(aed.data.data());
+        for (size_t j=0; j<aed.size(); ++j) {
+            Phi.row(row)[j]+=aed[j];
+        }
+        //Phi.row(row) += Eigen::Map<const Eigen::VectorXd>(aed.data.data());
+        //Phi.row(row) += Eigen::Map<const Eigen::Matrix<double,aed.size(),1>>(aed.data.data());
     }
     Phi.row(row++) *= fac;
 }

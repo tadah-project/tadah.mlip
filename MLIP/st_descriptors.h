@@ -75,7 +75,7 @@ struct StDescriptors {
      * Dimensions:
      * [number of atoms, descriptor size]
      */
-    aeds_type aeds;
+    aeds_type2 aeds;
 
     /** FD for all atoms
      *
@@ -96,8 +96,8 @@ struct StDescriptors {
 
     rhos_type rhos;
 
-    aed_rtype get_aed(const size_t i);
-    const aed_rctype get_aed(const size_t i) const;
+    aed_type2 & get_aed(const size_t i);
+    const aed_type2 &get_aed(const size_t i) const;
     rho_rtype get_rho(const size_t i);
 
     size_t naed() const;

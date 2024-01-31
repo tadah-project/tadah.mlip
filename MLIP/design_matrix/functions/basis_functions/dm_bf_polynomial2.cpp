@@ -15,7 +15,7 @@ void DM_BF_Polynomial2::calc_phi_energy_row(phi_type &Phi, size_t &row,
         const double fac, const Structure &, const StDescriptors &st_d)
 {
     for (size_t a=0; a<st_d.naed();++a) {
-        const aed_rctype& aed = st_d.get_aed(a);
+        const aed_type2& aed = st_d.get_aed(a);
         size_t b=0;
         for (size_t i=0; i<st_d.dim(); ++i) {
             for (size_t ii=i; ii<st_d.dim(); ++ii) {
@@ -29,13 +29,13 @@ void DM_BF_Polynomial2::calc_phi_force_rows(phi_type &Phi, size_t &row,
         const double fac, const Structure &st, const StDescriptors &st_d)
 {
     for (size_t a=0; a<st.natoms(); ++a) {
-        const aed_rctype& aedi = st_d.get_aed(a);
+        const aed_type2& aedi = st_d.get_aed(a);
         for (size_t jj=0; jj<st_d.fd[a].size(); ++jj) {
             const size_t j=st.near_neigh_idx[a][jj];
             size_t aa = st.get_nn_iindex(a,j,jj);
             const fd_type &fdji = st_d.fd[j][aa];
             const fd_type &fdij = st_d.fd[a][jj];
-            const aed_rctype& aedj = st_d.get_aed(j);
+            const aed_type2& aedj = st_d.get_aed(j);
             size_t b=0;
             for (long int i=0; i<fdij.rows(); ++i) {
                 for (long int ii=i; ii<fdij.rows(); ++ii) {
@@ -56,14 +56,14 @@ void DM_BF_Polynomial2::calc_phi_stress_rows(phi_type &Phi, size_t &row,
 {
     for (size_t a=0; a<st.natoms(); ++a) {
         const Vec3d &ri = st(a).position;
-        const aed_rctype& aedi = st_d.get_aed(a);
+        const aed_type2& aedi = st_d.get_aed(a);
         for (size_t jj=0; jj<st_d.fd[a].size(); ++jj) {
             const size_t j=st.near_neigh_idx[a][jj];
             size_t aa = st.get_nn_iindex(a,j,jj);
             const fd_type &fdji = st_d.fd[j][aa];
             const fd_type &fdij = st_d.fd[a][jj];
             const Vec3d &rj = st.nn_pos(a,jj);
-            const aed_rctype& aedj = st_d.get_aed(j);
+            const aed_type2& aedj = st_d.get_aed(j);
             size_t b=0;
             for (long int i=0; i<fdij.rows(); ++i) {
                 for (long int ii=i; ii<fdij.rows(); ++ii) {

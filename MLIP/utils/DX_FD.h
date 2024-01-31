@@ -31,9 +31,9 @@ class DX_FD {
         void test_d2(D2_Base *d2, Cut_Base *cutoff, double h=1e-4) {
 
             // Setup
-            aed_type aed(d2->size());
-            aed_type aedp(d2->size());
-            aed_type aedn(d2->size());
+            aed_type2 aed(d2->size());
+            aed_type2 aedp(d2->size());
+            aed_type2 aedn(d2->size());
 
             // Initial configuration
             Atom a1("a1",0.1,7.2,1.3,0,0,0);

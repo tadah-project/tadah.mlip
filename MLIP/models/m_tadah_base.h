@@ -30,11 +30,11 @@ class M_Tadah_Base:
         double epredict(const StDescriptors &std);
 
         ///** \brief Predict force between a pair of atoms in a k-direction. */
-        //virtual double fpredict(const fd_type &fdij, const aed_rctype &aedi, size_t k)=0;
+        //virtual double fpredict(const fd_type &fdij, const aed_type2 &aedi, size_t k)=0;
 
         ///** \brief Predict force between a pair of atoms. */
         //virtual force_type fpredict(const fd_type &fdij,
-        //        const aed_rctype &aedi)=0;
+        //        const aed_type2 &aedi)=0;
 
         /** \brief Predict total force on an atom a. */
         virtual void fpredict(const size_t a, force_type &v,

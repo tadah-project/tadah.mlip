@@ -10,8 +10,8 @@ void M_Tadah_Base::fpredict(const size_t a, force_type &v, const StDescriptors &
         const size_t aa = st.get_nn_iindex(a,j,jj);
         const fd_type &fdji = std.fd[j][aa];
         const fd_type &fdij = std.fd[a][jj];
-        const aed_rctype aedi = std.get_aed(a);
-        const aed_rctype aedj = std.get_aed(j);
+        const aed_type2 &aedi = std.get_aed(a);
+        const aed_type2 &aedj = std.get_aed(j);
         v += fpredict(fdij,aedi);
         v -= fpredict(fdji,aedj);
     }
@@ -91,14 +91,14 @@ stress_type M_Tadah_Base::spredict(const size_t a, const StDescriptors &std, con
 void M_Tadah_Base::spredict(const size_t a, stress_type &s, const StDescriptors &std, const Structure &st)
 {
     const Vec3d &ri = st.atoms[a].position;
-    const aed_rctype aedi = std.get_aed(a);
+    const aed_type2 &aedi = std.get_aed(a);
     for (size_t jj=0; jj<std.fd[a].size(); ++jj) {
         size_t j=st.near_neigh_idx[a][jj];
         const size_t aa = st.get_nn_iindex(a,j,jj);
         const Vec3d &rj = st.nn_pos(a,jj);
         const fd_type &fdij = std.fd[a][jj];
         const fd_type &fdji = std.fd[j][aa];
-        const aed_rctype aedj = std.get_aed(j);
+        const aed_type2 &aedj = std.get_aed(j);
         const force_type fij = fpredict(fdij,aedi);
         const force_type fji = fpredict(fdji,aedj);
         const force_type fIJ = fij - fji;

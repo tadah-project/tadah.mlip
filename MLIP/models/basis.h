@@ -16,7 +16,7 @@ class Basis {
         Config &config;
         int verbose;
     public:
-        aeds_type b;
+        aeds_type2 b;
         Basis(Config &c):
             config(c),
             verbose(c.get<int>("VERBOSE"))
@@ -51,7 +51,11 @@ class Basis {
             for (size_t i=1; i<s; ++i) {
                 size_t st = std::get<0>(indices[i]);
                 size_t a = std::get<1>(indices[i]);
-                b.col(i) = st_desc_db(st).get_aed(a);
+                const aed_type2 &aed = st_desc_db(st).get_aed(a);
+                for (size_t j=0; j<aed.size(); ++j) {
+                    b.col(i)[j]=aed[j];
+                }
+                //b.col(i) = st_desc_db(st).get_aed(a);
             }
 
         }

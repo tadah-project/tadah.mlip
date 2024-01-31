@@ -31,11 +31,11 @@ StDescriptors::StDescriptors(const Structure &s, const Config &c):
 }
 StDescriptors::StDescriptors() {}
 
-aed_rtype StDescriptors::get_aed(const size_t i) {
+aed_type2 & StDescriptors::get_aed(const size_t i) {
     return aeds.col(i);
 }
 
-const aed_rctype StDescriptors::get_aed(const size_t i) const {
+const aed_type2 &StDescriptors::get_aed(const size_t i) const {
     return aeds.col(i);
 }
 rho_rtype StDescriptors::get_rho(const size_t i) {

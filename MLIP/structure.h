@@ -4,7 +4,7 @@
 #include "../LIBS/Eigen/Dense"
 #include "atom.h"
 #include "../LIBS/Eigen/src/Core/util/Constants.h"
-#include "../CORE/typedefs.h"
+#include "../CORE/eigen_types.h"
 
 #include <string>
 #include <iostream>

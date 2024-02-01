@@ -6,7 +6,7 @@
 #include "../../CORE/config/config.h"
 #include "../structure_db.h"
 #include "../../CORE/utils/utils.h"
-#include "../../CORE/typedefs.h"
+#include "../../CORE/eigen_types.h"
 
 class Output {
     private:

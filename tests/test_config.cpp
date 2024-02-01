@@ -1,5 +1,6 @@
 #include "catch2/catch.hpp"
 #include "../CORE/config/config.h"
+#include "../LIBS/Eigen/Core"
 #include <filesystem>
 
 

@@ -3,7 +3,8 @@
 
 #include <iostream>
 #include "../dm_function_base.h"
-#include "../../../../CORE/typedefs.h"
+#include "../../../../CORE/core_types.h"
+#include "../../../../CORE/eigen_types.h"
 #include "../../../../MODELS/functions/kernels/kern_base.h"
 #include "../../../structure.h"
 #include "../../../st_descriptors.h"

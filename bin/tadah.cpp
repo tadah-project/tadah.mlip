@@ -1,6 +1,6 @@
 #include "tadah.h"
 #include "../MLIP/output/output.h"
-#include "../CORE/typedefs.h"
+#include "../CORE/eigen_types.h"
 
 int main(int argc, char** argv) {
 

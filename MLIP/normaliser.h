@@ -36,8 +36,10 @@ class Normaliser: public Normaliser_Core {
 
             // prep containers
             size_t dim = st_desc_db(0).dim();
-            mean = Eigen::VectorXd(dim);
-            std_dev = Eigen::VectorXd(dim);
+            //mean = Eigen::VectorXd(dim);
+            //std_dev = Eigen::VectorXd(dim);
+            mean = v_type(dim);
+            std_dev = v_type(dim);
 
             //std::cout << "COLS NORM: " << nn << std::endl;
             // compute mean and st_dev
@@ -50,8 +52,8 @@ class Normaliser: public Normaliser_Core {
                         v(b++) = st_desc_db(s).get_aed(a)(d);
                     }
                 }
-                std_dev(d) = std::sqrt((v.array() - v.mean()).square().sum()/(v.size()));
-                mean(d) = v.mean();
+                std_dev[d] = std::sqrt((v.array() - v.mean()).square().sum()/(v.size()));
+                mean[d] = v.mean();
             }
 
 
@@ -68,8 +70,8 @@ class Normaliser: public Normaliser_Core {
                 }
             }
 
-            if (verbose) std::cout << std::endl << "NORMALISER STDEV  : " << std_dev.transpose() << std::endl;
-            if (verbose) std::cout << std::endl << "NORMALISER MEAN   :" << mean.transpose() << std::endl;
+            if (verbose) std::cout << std::endl << "NORMALISER STDEV  : " << std_dev << std::endl;
+            if (verbose) std::cout << std::endl << "NORMALISER MEAN   :" << mean << std::endl;
 
         }
 

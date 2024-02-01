@@ -172,10 +172,10 @@ class M_KRR: public M_Tadah_Base,
 
             if(config.template get<bool>("NORM")) {
                 for (long int i=0;i<norm.mean.size();++i) {
-                    c.add("NMEAN", norm.mean(i,0));
+                    c.add("NMEAN", norm.mean[i]);
                 }
                 for (long int i=0;i<norm.std_dev.size();++i) {
-                    c.add("NSTDEV", norm.std_dev(i,0));
+                    c.add("NSTDEV", norm.std_dev[i]);
                 }
             }
             if (kernel.get_label()!="Kern_Linear") {
@@ -305,12 +305,12 @@ class M_KRR: public M_Tadah_Base,
                 kw(0) = weights(0);
                 for (long int i=1; i<weights.size(); ++i) {
 
-                    if (norm.std_dev(i) > std::numeric_limits<double>::min())
-                        kw(i) = weights(i) / norm.std_dev(i);
+                    if (norm.std_dev[i] > std::numeric_limits<double>::min())
+                        kw(i) = weights(i) / norm.std_dev[i];
                     else
                         kw(i) = weights(i);
 
-                    kw(0) -= norm.mean(i)*kw(i);
+                    kw(0) -= norm.mean[i]*kw(i);
 
                 }
             }
@@ -327,12 +327,12 @@ class M_KRR: public M_Tadah_Base,
             w.setZero();
             w(0) = kw(0);
             for (long int i=1; i<kw.size(); ++i) {
-                if (norm.std_dev(i) > std::numeric_limits<double>::min())
-                    w(i) = kw(i) * norm.std_dev(i);
+                if (norm.std_dev[i] > std::numeric_limits<double>::min())
+                    w(i) = kw(i) * norm.std_dev[i];
                 else
                     w(i) = kw(i);
 
-                w(0) += kw(i)*norm.mean(i);
+                w(0) += kw(i)*norm.mean[i];
             }
             return w;
         }

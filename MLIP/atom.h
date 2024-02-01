@@ -3,9 +3,8 @@
 
 #include <string>
 #include <iostream>
-#include "../LIBS/Eigen/Dense"
 #include "../CORE/element.h"
-#include "../CORE/typedefs.h"
+#include "../CORE/core_types.h"
 
 /**
  * Container to represent atom properties

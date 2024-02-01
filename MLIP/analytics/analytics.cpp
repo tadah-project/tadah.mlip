@@ -1,8 +1,6 @@
 #include "analytics.h"
 #include "statistics.h"
 
-typedef Eigen::VectorXd vec;
-
 Analytics::Analytics(const StructureDB &st, const StructureDB &stp):
     st(st),
     stp(stp)

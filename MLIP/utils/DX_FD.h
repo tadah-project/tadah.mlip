@@ -1,7 +1,7 @@
 #ifndef TADAH_DX_FD_H
 #define TADAH_DX_FD_H
 #include "../../CORE/config/config.h"
-#include "../../CORE/typedefs.h"
+#include "../../CORE/core_types.h"
 #include "../../MODELS/descriptors/d_all.h"
 #include "../../MODELS/cutoffs/cut_all.h"
 #include "../../LIBS/Eigen/Dense"

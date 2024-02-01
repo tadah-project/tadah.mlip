@@ -104,6 +104,8 @@ TEST_CASE( "Testing Structure compare", "[structure_compare]" ) {
     SECTION("Compare force") {
         REQUIRE(st==st_temp);
         st_temp.atoms[0].force(1.12, 0.13, 0.134);
+        std::cout << st.atoms[0];
+        std::cout << st_temp.atoms[0];
         REQUIRE(!(st==st_temp));
     }
 

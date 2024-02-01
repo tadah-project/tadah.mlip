@@ -1,13 +1,10 @@
 #ifndef STATISTICS_H
 #define STATISTICS_H
 
-#include "../../CORE/typedefs.h"
-#include "../../LIBS/Eigen/Dense"
+#include "../../CORE/eigen_types.h"
 
 /** Some basis statistical tools */
 class Statistics {
-    private:
-        typedef Eigen::VectorXd vec;
     public:
         /** Residual sum of squares. */
         static double res_sum_sq(const vec &obs, const vec &pred);

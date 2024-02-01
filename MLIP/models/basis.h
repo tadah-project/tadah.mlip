@@ -2,7 +2,7 @@
 #define BASIS_H
 
 #include "../../CORE/config/config.h"
-#include "../../CORE/typedefs.h"
+#include "../../CORE/core_types.h"
 #include "../st_descriptors_db.h"
 #include "../st_descriptors.h"
 

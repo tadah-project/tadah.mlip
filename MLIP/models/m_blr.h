@@ -192,10 +192,10 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
 
             if(config.template get<bool>("NORM")) {
                 for (long int i=0;i<norm.mean.size();++i) {
-                    c.add("NMEAN", norm.mean(i,0));
+                    c.add("NMEAN", norm.mean[i]);
                 }
                 for (long int i=0;i<norm.std_dev.size();++i) {
-                    c.add("NSTDEV", norm.std_dev(i,0));
+                    c.add("NSTDEV", norm.std_dev[i]);
                 }
             }
             return c;
@@ -308,12 +308,12 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             nw(0) = weights(0);
             for (long int i=1; i<weights.size(); ++i) {
 
-                if (norm.std_dev(i) > std::numeric_limits<double>::min())
-                    nw(i) = weights(i) / norm.std_dev(i);
+                if (norm.std_dev[i] > std::numeric_limits<double>::min())
+                    nw(i) = weights(i) / norm.std_dev[i];
                 else
                     nw(i) = weights(i);
 
-                nw(0) -= norm.mean(i)*nw(i);
+                nw(0) -= norm.mean[i]*nw(i);
 
             }
             return nw;
@@ -329,12 +329,12 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             w.setZero();
             w(0) = nw(0);
             for (long int i=1; i<nw.size(); ++i) {
-                if (norm.std_dev(i) > std::numeric_limits<double>::min())
-                    w(i) = nw(i) * norm.std_dev(i);
+                if (norm.std_dev[i] > std::numeric_limits<double>::min())
+                    w(i) = nw(i) * norm.std_dev[i];
                 else
                     w(i) = nw(i);
 
-                w(0) += nw(i)*norm.mean(i);
+                w(0) += nw(i)*norm.mean[i];
             }
             return w;
         }

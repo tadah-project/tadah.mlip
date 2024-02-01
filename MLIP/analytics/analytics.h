@@ -2,9 +2,8 @@
 #define ANALYTICS_H
 
 #include "../structure_db.h"
-#include "../../CORE/typedefs.h"
+#include "../../CORE/eigen_types.h"
 
-#include "../../LIBS/Eigen/Dense"
 
 /** Class for analysing and comparing datasets
  *
@@ -15,7 +14,6 @@ class Analytics {
         const StructureDB &stp;   // predicted data
 
     public:
-        typedef Eigen::VectorXd vec;
         Analytics(const StructureDB &st, const StructureDB &stp);
 
         /** Return Energy/atom Mean Absolute Error for each DBFILE. */

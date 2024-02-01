@@ -3,7 +3,7 @@
 
 #include "descriptors_calc_base.h"
 #include "../CORE/config/config.h"
-#include "../CORE/typedefs.h"
+#include "../CORE/core_types.h"
 #include "structure.h"
 #include "structure_db.h"
 #include "st_descriptors.h"

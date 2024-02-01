@@ -167,7 +167,7 @@ class M_KRR: public M_Tadah_Base,
             c.add("MODEL", kernel.get_label());
 
             for (long int i=0;i<weights.size();++i) {
-                c.add("WEIGHTS", weights(i,0));
+                c.add("WEIGHTS", weights(i));
             }
 
             if(config.template get<bool>("NORM")) {
@@ -195,7 +195,7 @@ class M_KRR: public M_Tadah_Base,
             return c;
         }
         StructureDB predict(Config config_pred, StructureDB &stdb, DC_Base &dc,
-                t_type &predicted_error) {
+                vec &predicted_error) {
 
             LinearRegressor::read_sigma(config_pred,Sigma);
             DesignMatrix<K> dm(kernel,config_pred);
@@ -210,7 +210,8 @@ class M_KRR: public M_Tadah_Base,
             predicted_error.array() += 1.0/beta;
 
             // compute energy, forces and stresses
-            t_type Tpred = phi*weights;
+            vec ww=Eigen::Map<vec>(weights.data.data(),weights.data.size());
+            vec Tpred = phi*ww;
 
             // Construct StructureDB object with predicted values
             StructureDB stdb_;
@@ -250,7 +251,8 @@ class M_KRR: public M_Tadah_Base,
             phi_type &Phi = desmat.Phi;
 
             // compute energy, forces and stresses
-            t_type Tpred = Phi*weights;
+            vec ww=Eigen::Map<vec>(weights.data.data(),weights.data.size());
+            vec Tpred = Phi*ww;
 
             double eweightglob=config.template get<double>("EWEIGHT");
             double fweightglob=config.template get<double>("FWEIGHT");

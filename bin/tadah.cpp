@@ -243,9 +243,11 @@ void TadahCLI::subcommand_train() {
     outfile << param_file << std::endl;;
 
     if(train->count("--uncertainty")) {
-        Eigen::VectorXd weights = model->get_weights();
-        Eigen::VectorXd unc = model->get_weights_uncertainty();
-        Output(param_file,false).print_train_unc(weights, unc);
+        t_type weights = model->get_weights();
+        t_type unc = model->get_weights_uncertainty();
+        vec ww=Eigen::Map<vec>(weights.data.data(),weights.data.size());
+        vec uncunc=Eigen::Map<vec>(unc.data.data(),unc.data.size());
+        Output(param_file,false).print_train_unc(ww, uncunc);
     }
 
     if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
@@ -317,7 +319,7 @@ void TadahCLI::subcommand_predict() {
             pot_config.get<std::string>("MODEL",0),*fb,pot_config);
 
     StructureDB stpred;
-    t_type predicted_error;
+    vec predicted_error;
     if (predict->count("--error")) {
         stpred = modelp->predict(pot_config,stdb,dc,predicted_error);
     }

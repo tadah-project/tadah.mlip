@@ -187,7 +187,7 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             c.add("MODEL", bf.get_label());
 
             for (long int i=0;i<weights.size();++i) {
-                c.add("WEIGHTS", weights(i,0));
+                c.add("WEIGHTS", weights(i));
             }
 
             if(config.template get<bool>("NORM")) {
@@ -201,7 +201,7 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             return c;
         }
         StructureDB predict(Config config_pred, StructureDB &stdb, DC_Base &dc,
-                t_type &predicted_error) {
+                vec &predicted_error) {
 
             LinearRegressor::read_sigma(config_pred,Sigma);
             DesignMatrix<BF> dm(bf,config_pred);
@@ -216,7 +216,8 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             predicted_error.array() += 1.0/beta;
 
             // compute energy, forces and stresses
-            t_type Tpred = phi*weights;
+            vec ww=Eigen::Map<vec>(weights.data.data(),weights.data.size());
+            vec Tpred = phi*ww;
 
             // Construct StructureDB object with predicted values
             StructureDB stdb_;
@@ -256,7 +257,8 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             phi_type &Phi = desmat.Phi;
 
             // compute energy, forces and stresses
-            t_type Tpred = Phi*weights;
+            vec ww=Eigen::Map<vec>(weights.data.data(),weights.data.size());
+            vec Tpred = Phi*ww;
 
             double eweightglob=config.template get<double>("EWEIGHT");
             double fweightglob=config.template get<double>("FWEIGHT");

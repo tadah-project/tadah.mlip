@@ -11,6 +11,7 @@
 #include "../../CORE/eigen_types.h"
 #include "../../CORE/core_types.h"
 #include "../../MODELS/m_core.h"
+#include "../../MODELS/m_predict.h"
 
 /** This interface provides functionality required from all models.
  */

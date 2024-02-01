@@ -100,5 +100,5 @@ class M_Tadah_Base:
         virtual StructureDB predict(StructureDB &stdb)=0;
 
 };
-template<> inline Registry<M_Tadah_Base,DM_Function_Base&,Config&>::Map Registry<M_Tadah_Base,DM_Function_Base&,Config&>::registry{};
+//template<> inline Registry<M_Tadah_Base,DM_Function_Base&,Config&>::Map Registry<M_Tadah_Base,DM_Function_Base&,Config&>::registry{};
 #endif

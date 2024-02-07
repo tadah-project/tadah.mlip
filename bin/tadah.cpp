@@ -1,6 +1,7 @@
 #include "tadah.h"
 #include "../MLIP/output/output.h"
 #include "../CORE/eigen_types.h"
+#include "../CORE/core_types.h"
 
 int main(int argc, char** argv) {
 
@@ -319,7 +320,7 @@ void TadahCLI::subcommand_predict() {
             pot_config.get<std::string>("MODEL",0),*fb,pot_config);
 
     StructureDB stpred;
-    vec predicted_error;
+    aed_type2 predicted_error;
     if (predict->count("--error")) {
         stpred = modelp->predict(pot_config,stdb,dc,predicted_error);
     }

@@ -202,7 +202,7 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             return c;
         }
         StructureDB predict(Config config_pred, StructureDB &stdb, DC_Base &dc,
-                vec &predicted_error) {
+                aed_type2 &predicted_error) {
 
             LinearRegressor::read_sigma(config_pred,Sigma);
             DesignMatrix<BF> dm(bf,config_pred);
@@ -210,16 +210,19 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             dm.build(stdb,norm,dc);
 
             //phi_type &phi = dm.Phi;
-            mat phi = Eigen::Map<mat>(dm.Phi.data(), dm.Phi.rows(), dm.Phi.cols());
-            mat Sig = Eigen::Map<mat>(Sigma.data(), Sigma.rows(), Sigma.cols());
+            //mat phi = Eigen::Map<mat>(dm.Phi.data(), dm.Phi.rows(), dm.Phi.cols());
+            //mat Sig = Eigen::Map<mat>(Sigma.data(), Sigma.rows(), Sigma.cols());
 
-            predicted_error = (phi*Sig*phi.transpose()).diagonal(); // TODO
+            predicted_error = T_MDMT_diag(dm.Phi, Sigma);
+            //predicted_error = (phi*Sig*phi.transpose()).diagonal(); // TODO
             double beta = config.template get<double>("BETA");
-            predicted_error.array() += 1.0/beta;
+            //predicted_error.array() += 1.0/beta;
+            predicted_error += 1.0/beta;
 
             // compute energy, forces and stresses
-            vec ww=Eigen::Map<vec>(weights.data(),weights.size());
-            vec Tpred = phi*ww;
+            //vec ww=Eigen::Map<vec>(weights.data(),weights.size());
+            //vec Tpred = phi*ww;
+            aed_type2 Tpred = T_dgemv(dm.Phi, weights);
 
             // Construct StructureDB object with predicted values
             StructureDB stdb_;
@@ -258,22 +261,7 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
 
             phi_type &Phi = desmat.Phi;
 
-            char trans = 'N';
-            int m = Phi.rows();
-            int n = Phi.cols();
-            double alpha = 1.0;
-            int lda = m;
-            double *a = &Phi.data()[0];
-            double *x = &weights.data()[0];
-            int incx = 1;
-            double beta = 0.0;
-
-            vec Tpred(weights.size());
-            double *y = &Tpred(0);
-            int incy = 1;
-
-            dgemv_(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-
+            aed_type2 Tpred = T_dgemv(Phi, weights);
             //mat Phi = Eigen::Map<mat>(desmat.Phi.data(),
             //        desmat.Phi.rows(), desmat.Phi.cols());
 

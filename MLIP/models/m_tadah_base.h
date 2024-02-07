@@ -95,7 +95,7 @@ class M_Tadah_Base:
         virtual void train(StDescriptorsDB &, const StructureDB &) {};
 
         virtual StructureDB predict(Config config_pred, StructureDB &stdb, DC_Base &dc,
-                vec &predicted_error)=0;
+                aed_type2 &predicted_error)=0;
 
         virtual StructureDB predict(StructureDB &stdb)=0;
 

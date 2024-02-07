@@ -195,7 +195,7 @@ class M_KRR: public M_Tadah_Base,
             return c;
         }
         StructureDB predict(Config config_pred, StructureDB &stdb, DC_Base &dc,
-                vec &predicted_error) {
+                aed_type2 &predicted_error) {
 
             LinearRegressor::read_sigma(config_pred,Sigma);
             DesignMatrix<K> dm(kernel,config_pred);
@@ -203,17 +203,20 @@ class M_KRR: public M_Tadah_Base,
             dm.build(stdb,norm,dc);
 
             //phi_type &phi = dm.Phi;
-            mat phi = Eigen::Map<mat>(dm.Phi.data(), dm.Phi.rows(), dm.Phi.cols());
-            mat Sig = Eigen::Map<mat>(Sigma.data(), Sigma.rows(), Sigma.cols());
+            //mat phi = Eigen::Map<mat>(dm.Phi.data(), dm.Phi.rows(), dm.Phi.cols());
+            //mat Sig = Eigen::Map<mat>(Sigma.data(), Sigma.rows(), Sigma.cols());
 
             // compute error
-            predicted_error = (phi*Sig*phi.transpose()).diagonal();     // TODO
+            predicted_error = T_MDMT_diag(dm.Phi, Sigma);
+            //predicted_error = (phi*Sig*phi.transpose()).diagonal();     // TODO
             double beta = config.template get<double>("BETA");
-            predicted_error.array() += 1.0/beta;
+            //predicted_error.array() += 1.0/beta;
+            predicted_error += 1.0/beta;
 
             // compute energy, forces and stresses
-            vec ww=Eigen::Map<vec>(weights.data(),weights.size());
-            vec Tpred = phi*ww;
+            //vec ww=Eigen::Map<vec>(weights.data(),weights.size());
+            //vec Tpred = phi*ww;
+            aed_type2 Tpred = T_dgemv(dm.Phi, weights);
 
             // Construct StructureDB object with predicted values
             StructureDB stdb_;

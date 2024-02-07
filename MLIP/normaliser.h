@@ -63,7 +63,7 @@ class Normaliser: public Normaliser_Core {
             size_t b=0;
             if (bias)
                 b++;
-            for (long int i=b; i<std_dev.size(); ++i) {
+            for (size_t i=b; i<std_dev.size(); ++i) {
                 if (std_dev[i]==0) {
                     std_dev[i] = std::numeric_limits<double>::max();
                     //std_dev[i] = std::numeric_limits<double>::infinity();

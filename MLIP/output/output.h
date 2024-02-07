@@ -34,7 +34,7 @@ class Output {
                 << std::setw(nw) << "Mean weight"
                 << std::setw(nw) << "Uncertainty" << std::endl;
 
-            for(long int i=0; i<unc.size(); ++i) {
+            for(size_t i=0; i<unc.size(); ++i) {
                 out_unc << std::setw(iwe) << i
                     << std::setw(nw) << weights(i)
                     << std::setw(nw) << unc(i) << std::endl;

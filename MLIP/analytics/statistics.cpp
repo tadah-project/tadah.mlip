@@ -5,7 +5,7 @@ double Statistics::res_sum_sq(const vec &obs, const vec &pred) {
         throw std::runtime_error("Containers differ in size.");
 
     double rss=0;
-    for (long int i=0; i<obs.size(); ++i) {
+    for (size_t i=0; i<obs.size(); ++i) {
         rss += std::pow(obs[i]-pred[i],2);
     }
     return rss;

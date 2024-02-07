@@ -19,11 +19,12 @@ void DM_BF_Polynomial2::calc_phi_energy_row(phi_type &Phi, size_t &row,
         size_t b=0;
         for (size_t i=0; i<st_d.dim(); ++i) {
             for (size_t ii=i; ii<st_d.dim(); ++ii) {
-                Phi(row,b++) += aed(i)*aed(ii);
+                Phi(row,b++) += aed(i)*aed(ii)*fac;
             }
         }
     }
-    Phi.row(row++) *= fac;
+    row++;
+    //Phi.row(row++) *= fac;
 }
 void DM_BF_Polynomial2::calc_phi_force_rows(phi_type &Phi, size_t &row,
         const double fac, const Structure &st, const StDescriptors &st_d)
@@ -37,8 +38,8 @@ void DM_BF_Polynomial2::calc_phi_force_rows(phi_type &Phi, size_t &row,
             const fd_type &fdij = st_d.fd[a][jj];
             const aed_type2& aedj = st_d.get_aed(j);
             size_t b=0;
-            for (long int i=0; i<fdij.rows(); ++i) {
-                for (long int ii=i; ii<fdij.rows(); ++ii) {
+            for (size_t i=0; i<fdij.rows(); ++i) {
+                for (size_t ii=i; ii<fdij.rows(); ++ii) {
                     for (size_t k=0; k<3; ++k)
                         Phi(row+k,b) -= fac*(fdij(i,k)*aedi(ii)
                                 + fdij(ii,k)*aedi(i)
@@ -65,8 +66,8 @@ void DM_BF_Polynomial2::calc_phi_stress_rows(phi_type &Phi, size_t &row,
             const Vec3d &rj = st.nn_pos(a,jj);
             const aed_type2& aedj = st_d.get_aed(j);
             size_t b=0;
-            for (long int i=0; i<fdij.rows(); ++i) {
-                for (long int ii=i; ii<fdij.rows(); ++ii) {
+            for (size_t i=0; i<fdij.rows(); ++i) {
+                for (size_t ii=i; ii<fdij.rows(); ++ii) {
                     size_t mn=0;
                     for (size_t x=0; x<3; ++x) {
                         for (size_t y=x; y<3; ++y) {

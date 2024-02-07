@@ -66,6 +66,7 @@
 #include <type_traits>
 #include <iostream>
 
+
 template
 <class BF=DM_Function_Base&>
 class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
@@ -186,15 +187,15 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             c.add("MODEL", label);
             c.add("MODEL", bf.get_label());
 
-            for (long int i=0;i<weights.size();++i) {
+            for (size_t i=0;i<weights.size();++i) {
                 c.add("WEIGHTS", weights(i));
             }
 
             if(config.template get<bool>("NORM")) {
-                for (long int i=0;i<norm.mean.size();++i) {
+                for (size_t i=0;i<norm.mean.size();++i) {
                     c.add("NMEAN", norm.mean[i]);
                 }
-                for (long int i=0;i<norm.std_dev.size();++i) {
+                for (size_t i=0;i<norm.std_dev.size();++i) {
                     c.add("NSTDEV", norm.std_dev[i]);
                 }
             }
@@ -208,15 +209,16 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             dm.scale=false; // do not scale energy, forces and stresses
             dm.build(stdb,norm,dc);
 
-            phi_type &phi = dm.Phi;
+            //phi_type &phi = dm.Phi;
+            mat phi = Eigen::Map<mat>(dm.Phi.data(), dm.Phi.rows(), dm.Phi.cols());
+            mat Sig = Eigen::Map<mat>(Sigma.data(), Sigma.rows(), Sigma.cols());
 
-            // compute error
-            predicted_error = (phi*Sigma*phi.transpose()).diagonal();
+            predicted_error = (phi*Sig*phi.transpose()).diagonal(); // TODO
             double beta = config.template get<double>("BETA");
             predicted_error.array() += 1.0/beta;
 
             // compute energy, forces and stresses
-            vec ww=Eigen::Map<vec>(weights.data.data(),weights.data.size());
+            vec ww=Eigen::Map<vec>(weights.data(),weights.size());
             vec Tpred = phi*ww;
 
             // Construct StructureDB object with predicted values
@@ -256,9 +258,28 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
 
             phi_type &Phi = desmat.Phi;
 
+            char trans = 'N';
+            int m = Phi.rows();
+            int n = Phi.cols();
+            double alpha = 1.0;
+            int lda = m;
+            double *a = &Phi.data()[0];
+            double *x = &weights.data()[0];
+            int incx = 1;
+            double beta = 0.0;
+
+            vec Tpred(weights.size());
+            double *y = &Tpred(0);
+            int incy = 1;
+
+            dgemv_(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
+
+            //mat Phi = Eigen::Map<mat>(desmat.Phi.data(),
+            //        desmat.Phi.rows(), desmat.Phi.cols());
+
             // compute energy, forces and stresses
-            vec ww=Eigen::Map<vec>(weights.data.data(),weights.data.size());
-            vec Tpred = Phi*ww;
+            //vec ww=Eigen::Map<vec>(weights.data(),weights.size());
+            //vec Tpred = Phi*ww;
 
             double eweightglob=config.template get<double>("EWEIGHT");
             double fweightglob=config.template get<double>("FWEIGHT");
@@ -268,7 +289,7 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             StructureDB stdb_;
             stdb_.structures.resize(stdb.size());
             size_t s=0;
-            long int i=0;
+            size_t i=0;
             while (i<Phi.rows()) {
 
                 stdb_(s).energy = Tpred(i++)*stdb(s).natoms()/eweightglob/stdb(s).eweight;
@@ -308,7 +329,7 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             t_type nw(weights.rows());
             nw.setZero();
             nw(0) = weights(0);
-            for (long int i=1; i<weights.size(); ++i) {
+            for (size_t i=1; i<weights.size(); ++i) {
 
                 if (norm.std_dev[i] > std::numeric_limits<double>::min())
                     nw(i) = weights(i) / norm.std_dev[i];
@@ -330,7 +351,7 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             t_type w(nw.rows());
             w.setZero();
             w(0) = nw(0);
-            for (long int i=1; i<nw.size(); ++i) {
+            for (size_t i=1; i<nw.size(); ++i) {
                 if (norm.std_dev[i] > std::numeric_limits<double>::min())
                     w(i) = nw(i) * norm.std_dev[i];
                 else

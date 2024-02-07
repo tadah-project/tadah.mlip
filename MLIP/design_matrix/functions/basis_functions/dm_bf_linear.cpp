@@ -18,11 +18,13 @@ void DM_BF_Linear::calc_phi_energy_row(phi_type &Phi, size_t &row,
         const aed_type2 &aed = st_d.get_aed(i);    // TODO
         //Eigen::VectorXd t(aed.data.data());
         for (size_t j=0; j<aed.size(); ++j) {
-            Phi.row(row)[j]+=aed[j];
+            Phi(row,j)+=aed[j]*fac;
+            //Phi.row(row)[j]+=aed[j];
         }
         //Phi.row(row) += Eigen::Map<const Eigen::Matrix<double,aed.size(),1>>(aed.data.data());
     }
-    Phi.row(row++) *= fac;
+    row++;
+    //Phi.row(row++) *= fac;
 }
 void DM_BF_Linear::calc_phi_force_rows(phi_type &Phi, size_t &row,
         const double fac, const Structure &st, const StDescriptors &st_d)
@@ -38,7 +40,8 @@ void DM_BF_Linear::calc_phi_force_rows(phi_type &Phi, size_t &row,
                 aed_type2 temp = fac*(st_d.fd[a][jj].col(k)-
                         st_d.fd[j][aa].col(k));
                 for (size_t d=0; d<temp.size(); ++d) {
-                    Phi.row(row+k)[d] -= temp[d];
+                    Phi(row+k,d) -= temp[d];
+                    //Phi.row(row+k)[d] -= temp[d];
                 }
             }
         }
@@ -62,7 +65,8 @@ void DM_BF_Linear::calc_phi_stress_rows(phi_type &Phi, size_t &row,
                     //Phi.row(row+mn) += 0.5*fac[mn]*(ri(x)-rj(x))*(fdij.col(y)-fdji.col(y));
                     aed_type2 temp = 0.5*fac[mn]*(ri(x)-rj(x))*(fdij.col(y)-fdji.col(y));
                     for (size_t d=0; d<temp.size(); ++d) {
-                        Phi.row(row+mn)[d] += temp[d];
+                        Phi(row+mn,d) += temp[d];
+                        //Phi.row(row+mn)[d] += temp[d];
                     }
                     mn++;
                 }

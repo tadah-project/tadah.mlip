@@ -245,8 +245,8 @@ void TadahCLI::subcommand_train() {
     if(train->count("--uncertainty")) {
         t_type weights = model->get_weights();
         t_type unc = model->get_weights_uncertainty();
-        vec ww=Eigen::Map<vec>(weights.data.data(),weights.data.size());
-        vec uncunc=Eigen::Map<vec>(unc.data.data(),unc.data.size());
+        vec ww=Eigen::Map<vec>(weights.data(),weights.size());
+        vec uncunc=Eigen::Map<vec>(unc.data(),unc.size());
         Output(param_file,false).print_train_unc(ww, uncunc);
     }
 

@@ -54,7 +54,7 @@ class M_KRR: public M_Tadah_Base,
             desmat(kernel,c)
     {
         norm = Normaliser(c);
-        if (kernel.get_label()!="Kern_Linear") {
+        if (kernel.get_label()!="Kern_Linear" && config.exist("BASIS")) {
             basis.read_basis_from_config();
             kernel.set_basis(basis.b);
         }
@@ -78,7 +78,7 @@ class M_KRR: public M_Tadah_Base,
             desmat(kernel,c)
     {
         norm = Normaliser(c);
-        if (kernel.get_label()!="Kern_Linear") {
+        if (kernel.get_label()!="Kern_Linear" && config.exist("BASIS")) {
             basis.read_basis_from_config();
             kernel.set_basis(basis.b);
         }
@@ -166,15 +166,15 @@ class M_KRR: public M_Tadah_Base,
             c.add("MODEL", label);
             c.add("MODEL", kernel.get_label());
 
-            for (long int i=0;i<weights.size();++i) {
+            for (size_t i=0;i<weights.size();++i) {
                 c.add("WEIGHTS", weights(i));
             }
 
             if(config.template get<bool>("NORM")) {
-                for (long int i=0;i<norm.mean.size();++i) {
+                for (size_t i=0;i<norm.mean.size();++i) {
                     c.add("NMEAN", norm.mean[i]);
                 }
-                for (long int i=0;i<norm.std_dev.size();++i) {
+                for (size_t i=0;i<norm.std_dev.size();++i) {
                     c.add("NSTDEV", norm.std_dev[i]);
                 }
             }
@@ -186,8 +186,8 @@ class M_KRR: public M_Tadah_Base,
                 if (c.exist("BASIS"))
                     c.remove("BASIS");
                 c.add("SBASIS", basis.b.cols());
-                for (long int i=0;i<basis.b.cols();++i) {
-                    for (long int j=0;j<basis.b.rows();++j) {
+                for (size_t i=0;i<basis.b.cols();++i) {
+                    for (size_t j=0;j<basis.b.rows();++j) {
                         c.add("BASIS", basis.b(j,i));
                     }
                 }
@@ -202,15 +202,17 @@ class M_KRR: public M_Tadah_Base,
             dm.scale=false; // do not scale energy, forces and stresses
             dm.build(stdb,norm,dc);
 
-            phi_type &phi = dm.Phi;
+            //phi_type &phi = dm.Phi;
+            mat phi = Eigen::Map<mat>(dm.Phi.data(), dm.Phi.rows(), dm.Phi.cols());
+            mat Sig = Eigen::Map<mat>(Sigma.data(), Sigma.rows(), Sigma.cols());
 
             // compute error
-            predicted_error = (phi*Sigma*phi.transpose()).diagonal();
+            predicted_error = (phi*Sig*phi.transpose()).diagonal();     // TODO
             double beta = config.template get<double>("BETA");
             predicted_error.array() += 1.0/beta;
 
             // compute energy, forces and stresses
-            vec ww=Eigen::Map<vec>(weights.data.data(),weights.data.size());
+            vec ww=Eigen::Map<vec>(weights.data(),weights.size());
             vec Tpred = phi*ww;
 
             // Construct StructureDB object with predicted values
@@ -250,9 +252,28 @@ class M_KRR: public M_Tadah_Base,
 
             phi_type &Phi = desmat.Phi;
 
-            // compute energy, forces and stresses
-            vec ww=Eigen::Map<vec>(weights.data.data(),weights.data.size());
-            vec Tpred = Phi*ww;
+            char trans = 'N';
+            int m = Phi.rows();
+            int n = Phi.cols();
+            double alpha = 1.0;
+            int lda = m;
+            double *a = &Phi.data()[0];
+            double *x = &weights.data()[0];
+            int incx = 1;
+            double beta = 0.0;
+
+            vec Tpred(weights.size());
+            double *y = &Tpred(0);
+            int incy = 1;
+
+            dgemv_(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
+            //mat Phi = Eigen::Map<mat>(desmat.Phi.data(), desmat.Phi.size());
+            //mat Phi = Eigen::Map<mat>(desmat.Phi.data(),
+            //        desmat.Phi.rows(), desmat.Phi.cols());
+
+            //// compute energy, forces and stresses
+            //vec ww=Eigen::Map<vec>(weights.data(),weights.size());
+            //vec Tpred = Phi*ww;
 
             double eweightglob=config.template get<double>("EWEIGHT");
             double fweightglob=config.template get<double>("FWEIGHT");
@@ -262,7 +283,7 @@ class M_KRR: public M_Tadah_Base,
             StructureDB stdb_;
             stdb_.structures.resize(stdb.size());
             size_t s=0;
-            long int i=0;
+            size_t i=0;
             while (i<Phi.rows()) {
 
                 stdb_(s).energy = Tpred(i++)*stdb(s).natoms()/eweightglob/stdb(s).eweight;
@@ -305,7 +326,7 @@ class M_KRR: public M_Tadah_Base,
                 // we can supply it with a non-normalised descriptor
                 kw.resize(weights.rows());
                 kw(0) = weights(0);
-                for (long int i=1; i<weights.size(); ++i) {
+                for (size_t i=1; i<weights.size(); ++i) {
 
                     if (norm.std_dev[i] > std::numeric_limits<double>::min())
                         kw(i) = weights(i) / norm.std_dev[i];
@@ -328,7 +349,7 @@ class M_KRR: public M_Tadah_Base,
             t_type w(kw.rows());
             w.setZero();
             w(0) = kw(0);
-            for (long int i=1; i<kw.size(); ++i) {
+            for (size_t i=1; i<kw.size(); ++i) {
                 if (norm.std_dev[i] > std::numeric_limits<double>::min())
                     w(i) = kw(i) * norm.std_dev[i];
                 else

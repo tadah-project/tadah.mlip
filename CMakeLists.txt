@@ -163,7 +163,6 @@ add_library(
     )
 
 add_executable (ta-dah bin/tadah.cpp)
-add_executable (eltemp bin/temp.cpp)
 
 #########################################################################
 #########################################################################
@@ -239,6 +238,9 @@ if(TADAH_ENABLE_HPO)
         ${PROJECT_SOURCE_DIR}/HPO/lammps/tadah.unrelaxed_vacancy_at_p
         )
     target_link_libraries(ta-dah PUBLIC hpo::rc)
+    target_link_libraries(ta-dah PUBLIC)
+    target_link_libraries(ta-dah PUBLIC -llapacke)
+    target_link_libraries(tadah PUBLIC -llapacke)
 
 else()
     message(STATUS "${TADAH}: Build with Hyperparameter optimiser is OFF")
@@ -261,8 +263,9 @@ endif()
 
 #########################################################################
 
-target_link_libraries (ta-dah PUBLIC tadah)
-target_link_libraries (eltemp PUBLIC tadah)
+find_package(LAPACK)
+
+target_link_libraries (ta-dah PUBLIC tadah ${LAPACK_LIBRARIES})
 
 # Create compile definition to toml config directory
 install(DIRECTORY CORE/config DESTINATION ${CMAKE_INSTALL_PREFIX}/include/tadah)

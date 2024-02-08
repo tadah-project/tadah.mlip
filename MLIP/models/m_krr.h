@@ -107,8 +107,9 @@ class M_KRR: public M_Tadah_Base,
 
         void train(StructureDB &stdb, DC_Base &dc) {
 
-            if(config.template get<bool>("NORM")) {
 
+            if(config.template get<bool>("NORM") || kernel.get_label()!="Kern_Linear") {
+                // either build basis or prep normaliser
                 std::string force=config.template get<std::string>("FORCE");
                 std::string stress=config.template get<std::string>("STRESS");
 

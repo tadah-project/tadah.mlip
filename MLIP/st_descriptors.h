@@ -1,38 +1,11 @@
 #ifndef ST_DESCRIPTORS_H
 #define ST_DESCRIPTORS_H
 
-#include "../LIBS/Eigen/Dense"
-#include "../LIBS/Eigen/src/Core/Array.h"
-#include "../LIBS/Eigen/src/Core/util/Constants.h"
 #include "structure.h"
 #include "../CORE/config/config.h"
+#include "../CORE/core_types.h"
 
 #include <vector>
-
-// Temp solution to patch lammps stack smashing
-// when Eigen::VectorXd is used as a container
-// lammps has a tendency to crash occasionally
-// Only observed so far when hpo is used
-// - It seem to be fine for aeds and fd
-// - The crash happens during vector resizing
-// - could be memory allocation incompatibility
-class my_vec {
-    private:
-        std::vector<double> v;
-    public:
-        void setZero() {
-            std::fill(v.begin(), v.end(), 0);
-        }
-        double &operator()(const size_t i) {
-            return v[i];
-        }
-        void resize(size_t n) {
-            v.resize(n);
-        }
-        size_t size() const {
-            return v.size();
-        }
-};
 
 
 /** \brief Container for a structure descriptors.
@@ -89,7 +62,7 @@ struct StDescriptors {
      * Dimensions:
      * [descriptor size, 6]
      */
-    sd_type sd;
+    //sd_type sd;
 
     /** True if descriptors are normalised */
     bool normalised=false;

@@ -2,7 +2,6 @@
 #define DESIGN_MATRIX_H
 
 #include <stdexcept>
-#include "../../LIBS/Eigen//Dense"
 #include "../../CORE/config/config.h"
 #include "../st_descriptors_db.h"
 #include "../structure_db.h"
@@ -199,8 +198,8 @@ class DesignMatrix {
         }
 
         void compute_stdevs(const StructureDB &stdb) {
-            Eigen::ArrayXd evec(stdb.size());
-            Eigen::ArrayXXd svec(6,stdb.size());
+            t_type evec(stdb.size());
+            Matrix svec(stdb.size(),6);
             size_t num_forces=0;
             for (size_t s=0; s<stdb.size(); ++s) {
                 evec(s) = stdb(s).energy/stdb(s).natoms();
@@ -208,19 +207,20 @@ class DesignMatrix {
                     size_t j=0;
                     for (size_t x=0; x<3; ++x) {
                         for (size_t y=x; y<3; ++y) {
-                            svec(j++,s)=stdb(s).stress(x,y);
+                            svec(s,j++)=stdb(s).stress(x,y);
                         }
                     }
                 }
                 num_forces +=3*stdb(s).natoms();
             }
 
-            e_std_dev = std::sqrt((evec - evec.mean()).square().sum()/(evec.size()-1));
+            //e_std_dev = std::sqrt((evec - evec.mean()).square().sum()/(evec.size()-1));
+            e_std_dev = evec.std_dev(evec.mean(), evec.size()-1);
             if (verbose) std::cout << "Energy standard deviation (eV/atom): " << e_std_dev << std::endl;
 
             if (stress) {
                 for (size_t j=0; j<6; ++j) {
-                    s_std_dev[j] = std::sqrt((svec.row(j) - svec.row(j).mean()).square().sum()/(svec.row(j).size()-1));
+                    s_std_dev[j] = svec.col(j).std_dev(svec.col(j).mean(), svec.col(j).size()-1);
                     if (verbose) std::cout << "Stress standard deviation (eV): " << s_std_dev[j] << std::endl;
                 }
             }
@@ -228,7 +228,7 @@ class DesignMatrix {
 
             if (force) {
                 size_t j=0;
-                Eigen::ArrayXd fvec(num_forces);
+                t_type fvec(num_forces);
                 for (size_t s=0; s<stdb.size(); ++s) {
                     for (const Atom &a : stdb(s).atoms) {
                         fvec(j++) = a.force(0);
@@ -240,7 +240,7 @@ class DesignMatrix {
                 //svec /= e_std_dev;
                 // e_std_dev has units of energy
                 // f_std_dev has units of inverse distance
-                f_std_dev = std::sqrt((fvec - fvec.mean()).square().sum()/(fvec.size()-1));
+                f_std_dev = fvec.std_dev(fvec.mean(),fvec.size()-1);
                 if (verbose) std::cout << "Force standard deviation (1/A): " << f_std_dev << std::endl;
             }
 

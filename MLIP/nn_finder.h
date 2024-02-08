@@ -4,7 +4,6 @@
 #include "../CORE/config/config.h"
 #include "structure.h"
 #include "structure_db.h"
-#include "../LIBS/Eigen/Dense"
 
 /** Nearest Neighbour Finder
  *

@@ -1,5 +1,6 @@
 #include "structure.h"
 #include <stdexcept>
+#include <cmath>
 #include "../CORE/periodic_table.h"
 
 Structure::Structure() {}
@@ -147,7 +148,7 @@ void Structure::save(const std::string fn) const {
     ofs.close();
 }
 size_t Structure::get_nn_iindex(const size_t i, const size_t j, const size_t jj) const {
-    Eigen::Vector3d shift_ijj = -near_neigh_shift[i][jj];
+    Vec3d shift_ijj = -near_neigh_shift[i][jj];
     size_t ii = 0;
 
     for (size_t x=0; x<near_neigh_idx[j].size(); ++x) {
@@ -160,7 +161,7 @@ size_t Structure::get_nn_iindex(const size_t i, const size_t j, const size_t jj)
 
 }
 double Structure::get_volume() const {
-    return cell.row(0).dot(cell.row(1).cross(cell.row(2)));
+    return cell.row(0)*(cell.row(1).cross(cell.row(2)));
 }
 
 double Structure::get_virial_pressure() const {
@@ -174,7 +175,7 @@ double Structure::get_pressure(double T, double kB) const {
 bool Structure::operator==(const Structure& st) const
 {
     double EPSILON = std::numeric_limits<double>::epsilon();
-    bool result = 
+    bool result =
         cell.isApprox(st.cell, EPSILON)
         && stress.isApprox(st.stress, EPSILON)
         && natoms()==st.natoms()

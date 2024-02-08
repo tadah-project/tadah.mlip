@@ -9,9 +9,9 @@ Analytics::Analytics(const StructureDB &st, const StructureDB &stp):
         throw std::runtime_error("Containers differ in size.");
 }
 
-vec Analytics::calc_e_mae() const{
+t_type Analytics::calc_e_mae() const{
 
-    vec emae_vec(st.dbidx.size()-1);
+    t_type emae_vec(st.dbidx.size()-1);
     double emae=0;
     size_t dbidx=0;
     size_t N=0;
@@ -29,9 +29,9 @@ vec Analytics::calc_e_mae() const{
     return emae_vec;
 }
 
-vec Analytics::calc_f_mae() const{
+t_type Analytics::calc_f_mae() const{
 
-    vec fmae_vec(st.dbidx.size()-1);
+    t_type fmae_vec(st.dbidx.size()-1);
     double fmae=0;
     size_t dbidx=0;
     size_t N=0;
@@ -55,9 +55,9 @@ vec Analytics::calc_f_mae() const{
     return fmae_vec;
 }
 
-vec Analytics::calc_s_mae() const {
+t_type Analytics::calc_s_mae() const {
 
-    vec smae_vec(st.dbidx.size()-1);
+    t_type smae_vec(st.dbidx.size()-1);
     double smae=0;
     size_t dbidx=0;
     size_t N=0;
@@ -78,9 +78,9 @@ vec Analytics::calc_s_mae() const {
     return smae_vec;
 }
 
-vec Analytics::calc_e_rmse() const{
+t_type Analytics::calc_e_rmse() const{
 
-    vec ermse_vec(st.dbidx.size()-1);
+    t_type ermse_vec(st.dbidx.size()-1);
     double ermse=0;
     size_t dbidx=0;
     size_t N=0;
@@ -98,9 +98,9 @@ vec Analytics::calc_e_rmse() const{
     return ermse_vec;
 }
 
-vec Analytics::calc_f_rmse() const{
+t_type Analytics::calc_f_rmse() const{
 
-    vec frmse_vec(st.dbidx.size()-1);
+    t_type frmse_vec(st.dbidx.size()-1);
     double frmse=0;
     size_t dbidx=0;
     size_t N=0;
@@ -124,9 +124,9 @@ vec Analytics::calc_f_rmse() const{
     return frmse_vec;
 }
 
-vec Analytics::calc_s_rmse() const {
+t_type Analytics::calc_s_rmse() const {
 
-    vec srmse_vec(st.dbidx.size()-1);
+    t_type srmse_vec(st.dbidx.size()-1);
     double srmse=0;
     size_t dbidx=0;
     size_t N=0;
@@ -147,11 +147,11 @@ vec Analytics::calc_s_rmse() const {
     return srmse_vec;
 }
 
-vec Analytics::calc_e_r_sq() const {
-    vec e_r_sq_vec(st.dbidx.size()-1);
+t_type Analytics::calc_e_r_sq() const {
+    t_type e_r_sq_vec(st.dbidx.size()-1);
     size_t dbidx=0;
-    vec obs(st.size(dbidx));
-    vec pred(st.size(dbidx));
+    t_type obs(st.size(dbidx));
+    t_type pred(st.size(dbidx));
     size_t idx=0;
     for (size_t i=0; i<st.size(); ++i) {
         obs(idx) = st(i).energy/st(i).natoms();
@@ -170,11 +170,11 @@ vec Analytics::calc_e_r_sq() const {
     return e_r_sq_vec;
 }
 
-vec Analytics::calc_f_r_sq() const {
-    vec f_r_sq_vec(st.dbidx.size()-1);
+t_type Analytics::calc_f_r_sq() const {
+    t_type f_r_sq_vec(st.dbidx.size()-1);
     size_t dbidx=0;
-    vec obs(3*st.calc_natoms(dbidx));
-    vec pred(3*st.calc_natoms(dbidx));
+    t_type obs(3*st.calc_natoms(dbidx));
+    t_type pred(3*st.calc_natoms(dbidx));
     size_t idx=0;
     for (size_t i=0; i<st.size(); ++i) {
         for (size_t a=0; a<st(i).natoms(); ++a) {
@@ -197,11 +197,11 @@ vec Analytics::calc_f_r_sq() const {
     return f_r_sq_vec;
 }
 
-vec Analytics::calc_s_r_sq() const {
-    vec s_r_sq_vec(st.dbidx.size()-1);
+t_type Analytics::calc_s_r_sq() const {
+    t_type s_r_sq_vec(st.dbidx.size()-1);
     size_t dbidx=0;
-    vec obs(6*st.size(dbidx));
-    vec pred(6*st.size(dbidx));
+    t_type obs(6*st.size(dbidx));
+    t_type pred(6*st.size(dbidx));
     size_t idx=0;
     for (size_t i=0; i<st.size(); ++i) {
 

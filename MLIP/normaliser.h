@@ -1,10 +1,10 @@
 #ifndef NORMALISER_H
 #define NORMALISER_H
 
-#include "../LIBS/Eigen/Dense"
 #include "st_descriptors_db.h"
 #include "../CORE/normaliser_core.h"
 #include "../CORE/config/config.h"
+#include "../CORE/core_types.h"
 
 #include <limits>
 #include <stdexcept>
@@ -36,15 +36,13 @@ class Normaliser: public Normaliser_Core {
 
             // prep containers
             size_t dim = st_desc_db(0).dim();
-            //mean = Eigen::VectorXd(dim);
-            //std_dev = Eigen::VectorXd(dim);
             mean = v_type(dim);
             std_dev = v_type(dim);
 
             //std::cout << "COLS NORM: " << nn << std::endl;
             // compute mean and st_dev
             for (size_t d=0; d<dim; ++d) {
-                Eigen::VectorXd v(n);
+                t_type v(n);
                 size_t b=0;
                 for (size_t s=0; s<st_desc_db.size(); ++s) {
                     //for (const auto &aed:st_desc_db(s).aed) {
@@ -52,7 +50,10 @@ class Normaliser: public Normaliser_Core {
                         v(b++) = st_desc_db(s).get_aed(a)(d);
                     }
                 }
-                std_dev[d] = std::sqrt((v.array() - v.mean()).square().sum()/(v.size()));
+                //std_dev[d] = std::sqrt((v.array() - v.mean()).square().sum()/(v.size()));
+                //std_dev[d] = v.std_dev(v.mean());
+
+                std_dev[d] = v.std_dev(v.mean(), v.size());
                 mean[d] = v.mean();
             }
 

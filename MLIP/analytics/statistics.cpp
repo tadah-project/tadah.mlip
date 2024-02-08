@@ -1,4 +1,5 @@
 #include "statistics.h"
+#include <cmath>
 
 double Statistics::res_sum_sq(const vec &obs, const vec &pred) {
     if (obs.size() != pred.size())

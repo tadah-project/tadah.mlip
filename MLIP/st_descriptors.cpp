@@ -4,9 +4,9 @@ StDescriptors::StDescriptors(const Structure &s, const Config &c):
     // fully initialize aed
     aeds(c.get<size_t>("DSIZE"), s.natoms()),
     // partially init fd
-    fd(c.get<bool>("FORCE")  || c.get<bool>("STRESS") ? s.natoms() : 0),
+    fd(c.get<bool>("FORCE")  || c.get<bool>("STRESS") ? s.natoms() : 0)
     // fully initialize sd
-    sd(c.get<bool>("STRESS") ? c.get<size_t>("DSIZE"),6 : 0,6)
+    //sd(c.get<bool>("STRESS") ? c.get<size_t>("DSIZE"),6 : 0,6)
 {
     // fd: we still need to resize nn individually for each atom
     // and init fd_type with size
@@ -17,9 +17,9 @@ StDescriptors::StDescriptors(const Structure &s, const Config &c):
         }
     }
 
-    if (c.get<bool>("STRESS")) {
-        sd.setZero();
-    }
+    //if (c.get<bool>("STRESS")) {
+    //    sd.setZero();
+    //}
 
     // Partially init rho. We do not know the dimension of rhoi
     // as it is specific to DMB calculator

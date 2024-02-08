@@ -202,20 +202,12 @@ class M_KRR: public M_Tadah_Base,
             dm.scale=false; // do not scale energy, forces and stresses
             dm.build(stdb,norm,dc);
 
-            //phi_type &phi = dm.Phi;
-            //mat phi = Eigen::Map<mat>(dm.Phi.data(), dm.Phi.rows(), dm.Phi.cols());
-            //mat Sig = Eigen::Map<mat>(Sigma.data(), Sigma.rows(), Sigma.cols());
-
             // compute error
             predicted_error = T_MDMT_diag(dm.Phi, Sigma);
-            //predicted_error = (phi*Sig*phi.transpose()).diagonal();     // TODO
             double beta = config.template get<double>("BETA");
-            //predicted_error.array() += 1.0/beta;
             predicted_error += 1.0/beta;
 
             // compute energy, forces and stresses
-            //vec ww=Eigen::Map<vec>(weights.data(),weights.size());
-            //vec Tpred = phi*ww;
             aed_type2 Tpred = T_dgemv(dm.Phi, weights);
 
             // Construct StructureDB object with predicted values
@@ -255,28 +247,8 @@ class M_KRR: public M_Tadah_Base,
 
             phi_type &Phi = desmat.Phi;
 
-            char trans = 'N';
-            int m = Phi.rows();
-            int n = Phi.cols();
-            double alpha = 1.0;
-            int lda = m;
-            double *a = &Phi.data()[0];
-            double *x = &weights.data()[0];
-            int incx = 1;
-            double beta = 0.0;
-
-            vec Tpred(weights.size());
-            double *y = &Tpred(0);
-            int incy = 1;
-
-            dgemv_(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-            //mat Phi = Eigen::Map<mat>(desmat.Phi.data(), desmat.Phi.size());
-            //mat Phi = Eigen::Map<mat>(desmat.Phi.data(),
-            //        desmat.Phi.rows(), desmat.Phi.cols());
-
-            //// compute energy, forces and stresses
-            //vec ww=Eigen::Map<vec>(weights.data(),weights.size());
-            //vec Tpred = Phi*ww;
+            // compute energy, forces and stresses
+            aed_type2 Tpred = T_dgemv(Phi, weights);
 
             double eweightglob=config.template get<double>("EWEIGHT");
             double fweightglob=config.template get<double>("FWEIGHT");

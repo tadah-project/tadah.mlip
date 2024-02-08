@@ -6,7 +6,6 @@
 #include "../../CORE/config/config.h"
 #include "../structure_db.h"
 #include "../../CORE/utils/utils.h"
-#include "../../CORE/eigen_types.h"
 #include "../../CORE/core_types.h"
 
 class Output {
@@ -24,7 +23,7 @@ class Output {
             pot_config(c),
             pred_err_bool(peb)
     {}
-        void print_train_unc(Eigen::VectorXd &weights, Eigen::VectorXd &unc) {
+        void print_train_unc(t_type &weights, t_type &unc) {
             std::string index_str="Index";
 
             size_t iwe=(size_t)unc.size() > max_number(index_str.size()) ?
@@ -161,8 +160,8 @@ class Output {
                     double max_serr=0.0;
                     if (newline)
                         out_stress << std::endl << std::endl;
-                    Eigen::Matrix3d &s = stdb(i).stress;
-                    Eigen::Matrix3d &sp = stpred(i).stress;
+                    stress_type &s = stdb(i).stress;
+                    stress_type &sp = stpred(i).stress;
                     for (size_t x=0; x<3; ++x) {
                         for (size_t y=x; y<3; ++y) {
                             out_stress << std::setw(iws) << sidx++ << std::setw(nw) << s(x,y)

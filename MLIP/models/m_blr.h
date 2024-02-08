@@ -204,24 +204,18 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
         StructureDB predict(Config config_pred, StructureDB &stdb, DC_Base &dc,
                 aed_type2 &predicted_error) {
 
+            std::cout << "Prediction with error" << std::endl;
             LinearRegressor::read_sigma(config_pred,Sigma);
             DesignMatrix<BF> dm(bf,config_pred);
             dm.scale=false; // do not scale energy, forces and stresses
             dm.build(stdb,norm,dc);
 
-            //phi_type &phi = dm.Phi;
-            //mat phi = Eigen::Map<mat>(dm.Phi.data(), dm.Phi.rows(), dm.Phi.cols());
-            //mat Sig = Eigen::Map<mat>(Sigma.data(), Sigma.rows(), Sigma.cols());
 
             predicted_error = T_MDMT_diag(dm.Phi, Sigma);
-            //predicted_error = (phi*Sig*phi.transpose()).diagonal(); // TODO
             double beta = config.template get<double>("BETA");
-            //predicted_error.array() += 1.0/beta;
             predicted_error += 1.0/beta;
 
             // compute energy, forces and stresses
-            //vec ww=Eigen::Map<vec>(weights.data(),weights.size());
-            //vec Tpred = phi*ww;
             aed_type2 Tpred = T_dgemv(dm.Phi, weights);
 
             // Construct StructureDB object with predicted values
@@ -259,15 +253,11 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             if(!trained) throw std::runtime_error("This object is not trained!\n\
                     Hint: check different predict() methods.");
 
+            std::cout << "Prediction without error" << std::endl;
             phi_type &Phi = desmat.Phi;
 
-            aed_type2 Tpred = T_dgemv(Phi, weights);
-            //mat Phi = Eigen::Map<mat>(desmat.Phi.data(),
-            //        desmat.Phi.rows(), desmat.Phi.cols());
-
             // compute energy, forces and stresses
-            //vec ww=Eigen::Map<vec>(weights.data(),weights.size());
-            //vec Tpred = Phi*ww;
+            aed_type2 Tpred = T_dgemv(Phi, weights);
 
             double eweightglob=config.template get<double>("EWEIGHT");
             double fweightglob=config.template get<double>("FWEIGHT");

@@ -8,7 +8,6 @@
 #include "../normaliser.h"
 #include "../descriptors_calc_base.h"
 #include "../design_matrix/functions/dm_function_base.h"
-#include "../../CORE/eigen_types.h"
 #include "../../CORE/core_types.h"
 #include "../../MODELS/m_core.h"
 #include "../../MODELS/m_predict.h"

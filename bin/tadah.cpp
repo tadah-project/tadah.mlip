@@ -1,6 +1,5 @@
 #include "tadah.h"
 #include "../MLIP/output/output.h"
-#include "../CORE/eigen_types.h"
 #include "../CORE/core_types.h"
 
 int main(int argc, char** argv) {
@@ -246,9 +245,7 @@ void TadahCLI::subcommand_train() {
     if(train->count("--uncertainty")) {
         t_type weights = model->get_weights();
         t_type unc = model->get_weights_uncertainty();
-        vec ww=Eigen::Map<vec>(weights.data(),weights.size());
-        vec uncunc=Eigen::Map<vec>(unc.data(),unc.size());
-        Output(param_file,false).print_train_unc(ww, uncunc);
+        Output(param_file,false).print_train_unc(weights, unc);
     }
 
     if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;

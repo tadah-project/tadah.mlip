@@ -1,10 +1,8 @@
 #ifndef STRUCTURE_h
 #define STRUCTURE_h
 
-#include "../LIBS/Eigen/Dense"
 #include "atom.h"
-#include "../LIBS/Eigen/src/Core/util/Constants.h"
-#include "../CORE/eigen_types.h"
+#include "../CORE/core_types.h"
 
 #include <string>
 #include <iostream>
@@ -55,7 +53,7 @@ struct Structure {
     double energy;
 
     /** Lattice vectors. */
-    Eigen::Matrix3d cell;
+    Matrix3d cell;
 
     /** Virial stress tensor. */
     stress_type stress;
@@ -87,7 +85,7 @@ struct Structure {
      * Note that there might be more than one periodic image in each direction.
      * This depends on the box size and the cutoff distance used.
      */
-    std::vector<std::vector<Eigen::Vector3d>> near_neigh_shift;
+    std::vector<std::vector<Vec3d>> near_neigh_shift;
 
     /** List of global indices for nearest neighbours for every atom */
     std::vector<std::vector<size_t>> near_neigh_idx;

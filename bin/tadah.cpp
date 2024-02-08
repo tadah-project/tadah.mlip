@@ -340,20 +340,20 @@ void TadahCLI::subcommand_predict() {
     if(predict->count("--analytics")) {
         Analytics a(stdb,stpred);
 
-        std::cout << "Energy MAE (meV/atom): " << 1000*a.calc_e_mae().transpose() << std::endl;
-        std::cout << "Energy RMSE (meV/atom): " << 1000*a.calc_e_rmse().transpose() << std::endl;
-        std::cout << "Energy R^2: " << a.calc_e_r_sq().transpose() << std::endl;
+        std::cout << "Energy MAE (meV/atom): " << 1000*a.calc_e_mae() << std::endl;
+        std::cout << "Energy RMSE (meV/atom): " << 1000*a.calc_e_rmse() << std::endl;
+        std::cout << "Energy R^2: " << a.calc_e_r_sq() << std::endl;
 
         if (predict->count("--Force")) {
-            std::cout << "Force MAE (eV/A): "<< a.calc_f_mae().transpose() << std::endl;
-            std::cout << "Force RMSE (eV/A): "<< a.calc_f_rmse().transpose() << std::endl;
-            std::cout << "Force R^2: " << a.calc_f_r_sq().transpose() << std::endl;
+            std::cout << "Force MAE (eV/A): "<< a.calc_f_mae() << std::endl;
+            std::cout << "Force RMSE (eV/A): "<< a.calc_f_rmse() << std::endl;
+            std::cout << "Force R^2: " << a.calc_f_r_sq() << std::endl;
         }
 
         if (predict->count("--Stress")) {
-            std::cout << "Stress MAE (eV): "<< a.calc_s_mae().transpose() << std::endl;
-            std::cout << "Stress RMSE (eV): "<< a.calc_s_rmse().transpose() << std::endl;
-            std::cout << "Stress R^2: " << a.calc_s_r_sq().transpose() << std::endl;
+            std::cout << "Stress MAE (eV): "<< a.calc_s_mae() << std::endl;
+            std::cout << "Stress RMSE (eV): "<< a.calc_s_rmse() << std::endl;
+            std::cout << "Stress R^2: " << a.calc_s_r_sq() << std::endl;
         }
     }
 

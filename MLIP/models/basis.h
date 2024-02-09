@@ -44,25 +44,15 @@ class Basis {
 
             b.resize(st_desc_db(0).dim(),s);
             // set first basis function as "bias vector"
-            //aed_type2 temp(st_desc_db(0).dim());
-            //temp.setZero();
-            //temp(0) = 1;
-            //b.col(0)=temp;
-            // TODO This looks like a bug
-            // I think we should set the first column to 1
-            // not just the (0,0) element?????
-            b(0,0)=1;
-            for (size_t i=1; i<s; ++i) {
+            //b(0,0)=1;
+            for (size_t i=0; i<s; ++i) {
                 size_t st = std::get<0>(indices[i]);
                 size_t a = std::get<1>(indices[i]);
                 const aed_type2 &aed = st_desc_db(st).get_aed(a);
                 for (size_t j=0; j<aed.size(); ++j) {
                     b(j,i)=aed[j];
-                    //b.col(i)[j]=aed[j];
                 }
-                //b.col(i) = st_desc_db(st).get_aed(a);
             }
-
         }
         void read_basis_from_config() {
             size_t sbasis = config.get<size_t>("SBASIS");

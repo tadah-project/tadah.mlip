@@ -204,7 +204,6 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
         StructureDB predict(Config config_pred, StructureDB &stdb, DC_Base &dc,
                 aed_type2 &predicted_error) {
 
-            std::cout << "Prediction with error" << std::endl;
             LinearRegressor::read_sigma(config_pred,Sigma);
             DesignMatrix<BF> dm(bf,config_pred);
             dm.scale=false; // do not scale energy, forces and stresses
@@ -253,7 +252,6 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             if(!trained) throw std::runtime_error("This object is not trained!\n\
                     Hint: check different predict() methods.");
 
-            std::cout << "Prediction without error" << std::endl;
             phi_type &Phi = desmat.Phi;
 
             // compute energy, forces and stresses

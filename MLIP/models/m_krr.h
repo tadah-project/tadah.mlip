@@ -14,7 +14,26 @@
 #include <type_traits>
 #include <iostream>
 
-/** Kernel Ridge Regression implemented via Empirical Kernel Map
+/** Kernel Ridge Regression.
+ *
+ * Usage:
+ *
+ *   M_KRR KERNEL ALGO
+ *
+ * Example:
+ *
+ *   M_KRR Kern_RBF 1
+ *
+ * KERNEL is any kernel defined in Kernels, for example:
+ *
+ *    Kern_Linear
+ *    Kern_RBF
+ *    ...
+ *
+ * ALGO specify which implementation to use:
+ *
+ *    ALGO = 1 (default) uses empirical kernel map to achieve sparse model
+ *    ALGO = 2 standard with the the covariane matrix
  *
  * **Optional Config keys**:
  *
@@ -45,19 +64,12 @@ class M_KRR: public M_Tadah_Base,
          * \endcode
          *
          */
-        using M_KRR_Train<K>::config;
-        using M_KRR_Train<K>::kernel;
-        using M_KRR_Train<K>::ekm;
         M_KRR(Config &c):
             M_KRR_Train<K>(c),
             basis(c),
             desmat(kernel,c)
     {
         norm = Normaliser(c);
-        if (kernel.get_label()!="Kern_Linear" && config.exist("BASIS")) {
-            basis.read_basis_from_config();
-            kernel.set_basis(basis.b);
-        }
     }
 
         /** This constructor will preapare this object for either training
@@ -78,10 +90,6 @@ class M_KRR: public M_Tadah_Base,
             desmat(kernel,c)
     {
         norm = Normaliser(c);
-        if (kernel.get_label()!="Kern_Linear" && config.exist("BASIS")) {
-            basis.read_basis_from_config();
-            kernel.set_basis(basis.b);
-        }
     }
 
         double epredict(const aed_type2 &aed) {
@@ -106,8 +114,27 @@ class M_KRR: public M_Tadah_Base,
         }
 
         void train(StructureDB &stdb, DC_Base &dc) {
-
-
+            int modelN;
+            try {
+                modelN=config.template get<int>("MODEL",2);
+            }
+            catch(std::runtime_error &e) {
+                // use default model
+                modelN=1;
+                config.add("MODEL", modelN);
+            }
+            if (modelN==1)
+                train1(stdb,dc);
+            else if (modelN==2)
+                train2(stdb,dc);
+            else
+                throw
+                    std::runtime_error(
+                        "This KRR implementation does exist: "\
+                        + std::to_string(modelN)+"\n");
+        }
+        void train1(StructureDB &stdb, DC_Base &dc) {
+            // KRR implementation using EKM
             if(config.template get<bool>("NORM") || kernel.get_label()!="Kern_Linear") {
                 // either build basis or prep normaliser
                 std::string force=config.template get<std::string>("FORCE");
@@ -123,7 +150,7 @@ class M_KRR: public M_Tadah_Base,
                 if(config.template get<bool>("NORM")) {
                     norm = Normaliser(config);
                     norm.learn(st_desc_db_temp);
-                    // norm.normalise(st_desc_db_temp);
+                    norm.normalise(st_desc_db_temp);
                 }
 
                 config.remove("FORCE");
@@ -141,6 +168,30 @@ class M_KRR: public M_Tadah_Base,
             }
             desmat.build(stdb,norm,dc);
             train(desmat);
+        }
+
+        void train2(StructureDB &stdb, DC_Base &dc) {
+
+            // NEW (BASIC) IMPLEMENTATION OF KRR //
+            std::string force=config.template get<std::string>("FORCE");
+            std::string stress=config.template get<std::string>("STRESS");
+            config.remove("FORCE");
+            config.remove("STRESS");
+            config.add("FORCE", "false");
+            config.add("STRESS", "false");
+            StDescriptorsDB st_desc_db_temp = dc.calc(stdb);
+            if(config.template get<bool>("NORM")) {
+                norm = Normaliser(config);
+                norm.learn(st_desc_db_temp);
+                norm.normalise(st_desc_db_temp);
+            }
+            config.remove("FORCE");
+            config.remove("STRESS");
+            config.add("FORCE", force);
+            config.add("STRESS", stress);
+            basis.prep_basis_for_krr(st_desc_db_temp,stdb);
+            kernel.set_basis(basis.b);
+            M_KRR_Train<K>::train2(basis.b, basis.T);
         }
 
         Structure predict(const Config &c, StDescriptors &std, const Structure &st) {
@@ -166,6 +217,8 @@ class M_KRR: public M_Tadah_Base,
             c.remove("MODEL");
             c.add("MODEL", label);
             c.add("MODEL", kernel.get_label());
+            int modelN=config.template get<int>("MODEL",2);
+            c.add("MODEL", modelN);
 
             for (size_t i=0;i<weights.size();++i) {
                 c.add("WEIGHTS", weights(i));
@@ -355,5 +408,8 @@ class M_KRR: public M_Tadah_Base,
         using M_KRR_Train<K>::trained;
         using M_KRR_Train<K>::weights;
         using M_KRR_Train<K>::Sigma;
+        using M_KRR_Train<K>::config;
+        using M_KRR_Train<K>::kernel;
+        using M_KRR_Train<K>::ekm;
 };
 #endif

@@ -71,7 +71,6 @@ class Basis {
 
             // generate indices
             std::vector<size_t> indices;
-            size_t counter=0;
             for( size_t st = 0; st < stdb.size(); st++ ) {
                 indices.push_back(st);
             }

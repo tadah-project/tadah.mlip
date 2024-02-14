@@ -16,7 +16,7 @@ double Statistics::tot_sum_sq(const vec &obs) {
     double m = obs.mean();
     double tss=0;
     //for (auto v : obs) tss+=pow(v-m,2);
-    for (int i=0; i<obs.size(); ++i) tss+=pow(obs(i)-m,2);
+    for (size_t i=0; i<obs.size(); ++i) tss+=pow(obs(i)-m,2);
     return tss;
 
 }

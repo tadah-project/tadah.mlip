@@ -125,12 +125,12 @@ class DX_FD {
             // Initialize all data structures
             for (size_t i=0; i<rs.size(); ++i ) {
                 dm->init_rhoi(rhois[i]);
-                aeds[i].setZero();
+                aeds[i].set_zero();
                 fdi[i] = fd_type(dm->size(),3);
-                fdi[i].setZero();
+                fdi[i].set_zero();
                 for (size_t j=i+1; j<rs.size(); ++j ) {
                     fdij(i,j) = fd_type(dm->size(),3);
-                    fdij(i,j).setZero();
+                    fdij(i,j).set_zero();
                 }
             }
 
@@ -198,10 +198,10 @@ class DX_FD {
             // reset all positions
             for (size_t i=0; i<rs.size(); ++i ) {
                 fdi[i] = fd_type(dm->size(),3);
-                fdi[i].setZero();
+                fdi[i].set_zero();
                 dm->init_rhoi(rhoip[i]);
                 dm->init_rhoi(rhoin[i]);
-                aedn[i].setZero();
+                aedn[i].set_zero();
                 for (size_t k=0; k<3; ++k ) {
                     rsp(i,k) = rs[i][k];
                     rsn(i,k) = rs[i][k];
@@ -219,10 +219,10 @@ class DX_FD {
 
                     // reset arrays for new k
                     for (size_t i=0; i<rs.size(); ++i ) {
-                        aedp[i].setZero();
-                        aedn[i].setZero();
-                        rhoip[i].setZero();
-                        rhoin[i].setZero();
+                        aedp[i].set_zero();
+                        aedn[i].set_zero();
+                        rhoip[i].set_zero();
+                        rhoin[i].set_zero);
                     }
 
                     for (size_t i=0; i<rs.size(); ++i ) {

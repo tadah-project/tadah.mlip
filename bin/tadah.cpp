@@ -1,6 +1,19 @@
 #include "tadah.h"
 #include "../MLIP/output/output.h"
 #include "../CORE/core_types.h"
+#include "../LIBS/CLI11/Timer.hpp"
+#include "../CORE/config/config.h"
+#include "../MODELS/dc_selector.h"
+#include "../MLIP/descriptors_calc.h"
+#include "../MLIP/design_matrix/functions/dm_function_base.h"
+#include "../MLIP/models/m_tadah_base.h"
+#include "../MLIP/structure_db.h"
+#include "../MLIP/nn_finder.h"
+#include "../MLIP/analytics/analytics.h"
+#include "../MLIP/version.h"
+
+#include <iostream>
+#include <stdexcept>
 
 int main(int argc, char** argv) {
 

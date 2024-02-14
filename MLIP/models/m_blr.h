@@ -303,7 +303,6 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
                         non linear basis function\n");
             }
             t_type nw(weights.rows());
-            nw.setZero();
             nw(0) = weights(0);
             for (size_t i=1; i<weights.size(); ++i) {
 
@@ -325,7 +324,6 @@ class M_BLR: public M_Tadah_Base, public M_BLR_Train<BF> {
             }
             // convert normalised weights back to "normal"
             t_type w(nw.rows());
-            w.setZero();
             w(0) = nw(0);
             for (size_t i=1; i<nw.size(); ++i) {
                 if (norm.std_dev[i] > std::numeric_limits<double>::min())

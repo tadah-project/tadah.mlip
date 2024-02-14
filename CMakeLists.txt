@@ -100,6 +100,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O2 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra")
 set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall -Wpedantic -Wextra")
+#set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall -Wpedantic -Wextra -pg -fno-inline ") # profiling
 
 message(STATUS "${TADAH} Build with -march=native in ${TADAH_MARCH_NATIVE}")
 if(TADAH_MARCH_NATIVE)

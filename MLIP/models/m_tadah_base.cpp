@@ -75,7 +75,7 @@ StructureDB M_Tadah_Base::predict(Config &c, const StructureDB &stdb, DC_Base &d
 stress_type M_Tadah_Base::spredict(const StDescriptors &std, const Structure &st)
 {
     stress_type s;
-    s.setZero();
+    s.set_zero();
     for (size_t a=0; a<st.natoms(); ++a) {
         s += spredict(a,std,st);
     }
@@ -84,7 +84,7 @@ stress_type M_Tadah_Base::spredict(const StDescriptors &std, const Structure &st
 stress_type M_Tadah_Base::spredict(const size_t a, const StDescriptors &std, const Structure &st)
 {
     stress_type s;
-    s.setZero();
+    s.set_zero();
     spredict(a,s,std,st);
     return s;
 }

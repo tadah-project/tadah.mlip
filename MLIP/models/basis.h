@@ -47,7 +47,7 @@ class Basis {
             std::random_shuffle(indices.begin(), indices.end());
 
             b.resize(st_desc_db(0).dim(),s);
-            b.setZero();
+            b.set_zero();
             // set first basis function as "bias vector"
             b(0,0)=1;
             for (size_t i=1; i<s; ++i) {
@@ -84,7 +84,7 @@ class Basis {
 
             b.resize(st_desc_db(0).dim(),s);
             T.resize(s);
-            b.setZero();
+            b.set_zero();
             b(0,0)=1;
             // Here we add all atomic energy descriptors into single
             // descriptor which represents total energy of this configuration

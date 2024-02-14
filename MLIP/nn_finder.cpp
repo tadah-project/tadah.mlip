@@ -55,7 +55,7 @@ void NNFinder::calc(Structure &st) {
               for (size_t i=0; i<3; ++i) {
                 atom2.position[i] = shiftedpos(a2,i);
               }
-              atom2.force.setZero();
+              //atom2.force.set_zero();
               nnatoms[a1].push_back(atom2);
               nnidx[a1].push_back(a2);
               nnshift[a1].push_back(shift);

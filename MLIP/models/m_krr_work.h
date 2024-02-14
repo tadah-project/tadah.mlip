@@ -294,7 +294,7 @@ class M_KRR: public M_Tadah_Base,
                         non linear kernel\n");
             }
             t_type kw(weights.rows());
-            kw.setZero();
+            kw.set_zero();
             if(config.template get<bool>("NORM") && kernel.get_label()=="Kern_Linear") {
                 // normalise weights such that when predict is called
                 // we can supply it with a non-normalised descriptor
@@ -321,7 +321,7 @@ class M_KRR: public M_Tadah_Base,
             }
             // convert normalised weights back to "normal"
             t_type w(kw.rows());
-            w.setZero();
+            w.set_zero();
             w(0) = kw(0);
             for (size_t i=1; i<kw.size(); ++i) {
                 if (norm.std_dev[i] > std::numeric_limits<double>::min())

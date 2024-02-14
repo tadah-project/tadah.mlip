@@ -142,7 +142,7 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc_rho(const Structure &st, StDescrip
     rhos_type &rhos = st_d.rhos;
     size_t s = dm.rhoi_size()+dm.rhoip_size();
     rhos.resize(s,st.natoms());
-    rhos.setZero();
+    rhos.set_zero();
 
   Vec3d delij;
     for (size_t i=0; i<st.natoms(); ++i) {
@@ -198,7 +198,7 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc(const Structure &st, StDescriptors
     // zero all aeds and set bias
     for (size_t i=0; i<st.natoms(); ++i) {
         aed_type2 &aed = st_d.get_aed(i);
-        aed.setZero();
+        aed.set_zero();
         aed(0)=static_cast<double>(bias);   // set bias
     }
 
@@ -357,13 +357,13 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc_dimer(const Structure &st, StDescr
     // zero all aeds+rho and set bias
     for (size_t i=0; i<4; ++i) {
         aed_type2 &aed = st_d.get_aed(i);
-        aed.setZero();
+        aed.set_zero();
         aed(0)=static_cast<double>(bias);   // set bias
     }
     if (initmb) {
         size_t s = dm.rhoi_size()+dm.rhoip_size();
         st_d.rhos.resize(s,4);
-        st_d.rhos.setZero();
+        st_d.rhos.set_zero();
     }
 
     Vec3d xicom = 0.5*(atoms[0].position + atoms[1].position);

@@ -192,8 +192,8 @@ class DesignMatrix {
                 std::cout << "Phi cols: "<< Phi.cols() << std::endl;
             }
 
-            T.setZero();
-            Phi.setZero();
+            T.set_zero();
+            Phi.set_zero();
 
         }
 

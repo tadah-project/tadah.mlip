@@ -8,53 +8,63 @@ NNFinder::NNFinder(Config &config):
 void NNFinder::calc(Structure &st) {
 
 
-    int N[3];
-    num_shifts(st, N);
+  int N[3];
+  num_shifts(st, N);
 
-    Matrix shiftedpos(st.natoms(),3);
-    // for convenience only:
-    std::vector<std::vector<Atom>> &nnatoms = st.near_neigh_atoms;
-    std::vector<std::vector<Vec3d>> &nnshift = st.near_neigh_shift;
-    std::vector<std::vector<size_t>> &nnidx = st.near_neigh_idx;
-    nnatoms.resize(st.natoms());
-    nnshift.resize(st.natoms());
-    nnidx.resize(st.natoms());
+  Matrix shiftedpos(st.natoms(),3);
+  // for convenience only:
+  std::vector<std::vector<Atom>> &nnatoms = st.near_neigh_atoms;
+  std::vector<std::vector<Vec3d>> &nnshift = st.near_neigh_shift;
+  std::vector<std::vector<size_t>> &nnidx = st.near_neigh_idx;
+  nnatoms.resize(st.natoms());
+  nnshift.resize(st.natoms());
+  nnidx.resize(st.natoms());
 
-    for (int n1=-N[0]; n1<=N[0]; n1++) {
-        for (int n2=-N[1]; n2<=N[1]; n2++) {
-            for (int n3=-N[2]; n3<=N[2]; n3++) {
+  Vec3d displacement;
+  Vec3d delij;
+  Vec3d shift;
+  Atom atom2;
+  for (int n1=-N[0]; n1<=N[0]; n1++) {
+    for (int n2=-N[1]; n2<=N[1]; n2++) {
+      for (int n3=-N[2]; n3<=N[2]; n3++) {
 
-                Vec3d shift(n1,n2,n3);
-                Vec3d displacement = st.cell.transpose()*shift;
+        shift(n1,n2,n3);
+        displacement[0] = st.cell.transpose()(0,0)*n1 + 
+          st.cell.transpose()(0,1)*n2 +  st.cell.transpose()(0,2)*n3 ;
+        displacement[1] = st.cell.transpose()(1,0)*n1 +
+          st.cell.transpose()(1,1)*n2 +  st.cell.transpose()(1,2)*n3 ;
+        displacement[2] = st.cell.transpose()(2,0)*n1 +
+          st.cell.transpose()(2,1)*n2 +  st.cell.transpose()(2,2)*n3 ;
 
-                for (size_t a=0; a<st.natoms(); ++a) {
-                    Vec3d temp = st(a).position + displacement;
-                    for (size_t i=0; i<3; ++i) {
-                        shiftedpos(a,i) = temp(i);
-                    }
-                }
-
-                // calculate all neighbours of a1 for this shift
-                for (size_t a1=0; a1<st.natoms(); ++a1) {
-                    for (size_t a2=0; a2<st.natoms(); ++a2) {
-                        Vec3d temp(shiftedpos(a2,0),shiftedpos(a2,1),shiftedpos(a2,2));
-                        Vec3d delij = st(a1).position - temp;
-                        double rij_sq = delij * delij;
-                        if(rij_sq<cutoff_sq && rij_sq>std::numeric_limits<double>::min()) {
-                            Atom atom2 = st(a2);
-                            for (size_t i=0; i<3; ++i) {
-                                atom2.position[i] = shiftedpos(a2,i);
-                            }
-                            atom2.force.setZero();
-                            nnatoms[a1].push_back(atom2);
-                            nnidx[a1].push_back(a2);
-                            nnshift[a1].push_back(shift);
-                        }
-                    }
-                }
-            }
+        for (size_t a=0; a<st.natoms(); ++a) {
+          shiftedpos(a,0) = st(a).position[0] + displacement[0];
+          shiftedpos(a,1) = st(a).position[1] + displacement[1];
+          shiftedpos(a,2) = st(a).position[2] + displacement[2];
         }
+
+        // calculate all neighbours of a1 for this shift
+        for (size_t a1=0; a1<st.natoms(); ++a1) {
+          for (size_t a2=0; a2<st.natoms(); ++a2) {
+            delij[0] = st(a1).position[0] - shiftedpos(a2,0);
+            delij[1] = st(a1).position[1] - shiftedpos(a2,1);
+            delij[2] = st(a1).position[2] - shiftedpos(a2,2);
+            double rij_sq = delij[0]*delij[0] + delij[1]*delij[1] + delij[2]*delij[2];
+
+            if(rij_sq<cutoff_sq && rij_sq>std::numeric_limits<double>::min()) {
+              atom2 = st(a2);
+              for (size_t i=0; i<3; ++i) {
+                atom2.position[i] = shiftedpos(a2,i);
+              }
+              atom2.force.setZero();
+              nnatoms[a1].push_back(atom2);
+              nnidx[a1].push_back(a2);
+              nnshift[a1].push_back(shift);
+            }
+          }
+        }
+      }
     }
+  }
 }
 void NNFinder::calc(StructureDB &stdb) {
 #pragma omp parallel for

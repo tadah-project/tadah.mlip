@@ -7,7 +7,6 @@
 #include "descriptors_calc.h"
 
 #include <cstdio>
-#include <list>
 template <typename D2, typename D3, typename DM, typename C2, typename C3, typename CM>
 template <typename T1, typename T2, typename T3>
 DescriptorsCalc<D2,D3,DM,C2,C3,CM>::DescriptorsCalc(Config &c, T1 &t1, T2 &t2, T3 &t3):
@@ -145,14 +144,19 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc_rho(const Structure &st, StDescrip
     rhos.resize(s,st.natoms());
     rhos.setZero();
 
+  Vec3d delij;
     for (size_t i=0; i<st.natoms(); ++i) {
         const Atom &a1 = st(i);
 
         for (size_t jj=0; jj<st.nn_size(i); ++jj) {
             const Vec3d &a2pos = st.nn_pos(i,jj);
-            Vec3d delij = a1.position - a2pos;
+            //delij = a1.position - a2pos;
+            delij[0] = a1.position[0] - a2pos[0];
+            delij[1] = a1.position[1] - a2pos[1];
+            delij[2] = a1.position[2] - a2pos[2];
 
-            double rij_sq = delij * delij;
+            //double rij_sq = delij * delij;
+            double rij_sq = delij[0]*delij[0] + delij[1]*delij[1] + delij[2]*delij[2];
             if (rij_sq > rcut_mb_sq) continue;
             int Zj = st.near_neigh_atoms[i][jj].Z;
             double rij = sqrt(rij_sq);
@@ -209,23 +213,30 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc(const Structure &st, StDescriptors
         }
     }
 
+  bool use_force = config.get<bool>("FORCE");
+  bool use_stress = config.get<bool>("STRESS");
+
+  Vec3d delij;
     for (size_t i=0; i<st.natoms(); ++i) {
         const Atom &a1 = st(i);
         aed_type2 &aed = st_d.get_aed(i);
 
         for (size_t jj=0; jj<st.nn_size(i); ++jj) {
             const Vec3d &a2pos = st.nn_pos(i,jj);
-            //size_t j = st.near_neigh_idx[i][jj];
-            Vec3d delij = a1.position - a2pos;
 
-            double rij_sq = delij * delij;
+            delij[0] = a1.position[0] - a2pos[0];
+            delij[1] = a1.position[1] - a2pos[1];
+            delij[2] = a1.position[2] - a2pos[2];
+
+            double rij_sq = delij[0]*delij[0] + delij[1]*delij[1] + delij[2]*delij[2];
+
             if (rij_sq > rcut_max_sq) continue;
             int Zj = st.near_neigh_atoms[i][jj].Z;
             double rij = sqrt(rij_sq);
             double rij_inv = 1.0/rij;
 
             // CALCULATE TWO-BODY TERM
-            if (config.get<bool>("FORCE") || config.get<bool>("STRESS") ) {
+            if (use_force || use_stress) {
                 fd_type &fd_ij = st_d.fd[i][jj];
                 if (rij_sq <= rcut_2b_sq && init2b) {
                     double fc_ij = Zj*c2.calc(rij);
@@ -238,9 +249,9 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc(const Structure &st, StDescriptors
                         fd_ij(n,0) *= 0.5*rij_inv;
                         fd_ij(n,1) = fd_ij(n,0);
                         fd_ij(n,2) = fd_ij(n,0);
-                        fd_ij(n,0) *= delij(0);
-                        fd_ij(n,1) *= delij(1);
-                        fd_ij(n,2) *= delij(2);
+                        fd_ij(n,0) *= delij[0];
+                        fd_ij(n,1) *= delij[1];
+                        fd_ij(n,2) *= delij[2];
                     }
                 }
                 // CALCULATE MANY-BODY TERM
@@ -256,9 +267,9 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc(const Structure &st, StDescriptors
                             fd_ij(n,0) *= rij_inv;
                             fd_ij(n,1) = fd_ij(n,0);
                             fd_ij(n,2) = fd_ij(n,0);
-                            fd_ij(n,0) *= delij(0);
-                            fd_ij(n,1) *= delij(1);
-                            fd_ij(n,2) *= delij(2);
+                            fd_ij(n,0) *= delij[0];
+                            fd_ij(n,1) *= delij[1];
+                            fd_ij(n,2) *= delij[2];
                         }
                     }
                 }

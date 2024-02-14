@@ -95,6 +95,7 @@ void M_Tadah_Base::spredict(const size_t a, stress_type &s, const StDescriptors 
 
     stress_type temp;
 
+  Vec3d rij;
     for (size_t jj=0; jj<std.fd[a].size(); ++jj) {
         size_t j=st.near_neigh_idx[a][jj];
         const size_t aa = st.get_nn_iindex(a,j,jj);
@@ -107,7 +108,7 @@ void M_Tadah_Base::spredict(const size_t a, stress_type &s, const StDescriptors 
         const force_type fIJ = fij - fji;
         // fJI = -fIJ
 
-        Vec3d rij = ri-rj;
+        rij = ri-rj;
         rij*=0.5;
 
         for (size_t r=0; r<3; ++r) {

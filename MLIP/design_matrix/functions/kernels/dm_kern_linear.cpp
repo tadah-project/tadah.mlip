@@ -30,8 +30,8 @@ void DM_Kern_Linear::calc_phi_force_rows(phi_type &Phi, size_t &row,
             const size_t j=st.near_neigh_idx[a][jj];
             const size_t aa = st.get_nn_iindex(a,j,jj);
             for (size_t k=0; k<3; ++k) {
-                aed_type2 temp = (st_d.fd[a][jj].col(k)-
-                        st_d.fd[j][aa].col(k))*fac;
+                aed_type2 temp = (st_d.fd[a][jj](k)-
+                        st_d.fd[j][aa](k))*fac;
                 for (size_t d=0; d<temp.size(); ++d) {
                     Phi(row+k,d) -= temp[d];
                 }
@@ -55,7 +55,7 @@ void DM_Kern_Linear::calc_phi_stress_rows(phi_type &Phi, size_t &row,
             size_t mn=0;
             for (size_t x=0; x<3; ++x) {
                 for (size_t y=x; y<3; ++y) {
-                    aed_type2 temp = (fdij.col(y)-fdji.col(y))*0.5*fac[mn]*(ri(x)-rj(x));
+                    aed_type2 temp = (fdij(y)-fdji(y))*0.5*fac[mn]*(ri(x)-rj(x));
                     for (size_t d=0; d<temp.size(); ++d) {
                         Phi(row+mn,d) += temp[d];
                     }

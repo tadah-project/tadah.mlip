@@ -28,8 +28,8 @@ void  DM_Kern_Base::calc_phi_force_rows(phi_type &Phi, size_t &row, const double
             const aed_type2& aedj = st_d.get_aed(j);
             for (size_t b=0; b<basis.cols(); ++b) {
                 for (size_t k=0; k<3; ++k) {
-                    Phi(row+k,b) -= fac*((*this).prime(basis.col(b), aedi,fdij.col(k)) -
-                            (*this).prime(basis.col(b),aedj,fdji.col(k)));
+                    Phi(row+k,b) -= fac*((*this).prime(basis.col(b), aedi,fdij(k)) -
+                            (*this).prime(basis.col(b),aedj,fdji(k)));
                 }
             }
         }
@@ -54,8 +54,8 @@ void  DM_Kern_Base::calc_phi_stress_rows(phi_type &Phi, size_t &row, const doubl
                 for (size_t y=x; y<3; ++y) {
                     for (size_t b=0; b<basis.cols(); ++b) {
                         Phi(row+mn,b) += 0.5*fac[mn]*(ri(x)-rj(x))*
-                            ((*this).prime(basis.col(b),aedi,fdij.col(y)) -
-                             (*this).prime(basis.col(b),aedj,fdji.col(y)));
+                            ((*this).prime(basis.col(b),aedi,fdij(y)) -
+                             (*this).prime(basis.col(b),aedj,fdji(y)));
                     }
                     mn++;
                 }

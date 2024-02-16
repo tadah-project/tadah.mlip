@@ -247,11 +247,9 @@ void DescriptorsCalc<D2,D3,DM,C2,C3,CM>::calc(const Structure &st, StDescriptors
                     // and scale them by the unit directional vector delij/rij.
                     for (size_t n=bias; n<size2b+bias; ++n) {
                         fd_ij(n,0) *= 0.5*rij_inv;
-                        fd_ij(n,1) = fd_ij(n,0);
-                        fd_ij(n,2) = fd_ij(n,0);
+                        fd_ij(n,1) = fd_ij(n,0)*delij[1];
+                        fd_ij(n,2) = fd_ij(n,0)*delij[2];
                         fd_ij(n,0) *= delij[0];
-                        fd_ij(n,1) *= delij[1];
-                        fd_ij(n,2) *= delij[2];
                     }
                 }
                 // CALCULATE MANY-BODY TERM

@@ -42,8 +42,9 @@ void NNFinder::calc(Structure &st) {
         }
 
         // calculate all neighbours of a1 for this shift
+        size_t start = n1==0 && n2==0 && n3==0 ? 1 : 0;
         for (size_t a1=0; a1<st.natoms(); ++a1) {
-          for (size_t a2=a1; a2<st.natoms(); ++a2) {
+          for (size_t a2=a1+start; a2<st.natoms(); ++a2) {
             delij[0] = st(a1).position[0] - shiftedpos(a2,0);
             delij[1] = st(a1).position[1] - shiftedpos(a2,1);
             delij[2] = st(a1).position[2] - shiftedpos(a2,2);
@@ -56,7 +57,6 @@ void NNFinder::calc(Structure &st) {
                 atom2.position[i] = shiftedpos(a2,i);
                 atom1.position[i] = st(a1).position[i]-displacement[i];
               }
-              //atom2.force.set_zero();
               nnatoms[a1].push_back(atom2);
               nnidx[a1].push_back(a2);
               nnshift[a1].push_back(shift);

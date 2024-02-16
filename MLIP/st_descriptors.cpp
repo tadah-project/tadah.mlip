@@ -13,7 +13,7 @@ StDescriptors::StDescriptors(const Structure &s, const Config &c):
     if (c.get<bool>("FORCE") || c.get<bool>("STRESS")) {
         for (size_t i=0; i<fd.size(); ++i) {
             fd[i].resize(s.nn_size(i),fd_type(c.get<size_t>("DSIZE")));
-            for (auto &v:fd[i]) v.set_zero();
+            //for (auto &v:fd[i]) v.set_zero();
         }
     }
 

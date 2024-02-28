@@ -1,6 +1,6 @@
 build-job:
   script:
-    - mkidr -p build
+    - mkdir -p build
     - cd build
     - cmake ..
   artifacts:

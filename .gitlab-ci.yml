@@ -1,6 +1,6 @@
 before_script:
- - apt-get update --yes
- - apt-get install --yes cmake
+ - sudo apt-get update --yes
+ - sudo apt-get install --yes cmake
 
 build-job:
   script:

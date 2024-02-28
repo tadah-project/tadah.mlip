@@ -1,3 +1,6 @@
+variables:
+     GIT_SUBMODULE_STRATEGY: recursive
+
 before_script:
  #- sudo apt-get update --yes
  #- sudo apt-get install --yes g++

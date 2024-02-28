@@ -13,7 +13,7 @@ build-job:
     - mkdir -p build
     - cd build
     - cmake ..
-    - make -j 2
+    - make -j 1
   artifacts:
     paths:
       - "build/"

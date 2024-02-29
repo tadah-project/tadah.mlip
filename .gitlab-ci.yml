@@ -22,8 +22,6 @@ before_script:
 build-job:
   stage: build
   script:
-    - pwd
-    - ls -l
     - mkdir -p build
     - cd build
     - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=OFF
@@ -37,8 +35,6 @@ build-tests:
   dependencies:
     - build-job
   script:
-    - pwd
-    - ls -l
     - cd build
     - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON
     - make -j 1
@@ -52,7 +48,7 @@ build-tests:
 test-job1:
   stage: test
   dependencies:
-    - build-tests
+    - build-job
   script:
     - ta-dah --version
     - ta-dah --help
@@ -61,7 +57,6 @@ test-job2:
   stage: test
   dependencies:
     - build-tests
-    - build-job
   script:
     - cd build
     - make test

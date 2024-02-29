@@ -22,7 +22,7 @@ before_script:
 build-job:
   stage: build
   script:
-    - rm -r build
+    - rm -rf build
     - mkdir -p build
     - cd build
     - cmake .. -DTADAH_ENABLE_OPENMP=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=~/.local

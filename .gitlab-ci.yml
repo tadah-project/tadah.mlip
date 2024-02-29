@@ -25,12 +25,13 @@ build-job:
     - rm -rf build
     - mkdir -p build
     - cd build
-    - cmake .. -DTADAH_ENABLE_OPENMP=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=~/.local
+    - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON
     - make -j 1
     - make install
 #  artifacts:
 #    paths:
 #      - "build/"
+
 
 test-job1:
   stage: test

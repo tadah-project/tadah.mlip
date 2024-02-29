@@ -59,4 +59,5 @@ test-job2:
   dependencies:
     - build-tests
   script:
+    - cd build
     - make test

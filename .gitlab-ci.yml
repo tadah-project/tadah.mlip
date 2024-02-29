@@ -33,7 +33,6 @@ build-job:
   #  paths:
   #    - "build"
 
-
 build-tests:
   variables: 
     GIT_CLEAN_FLAGS: -ffdx -e build/

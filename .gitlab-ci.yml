@@ -29,9 +29,6 @@ build-job:
     - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=OFF
     - make -j 1
     - make install
-  artifacts:
-    paths:
-      - "build"
 
 build-tests:
   variables: 
@@ -45,6 +42,9 @@ build-tests:
     - cd build
     - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON
     - make -j 1
+  artifacts:
+    paths:
+      - "build"
 
 test-job1:
   stage: test
@@ -58,5 +58,7 @@ test-job2:
   stage: test
   dependencies:
     - build-tests
+    - build-job
   script:
+    - cd build
     - make test

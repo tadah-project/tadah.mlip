@@ -37,6 +37,7 @@ build-tests:
   dependencies:
     - build-job
   script:
+    - cd build
     - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON
     - make -j 1
 

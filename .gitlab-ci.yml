@@ -36,7 +36,9 @@ build-job:
 
 
 build-tests:
-  stage: test
+  variables: 
+    GIT_CLEAN_FLAGS: -ffdx -e .build/
+  stage: build
   dependencies:
     - build-job
   script:

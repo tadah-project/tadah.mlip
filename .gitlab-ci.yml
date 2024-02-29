@@ -25,16 +25,28 @@ build-job:
     - rm -rf build
     - mkdir -p build
     - cd build
-    - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON
+    - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=OFF
     - make -j 1
     - make install
 #  artifacts:
 #    paths:
 #      - "build/"
 
+build-tests:
+  stage: build
+  dependencies:
+    - build-job
+  script:
+    - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON
+    - make -j 1
 
 test-job1:
   stage: test
   script:
     - ta-dah --version
     - ta-dah --help
+
+test-job2:
+  stage: test
+  script:
+    - make test

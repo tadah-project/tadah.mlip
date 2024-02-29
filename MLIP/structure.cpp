@@ -74,7 +74,7 @@ int Structure::read(std::ifstream &ifs) {
     // make sure atoms vector is empty
     atoms.clear();
 
-    char symbol[2];
+    char symbol[3];
     double px,py,pz,fx,fy,fz;
     PeriodicTable pd;
     while(std::getline(ifs,line)) {
@@ -125,7 +125,7 @@ void Structure::save(std::ofstream &ofs) const {
     }
 
     for (const Atom &a:atoms) {
-        ofs << a.symbol;
+        ofs << a.symbol[0] << a.symbol[1];
         ofs << std::setw(w-2) << std::fixed << std::right
             << std::setprecision(p) << a.position(0);
         ofs << std::setw(w) << std::fixed << std::right

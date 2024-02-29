@@ -17,17 +17,17 @@ set(ver_minor ${CMAKE_MATCH_1})
 project(Ta-dah VERSION ${ver_world}.${ver_major}.${ver_minor})
 message(STATUS "${TADAH} VERSION: ${ver_world}.${ver_major}.${ver_minor}")
 
-# Here are the options... set them with -D
+# Here are the options... set them with -D,
+# for example:
+# cmake .. -DTADAH_BUILD_TESTS=ON
 option(TADAH_ENABLE_HPO "Enable Hyperparamter optimiser." OFF)
 option(TADAH_ENABLE_OPENMP "Enable shared-memory parallelisation via OpenMP" OFF)
 option(TADAH_ENABLE_MPI "Enable parallelisation via MPI" OFF)
 option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
-find_package(Doxygen)
-option(TADAH_BUILD_DOCUMENTATION "Create and install the HTML based        
-documentation (requires Doxygen)" ${DOXYGEN_FOUND})
 option(TADAH_ENABLE_FAST_MATH "Enable fast math optimizations" OFF)
-
 option(TADAH_BUILD_TESTS "Build with tests" OFF)
+option(TADAH_BUILD_DOCUMENTATION "Create and install the HTML based        
+documentation (requires Doxygen)")
 
 
 # This option is experimental. Static build is only partially supported
@@ -35,9 +35,7 @@ option(TADAH_BUILD_TESTS "Build with tests" OFF)
 # In fact, for now it only works with vanilla tadah
 # 
 # Do not build as static if MPI or OpenMPI are used.
-option(TADAH_BUILD_SHARED_LIBS "Build ${TADAH} as shared library (defaul)" ON)
-# perhaps add if mpi and static then fail... and so on
-
+option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 # Here we only need name so for e.g. liblammps_serial.so use lammps_serial
 if(NOT DEFINED TADAH_LAMMPS_LIB)
     set(TADAH_LAMMPS_LIB "lammps_serial")
@@ -62,17 +60,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 
-if (TADAH_BUILD_SHARED_LIBS)
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    set(_TADAH_LIB_BUILD SHARED)
-else()
-    set(_TADAH_LIB_BUILD STATIC)
-    #set(CMAKE_EXE_LINKER_FLAGS "-static")
-    set(BUILD_SHARED_LIBS OFF)
-endif()
+#if (BUILD_SHARED_LIBS)
+#    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+#    set(_TADAH_LIB_BUILD SHARED)
+#else()
+#    set(_TADAH_LIB_BUILD STATIC)
+#    #set(CMAKE_EXE_LINKER_FLAGS "-static")
+#    set(BUILD_SHARED_LIBS OFF)
+#endif()
 
 
-if (TADAH_BUILD_SHARED_LIBS)
+if (BUILD_SHARED_LIBS)
     # Always full RPATH
     # use, i.e. don't skip the full RPATH for the build tree
     set(CMAKE_SKIP_BUILD_RPATH FALSE)
@@ -117,6 +115,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
 if(TADAH_BUILD_DOCUMENTATION)
+    find_package(Doxygen)
 	if(NOT DOXYGEN_FOUND)
 		message(FATAL_ERROR "Doxygen is needed to build the documentation.")
 	endif()
@@ -149,21 +148,21 @@ else()
 	endif()
 endif()
 
-#add_subdirectory(TADAH)
-#add_subdirectory(CORE)
+add_subdirectory(CORE)
+add_subdirectory(MODELS)
+add_subdirectory(MLIP)
 
-file(GLOB_RECURSE CORE_SRC CONFIGURE_DEPENDS "CORE/*.cpp")
 file(GLOB_RECURSE MLIP_SRC CONFIGURE_DEPENDS "MLIP/*.cpp")
-file(GLOB_RECURSE MODELS_SRC CONFIGURE_DEPENDS "MODELS/*.cpp")
 
 add_library(
-    tadah ${_TADAH_LIB_BUILD}
-    ${CORE_SRC}
+    tadah #${_TADAH_LIB_BUILD}
     ${MLIP_SRC}
-    ${MODELS_SRC}
     )
 
 add_executable (ta-dah bin/tadah.cpp)
+target_link_libraries(tadah PUBLIC tadah.core)
+target_link_libraries(tadah PUBLIC tadah.models)
+#target_link_libraries(tadah PUBLIC tadah.mlip)
 
 #########################################################################
 #########################################################################
@@ -267,11 +266,6 @@ endif()
 find_package(LAPACK)
 
 target_link_libraries (ta-dah PUBLIC tadah ${LAPACK_LIBRARIES})
-
-# Create compile definition to toml config directory
-install(DIRECTORY CORE/config DESTINATION ${CMAKE_INSTALL_PREFIX}/include/tadah)
-set(CONFIG_FILE_DIR "${CMAKE_INSTALL_PREFIX}/include/tadah/config/")
-add_compile_definitions("TADAH_CONFIG_DIR=\"${CONFIG_FILE_DIR}\"")
 
 
 install(TARGETS ta-dah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

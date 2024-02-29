@@ -28,7 +28,9 @@ TEST_CASE( "Testing Config add()", "[config_add]" ) {
     SECTION("Add the same key twice when not allowed case 2") {
         c1.add("MODEL","M_BLR");
         c1.add("MODEL","BF_Linear");
+        c1.add("MODEL","EXTRA_ALLOWED_FLAG");
         REQUIRE_THROWS(c1.add("MODEL","M_BLR"));
+        REQUIRE_THROWS(c1.add("MODEL","ANYTHING"));
     }
     SECTION("Add allowed multiple keys") {
         c1.add("DBFILE", "f1");

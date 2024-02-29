@@ -3,19 +3,17 @@
 #include <string>
 
 
-std::string symbol1="Ti";
-std::string name1="Titanium";
+char symbol1[]="Ti";
 int Z1 = 22;
 Vec3d pos1(1.0,2.0,3.0);
 Vec3d force1(4.0,5.0,6.0);
-Element element1(symbol1,name1,Z1);
+Element element1(symbol1,Z1);
 
-std::string symbol2="Nb";
-std::string name2="Niobium";
+char symbol2[]="Nb";
 int Z2 = 41;
 Vec3d pos2(-1.0,-2.0,-3.0);
 Vec3d force2(-4.0,-5.0,-6.0);
-Element element2(symbol2,name2,Z2);
+Element element2(symbol2,Z2);
 
 TEST_CASE( "Testing Atom class constructor", "[atom]" ) {
 
@@ -26,23 +24,25 @@ TEST_CASE( "Testing Atom class constructor", "[atom]" ) {
 
     REQUIRE( pos1 == a.position );
     REQUIRE( force1 == a.force );
-    REQUIRE( name1 == a.name );
-    REQUIRE( symbol1 == a.symbol );
+    REQUIRE( symbol1[0] == a.symbol[0] );
+    REQUIRE( symbol1[1] == a.symbol[1] );
     REQUIRE( Z1 == a.Z );
 
     // Trivial case 2/2
     Atom b;
     b.position = pos1;
     b.force = force1;
-    b.name = name1;
-    b.symbol = symbol1;
+    b.symbol[0] = symbol1[0];
+    b.symbol[1] = symbol1[1];
     b.Z = Z1;
 
     REQUIRE( pos1 == b.position );
     REQUIRE( force1 == b.force );
-    REQUIRE( name1 == b.name );
-    REQUIRE( symbol1 == b.symbol );
+    REQUIRE( symbol1[0] == b.symbol[0] );
+    REQUIRE( symbol1[1] == b.symbol[1] );
     REQUIRE( Z1 == b.Z );
+
+    REQUIRE( a == b );
 }
 TEST_CASE( "Testing Atom operator==", "[atom_operator==]" ) {
     Atom a(element1, 1.0, 2.0, 3.0, 

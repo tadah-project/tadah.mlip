@@ -42,6 +42,9 @@ build-tests:
     - cd build
     - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON
     - make -j 1
+    - rm -r CMake*
+    - rm -r MODELS/ CORE/ MLIP/
+    - rm -rf _deps
   artifacts:
     paths:
       - "build"

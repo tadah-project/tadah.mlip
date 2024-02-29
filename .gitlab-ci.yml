@@ -34,8 +34,9 @@ build-job:
     paths:
       - "build"
 
+
 build-tests:
-  stage: build
+  stage: test
   dependencies:
     - build-job
   script:
@@ -47,11 +48,15 @@ build-tests:
 
 test-job1:
   stage: test
+  dependencies:
+    - build-tests
   script:
     - ta-dah --version
     - ta-dah --help
 
 test-job2:
   stage: test
+  dependencies:
+    - build-tests
   script:
     - make test

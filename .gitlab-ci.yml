@@ -2,19 +2,38 @@ variables:
      GIT_SUBMODULE_STRATEGY: recursive
      GIT_SUBMODULE_UPDATE_FLAGS: --remote
 
+stages:          # List of stages for jobs and their order of execution
+  - build
+  - test
+
 before_script:
  #- sudo apt-get update --yes
  #- sudo apt-get install --yes g++
  #- sudo apt-get install --yes liblapack-dev
  #- sudo apt-get install --yes libblas-dev
  - g++ --version
+ - export PATH=$PATH:~/.local/bin
+ - export CPATH=$CPATH:~/.local/include
+ - export LIBRARY_PATH=$LIBRARY_PATH:~/.local/lib
+ - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.local/lib:/usr/local/lib
+ - export OMP_NUM_THREADS=1
+
 
 build-job:
+  stage: build
   script:
+    - rm -r build
     - mkdir -p build
     - cd build
-    - cmake ..
+    - cmake .. -DTADAH_ENABLE_OPENMP=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=~/.local
     - make -j 1
-  artifacts:
-    paths:
-      - "build/"
+    - make install
+#  artifacts:
+#    paths:
+#      - "build/"
+
+test-job1:
+  stage: test
+  script:
+    - ta-dah --version
+    - ta-dah --help

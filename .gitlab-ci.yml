@@ -22,6 +22,8 @@ before_script:
 build-job:
   stage: build
   script:
+    - pwd
+    - ls -l
     - mkdir -p build
     - cd build
     - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=OFF
@@ -38,6 +40,7 @@ build-tests:
     - build-job
   script:
     - pwd
+    - ls -l
     - cd build
     - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON
     - make -j 1

@@ -32,7 +32,7 @@ build-job:
     - cd ..
   artifacts:
     paths:
-      - "build/"
+      - "build"
 
 build-tests:
   stage: build

@@ -1,6 +1,9 @@
 variables:
      GIT_SUBMODULE_STRATEGY: recursive
      GIT_SUBMODULE_UPDATE_FLAGS: --remote
+    
+     #GIT_SUBMODULE_FORCE_HTTPS: "true"
+     GIT_STRATEGY: clone
 
 stages:          # List of stages for jobs and their order of execution
   - build
@@ -12,6 +15,15 @@ before_script:
  #- sudo apt-get install --yes liblapack-dev
  #- sudo apt-get install --yes libblas-dev
  #- sudo apt-get install --yes gcovr
+ - git submodule sync --recursive
+ - git submodule foreach --recursive git fetch
+ -  git submodule update --init --recursive
+ - ls -l
+ - git status
+ #- git pull origin main
+ - cd MLIP
+ #- git pull origin main
+ - cd ..
  - g++ --version
  - export PATH=$PATH:~/.local/bin
  - export CPATH=$CPATH:~/.local/include

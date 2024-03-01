@@ -14,3 +14,6 @@
 	path = MODELS
 	url = https://git.ecdf.ed.ac.uk/tadah/models.git
     branch = main
+[submodule "MLIP"]
+	path = MLIP
+	url = https://git.ecdf.ed.ac.uk/tadah/mlip.git

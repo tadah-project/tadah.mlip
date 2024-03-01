@@ -16,9 +16,9 @@ before_script:
  #- sudo apt-get install --yes gcovr
  - ls -l
  - git status
- - git pull
+ - git pull origin main
  - cd MLIP
- - git pull
+ - git pull origin main
  - cd ..
  - g++ --version
  - export PATH=$PATH:~/.local/bin

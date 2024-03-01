@@ -14,6 +14,12 @@ before_script:
  #- sudo apt-get install --yes liblapack-dev
  #- sudo apt-get install --yes libblas-dev
  #- sudo apt-get install --yes gcovr
+ - ls -l
+ - git status
+ - git pull
+ - cd MLIP
+ - git pull
+ - cd ..
  - g++ --version
  - export PATH=$PATH:~/.local/bin
  - export CPATH=$CPATH:~/.local/include

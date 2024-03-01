@@ -152,8 +152,6 @@ add_subdirectory(CORE)
 add_subdirectory(MODELS)
 add_subdirectory(MLIP)
 
-file(GLOB_RECURSE MLIP_SRC CONFIGURE_DEPENDS "MLIP/*.cpp")
-
 add_library(
     tadah #${_TADAH_LIB_BUILD}
     ${MLIP_SRC}

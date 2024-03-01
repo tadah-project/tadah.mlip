@@ -11,6 +11,7 @@ before_script:
  #- sudo apt-get install --yes g++
  #- sudo apt-get install --yes liblapack-dev
  #- sudo apt-get install --yes libblas-dev
+ - sudo apt-get install --yes gcovr
  - g++ --version
  - export PATH=$PATH:~/.local/bin
  - export CPATH=$CPATH:~/.local/include
@@ -24,7 +25,7 @@ build-job:
   script:
     - mkdir -p build
     - cd build
-    - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=OFF
+    - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="--coverage -g -O1"
     - make -j 1
     - make install
 
@@ -36,7 +37,7 @@ build-tests:
     - build-job
   script:
     - cd build
-    - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON
+    - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON  -DCMAKE_CXX_FLAGS="--coverage -g -O1"
     - make -j 1
     - rm -r CMake*
     - rm -r MODELS/ CORE/ MLIP/
@@ -60,3 +61,5 @@ test-job2:
   script:
     - cd build
     - make test
+    - gcovr --exclude='.*/Eigen/.*' --exclude='.*/catch2/.*' --exclude='.*/tests/.*' --exclude='.*/CLI11/.*' --exclude='.*/toml11/.*' -r ..
+  coverage: /^TOTAL.*\s+(\d+\%)$/

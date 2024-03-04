@@ -1,9 +1,9 @@
 variables:
-     GIT_SUBMODULE_STRATEGY: recursive
-     GIT_SUBMODULE_UPDATE_FLAGS: --remote
+     #GIT_SUBMODULE_STRATEGY: recursive
+     #GIT_SUBMODULE_UPDATE_FLAGS: --remote
     
      #GIT_SUBMODULE_FORCE_HTTPS: "true"
-     GIT_STRATEGY: clone
+     #GIT_STRATEGY: clone
 
 stages:          # List of stages for jobs and their order of execution
   - build
@@ -17,7 +17,7 @@ before_script:
  #- sudo apt-get install --yes gcovr
  - git submodule sync --recursive
  - git submodule foreach --recursive git fetch
- -  git submodule update --init --recursive
+ - git submodule update --init --recursive
  - ls -l
  - git status
  #- git pull origin main
@@ -38,7 +38,7 @@ build-job:
     - mkdir -p build
     - cd build
     - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="--coverage -g -O1"
-    - make -j 1
+    - make -j 4
     - make install
 
 build-tests:
@@ -49,7 +49,7 @@ build-tests:
   script:
     - cd build
     - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON  -DCMAKE_CXX_FLAGS="--coverage -g -O1"
-    - make -j 1
+    - make -j 4
     - rm -rf _deps
     - find . -name "*.a" -exec rm {} +
     - find . -name "*.o" -exec rm {} +

@@ -1,18 +1,19 @@
 #include "catch2/catch.hpp"
 #include <limits>
 #include <stdexcept>
+#include <string>
+
 #include "../CORE/registry.h"
+#include "../CORE/config/config.h"
 #include "../MODELS/cutoffs/cutoffs.h"
 #include "../MODELS/descriptors/d_all.h"
+#include "../MODELS/functions/basis_functions/bf_all.h"
+#include "../MODELS/functions/kernels/kern_all.h"
 #include "../MLIP/models/m_all.h"
 #include "../MLIP/structure_db.h"
 #include "../MLIP/st_descriptors_db.h"
-#include "../CORE/config/config.h"
 #include "../MLIP/nn_finder.h"
 #include "../MLIP/design_matrix/functions/dm_function_base.h"
-#include "../MODELS/functions/basis_functions/bf_all.h"
-#include "../MODELS/functions/kernels/kern_all.h"
-#include <string>
 
     using BF=BF_Linear;
     using K=Kern_Linear;
@@ -32,23 +33,18 @@ TEST_CASE( "Testing Factory: Models", "[factory_models]" ) {
     config.add("MPARAMS",3);
     // Config contains defaults only, we want to run prediction
     // should compile and run
-    // should throw runtime b/c e.g. WEIGHTS key is not found
     for (auto b:Registry<DM_Function_Base,Config&>::registry) {
         DM_Function_Base *fb = factory<DM_Function_Base,Config&>(b.first,config);
         for (auto c:Registry<M_Tadah_Base,DM_Function_Base&,Config&>::registry) {
             if (dynamic_cast<Kern_Base*>(fb) != nullptr && c.first=="M_KRR") {
-                //REQUIRE_THROWS(factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config));
-                //REQUIRE_THROWS_AS((factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)),std::runtime_error);
-                //REQUIRE_THROWS_WITH((factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)), Catch::Matchers::Contains( "Key not found" ));
+                REQUIRE(factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config));
             }
             else if (dynamic_cast<BF_Base*>(fb) != nullptr && c.first=="M_BLR") {
-                //REQUIRE_THROWS(factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config));
-                //REQUIRE_THROWS_AS((factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)),std::runtime_error);
-                //REQUIRE_THROWS_WITH((factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)), Catch::Matchers::Contains( "Key not found" ));
+                REQUIRE(factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config));
             }
             else {
-                //REQUIRE_THROWS_AS((factory<M_Tadah_Base,DM_Function_Base,Config>(c.first,*fb,config)),
-                //        std::invalid_argument);
+                REQUIRE_THROWS_AS((factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)),
+                        std::invalid_argument);
             }
         }
     }
@@ -87,7 +83,8 @@ TEST_CASE( "Testing M_BLR", "[m_blr]" ) {
     Config config;
     // Config contains defaults only, we run prediction
     // should throw runtime b/c key is not found
-    //using M1=M_BLR<BF,D2,D3,DM,C2,C3,CM>;
+    //using M2=M_BLR<BF>;
+    //M1 m1(config);
     //REQUIRE_THROWS_AS(M1(config),std::runtime_error);
     //REQUIRE_THROWS_WITH(M1(config), Catch::Matchers::Contains( "Key not found" ));
     // for later...

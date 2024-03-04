@@ -2,15 +2,12 @@ cmake_minimum_required(VERSION 3.12)
 
 # There is usually no need to change anything here...
 
-
 set(TADAH "Ta-dah!")
 file(READ "MLIP/version.h" ver)
 string(REGEX MATCH "TADAH_WORLD_VERSION ([0-9])" _ "${ver}")
 set(ver_world ${CMAKE_MATCH_1})
-
 string(REGEX MATCH "TADAH_MAJOR_VERSION ([0-9])" _ "${ver}")
 set(ver_major ${CMAKE_MATCH_1})
-
 string(REGEX MATCH "TADAH_MINOR_VERSION ([0-9])" _ "${ver}")
 set(ver_minor ${CMAKE_MATCH_1})
 
@@ -29,22 +26,12 @@ option(TADAH_BUILD_TESTS "Build with tests" OFF)
 option(TADAH_BUILD_DOCUMENTATION "Create and install the HTML based        
 documentation (requires Doxygen)")
 
-
-# This option is experimental. Static build is only partially supported
-# and the result depends on the components selected.
-# In fact, for now it only works with vanilla tadah
-# 
-# Do not build as static if MPI or OpenMPI are used.
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
-# Here we only need name so for e.g. liblammps_serial.so use lammps_serial
-if(NOT DEFINED TADAH_LAMMPS_LIB)
-    set(TADAH_LAMMPS_LIB "lammps_serial")
-endif()
 
-# guard against in-source builds
+# Guard against in-source builds
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
     message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there. You may need to remove CMakeCache.txt and CMakeFiles dir. ")
-  endif()
+endif()
 
 if(UNIX AND NOT APPLE)
 endif()
@@ -59,16 +46,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-
-#if (BUILD_SHARED_LIBS)
-#    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-#    set(_TADAH_LIB_BUILD SHARED)
-#else()
-#    set(_TADAH_LIB_BUILD STATIC)
-#    #set(CMAKE_EXE_LINKER_FLAGS "-static")
-#    set(BUILD_SHARED_LIBS OFF)
-#endif()
-
+if(BUILD_SHARED_LIBS)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 
 if (BUILD_SHARED_LIBS)
     # Always full RPATH
@@ -92,15 +72,87 @@ if (BUILD_SHARED_LIBS)
     endif("${isSystemDir}" STREQUAL "-1")
 endif()
 
+set(CMAKE_CXX_FLAGS_DEBUG
+    "-g -O2 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra"
+    CACHE STRING
+    "Debug build."
+    FORCE)
 
+set(CMAKE_CXX_FLAGS_RELEASE
+    "-g -O3 -Wall -Wpedantic -Wextra"
+    CACHE STRING
+    "Release build."
+    FORCE)
+
+set(CMAKE_CXX_FLAGS_PROFILE
+    "-g -O3 -Wall -Wpedantic -Wextra -pg -fno-inline "
+    CACHE STRING
+    "Flags used by the C++ compiler during profile builds."
+    FORCE)
+
+# Set default build type
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O2 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra")
-set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall -Wpedantic -Wextra")
-#set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall -Wpedantic -Wextra -pg -fno-inline ") # profiling
 
-message(STATUS "${TADAH} Build with -march=native in ${TADAH_MARCH_NATIVE}")
+# Check is build supported
+string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
+if (CMAKE_BUILD_TYPE STREQUAL "DEBUG" 
+        OR
+        CMAKE_BUILD_TYPE STREQUAL "RELEASE"
+        OR
+        CMAKE_BUILD_TYPE STREQUAL "PROFILE"
+        )
+    message(STATUS "${TADAH} Build type:  ${CMAKE_BUILD_TYPE}.")
+else()
+    message(FATAL_ERROR "
+    Selected build type is not supported: ${CMAKE_BUILD_TYPE}.
+    Supported build types: Release, Debug, Profile"
+    )
+endif()
+
+# Update the documentation string of CMAKE_BUILD_TYPE for GUIs
+set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
+    "Choose the type of build, options are: None Debug Release Profile."
+    FORCE)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Here we only need name so for e.g. liblammps_serial.so use lammps_serial
+if(NOT DEFINED TADAH_LAMMPS_LIB)
+    set(TADAH_LAMMPS_LIB "lammps_serial")
+endif()
+
+# Set CONFIG_FILE_DIR before adding CORE module
+# otherwise CORE module will set it itself
+set(CONFIG_FILE_DIR "${CMAKE_INSTALL_PREFIX}/include/tadah/config/")
+
+add_subdirectory(CORE)
+add_subdirectory(MODELS)
+add_subdirectory(MLIP)
+
+if(BUILD_SHARED_LIBS) 
+    add_library(tadah SHARED
+        $<TARGET_OBJECTS:tadah.core.obj>
+        $<TARGET_OBJECTS:tadah.models.obj>
+        $<TARGET_OBJECTS:tadah.mlip.obj>
+        )
+else()
+    # so far this is the only working solution to obtain static libtadah
+    # which combines everything and most importantly works when linked to
+    # the ta-dah binary
+    add_custom_target(libtadah ALL
+        COMMAND ${CMAKE_AR} rc libtadah.a
+        $<TARGET_FILE:tadah.core>
+        $<TARGET_FILE:tadah.models>
+        $<TARGET_FILE:tadah.mlip>
+        )
+endif()
+
+add_executable (ta-dah bin/tadah.cpp)
+target_link_libraries(ta-dah PRIVATE tadah)
+
+#########################################################################
 if(TADAH_MARCH_NATIVE)
     include(CheckCXXCompilerFlag)
     CHECK_CXX_COMPILER_FLAG("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
@@ -110,10 +162,10 @@ if(TADAH_MARCH_NATIVE)
         message(STATUS "${TADAH} ...but -march=native is not supported")
     endif()
 endif()
+message(STATUS "${TADAH} Build with -march=native in ${TADAH_MARCH_NATIVE}")
+#########################################################################
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-
+#########################################################################
 if(TADAH_BUILD_DOCUMENTATION)
     find_package(Doxygen)
 	if(NOT DOXYGEN_FOUND)
@@ -134,48 +186,37 @@ if(TADAH_BUILD_DOCUMENTATION)
 		VERBATIM
 		)
 endif()
-
-if(TADAH_ENABLE_FAST_MATH)
-    message(STATUS "${TADAH} Build with fast math optimizations")
-	if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID MATCHES "GNU"))
-		add_compile_options(-ffast-math)
-	elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-		add_compile_options(/fp:fast)
-	endif()
-else()
-	if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-		add_compile_options(/fp:precise)
-	endif()
-endif()
-
-add_subdirectory(CORE)
-add_subdirectory(MODELS)
-add_subdirectory(MLIP)
-
-add_library(
-    tadah #${_TADAH_LIB_BUILD}
-    ${MLIP_SRC}
-    )
-
-add_executable (ta-dah bin/tadah.cpp)
-target_link_libraries(tadah PUBLIC tadah.core)
-target_link_libraries(tadah PUBLIC tadah.models)
-#target_link_libraries(tadah PUBLIC tadah.mlip)
+message(STATUS "${TADAH} Build documentation is ${TADAH_BUILD_DOCUMENTATION}")
+#########################################################################
 
 #########################################################################
+if(TADAH_ENABLE_FAST_MATH)
+    if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID MATCHES "GNU"))
+        add_compile_options(-ffast-math)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        add_compile_options(/fp:fast)
+    endif()
+else()
+    if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        add_compile_options(/fp:precise)
+    endif()
+endif()
+message(STATUS "${TADAH}: Build with fast math optimisation is ${TADAH_ENABLE_FAST_MATH}")
+#########################################################################
+
 #########################################################################
 if(TADAH_ENABLE_MPI)
-    message(STATUS "${TADAH}: Build with MPI is ON")
     find_package(MPI REQUIRED)
     if(MPI_CXX_FOUND)
         target_link_libraries(ta-dah PUBLIC MPI::MPI_CXX)
         add_compile_definitions(TADAH_ENABLE_MPI)
     endif()
 endif()
+message(STATUS "${TADAH}: Build with MPI is ${TADAH_ENABLE_MPI}")
 #########################################################################
+
 #########################################################################
 if(TADAH_ENABLE_HPO)
-    message(STATUS "${TADAH}: Build with Hyperparameter optimiser is ON")
     if (NOT TADAH_ENABLE_MPI)
         if (NOT TADAH_LAMMPS_MPI_STUBS)
             message(FATAL_ERROR "${TADAH}: You are compiling with TADAH_ENABLE_HPO=ON
@@ -205,7 +246,6 @@ if(TADAH_ENABLE_HPO)
         GIT_TAG        v19.24
         )
     FetchContent_MakeAvailable(dlib)
-    message(STATUS "${TADAH}: Done!")
 
     target_link_libraries(ta-dah PUBLIC dlib::dlib)
 
@@ -238,39 +278,39 @@ if(TADAH_ENABLE_HPO)
     target_link_libraries(ta-dah PUBLIC hpo::rc)
     target_link_libraries(ta-dah PUBLIC)
     target_link_libraries(ta-dah PUBLIC -llapacke)
-    target_link_libraries(tadah PUBLIC -llapacke)
-
-else()
-    message(STATUS "${TADAH}: Build with Hyperparameter optimiser is OFF")
+    #target_link_libraries(tadah PUBLIC -llapacke)
 endif()
+message(STATUS "${TADAH}: Build with Hyperparameter optimiser is ${TADAH_ENABLE_HPO}")
 #########################################################################
 
 #########################################################################
 if(TADAH_ENABLE_OPENMP)
-    message(STATUS "${TADAH}: Build with OpenMP is ON")
     find_package(OpenMP REQUIRED)
 	if(OpenMP_CXX_FOUND)
-        target_link_libraries(tadah PUBLIC OpenMP::OpenMP_CXX)
+        if(BUILD_SHARED_LIBS) 
+            target_link_libraries(tadah PUBLIC OpenMP::OpenMP_CXX)
+        endif()
         target_link_libraries(ta-dah PUBLIC OpenMP::OpenMP_CXX)
         add_compile_definitions(TADAH_ENABLE_OPENMP)
-	endif()
-else()
-    message(STATUS "${TADAH}: Build with OpenMP is OFF")
+    endif()
 endif()
+message(STATUS "${TADAH}: Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
 #########################################################################
 
 #########################################################################
 
 find_package(LAPACK)
+target_link_libraries (ta-dah PRIVATE ${LAPACK_LIBRARIES})
 
-target_link_libraries (ta-dah PUBLIC tadah ${LAPACK_LIBRARIES})
-
-
+install(DIRECTORY "CORE/config" DESTINATION ${CMAKE_INSTALL_PREFIX}/include/tadah)
 install(TARGETS ta-dah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
-##### END OF SRC CMAKE #################################################
 
-#file(COPY src/lammps/USER-TADAH DESTINATION .)
+
+if(BUILD_SHARED_LIBS) 
+    install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+else()
+    install(FILES ${CMAKE_BINARY_DIR}/libtadah.a DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+endif()
 
 include(CTest) 
 if(TADAH_BUILD_TESTS)
@@ -279,8 +319,6 @@ endif()
 
 set(CATCH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/catch2)
 
-
-#configure_file(src/lammps/USER-TADAH/Makefile.lammps USER-TADAH/Makefile.lammps)
 
 message(STATUS "===================================================================")
 message(STATUS "                                                                   ")

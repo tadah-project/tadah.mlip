@@ -9,12 +9,12 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 file(GLOB tests_src "*.cpp")
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tests_data DESTINATION .)
+#file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tests_data DESTINATION .)
 
-add_executable(run_tests ${tests_src})
-target_link_libraries(run_tests PRIVATE Catch2::Catch2 tadah)
+add_executable(test_tadah ${tests_src})
+target_link_libraries(test_tadah PRIVATE Catch2::Catch2 tadah)
 find_package(LAPACK)
-target_link_libraries (run_tests PRIVATE ${LAPACK_LIBRARIES})
+target_link_libraries (test_tadah PRIVATE ${LAPACK_LIBRARIES})
 
 include(Catch.cmake)
-catch_discover_tests(run_tests)
+catch_discover_tests(test_tadah)

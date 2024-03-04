@@ -1,75 +1,79 @@
 variables:
-     #GIT_SUBMODULE_STRATEGY: recursive
-     #GIT_SUBMODULE_UPDATE_FLAGS: --remote
-    
-     #GIT_SUBMODULE_FORCE_HTTPS: "true"
-     #GIT_STRATEGY: clone
-
-stages:          # List of stages for jobs and their order of execution
+  DEBUG_DIR: "build_debug"
+  RELEASE_DIR: "build_release"
+  CPU_BUILD: 4
+  CPU_SIM: 4
+  INSTALL_PATH: "~/.local"
+stages:
   - build
-  - test
+  - build.tests
+  - run.tests
+  - trigger
 
 before_script:
- #- sudo apt-get update --yes
- #- sudo apt-get install --yes g++
- #- sudo apt-get install --yes liblapack-dev
- #- sudo apt-get install --yes libblas-dev
- #- sudo apt-get install --yes gcovr
- - git submodule sync --recursive
- - git submodule foreach --recursive git fetch
- - git submodule update --init --recursive
- - ls -l
- - git status
- #- git pull origin main
- - cd MLIP
- #- git pull origin main
- - cd ..
- - g++ --version
- - export PATH=$PATH:~/.local/bin
- - export CPATH=$CPATH:~/.local/include
- - export LIBRARY_PATH=$LIBRARY_PATH:~/.local/lib
- - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.local/lib:/usr/local/lib
- - export OMP_NUM_THREADS=1
+  - git submodule sync --recursive
+  - git submodule foreach --recursive git fetch
+  - git submodule update --init --recursive
+  - mkdir -p ${DEBUG_DIR}
+  - mkdir -p ${RELEASE_DIR}
+  - export PATH=$PATH:${INSTALL_PATH}/bin
+  - export CPATH=$CPATH:${INSTALL_PATH}/include
+  - export LIBRARY_PATH=$LIBRARY_PATH:${INSTALL_PATH}/lib
+  - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${INSTALL_PATH}/lib
+  - export OMP_NUM_THREADS=${CPU_SIM}
 
-
-build-job:
+build-debug:
   stage: build
   script:
-    - mkdir -p build
-    - cd build
-    - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="--coverage -g -O1"
-    - make -j 4
-    - make install
+    - cd ${DEBUG_DIR}
+    - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra --coverage"
+    - make -j ${CPU_BUILD}
 
 build-tests:
   variables: 
-    GIT_CLEAN_FLAGS: -ffdx -e build/
-  stage: build
-  needs: [build-job]
+    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR}
+  stage: build.tests
+  needs: [build-debug]
   script:
-    - cd build
-    - cmake .. -DTADAH_ENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/.local -DTADAH_BUILD_TESTS=ON  -DCMAKE_CXX_FLAGS="--coverage -g -O1"
-    - make -j 4
+    - cd ${DEBUG_DIR}
+    - cmake .. -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_CXX_FLAGS="--coverage -g -O1"
+    - make -j ${OMP_NUM_THREADS}
     - rm -rf _deps
     - find . -name "*.a" -exec rm {} +
     - find . -name "*.o" -exec rm {} +
   artifacts:
     paths:
-      - "build"
+      - "${DEBUG_DIR}"
 
-test-job1:
-  stage: test
-  dependencies:
-    - build-job
+run-tests-1:
+  stage: run.tests
+  needs: [build-tests]
   script:
     - ta-dah --version
     - ta-dah --help
 
-test-job2:
-  stage: test
+run-tests-2:
+  stage: run.tests
   needs: [build-tests]
   script:
-    - cd build
+    - cd ${DEBUG_DIR}
     - make test
-    - gcovr --exclude='.*/Eigen/.*' --exclude='.*/catch2/.*' --exclude='.*/tests/.*' --exclude='.*/CLI11/.*' --exclude='.*/toml11/.*' -r ..
+    - gcovr --exclude='.*/Eigen/.*' --exclude='.*/catch2/.*' --exclude='.*/tests/.*' --exclude='.*/CLI11/.*' --exclude='.*/toml11/.*'  --exclude='.*/CMakeFiles/.*' -r ..
   coverage: /^TOTAL.*\s+(\d+\%)$/
+
+build-release-shared:
+  stage: build
+  script:
+    - cd ${RELEASE_DIR}
+    - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - make -j ${CPU_BUILD}
+    - make install
+
+build-release-static:
+  stage: build
+  needs: [build-release-shared]
+  script:
+    - cd ${RELEASE_DIR}
+    - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - make -j ${CPU_BUILD}
+    - make install

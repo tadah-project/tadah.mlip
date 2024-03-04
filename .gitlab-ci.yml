@@ -4,6 +4,7 @@ variables:
   CPU_BUILD: 4
   CPU_SIM: 4
   INSTALL_PATH: "~/.local"
+  
 stages:
   - build
   - build.tests

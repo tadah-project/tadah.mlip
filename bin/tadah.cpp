@@ -237,9 +237,9 @@ void TadahCLI::subcommand_train() {
     if (is_verbose()) std::cout << "Done!" << std::endl;
 
     if (is_verbose()) std::cout << "Training start..." << std::flush;
-    DM_Function_Base *fb = factory<DM_Function_Base,Config&>(
+    DM_Function_Base *fb = CONFIG::factory<DM_Function_Base,Config&>(
             config.get<std::string>("MODEL",1),config);
-    M_Tadah_Base *model = factory<M_Tadah_Base,DM_Function_Base&,Config&>
+    M_Tadah_Base *model = CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>
         (config.get<std::string>("MODEL",0),*fb,config);
 
     DescriptorsCalc<> dc(config,*DCS.d2b,*DCS.d3b,*DCS.dmb,
@@ -324,9 +324,9 @@ void TadahCLI::subcommand_predict() {
 
 
     if (is_verbose()) std::cout << "Prediction start..." << std::flush;
-    DM_Function_Base *fb = factory<DM_Function_Base,Config&>(
+    DM_Function_Base *fb = CONFIG::factory<DM_Function_Base,Config&>(
             pot_config.get<std::string>("MODEL",1),pot_config);
-    M_Tadah_Base *modelp = factory<M_Tadah_Base,DM_Function_Base&,Config&>(
+    M_Tadah_Base *modelp = CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>(
             pot_config.get<std::string>("MODEL",0),*fb,pot_config);
 
     StructureDB stpred;

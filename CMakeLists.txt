@@ -126,28 +126,17 @@ endif()
 # Set CONFIG_FILE_DIR before adding CORE module
 # otherwise CORE module will set it itself
 set(CONFIG_FILE_DIR "${CMAKE_INSTALL_PREFIX}/include/tadah/config/")
+add_compile_definitions("TADAH_CONFIG_DIR=\"${CONFIG_FILE_DIR}\"")
 
 add_subdirectory(CORE)
 add_subdirectory(MODELS)
 add_subdirectory(MLIP)
 
-if(BUILD_SHARED_LIBS) 
-    add_library(tadah SHARED
-        $<TARGET_OBJECTS:tadah.core.obj>
-        $<TARGET_OBJECTS:tadah.models.obj>
-        $<TARGET_OBJECTS:tadah.mlip.obj>
-        )
-else()
-    # so far this is the only working solution to obtain static libtadah
-    # which combines everything and most importantly works when linked to
-    # the ta-dah binary
-    add_custom_target(libtadah ALL
-        COMMAND ${CMAKE_AR} rc libtadah.a
-        $<TARGET_FILE:tadah.core>
-        $<TARGET_FILE:tadah.models>
-        $<TARGET_FILE:tadah.mlip>
-        )
-endif()
+add_library(tadah
+    $<TARGET_OBJECTS:tadah.core.obj>
+    $<TARGET_OBJECTS:tadah.models.obj>
+    $<TARGET_OBJECTS:tadah.mlip.obj>
+    )
 
 add_executable (ta-dah bin/tadah.cpp)
 target_link_libraries(ta-dah PRIVATE tadah)
@@ -287,9 +276,7 @@ message(STATUS "${TADAH}: Build with Hyperparameter optimiser is ${TADAH_ENABLE_
 if(TADAH_ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
 	if(OpenMP_CXX_FOUND)
-        if(BUILD_SHARED_LIBS) 
-            target_link_libraries(tadah PUBLIC OpenMP::OpenMP_CXX)
-        endif()
+        target_link_libraries(tadah PUBLIC OpenMP::OpenMP_CXX)
         target_link_libraries(ta-dah PUBLIC OpenMP::OpenMP_CXX)
         add_compile_definitions(TADAH_ENABLE_OPENMP)
     endif()
@@ -305,12 +292,7 @@ target_link_libraries (ta-dah PRIVATE ${LAPACK_LIBRARIES})
 install(DIRECTORY "CORE/config" DESTINATION ${CMAKE_INSTALL_PREFIX}/include/tadah)
 install(TARGETS ta-dah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
-
-if(BUILD_SHARED_LIBS) 
-    install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
-else()
-    install(FILES ${CMAKE_BINARY_DIR}/libtadah.a DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
-endif()
+install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
 include(CTest) 
 if(TADAH_BUILD_TESTS)

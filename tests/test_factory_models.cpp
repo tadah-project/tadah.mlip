@@ -33,17 +33,17 @@ TEST_CASE( "Testing Factory: Models", "[factory_models]" ) {
     config.add("MPARAMS",3);
     // Config contains defaults only, we want to run prediction
     // should compile and run
-    for (auto b:Registry<DM_Function_Base,Config&>::registry) {
-        DM_Function_Base *fb = factory<DM_Function_Base,Config&>(b.first,config);
-        for (auto c:Registry<M_Tadah_Base,DM_Function_Base&,Config&>::registry) {
+    for (auto b:CONFIG::Registry<DM_Function_Base,Config&>::registry) {
+        DM_Function_Base *fb = CONFIG::factory<DM_Function_Base,Config&>(b.first,config);
+        for (auto c:CONFIG::Registry<M_Tadah_Base,DM_Function_Base&,Config&>::registry) {
             if (dynamic_cast<Kern_Base*>(fb) != nullptr && c.first=="M_KRR") {
-                REQUIRE(factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config));
+                REQUIRE(CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config));
             }
             else if (dynamic_cast<BF_Base*>(fb) != nullptr && c.first=="M_BLR") {
-                REQUIRE(factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config));
+                REQUIRE(CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config));
             }
             else {
-                REQUIRE_THROWS_AS((factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)),
+                REQUIRE_THROWS_AS((CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)),
                         std::invalid_argument);
             }
         }

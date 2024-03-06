@@ -32,7 +32,6 @@ build-debug:
     - pwd
     - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-    - make install
 
 build-tests:
   variables: 
@@ -43,7 +42,6 @@ build-tests:
     - cd ${DEBUG_DIR}
     - cmake .. -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_CXX_FLAGS="--coverage -g -O1" -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${OMP_NUM_THREADS}
-    - make install
     - rm -rf _deps
     - find . -name "*.a" -exec rm {} +
     - find . -name "*.o" -exec rm {} +
@@ -52,13 +50,6 @@ build-tests:
       - "${DEBUG_DIR}"
 
 run-tests-1:
-  stage: run.tests
-  needs: [build-tests]
-  script:
-    - ta-dah --version
-    - ta-dah --help
-
-run-tests-2:
   stage: run.tests
   needs: [build-tests]
   script:
@@ -73,7 +64,6 @@ build-release-shared:
     - cd ${RELEASE_DIR}
     - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-    - make install
 
 build-release-static:
   stage: build
@@ -82,4 +72,3 @@ build-release-static:
     - cd ${RELEASE_DIR}
     - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-    - make install

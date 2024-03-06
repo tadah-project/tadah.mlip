@@ -4,7 +4,7 @@ variables:
   CPU_BUILD: 4
   CPU_SIM: 4
   INSTALL_PATH: "~/.local"
-  GIT_CLONE_PATH: '$CI_BUILDS_DIR/$CI_JOB_ID/$CI_PROJECT_NAME'
+  GIT_CLONE_PATH: $CI_BUILDS_DIR/$CI_COMMIT_SHA/$CI_PROJECT_NAME
   
 stages:
   - build
@@ -13,6 +13,11 @@ stages:
   - trigger
 
 before_script:
+  - echo "CI_BUILDS_DIR" $CI_BUILDS_DIR
+  - echo "CI_JOB_ID" $CI_JOB_ID
+  - echo "CI_COMMIT_SHA" $CI_COMMIT_SHA
+  - echo "CI_PROJECT_NAME" $CI_PROJECT_NAME
+  - echo "GIT_CLONE_PATH" $GIT_CLONE_PATH
   - pwd
   - git submodule sync --recursive
   - git submodule foreach --recursive git fetch

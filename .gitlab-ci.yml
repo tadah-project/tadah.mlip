@@ -4,6 +4,7 @@ variables:
   CPU_BUILD: 4
   CPU_SIM: 4
   INSTALL_PATH: "~/.local"
+  CI_PROJECT_DIR: ${CI_PROJECT_DIR}/CORE_PROJECT
   
 stages:
   - build
@@ -12,6 +13,7 @@ stages:
   - trigger
 
 before_script:
+  - pwd
   - git submodule sync --recursive
   - git submodule foreach --recursive git fetch
   - git submodule update --init --recursive
@@ -27,6 +29,7 @@ build-debug:
   stage: build
   script:
     - cd ${DEBUG_DIR}
+    - pwd
     - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install

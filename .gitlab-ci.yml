@@ -4,7 +4,7 @@ variables:
   CPU_BUILD: 4
   CPU_SIM: 4
   INSTALL_PATH: "~/.local"
-  CI_PROJECT_DIR: ${CI_PROJECT_DIR}/CORE_PROJECT
+  GIT_CLONE_DIR: ${GIT_CLONE_DIR}/TADAH_MLIP_PROJECT
   
 stages:
   - build

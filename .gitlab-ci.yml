@@ -5,6 +5,7 @@ variables:
   CPU_SIM: 4
   INSTALL_PATH: "~/.local"
   GIT_CLONE_PATH: $CI_BUILDS_DIR/$CI_COMMIT_SHA/$CI_PROJECT_NAME
+  GIT_SUBMODULE_STRATEGY: recursive
   
 stages:
   - build

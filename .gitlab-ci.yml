@@ -19,9 +19,9 @@ before_script:
   - echo "CI_PROJECT_NAME" $CI_PROJECT_NAME
   - echo "GIT_CLONE_PATH" $GIT_CLONE_PATH
   - pwd
-  - git submodule sync --recursive
-  - git submodule foreach --recursive git fetch
-  - git submodule update --init --recursive
+  #- git submodule sync --recursive
+  #- git submodule foreach --recursive git fetch
+  #- git submodule update --init --recursive
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
   - export PATH=$PATH:${INSTALL_PATH}/bin

@@ -38,6 +38,12 @@ build-debug:
     - cd ${DEBUG_DIR}
     - pwd
     - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - pwd
+    - ls
+    - ls ..
+    - ls ../COER
+    - ls ../MODELS
+    - ls ../MLIP
     - make -j ${CPU_BUILD}
 
 build-tests:

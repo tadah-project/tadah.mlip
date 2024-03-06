@@ -41,7 +41,7 @@ build-debug:
     - pwd
     - ls
     - ls ..
-    - ls ../COER
+    - ls ../CORE
     - ls ../MODELS
     - ls ../MLIP
     - make -j ${CPU_BUILD}

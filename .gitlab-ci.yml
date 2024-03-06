@@ -11,6 +11,7 @@ stages:
   - build
   - build.tests
   - run.tests
+  - build_release
   - trigger
 
 before_script:
@@ -65,7 +66,7 @@ run-tests-1:
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build-release-shared:
-  stage: build
+  stage: build_release
   needs: [run-tests-1]
   script:
     - cd ${RELEASE_DIR}
@@ -73,7 +74,7 @@ build-release-shared:
     - make -j ${CPU_BUILD}
 
 build-release-static:
-  stage: build
+  stage: build_release
   needs: [build-release-shared]
   script:
     - cd ${RELEASE_DIR}

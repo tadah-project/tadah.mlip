@@ -66,6 +66,7 @@ run-tests-1:
 
 build-release-shared:
   stage: build
+  needs: [run-tests-1]
   script:
     - cd ${RELEASE_DIR}
     - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}

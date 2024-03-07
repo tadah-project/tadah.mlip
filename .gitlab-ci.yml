@@ -52,6 +52,9 @@ build-tests:
   stage: build.tests
   needs: [build-debug]
   script:
+    - pwd
+    - ls
+    - ls ..
     - cd ${DEBUG_DIR}
     - cmake .. -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_CXX_FLAGS="--coverage -g -O1" -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${OMP_NUM_THREADS}

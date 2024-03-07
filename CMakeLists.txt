@@ -3,6 +3,17 @@ cmake_minimum_required(VERSION 3.12)
 # There is usually no need to change anything here...
 
 set(TADAH "Ta-dah!")
+include(FetchContent)
+FetchContent_Declare(
+    Tadah.MLIP
+    GIT_REPOSITORY git@git.ecdf.ed.ac.uk:tadah/mlip.git
+    GIT_TAG origin/main
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MLIP
+    PATCH_COMMAND  mkdir -p build
+    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MLIP/build
+    )
+
+FetchContent_MakeAvailable(Tadah.MLIP)
 file(READ "MLIP/version.h" ver)
 string(REGEX MATCH "TADAH_WORLD_VERSION ([0-9])" _ "${ver}")
 set(ver_world ${CMAKE_MATCH_1})
@@ -128,9 +139,10 @@ endif()
 set(CONFIG_FILE_DIR "${CMAKE_INSTALL_PREFIX}/include/tadah/config/")
 add_compile_definitions("TADAH_CONFIG_DIR=\"${CONFIG_FILE_DIR}\"")
 
-add_subdirectory(CORE)
-add_subdirectory(MODELS)
-add_subdirectory(MLIP)
+
+#add_subdirectory(CORE)
+#add_subdirectory(MODELS)
+#add_subdirectory(MLIP)
 
 add_library(tadah
     $<TARGET_OBJECTS:tadah.core.obj>
@@ -294,12 +306,11 @@ install(TARGETS ta-dah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
-include(CTest) 
 if(TADAH_BUILD_TESTS)
+    include(CTest) 
     add_subdirectory(tests)
 endif()
 
-set(CATCH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/catch2)
 
 
 message(STATUS "===================================================================")

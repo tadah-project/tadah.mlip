@@ -32,7 +32,7 @@ build-debug-tests:
 
 run-tests-1:
   stage: run.unit.tests
-  dependencies: [build-debug-tests]
+  needs: [build-debug-tests]
   script:
     - cd ${DEBUG_DIR}
     - make test

@@ -3,7 +3,9 @@ cmake_minimum_required(VERSION 3.12)
 # There is usually no need to change anything here...
 
 set(TADAH "Ta-dah!")
+
 include(FetchContent)
+
 FetchContent_Declare(
     Tadah.MLIP
     GIT_REPOSITORY git@git.ecdf.ed.ac.uk:tadah/mlip.git
@@ -12,8 +14,28 @@ FetchContent_Declare(
     PATCH_COMMAND  mkdir -p build
     BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MLIP/build
     )
-
 FetchContent_MakeAvailable(Tadah.MLIP)
+
+FetchContent_Declare(
+    Tadah.LIBS
+    GIT_REPOSITORY git@git.ecdf.ed.ac.uk:tadah/libs.git
+    GIT_TAG origin/main
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/LIBS
+    PATCH_COMMAND  mkdir -p build
+    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/LIBS/build
+    )
+FetchContent_MakeAvailable(Tadah.LIBS)
+
+FetchContent_Declare(
+    Tadah.HPO
+    GIT_REPOSITORY git@git.ecdf.ed.ac.uk:tadah/hpo.git
+    GIT_TAG origin/main
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO
+    PATCH_COMMAND  mkdir -p build
+    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO/build
+    )
+FetchContent_MakeAvailable(Tadah.HPO)
+
 file(READ "MLIP/version.h" ver)
 string(REGEX MATCH "TADAH_WORLD_VERSION ([0-9])" _ "${ver}")
 set(ver_world ${CMAKE_MATCH_1})

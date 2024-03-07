@@ -1,9 +1,4 @@
 variables:
-  DEBUG_DIR: "build_debug"
-  RELEASE_DIR: "build_release"
-  CPU_BUILD: 4
-  CPU_SIM: 4
-  INSTALL_PATH: "~/.local"
   GIT_CLONE_PATH: $CI_BUILDS_DIR/$CI_COMMIT_SHA/$CI_PROJECT_NAME
   
 stages:
@@ -23,8 +18,6 @@ before_script:
   - export OMP_NUM_THREADS=${CPU_SIM}
 
 build-debug-tests:
-  #variables: 
-  #  GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR}
   stage: build.debug
   script:
     - cd ${DEBUG_DIR}

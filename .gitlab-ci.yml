@@ -1,7 +1,7 @@
 variables:
   DEBUG_DIR: "build_debug"
   RELEASE_DIR: "build_release"
-  CPU_BUILD: 1
+  CPU_BUILD: 4
   CPU_SIM: 4
   INSTALL_PATH: "~/.local"
   GIT_CLONE_PATH: $CI_BUILDS_DIR/$CI_COMMIT_SHA/$CI_PROJECT_NAME
@@ -21,9 +21,9 @@ before_script:
   - echo "CI_PROJECT_NAME" $CI_PROJECT_NAME
   - echo "GIT_CLONE_PATH" $GIT_CLONE_PATH
   - pwd
-  - git submodule sync --recursive
-  - git submodule foreach --recursive git fetch
-  - git submodule update --init --recursive
+  #- git submodule sync --recursive
+  #- git submodule foreach --recursive git fetch
+  #- git submodule update --init --recursive
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
   - export PATH=$PATH:${INSTALL_PATH}/bin

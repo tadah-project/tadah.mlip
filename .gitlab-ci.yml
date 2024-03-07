@@ -5,25 +5,14 @@ variables:
   CPU_SIM: 4
   INSTALL_PATH: "~/.local"
   GIT_CLONE_PATH: $CI_BUILDS_DIR/$CI_COMMIT_SHA/$CI_PROJECT_NAME
-  #GIT_SUBMODULE_STRATEGY: recursive
   
 stages:
-  - build
-  - build.tests
+  - build.debug
   - run.tests
   - build_release
   - trigger
 
 before_script:
-  - echo "CI_BUILDS_DIR" $CI_BUILDS_DIR
-  - echo "CI_JOB_ID" $CI_JOB_ID
-  - echo "CI_COMMIT_SHA" $CI_COMMIT_SHA
-  - echo "CI_PROJECT_NAME" $CI_PROJECT_NAME
-  - echo "GIT_CLONE_PATH" $GIT_CLONE_PATH
-  - pwd
-  #- git submodule sync --recursive
-  #- git submodule foreach --recursive git fetch
-  #- git submodule update --init --recursive
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
   - export PATH=$PATH:${INSTALL_PATH}/bin
@@ -32,34 +21,16 @@ before_script:
   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${INSTALL_PATH}/lib
   - export OMP_NUM_THREADS=${CPU_SIM}
 
-build-debug:
-  stage: build
-  script:
-    - cd ${DEBUG_DIR}
-    - pwd
-    - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
-    - pwd
-    - ls
-    - ls ..
-    - ls ../CORE
-    - ls ../MODELS
-    - ls ../MLIP
-    - make -j ${CPU_BUILD}
-
-build-tests:
+build-debug-tests:
   variables: 
     GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR}
-  stage: build.tests
-  needs: [build-debug]
+  stage: build.debug
   script:
-    - pwd
-    - ls
-    - ls ..
-    - git status
-    - git checkout main
     - cd ${DEBUG_DIR}
-    - cmake .. -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_CXX_FLAGS="--coverage -g -O1" -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
-    - make -j ${OMP_NUM_THREADS}
+    - pwd
+    - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra --coverage"
+               -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}  -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON
+    - make -j ${CPU_BUILD}
     - rm -rf _deps
     - find . -name "*.a" -exec rm {} +
     - find . -name "*.o" -exec rm {} +
@@ -69,7 +40,7 @@ build-tests:
 
 run-tests-1:
   stage: run.tests
-  needs: [build-tests]
+  needs: [build-debug-tests]
   script:
     - cd ${DEBUG_DIR}
     - make test

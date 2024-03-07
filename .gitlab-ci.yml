@@ -56,8 +56,6 @@ build-release-shared:
     - make -j ${CPU_BUILD}
 
 build-release-static:
-  variables: 
-    GIT_CLEAN_FLAGS: -ffdx -e ${RELEASE_DIR}
   stage: build_release
   needs: [build-release-shared]
   script:

@@ -8,8 +8,9 @@ variables:
   
 stages:
   - build.debug
-  - run.tests
+  - run.unit.tests
   - build_release
+  - run.functional.tests
   - trigger
 
 before_script:
@@ -22,8 +23,8 @@ before_script:
   - export OMP_NUM_THREADS=${CPU_SIM}
 
 build-debug-tests:
-  variables: 
-    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR}
+  #variables: 
+  #  GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR}
   stage: build.debug
   script:
     - cd ${DEBUG_DIR}
@@ -38,8 +39,8 @@ build-debug-tests:
       - "${DEBUG_DIR}"
 
 run-tests-1:
-  stage: run.tests
-  needs: [build-debug-tests]
+  stage: run.unit.tests
+  dependencies: [build-debug-tests]
   script:
     - cd ${DEBUG_DIR}
     - make test
@@ -55,6 +56,8 @@ build-release-shared:
     - make -j ${CPU_BUILD}
 
 build-release-static:
+  variables: 
+    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR}
   stage: build_release
   needs: [build-release-shared]
   script:

@@ -57,7 +57,7 @@ build-release-shared:
 
 build-release-static:
   variables: 
-    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR}
+    GIT_CLEAN_FLAGS: -ffdx -e ${RELEASE_DIR}
   stage: build_release
   needs: [build-release-shared]
   script:

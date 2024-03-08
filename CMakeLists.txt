@@ -273,7 +273,6 @@ if(TADAH_ENABLE_HPO)
 
     # add resource lib to the project so we can embed lammps scripts into
     # the library project
-    include(${PROJECT_SOURCE_DIR}/LIBS/cmrc-master/CMakeRC.cmake)
     # Add resources...
     cmrc_add_resource_library(
         hpo-resources 

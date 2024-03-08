@@ -160,12 +160,11 @@ add_library(tadah
     $<TARGET_OBJECTS:tadah.core.obj>
     $<TARGET_OBJECTS:tadah.models.obj>
     $<TARGET_OBJECTS:tadah.mlip.obj>
+    $<TARGET_OBJECTS:config::rc>
     )
 
 add_executable (ta-dah bin/tadah.cpp)
 target_link_libraries(ta-dah PRIVATE tadah)
-target_link_libraries(tadah PRIVATE config::rc)
-target_link_libraries(ta-dah PRIVATE config::rc)
 
 #########################################################################
 if(TADAH_MARCH_NATIVE)
@@ -314,6 +313,7 @@ message(STATUS "${TADAH}: Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
 
 find_package(LAPACK)
 target_link_libraries (ta-dah PRIVATE ${LAPACK_LIBRARIES})
+target_link_libraries (tadah PUBLIC ${LAPACK_LIBRARIES})
 
 install(TARGETS ta-dah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)

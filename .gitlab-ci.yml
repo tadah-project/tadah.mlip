@@ -40,7 +40,7 @@ run-tests-1:
     - cd ${DEBUG_DIR}
     - make test
     - cd tests
-    - ./test_mlip
+    - ./test_tadah
     - gcovr --exclude='.*CMakeCXXCompilerId.cpp.*' --exclude='.*/Eigen/.*' --exclude='.*/catch2/.*' --exclude='.*/tests/.*' --exclude='.*/CLI11/.*' --exclude='.*/toml11/.*'  --exclude='.*/CMakeFiles/.*' -r ..
   coverage: /^TOTAL.*\s+(\d+\%)$/
 

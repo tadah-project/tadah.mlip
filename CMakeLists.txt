@@ -161,12 +161,6 @@ set(ver_minor ${CMAKE_MATCH_1})
 project(Ta-dah VERSION ${ver_world}.${ver_major}.${ver_minor})
 message(STATUS "${TADAH} VERSION: ${ver_world}.${ver_major}.${ver_minor}")
 
-
-
-#add_subdirectory(CORE)
-#add_subdirectory(MODELS)
-#add_subdirectory(MLIP)
-
 add_library(tadah
     $<TARGET_OBJECTS:tadah.core.obj>
     $<TARGET_OBJECTS:tadah.models.obj>
@@ -324,9 +318,7 @@ message(STATUS "${TADAH}: Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
 find_package(LAPACK)
 target_link_libraries (ta-dah PRIVATE ${LAPACK_LIBRARIES})
 
-install(DIRECTORY "CORE/config" DESTINATION ${CMAKE_INSTALL_PREFIX}/include/tadah)
 install(TARGETS ta-dah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-
 install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
 if(TADAH_BUILD_TESTS)

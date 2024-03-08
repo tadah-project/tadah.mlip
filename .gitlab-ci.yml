@@ -39,7 +39,7 @@ run-tests-1:
   script:
     - cd ${DEBUG_DIR}
     - make test
-    - cd ..; gcovr -e '.*tests.*|.*lib.*|.*docs.*|.*example.*|.*scripts.*|build' -r .
+    - cd ..; gcovr -e '.*tests.*|.*lib.*|.*docs.*|.*example.*|.*scripts.*|.*LIBS.*|build' -r .
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build-release-shared:

@@ -1,11 +1,12 @@
-#include <tadah/cutoffs/cut_all.h>
-#include <tadah/descriptors/d_all.h>
-#include <tadah/models/m_all.h>
-#include <tadah/descriptors_calc.h>
-#include <tadah/config.h>
-#include <tadah/structure.h>
-#include <tadah/nn_finder.h>
-#include <tadah/output/output.h>
+#include <tadah/MODELS/cutoffs/cut_all.h>
+#include <tadah/MODELS/descriptors/d_all.h>
+#include <tadah/MLIP/models/m_all.h>
+#include <tadah/MLIP/descriptors_calc.h>
+#include <tadah/CORE/config/config.h>
+#include <tadah/MLIP/structure.h>
+#include <tadah/MLIP/nn_finder.h>
+#include <tadah/MLIP/output/output.h>
+#include <tadah/MLIP/design_matrix/functions/dm_f_all.h>
 #include <fstream>
 
 /**  @file ex2.cpp
@@ -15,7 +16,7 @@
  * To compile with `g++` and run:
  *
  * \code{.sh}
- *  $ g++ -std=c++17 -O3 ex2.cpp -o ex2.out -ltadah -fopenmp
+ *  $ g++ -std=c++17 -O3 ex2.cpp -o ex2.out -ltadah -llapack -fopenmp
  *  $ ./ex2.out
  * \endcode
  *
@@ -64,7 +65,7 @@ int main() {
     // If keyword is not listed use `Cut_Dummy`.
     // `pot.tadah`: RCTYPE2B      Cut_Cos
     using C2=Cut_Cos;
-    // `pot.tadah` no keywords ofr three-body and many-body
+    // `pot.tadah` no keywords for three-body and many-body
     using C3=Cut_Dummy;
     using CM=Cut_Dummy;
 
@@ -73,7 +74,7 @@ int main() {
     // K is used with M_KRR - Kernel Ridge Regression
     // KEYWORD `MODEL`: first argument is model, second BF/Kernel
     // `pot.tadah`: MODEL     M_KRR     Kern_Linear
-    using K=Kern_Linear;
+    using K=DM_Kern_Linear;
 
     // STEP 2b: Select Model and instantiate object.
     // `pot.tadah`: MODEL     M_KRR     Kern_Linear

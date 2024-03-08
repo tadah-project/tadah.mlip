@@ -1,13 +1,13 @@
-#include <tadah/cutoffs/cut_all.h>
-#include <tadah/descriptors/d_all.h>
-#include <tadah/models/m_all.h>
-#include <tadah/basis_functions/bf_all.h>
-#include <tadah/kernels/kern_all.h>
-#include <tadah/config.h>
-#include <tadah/structure.h>
-#include <tadah/descriptors_calc.h>
-#include <tadah/nn_finder.h>
-#include <tadah/output/output.h>
+#include <tadah/MODELS/cutoffs/cut_all.h>
+#include <tadah/MODELS/descriptors/d_all.h>
+#include <tadah/MLIP/models/m_all.h>
+#include <tadah/MLIP/design_matrix/functions/basis_functions/dm_bf_all.h>
+#include <tadah/MODELS/functions/kernels/kern_all.h>
+#include <tadah/CORE/config/config.h>
+#include <tadah/MLIP/structure.h>
+#include <tadah/MLIP/descriptors_calc.h>
+#include <tadah/MLIP/nn_finder.h>
+#include <tadah/MLIP/output/output.h>
 #include <fstream>
 
 /**  @file ex1.cpp
@@ -17,7 +17,7 @@
  * To compile with `g++` and run:
  *
  * \code{.sh}
- *  $ g++ -std=c++17 -O3 ex1.cpp -o ex1.out -ltadah -fopenmp
+ *  $ g++ -std=c++17 -O3 ex1.cpp -o ex1.out -ltadah -llapack -fopenmp
  *  $ ./ex1.out
  * \endcode
  *
@@ -98,7 +98,7 @@ int main() {
     // BF is used for M_BLR - Bayesian Linear Regression
     // K is used with M_KRR - Kernel Ridge Regression
     // See documentation for more BF and K
-    using BF=BF_Linear;
+    using BF=DM_BF_Linear;
     //using BF=BF_Polynomial2;
     //using K=Kern_Linear;
     //using K=Kern_Quadratic;
@@ -107,10 +107,10 @@ int main() {
     using M=M_BLR<BF>;
     //using M=M_KRR<K>;
 
-    // STEP 2c: Instantiate a model
+    //// STEP 2c: Instantiate a model
     M model(config);
 
-    std::cout << "TRAINING STAGE..." << std::flush;
+    //std::cout << "TRAINING STAGE..." << std::flush;
 
     // STEP 3: Training - Option 1.
     // Train with StructureDB only. We have to provide calculators here.

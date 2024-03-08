@@ -21,7 +21,7 @@ build-debug-tests:
   stage: build.debug
   script:
     - cd ${DEBUG_DIR}
-    - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON
+    - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
 #    - rm -rf _deps
 #    - find . -name "*.a" -exec rm {} +
@@ -32,7 +32,7 @@ build-debug-tests:
 
 run-tests-1:
   variables: 
-    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR} -e CORE -e MODELS -e MD -e LIBS -e HPO  
+    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR} -e CORE -e MODELS -e MLIP -e LIBS -e HPO  
   stage: run.unit.tests
   needs: [build-debug-tests]
   script:

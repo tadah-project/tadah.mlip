@@ -113,11 +113,6 @@ if(NOT DEFINED TADAH_LAMMPS_LIB)
     set(TADAH_LAMMPS_LIB "lammps_serial")
 endif()
 
-# Set CONFIG_FILE_DIR before adding CORE module
-# otherwise CORE module will set it itself
-set(CONFIG_FILE_DIR "${CMAKE_INSTALL_PREFIX}/include/tadah/CORE/config")
-add_compile_definitions("TADAH_CONFIG_DIR=\"${CONFIG_FILE_DIR}\"")
-
 include(FetchContent)
 
 FetchContent_Declare(

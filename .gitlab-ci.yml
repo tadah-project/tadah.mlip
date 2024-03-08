@@ -38,9 +38,7 @@ run-tests-1:
   needs: [build-debug-tests]
   script:
     - cd ${DEBUG_DIR}
-    #- make test
-    - cd tests
-    - ./test_tadah
+    - make test
     - cd ..; gcovr -e '.*tests.*|.*lib.*|.*docs.*|.*example.*|.*scripts.*|build' -r .
   coverage: /^TOTAL.*\s+(\d+\%)$/
 

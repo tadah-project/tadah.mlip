@@ -38,7 +38,7 @@ run-tests-1:
   needs: [build-debug-tests]
   script:
     - cd ${DEBUG_DIR}
-    - make test
+    #- make test
     - cd tests
     - ./test_tadah
     - gcovr --exclude='.*CMakeCXXCompilerId.cpp.*' --exclude='.*/Eigen/.*' --exclude='.*/catch2/.*' --exclude='.*/tests/.*' --exclude='.*/CLI11/.*' --exclude='.*/toml11/.*'  --exclude='.*/CMakeFiles/.*' -r ..

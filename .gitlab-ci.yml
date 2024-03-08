@@ -41,7 +41,7 @@ run-tests-1:
     #- make test
     - cd tests
     - ./test_tadah
-    - gcovr --exclude='.*CMakeCXXCompilerId.cpp.*' --exclude='.*/Eigen/.*' --exclude='.*/catch2/.*' --exclude='.*/tests/.*' --exclude='.*/CLI11/.*' --exclude='.*/toml11/.*'  --exclude='.*/CMakeFiles/.*' -r ..
+    - cd ..; gcovr -e '.*tests.*|.*lib.*|.*docs.*|.*example.*|.*scripts.*|build' -r .
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build-release-shared:

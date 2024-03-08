@@ -169,6 +169,8 @@ add_library(tadah
 
 add_executable (ta-dah bin/tadah.cpp)
 target_link_libraries(ta-dah PRIVATE tadah)
+target_link_libraries(tadah PRIVATE config::rc)
+target_link_libraries(ta-dah PRIVATE config::rc)
 
 #########################################################################
 if(TADAH_MARCH_NATIVE)

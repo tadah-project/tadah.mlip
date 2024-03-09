@@ -117,7 +117,7 @@ include(FetchContent)
 
 FetchContent_Declare(
     Tadah.MLIP
-    GIT_REPOSITORY git@git.ecdf.ed.ac.uk:tadah/mlip.git
+    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
     GIT_TAG origin/main
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MLIP
     PATCH_COMMAND  mkdir -p build
@@ -127,7 +127,7 @@ FetchContent_MakeAvailable(Tadah.MLIP)
 
 FetchContent_Declare(
     Tadah.LIBS
-    GIT_REPOSITORY git@git.ecdf.ed.ac.uk:tadah/libs.git
+    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/libs.git
     GIT_TAG origin/main
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/LIBS
     PATCH_COMMAND  mkdir -p build
@@ -137,7 +137,7 @@ FetchContent_MakeAvailable(Tadah.LIBS)
 
 FetchContent_Declare(
     Tadah.HPO
-    GIT_REPOSITORY git@git.ecdf.ed.ac.uk:tadah/hpo.git
+    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
     GIT_TAG origin/main
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO
     PATCH_COMMAND  mkdir -p build

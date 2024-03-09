@@ -162,6 +162,7 @@ add_library(tadah
     $<TARGET_OBJECTS:tadah.mlip.obj>
     $<TARGET_OBJECTS:config::rc>
     )
+target_link_libraries (tadah PUBLIC config::rc)
 
 add_executable (ta-dah bin/tadah.cpp)
 target_link_libraries(ta-dah PRIVATE tadah)

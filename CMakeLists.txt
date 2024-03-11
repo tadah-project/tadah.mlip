@@ -117,16 +117,12 @@ include(FetchContent)
 
 get_filename_component(BUILD_DIR_NAME ${CMAKE_BINARY_DIR} NAME)
 
-message(${BUILD_DIR_NAME})
-message(${BUILD_DIR_NAME})
-message(${BUILD_DIR_NAME})
-
 FetchContent_Declare(
     Tadah.MLIP
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
     GIT_TAG origin/main
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MLIP
-    PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME }
+    PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME}
     BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MLIP/${BUILD_DIR_NAME}
     )
 FetchContent_MakeAvailable(Tadah.MLIP)

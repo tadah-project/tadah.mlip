@@ -1,6 +1,6 @@
 ALPHA      1
 BETA      1
-BIAS      false
+BIAS      true
 CGRID2B     -1     4     1.0     5.3
 DIMER     false
 EWEIGHT      1.0
@@ -17,5 +17,5 @@ RCUT2B      5.3
 SGRID2B     -2     4     0.1     1.0
 SWEIGHT      1
 TYPE2B      D2_Blip
-WEIGHTS     0.3501814918     -0.2916197278     -0.08735823387     -0.04659144812
+WEIGHTS     -4.415741551     0.2610030562     -0.2320392407     -0.03915282106     -0.03235515443
 

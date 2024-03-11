@@ -50,11 +50,9 @@ build-release-shared:
     - cd ${RELEASE_DIR}
     - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-    - make install
   artifacts:
     paths:
-      - $RELEASE_DIR/ta-dah
-      - $RELEASE_DIR/libtadah.so
+      - $RELEASE_DIR/*
 
 
 build-release-static:
@@ -63,20 +61,19 @@ build-release-static:
     - cd ${RELEASE_DIR}
     - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-    - make install
   artifacts:
     paths:
-      - $RELEASE_DIR/ta-dah
-      - $RELEASE_DIR/libtadah.a
+      - $RELEASE_DIR/*
 
 run-func-tests-shared:
   stage: run.functional.tests
   needs: [build-release-shared]
   script:
-    - cp ${RELEASE_DIR}/ta-dah ~/.local/bin/.
-    - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
+    - cd $RELEASE_DIR
+    - make install
     - ls -l ~/.local/bin/ta-dah
     - ls -l ~/.local/lib/libtadah*
+    - echo $PATH
     - which ta-dah
     - ta-dah
     - ta-dah -h
@@ -86,10 +83,11 @@ run-func-tests-static:
   stage: run.functional.tests
   needs: [build-release-static]
   script:
-    - cp ${RELEASE_DIR}/ta-dah ~/.local/bin/.
-    - cp ${RELEASE_DIR}/libtadah.a ~/.local/lib/.
+    - cd $RELEASE_DIR
+    - make install
     - ls -l ~/.local/bin/ta-dah
     - ls -l ~/.local/lib/libtadah*
+    - echo $PATH
     - which ta-dah
     - ta-dah
     - ta-dah -h
@@ -99,7 +97,8 @@ build-example-1-static:
   stage: build.examples
   needs: [build-release-static]
   script:
-    - cp ${RELEASE_DIR}/libtadah.a ~/.local/lib/.
+    - cd $RELEASE_DIR
+    - make install
     - cd ${RELEASE_DIR}/examples/ex_1
     - g++ -O3 ex1.cpp -ltadah -llapack -fopenmp
   artifacts:
@@ -110,7 +109,8 @@ build-example-2-static:
   stage: build.examples
   needs: [build-release-static]
   script:
-    - cp ${RELEASE_DIR}/libtadah.a ~/.local/lib/.
+    - cd $RELEASE_DIR
+    - make install
     - cd ${RELEASE_DIR}/examples/ex_2
     - g++ -O3 ex2.cpp -ltadah -llapack -fopenmp
   artifacts:
@@ -121,7 +121,8 @@ build-example-1-shared:
   stage: build.examples
   needs: [build-release-shared]
   script:
-    - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
+    - cd $RELEASE_DIR
+    - make install
     - cd ${RELEASE_DIR}/examples/ex_1
     - g++ -O3 ex1.cpp -ltadah -llapack -fopenmp
   artifacts:
@@ -132,7 +133,8 @@ build-example-2-shared:
   stage: build.examples
   needs: [build-release-shared]
   script:
-    - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
+    - cd $RELEASE_DIR
+    - make install
     - cd ${RELEASE_DIR}/examples/ex_2
     - g++ -O3 ex2.cpp -ltadah -llapack -fopenmp
   artifacts:
@@ -171,7 +173,8 @@ run-example-1-shared:
   stage: run.examples
   needs: [build-example-1-shared]
   script:
-    - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
+    - cd $RELEASE_DIR
+    - make install
     - cd ${RELEASE_DIR}/examples/ex_1
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
@@ -186,7 +189,8 @@ run-example-2-shared:
   stage: run.examples
   needs: [build-example-2-shared]
   script:
-    - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
+    - cd $RELEASE_DIR
+    - make install
     - cd ${RELEASE_DIR}/examples/ex_2
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred

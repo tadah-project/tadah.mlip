@@ -115,13 +115,19 @@ endif()
 
 include(FetchContent)
 
+get_filename_component(BUILD_DIR_NAME ${CMAKE_BINARY_DIR} NAME)
+
+message(${BUILD_DIR_NAME})
+message(${BUILD_DIR_NAME})
+message(${BUILD_DIR_NAME})
+
 FetchContent_Declare(
     Tadah.MLIP
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
     GIT_TAG origin/main
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MLIP
-    PATCH_COMMAND  mkdir -p build
-    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MLIP/build
+    PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME }
+    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MLIP/${BUILD_DIR_NAME}
     )
 FetchContent_MakeAvailable(Tadah.MLIP)
 
@@ -130,8 +136,8 @@ FetchContent_Declare(
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/libs.git
     GIT_TAG origin/main
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/LIBS
-    PATCH_COMMAND  mkdir -p build
-    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/LIBS/build
+    PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME}
+    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/LIBS/${BUILD_DIR_NAME}
     )
 FetchContent_MakeAvailable(Tadah.LIBS)
 
@@ -140,8 +146,8 @@ FetchContent_Declare(
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
     GIT_TAG origin/main
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO
-    PATCH_COMMAND  mkdir -p build
-    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO/build
+    PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME}
+    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO/${BUILD_DIR_NAME}
     )
 FetchContent_MakeAvailable(Tadah.HPO)
 

@@ -27,7 +27,7 @@ build-tests:
   variables: 
     GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR} -e CORE -e MODELS -e MLIP -e LIBS -e HPO  
   stage: build.debug
-  needs: build-tests
+  needs: [build-debug]
   script:
     - cd ${DEBUG_DIR}
     - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}

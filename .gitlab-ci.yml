@@ -53,7 +53,7 @@ build-release-shared:
     - make install
   artifacts:
     paths:
-      - $INSTALL_PATH
+      - ../.local
 
 
 build-release-static:
@@ -65,7 +65,7 @@ build-release-static:
     - make install
   artifacts:
     paths:
-      - $INSTALL_PATH
+      - ../.local
 
 run-func-tests-shared:
   stage: run.functional.tests

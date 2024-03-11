@@ -46,6 +46,7 @@ run-unit-tests-1:
 
 build-release-shared:
   stage: build.release
+  needs: []
   script:
     - cd ${RELEASE_DIR}
     - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
@@ -62,6 +63,7 @@ build-release-shared:
 
 build-release-static:
   stage: build.release
+  needs: []
   script:
     - cd ${RELEASE_DIR}
     - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}

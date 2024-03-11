@@ -158,11 +158,11 @@ run-example-1-static:
     - cd examples/ex_1
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
-    - if  $? -ne 0 ]; then exit 1; fi
+    - if [ $? -ne 0 ]; then exit 1; fi
     - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if  $? -ne 0 ]; then exit 2; fi
+    - if [ $? -ne 0 ]; then exit 2; fi
     - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if  $? -ne 0 ]; then exit 3; fi
+    - if [ $? -ne 0 ]; then exit 3; fi
     - echo "Success"
 
 run-example-2-static:
@@ -172,41 +172,41 @@ run-example-2-static:
     - cd examples/ex_2
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
-    - if  $? -ne 0 ]; then exit 1; fi
+    - if [ $? -ne 0 ]; then exit 1; fi
     - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if  $? -ne 0 ]; then exit 2; fi
+    - if [ $? -ne 0 ]; then exit 2; fi
     - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if  $? -ne 0 ]; then exit 3; fi
+    - if [ $? -ne 0 ]; then exit 3; fi
     - echo "Success"
 
 run-example-1-shared:
   stage: run.examples
-  needs: [build-example-1-shared]
+  needs: [build-example-1-shared, build-release-shared]
   script:
     - cd $RELEASE_DIR
     - make install
     - cd ../examples/ex_1
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
-    - if  $? -ne 0 ]; then exit 1; fi
+    - if [ $? -ne 0 ]; then exit 1; fi
     - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if  $? -ne 0 ]; then exit 2; fi
+    - if [ $? -ne 0 ]; then exit 2; fi
     - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if  $? -ne 0 ]; then exit 3; fi
+    - if [ $? -ne 0 ]; then exit 3; fi
     - echo "Success"
 
 run-example-2-shared:
   stage: run.examples
-  needs: [build-example-2-shared]
+  needs: [build-example-2-shared, build-release-shared]
   script:
     - cd $RELEASE_DIR
     - make install
     - cd ../examples/ex_2
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
-    - if  $? -ne 0 ]; then exit 1; fi
+    - if [ $? -ne 0 ]; then exit 1; fi
     - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if  $? -ne 0 ]; then exit 2; fi
+    - if [ $? -ne 0 ]; then exit 2; fi
     - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if  $? -ne 0 ]; then exit 3; fi
+    - if [ $? -ne 0 ]; then exit 3; fi
     - echo "Success"

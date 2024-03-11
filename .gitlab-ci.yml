@@ -53,7 +53,8 @@ build-release-shared:
     - make install
   artifacts:
     paths:
-      - ../.local
+      - $RELEASE_DIR/ta-dah
+      - $RELEASE_DIR/libtadah.so
 
 
 build-release-static:
@@ -65,12 +66,15 @@ build-release-static:
     - make install
   artifacts:
     paths:
-      - ../.local
+      - $RELEASE_DIR/ta-dah
+      - $RELEASE_DIR/libtadah.a
 
 run-func-tests-shared:
   stage: run.functional.tests
   needs: [build-release-shared]
   script:
+    - cp ${RELEASE_DIR}/ta-dah ~/.local/bin/.
+    - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
     - ls -l ~/.local/bin/ta-dah
     - ls -l ~/.local/lib/libtadah*
     - which ta-dah
@@ -82,6 +86,8 @@ run-func-tests-static:
   stage: run.functional.tests
   needs: [build-release-static]
   script:
+    - cp ${RELEASE_DIR}/ta-dah ~/.local/bin/.
+    - cp ${RELEASE_DIR}/libtadah.a ~/.local/lib/.
     - ls -l ~/.local/bin/ta-dah
     - ls -l ~/.local/lib/libtadah*
     - which ta-dah
@@ -93,6 +99,7 @@ build-example-1-static:
   stage: build.examples
   needs: [build-release-static]
   script:
+    - cp ${RELEASE_DIR}/libtadah.a ~/.local/lib/.
     - cd ${RELEASE_DIR}/examples/ex_1
     - g++ -O3 ex1.cpp -ltadah -llapack -fopenmp
 
@@ -100,6 +107,7 @@ build-example-2-static:
   stage: build.examples
   needs: [build-release-static]
   script:
+    - cp ${RELEASE_DIR}/libtadah.a ~/.local/lib/.
     - cd ${RELEASE_DIR}/examples/ex_2
     - g++ -O3 ex2.cpp -ltadah -llapack -fopenmp
 
@@ -107,6 +115,7 @@ build-example-1-shared:
   stage: build.examples
   needs: [build-release-shared]
   script:
+    - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
     - cd ${RELEASE_DIR}/examples/ex_1
     - g++ -O3 ex1.cpp -ltadah -llapack -fopenmp
 
@@ -114,6 +123,7 @@ build-example-2-shared:
   stage: build.examples
   needs: [build-release-shared]
   script:
+    - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
     - cd ${RELEASE_DIR}/examples/ex_2
     - g++ -O3 ex2.cpp -ltadah -llapack -fopenmp
 
@@ -149,6 +159,7 @@ run-example-1-shared:
   stage: run.examples
   needs: [build-example-1-shared]
   script:
+    - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
     - cd ${RELEASE_DIR}/examples/ex_1
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
@@ -163,6 +174,7 @@ run-example-2-shared:
   stage: run.examples
   needs: [build-example-2-shared]
   script:
+    - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
     - cd ${RELEASE_DIR}/examples/ex_2
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred

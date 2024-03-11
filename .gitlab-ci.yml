@@ -4,38 +4,40 @@ variables:
 stages:
   - build.debug
   - run.unit.tests
-  - build_release
+  - build.release
   - run.functional.tests
+  - build.examples
+  - run.examples
   - trigger
 
 before_script:
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
-  - export PATH=$PATH:${INSTALL_PATH}/bin
-  - export CPATH=$CPATH:${INSTALL_PATH}/include
-  - export LIBRARY_PATH=$LIBRARY_PATH:${INSTALL_PATH}/lib
-  - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${INSTALL_PATH}/lib
   - export OMP_NUM_THREADS=${CPU_SIM}
 
-build-debug-tests:
+build-debug:
   stage: build.debug
+  script:
+    - cd ${DEBUG_DIR}
+    - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - make -j ${CPU_BUILD}
+    - make install
+
+build-tests:
+  variables: 
+    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR} -e CORE -e MODELS -e MLIP -e LIBS -e HPO  
+  stage: build.debug
+  needs: build-tests
   script:
     - cd ${DEBUG_DIR}
     - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-    - make install
-#    - rm -rf _deps
-#    - find . -name "*.a" -exec rm {} +
-#    - find . -name "*.o" -exec rm {} +
-#  artifacts:
-#    paths:
-#      - "${DEBUG_DIR}"
 
-run-tests-1:
+run-unit-tests-1:
   variables: 
     GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR} -e CORE -e MODELS -e MLIP -e LIBS -e HPO  
   stage: run.unit.tests
-  needs: [build-debug-tests]
+  needs: [build-tests]
   script:
     - cd ${DEBUG_DIR}
     - make test
@@ -43,17 +45,67 @@ run-tests-1:
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build-release-shared:
-  stage: build_release
-  needs: [run-tests-1]
+  stage: build.release
   script:
     - cd ${RELEASE_DIR}
     - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
+    - make install
 
 build-release-static:
-  stage: build_release
-  needs: [build-release-shared]
+  stage: build.release
   script:
     - cd ${RELEASE_DIR}
     - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
+    - make install
+
+run-func-tests-shared:
+  stage: run.functional.tests
+  needs: [build-release-shared]
+  script:
+    - ls -l ~/.local/bin/ta-dah
+    - ls -l ~/.local/lib/libtadah*
+    - which ta-dah
+    - ta-dah
+    - ta-dah -h
+    - ldd ~/.local/bin/ta-dah
+
+run-func-tests-static:
+  stage: run.functional.tests
+  needs: [build-release-static]
+  script:
+    - ls -l ~/.local/bin/ta-dah
+    - ls -l ~/.local/lib/libtadah*
+    - which ta-dah
+    - ta-dah
+    - ta-dah -h
+    - ldd ~/.local/bin/ta-dah
+
+build-example-1-static:
+  stage: build.examples
+  needs: [build-release-static]
+  script:
+    - cd ${RELEASE_DIR}/examples/ex_1
+    - g++ -O3 ex1.cpp -ltadah -llapack -fopenmp
+
+build-example-2-static:
+  stage: build.examples
+  needs: [build-release-static]
+  script:
+    - cd ${RELEASE_DIR}/examples/ex_2
+    - g++ -O3 ex2.cpp -ltadah -llapack -fopenmp
+
+build-example-1-shared:
+  stage: build.examples
+  needs: [build-release-shared]
+  script:
+    - cd ${RELEASE_DIR}/examples/ex_1
+    - g++ -O3 ex1.cpp -ltadah -llapack -fopenmp
+
+build-example-2-shared:
+  stage: build.examples
+  needs: [build-release-shared]
+  script:
+    - cd ${RELEASE_DIR}/examples/ex_2
+    - g++ -O3 ex2.cpp -ltadah -llapack -fopenmp

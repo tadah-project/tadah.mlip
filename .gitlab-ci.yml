@@ -102,6 +102,9 @@ build-example-1-static:
     - cp ${RELEASE_DIR}/libtadah.a ~/.local/lib/.
     - cd ${RELEASE_DIR}/examples/ex_1
     - g++ -O3 ex1.cpp -ltadah -llapack -fopenmp
+  artifacts:
+    paths:
+      - $RELEASE_DIR/examples/ex_1/a.out
 
 build-example-2-static:
   stage: build.examples
@@ -110,6 +113,9 @@ build-example-2-static:
     - cp ${RELEASE_DIR}/libtadah.a ~/.local/lib/.
     - cd ${RELEASE_DIR}/examples/ex_2
     - g++ -O3 ex2.cpp -ltadah -llapack -fopenmp
+  artifacts:
+    paths:
+      - $RELEASE_DIR/examples/ex_2/a.out
 
 build-example-1-shared:
   stage: build.examples
@@ -118,6 +124,9 @@ build-example-1-shared:
     - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
     - cd ${RELEASE_DIR}/examples/ex_1
     - g++ -O3 ex1.cpp -ltadah -llapack -fopenmp
+  artifacts:
+    paths:
+      - $RELEASE_DIR/examples/ex_1/a.out
 
 build-example-2-shared:
   stage: build.examples
@@ -126,6 +135,9 @@ build-example-2-shared:
     - cp ${RELEASE_DIR}/libtadah.so ~/.local/lib/.
     - cd ${RELEASE_DIR}/examples/ex_2
     - g++ -O3 ex2.cpp -ltadah -llapack -fopenmp
+  artifacts:
+    paths:
+      - $RELEASE_DIR/examples/ex_2/a.out
 
 run-example-1-static:
   stage: run.examples

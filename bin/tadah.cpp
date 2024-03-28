@@ -158,7 +158,7 @@ ss<<"                                                                       \n";
         ->needs(c_opt);
 
 	ss.str(std::string());
-	ss << "A direcory containing model's target files.\n";
+	ss << "A directory containing model's target files.\n";
 	ss << "Each target file must contain a set of\n";
     ss << "hyperparameter constraints as in the -t option.\n";
     ss << "This option can be run with MPI.\n";

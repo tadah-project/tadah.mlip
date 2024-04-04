@@ -108,13 +108,7 @@ set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Here we only need name so for e.g. liblammps_serial.so use lammps_serial
-if(NOT DEFINED TADAH_LAMMPS_LIB)
-    set(TADAH_LAMMPS_LIB "lammps_serial")
-endif()
-
 include(FetchContent)
-
 get_filename_component(BUILD_DIR_NAME ${CMAKE_BINARY_DIR} NAME)
 
 FetchContent_Declare(
@@ -137,15 +131,19 @@ FetchContent_Declare(
     )
 FetchContent_MakeAvailable(Tadah.LIBS)
 
-FetchContent_Declare(
-    Tadah.HPO
-    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
-    GIT_TAG origin/main
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO
-    PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME}
-    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO/${BUILD_DIR_NAME}
-    )
-FetchContent_MakeAvailable(Tadah.HPO)
+if(TADAH_ENABLE_HPO)
+  add_compile_definitions(TADAH_ENABLE_HPO)
+  #FetchContent_Declare(
+  #    Tadah.HPO
+  #    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
+  #    GIT_TAG origin/main
+  #    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO
+  #    PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME}
+  #    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO/${BUILD_DIR_NAME}
+  #    )
+  #FetchContent_MakeAvailable(Tadah.HPO)
+  add_subdirectory(HPO)
+endif()
 
 file(READ "MLIP/version.h" ver)
 string(REGEX MATCH "TADAH_WORLD_VERSION ([0-9])" _ "${ver}")
@@ -168,6 +166,7 @@ target_link_libraries (tadah PUBLIC config::rc)
 
 add_executable (ta-dah bin/tadah.cpp)
 target_link_libraries(ta-dah PRIVATE tadah)
+target_link_libraries(ta-dah PRIVATE tadah.hpo)
 
 #########################################################################
 if(TADAH_MARCH_NATIVE)
@@ -223,79 +222,16 @@ message(STATUS "${TADAH}: Build with fast math optimisation is ${TADAH_ENABLE_FA
 
 #########################################################################
 if(TADAH_ENABLE_MPI)
-    find_package(MPI REQUIRED)
-    if(MPI_CXX_FOUND)
-        target_link_libraries(ta-dah PUBLIC MPI::MPI_CXX)
-        add_compile_definitions(TADAH_ENABLE_MPI)
-    endif()
+  find_package(MPI REQUIRED)
+  if(MPI_CXX_FOUND)
+    target_link_libraries(ta-dah PUBLIC MPI::MPI_CXX)
+    add_compile_definitions(TADAH_ENABLE_MPI)
+  endif()
 endif()
 message(STATUS "${TADAH}: Build with MPI is ${TADAH_ENABLE_MPI}")
 #########################################################################
 
 #########################################################################
-if(TADAH_ENABLE_HPO)
-    if (NOT TADAH_ENABLE_MPI)
-        if (NOT TADAH_LAMMPS_MPI_STUBS)
-            message(FATAL_ERROR "${TADAH}: You are compiling with TADAH_ENABLE_HPO=ON
-            This option requires either:
-            -DTADAH_ENABLE_MPI=ON (preferred)
-            or providing path to lammps MPI STUBS in the lammps src directory
-            -DTADAH_LAMMPS_MPI_STUBS=/path/to/lammps/src/STUBS")
-        endif()
-        target_include_directories(ta-dah PRIVATE ${TADAH_LAMMPS_MPI_STUBS})
-    endif()
-
-    if (TADAH_ENABLE_MPI AND TADAH_LAMMPS_MPI_STUBS)
-        message(FATAL_ERROR "${TADAH}: Either use:
-        -DTADAH_ENABLE_MPI=ON (preferred)
-        or
-        -DTADAH_LAMMPS_MPI_STUBS=${TADAH_LAMMPS_MPI_STUBS}")
-    endif()
-
-    # c++ need to know which library LAMMPS will use
-    add_compile_definitions(TADAH_LAMMPS_LIB=\"lib${TADAH_LAMMPS_LIB}\")
-
-    # add static libs definitions to our shared lib
-    message(STATUS "${TADAH}: Fetching Dlib from git...")
-    include(FetchContent)
-    FetchContent_Declare(dlib
-        GIT_REPOSITORY https://github.com/davisking/dlib.git
-        GIT_TAG        v19.24
-        )
-    FetchContent_MakeAvailable(dlib)
-
-    target_link_libraries(ta-dah PUBLIC dlib::dlib)
-
-    target_link_libraries(ta-dah PRIVATE "${TADAH_LAMMPS_LIB}")
-
-    # Finalise by setting preprocessor symbol
-    add_compile_definitions(TADAH_ENABLE_HPO)
-
-    file(GLOB_RECURSE hpo_src CONFIGURE_DEPENDS "HPO/*.cpp")
-    target_sources(ta-dah PRIVATE ${hpo_src})
-
-    # add resource lib to the project so we can embed lammps scripts into
-    # the library project
-    # Add resources...
-    cmrc_add_resource_library(
-        hpo-resources 
-        ALIAS hpo::rc
-        NAMESPACE hpo 
-        WHENCE HPO/lammps
-        PREFIX hpo
-        ${PROJECT_SOURCE_DIR}/HPO/lammps/tadah.lata
-        ${PROJECT_SOURCE_DIR}/HPO/lammps/tadah.envol
-        ${PROJECT_SOURCE_DIR}/HPO/lammps/tadah.elastic
-        ${PROJECT_SOURCE_DIR}/HPO/lammps/tadah.surface
-        ${PROJECT_SOURCE_DIR}/HPO/lammps/tadah.usurface
-        ${PROJECT_SOURCE_DIR}/HPO/lammps/tadah.FR_vacancy_at_p
-        ${PROJECT_SOURCE_DIR}/HPO/lammps/tadah.unrelaxed_vacancy_at_p
-        )
-    target_link_libraries(ta-dah PUBLIC hpo::rc)
-    target_link_libraries(ta-dah PUBLIC)
-    target_link_libraries(ta-dah PUBLIC -llapacke)
-    #target_link_libraries(tadah PUBLIC -llapacke)
-endif()
 message(STATUS "${TADAH}: Build with Hyperparameter optimiser is ${TADAH_ENABLE_HPO}")
 #########################################################################
 

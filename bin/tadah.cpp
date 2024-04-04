@@ -11,6 +11,7 @@
 #include "../MLIP/nn_finder.h"
 #include "../MLIP/analytics/analytics.h"
 #include "../MLIP/version.h"
+#include "../HPO/hpo.h"
 
 #include <iostream>
 #include <stdexcept>

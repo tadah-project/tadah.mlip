@@ -9,7 +9,7 @@ SGRID2B     0.672140067078838    1.33565711290847
 
 MODEL      M_BLR BF_Linear
 NORM       false
-BIAS       false
+BIAS       true
 
 SWEIGHT      2e-3
 FWEIGHT   1.0e-2

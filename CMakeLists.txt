@@ -133,16 +133,16 @@ FetchContent_MakeAvailable(Tadah.LIBS)
 
 if(TADAH_ENABLE_HPO)
   add_compile_definitions(TADAH_ENABLE_HPO)
-  #FetchContent_Declare(
-  #    Tadah.HPO
-  #    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
-  #    GIT_TAG origin/main
-  #    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO
-  #    PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME}
-  #    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO/${BUILD_DIR_NAME}
-  #    )
-  #FetchContent_MakeAvailable(Tadah.HPO)
-  add_subdirectory(HPO)
+  FetchContent_Declare(
+      Tadah.HPO
+      GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
+      GIT_TAG origin/main
+      SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO
+      PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME}
+      BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO/${BUILD_DIR_NAME}
+      )
+  FetchContent_MakeAvailable(Tadah.HPO)
+  #add_subdirectory(HPO)
 endif()
 
 file(READ "MLIP/version.h" ver)

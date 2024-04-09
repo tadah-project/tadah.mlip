@@ -1,7 +1,7 @@
 #include <iostream>
-#include <tadah/hyper_param/hyper_param_opti.h>
-#include <tadah/hyper_param/hpo_targets.h>
-#include <tadah/hyper_param/lammps_scores.h>
+#include <tadah/HPO/hyper_param_opti.h>
+#include <tadah/HPO/hpo_targets.h>
+#include <tadah/HPO/lammps_scores.h>
 #include <tadah/config.h>
 #include <dlib/global_optimization/find_max_global.h>
 

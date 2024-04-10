@@ -11,7 +11,9 @@
 #include "../MLIP/nn_finder.h"
 #include "../MLIP/analytics/analytics.h"
 #include "../MLIP/version.h"
+#ifdef TADAH_ENABLE_HPO
 #include "../HPO/hpo.h"
+#endif
 
 #include <iostream>
 #include <stdexcept>

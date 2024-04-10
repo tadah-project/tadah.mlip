@@ -163,7 +163,9 @@ add_library(tadah
     $<TARGET_OBJECTS:config::rc>
     )
 target_link_libraries(tadah PUBLIC config::rc)
+if(TADAH_ENABLE_HPO)
 target_link_libraries(tadah PUBLIC tadah.hpo)
+endif()
 
 
 add_executable (ta-dah bin/tadah.cpp)

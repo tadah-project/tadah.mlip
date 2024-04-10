@@ -1,12 +1,10 @@
 #include <iostream>
-#include <tadah/HPO/hyper_param_opti.h>
 #include <tadah/HPO/hpo_targets.h>
-#include <tadah/HPO/lammps_scores.h>
-#include <tadah/config.h>
+#include <tadah/HPO/hyper_param_opti.h>
+#include <tadah/HPO/glf.h>
+#include <tadah/HPO/runners.h>
+#include <tadah/CORE/config/config.h>
 #include <dlib/global_optimization/find_max_global.h>
-
-using T = dlib::matrix<double,0,1>;
-using LS = LammpsScores;
 
 /**  @file ex_hpo_1.cpp
  * This example shows how to optimise hyperparameters (HP)
@@ -91,11 +89,15 @@ using LS = LammpsScores;
  *      https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.134101
  */
 int main() {
+
     Config config("config.train");
 
-    HPOTargets trg("targets");
+using R = LammpsRunner;
+using D = GLF;
+using T = dlib::matrix<double,0,1>;
 
-    HyperParamOpti<T, LS> hpo(config,trg);
+    HPOTargets trg("targets");
+    HyperParamOpti<T, D, R> hpo(config,trg);
 
     const T lowbound = dlib::mat(trg.configmin);
     const T highbound = dlib::mat(trg.configmax);
@@ -107,6 +109,5 @@ int main() {
             );
     std::cout << result1.x << std::endl;
     std::cout << result1.y << std::endl;
-
     return 0;
 }

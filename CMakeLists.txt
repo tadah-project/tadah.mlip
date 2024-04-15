@@ -248,7 +248,7 @@ message(STATUS "${TADAH}: Build with Hyperparameter optimiser is ${TADAH_ENABLE_
 if(TADAH_ENABLE_OPENMP)
   find_package(OpenMP REQUIRED)
   if(OpenMP_CXX_FOUND)
-    target_link_libraries(tadah PUBLIC OpenMP::OpenMP_CXX)
+    target_link_libraries(libtadah PUBLIC OpenMP::OpenMP_CXX)
     target_link_libraries(tadah PUBLIC OpenMP::OpenMP_CXX)
     add_compile_definitions(TADAH_ENABLE_OPENMP)
   endif()
@@ -259,7 +259,7 @@ message(STATUS "${TADAH}: Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
 #########################################################################
 
 find_package(LAPACK)
-target_link_libraries (tadah PRIVATE ${LAPACK_LIBRARIES})
+target_link_libraries (libtadah PRIVATE ${LAPACK_LIBRARIES})
 target_link_libraries (tadah PUBLIC ${LAPACK_LIBRARIES})
 
 install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

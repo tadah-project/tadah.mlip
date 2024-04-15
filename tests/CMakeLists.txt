@@ -3,7 +3,7 @@ file(GLOB tests_src "*.cpp")
 #file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tests_data DESTINATION .)
 
 add_executable(test_tadah ${tests_src})
-target_link_libraries(test_tadah PRIVATE Catch2 tadah)
+target_link_libraries(test_tadah PRIVATE Catch2 libtadah)
 
 include(Catch.cmake)
 catch_discover_tests(test_tadah)

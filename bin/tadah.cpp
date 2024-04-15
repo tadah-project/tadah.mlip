@@ -387,7 +387,7 @@ void TadahCLI::subcommand_hpo(
     int nproc=1;
     // the rank of this process in MPI_COMM_WORLD
     int rank=0;
-#ifdef TADAH_ENABLE_MPI
+#ifdef TADAH_BUILD_MPI
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -455,7 +455,7 @@ void TadahCLI::subcommand_hpo(
             // First send expected size of a chunk
             for (int p = 1; p < nproc; p++ ){
                 s=counts[p];
-#ifdef TADAH_ENABLE_MPI
+#ifdef TADAH_BUILD_MPI
                 MPI_Send ( &s, 1, MPI_INT, p, 99, MPI_COMM_WORLD );
 #endif
             }
@@ -463,13 +463,13 @@ void TadahCLI::subcommand_hpo(
             // and prepare root process for its own work
             s=counts[rank];
             local_trg_indices.resize(s);
-#ifdef TADAH_ENABLE_MPI
+#ifdef TADAH_BUILD_MPI
             MPI_Scatterv(trg_idx.data(), counts.data(), first_idx.data(),
                     MPI_INT, local_trg_indices.data(), s, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
         }
         else  {
-#ifdef TADAH_ENABLE_MPI
+#ifdef TADAH_BUILD_MPI
             // Get the size of work to be done
             MPI_Recv ( &s, 1, MPI_DOUBLE, 0, 99, MPI_COMM_WORLD, &status );
 #endif
@@ -477,7 +477,7 @@ void TadahCLI::subcommand_hpo(
             local_trg_indices.resize(s);
 
 
-#ifdef TADAH_ENABLE_MPI
+#ifdef TADAH_BUILD_MPI
             // Finally get indices to the trg array
             MPI_Scatterv(NULL, NULL, NULL, MPI_INT, local_trg_indices.data(),
                     s, MPI_INT, 0, MPI_COMM_WORLD);
@@ -531,7 +531,7 @@ void TadahCLI::subcommand_hpo(
     }
 
     if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
-#ifdef TADAH_ENABLE_MPI
+#ifdef TADAH_BUILD_MPI
     MPI_Finalize();
 #endif
 #else

@@ -9,7 +9,7 @@ set(TADAH "Ta-dah!")
 # cmake .. -DTADAH_BUILD_TESTS=ON
 option(TADAH_ENABLE_HPO "Enable Hyperparamter optimiser." OFF)
 option(TADAH_ENABLE_OPENMP "Enable shared-memory parallelisation via OpenMP" OFF)
-option(TADAH_ENABLE_MPI "Enable parallelisation via MPI" OFF)
+option(TADAH_BUILD_MPI "Build MPI version of ${TADAH}" OFF)
 option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
 option(TADAH_ENABLE_FAST_MATH "Enable fast math optimizations" OFF)
 option(TADAH_BUILD_TESTS "Build with tests" OFF)
@@ -156,20 +156,24 @@ set(ver_minor ${CMAKE_MATCH_1})
 project(Ta-dah VERSION ${ver_world}.${ver_major}.${ver_minor})
 message(STATUS "${TADAH} VERSION: ${ver_world}.${ver_major}.${ver_minor}")
 
-add_library(tadah
+add_library(libtadah 
     $<TARGET_OBJECTS:tadah.core.obj>
     $<TARGET_OBJECTS:tadah.models.obj>
     $<TARGET_OBJECTS:tadah.mlip.obj>
     $<TARGET_OBJECTS:config::rc>
     )
-target_link_libraries(tadah PUBLIC config::rc)
+set_target_properties(libtadah PROPERTIES OUTPUT_NAME "tadah")
+target_link_libraries(libtadah PUBLIC config::rc)
 if(TADAH_ENABLE_HPO)
-target_link_libraries(tadah PUBLIC tadah.hpo)
+target_link_libraries(libtadah PUBLIC tadah.hpo)
 endif()
 
 
-add_executable (ta-dah bin/tadah.cpp)
-target_link_libraries(ta-dah PRIVATE tadah)
+add_executable (tadah bin/tadah.cpp)
+if(TADAH_BUILD_MPI)
+  set_target_properties(tadah PROPERTIES OUTPUT_NAME "tadah_mpi")
+endif()
+target_link_libraries(tadah PRIVATE libtadah)
 
 #########################################################################
 if(TADAH_MARCH_NATIVE)
@@ -224,14 +228,14 @@ message(STATUS "${TADAH}: Build with fast math optimisation is ${TADAH_ENABLE_FA
 #########################################################################
 
 #########################################################################
-if(TADAH_ENABLE_MPI)
+if(TADAH_BUILD_MPI)
   find_package(MPI REQUIRED)
   if(MPI_CXX_FOUND)
     target_link_libraries(ta-dah PUBLIC MPI::MPI_CXX)
-    add_compile_definitions(TADAH_ENABLE_MPI)
+    add_compile_definitions(TADAH_BUILD_MPI)
   endif()
 endif()
-message(STATUS "${TADAH}: Build with MPI is ${TADAH_ENABLE_MPI}")
+message(STATUS "${TADAH}: Build with MPI is ${TADAH_BUILD_MPI}")
 #########################################################################
 
 #########################################################################
@@ -253,11 +257,11 @@ message(STATUS "${TADAH}: Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
 #########################################################################
 
 find_package(LAPACK)
-target_link_libraries (ta-dah PRIVATE ${LAPACK_LIBRARIES})
+target_link_libraries (tadah PRIVATE ${LAPACK_LIBRARIES})
 target_link_libraries (tadah PUBLIC ${LAPACK_LIBRARIES})
 
-install(TARGETS ta-dah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(TARGETS libtadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
 if(TADAH_BUILD_TESTS)
     include(CTest) 
@@ -314,9 +318,9 @@ message(STATUS "                2. TADAH_LAMMPS_LIB                             
 message(STATUS "                   The name of the LAMMPS lib, e.g.                ")
 message(STATUS "                   -DTADAH_LAMMPS_LIB=liblammps.a                  ")
 message(STATUS "                                                                   ")
-message(STATUS "                3. TADAH_ENABLE_MPI (Default OFF)                  ")
+message(STATUS "                3. TADAH_BUILD_MPI (Default OFF)                  ")
 message(STATUS "                   Set to ON when linking to mpi version of LAMMPS.")
-message(STATUS "                   -DTADAH_ENABLE_MPI=ON                           ")
+message(STATUS "                   -DTADAH_BUILD_MPI=ON                           ")
 message(STATUS "                                                                   ")
 message(STATUS "              To disable this option:                              ")
 message(STATUS "                cmake .. -DTADAH_ENABLE_HPO=OFF                    ")

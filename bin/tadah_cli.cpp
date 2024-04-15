@@ -19,6 +19,13 @@
 #include <stdexcept>
 
 void TadahCLI::subcommand_train() {
+  
+  /* MPI CODE:
+   * 1. each rank reads config file
+   * 2. rank 0 should calculate total number of structures
+   */
+
+
     CLI::Timer timer_tot {"Training", CLI::Timer::Big};
     if(train->count("--verbose"))
         set_verbose();
@@ -39,6 +46,7 @@ void TadahCLI::subcommand_train() {
     if (is_verbose()) std::cout << "Loading structures..." << std::flush;
     StructureDB stdb(config);
     if (is_verbose()) std::cout << "Done!" << std::endl;
+    std::cout << "Test count: " << StructureDB::count_structures(config);
 
     if (is_verbose()) std::cout << "Finding nearest neighbours within: " <<
         config.get<double>("RCUTMAX") << " cutoff distance..." << std::flush;
@@ -78,6 +86,7 @@ void TadahCLI::subcommand_train() {
     if(fb)
         delete fb;
 }
+
 void TadahCLI::subcommand_predict() {
     CLI::Timer timer_tot {"Prediction", CLI::Timer::Big};
     if(predict->count("--verbose"))
@@ -184,6 +193,7 @@ void TadahCLI::subcommand_predict() {
     if(fb)
         delete fb;
 }
+
 void TadahCLI::subcommand_hpo(
         [[maybe_unused]]int argc,
         [[maybe_unused]]char**argv) {

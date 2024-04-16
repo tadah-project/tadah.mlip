@@ -236,11 +236,13 @@ if(TADAH_BUILD_MPI)
     target_link_libraries(tadah PUBLIC MPI::MPI_CXX)
     add_compile_definitions(TADAH_BUILD_MPI)
   endif()
+  find_package(SCALAPACK REQUIRED)
+  target_link_libraries(tadah PUBLIC scalapack)
 endif()
 message(STATUS "${TADAH}: Build MPI version of ${TADAH} is ${TADAH_BUILD_MPI}")
 #########################################################################
 
-#########################################################################
+#########################################################################     
 message(STATUS "${TADAH}: Build with Hyperparameter optimiser is ${TADAH_ENABLE_HPO}")
 #########################################################################
 

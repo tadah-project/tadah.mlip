@@ -88,7 +88,11 @@ void TadahCLI::subcommand_train() {
   M_Tadah_Base *model = CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>
     (config.get<std::string>("MODEL",0),*fb,config);
 
+  NNFinder nnf(config);
+
 #ifdef TADAH_BUILD_MPI
+  const int RELEASE_TAG = 2;
+  const int WORK_TAG = 0;
   int PHI_cols;
   int PHI_rows;
 
@@ -110,20 +114,23 @@ void TadahCLI::subcommand_train() {
   int context;
   int b_nrows;   // Number of row procs
   int b_ncols;   // Number of column procs
-  int rnb = 22;   // Row block size
-  int cnb = 22;   // Column block size
+  int rnb = 22;   // Row block size TODO
+  int cnb = 22;   // Column block size TODO
 
   blacs_pinfo_(&b_rank, &ncpu) ; // BLACS rank and world size
   std::cout << "RANK: " << rank << " BRANK: " << b_rank << " ncpu: " << ncpu << std::endl;
 
-  // for now assume that the CPU grid is tall and narrow
+  // for now assume that the CPU grid is tall and narrow TODO
+  // the required function must take into considersation:
+  // the size of the blok rnb, number of cols and rows in Phi
+  // ideally the grid should be as square as possible, unless PHI is narrow
   b_ncols = 1;
   b_nrows = ncpu;
   assert(b_nrows * b_ncols == ncpu);
 
   std::cout << "b_ncols: " << b_ncols << " b_nrows: " << b_nrows << std::endl;
   int zero = 0;
-  blacs_get_(&context,&zero, &zero ); // -> Create context
+  blacs_get_(&zero,&zero, &context ); // -> Create context
   std::cout << "ZERO: " << zero << " CONTEXT: " << context << std::endl;
   char layout='R'; // Block cyclic, Row major processor mapping
   blacs_gridinit_(&context, &layout, &b_nrows, &b_ncols ); // Context -> Initialize the grid
@@ -144,16 +151,14 @@ void TadahCLI::subcommand_train() {
     phi = Matrix(phi_rows,phi_cols);
   }
 
-  const int RELEASE_TAG = 2;
-  const int WORK_TAG = 0;
 
-
+  // BEGIN HOST-WORKER
   if (rank==0) {
     // HOST
     // prepare work packages
     // filename, first structure index, number of structures to read
     std::vector<std::tuple<std::string,int,int>> wpckgs;
-    int nstruc = 50;  // TODO the number of structures in a single work package
+    int nstruc = 8;  // TODO the number of structures in a single work package
     for (const std::string &fn : config("DBFILE")) {
       // get number of structures
       int dbsize = StructureDB::count(fn).first;
@@ -245,53 +250,54 @@ void TadahCLI::subcommand_train() {
       StructureDB stdb;
       stdb.add(std::string(fn,fn_length),first,nstruc);
       std::cout << "WORKER: " << b_rank << stdb << std::endl;
+      nnf.calc(stdb);
 
       if (fn)
         delete fn;
     }
   }
+  std::cout << "HOW IS THIS POSSIBLE: " << b_rank << std::endl;
+
+  // END HOST-WORKER
 #endif
 
 
-  if (is_verbose()) std::cout << "Loading structures..." << std::flush;
-  StructureDB stdb(config);
-  if (is_verbose()) std::cout << "Done!" << std::endl;
-
-
-
-  if (is_verbose()) std::cout << "Finding nearest neighbours within: " <<
-    config.get<double>("RCUTMAX") << " cutoff distance..." << std::flush;
-  NNFinder nnf(config);
-  nnf.calc(stdb);
-  if (is_verbose()) std::cout << "Done!" << std::endl;
-
-  if (is_verbose()) std::cout << "Training start..." << std::flush;
-
-
-
-  // here we want to train with the locally allocated phi
-  model->train(stdb,dc);
-
-  if (is_verbose()) std::cout << "Done!" << std::endl;
-
-  Config param_file = model->get_param_file();
-  param_file.check_pot_file();
-  std::ofstream outfile;
-  outfile.open ("pot.tadah");
-  outfile << param_file << std::endl;;
-
-  if(train->count("--uncertainty")) {
-    t_type weights = model->get_weights();
-    t_type unc = model->get_weights_uncertainty();
-    Output(param_file,false).print_train_unc(weights, unc);
-  }
-
-  if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
-
+//  if (is_verbose()) std::cout << "Loading structures..." << std::flush;
+//  StructureDB stdb(config);
+//  if (is_verbose()) std::cout << "Done!" << std::endl;
+//
+//  if (is_verbose()) std::cout << "Finding nearest neighbours within: " <<
+//    config.get<double>("RCUTMAX") << " cutoff distance..." << std::flush;
+//  nnf.calc(stdb);
+//  if (is_verbose()) std::cout << "Done!" << std::endl;
+//
+//  if (is_verbose()) std::cout << "Training start..." << std::flush;
+//
+//  // here we want to train with the locally allocated phi
+//  model->train(stdb,dc);
+//
+//  //if (is_verbose()) std::cout << "Done!" << std::endl;
+//
+//  Config param_file = model->get_param_file();
+//  //param_file.check_pot_file();
+//  //std::ofstream outfile;
+//  //outfile.open ("pot.tadah");
+//  //outfile << param_file << std::endl;;
+//
+//  //if(train->count("--uncertainty")) {
+//  //  t_type weights = model->get_weights();
+//  //  t_type unc = model->get_weights_uncertainty();
+//  //  Output(param_file,false).print_train_unc(weights, unc);
+//  //}
+//
+//  //if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
+//
   if(model)
     delete model;
   if(fb)
     delete fb;
+
+    blacs_gridexit_(&context);
 }
 
 void TadahCLI::subcommand_predict() {

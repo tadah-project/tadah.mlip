@@ -224,7 +224,7 @@ void TadahCLI::subcommand_train() {
     // HOST: prepare work packages
     // filename, first structure index, number of structures to read
     std::vector<std::tuple<std::string,int,int>> wpckgs;
-    int nstruc = 58;  // TODO the number of structures in a single work package
+    int nstruc = 100;  // TODO the number of structures in a single work package
     for (const std::string &fn : config("DBFILE")) {
       // get number of structures
       int dbsize = StructureDB::count(fn).first;
@@ -312,7 +312,6 @@ void TadahCLI::subcommand_train() {
           while (true) {
             std::cout << "HOST1 searching for a WORKER!" << std::endl;
             MPI_Recv (&w_rows_available, 1, MPI_INT, MPI_ANY_SOURCE, WORK_TAG, MPI_COMM_WORLD, &status2);
-            std::cout << "HOST1 found a WORKER!" << std::endl;
             worker2 = status2.MPI_SOURCE;
             if (worker==worker2) {throw std::runtime_error("worker and worker2 are the same."); }
             if (w_rows_available==0 ) {
@@ -321,7 +320,7 @@ void TadahCLI::subcommand_train() {
               std::cout << "HOST1 skipping a WORKER!" << std::endl;
             } 
             else {
-              std::cout << "HOST1 using a WORKER: " << worker2 << std::endl;
+              std::cout << "HOST1 found a WORKER: " << worker2 << " WORKER NEEDS: " << w_rows_available << std::endl;
               break;
             }
           }
@@ -378,7 +377,6 @@ void TadahCLI::subcommand_train() {
           while (true) {
             std::cout << "HOST2 searching for a WORKER!" << std::endl;
             MPI_Recv (&w_rows_available, 1, MPI_INT, MPI_ANY_SOURCE, WORK_TAG, MPI_COMM_WORLD, &status2);
-            std::cout << "HOST2 found a WORKER!" << std::endl;
             worker2 = status2.MPI_SOURCE;
             if (worker==worker2) {throw std::runtime_error("worker and worker2 are the same."); }
             if (w_rows_available==0 ) {
@@ -389,7 +387,7 @@ void TadahCLI::subcommand_train() {
               std::cout << "HOST2 skipping+releasing a WORKER: " << worker2 << std::endl;
             } 
             else {
-              std::cout << "HOST2 found a WORKER!" << std::endl;
+              std::cout << "HOST2 found a WORKER: " << worker2 << " WORKER NEEDS: " << w_rows_available << std::endl;
               break;
             }
           }

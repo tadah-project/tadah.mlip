@@ -19,6 +19,10 @@
 #include <iostream>
 #include <stdexcept>
 
+
+#include <chrono>
+#include <thread>
+
 #ifdef TADAH_BUILD_MPI
 extern "C" void blacs_get_(int*, int*, int*);
 extern "C" void blacs_pinfo_(int*, int*);
@@ -43,6 +47,53 @@ void TadahCLI::subcommand_train() {
     return;
   }
   MPI_Status status;  
+
+  // BEGIN SHARED MEMORY
+  // Allocate node shared buffer to store overflow phi rows
+  // TODO for now this is just an idea, i.e. the shared memory is not being used
+  // Note that the host will stll have to distribute data itself as there is no node-node access
+  // to a shared resource. 
+//  MPI_Comm nodecomm;
+//  int nodesize, noderank;
+//  MPI_Win window;
+//
+//  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank,
+//      MPI_INFO_NULL, &nodecomm);
+//
+//  MPI_Comm_size(nodecomm, &nodesize);
+//  MPI_Comm_rank(nodecomm, &noderank);
+//
+//  int buffersize=10;  // TODO
+//  int localbuffersize = 0;
+//
+//  if (noderank == 0) localbuffersize = buffersize;
+//
+//  double *buffer, *localbuffer;
+//  MPI_Win_allocate_shared(localbuffersize*sizeof(double), sizeof(double),
+//      MPI_INFO_NULL, nodecomm, &localbuffer, &window);
+//
+//  int windisp; // local unit size for displacements, in bytes (positive integer)
+//  MPI_Aint winsize; // size of the segment at the given rank
+//  MPI_Win_shared_query(window, 0, &winsize, &windisp, &buffer);
+//  MPI_Win_fence(0, window);
+//  // All table pointers should now point to copy on noderank 0
+//
+//  // testing....
+//  if (noderank == 0) {
+//    for (int i=0; i < buffersize; i++) {
+//      buffer[i] = rank*buffersize + i;
+//    }
+//  }
+//
+//  MPI_Win_fence(0, window);
+//
+//  // Check we did it right
+//  for (int i=0; i < buffersize; i++) {
+//    printf("rank %d, noderank %d, table[%d] = %f\n",
+//        rank, noderank, i, buffer[i]);
+//  }
+//  // END SHARED MEMORY
+
 #endif
 
   /* MPI CODE:
@@ -96,6 +147,7 @@ void TadahCLI::subcommand_train() {
 
 #ifdef TADAH_BUILD_MPI
 
+  const int WAIT_TAG = 3;
   const int RELEASE_TAG = 2;
   const int DATA_TAG = 1;
   const int WORK_TAG = 0;
@@ -168,11 +220,11 @@ void TadahCLI::subcommand_train() {
 
   // BEGIN HOST-WORKER
   if (rank==0) {
-    // HOST
-    // prepare work packages
+    int count=1;  // count number of release workers, skip host
+    // HOST: prepare work packages
     // filename, first structure index, number of structures to read
     std::vector<std::tuple<std::string,int,int>> wpckgs;
-    int nstruc = 18;  // TODO the number of structures in a single work package
+    int nstruc = 58;  // TODO the number of structures in a single work package
     for (const std::string &fn : config("DBFILE")) {
       // get number of structures
       int dbsize = StructureDB::count(fn).first;
@@ -200,72 +252,167 @@ void TadahCLI::subcommand_train() {
       }
 
       // receive ANY request from ANY worker
-      int arr_size; // array size for DATA_TAG
-      MPI_Recv (&arr_size, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+
+      MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       int worker = status.MPI_SOURCE;
       int tag = status.MPI_TAG;
+      std::cout << "HOST1 request from WORKER: " << worker << " TAG: " << tag << std::endl; 
+
 
       if (tag==WORK_TAG) {
+        int wsize; // array size for DATA_TAG, rows_available for WORK_TAG
+        MPI_Recv (&wsize, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
+
         std::tuple<std::string,int,int> wpckg = wpckgs.back();
         wpckgs.pop_back();
 
         // send dataset filename
         const char *fn = std::get<0>(wpckg).c_str();
         int fn_length = std::get<0>(wpckg).length()+1;  // +1 for char
-        MPI_Send (&fn_length, 1, MPI_INT, worker, WORK_TAG, MPI_COMM_WORLD);
-        MPI_Send (fn, fn_length, MPI_CHAR, worker, WORK_TAG, MPI_COMM_WORLD);
+        MPI_Send (&fn_length, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
+        MPI_Send (fn, fn_length, MPI_CHAR, worker, tag, MPI_COMM_WORLD);
 
         // send index of the first structure to load
         int first = std::get<1>(wpckg);
-        MPI_Send (&first, 1, MPI_INT, worker, WORK_TAG, MPI_COMM_WORLD);
+        MPI_Send (&first, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
 
         // send number of structures to load
         int nstruc = std::get<2>(wpckg);
-        MPI_Send (&nstruc, 1, MPI_INT, worker, WORK_TAG, MPI_COMM_WORLD);
+        MPI_Send (&nstruc, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
 
         std::cout << "HOST: " << fn << " " << first << " " << nstruc << std::endl;
+        //}
       }
       else if (tag==DATA_TAG) {
-        // TODO
-        int rows_needed = arr_size/phi_cols;
-        std::cout << "HOST received data transfer request from: " << worker << " rows needed: " << rows_needed << " rows_avail:" << rows_available << std::endl;
-        rows_available -= rows_needed;
-        int start=phi_row*phi_cols;
-        phi_row+=rows_needed;
-        if (rows_available==0 ) { std::cout << "!!! HOST LOCAL MATRIX IS FILLED !!!" << std::endl;}
-        if (rows_available<0 ) { throw std::runtime_error("The number of rows in the local array is smaller than requested.");}
-        MPI_Recv (&dm.Phi.data()[0], arr_size, MPI_DOUBLE, worker, DATA_TAG, MPI_COMM_WORLD, &status);
+        int rows_needed;
+        MPI_Recv (&rows_needed, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
+        if (rows_available>0) {
+          std::cout << "HOST1 received data transfer request from: " << worker << " rows needed: " << rows_needed << " rows_avail:" << rows_available << std::endl;
+          int rows_accepted = rows_available < rows_needed ? rows_available : rows_needed;
+          MPI_Send (&b_rank, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
+          MPI_Send (&rows_accepted, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
+          MPI_Recv (&rows_accepted, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
+          // get data...
+          rows_available -= rows_accepted;
+          phi_row+=rows_accepted;
+          //int start=phi_row*phi_cols;
+          if (rows_available==0 ) { std::cout << "!!! HOST1 LOCAL MATRIX IS FILLED !!!" << std::endl;}
+          if (rows_available<0 ) { throw std::runtime_error(" HOST1: The number of rows in the local array is smaller than requested.");}
+          //MPI_Recv (&dm.Phi.data()[0], wsize, MPI_DOUBLE, worker, DATA_TAG, MPI_COMM_WORLD, &status);
+        }
+        else {
+          std::cout << "HOST1 received data transfer request from: " << worker << " rows needed: " << rows_needed << " rows_avail:" << rows_available << std::endl;
+          // host is unable to fit data we have to ask workers for their storage availability
+          //MPI_Probe(MPI_ANY_SOURCE, WORK_TAG, MPI_COMM_WORLD, &status);
+          int w_rows_available;
+          // find a worker to accept at least some data
+          MPI_Status status2;
+          int worker2;
+          // find a worker capable of accepting data
+          while (true) {
+            std::cout << "HOST1 searching for a WORKER!" << std::endl;
+            MPI_Recv (&w_rows_available, 1, MPI_INT, MPI_ANY_SOURCE, WORK_TAG, MPI_COMM_WORLD, &status2);
+            std::cout << "HOST1 found a WORKER!" << std::endl;
+            worker2 = status2.MPI_SOURCE;
+            if (worker==worker2) {throw std::runtime_error("worker and worker2 are the same."); }
+            if (w_rows_available==0 ) {
+              // give up on this worker
+              MPI_Send (&worker2, 1, MPI_INT, worker2, WAIT_TAG, MPI_COMM_WORLD);
+              std::cout << "HOST1 skipping a WORKER!" << std::endl;
+            } 
+            else {
+              std::cout << "HOST1 using a WORKER: " << worker2 << std::endl;
+              break;
+            }
+          }
+
+          int rows_accepted = w_rows_available < rows_needed ? w_rows_available : rows_needed;
+
+          MPI_Send (&worker2, 1, MPI_INT, worker, DATA_TAG, MPI_COMM_WORLD);
+          MPI_Send (&rows_accepted, 1, MPI_INT, worker, DATA_TAG, MPI_COMM_WORLD);
+        }
       }
       else {
-        std::runtime_error("HOST: Unexpected request from " + std::to_string(worker));
+        throw std::runtime_error("HOST: Unexpected request from " + std::to_string(worker));
       }
     }
 
+    std::cout << "---------LOOP 1 FINISHED---------" << std::endl;
+
     // work finised, collect remaining data and release all workers
-    int count=1;  // skip host
     while(true) {
-      int arr_size; // array size for DATA_TAG
-      MPI_Recv (&arr_size, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+      int wsize; // array size for DATA_TAG, rows_available for WORK_TAG
+      MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       int worker = status.MPI_SOURCE;
       int tag = status.MPI_TAG;
 
       if (tag==DATA_TAG) {
-        // TODO
-        int rows_needed = arr_size/phi_cols;
-        std::cout << "HOST received data transfer request from: " << worker << " rows needed: " << rows_needed << " rows_avail:" << rows_available << std::endl;
-        rows_available -= rows_needed;
-        int start=phi_row*phi_cols;
-        phi_row+=rows_needed;
-        if (rows_available==0 ) { std::cout << "!!! HOST LOCAL MATRIX IS FILLED !!!" << std::endl;}
-        if (rows_available<0 ) { throw std::runtime_error("The number of rows in the local array is smaller than requested.");}
-        MPI_Recv (&dm.Phi.data()[0], arr_size, MPI_DOUBLE, worker, DATA_TAG, MPI_COMM_WORLD, &status);
-      }
+        int rows_needed;
+        MPI_Recv (&rows_needed, 1, MPI_INT, worker, DATA_TAG, MPI_COMM_WORLD, &status);
 
+        if (rows_available>0) {
+          std::cout << "HOST2 received data transfer request from: " << worker << " rows needed: " << rows_needed << " rows_avail:" << rows_available << std::endl;
+          int rows_accepted = rows_available < rows_needed ? rows_available : rows_needed;
+          MPI_Send (&b_rank, 1, MPI_INT, worker, DATA_TAG, MPI_COMM_WORLD);
+          MPI_Send (&rows_accepted, 1, MPI_INT, worker, DATA_TAG, MPI_COMM_WORLD);
+
+          MPI_Recv (&rows_accepted, 1, MPI_INT, worker, DATA_TAG, MPI_COMM_WORLD, &status);
+          // get data...
+          rows_available -= rows_accepted;
+          phi_row+=rows_accepted;
+          //int start=phi_row*phi_cols;
+          if (rows_available==0 ) { std::cout << "!!! HOST2 LOCAL MATRIX IS FILLED !!!" << std::endl;}
+          if (rows_available<0 ) { throw std::runtime_error(" HOST2: The number of rows in the local array is smaller than requested.");}
+          //MPI_Recv (&dm.Phi.data()[0], wsize, MPI_DOUBLE, worker, DATA_TAG, MPI_COMM_WORLD, &status);
+        }
+        else {
+          std::cout << "HOST2 received data transfer request from: " << worker << " rows needed: " << rows_needed << " rows_avail:" << rows_available << std::endl;
+          // host is unable to fit data we have to ask workers for their storage availability
+          //MPI_Probe(MPI_ANY_SOURCE, WORK_TAG, MPI_COMM_WORLD, &status);
+          int w_rows_available;
+          // find a worker to accept at least some data
+          MPI_Status status2;
+          int worker2;
+
+          // find a worker capable of accepting data
+          while (true) {
+            std::cout << "HOST2 searching for a WORKER!" << std::endl;
+            MPI_Recv (&w_rows_available, 1, MPI_INT, MPI_ANY_SOURCE, WORK_TAG, MPI_COMM_WORLD, &status2);
+            std::cout << "HOST2 found a WORKER!" << std::endl;
+            worker2 = status2.MPI_SOURCE;
+            if (worker==worker2) {throw std::runtime_error("worker and worker2 are the same."); }
+            if (w_rows_available==0 ) {
+              // give up on this worker and release him as there is no more work to be done
+              //MPI_Send (&worker2, 1, MPI_INT, worker2, WAIT_TAG, MPI_COMM_WORLD);
+              MPI_Send (0, 0, MPI_INT, worker2, RELEASE_TAG, MPI_COMM_WORLD);
+              count++;
+              std::cout << "HOST2 skipping+releasing a WORKER: " << worker2 << std::endl;
+            } 
+            else {
+              std::cout << "HOST2 found a WORKER!" << std::endl;
+              break;
+            }
+          }
+
+          int rows_accepted = w_rows_available < rows_needed ? w_rows_available : rows_needed;
+
+          MPI_Send (&worker2, 1, MPI_INT, worker, DATA_TAG, MPI_COMM_WORLD);
+          MPI_Send (&rows_accepted, 1, MPI_INT, worker, DATA_TAG, MPI_COMM_WORLD);
+
+              //MPI_Send (&worker2, 1, MPI_INT, worker2, WAIT_TAG, MPI_COMM_WORLD);
+        }
+      }
       else {
+        MPI_Recv (&wsize, 1, MPI_INT, worker, WORK_TAG, MPI_COMM_WORLD, &status);
         // there is no more work so release a worker
-        MPI_Send (0, 0, MPI_INT, worker, RELEASE_TAG, MPI_COMM_WORLD);
-        count++;
-        if (count==ncpu) {  break; }
+        if (wsize==0) {
+          MPI_Send (0, 0, MPI_INT, worker, RELEASE_TAG, MPI_COMM_WORLD);
+          count++;
+        }
+        else {
+          MPI_Send (0, 0, MPI_INT, worker, WAIT_TAG, MPI_COMM_WORLD);
+        }
+        if (count==ncpu) {  break; }  // count starts from 1
       }
 
     }
@@ -273,118 +420,151 @@ void TadahCLI::subcommand_train() {
     std::cout << "HOST EXIT" << std::endl;
   } 
   else {
-    // worker
-    int fn_length;
+    std::cout << "WORKER INIT: " << b_rank << std::endl;
+    // WORKER
+    int fn_length;  // length of the filename char array
     int first;  // index of the first structure to read from the file
     int nstruc; // number of structures to be processed
 
-
     while (true) {
       // ask for more work...
-      MPI_Send (NULL, NULL, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD);
-      // get either work or release signal
-      MPI_Recv (&fn_length, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+      std::cout << "WORKER REQUEST: " << b_rank << std::endl;
+      MPI_Send (&rows_available, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD);
+      std::cout << "WORKER REQUEST SEND: " << b_rank << std::endl;
+      //
+      // request from root or from other workers
+      //MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+      MPI_Recv (&fn_length, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+      std::cout << "WORKER: " << b_rank  << "RECEIVED FROM " << status.MPI_SOURCE << " TAG: " << status.MPI_TAG << std::endl;
+
+
 
       // if release tag but the worker's local phi is not full
-      // the workers sends request to the host for remaining data
+      // the worker sends request to the host for the remaining data
 
       // release worker
       if (status.MPI_TAG == RELEASE_TAG) {
-        std::cout << "WORKER: " << b_rank << "RELEASE TAG" << std::endl;
+        std::cout << "WORKER: " << b_rank << " RELEASE TAG" << std::endl;
+        //MPI_Send (NULL, NULL, MPI_INT, 0, DATA_TAG, MPI_COMM_WORLD);
         if (rows_available>0 ) { throw std::runtime_error("Attempting to release worker... but the workers requires more data !!");}
         break;
       }
-
-      // otherwise get work package
-      char *fn  = (char *) malloc(fn_length+1);
-      MPI_Recv (fn, fn_length, MPI_CHAR, 0, WORK_TAG, MPI_COMM_WORLD, &status);
-      MPI_Recv (&first, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD, &status);
-      MPI_Recv (&nstruc, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD, &status);
-      std::cout << "WORKER: " << b_rank << "file: " << fn << " first: " << first << " nstruc: " << nstruc << std::endl;
-
-      // do work
-      StructureDB stdb;
-      stdb.add(std::string(fn,fn_length),first,nstruc);
-      std::cout << "WORKER: " << b_rank << " stdb.size(): " << stdb.size() << std::endl;
-      nnf.calc(stdb);
-
-      // temp solution is to compute temp_phi inside DM and then copy data local phi matrix
-      //Config c = config;
-      //DesignMatrix<DM_Function_Base&> dm(*fb, c);
-      //Normaliser norm(c); // <-- we don't want this
-      //dm.build(stdb,norm,dc); // this is just for resizing for now
-
-      // size_t phi_row = 0; // local just for now, this is of course wrong 
-
-      // one way to find out what we need in terms of phi size
-
-      int rows_needed = 0;
-      for (size_t s=0; s<stdb.size(); ++s) {
-        int natoms = stdb(s).natoms();
-        rows_needed += DesignMatrixBase::phi_rows_num(config, 1, natoms);
+      else if (status.MPI_TAG == WAIT_TAG) {
+        std::cout << "WORKER: " << b_rank << " WAIT TAG" << std::endl;
+        // do nothing; ask again for work
+        // std::this_thread::sleep_for(std::chrono::milliseconds(1000)); //TODO
       }
+      else if (status.MPI_TAG == DATA_TAG) {
+        // other worker is giving me some data
+        std::cout << "WORKER: " << b_rank << " DATA TAG" << std::endl;
+        int rows_accepted = fn_length;
+        rows_available -= rows_accepted;
+        phi_row += rows_accepted;
+        // phi_row
+        // MPI_Recv (&rows, 1, MPI_INT, 0, DATA_TAG, MPI_COMM_WORLD, &status);
+      }
+      else if (status.MPI_TAG == WORK_TAG) {
+        std::cout << "WORKER: " << b_rank << " WORK TAG" << std::endl;
 
+        // otherwise get work package
+        char *fn  = (char *) malloc(fn_length+1);
+        MPI_Recv (fn, fn_length, MPI_CHAR, 0, WORK_TAG, MPI_COMM_WORLD, &status);
+        MPI_Recv (&first, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD, &status);
+        MPI_Recv (&nstruc, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD, &status);
+        std::cout << "WORKER: " << b_rank << "file: " << fn << " first: " << first << " nstruc: " << nstruc << std::endl;
 
-      std:: cout << "WORKER: " << b_rank << " R avail: " << rows_available << " R needed: " << rows_needed << std::endl;
-      if ((rows_available-rows_needed)<0) {
-        // we do not have enough rows in the local phi matrix
-        // so we create temp DM of required size
-        DesignMatrix<DM_Function_Base&> temp_dm(*fb, config);
-        temp_dm.Phi.resize(rows_needed,phi_cols);
+        // do work
+        StructureDB stdb;
+        stdb.add(std::string(fn,fn_length),first,nstruc);
+        std::cout << "WORKER: " << b_rank << " stdb.size(): " << stdb.size() << std::endl;
+        nnf.calc(stdb);
 
-        // and compute all rows
-        size_t temp_phi_row=0;
+        // temp solution is to compute temp_phi inside DM and then copy data local phi matrix
+        //Config c = config;
+        //DesignMatrix<DM_Function_Base&> dm(*fb, c);
+        //Normaliser norm(c); // <-- we don't want this
+        //dm.build(stdb,norm,dc); // this is just for resizing for now
+
+        // size_t phi_row = 0; // local just for now, this is of course wrong 
+
+        // one way to find out what we need in terms of phi size
+
+        int rows_needed = 0;
         for (size_t s=0; s<stdb.size(); ++s) {
-          StDescriptors st_d = dc.calc(stdb(s));
-          temp_dm.build(temp_phi_row,stdb(s),st_d); // phi_row++
+          int natoms = stdb(s).natoms();
+          rows_needed += DesignMatrixBase::phi_rows_num(config, 1, natoms);
         }
 
-        // first we try to fill remaining rows in the local phi matrix
-        if (rows_available>0) {
-          for (size_t r=0; r<rows_available; r++) {
-            for (size_t c=0; c<phi_cols; c++) {
-              dm.Phi(phi_row,c) = temp_dm.Phi(r,c); 
-            }
-            phi_row++;
-            rows_needed--;
+        std:: cout << "WORKER BEGIN COMP: " << b_rank << " R avail: " << rows_available << " R needed: " << rows_needed << std::endl;
+        if (rows_available<rows_needed) {
+          // we do not have enough rows in the local phi matrix
+          // so we create temp DM of required size
+          DesignMatrix<DM_Function_Base&> temp_dm(*fb, config);
+          temp_dm.Phi.resize(rows_needed,phi_cols);
+
+          // and compute all rows
+          size_t temp_phi_row=0;
+          for (size_t s=0; s<stdb.size(); ++s) {
+            StDescriptors st_d = dc.calc(stdb(s));
+            temp_dm.build(temp_phi_row,stdb(s),st_d); // phi_row++
           }
+
+          // first we try to fill remaining rows in the local phi matrix
+          if (rows_available>0) {
+            for (size_t r=0; r<rows_available; r++) {
+              for (size_t c=0; c<phi_cols; c++) {
+                dm.Phi(phi_row,c) = temp_dm.Phi(r,c); 
+              }
+              phi_row++;
+              rows_needed--;
+            }
+          }
+          // there are no more available rows
+          rows_available=0;
+          std::cout << "FULL WORKER: " << b_rank << " rows_available: " << rows_available << " rows_needed: " << rows_needed << std::endl; 
+          // send remaining data to available processes
+          while (rows_needed > 0) {
+            // request host 
+            std::cout << "  FULL WORKER: " << b_rank << " request rows_needed a: " << rows_needed << std::endl; 
+            MPI_Send (&rows_needed, 1, MPI_INT, 0, DATA_TAG, MPI_COMM_WORLD);
+            std::cout << "  FULL WORKER: " << b_rank << " request rows_needed b: " << rows_needed << std::endl; 
+            int rows_accepted; // number of accepted rows
+            int proc; // receiving process
+            // host returns which proc can accept and how much
+            MPI_Recv (&proc, 1, MPI_INT, 0, DATA_TAG, MPI_COMM_WORLD, &status);
+            std::cout << "  FULL WORKER: " << b_rank << " request rows_needed c: " << rows_needed << std::endl; 
+            MPI_Recv (&rows_accepted, 1, MPI_INT, 0, DATA_TAG, MPI_COMM_WORLD, &status);
+            std::cout << "  FULL WORKER: " << b_rank << " get rows_accepted: " << rows_accepted << std::endl; 
+
+            // we send data to the host or a willing worker
+            MPI_Send (&rows_accepted, 1, MPI_INT, proc, DATA_TAG, MPI_COMM_WORLD);
+            std::cout << "  FULL WORKER: " << b_rank << " send rows_accepted: " << rows_accepted << std::endl; 
+            rows_needed -= rows_accepted;
+            std::cout << "  FULL WORKER: " << b_rank << " rows_needed: " << rows_needed << std::endl; 
+            // TODO
+            //int start=0;
+            //MPI_Send (&temp_dm.Phi.data()[start], arr_size, MPI_DOUBLE, 0, DATA_TAG, MPI_COMM_WORLD);
+          }
+
         }
-        // there are no more available rows
-        rows_available=0;
-        std::cout << "FULL WORKER: " << b_rank << " phi_row: " << phi_row << " phi_rows: " << phi_rows << std::endl; 
-        // then send remaining data to the host
-        int arr_size=rows_needed*phi_cols;
-        if (arr_size > 0) {
-           MPI_Send (&arr_size, 1, MPI_INT, 0, DATA_TAG, MPI_COMM_WORLD);
-          // TODO
-          int start=0;
-          MPI_Send (&temp_dm.Phi.data()[start], arr_size, MPI_DOUBLE, 0, DATA_TAG, MPI_COMM_WORLD);
+        else {
+          // just fill local phi array
+          for (size_t s=0; s<stdb.size(); ++s) {
+            //std::cout << "phi_row:" << phi_row << " R avail: " << rows_available << " phi rows: " << phi_rows << std::endl;
+            StDescriptors st_d = dc.calc(stdb(s));
+            dm.build(phi_row,stdb(s),st_d); // phi_row++
+          }
+          rows_available-=rows_needed;
         }
 
+        // for every new structure stdb we want to calculate PHI rows
+        // using local phi. We have to make sure we do not exceed phi
+        // Also we have to keep number of filled rows which will
+        // serve as an index for subsequent calls.
+
+        if (fn)
+          delete fn;
       }
-      else {
-        // just fill local phi array
-        for (size_t s=0; s<stdb.size(); ++s) {
-          //std::cout << "phi_row:" << phi_row << " R avail: " << rows_available << " phi rows: " << phi_rows << std::endl;
-          StDescriptors st_d = dc.calc(stdb(s));
-          dm.build(phi_row,stdb(s),st_d); // phi_row++
-        }
-        rows_available-=rows_needed;
-      }
-
-      // ..copy dm.phi -> phi
-
-      // for every new structure stdb we want to calculate PHI rows
-      // using local phi. We have to make sure we do not exceed phi
-      // Also we have to keep number of filled rows which will
-      // serve as an index for subsequent calls.
-      //
-      // We do not want to train a model so use DesignMatrix
-      //
-      // if (phi_row == phi_rows) stop computation
-
-      if (fn)
-        delete fn;
     }
   }
     std::cout << "RANK" << rank << " HOST-WORKER EXIT SUCCESS" << std::endl;
@@ -428,6 +608,7 @@ void TadahCLI::subcommand_train() {
     delete fb;
 
     blacs_gridexit_(&context);
+    //MPI_Win_free(&window);
 }
 
 void TadahCLI::subcommand_predict() {

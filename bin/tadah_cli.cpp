@@ -32,6 +32,14 @@ extern "C" void descinit_(int*, int*, int*, int*, int*, int*, int*, int*, int*, 
 extern "C" void pdpotrf_(char*, int*, double*, int*, int*, int*, int*);
 extern "C" void blacs_gridexit_(int*);
 extern "C" int numroc_(int*, int*, int*, int*, int*);
+
+// (transa, m, n, nrhs, a, ia, ja, desc_a, b, ib, jb, desc_b, work, lwork, info);
+extern "C" void	pdgels_(char* trans, int* m, int* n, int* nrhs, double* a, int* ia, int* ja, int* desca, 
+    double* b, int* ib, int* jb, int* descb, double* work, int* lwork, int* info);
+//extern "C" void pdgels_(char*, int*, int*, int*,double*,int*,int*,int*,double*,int*,int*,int*,double*, int*, int*);
+
+
+
 #endif
 
 void TadahCLI::subcommand_train() {
@@ -133,7 +141,7 @@ void TadahCLI::subcommand_train() {
   DC_Selector DCS(config);
 
   // must set DSIZE key as early as possible,
-  // this will allow us to querry for the number of columns later on
+  // this will allow us to query for the number of columns later on
   DescriptorsCalc<> dc(config,*DCS.d2b,*DCS.d3b,*DCS.dmb,
       *DCS.c2b,*DCS.c3b,*DCS.cmb);
 
@@ -166,6 +174,9 @@ void TadahCLI::subcommand_train() {
   std::cout << "PHI ROWS: " << PHI_rows << std::endl;
   std::cout << "PHI COLS: " << PHI_cols << std::endl;
 
+  // the number of rows must by divisable by the b_nrows
+  // the number of cols must by divisable by the b_ncols
+
   // Initialize BLACS
   int b_rank;
   int b_row;
@@ -173,37 +184,42 @@ void TadahCLI::subcommand_train() {
   int context;
   int b_nrows;   // Number of row procs
   int b_ncols;   // Number of column procs
-  int rnb = 22;   // Row block size TODO
-  int cnb = 22;   // Column block size TODO
+  int rnb = 1;   // Row block size TODO
+  int cnb = 1;   // Column block size TODO
 
   blacs_pinfo_(&b_rank, &ncpu) ; // BLACS rank and world size
-  std::cout << "RANK: " << rank << " BRANK: " << b_rank << " ncpu: " << ncpu << std::endl;
+  //std::cout << "RANK: " << rank << " BRANK: " << b_rank << " ncpu: " << ncpu << std::endl;
 
   // for now assume that the CPU grid is tall and narrow TODO
   // the required function must take into considersation:
   // the size of the blok rnb, number of cols and rows in Phi
   // ideally the grid should be as square as possible, unless PHI is narrow
   // Probably we want the number of column processes to be <= ~sqrt(ncpu)/cnb
+  //b_ncols = 1;
+  //b_nrows = ncpu;
   b_ncols = 1;
   b_nrows = ncpu;
   assert(b_nrows * b_ncols == ncpu);
 
-  std::cout << "b_ncols: " << b_ncols << " b_nrows: " << b_nrows << std::endl;
+  //std::cout << "b_ncols: " << b_ncols << " b_nrows: " << b_nrows << std::endl;
   int zero = 0;
   blacs_get_(&zero,&zero, &context ); // -> Create context
-  std::cout << "ZERO: " << zero << " CONTEXT: " << context << std::endl;
+  //std::cout << "ZERO: " << zero << " CONTEXT: " << context << std::endl;
   char layout='R'; // Block cyclic, Row major processor mapping
   blacs_gridinit_(&context, &layout, &b_nrows, &b_ncols ); // Context -> Initialize the grid
   blacs_gridinfo_(&context, &b_nrows, &b_ncols, &b_row, &b_col );
-  std::cout << "BRANK: " << b_rank << " BROW: " << b_row << " BCOL: " << b_col << std::endl;
+  //std::cout << "BRANK: " << b_rank << " BROW: " << b_row << " BCOL: " << b_col << std::endl;
+  printf( "rank = %d, nprow = %d, npcol = %d, myrow = %d, mycol = %d\n", rank, b_nrows, b_ncols, b_row, b_col );  
 
   // Compute the size of the local phi matrices
   int izero = 0;
+  int ione = 1;
   // int PHI_size = PHI_rows*PHI_cols;
   int phi_rows = numroc_( &PHI_rows, &rnb, &b_row, &izero, &b_nrows );
   int phi_cols = numroc_( &PHI_cols, &cnb, &b_col, &izero, &b_ncols );
   std::cout << "BRANK: " << b_rank << " phi_rows: " << phi_rows << " phi_col " << phi_cols << std::endl;
 
+  // COUNTERS
   size_t phi_row = 0; // next row to be filled in the local phi array
   int rows_available=phi_rows;  // number of available rows in the local phi array
 
@@ -212,11 +228,6 @@ void TadahCLI::subcommand_train() {
   // workers
   DesignMatrix<DM_Function_Base&> dm(*fb, config);
   dm.Phi.resize(phi_rows,phi_cols);
-  //Matrix phi;
-  //if (rank!=0) {
-  //  // allocate matrix for each worker
-  //  phi = Matrix(phi_rows,phi_cols);
-  //}
 
   // BEGIN HOST-WORKER
   if (rank==0) {
@@ -251,12 +262,10 @@ void TadahCLI::subcommand_train() {
       }
 
       // receive ANY request from ANY worker
-
       MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       int worker = status.MPI_SOURCE;
       int tag = status.MPI_TAG;
       std::cout << "HOST1 request from WORKER: " << worker << " TAG: " << tag << std::endl; 
-
 
       if (tag==WORK_TAG) {
         int wsize; // array size for DATA_TAG, rows_available for WORK_TAG
@@ -280,7 +289,6 @@ void TadahCLI::subcommand_train() {
         MPI_Send (&nstruc, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
 
         std::cout << "HOST: " << fn << " " << first << " " << nstruc << std::endl;
-        //}
     }
     else if (tag==DATA_TAG) {
       int rows_needed;
@@ -290,7 +298,6 @@ void TadahCLI::subcommand_train() {
         int rows_accepted = rows_available < rows_needed ? rows_available : rows_needed;
         MPI_Send (&b_rank, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
         MPI_Send (&rows_accepted, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
-        //MPI_Recv (&rows_accepted, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
 
         // get data...
         MPI_Probe(worker, tag, MPI_COMM_WORLD, &status);
@@ -299,10 +306,8 @@ void TadahCLI::subcommand_train() {
         MPI_Get_count(&status, MPI_DOUBLE, &arr_size2);
         if (arr_size2!=arr_size) { throw std::runtime_error("arr_size != arr_size2\n");}
         MPI_Recv (&dm.Phi.data()[phi_row], arr_size, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
-
         rows_available -= rows_accepted;
         phi_row += rows_accepted;
-        //int start=phi_row*phi_cols;
         if (rows_available==0 ) { std::cout << "!!! HOST1 LOCAL MATRIX IS FILLED !!!" << std::endl;}
         if (rows_available<0 ) { throw std::runtime_error(" HOST1: The number of rows in the local array is smaller than requested.");}
 
@@ -547,11 +552,11 @@ else { // WORKER
           // we send data to the host or a willing worker
           //MPI_Send (&rows_accepted, 1, MPI_INT, dest, DATA_TAG, MPI_COMM_WORLD);
           //std::cout << "  FULL WORKER: " << b_rank << " send rows_accepted: " << rows_accepted << std::endl; 
-          rows_needed -= rows_accepted;
           //std::cout << "  FULL WORKER: " << b_rank << " rows_needed: " << rows_needed << std::endl; 
           int start=(temp_dm.Phi.rows()-rows_needed); // Phi is stored in column major order
           int arr_size = rows_accepted*phi_cols;
           MPI_Send (&temp_dm.Phi.data()[start], arr_size, MPI_DOUBLE, dest, DATA_TAG, MPI_COMM_WORLD);
+          rows_needed -= rows_accepted;
         }
 
       }
@@ -570,10 +575,71 @@ else { // WORKER
   }
   if (rows_available==0) std::cout << "+++++++ WORKER IS FULL++++++++  " << b_rank << "  ROWS AVAILABLE: " << rows_available << std::endl;
 
-  // All phi matrices are computed by this point
 }
 std::cout << "RANK" << rank << " HOST-WORKER EXIT SUCCESS" << std::endl;
 // END HOST-WORKER
+
+// All phi matrices are computed by this point
+
+// Descriptor for scalaPACK
+int descPHI[9];
+int descB[9];
+int info;
+int info2;
+descinit_( descPHI,  &PHI_rows, &PHI_cols, &rnb, &cnb, &izero, &izero, &context, /*leading dimension*/&phi_rows, &info);
+descinit_( descB  ,  &PHI_rows, &ione, &rnb, &cnb, &izero, &izero, &context, /*leading dimension*/&phi_rows, &info2);
+
+if (rank==1) {
+  std::cout << "descPHI:"<< std::endl;
+  for (int i=0;i<9;++i) {
+    std::cout << descPHI[i] << " ";
+  }
+  std::cout << std::endl;
+  std::cout << "descB:"<< std::endl;
+  for (int i=0;i<9;++i) {
+    std::cout << descB[i] << " ";
+  }
+  std::cout << std::endl;
+}
+if(info != 0) {
+  printf("Error in descinit, info = %d\n", info);
+}
+if(info2 != 0) {
+  printf("Error in descinit, info = %d\n", info2);
+}
+
+// Run dpotrf and time
+double MPIt1 = MPI_Wtime();
+char trans='N';
+int nrhs = 1;
+double *b = new double[phi_rows];
+for (int i=0;i<phi_rows;++i) b[i]=i;
+//if (rank==0)
+//  std::cout << dm.Phi;
+int ia = 1;
+int ja = 1;
+int ib = 1;
+int jb = 1;
+
+double wkopt;
+int lwork = -1; // query -> get size of the work matrix
+pdgels_(&trans, &phi_rows, &phi_cols, &nrhs, dm.Phi.ptr(), &ia, &ja, descPHI, b, &ib, &jb, descB, &wkopt, &lwork, &info);
+if (info != 0) {
+  printf("Error in potrf, info = %d\n", info);
+}
+
+lwork = (int)wkopt;
+
+std::cout << "work array size: "  << lwork << std::endl;
+
+double *work = new double[lwork];
+pdgels_(&trans, &phi_rows, &phi_cols, &nrhs, dm.Phi.ptr(), &ia, &ja, descPHI, b, &ib, &jb, descB, work, &lwork, &info);
+
+double MPIt2 = MPI_Wtime();
+printf("[%dx%d] Done, time %e s.\n", b_row, b_col, MPIt2 - MPIt1);
+
+delete[] b;
+delete[] work;
 #endif
 
 

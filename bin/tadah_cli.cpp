@@ -38,6 +38,8 @@ extern "C" void	pdgels_(char* trans, int* m, int* n, int* nrhs, double* a, int* 
     double* b, int* ib, int* jb, int* descb, double* work, int* lwork, int* info);
 //extern "C" void pdgels_(char*, int*, int*, int*,double*,int*,int*,int*,double*,int*,int*,int*,double*, int*, int*);
 
+extern "C" void	pdgemr2d_(int *m, int *n, double *a, int *ia, int *ja, int *desca,
+    double *b, int *ib, int *jb, int *descb, int *context);
 
 
 #endif
@@ -55,53 +57,6 @@ void TadahCLI::subcommand_train() {
     return;
   }
   MPI_Status status;  
-
-  // BEGIN SHARED MEMORY
-  // Allocate node shared buffer to store overflow phi rows
-  // TODO for now this is just an idea, i.e. the shared memory is not being used
-  // Note that the host will stll have to distribute data itself as there is no node-node access
-  // to a shared resource. 
-  //  MPI_Comm nodecomm;
-  //  int nodesize, noderank;
-  //  MPI_Win window;
-  //
-  //  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank,
-  //      MPI_INFO_NULL, &nodecomm);
-  //
-  //  MPI_Comm_size(nodecomm, &nodesize);
-  //  MPI_Comm_rank(nodecomm, &noderank);
-  //
-  //  int buffersize=10;  // TODO
-  //  int localbuffersize = 0;
-  //
-  //  if (noderank == 0) localbuffersize = buffersize;
-  //
-  //  double *buffer, *localbuffer;
-  //  MPI_Win_allocate_shared(localbuffersize*sizeof(double), sizeof(double),
-  //      MPI_INFO_NULL, nodecomm, &localbuffer, &window);
-  //
-  //  int windisp; // local unit size for displacements, in bytes (positive integer)
-  //  MPI_Aint winsize; // size of the segment at the given rank
-  //  MPI_Win_shared_query(window, 0, &winsize, &windisp, &buffer);
-  //  MPI_Win_fence(0, window);
-  //  // All table pointers should now point to copy on noderank 0
-  //
-  //  // testing....
-  //  if (noderank == 0) {
-  //    for (int i=0; i < buffersize; i++) {
-  //      buffer[i] = rank*buffersize + i;
-  //    }
-  //  }
-  //
-  //  MPI_Win_fence(0, window);
-  //
-  //  // Check we did it right
-  //  for (int i=0; i < buffersize; i++) {
-  //    printf("rank %d, noderank %d, table[%d] = %f\n",
-  //        rank, noderank, i, buffer[i]);
-  //  }
-  //  // END SHARED MEMORY
-
 #endif
 
   /* MPI CODE:
@@ -185,18 +140,11 @@ void TadahCLI::subcommand_train() {
   int b_nrows;   // Number of row procs
   int b_ncols;   // Number of column procs
   int rnb = 1;   // Row block size TODO
-  int cnb = 1;   // Column block size TODO
+  int cnb = PHI_cols;   // Column block size TODO
 
   blacs_pinfo_(&b_rank, &ncpu) ; // BLACS rank and world size
   //std::cout << "RANK: " << rank << " BRANK: " << b_rank << " ncpu: " << ncpu << std::endl;
 
-  // for now assume that the CPU grid is tall and narrow TODO
-  // the required function must take into considersation:
-  // the size of the blok rnb, number of cols and rows in Phi
-  // ideally the grid should be as square as possible, unless PHI is narrow
-  // Probably we want the number of column processes to be <= ~sqrt(ncpu)/cnb
-  //b_ncols = 1;
-  //b_nrows = ncpu;
   b_ncols = 1;
   b_nrows = ncpu;
   assert(b_nrows * b_ncols == ncpu);
@@ -234,7 +182,7 @@ void TadahCLI::subcommand_train() {
     // HOST: prepare work packages
     // filename, first structure index, number of structures to read
     std::vector<std::tuple<std::string,int,int>> wpckgs;
-    int nstruc = 100;  // TODO the number of structures in a single work package
+    int nstruc = 73;  // TODO the number of structures in a single work package
     for (const std::string &fn : config("DBFILE")) {
       // get number of structures
       int dbsize = StructureDB::count(fn).first;
@@ -440,31 +388,22 @@ else { // WORKER
   std::cout << "WORKER INIT: " << b_rank << std::endl;
   while (true) {
     // ask for more work...
-    //std::cout << "WORKER REQUEST: " << b_rank << std::endl;
     MPI_Send (&rows_available, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD);
-    //std::cout << "WORKER REQUEST SEND: " << b_rank << std::endl;
     // request from root or from other workers
     MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
     int worker = status.MPI_SOURCE;
     int tag = status.MPI_TAG;
-    //MPI_Recv (&fn_length, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-    //std::cout << "WORKER: " << b_rank  << "RECEIVED FROM " << status.MPI_SOURCE << " TAG: " << status.MPI_TAG << std::endl;
-
-    // if release tag but the worker's local phi is not full
-    // the worker sends request to the host for the remaining data
 
     // release a worker
     if (status.MPI_TAG == RELEASE_TAG) {
       int temp;
       MPI_Recv (&temp, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
-      //std::cout << "WORKER: " << b_rank << " RELEASE TAG" << std::endl;
       if (rows_available!=0) { throw std::runtime_error("Attempting to release a worker... but the workers requires more data !!");}
       break;
     }
     else if (status.MPI_TAG == WAIT_TAG) {
       int temp;
       MPI_Recv (&temp, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
-      //std::cout << "WORKER: " << b_rank << " WAIT TAG" << std::endl;
       // do nothing here; ask for more work in the next cycle
       // std::this_thread::sleep_for(std::chrono::milliseconds(1000)); //TODO
     }
@@ -473,7 +412,6 @@ else { // WORKER
       int arr_size;
       MPI_Get_count(&status, MPI_DOUBLE, &arr_size);
       int rows_accepted = arr_size/phi_cols;
-      //std::cout << "WORKER: " << b_rank << " DATA TAG" << std::endl;
       if (rows_available<rows_accepted) { throw std::runtime_error("Number of rows available is smaller than number of provided rows");}
       MPI_Recv (&dm.Phi.data()[phi_row], arr_size, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
       rows_available -= rows_accepted;
@@ -583,10 +521,12 @@ std::cout << "RANK" << rank << " HOST-WORKER EXIT SUCCESS" << std::endl;
 
 // Descriptor for scalaPACK
 int descPHI[9];
+int descPHI2[9];
 int descB[9];
 int info;
 int info2;
 descinit_( descPHI,  &PHI_rows, &PHI_cols, &rnb, &cnb, &izero, &izero, &context, /*leading dimension*/&phi_rows, &info);
+descinit_( descPHI2,  &PHI_rows, &PHI_cols, &rnb, &cnb, &izero, &izero, &context, /*leading dimension*/&phi_rows, &info);
 descinit_( descB  ,  &PHI_rows, &ione, &rnb, &cnb, &izero, &izero, &context, /*leading dimension*/&phi_rows, &info2);
 
 if (rank==1) {
@@ -608,18 +548,28 @@ if(info2 != 0) {
   printf("Error in descinit, info = %d\n", info2);
 }
 
-// Run dpotrf and time
 double MPIt1 = MPI_Wtime();
 char trans='N';
 int nrhs = 1;
 double *b = new double[phi_rows];
 for (int i=0;i<phi_rows;++i) b[i]=i;
-//if (rank==0)
-//  std::cout << dm.Phi;
+if (rank==1)
+  std::cout << dm.Phi;
 int ia = 1;
 int ja = 1;
 int ib = 1;
 int jb = 1;
+
+
+  DesignMatrix<DM_Function_Base&> dm2(*fb, config);
+  dm2.Phi.resize(phi_rows,phi_cols);
+
+pdgemr2d_(&PHI_rows, &PHI_cols, dm.Phi.ptr(), &ione, &ione, descPHI,
+    dm2.Phi.ptr(), &ione, &ione, descPHI2, &context);
+if (rank==1) {
+  std::cout << "----------Making copy-----------" << std::endl;
+  std::cout << dm2.Phi;
+}
 
 double wkopt;
 int lwork = -1; // query -> get size of the work matrix

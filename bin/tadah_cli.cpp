@@ -35,6 +35,9 @@ extern "C" void	pdgels_(char* trans, int* m, int* n, int* nrhs,
     int* jb, int* descb, double* work, int* lwork, int* info);
 extern "C" void	pdgemr2d_(int *m, int *n, double *a, int *ia, int *ja, int *desca,
     double *b, int *ib, int *jb, int *descb, int *context);
+extern "C" void pdgemv_(char* transa, int* m, int* n, double* alpha, double* a,
+    int* ia, int* ja, int* desc_a, double* x, int* ix, int* jx, int* desc_x,
+    int* incx, double* beta, double* y, int* iy, int* jy, int* desc_y, int* incy);	
 #endif
 
 void TadahCLI::subcommand_train() {
@@ -141,77 +144,67 @@ void TadahCLI::subcommand_train() {
   // context1 is used for the computation of phi matrices
   // context2 is used for distribution of local phi to "block cyclic phi"
   int b_rank;
-  int context1;
-  int context2;
-  int b_row1;
-  int b_col1;
-  int b_row2;
-  int b_col2;
-  int b_nrows1;   // Number of row procs
-  int b_ncols1;   // Number of column procs
-  int b_nrows2;   // Number of row procs
-  int b_ncols2;   // Number of column procs
-  int rnb1 = 50;   // Row block size for context1 does not really matter
-  int rnb2 = 1;   // Row block size TODO
-  int cnb1 = PHI_cols;   // Column block size for context one is fixed
-  int cnb2 = 1;   // Column block size TODO
-
   blacs_pinfo_(&b_rank, &ncpu) ; // BLACS rank and world size
-                                 //std::cout << "RANK: " << rank << " BRANK: " << b_rank << " ncpu: " << ncpu << std::endl;
 
-  b_ncols1 = 1;
-  b_nrows1 = ncpu;
+  int context1,                      context2;
+  int b_row1,                        b_row2;
+  int b_col1,                        b_col2;
+  int b_nrows1,                      b_nrows2;    // Number of row procs
+  int b_ncols1,                      b_ncols2;    // Number of column procs
+  int rnb1 = ceil(PHI_rows/ncpu),    rnb2 = 64;   // Row block size
+  int cnb1 = PHI_cols,               cnb2 = 64;   // Column block size
+  // TODO block size is system dependent, allow user to overwrite default settings
+
+  b_ncols1 = 1;        b_ncols2 = 2;
+  b_nrows1 = ncpu;     b_nrows2 = ncpu/b_ncols2;
+
+  assert(b_nrows2 * b_ncols2 == ncpu);
   assert(b_nrows1 * b_ncols1 == ncpu);
 
-  b_ncols2 = 2;
-  b_nrows2 = ncpu / b_ncols2;
-  assert(b_nrows2 * b_ncols2 == ncpu);
-
-  //std::cout << "b_ncols1: " << b_ncols1 << " b_nrows1: " << b_nrows1 << std::endl;
   int izero = 0;
   int ione = 1;
   char layout='R'; // Block cyclic, Row major processor mapping
-  char layout2='R'; // Block cyclic, Row major processor mapping
 
   // Create first context
   blacs_get_(&izero,&izero, &context1 ); // -> Create context1
   blacs_gridinit_(&context1, &layout, &b_nrows1, &b_ncols1 ); // context1 -> Initialize the grid
   blacs_gridinfo_(&context1, &b_nrows1, &b_ncols1, &b_row1, &b_col1 );
-  //
+
   // Create second context
   blacs_get_(&izero,&izero, &context2 ); // -> Create context2
-  blacs_gridinit_(&context2, &layout2, &b_nrows2, &b_ncols2 ); // context1 -> Initialize the grid
+  blacs_gridinit_(&context2, &layout, &b_nrows2, &b_ncols2 ); // context1 -> Initialize the grid
   blacs_gridinfo_(&context2, &b_nrows2, &b_ncols2, &b_row2, &b_col2 );
   // printf( "context= %d, rank = %d, nprow = %d, npcol = %d, myrow = %d, mycol = %d\n", context1, rank, b_nrows1, b_ncols1, b_row1, b_col1 );  
   // printf( "context= %d, rank = %d, nprow = %d, npcol = %d, myrow = %d, mycol = %d\n", context2, rank, b_nrows2, b_ncols2, b_row2, b_col2 );  
 
-  // std::cout << "izero: " << izero << " context1: " << context1 << std::endl;
-  // std::cout << "ione: " << ione << " context2: " << context2 << std::endl;
   // Compute the size of the local phi matrices
   // int PHI_size = PHI_rows*PHI_cols;
-  int phi_rows = numroc_( &PHI_rows, &rnb1, &b_row1, &izero, &b_nrows1 );
-  int phi_cols = numroc_( &PHI_cols, &cnb1, &b_col1, &izero, &b_ncols1 );
+  int phi_rows1 = numroc_( &PHI_rows, &rnb1, &b_row1, &izero, &b_nrows1 );
+  int phi_cols1 = numroc_( &PHI_cols, &cnb1, &b_col1, &izero, &b_ncols1 );
   int phi_rows2 = numroc_( &PHI_rows, &rnb2, &b_row2, &izero, &b_nrows2 );
   int phi_cols2 = numroc_( &PHI_cols, &cnb2, &b_col2, &izero, &b_ncols2 );
-  // std::cout << "BRANK: " << b_rank << " phi_rows1: " << phi_rows << " phi_col1 " << phi_cols << std::endl;
+  // std::cout << "BRANK: " << b_rank << " phi_rows1: " << phi_rows1 << " phi_col1 " << phi_cols1 << std::endl;
   // std::cout << "BRANK: " << b_rank << " phi_rows2: " << phi_rows2 << " phi_col2 " << phi_cols2 << std::endl;
 
   // Define MPI datatype to send rows from the PHI matrix with column-major order
+  // used only in context1
   MPI_Datatype rowvec, rowvecs;
-  MPI_Type_vector( phi_cols, 1, phi_rows, MPI_DOUBLE, &rowvec); 
+  MPI_Type_vector( phi_cols1, 1, phi_rows1, MPI_DOUBLE, &rowvec); 
   MPI_Type_commit(&rowvec);
   MPI_Type_create_resized(rowvec, 0, sizeof(double), &rowvecs);
   MPI_Type_commit(&rowvecs);
 
   // COUNTERS
   size_t phi_row = 0; // next row to be filled in the local phi array
-  int rows_available=phi_rows;  // number of available rows in the local phi array
+  int rows_available=phi_rows1;  // number of available rows in the local phi array
 
   // once we know the size of local phi, we can allocate memory to it
   // including host as well. The host will collect excees computations from
-  // workers
+  // workers.
   DesignMatrix<DM_Function_Base&> dm(*fb, config);
-  dm.Phi.resize(phi_rows,phi_cols);
+  dm.Phi.resize(phi_rows1,phi_cols1);
+  dm.T.resize(phi_rows1);
+  dm.Tlabels.resize(phi_rows1);
 
   // BEGIN HOST-WORKER
   if (rank==0) {
@@ -222,7 +215,6 @@ void TadahCLI::subcommand_train() {
     for (const std::string &fn : config("DBFILE")) {
       // get number of structures
       int dbsize = StructureDB::count(fn).first;
-      // std::cout << "DBSIZE: " << dbsize << std::endl;
       int first=0;
       while(true) {
         if (nstruc < dbsize) {
@@ -249,7 +241,6 @@ void TadahCLI::subcommand_train() {
       MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       int worker = status.MPI_SOURCE;
       int tag = status.MPI_TAG;
-      // std::cout << "HOST1 request from WORKER: " << worker << " TAG: " << tag << std::endl; 
 
       if (tag==WORK_TAG) {
         int rows_available;
@@ -270,61 +261,52 @@ void TadahCLI::subcommand_train() {
         // send number of structures to load
         int nstruc = std::get<2>(wpckg);
         MPI_Send (&nstruc, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
-
-        // std::cout << "HOST: " << fn << " " << first << " " << nstruc << std::endl;
       }
       else if (tag==DATA_TAG) {
         int rows_needed;
         MPI_Recv (&rows_needed, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
         if (rows_available>0) {
-          // std::cout << "HOST1 received data transfer request from: " << worker << " rows needed: " << rows_needed << " rows_avail:" << rows_available << std::endl;
           int rows_accepted = rows_available < rows_needed ? rows_available : rows_needed;
           MPI_Send (&b_rank, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
           MPI_Send (&rows_accepted, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
-
           MPI_Recv (&dm.Phi.data()[phi_row], rows_accepted, rowvecs, worker, tag, MPI_COMM_WORLD, &status);
+          MPI_Recv (&dm.T.data()[phi_row], rows_accepted, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
+          MPI_Recv (&dm.Tlabels.data()[phi_row], rows_accepted, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
           rows_available -= rows_accepted;
           phi_row += rows_accepted;
           if (rows_available==0 ) { std::cout << "!!! HOST1 LOCAL MATRIX IS FILLED !!!" << std::endl;}
           if (rows_available<0 ) { throw std::runtime_error(" HOST1: The number of rows in the local array is smaller than requested.");}
-
         }
         else {
-          // std::cout << "HOST1 received data transfer request from: " << worker << " rows needed: " << rows_needed << " rows_avail:" << rows_available << std::endl;
           // host is unable to fit data we have to ask workers for their storage availability
-          int w_rows_available;
-          // find a worker to accept at least some data
-          MPI_Status status2;
+          // find a worker willing to accept at least some data
           int worker2;
+          MPI_Status status2;
           // find a worker capable of accepting data
+          int w_rows_available;
           while (true) {
-            // std::cout << "HOST1 searching for a WORKER!" << std::endl;
             MPI_Recv (&w_rows_available, 1, MPI_INT, MPI_ANY_SOURCE, WORK_TAG, MPI_COMM_WORLD, &status2);
             worker2 = status2.MPI_SOURCE;
             if (worker==worker2) {throw std::runtime_error("worker and worker2 are the same."); }
             if (w_rows_available==0 ) {
               // give up on this worker
               MPI_Send (&worker2, 1, MPI_INT, worker2, WAIT_TAG, MPI_COMM_WORLD);
-              // std::cout << "HOST1 skipping a WORKER!" << std::endl;
             } 
             else {
-              // std::cout << "HOST1 found a WORKER: " << worker2 << " WORKER NEEDS: " << w_rows_available << std::endl;
+              // found a worker
               break;
             }
           }
-
           int rows_accepted = w_rows_available < rows_needed ? w_rows_available : rows_needed;
-
+          // tell worker about worker2
           MPI_Send (&worker2, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
           MPI_Send (&rows_accepted, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
         }
       }
       else {
-        throw std::runtime_error("HOST: Unexpected request from " + std::to_string(worker));
+        throw std::runtime_error("HOST1: Unexpected request from " + std::to_string(worker));
       }
     }
-
-    std::cout << "---------LOOP 1 FINISHED---------" << std::endl;
 
     // work finised, collect remaining data and release all workers
     int count=1;  // count number of release workers, skip host
@@ -337,29 +319,25 @@ void TadahCLI::subcommand_train() {
         int rows_needed;
         MPI_Recv (&rows_needed, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
         if (rows_available>0) {
-          std::cout << "HOST1 received data transfer request from: " << worker << " rows needed: " << rows_needed << " rows_avail:" << rows_available << std::endl;
           int rows_accepted = rows_available < rows_needed ? rows_available : rows_needed;
           MPI_Send (&b_rank, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
           MPI_Send (&rows_accepted, 1, MPI_INT, worker, tag, MPI_COMM_WORLD);
           MPI_Recv (&dm.Phi.data()[phi_row], rows_accepted, rowvecs, worker, tag, MPI_COMM_WORLD, &status);
-
+          MPI_Recv (&dm.T.data()[phi_row], rows_accepted, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
+          MPI_Recv (&dm.Tlabels.data()[phi_row], rows_accepted, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
           rows_available -= rows_accepted;
           phi_row += rows_accepted;
-          if (rows_available==0 ) { std::cout << "!!! HOST1 LOCAL MATRIX IS FILLED !!!" << std::endl;}
-          if (rows_available<0 ) { throw std::runtime_error(" HOST1: The number of rows in the local array is smaller than requested.");}
-
+          if (rows_available==0 ) { std::cout << "!!! HOST2 LOCAL MATRIX IS FILLED !!!" << std::endl;}
+          if (rows_available<0 ) { throw std::runtime_error(" HOST2: The number of rows in the local array is smaller than requested.");}
         }
         else {
-          //std::cout << "HOST2 received data transfer request from: " << worker << " rows needed: " << rows_needed << " rows_avail:" << rows_available << std::endl;
           // host is unable to fit data we have to ask workers for their storage availability
-          int w_rows_available;
           // find a worker to accept at least some data
           MPI_Status status2;
           int worker2;
-
           // find a worker capable of accepting data
+          int w_rows_available;
           while (true) {
-            // std::cout << "HOST2 searching for a WORKER!" << std::endl;
             MPI_Recv (&w_rows_available, 1, MPI_INT, MPI_ANY_SOURCE, WORK_TAG, MPI_COMM_WORLD, &status2);
             worker2 = status2.MPI_SOURCE;
             if (worker==worker2) {throw std::runtime_error("worker and worker2 are the same."); }
@@ -367,16 +345,13 @@ void TadahCLI::subcommand_train() {
               // give up on this worker and release him as there is no more work to be done
               MPI_Send (0, 0, MPI_INT, worker2, RELEASE_TAG, MPI_COMM_WORLD);
               count++;
-              // std::cout << "HOST2 skipping+releasing a WORKER: " << worker2 << std::endl;
             } 
             else {
-              // std::cout << "HOST2 found a WORKER: " << worker2 << " WORKER NEEDS: " << w_rows_available << std::endl;
+              // found a worker
               break;
             }
           }
-
           int rows_accepted = w_rows_available < rows_needed ? w_rows_available : rows_needed;
-
           MPI_Send (&worker2, 1, MPI_INT, worker, DATA_TAG, MPI_COMM_WORLD);
           MPI_Send (&rows_accepted, 1, MPI_INT, worker, DATA_TAG, MPI_COMM_WORLD);
         }
@@ -392,15 +367,11 @@ void TadahCLI::subcommand_train() {
         else {
           MPI_Send (0, 0, MPI_INT, worker, WAIT_TAG, MPI_COMM_WORLD);
         }
-        if (count==ncpu) {  break; }  // count starts from 1
       }
-
+      if (count==ncpu) {  break; }  // count starts from 1
     }
-    std::cout << "HOST: " << "r_avail: " << rows_available << std::endl;
-    std::cout << "HOST EXIT" << std::endl;
   } 
   else { // WORKER
-    std::cout << "WORKER INIT: " << b_rank << std::endl;
     while (true) {
       // ask for more work...
       MPI_Send (&rows_available, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD);
@@ -423,12 +394,13 @@ void TadahCLI::subcommand_train() {
       }
       else if (status.MPI_TAG == DATA_TAG) {
         // other worker is giving me some data
-
         int arr_size;
         MPI_Get_count(&status, MPI_DOUBLE, &arr_size);
-        int rows_accepted = arr_size/phi_cols;
+        int rows_accepted = arr_size/phi_cols1;
         if (rows_available<rows_accepted) { throw std::runtime_error("Number of rows available is smaller than number of provided rows");}
         MPI_Recv (&dm.Phi.data()[phi_row], rows_available, rowvecs, worker, tag, MPI_COMM_WORLD, &status);
+        MPI_Recv (&dm.T.data()[phi_row], rows_available, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
+        MPI_Recv (&dm.Tlabels.data()[phi_row], rows_available, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
         rows_available -= rows_accepted;
         phi_row += rows_accepted;
       }
@@ -443,12 +415,10 @@ void TadahCLI::subcommand_train() {
         MPI_Recv (fn, fn_length, MPI_CHAR, 0, WORK_TAG, MPI_COMM_WORLD, &status);
         MPI_Recv (&first, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD, &status);
         MPI_Recv (&nstruc, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD, &status);
-        // std::cout << "WORKER: " << b_rank << "file: " << fn << " first: " << first << " nstruc: " << nstruc << std::endl;
 
         // do work
         StructureDB stdb;
         stdb.add(std::string(fn,fn_length),first,nstruc);
-        // std::cout << "WORKER: " << b_rank << " stdb.size(): " << stdb.size() << std::endl;
         nnf.calc(stdb);
 
         // compute number of rows needed for a given StructureDB
@@ -458,15 +428,17 @@ void TadahCLI::subcommand_train() {
           rows_needed += DesignMatrixBase::phi_rows_num(config, 1, natoms);
         }
 
-        // std:: cout << "WORKER BEGIN COMP: " << b_rank << " R avail: " << rows_available << " R needed: " << rows_needed << std::endl;
         if (rows_available<rows_needed) {
           // we do not have enough rows in the local phi matrix
           // so we create temp DM of required size
           DesignMatrix<DM_Function_Base&> temp_dm(*fb, config);
-          temp_dm.Phi.resize(rows_needed,phi_cols);
+          temp_dm.Phi.resize(rows_needed,phi_cols1);
+          temp_dm.T.resize(rows_needed);
+          temp_dm.Tlabels.resize(rows_needed);
 
           // and compute all rows
           size_t temp_phi_row=0;
+          temp_dm.fill_T(stdb);
           for (size_t s=0; s<stdb.size(); ++s) {
             StDescriptors st_d = dc.calc(stdb(s));
             temp_dm.build(temp_phi_row,stdb(s),st_d); // phi_row++
@@ -476,8 +448,10 @@ void TadahCLI::subcommand_train() {
           // copy top of temp_dm.Phi to the bottom of dm. Phi in reverse order
           if (rows_available>0) {
             for (rows_available; rows_available>0; rows_available--) {
-              for (int c=0; c<phi_cols; c++) {
+              for (int c=0; c<phi_cols1; c++) {
                 dm.Phi(phi_row,c) = temp_dm.Phi(rows_available-1,c); 
+                dm.T(phi_row) = temp_dm.T(rows_available-1); 
+                dm.Tlabels(phi_row) = temp_dm.Tlabels(rows_available-1); 
               }
               phi_row++;
               rows_needed--;
@@ -508,12 +482,16 @@ void TadahCLI::subcommand_train() {
 
             // ready to send
             MPI_Send (&temp_dm.Phi.data()[start], rows_accepted, trowvecs, dest, DATA_TAG, MPI_COMM_WORLD);
+            MPI_Send (&temp_dm.T.data()[start], rows_accepted, MPI_DOUBLE, dest, DATA_TAG, MPI_COMM_WORLD);
+            MPI_Send (&temp_dm.Tlabels.data()[start], rows_accepted, MPI_DOUBLE, dest, DATA_TAG, MPI_COMM_WORLD);
             rows_needed -= rows_accepted;
             MPI_Type_free(&trowvec);
           }
         }
         else {
           // just fill local phi array as it is large enough
+          // fill_T must be called before phi_row is incremented
+          dm.fill_T(stdb,phi_row);  // phi_row is not incremented by this method
           for (size_t s=0; s<stdb.size(); ++s) {
             StDescriptors st_d = dc.calc(stdb(s));
             dm.build(phi_row,stdb(s),st_d); // build() increments phi_row++
@@ -533,15 +511,16 @@ void TadahCLI::subcommand_train() {
 
   // All phi matrices are computed by this point
 
-  // Descriptor for scalaPACK
-  int descPHI[9];
-  int descPHI2[9];
-  int descB[9];
-  int descB2[9];
-  int info;
-  int info2;
-  descinit_( descPHI,  &PHI_rows, &PHI_cols, &rnb1, &cnb1, &izero, &izero, &context1, /*leading dimension*/&phi_rows, &info);
-  descinit_( descPHI2,  &PHI_rows, &PHI_cols, &rnb2, &cnb2, &izero, &izero, &context2, /*leading dimension*/&phi_rows2, &info2);
+   std::cout << "rank: " << rank << " ::: " << 54.0*dm.T << std::endl;
+
+  // Descriptors for scalaPACK
+  int descPHI[9],  descPHI2[9];
+  int descB[9],    descB2[9];
+  int info,        info2;
+
+  descinit_( descPHI,  &PHI_rows, &PHI_cols, &rnb1, &cnb1, &izero, &izero, &context1, /*leading dimension*/&phi_rows1, &info);
+  descinit_( descPHI2, &PHI_rows, &PHI_cols, &rnb2, &cnb2, &izero, &izero, &context2, /*leading dimension*/&phi_rows2, &info2);
+
   if(info != 0) {
     printf("Error in descinit, info = %d\n", info);
   }
@@ -549,21 +528,9 @@ void TadahCLI::subcommand_train() {
     printf("Error in descinit, info = %d\n", info2);
   }
 
-  descinit_( descB  ,  &PHI_rows, &ione, &rnb1, &cnb1, &izero, &izero, &context1, /*leading dimension*/&phi_rows, &info);
-  descinit_( descB2  ,  &PHI_rows, &ione, &rnb2, &cnb2, &izero, &izero, &context2, /*leading dimension*/&phi_rows2, &info2);
+  descinit_( descB,   &PHI_rows, &ione, &rnb1, &cnb1, &izero, &izero, &context1, /*leading dimension*/&phi_rows1, &info);
+  descinit_( descB2,  &PHI_rows, &ione, &rnb2, &cnb2, &izero, &izero, &context2, /*leading dimension*/&phi_rows2, &info2);
 
-  // if (rank==1) {
-  //   std::cout << "descPHI:"<< std::endl;
-  //   for (int i=0;i<9;++i) {
-  //     std::cout << descPHI[i] << " ";
-  //   }
-  //   std::cout << std::endl;
-  //   std::cout << "descB:"<< std::endl;
-  //   for (int i=0;i<9;++i) {
-  //     std::cout << descB[i] << " ";
-  //   }
-  //   std::cout << std::endl;
-  // }
   if(info != 0) {
     printf("Error in descinit, info = %d\n", info);
   }
@@ -571,82 +538,95 @@ void TadahCLI::subcommand_train() {
     printf("Error in descinit, info = %d\n", info2);
   }
 
-  double MPIt1 = MPI_Wtime();
+  //double MPIt1 = MPI_Wtime();
   char trans='N';
   int nrhs = 1;
-  double *b = new double[phi_rows];
-  for (int i=0;i<phi_rows;++i) b[i]=i;
-
-  double *b2 = new double[phi_rows2];
-  for (int i=0;i<phi_rows2;++i) b2[i]=i;
-
-  if (rank==0)
-    std::cout << dm.Phi;
+  double *b = dm.T.ptr();
+  std::cout << "BEFORE: ---b vec: rank: " << b_rank << " ";
+  for (int i=0;i<phi_rows1;++i) std::cout << b[i] << " ";
+  std::cout << std::endl;
+  std::cout << std::endl;
 
   int ia = 1;
   int ja = 1;
   int ib = 1;
   int jb = 1;
 
-
-//  // Distribute data in 2D block cyclic 
-//  DesignMatrix<DM_Function_Base&> dm2(*fb, config);
-//  dm2.Phi.resize(phi_rows2,phi_cols2);
-//
-//  pdgemr2d_(&PHI_rows, &PHI_cols, dm.Phi.ptr(), &ione, &ione, descPHI,
-//      dm2.Phi.ptr(), &ione, &ione, descPHI2, &context2);
+  // Distribute data in 2D block cyclic 
+  DesignMatrix<DM_Function_Base&> dm2(*fb, config);
+  dm2.Phi.resize(phi_rows2,phi_cols2);
+  dm2.T.resize(phi_rows2);
+  dm2.Tlabels.resize(phi_rows2);
 
 
-//  if (rank==0) {
-//    std::cout << "----------Making copy-----------" << std::endl;
-//    printf( "context= %d, rank = %d, nprow = %d, npcol = %d, myrow = %d, mycol = %d\n", context2, rank, b_nrows2, b_ncols2, b_row2, b_col2 );  
-//    std::cout << dm2.Phi;
-//  }
+  pdgemr2d_(&PHI_rows, &PHI_cols, dm.Phi.ptr(), &ione, &ione, descPHI,
+      dm2.Phi.ptr(), &ione, &ione, descPHI2, &context2);
 
-  double wkopt;
-  double wkopt2;
-  int lwork = -1; // query -> get size of the work matrix
-  int lwork2 = -1; // query -> get size of the work matrix
-                   //
-  std::cout << "phi_cols: " << phi_cols << std::endl;
+  pdgemr2d_(&PHI_rows, &ione, dm.T.ptr(), &ione, &ione, descB,
+      dm2.T.ptr(), &ione, &ione, descB2, &context2);
+
+  // make a copy of dm.Phi and dm2.Phi
+  Matrix Phi_cpy = dm.Phi;
+  Matrix Phi2_cpy = dm2.Phi;
+
+  double *b2 = dm2.T.ptr();
+
+  double wkopt,     wkopt2;
+  int lwork = -1,   lwork2 = -1; // query -> get size of the work matrix
+
+  //std::cout << "phi_cols1: " << phi_cols1 << std::endl;
   pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm.Phi.ptr(), &ia, &ja, descPHI, b, &ib, &jb, descB, &wkopt, &lwork, &info);
   if (info != 0) {
     printf("Error in pdgels, info = %d\n", info);
   }
 
-  //std::cout << "phi_cols2: " << phi_cols2 << std::endl;
-  //pdgels_(&trans, &phi_rows2, &phi_cols2, &nrhs, dm2.Phi.ptr(), &ia, &ja, descPHI2, b2, &ib, &jb, descB2, &wkopt2, &lwork2, &info2);
-  //if (info2 != 0) {
-  //  printf("Error in pdgels, info = %d\n", info);
-  //}
-
+  std::cout << "phi_rows1, phi_cols1: " << phi_rows1 << ", " << phi_cols1<< std::endl;
+  std::cout << "phi_rows2, phi_cols2: " << phi_rows2 << ", " << phi_cols2<< std::endl;
+  pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm2.Phi.ptr(), &ia, &ja, descPHI2, b2, &ib, &jb, descB2, &wkopt2, &lwork2, &info2);
+  if (info2 != 0) {
+    printf("Error in pdgels, info = %d\n", info);
+  }
 
   lwork = (int)wkopt;
-  //lwork2 = (int)wkopt2;
-
-  //std::cout << "work array size: "  << lwork << std::endl;
+  lwork2 = (int)wkopt2;
 
   double *work = new double[lwork];
   pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm.Phi.ptr(), &ia, &ja, descPHI, b, &ib, &jb, descB, work, &lwork, &info);
   std::cout << "---b vec: rank: " << b_rank << " ";
-  for (int i=0;i<phi_rows;++i) std::cout << b[i] << " ";
+  for (int i=0;i<phi_rows1;++i) std::cout << b[i] << " ";
   std::cout << std::endl;
   std::cout << std::endl;
 
-  //double *work2 = new double[lwork2];
-  //pdgels_(&trans, &phi_rows2, &phi_cols2, &nrhs, dm2.Phi.ptr(), &ia, &ja, descPHI2, b2, &ib, &jb, descB2, work2, &lwork2, &info2);
-  double MPIt2 = MPI_Wtime();
-  //printf("[%dx%d] Done, time %e s.\n", b_row1, b_col1, MPIt2 - MPIt1);
+  double *work2 = new double[lwork2];
+  pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm2.Phi.ptr(), &ia, &ja, descPHI2, b2, &ib, &jb, descB2, work2, &lwork2, &info2);
 
-  //std::cout << "---b2: "; 
-  //for (int i=0;i<phi_rows2;++i) std::cout << b2[i] << " ";
-  //std::cout << std::endl;
-  //std::cout << std::endl;
+  // verify
+  int descY[9];
+  descinit_( descY,  &PHI_rows, &ione, &rnb1, &cnb1, &izero, &izero, &context1, /*leading dimension*/&phi_rows1, &info);
+  int descY2[9];
+  descinit_( descY2,  &PHI_rows, &ione, &rnb2, &cnb2, &izero, &izero, &context2, /*leading dimension*/&phi_rows2, &info2);
+  double alpha=1; 
+  double beta=0;
+  double *y = new double[phi_rows1];
+  double *y2 = new double[phi_rows2];
+  pdgemv_(&trans, &PHI_rows, &PHI_cols, &alpha, Phi_cpy.ptr(), &ia, &ja, descPHI, b, &ia, &ja,
+      descB,  &ione, &beta, y, &ia, &ja, descY, &ione);	
+  std::cout << "---y vec: rank: " << b_rank << " ::: ";
+  for (int i=0;i<phi_rows1;++i) std::cout << y[i] << " ";
+  std::cout << std::endl;
+  delete[] y;
+  pdgemv_(&trans, &PHI_rows, &PHI_cols, &alpha, Phi2_cpy.ptr(), &ia, &ja, descPHI2, b2, &ia, &ja,
+      descB2,  &ione, &beta, y2, &ia, &ja, descY2, &ione);	
 
-  delete[] b;
-  delete[] b2;
+  if (b_rank%b_ncols2==0) {
+    std::cout << "---y2 vec: rank: " << b_rank << " ::: ";
+    for (int i=0;i<phi_rows2;++i) std::cout << y2[i] << " ";
+    std::cout << std::endl;
+  }
+  delete[] y2;
+
   delete[] work;
-  //delete[] work2;
+  delete[] work2;
   MPI_Type_free(&rowvec);
   MPI_Type_free(&rowvecs);
 #endif

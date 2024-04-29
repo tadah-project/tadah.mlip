@@ -136,8 +136,8 @@ void TadahCLI::subcommand_train() {
   }
   MPI_Bcast(&PHI_rows, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&PHI_cols, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  std::cout << "PHI ROWS: " << PHI_rows << std::endl;
-  std::cout << "PHI COLS: " << PHI_cols << std::endl;
+  //std::cout << "PHI ROWS: " << PHI_rows << std::endl;
+  //std::cout << "PHI COLS: " << PHI_cols << std::endl;
 
   // Initialize BLACS
   // We create two contexts.
@@ -157,6 +157,28 @@ void TadahCLI::subcommand_train() {
 
   b_ncols1 = 1;        b_ncols2 = 2;
   b_nrows1 = ncpu;     b_nrows2 = ncpu/b_ncols2;
+
+  // make as sqaure grid as possible
+  int sr = sqrt(ncpu);
+  if (sr*sr==ncpu) {
+    b_nrows2 = sr;
+    b_ncols2 = sr;
+  }
+  else {
+    // loop over all possible divisors
+    int before, /*sqrt(ncpu),*/ after;
+    for (int i = 1; i <= ncpu; ++i){
+      if (ncpu % i == 0) {
+        if (i>sqrt(ncpu)) {
+          after=i; 
+          break;
+        }
+        before=i;
+      }
+    }
+    b_nrows2 = after;
+    b_ncols2 = before;
+  }
 
   assert(b_nrows2 * b_ncols2 == ncpu);
   assert(b_nrows1 * b_ncols1 == ncpu);

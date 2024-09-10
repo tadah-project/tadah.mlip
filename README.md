@@ -1,6 +1,3 @@
-```markdown
-# Ta-dah! Documentation
-
 ## Introduction
 
 **Ta-dah!** is a modular and fast machine learning software and C++ library specifically designed for interatomic potential development. Written in modern C++, it aims to provide an easy-to-use, modular, and extensible state-of-the-art toolkit.

@@ -1,1 +1,1 @@
-Training module
+# Desktop version of Tadah!MLIP

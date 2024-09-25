@@ -99,7 +99,6 @@ void TadahCLI::subcommand_train() {
     config.add("STRESS", "true");
   }
 
-
   if (rank==0)
     if (is_verbose()) std::cout << "Training mode" << std::endl;
 
@@ -183,6 +182,8 @@ void TadahCLI::subcommand_train() {
   assert(b_nrows2 * b_ncols2 == ncpu);
   assert(b_nrows1 * b_ncols1 == ncpu);
 
+  //std::cout << b_nrows2 << "  "  << b_ncols2 << std::endl;
+
   int izero = 0;
   int ione = 1;
   char layout='R'; // Block cyclic, Row major processor mapping
@@ -194,7 +195,7 @@ void TadahCLI::subcommand_train() {
 
   // Create second context
   blacs_get_(&izero,&izero, &context2 ); // -> Create context2
-  blacs_gridinit_(&context2, &layout, &b_nrows2, &b_ncols2 ); // context1 -> Initialize the grid
+  blacs_gridinit_(&context2, &layout, &b_nrows2, &b_ncols2 ); // context2 -> Initialize the grid
   blacs_gridinfo_(&context2, &b_nrows2, &b_ncols2, &b_row2, &b_col2 );
 
   // Compute the size of the local phi matrices
@@ -202,6 +203,9 @@ void TadahCLI::subcommand_train() {
   int phi_cols1 = numroc_( &PHI_cols, &cnb1, &b_col1, &izero, &b_ncols1 );
   int phi_rows2 = numroc_( &PHI_rows, &rnb2, &b_row2, &izero, &b_nrows2 );
   int phi_cols2 = numroc_( &PHI_cols, &cnb2, &b_col2, &izero, &b_ncols2 );
+
+  // std::cout << rank << " phi_rows1 " << phi_rows1 << "  " << phi_cols1 << std::endl;
+  // std::cout << rank << " phi_rows2 " << phi_rows2 << "  " << phi_cols2 << std::endl;
 
   // Define MPI datatype to send rows from the PHI matrix with column-major order
   // used only in context1
@@ -254,7 +258,7 @@ void TadahCLI::subcommand_train() {
         break;
       }
 
-      // receive ANY request from ANY worker
+      // probe ANY request from ANY worker
       MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       int worker = status.MPI_SOURCE;
       int tag = status.MPI_TAG;
@@ -291,12 +295,12 @@ void TadahCLI::subcommand_train() {
           MPI_Recv (&dm.Tlabels.data()[phi_row], rows_accepted, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
           rows_available -= rows_accepted;
           phi_row += rows_accepted;
-          if (rows_available==0 ) { std::cout << "!!! HOST1 LOCAL MATRIX IS FILLED !!!" << std::endl;}
+          //if (rows_available==0 ) { std::cout << "!!! HOST1 LOCAL MATRIX IS FILLED !!!" << std::endl;}
           if (rows_available<0 ) { throw std::runtime_error(" HOST1: The number of rows in the local array is smaller than requested.");}
         }
         else {
-          // host is unable to fit data we have to ask workers for their storage availability
-          // find a worker willing to accept at least some data
+          // Host is unable to fit data we have to ask workers for their storage availability
+          // Locate a worker willing to accept at least some data.
           int worker2;
           MPI_Status status2;
           // find a worker capable of accepting data
@@ -344,7 +348,7 @@ void TadahCLI::subcommand_train() {
           MPI_Recv (&dm.Tlabels.data()[phi_row], rows_accepted, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
           rows_available -= rows_accepted;
           phi_row += rows_accepted;
-          if (rows_available==0 ) { std::cout << "!!! HOST2 LOCAL MATRIX IS FILLED !!!" << std::endl;}
+          //if (rows_available==0 ) { std::cout << "!!! HOST2 LOCAL MATRIX IS FILLED !!!" << std::endl;}
           if (rows_available<0 ) { throw std::runtime_error(" HOST2: The number of rows in the local array is smaller than requested.");}
         }
         else {
@@ -401,7 +405,7 @@ void TadahCLI::subcommand_train() {
       if (status.MPI_TAG == RELEASE_TAG) {
         int temp;
         MPI_Recv (&temp, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
-        if (rows_available!=0) { throw std::runtime_error("Attempting to release a worker... but the workers requires more data !!");}
+        if (rows_available!=0) { throw std::runtime_error("Attempting to release a worker... but the worker requires more data!!");}
         break;
       }
       else if (status.MPI_TAG == WAIT_TAG) {
@@ -520,11 +524,11 @@ void TadahCLI::subcommand_train() {
           delete fn;
       }
     }
-    if (rows_available==0) std::cout << "+++++++ WORKER IS FULL++++++++  " << b_rank << "  ROWS AVAILABLE: " << rows_available << std::endl;
+    // if (rows_available==0) std::cout << "+++++++ WORKER IS FULL++++++++  " << b_rank << "  ROWS AVAILABLE: " << rows_available << std::endl;
 
   }
   // END HOST-WORKER
-  // All phi matrices are computed by this point
+  // All local phi matrices are computed by this point
 
   // Descriptors for scalaPACK
   int descPHI[9],  descPHI2[9];
@@ -535,26 +539,26 @@ void TadahCLI::subcommand_train() {
   descinit_( descPHI2, &PHI_rows, &PHI_cols, &rnb2, &cnb2, &izero, &izero, &context2, /*leading dimension*/&phi_rows2, &info2);
 
   if(info != 0) {
-    printf("Error in descinit, info = %d\n", info);
+    printf("Error in descinit 1a, info = %d\n", info);
   }
   if(info2 != 0) {
-    printf("Error in descinit, info = %d\n", info2);
+    printf("Error in descinit 2a, info = %d\n", info2);
   }
 
   descinit_( descB,   &PHI_rows, &ione, &rnb1, &cnb1, &izero, &izero, &context1, /*leading dimension*/&phi_rows1, &info);
   descinit_( descB2,  &PHI_rows, &ione, &rnb2, &cnb2, &izero, &izero, &context2, /*leading dimension*/&phi_rows2, &info2);
 
   if(info != 0) {
-    printf("Error in descinit, info = %d\n", info);
+    printf("Error in descinit 1b, info = %d\n", info);
   }
   if(info2 != 0) {
-    printf("Error in descinit, info = %d\n", info2);
+    printf("Error in descinit 2b, info = %d\n", info2);
   }
 
   //double MPIt1 = MPI_Wtime();
   char trans='N';
   int nrhs = 1;
-  double *b = dm.T.ptr();
+  //double *b = dm.T.ptr();
   //std::cout << "BEFORE: ---b vec: rank: " << b_rank << " ";
   //for (int i=0;i<phi_rows1;++i) std::cout << b[i] << " ";
   //std::cout << std::endl;
@@ -578,104 +582,124 @@ void TadahCLI::subcommand_train() {
       dm2.T.ptr(), &ione, &ione, descB2, &context2);
 
   // make a copy of dm.Phi and dm2.Phi
-  Matrix Phi_cpy = dm.Phi;
-  Matrix Phi2_cpy = dm2.Phi;
-  t_type T = dm.T;
-  t_type T2 = dm2.T;
+  //Matrix Phi_cpy = dm.Phi;
+  //Matrix Phi2_cpy = dm2.Phi;
+  //t_type T = dm.T;
+  //t_type T2 = dm2.T;
 
   double *b2 = dm2.T.ptr();
 
-  double wkopt,     wkopt2;
-  int lwork = -1,   lwork2 = -1; // query -> get size of the work matrix
+  //double wkopt;
+  double wkopt2;
+  //int lwork = -1;
+  int lwork2 = -1; // query -> get size of the work matrix
 
   //std::cout << "phi_cols1: " << phi_cols1 << std::endl;
-  pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm.Phi.ptr(), &ia, &ja, descPHI, b, &ib, &jb, descB, &wkopt, &lwork, &info);
-  if (info != 0) {
-    printf("Error in pdgels, info = %d\n", info);
-  }
+  //pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm.Phi.ptr(), &ia, &ja, descPHI, b, &ib, &jb, descB, &wkopt, &lwork, &info);
+  //if (info != 0) {
+  //  printf("Error in pdgels, info = %d\n", info);
+  //}
 
-  std::cout << "phi_rows1, phi_cols1: " << phi_rows1 << ", " << phi_cols1<< std::endl;
-  std::cout << "phi_rows2, phi_cols2: " << phi_rows2 << ", " << phi_cols2<< std::endl;
+  //std::cout << "phi_rows1, phi_cols1: " << phi_rows1 << ", " << phi_cols1<< std::endl;
+  //std::cout << "phi_rows2, phi_cols2: " << phi_rows2 << ", " << phi_cols2<< std::endl;
   pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm2.Phi.ptr(), &ia, &ja, descPHI2, b2, &ib, &jb, descB2, &wkopt2, &lwork2, &info2);
   if (info2 != 0) {
     printf("Error in pdgels, info = %d\n", info);
   }
 
-  lwork = (int)wkopt;
+  //lwork = (int)wkopt;
   lwork2 = (int)wkopt2;
 
-  double *work = new double[lwork];
-  pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm.Phi.ptr(), &ia, &ja, descPHI, b, &ib, &jb, descB, work, &lwork, &info);
-  //std::cout << "---b vec: rank: " << b_rank << " ";
-  //for (int i=0;i<phi_rows1;++i) std::cout << b[i] << " ";
-  //std::cout << std::endl;
-  //std::cout << std::endl;
-
+  //double *work = new double[lwork];
+  //pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm.Phi.ptr(), &ia, &ja, descPHI, b, &ib, &jb, descB, work, &lwork, &info);
+  //if (rank==0) {
+  //  std::cout << "---b vec: rank: " << rank << " ";
+  //  for (int i=0;i<phi_cols1;++i) std::cout << b[i] << " ";
+  //  std::cout << std::endl;
+  //}
   double *work2 = new double[lwork2];
   pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm2.Phi.ptr(), &ia, &ja, descPHI2, b2, &ib, &jb, descB2, work2, &lwork2, &info2);
 
-  // verify
-  int descY[9];
-  descinit_( descY,  &PHI_rows, &ione, &rnb1, &cnb1, &izero, &izero, &context1, /*leading dimension*/&phi_rows1, &info);
-  int descY2[9];
-  descinit_( descY2,  &PHI_rows, &ione, &rnb2, &cnb2, &izero, &izero, &context2, /*leading dimension*/&phi_rows2, &info2);
-  double alpha=1; 
-  double beta=0;
-  double *y = new double[phi_rows1];
-  double *y2 = new double[phi_rows2];
-  pdgemv_(&trans, &PHI_rows, &PHI_cols, &alpha, Phi_cpy.ptr(), &ia, &ja, descPHI, b, &ia, &ja,
-      descB,  &ione, &beta, y, &ia, &ja, descY, &ione);	
-  std::cout << "---y vec: rank: " << b_rank << " ::: ";
-  for (int i=0;i<phi_rows1;++i) std::cout << y[i] << "   " << T[i] << "   " << y[i]-T[i] << std::endl;
-  std::cout << std::endl;
-  delete[] y;
-  pdgemv_(&trans, &PHI_rows, &PHI_cols, &alpha, Phi2_cpy.ptr(), &ia, &ja, descPHI2, b2, &ia, &ja,
-      descB2,  &ione, &beta, y2, &ia, &ja, descY2, &ione);	
-
-  if (b_rank%b_ncols2==0) {
-    std::cout << "---y2 vec: rank: " << b_rank << " ::: ";
-    for (int i=0;i<phi_rows2;++i) std::cout << y2[i] << "   "  << T2[i] << "   "<< y2[i]-T2[i] << std::endl;
-    std::cout << std::endl;
+  if (rank==0) {
+    //std::cout << "---b2 vec: rank: " << rank << " ";
+    //for (int i=0;i<phi_cols2;++i) std::cout << b2[i] << " ";
+    //std::cout << std::endl;
+    t_type w(b2,phi_cols2);
+    //w.resize(phi_cols2);
+    //for (int i=0;i<phi_cols2;++i) w[i] = b2[i];
+    model->set_weights(w);
+    model->trained=true;
+    //std::cout << w << std::endl;
   }
-  delete[] y2;
- 
-  // Create thid context
-  int context3;
-  int b_row3, b_col3;
-  blacs_get_(&izero,&izero, &context3 ); // -> Create context2
-  blacs_gridinit_(&context3, &layout, &ncpu, &ione ); // context1 -> Initialize the grid
-  blacs_gridinfo_(&context3, &ncpu, &ione, &b_row3, &b_col3 );
-  // do work on context3
-  blacs_gridexit_(&context3);
 
-  delete[] work;
+  // // verify
+  // int descY[9];
+  // descinit_( descY,  &PHI_rows, &ione, &rnb1, &cnb1, &izero, &izero, &context1, /*leading dimension*/&phi_rows1, &info);
+  // int descY2[9];
+  // descinit_( descY2,  &PHI_rows, &ione, &rnb2, &cnb2, &izero, &izero, &context2, /*leading dimension*/&phi_rows2, &info2);
+
+  // double alpha=1; 
+  // double beta=0;
+  // double *y = new double[phi_rows1];
+  // double *y2 = new double[phi_rows2];
+  // pdgemv_(&trans, &PHI_rows, &PHI_cols, &alpha, Phi_cpy.ptr(), &ia, &ja, descPHI, b, &ia, &ja,
+  //     descB,  &ione, &beta, y, &ia, &ja, descY, &ione);	
+  // std::cout << "---y vec: rank: " << b_rank << " ::: ";
+  // for (int i=0;i<phi_rows1;++i) std::cout << y[i] << "   " << T[i] << "   " << y[i]-T[i] << std::endl;
+  // std::cout << std::endl;
+  // delete[] y;
+  // pdgemv_(&trans, &PHI_rows, &PHI_cols, &alpha, Phi2_cpy.ptr(), &ia, &ja, descPHI2, b2, &ia, &ja,
+  //     descB2,  &ione, &beta, y2, &ia, &ja, descY2, &ione);	
+
+  // if (b_rank%b_ncols2==0) {
+  //   std::cout << "---y2 vec: rank: " << b_rank << " ::: ";
+  //   for (int i=0;i<phi_rows2;++i) std::cout << y2[i] << "   "  << T2[i] << "   "<< y2[i]-T2[i] << std::endl;
+  //   std::cout << std::endl;
+  // }
+  // delete[] y2;
+ 
+  // // Create third context
+  // int context3;
+  // int b_row3, b_col3;
+  // blacs_get_(&izero,&izero, &context3 ); // -> Create context2
+  // blacs_gridinit_(&context3, &layout, &ncpu, &ione ); // context1 -> Initialize the grid
+  // blacs_gridinfo_(&context3, &ncpu, &ione, &b_row3, &b_col3 );
+  // // do work on context3
+  // blacs_gridexit_(&context3);
+
+  //delete[] work;
   delete[] work2;
   MPI_Type_free(&rowvec);
   MPI_Type_free(&rowvecs);
+
+  blacs_gridexit_(&context1);
+  blacs_gridexit_(&context2);
+
+#else // NON MPI VERSION
+  if (is_verbose()) std::cout << "Loading structures..." << std::flush;
+  StructureDB stdb(config);
+  if (is_verbose()) std::cout << "Done!" << std::endl;
+
+  if (is_verbose()) std::cout << "Finding nearest neighbours within: " <<
+    config.get<double>("RCUTMAX") << " cutoff distance..." << std::flush;
+  nnf.calc(stdb);
+  if (is_verbose()) std::cout << "Done!" << std::endl;
+
+  if (is_verbose()) std::cout << "Training start..." << std::flush;
+
+  // here we want to train with the locally allocated phi
+  model->train(stdb,dc);
+
+  if (is_verbose()) std::cout << "Done!" << std::endl;
+
 #endif
 
-
-  //  if (is_verbose()) std::cout << "Loading structures..." << std::flush;
-  //  StructureDB stdb(config);
-  //  if (is_verbose()) std::cout << "Done!" << std::endl;
-  //
-  //  if (is_verbose()) std::cout << "Finding nearest neighbours within: " <<
-  //    config.get<double>("RCUTMAX") << " cutoff distance..." << std::flush;
-  //  nnf.calc(stdb);
-  //  if (is_verbose()) std::cout << "Done!" << std::endl;
-  //
-  //  if (is_verbose()) std::cout << "Training start..." << std::flush;
-  //
-  //  // here we want to train with the locally allocated phi
-  //  model->train(stdb,dc);
-  //
-  //  //if (is_verbose()) std::cout << "Done!" << std::endl;
-  //
-  //  Config param_file = model->get_param_file();
-  //  //param_file.check_pot_file();
-  //  //std::ofstream outfile;
-  //  //outfile.open ("pot.tadah");
-  //  //outfile << param_file << std::endl;;
+  if (rank==0) {
+    Config param_file = model->get_param_file();
+    param_file.check_pot_file();
+    std::ofstream outfile;
+    outfile.open ("pot.tadah");
+    outfile << param_file << std::endl;;
   //
   //  //if(train->count("--uncertainty")) {
   //  //  t_type weights = model->get_weights();
@@ -683,15 +707,14 @@ void TadahCLI::subcommand_train() {
   //  //  Output(param_file,false).print_train_unc(weights, unc);
   //  //}
   //
-  //  //if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
+    if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
   //
   if(model)
     delete model;
   if(fb)
     delete fb;
+  }
 
-  blacs_gridexit_(&context1);
-  blacs_gridexit_(&context2);
   //MPI_Win_free(&window);
 }
 

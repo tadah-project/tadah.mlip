@@ -196,17 +196,12 @@ void TadahCLI::subcommand_train() {
   blacs_get_(&izero,&izero, &context2 ); // -> Create context2
   blacs_gridinit_(&context2, &layout, &b_nrows2, &b_ncols2 ); // context1 -> Initialize the grid
   blacs_gridinfo_(&context2, &b_nrows2, &b_ncols2, &b_row2, &b_col2 );
-  // printf( "context= %d, rank = %d, nprow = %d, npcol = %d, myrow = %d, mycol = %d\n", context1, rank, b_nrows1, b_ncols1, b_row1, b_col1 );  
-  // printf( "context= %d, rank = %d, nprow = %d, npcol = %d, myrow = %d, mycol = %d\n", context2, rank, b_nrows2, b_ncols2, b_row2, b_col2 );  
 
   // Compute the size of the local phi matrices
-  // int PHI_size = PHI_rows*PHI_cols;
   int phi_rows1 = numroc_( &PHI_rows, &rnb1, &b_row1, &izero, &b_nrows1 );
   int phi_cols1 = numroc_( &PHI_cols, &cnb1, &b_col1, &izero, &b_ncols1 );
   int phi_rows2 = numroc_( &PHI_rows, &rnb2, &b_row2, &izero, &b_nrows2 );
   int phi_cols2 = numroc_( &PHI_cols, &cnb2, &b_col2, &izero, &b_ncols2 );
-  // std::cout << "BRANK: " << b_rank << " phi_rows1: " << phi_rows1 << " phi_col1 " << phi_cols1 << std::endl;
-  // std::cout << "BRANK: " << b_rank << " phi_rows2: " << phi_rows2 << " phi_col2 " << phi_cols2 << std::endl;
 
   // Define MPI datatype to send rows from the PHI matrix with column-major order
   // used only in context1
@@ -528,12 +523,8 @@ void TadahCLI::subcommand_train() {
     if (rows_available==0) std::cout << "+++++++ WORKER IS FULL++++++++  " << b_rank << "  ROWS AVAILABLE: " << rows_available << std::endl;
 
   }
-  std::cout << "RANK" << rank << " HOST-WORKER EXIT SUCCESS" << std::endl;
   // END HOST-WORKER
-
   // All phi matrices are computed by this point
-
-   std::cout << "rank: " << rank << " ::: " << 54.0*dm.T << std::endl;
 
   // Descriptors for scalaPACK
   int descPHI[9],  descPHI2[9];
@@ -564,10 +555,10 @@ void TadahCLI::subcommand_train() {
   char trans='N';
   int nrhs = 1;
   double *b = dm.T.ptr();
-  std::cout << "BEFORE: ---b vec: rank: " << b_rank << " ";
-  for (int i=0;i<phi_rows1;++i) std::cout << b[i] << " ";
-  std::cout << std::endl;
-  std::cout << std::endl;
+  //std::cout << "BEFORE: ---b vec: rank: " << b_rank << " ";
+  //for (int i=0;i<phi_rows1;++i) std::cout << b[i] << " ";
+  //std::cout << std::endl;
+  //std::cout << std::endl;
 
   int ia = 1;
   int ja = 1;
@@ -580,7 +571,6 @@ void TadahCLI::subcommand_train() {
   dm2.T.resize(phi_rows2);
   dm2.Tlabels.resize(phi_rows2);
 
-
   pdgemr2d_(&PHI_rows, &PHI_cols, dm.Phi.ptr(), &ione, &ione, descPHI,
       dm2.Phi.ptr(), &ione, &ione, descPHI2, &context2);
 
@@ -590,6 +580,8 @@ void TadahCLI::subcommand_train() {
   // make a copy of dm.Phi and dm2.Phi
   Matrix Phi_cpy = dm.Phi;
   Matrix Phi2_cpy = dm2.Phi;
+  t_type T = dm.T;
+  t_type T2 = dm2.T;
 
   double *b2 = dm2.T.ptr();
 
@@ -614,10 +606,10 @@ void TadahCLI::subcommand_train() {
 
   double *work = new double[lwork];
   pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm.Phi.ptr(), &ia, &ja, descPHI, b, &ib, &jb, descB, work, &lwork, &info);
-  std::cout << "---b vec: rank: " << b_rank << " ";
-  for (int i=0;i<phi_rows1;++i) std::cout << b[i] << " ";
-  std::cout << std::endl;
-  std::cout << std::endl;
+  //std::cout << "---b vec: rank: " << b_rank << " ";
+  //for (int i=0;i<phi_rows1;++i) std::cout << b[i] << " ";
+  //std::cout << std::endl;
+  //std::cout << std::endl;
 
   double *work2 = new double[lwork2];
   pdgels_(&trans, &PHI_rows, &PHI_cols, &nrhs, dm2.Phi.ptr(), &ia, &ja, descPHI2, b2, &ib, &jb, descB2, work2, &lwork2, &info2);
@@ -634,7 +626,7 @@ void TadahCLI::subcommand_train() {
   pdgemv_(&trans, &PHI_rows, &PHI_cols, &alpha, Phi_cpy.ptr(), &ia, &ja, descPHI, b, &ia, &ja,
       descB,  &ione, &beta, y, &ia, &ja, descY, &ione);	
   std::cout << "---y vec: rank: " << b_rank << " ::: ";
-  for (int i=0;i<phi_rows1;++i) std::cout << y[i] << " ";
+  for (int i=0;i<phi_rows1;++i) std::cout << y[i] << "   " << T[i] << "   " << y[i]-T[i] << std::endl;
   std::cout << std::endl;
   delete[] y;
   pdgemv_(&trans, &PHI_rows, &PHI_cols, &alpha, Phi2_cpy.ptr(), &ia, &ja, descPHI2, b2, &ia, &ja,
@@ -642,10 +634,19 @@ void TadahCLI::subcommand_train() {
 
   if (b_rank%b_ncols2==0) {
     std::cout << "---y2 vec: rank: " << b_rank << " ::: ";
-    for (int i=0;i<phi_rows2;++i) std::cout << y2[i] << " ";
+    for (int i=0;i<phi_rows2;++i) std::cout << y2[i] << "   "  << T2[i] << "   "<< y2[i]-T2[i] << std::endl;
     std::cout << std::endl;
   }
   delete[] y2;
+ 
+  // Create thid context
+  int context3;
+  int b_row3, b_col3;
+  blacs_get_(&izero,&izero, &context3 ); // -> Create context2
+  blacs_gridinit_(&context3, &layout, &ncpu, &ione ); // context1 -> Initialize the grid
+  blacs_gridinfo_(&context3, &ncpu, &ione, &b_row3, &b_col3 );
+  // do work on context3
+  blacs_gridexit_(&context3);
 
   delete[] work;
   delete[] work2;

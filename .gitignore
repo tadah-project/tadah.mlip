@@ -1,3 +1,7 @@
 build
 *.swp
 .cache
+CORE
+LIBS
+MLIP
+MODELS

@@ -43,9 +43,9 @@ extern "C" void pdgemv_(char* transa, int* m, int* n, double* alpha, double* a,
 void TadahCLI::subcommand_train() {
 
   int rank = 0;
-  int ncpu = 1;
 
 #ifdef TADAH_BUILD_MPI
+  int ncpu = 1;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
   if (ncpu<2) {
@@ -231,7 +231,7 @@ void TadahCLI::subcommand_train() {
     // HOST: prepare work packages
     // filename, first structure index, number of structures to read
     std::vector<std::tuple<std::string,int,int>> wpckgs;
-    int nstruc = config.get<int>("MPIWPCKG");  // TODO: read from Config, the number of structures in a single work package
+    int nstruc = config.get<int>("MPIWPCKG");
     for (const std::string &fn : config("DBFILE")) {
       // get number of structures
       int dbsize = StructureDB::count(fn).first;
@@ -702,7 +702,7 @@ void TadahCLI::subcommand_train() {
     std::ofstream outfile;
     outfile.open ("pot.tadah");
     outfile << param_file << std::endl;;
-  //
+  // TODO What about uncertainty when MPI is enabled?
   //  //if(train->count("--uncertainty")) {
   //  //  t_type weights = model->get_weights();
   //  //  t_type unc = model->get_weights_uncertainty();
@@ -833,15 +833,15 @@ void TadahCLI::subcommand_hpo(
 #ifdef TADAH_ENABLE_HPO
   CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
   // the number of processes in MPI_COMM_WORLD
-  int ncpu=1;
+  // int ncpu=1;
   // the rank of this process in MPI_COMM_WORLD
-  int rank=0;
+  // int rank=0;
 
-#ifdef TADAH_BUILD_MPI
-  MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Status status;  
-#endif
+// #ifdef TADAH_BUILD_MPI
+//   MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
+//   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+//   MPI_Status status;  
+// #endif
 
   if(hpo->count("--verbose"))
     set_verbose();
@@ -860,123 +860,123 @@ void TadahCLI::subcommand_hpo(
     config.add("STRESS", "true");
   }
 
-  if (hpo->count("--dtargets")) {
-    // list of indices to the trg vec to process by this proc
-    std::vector<int>local_trg_indices;
+  //if (hpo->count("--dtargets")) {
+  //  // list of indices to the trg vec to process by this proc
+  //  std::vector<int>local_trg_indices;
 
-    // Everyone read files from the provided directory
-    std::vector<fs::path> trg=read_targets(targets_dir);
+  //  // Everyone read files from the provided directory
+  //  std::vector<fs::path> trg=read_targets(targets_dir);
 
-    // the number of files the process will work on
-    // also the size of an array it will get from the host process.
-    int s;
-    if ( rank == 0 ) {
-      // host proc distributes work equally between available processes
-      // Each process will receive an array of integers.
-      // Integers correspond to indices in the trg vector
-      // e.g. indices 3,4 indicate that the process
-      // should work on target files trg[3] and trg[4]
+  //  // the number of files the process will work on
+  //  // also the size of an array it will get from the host process.
+  //  int s;
+  //  if ( rank == 0 ) {
+  //    // host proc distributes work equally between available processes
+  //    // Each process will receive an array of integers.
+  //    // Integers correspond to indices in the trg vector
+  //    // e.g. indices 3,4 indicate that the process
+  //    // should work on target files trg[3] and trg[4]
 
-      // prep indices array and fill from 0 to trg.size()-1
-      std::vector<int> trg_idx(trg.size());
-      std::iota (std::begin(trg_idx), std::end(trg_idx), 0);
+  //    // prep indices array and fill from 0 to trg.size()-1
+  //    std::vector<int> trg_idx(trg.size());
+  //    std::iota (std::begin(trg_idx), std::end(trg_idx), 0);
 
-      // Establish the number of target files per process.
-      // The work should be evenly distributed.
-      // e.g.
-      // For 4 processes and 19 files
-      // 5 5 5 4
-      std::vector<int> counts(ncpu,0);
-      for (size_t i=0;i<trg.size();++i) {
-        counts[i%ncpu]++;
-      }
+  //    // Establish the number of target files per process.
+  //    // The work should be evenly distributed.
+  //    // e.g.
+  //    // For 4 processes and 19 files
+  //    // 5 5 5 4
+  //    std::vector<int> counts(ncpu,0);
+  //    for (size_t i=0;i<trg.size();++i) {
+  //      counts[i%ncpu]++;
+  //    }
 
-      // Keep first index to sent to each proc
-      // For example above 0,5,10,15
-      std::vector<int> first_idx(ncpu);
-      int sum=0;
-      for (int i=0;i<ncpu; ++i) {
-        first_idx[i]=sum;
-        sum+=counts[i];
-      }
+  //    // Keep first index to sent to each proc
+  //    // For example above 0,5,10,15
+  //    std::vector<int> first_idx(ncpu);
+  //    int sum=0;
+  //    for (int i=0;i<ncpu; ++i) {
+  //      first_idx[i]=sum;
+  //      sum+=counts[i];
+  //    }
 
-      // First send expected size of a chunk
-      for (int p = 1; p < ncpu; p++ ){
-        s=counts[p];
-#ifdef TADAH_BUILD_MPI
-        MPI_Send ( &s, 1, MPI_INT, p, 99, MPI_COMM_WORLD );
-#endif
-      }
+  //    // First send expected size of a chunk
+  //    for (int p = 1; p < ncpu; p++ ){
+  //      s=counts[p];
+//#ifdef TADAH_BUILD_MPI
+  //      MPI_Send ( &s, 1, MPI_INT, p, 99, MPI_COMM_WORLD );
+//#endif
+  //    }
 
-      // and prepare host process for its own work
-      s=counts[rank];
-      local_trg_indices.resize(s);
-#ifdef TADAH_BUILD_MPI
-      MPI_Scatterv(trg_idx.data(), counts.data(), first_idx.data(),
-          MPI_INT, local_trg_indices.data(), s, MPI_INT, 0, MPI_COMM_WORLD);
-#endif
-    }
-    else  {
-#ifdef TADAH_BUILD_MPI
-      // Get the size of work to be done
-      MPI_Recv ( &s, 1, MPI_DOUBLE, 0, 99, MPI_COMM_WORLD, &status );
-#endif
-      // We know the amount of work, so can resize array
-      local_trg_indices.resize(s);
+  //    // and prepare host process for its own work
+  //    s=counts[rank];
+  //    local_trg_indices.resize(s);
+//#ifdef TADAH_BUILD_MPI
+  //    MPI_Scatterv(trg_idx.data(), counts.data(), first_idx.data(),
+  //        MPI_INT, local_trg_indices.data(), s, MPI_INT, 0, MPI_COMM_WORLD);
+//#endif
+  //  }
+  //  else  {
+//#ifdef TADAH_BUILD_MPI
+  //    // Get the size of work to be done
+  //    MPI_Recv ( &s, 1, MPI_DOUBLE, 0, 99, MPI_COMM_WORLD, &status );
+//#endif
+  //    // We know the amount of work, so can resize array
+  //    local_trg_indices.resize(s);
 
 
-#ifdef TADAH_BUILD_MPI
-      // Finally get indices to the trg array
-      MPI_Scatterv(NULL, NULL, NULL, MPI_INT, local_trg_indices.data(),
-          s, MPI_INT, 0, MPI_COMM_WORLD);
-#endif
-    }
+//#ifdef TADAH_BUILD_MPI
+  //    // Finally get indices to the trg array
+  //    MPI_Scatterv(NULL, NULL, NULL, MPI_INT, local_trg_indices.data(),
+  //        s, MPI_INT, 0, MPI_COMM_WORLD);
+//#endif
+  //  }
 
-    // Finally, we can start working on each target file assigned.
-    // But first we have to create sensible directory structure
-    // where we can dump all the output. 
-    // The user provides the outdir which we assume that is empty 
-    // and create subdirectories which corresponds to the names
-    // of the target files. All paths should be absolute.
-    // Note that we do not parallelise here over threads
-    // because parallelisation is done elsewhere.
+  //  // Finally, we can start working on each target file assigned.
+  //  // But first we have to create sensible directory structure
+  //  // where we can dump all the output. 
+  //  // The user provides the outdir which we assume that is empty 
+  //  // and create subdirectories which corresponds to the names
+  //  // of the target files. All paths should be absolute.
+  //  // Note that we do not parallelise here over threads
+  //  // because parallelisation is done elsewhere.
 
-    // Keep program current working directory
-    fs::path cwd = fs::absolute(fs::current_path());
+  //  // Keep program current working directory
+  //  fs::path cwd = fs::absolute(fs::current_path());
 
-    // Prepare outdir path
-    fs::path outdir = cwd.append(targets_out_dir);
+  //  // Prepare outdir path
+  //  fs::path outdir = cwd.append(targets_out_dir);
 
-    for (const int idx: local_trg_indices) {
-      // Build an absolute path for target computations
-      // inside the user specified outdir.
-      // Use the name of the target file without extenstion
-      fs::path outdir_target = outdir;
-      outdir_target /= trg[idx].filename().replace_extension("");
+  //  for (const int idx: local_trg_indices) {
+  //    // Build an absolute path for target computations
+  //    // inside the user specified outdir.
+  //    // Use the name of the target file without extenstion
+  //    fs::path outdir_target = outdir;
+  //    outdir_target /= trg[idx].filename().replace_extension("");
 
-      // Create output dir for trg[idx] target
-      std::filesystem::create_directory(outdir_target);
+  //    // Create output dir for trg[idx] target
+  //    std::filesystem::create_directory(outdir_target);
 
-      // Copy target file to its output directory
-      // so the user has a copy for future reference
-      fs::copy(fs::absolute(trg[idx]),outdir_target);
+  //    // Copy target file to its output directory
+  //    // so the user has a copy for future reference
+  //    fs::copy(fs::absolute(trg[idx]),outdir_target);
 
-      // Change to target working directory
-      std::filesystem::current_path(outdir_target);
+  //    // Change to target working directory
+  //    std::filesystem::current_path(outdir_target);
 
-      // Get the name for a target file
-      std::string target_file = trg[idx].filename();
+  //    // Get the name for a target file
+  //    std::string target_file = trg[idx].filename();
 
-      // Run computation
-      hpo_run(config, target_file);
+  //    // Run computation
+  //    hpo_run(config, target_file);
 
-      // Just in case return to where we started
-      std::filesystem::current_path(cwd);
-    }
-  }
-  else if(hpo->count("--target")) {
+  //    // Just in case return to where we started
+  //    std::filesystem::current_path(cwd);
+  //  }
+  //}
+  //else if(hpo->count("--target")) {
     hpo_run(config, target_file);
-  }
+  //}
 
   if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
 #else
@@ -1132,29 +1132,29 @@ TadahCLI::TadahCLI():
     ->option_text("TARGET_FILE")
     ->check(CLI::ExistingFile);
 
-  ss.str(std::string());
-  ss << "Output directory for -d option.\n";
-  auto o_opt=hpo->add_option("-o,--out_dir", targets_out_dir, ss.str())
-    ->option_text("OUTPUT_DIRECTORY")
-    ->check(CLI::ExistingDirectory)
-    ->excludes(t_opt)
-    ->needs(c_opt);
+  // ss.str(std::string());
+  // ss << "Output directory for -d option.\n";
+  // auto o_opt=hpo->add_option("-o,--out_dir", targets_out_dir, ss.str())
+  //   ->option_text("OUTPUT_DIRECTORY")
+  //   ->check(CLI::ExistingDirectory)
+  //   ->excludes(t_opt)
+  //   ->needs(c_opt);
 
-  ss.str(std::string());
-  ss << "A direcory containing model's target files.\n";
-  ss << "Each target file must contain a set of\n";
-  ss << "hyperparameter constraints as in the -t option.\n";
-  ss << "This option can be run with MPI.\n";
-  ss << "Each MPI process will run independent\n";
-  ss << "optimisation for every target in the directory\n";
-  ss << "resulting in N models for N targets.\n";
-  ss << "See documentation for more details.\n";
-  hpo->add_option("-d,--dtargets", targets_dir, ss.str())
-    ->option_text("TARGETS_DIRECTORY")
-    ->check(CLI::ExistingDirectory)
-    ->excludes(t_opt)
-    ->needs(c_opt)
-    ->needs(o_opt);
+  //ss.str(std::string());
+  //ss << "A direcory containing model's target files.\n";
+  //ss << "Each target file must contain a set of\n";
+  //ss << "hyperparameter constraints as in the -t option.\n";
+  //ss << "This option can be run with MPI.\n";
+  //ss << "Each MPI process will run independent\n";
+  //ss << "optimisation for every target in the directory\n";
+  //ss << "resulting in N models for N targets.\n";
+  //ss << "See documentation for more details.\n";
+  //hpo->add_option("-d,--dtargets", targets_dir, ss.str())
+  //  ->option_text("TARGETS_DIRECTORY")
+  //  ->check(CLI::ExistingDirectory)
+  //  ->excludes(t_opt)
+  //  ->needs(c_opt)
+  //  ->needs(o_opt);
 
 
   hpo->add_flag("-F,--Force", "Train with forces.");

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 
 # There is usually no need to change anything here...
 
-set(TADAH "Ta-dah!")
+set(TADAH "Tadah!")
 
 # Here are the options... set them with -D,
 # for example:
@@ -153,7 +153,7 @@ set(ver_major ${CMAKE_MATCH_1})
 string(REGEX MATCH "TADAH_MINOR_VERSION ([0-9])" _ "${ver}")
 set(ver_minor ${CMAKE_MATCH_1})
 
-project(Ta-dah VERSION ${ver_world}.${ver_major}.${ver_minor})
+project(Tadah VERSION ${ver_world}.${ver_major}.${ver_minor})
 message(STATUS "${TADAH} VERSION: ${ver_world}.${ver_major}.${ver_minor}")
 
 add_library(

@@ -12,6 +12,7 @@
 #include "../MLIP/analytics/analytics.h"
 #include "../MLIP/version.h"
 #include "../MLIP/design_matrix/design_matrix.h"
+#include "../MLIP/trainer.h"
 #ifdef TADAH_ENABLE_HPO
 #include "../HPO/hpo.h"
 #endif
@@ -87,56 +88,34 @@ void TadahCLI::subcommand_train() {
   if(train->count("--verbose"))
     set_verbose();
 
-  Config config(config_file);
-  config.check_for_training();
+  Trainer tr(config_file);
 
   if(train->count("--Force")) {
-    config.remove("FORCE");
-    config.add("FORCE", "true");
+    tr.config.remove("FORCE");
+    tr.config.add("FORCE", "true");
   }
   if(train->count("--Stress")) {
-    config.remove("STRESS");
-    config.add("STRESS", "true");
+    tr.config.remove("STRESS");
+    tr.config.add("STRESS", "true");
   }
 
   if (rank==0)
     if (is_verbose()) std::cout << "Training mode" << std::endl;
 
-  DC_Selector DCS(config);
-
-  // must set DSIZE key as early as possible,
-  // this will allow us to query for the number of columns later on
-  DescriptorsCalc<> dc(config,*DCS.d2b,*DCS.d3b,*DCS.dmb,
-      *DCS.c2b,*DCS.c3b,*DCS.cmb);
-
-  DM_Function_Base *fb = CONFIG::factory<DM_Function_Base,Config&>(
-      config.get<std::string>("MODEL",1),config);
-
-  M_Tadah_Base *model = CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>
-    (config.get<std::string>("MODEL",0),*fb,config);
-
-  NNFinder nnf(config);
 
 #ifdef TADAH_BUILD_MPI
-
-  const int WAIT_TAG = 3;
-  const int RELEASE_TAG = 2;
-  const int DATA_TAG = 1;
-  const int WORK_TAG = 0;
 
   int PHI_cols;
   int PHI_rows;
 
   if (rank==0) {
-    int nstruct_tot = StructureDB::count(config).first;
-    int natoms_tot = StructureDB::count(config).second;
-    PHI_cols = fb->get_phi_cols(config);
-    PHI_rows = DesignMatrixBase::phi_rows_num(config, nstruct_tot, natoms_tot);
+    int nstruct_tot = StructureDB::count(tr.config).first;
+    int natoms_tot = StructureDB::count(tr.config).second;
+    PHI_cols = tr.fb->get_phi_cols(tr.config);
+    PHI_rows = DesignMatrixBase::phi_rows_num(tr.config, nstruct_tot, natoms_tot);
   }
   MPI_Bcast(&PHI_rows, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&PHI_cols, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  //std::cout << "PHI ROWS: " << PHI_rows << std::endl;
-  //std::cout << "PHI COLS: " << PHI_cols << std::endl;
 
   // Initialize BLACS
   // We create two contexts.
@@ -150,8 +129,8 @@ void TadahCLI::subcommand_train() {
   int b_col1,                        b_col2;
   int b_nrows1,                      b_nrows2;    // Number of row procs
   int b_ncols1,                      b_ncols2;    // Number of column procs
-  int rnb1 = ceil(PHI_rows/ncpu),    rnb2 = config.get<int>("MBLOCK");   // Row block size
-  int cnb1 = PHI_cols,               cnb2 = config.get<int>("NBLOCK");   // Column block size
+  int rnb1 = ceil(PHI_rows/ncpu),    rnb2 = tr.config.get<int>("MBLOCK");   // Row block size
+  int cnb1 = PHI_cols,               cnb2 = tr.config.get<int>("NBLOCK");   // Column block size
 
   b_ncols1 = 1;        b_ncols2 = 2;
   b_nrows1 = ncpu;     b_nrows2 = ncpu/b_ncols2;
@@ -181,8 +160,6 @@ void TadahCLI::subcommand_train() {
   assert(b_nrows2 * b_ncols2 == ncpu);
   assert(b_nrows1 * b_ncols1 == ncpu);
 
-  //std::cout << b_nrows2 << "  "  << b_ncols2 << std::endl;
-
   int izero = 0;
   int ione = 1;
   char layout='R'; // Block cyclic, Row major processor mapping
@@ -203,9 +180,6 @@ void TadahCLI::subcommand_train() {
   int phi_rows2 = numroc_( &PHI_rows, &rnb2, &b_row2, &izero, &b_nrows2 );
   int phi_cols2 = numroc_( &PHI_cols, &cnb2, &b_col2, &izero, &b_ncols2 );
 
-  // std::cout << rank << " phi_rows1 " << phi_rows1 << "  " << phi_cols1 << std::endl;
-  // std::cout << rank << " phi_rows2 " << phi_rows2 << "  " << phi_cols2 << std::endl;
-
   // Define MPI datatype to send rows from the PHI matrix with column-major order
   // used only in context1
   MPI_Datatype rowvec, rowvecs;
@@ -221,7 +195,7 @@ void TadahCLI::subcommand_train() {
   // once we know the size of local phi, we can allocate memory to it
   // including host as well. The host will collect excees computations from
   // workers.
-  DesignMatrix<DM_Function_Base&> dm(*fb, config);
+  DesignMatrix<DM_Function_Base&> dm(*tr.fb, tr.config);
   dm.Phi.resize(phi_rows1,phi_cols1);
   dm.T.resize(phi_rows1);
   dm.Tlabels.resize(phi_rows1);
@@ -231,8 +205,8 @@ void TadahCLI::subcommand_train() {
     // HOST: prepare work packages
     // filename, first structure index, number of structures to read
     std::vector<std::tuple<std::string,int,int>> wpckgs;
-    int nstruc = config.get<int>("MPIWPCKG");
-    for (const std::string &fn : config("DBFILE")) {
+    int nstruc = tr.config.get<int>("MPIWPCKG");
+    for (const std::string &fn : tr.config("DBFILE")) {
       // get number of structures
       int dbsize = StructureDB::count(fn).first;
       int first=0;
@@ -294,7 +268,6 @@ void TadahCLI::subcommand_train() {
           MPI_Recv (&dm.Tlabels.data()[phi_row], rows_accepted, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
           rows_available -= rows_accepted;
           phi_row += rows_accepted;
-          //if (rows_available==0 ) { std::cout << "!!! HOST1 LOCAL MATRIX IS FILLED !!!" << std::endl;}
           if (rows_available<0 ) { throw std::runtime_error(" HOST1: The number of rows in the local array is smaller than requested.");}
         }
         else {
@@ -347,7 +320,6 @@ void TadahCLI::subcommand_train() {
           MPI_Recv (&dm.Tlabels.data()[phi_row], rows_accepted, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
           rows_available -= rows_accepted;
           phi_row += rows_accepted;
-          //if (rows_available==0 ) { std::cout << "!!! HOST2 LOCAL MATRIX IS FILLED !!!" << std::endl;}
           if (rows_available<0 ) { throw std::runtime_error(" HOST2: The number of rows in the local array is smaller than requested.");}
         }
         else {
@@ -395,24 +367,25 @@ void TadahCLI::subcommand_train() {
     while (true) {
       // ask for more work...
       MPI_Send (&rows_available, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD);
+
       // request from root or from other workers
       MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
       int worker = status.MPI_SOURCE;
       int tag = status.MPI_TAG;
 
       // release a worker
-      if (status.MPI_TAG == RELEASE_TAG) {
+      if (tag == TadahCLI::RELEASE_TAG) {
         int temp;
         MPI_Recv (&temp, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
         if (rows_available!=0) { throw std::runtime_error("Attempting to release a worker... but the worker requires more data!!");}
         break;
       }
-      else if (status.MPI_TAG == WAIT_TAG) {
+      else if (tag == TadahCLI::WAIT_TAG) {
         int temp;
         MPI_Recv (&temp, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
         // do nothing here; ask for more work in the next cycle
       }
-      else if (status.MPI_TAG == DATA_TAG) {
+      else if (tag == TadahCLI::DATA_TAG) {
         // other worker is giving me some data
         int arr_size;
         MPI_Get_count(&status, MPI_DOUBLE, &arr_size);
@@ -424,108 +397,10 @@ void TadahCLI::subcommand_train() {
         rows_available -= rows_accepted;
         phi_row += rows_accepted;
       }
-      else if (status.MPI_TAG == WORK_TAG) {
-        // otherwise get work package
-        int fn_length;  // length of the filename char array
-        int first;  // index of the first structure to read from the file
-        int nstruc; // number of structures to be processed
-        MPI_Get_count(&status, MPI_CHAR, &fn_length);
-
-        char *fn  = (char *) malloc(fn_length+1);
-        MPI_Recv (fn, fn_length, MPI_CHAR, 0, WORK_TAG, MPI_COMM_WORLD, &status);
-        MPI_Recv (&first, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD, &status);
-        MPI_Recv (&nstruc, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD, &status);
-
-        // do work
-        StructureDB stdb;
-        stdb.add(std::string(fn,fn_length),first,nstruc);
-        nnf.calc(stdb);
-
-        // compute number of rows needed for a given StructureDB
-        int rows_needed = 0;
-        for (size_t s=0; s<stdb.size(); ++s) {
-          int natoms = stdb(s).natoms();
-          rows_needed += DesignMatrixBase::phi_rows_num(config, 1, natoms);
-        }
-
-        if (rows_available<rows_needed) {
-          // we do not have enough rows in the local phi matrix
-          // so we create temp DM of required size
-          DesignMatrix<DM_Function_Base&> temp_dm(*fb, config);
-          temp_dm.Phi.resize(rows_needed,phi_cols1);
-          temp_dm.T.resize(rows_needed);
-          temp_dm.Tlabels.resize(rows_needed);
-
-          // and compute all rows
-          size_t temp_phi_row=0;
-          temp_dm.fill_T(stdb);
-          for (size_t s=0; s<stdb.size(); ++s) {
-            StDescriptors st_d = dc.calc(stdb(s));
-            temp_dm.build(temp_phi_row,stdb(s),st_d); // phi_row++
-          }
-
-          // first we try to fill remaining rows in the local phi matrix
-          // copy top of temp_dm.Phi to the bottom of dm. Phi in reverse order
-          if (rows_available>0) {
-            for (rows_available; rows_available>0; rows_available--) {
-              for (int c=0; c<phi_cols1; c++) {
-                dm.Phi(phi_row,c) = temp_dm.Phi(rows_available-1,c); 
-                dm.T(phi_row) = temp_dm.T(rows_available-1); 
-                dm.Tlabels(phi_row) = temp_dm.Tlabels(rows_available-1); 
-              }
-              phi_row++;
-              rows_needed--;
-            }
-          }
-
-          // there are no more available rows
-          // send remaining data to available processes
-          while (rows_needed > 0) {
-            // request host 
-            MPI_Send (&rows_needed, 1, MPI_INT, 0, DATA_TAG, MPI_COMM_WORLD);
-            int rows_accepted; // number of accepted rows
-            int dest; // receiving process
-                      // host returns which dest can accept and how much
-            MPI_Recv (&dest, 1, MPI_INT, 0, DATA_TAG, MPI_COMM_WORLD, &status);
-
-            MPI_Recv (&rows_accepted, 1, MPI_INT, 0, DATA_TAG, MPI_COMM_WORLD, &status);
-            // we send data to the host or a willing worker
-            int start=temp_dm.Phi.rows()-rows_needed;
-
-            // Define temp data type for temp Phi matrix 
-            // Phi is stored in a column-major order
-            MPI_Datatype trowvec, trowvecs;
-            MPI_Type_vector( temp_dm.Phi.cols(), 1, temp_dm.Phi.rows(), MPI_DOUBLE, &trowvec); 
-            MPI_Type_commit(&trowvec);
-            MPI_Type_create_resized(trowvec, 0, 1*sizeof(double), &trowvecs);
-            MPI_Type_commit(&trowvecs);
-
-            // ready to send
-            MPI_Send (&temp_dm.Phi.data()[start], rows_accepted, trowvecs, dest, DATA_TAG, MPI_COMM_WORLD);
-            MPI_Send (&temp_dm.T.data()[start], rows_accepted, MPI_DOUBLE, dest, DATA_TAG, MPI_COMM_WORLD);
-            MPI_Send (&temp_dm.Tlabels.data()[start], rows_accepted, MPI_DOUBLE, dest, DATA_TAG, MPI_COMM_WORLD);
-            rows_needed -= rows_accepted;
-            MPI_Type_free(&trowvec);
-            MPI_Type_free(&trowvecs);
-          }
-        }
-        else {
-          // just fill local phi array as it is large enough
-          // fill_T must be called before phi_row is incremented
-          dm.fill_T(stdb,phi_row);  // phi_row is not incremented by this method
-          for (size_t s=0; s<stdb.size(); ++s) {
-            StDescriptors st_d = dc.calc(stdb(s));
-            dm.build(phi_row,stdb(s),st_d); // build() increments phi_row++
-          }
-          rows_available-=rows_needed;
-        }
-
-        if (fn)
-          delete fn;
+      else if (tag == TadahCLI::WORK_TAG) {
+        tr.train(status, rows_available, phi_row, phi_cols1, dm, rowvecs, worker);
       }
     }
-    // if (rows_available==0) std::cout << "+++++++ WORKER IS FULL++++++++  " << b_rank << "  ROWS AVAILABLE: " << rows_available << std::endl;
-
   }
   // END HOST-WORKER
   // All local phi matrices are computed by this point
@@ -572,7 +447,7 @@ void TadahCLI::subcommand_train() {
   int jb = 1;
 
   // Distribute data in 2D block cyclic 
-  DesignMatrix<DM_Function_Base&> dm2(*fb, config);
+  DesignMatrix<DM_Function_Base&> dm2(*tr.fb, tr.config);
   dm2.Phi.resize(phi_rows2,phi_cols2);
   dm2.T.resize(phi_rows2);
   dm2.Tlabels.resize(phi_rows2);
@@ -629,8 +504,8 @@ void TadahCLI::subcommand_train() {
     t_type w(b2,phi_cols2);
     //w.resize(phi_cols2);
     //for (int i=0;i<phi_cols2;++i) w[i] = b2[i];
-    model->set_weights(w);
-    model->trained=true;
+    tr.model->set_weights(w);
+    tr.model->trained=true;
     //std::cout << w << std::endl;
   }
 
@@ -659,7 +534,7 @@ void TadahCLI::subcommand_train() {
   //   std::cout << std::endl;
   // }
   // delete[] y2;
- 
+
   // // Create third context
   // int context3;
   // int b_row3, b_col3;
@@ -679,42 +554,38 @@ void TadahCLI::subcommand_train() {
 
 #else // NON MPI VERSION
   if (is_verbose()) std::cout << "Loading structures..." << std::flush;
-  StructureDB stdb(config);
+  StructureDB stdb(tr.config);
   if (is_verbose()) std::cout << "Done!" << std::endl;
 
   if (is_verbose()) std::cout << "Finding nearest neighbours within: " <<
-    config.get<double>("RCUTMAX") << " cutoff distance..." << std::flush;
-  nnf.calc(stdb);
+    tr.config.get<double>("RCUTMAX") << " cutoff distance..." << std::flush;
+  tr.nnf.calc(stdb);
   if (is_verbose()) std::cout << "Done!" << std::endl;
 
   if (is_verbose()) std::cout << "Training start..." << std::flush;
 
   // here we want to train with the locally allocated phi
-  model->train(stdb,dc);
+  tr.model->train(stdb,dc);
 
   if (is_verbose()) std::cout << "Done!" << std::endl;
 
 #endif
 
   if (rank==0) {
-    Config param_file = model->get_param_file();
+    Config param_file = tr.model->get_param_file();
     param_file.check_pot_file();
     std::ofstream outfile;
     outfile.open ("pot.tadah");
     outfile << param_file << std::endl;;
-  // TODO What about uncertainty when MPI is enabled?
-  //  //if(train->count("--uncertainty")) {
-  //  //  t_type weights = model->get_weights();
-  //  //  t_type unc = model->get_weights_uncertainty();
-  //  //  Output(param_file,false).print_train_unc(weights, unc);
-  //  //}
-  //
+    // TODO What about uncertainty when MPI is enabled?
+    //  //if(train->count("--uncertainty")) {
+    //  //  t_type weights = model->get_weights();
+    //  //  t_type unc = model->get_weights_uncertainty();
+    //  //  Output(param_file,false).print_train_unc(weights, unc);
+    //  //}
+    //
     if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
-  //
-  if(model)
-    delete model;
-  if(fb)
-    delete fb;
+    //
   }
 
   //MPI_Win_free(&window);
@@ -830,163 +701,68 @@ void TadahCLI::subcommand_predict() {
 void TadahCLI::subcommand_hpo(
     [[maybe_unused]]int argc,
     [[maybe_unused]]char**argv) {
+
+  int rank=0;
+
+#ifdef TADAH_BUILD_MPI
+  int ncpu=1;
+  MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Status status;  
+#endif
+
+  // HOST
+  if (rank==0) {
 #ifdef TADAH_ENABLE_HPO
-  CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
-  // the number of processes in MPI_COMM_WORLD
-  // int ncpu=1;
-  // the rank of this process in MPI_COMM_WORLD
-  // int rank=0;
+    CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
 
-// #ifdef TADAH_BUILD_MPI
-//   MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
-//   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//   MPI_Status status;  
-// #endif
+    if(hpo->count("--verbose"))
+      set_verbose();
+    Config config(config_file);
+    config.remove("CHECKPRESS");
+    config.add("CHECKPRESS", "true");
+    config.check_for_training();
 
-  if(hpo->count("--verbose"))
-    set_verbose();
-  Config config(config_file);
-  config.remove("CHECKPRESS");
-  config.add("CHECKPRESS", "true");
-  config.check_for_training();
-  if (is_verbose()) std::cout << "HPO mode" << std::endl;
+    if(hpo->count("--Force")) {
+      config.remove("FORCE");
+      config.add("FORCE", "true");
+    }
+    if(hpo->count("--Stress")) {
+      config.remove("STRESS");
+      config.add("STRESS", "true");
+    }
 
-  if(hpo->count("--Force")) {
-    config.remove("FORCE");
-    config.add("FORCE", "true");
-  }
-  if(hpo->count("--Stress")) {
-    config.remove("STRESS");
-    config.add("STRESS", "true");
-  }
-
-  //if (hpo->count("--dtargets")) {
-  //  // list of indices to the trg vec to process by this proc
-  //  std::vector<int>local_trg_indices;
-
-  //  // Everyone read files from the provided directory
-  //  std::vector<fs::path> trg=read_targets(targets_dir);
-
-  //  // the number of files the process will work on
-  //  // also the size of an array it will get from the host process.
-  //  int s;
-  //  if ( rank == 0 ) {
-  //    // host proc distributes work equally between available processes
-  //    // Each process will receive an array of integers.
-  //    // Integers correspond to indices in the trg vector
-  //    // e.g. indices 3,4 indicate that the process
-  //    // should work on target files trg[3] and trg[4]
-
-  //    // prep indices array and fill from 0 to trg.size()-1
-  //    std::vector<int> trg_idx(trg.size());
-  //    std::iota (std::begin(trg_idx), std::end(trg_idx), 0);
-
-  //    // Establish the number of target files per process.
-  //    // The work should be evenly distributed.
-  //    // e.g.
-  //    // For 4 processes and 19 files
-  //    // 5 5 5 4
-  //    std::vector<int> counts(ncpu,0);
-  //    for (size_t i=0;i<trg.size();++i) {
-  //      counts[i%ncpu]++;
-  //    }
-
-  //    // Keep first index to sent to each proc
-  //    // For example above 0,5,10,15
-  //    std::vector<int> first_idx(ncpu);
-  //    int sum=0;
-  //    for (int i=0;i<ncpu; ++i) {
-  //      first_idx[i]=sum;
-  //      sum+=counts[i];
-  //    }
-
-  //    // First send expected size of a chunk
-  //    for (int p = 1; p < ncpu; p++ ){
-  //      s=counts[p];
-//#ifdef TADAH_BUILD_MPI
-  //      MPI_Send ( &s, 1, MPI_INT, p, 99, MPI_COMM_WORLD );
-//#endif
-  //    }
-
-  //    // and prepare host process for its own work
-  //    s=counts[rank];
-  //    local_trg_indices.resize(s);
-//#ifdef TADAH_BUILD_MPI
-  //    MPI_Scatterv(trg_idx.data(), counts.data(), first_idx.data(),
-  //        MPI_INT, local_trg_indices.data(), s, MPI_INT, 0, MPI_COMM_WORLD);
-//#endif
-  //  }
-  //  else  {
-//#ifdef TADAH_BUILD_MPI
-  //    // Get the size of work to be done
-  //    MPI_Recv ( &s, 1, MPI_DOUBLE, 0, 99, MPI_COMM_WORLD, &status );
-//#endif
-  //    // We know the amount of work, so can resize array
-  //    local_trg_indices.resize(s);
-
-
-//#ifdef TADAH_BUILD_MPI
-  //    // Finally get indices to the trg array
-  //    MPI_Scatterv(NULL, NULL, NULL, MPI_INT, local_trg_indices.data(),
-  //        s, MPI_INT, 0, MPI_COMM_WORLD);
-//#endif
-  //  }
-
-  //  // Finally, we can start working on each target file assigned.
-  //  // But first we have to create sensible directory structure
-  //  // where we can dump all the output. 
-  //  // The user provides the outdir which we assume that is empty 
-  //  // and create subdirectories which corresponds to the names
-  //  // of the target files. All paths should be absolute.
-  //  // Note that we do not parallelise here over threads
-  //  // because parallelisation is done elsewhere.
-
-  //  // Keep program current working directory
-  //  fs::path cwd = fs::absolute(fs::current_path());
-
-  //  // Prepare outdir path
-  //  fs::path outdir = cwd.append(targets_out_dir);
-
-  //  for (const int idx: local_trg_indices) {
-  //    // Build an absolute path for target computations
-  //    // inside the user specified outdir.
-  //    // Use the name of the target file without extenstion
-  //    fs::path outdir_target = outdir;
-  //    outdir_target /= trg[idx].filename().replace_extension("");
-
-  //    // Create output dir for trg[idx] target
-  //    std::filesystem::create_directory(outdir_target);
-
-  //    // Copy target file to its output directory
-  //    // so the user has a copy for future reference
-  //    fs::copy(fs::absolute(trg[idx]),outdir_target);
-
-  //    // Change to target working directory
-  //    std::filesystem::current_path(outdir_target);
-
-  //    // Get the name for a target file
-  //    std::string target_file = trg[idx].filename();
-
-  //    // Run computation
-  //    hpo_run(config, target_file);
-
-  //    // Just in case return to where we started
-  //    std::filesystem::current_path(cwd);
-  //  }
-  //}
-  //else if(hpo->count("--target")) {
+    if (is_verbose()) std::cout << "HPO mode" << std::endl;
     hpo_run(config, target_file);
-  //}
-
-  if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
+    if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
 #else
-  std::cout << "-----------------------------------------------" << std::endl;
-  std::cout << "This subcommand is not supported by this build." << std::endl;
-  std::cout << "Ta-dah! Must by compiled with HPO support." << std::endl;
-  std::cout << "See documentation for details." << std::endl;
-  std::cout << "-----------------------------------------------" << std::endl;
+    std::cout << "-----------------------------------------------" << std::endl;
+    std::cout << "This subcommand is not supported by this build." << std::endl;
+    std::cout << "Tadah! Must by compiled with HPO support." << std::endl;
+    std::cout << "See documentation for details." << std::endl;
+    std::cout << "-----------------------------------------------" << std::endl;
+#endif
+  }
+#ifdef TADAH_BUILD_MPI
+  // WORKER
+  else {
+    // 0. Obtain updated config from the host
+    //  a) serialize config as a binary and broadcast with MPI(?)
+    //     toml can serialise
+    // 1. calculate portion of descriptors
+    // 2. solve with scalaPACK
+    // 3. run lammps simulations requested be the host
+    while (true) {
+     // request work
+     // if training
+     // train_worker()
+     // if simulations
+     // sim_worker()
+    }
+  }
 #endif
 }
+
 bool TadahCLI::is_verbose() {
   return verbose;
 }
@@ -997,7 +773,7 @@ void TadahCLI::flag_version() {
   int v_world = TADAH_WORLD_VERSION;
   int v_major = TADAH_MAJOR_VERSION;
   int v_minor = TADAH_MINOR_VERSION;
-  std::string v= "ta-dah version " + std::to_string(v_world)
+  std::string v= "tadah version " + std::to_string(v_world)
     + "." + std::to_string(v_major) + "." + std::to_string(v_minor);
   std::cout << v << std::endl;
 }
@@ -1061,9 +837,9 @@ TadahCLI::TadahCLI():
   ss << "with DBFILE, FORCE and STRESS keys.\n";
   ss << "Note: --Force and --Stress flags take\n";
   ss << "priority over config keys.\n";
-  ss << "-e.g. ta-dah predict -c config.tadah -p pot.tadah\n\n";
+  ss << "-e.g. tadah predict -c config.tadah -p pot.tadah\n\n";
   ss << "Option 2:\n Provide datasets and flags in the command line.\n";
-  ss << "-e.g. ta-dah predict -p pot-tadah -FS -d db1.tadah\n";
+  ss << "-e.g. tadah predict -p pot-tadah -FS -d db1.tadah\n";
 
   predict = app.add_subcommand("predict", ss.str());
 
@@ -1168,7 +944,7 @@ TadahCLI::TadahCLI():
 void TadahCLI::run(int argc, char** argv) {
 
   if(app.count_all()==1) {
-    std::cout << "Type: `ta-dah -h` for help" << std::endl;
+    std::cout << "Type: `tadah -h` for help" << std::endl;
   }
 
   if (app.count("--version")) {
@@ -1188,3 +964,6 @@ void TadahCLI::run(int argc, char** argv) {
     subcommand_predict();
   }
 }
+
+
+

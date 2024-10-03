@@ -1,4 +1,5 @@
 #include "tadah_cli.h"
+
 int main(int argc, char** argv) {
 
   int rank=0;
@@ -30,6 +31,11 @@ int main(int argc, char** argv) {
   if (cli.app.count_all()==1) {
     // no argument given to tadah 
     // print help message by rank 0 only
+    if (rank==0) {
+      cli.run(argc,argv);
+    }
+  }
+  else if (cli.app.count("--version")) {
     if (rank==0) {
       cli.run(argc,argv);
     }

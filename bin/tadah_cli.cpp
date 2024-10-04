@@ -327,12 +327,18 @@ void TadahCLI::subcommand_train() {
     outfile.open ("pot.tadah");
     outfile << param_file << std::endl;;
     // TODO What about uncertainty when MPI is enabled?
-    //  //if(train->count("--uncertainty")) {
-    //  //  t_type weights = model->get_weights();
-    //  //  t_type unc = model->get_weights_uncertainty();
-    //  //  Output(param_file,false).print_train_unc(weights, unc);
-    //  //}
-    //
+
+    if(train->count("--uncertainty")) {
+#ifdef TADAH_BUILD_MPI
+      throw std::runtime_error("--uncertainty flag is not supported by Tadah! MPI build");
+#else 
+      t_type weights = model->get_weights();
+      t_type unc = model->get_weights_uncertainty();
+      Output(param_file,false).print_train_unc(weights, unc);
+#endif
+    }
+
+    
     if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
     //
   }

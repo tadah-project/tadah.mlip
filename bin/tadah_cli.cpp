@@ -33,35 +33,7 @@ void TadahCLI::subcommand_train() {
     std::cout << "Minimum number of cpus for an mpi version is 2" << std::endl;
     return;
   }
-  MPI_Status status;  
 #endif
-
-  /* MPI CODE:
-   * The PHI matrix is divided into local phi matrices.
-   *
-   * The code follows host-worker pattern. Where host (rank 0)
-   * distributes work between remaining workers (rank>0).
-   * The work is distributed in packages. 
-   * Each package contains: filename, first structure to be read
-   * and the number of structures to process.
-   *
-   * Host does not calculate phi but still allocates memory to it.
-   * Each worker fills its local phi. 
-   * Once the local phi matrix is full a worker will ask host
-   * for a rank to send excees data.
-   * Host will first try to fill its own local phi.
-   * Once host phi matrix is full, the host will search for a worker
-   * with with free space in its local phi.
-   * 
-   *
-   * 1. each rank reads config file
-   * 2. host calculates total number of structures
-   * 3. host calculates the dimensions of the PHI matrix
-   *    based on force and stress flags and type of the regression
-   * 4. host broadcasts PHI number of cols and rows to all workers
-   * 5. compute sizes for local phi matrices
-   * 6. Each worker allocates memory for a local matrix phi
-   */
 
   CLI::Timer timer_tot {"Training", CLI::Timer::Big};
 
@@ -82,91 +54,100 @@ void TadahCLI::subcommand_train() {
   if (rank==0)
     if (is_verbose()) std::cout << "Training mode" << std::endl;
 
-  MPI_Trainer tr(config);
-
 #ifdef TADAH_BUILD_MPI
+  /* MPI CODE:
+   * The PHI matrix is divided into local phi matrices.
+   *
+   * The code follows host-worker pattern. Where host (rank 0)
+   * distributes work between remaining workers (rank>0).
+   * The work is distributed in packages. 
+   * Each package contains: filename, first structure to be read
+   * and the number of structures to process.
+   *
+   * Host does not calculate phi but still allocates memory to it.
+   * Each worker fills its local phi. 
+   * Once the local phi matrix is full a worker will ask host
+   * for a rank to send excees data.
+   * Host will first try to fill its own local phi.
+   * Once host phi matrix is full, the host will search for a worker
+   * with with free space in its local phi.
+   *
+   * 1. each rank reads config file
+   * 2. host calculates total number of structures
+   * 3. host calculates the dimensions of the PHI matrix
+   *    based on force and stress flags and type of the regression
+   * 4. host broadcasts PHI number of cols and rows to all workers
+   * 5. compute sizes for local phi matrices
+   * 6. Each worker allocates memory for a local matrix phi
+   */
 
+  MPI_Trainer tr(config);
   tr.init(rank, ncpu);
 
   // BEGIN HOST-WORKER
   if (rank==0) {
     // HOST is waiting for workers requests
-    MPI_Trainer_HOST host(tr, status, rank, ncpu);
-    host.prep_wpckgs();
+    MPI_Trainer_HOST HOST(tr, rank, ncpu);
+    HOST.prep_wpckgs();
     while (true) {
-      if (!host.has_packages()) {
+
+      if (!HOST.has_packages()) {
         // no more packages, just skip remaining workers
         // we will collect remaining data and release them outside of this loop
         break;
       }
+
       // probe ANY request from ANY worker
-      MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-      int worker = status.MPI_SOURCE;
-      int tag = status.MPI_TAG;
-      if (tag==TadahCLI::WORK_TAG) {
-        host.work_tag(worker, tag);
+      tr.probe();
+
+      if (tr.tag==TadahCLI::WORK_TAG) {
+        HOST.work_tag();
       }
-      else if (tag==TadahCLI::DATA_TAG) {
-        int dummy=0;
-        host.data_tag(worker, tag, dummy);
+      else if (tr.tag==TadahCLI::DATA_TAG) {
+        HOST.data_tag();
       }
       else {
         throw std::runtime_error("HOST1: Unexpected request from "
-            + std::to_string(worker));
+            + std::to_string(tr.worker));
       }
     }
 
     // work finised, collect remaining data and release all workers
     int count=1;  // count number of release workers, skip host
     while(true) {
-      MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-      int worker = status.MPI_SOURCE;
-      int tag = status.MPI_TAG;
-      if (tag==TadahCLI::DATA_TAG) {
-        host.data_tag(worker, tag, count);
+      tr.probe();
+      if (tr.tag==TadahCLI::DATA_TAG) {
+        HOST.data_tag();
       }
       else {
-        host.b(worker, tag, count);
+        HOST.release_tag(count);
       }
       if (count==ncpu) {  break; }  // count starts from 1
     }
   } 
   else { // WORKER
+    MPI_Trainer_WORKER WORKER(tr, rank, ncpu);
     while (true) {
       // ask for more work...
       MPI_Send (&tr.rows_available, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD);
 
       // request from root or from other workers
-      MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-      int worker = status.MPI_SOURCE;
-      int tag = status.MPI_TAG;
+      tr.probe();
 
       // release a worker
-      if (tag == TadahCLI::RELEASE_TAG) {
-        int temp;
-        MPI_Recv (&temp, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
-        if (tr.rows_available!=0) { throw std::runtime_error("Attempting to release a worker... but the worker requires more data!!");}
+      if (tr.tag == TadahCLI::RELEASE_TAG) {
+        WORKER.release_tag();
         break;
       }
-      else if (tag == TadahCLI::WAIT_TAG) {
-        int temp;
-        MPI_Recv (&temp, 1, MPI_INT, worker, tag, MPI_COMM_WORLD, &status);
+      else if (tr.tag == TadahCLI::WAIT_TAG) {
         // do nothing here; ask for more work in the next cycle
+        WORKER.wait_tag();
       }
-      else if (tag == TadahCLI::DATA_TAG) {
-        // other worker is giving me some data
-        int arr_size;
-        MPI_Get_count(&status, MPI_DOUBLE, &arr_size);
-        int rows_accepted = arr_size/tr.phi_cols1;
-        if (tr.rows_available<rows_accepted) { throw std::runtime_error("Number of rows available is smaller than number of provided rows");}
-        MPI_Recv (&tr.dm.Phi.data()[tr.phi_row], tr.rows_available, tr.rowvecs, worker, tag, MPI_COMM_WORLD, &status);
-        MPI_Recv (&tr.dm.T.data()[tr.phi_row], tr.rows_available, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
-        MPI_Recv (&tr.dm.Tlabels.data()[tr.phi_row], tr.rows_available, MPI_DOUBLE, worker, tag, MPI_COMM_WORLD, &status);
-        tr.rows_available -= rows_accepted;
-        tr.phi_row += rows_accepted;
+      else if (tr.tag == TadahCLI::DATA_TAG) {
+        WORKER.data_tag();
       }
-      else if (tag == TadahCLI::WORK_TAG) {
-        tr.calc_desc(status, tr.rows_available, tr.phi_row);
+      else if (tr.tag == TadahCLI::WORK_TAG) {
+        WORKER.work_tag();
       }
     }
   }

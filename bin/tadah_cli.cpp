@@ -33,6 +33,14 @@ void TadahCLI::subcommand_train() {
     std::cout << "Minimum number of cpus for an mpi version is 2" << std::endl;
     return;
   }
+  if (train->count("--uncertainty")) {
+    if (rank==0) {
+      std::cout << "-----------------------------------------------------" << std::endl;
+      std::cout << "The --uncertainty flag is not supported by MPI build." << std::endl;
+      std::cout << "-----------------------------------------------" << std::endl;
+    }
+    return;
+  }
 #endif
 
   CLI::Timer timer_tot {"Training", CLI::Timer::Big};
@@ -326,21 +334,16 @@ void TadahCLI::subcommand_train() {
     std::ofstream outfile;
     outfile.open ("pot.tadah");
     outfile << param_file << std::endl;;
-    // TODO What about uncertainty when MPI is enabled?
 
+#ifndef TADAH_BUILD_MPI
     if(train->count("--uncertainty")) {
-#ifdef TADAH_BUILD_MPI
-      throw std::runtime_error("--uncertainty flag is not supported by Tadah! MPI build");
-#else 
       t_type weights = model->get_weights();
       t_type unc = model->get_weights_uncertainty();
       Output(param_file,false).print_train_unc(weights, unc);
-#endif
     }
+#endif
 
-    
     if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
-    //
   }
 
 }
@@ -396,8 +399,6 @@ void TadahCLI::subcommand_predict() {
 
   DescriptorsCalc<> dc(pot_config,*DCS.d2b,*DCS.d3b,*DCS.dmb,
       *DCS.c2b,*DCS.c3b,*DCS.cmb);
-
-
 
   if (is_verbose()) std::cout << "Prediction start..." << std::flush;
   DM_Function_Base *fb = CONFIG::factory<DM_Function_Base,Config&>(

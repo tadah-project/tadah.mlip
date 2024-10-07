@@ -315,16 +315,22 @@ void TadahCLI::subcommand_hpo(
 
   int rank=0;
 
+  // HOST
+#ifdef TADAH_ENABLE_HPO
+
 #ifdef TADAH_BUILD_MPI
   int ncpu=1;
   MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Status status;  
+  if (ncpu<2) {
+    std::cout << "Minimum number of cpus for an mpi version is 2" << std::endl;
+    return;
+  }
 #endif
 
-  // HOST
-  if (rank==0) {
-#ifdef TADAH_ENABLE_HPO
+    if (rank==0)
+      if (is_verbose()) std::cout << "HPO mode" << std::endl;
+
     CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
 
     if(hpo->count("--verbose"))
@@ -343,17 +349,6 @@ void TadahCLI::subcommand_hpo(
       config.add("STRESS", "true");
     }
 
-    if (is_verbose()) std::cout << "HPO mode" << std::endl;
-    hpo_run(config, target_file);
-    if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
-#else
-    std::cout << "-----------------------------------------------" << std::endl;
-    std::cout << "This subcommand is not supported by this build." << std::endl;
-    std::cout << "Tadah! Must by compiled with HPO support." << std::endl;
-    std::cout << "See documentation for details." << std::endl;
-    std::cout << "-----------------------------------------------" << std::endl;
-#endif
-  }
 #ifdef TADAH_BUILD_MPI
   // WORKER
   if (rank==0) {
@@ -391,7 +386,20 @@ void TadahCLI::subcommand_hpo(
       tr.solve();
     }
   }
+#else
+    hpo_run(config, target_file);
 #endif
+
+    if (rank==0)
+      if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
+#else
+    std::cout << "-----------------------------------------------" << std::endl;
+    std::cout << "This subcommand is not supported by this build." << std::endl;
+    std::cout << "Tadah! Must by compiled with HPO support." << std::endl;
+    std::cout << "See documentation for details." << std::endl;
+    std::cout << "-----------------------------------------------" << std::endl;
+#endif
+
 }
 
 bool TadahCLI::is_verbose() {

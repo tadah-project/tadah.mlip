@@ -107,10 +107,10 @@ void TadahCLI::subcommand_train() {
       // probe ANY request from ANY worker
       tr.probe();
 
-      if (tr.tag==TadahCLI::WORK_TAG) {
+      if (tr.tag==MPI_Trainer::WORK_TAG) {
         HOST.work_tag();
       }
-      else if (tr.tag==TadahCLI::DATA_TAG) {
+      else if (tr.tag==MPI_Trainer::DATA_TAG) {
         HOST.data_tag();
       }
       else {
@@ -123,7 +123,7 @@ void TadahCLI::subcommand_train() {
     int count=1;  // count number of release workers, skip host
     while(true) {
       tr.probe();
-      if (tr.tag==TadahCLI::DATA_TAG) {
+      if (tr.tag==MPI_Trainer::DATA_TAG) {
         HOST.data_tag();
       }
       else {
@@ -136,24 +136,24 @@ void TadahCLI::subcommand_train() {
     MPI_Trainer_WORKER WORKER(tr, rank, ncpu);
     while (true) {
       // ask for more work...
-      MPI_Send (&tr.rows_available, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD);
+      MPI_Send (&tr.rows_available, 1, MPI_INT, 0, MPI_Trainer::WORK_TAG, MPI_COMM_WORLD);
 
       // request from root or from other workers
       tr.probe();
 
       // release a worker
-      if (tr.tag == TadahCLI::RELEASE_TAG) {
+      if (tr.tag == MPI_Trainer::RELEASE_TAG) {
         WORKER.release_tag();
         break;
       }
-      else if (tr.tag == TadahCLI::WAIT_TAG) {
+      else if (tr.tag == MPI_Trainer::WAIT_TAG) {
         // do nothing here; ask for more work in the next cycle
         WORKER.wait_tag();
       }
-      else if (tr.tag == TadahCLI::DATA_TAG) {
+      else if (tr.tag == MPI_Trainer::DATA_TAG) {
         WORKER.data_tag();
       }
-      else if (tr.tag == TadahCLI::WORK_TAG) {
+      else if (tr.tag == MPI_Trainer::WORK_TAG) {
         WORKER.work_tag();
       }
     }
@@ -350,40 +350,57 @@ void TadahCLI::subcommand_hpo(
     }
 
 #ifdef TADAH_BUILD_MPI
-  // WORKER
   if (rank==0) {
+      std::cout << "ROOT START: " << std::endl;
     hpo_run(config, target_file);
+      std::cout << "ROOT END: " << std::endl;
   }
   else { // WORKER
-    int TEMP=1;
-    while (TEMP--) {
+    while (true) {
+      std::cout << "WORKER START: " << std::endl;
+      int ready=0;
+      std::cout << "WORKER READ CONFIG 1 : " << std::endl;
+      MPI_Bcast(&ready, 1, MPI_INT, 0, MPI_COMM_WORLD);
+      std::cout << "WORKER READ CONFIG 2 : " << std::endl;
+
+      if (!ready)
+        break;
+
+      Config config("config.temp");
+      std::cout << "WORKER READ CONFIG DONE: " << std::endl;
+
       MPI_Trainer tr(config);
       tr.init(rank, ncpu);
       MPI_Trainer_WORKER WORKER(tr, rank, ncpu);
+      std::cout << "WORKER INIT DONE: " << std::endl;
       while (true) {
         // ask for more work...
-        MPI_Send (&tr.rows_available, 1, MPI_INT, 0, WORK_TAG, MPI_COMM_WORLD);
+        MPI_Send (&tr.rows_available, 1, MPI_INT, 0, MPI_Trainer::WORK_TAG, MPI_COMM_WORLD);
 
         // request from root or from other workers
         tr.probe();
 
         // release a worker
-        if (tr.tag == TadahCLI::RELEASE_TAG) {
+        if (tr.tag == MPI_Trainer::RELEASE_TAG) {
           WORKER.release_tag();
           break;
         }
-        else if (tr.tag == TadahCLI::WAIT_TAG) {
+        else if (tr.tag == MPI_Trainer::WAIT_TAG) {
           // do nothing here; ask for more work in the next cycle
           WORKER.wait_tag();
         }
-        else if (tr.tag == TadahCLI::DATA_TAG) {
+        else if (tr.tag == MPI_Trainer::DATA_TAG) {
           WORKER.data_tag();
         }
-        else if (tr.tag == TadahCLI::WORK_TAG) {
+        else if (tr.tag == MPI_Trainer::WORK_TAG) {
           WORKER.work_tag();
         }
       }
+
+      std::cout << "WORKER SOLVE: " << std::endl;
       tr.solve();
+      std::cout << "WORKER SOLVE DONE: " << std::endl;
+      std::cout << "WORKER STOP: " << std::endl;
     }
   }
 #else

@@ -327,7 +327,7 @@ void TadahCLI::subcommand_hpo(
   }
 #endif
 
-  if (rank==0) {
+  if (rank==0)
     if (is_verbose()) std::cout << "HPO mode" << std::endl;
 
     CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
@@ -347,7 +347,6 @@ void TadahCLI::subcommand_hpo(
       config.remove("STRESS");
       config.add("STRESS", "true");
     }
-  }
 
 #ifdef TADAH_BUILD_MPI
   if (rank==0) {

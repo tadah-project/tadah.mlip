@@ -310,6 +310,7 @@ void TadahCLI::subcommand_train() {
   blacs_gridexit_(&tr.context2);
 
 #else // NON MPI VERSION
+  Trainer tr(config);
   if (is_verbose()) std::cout << "Loading structures..." << std::flush;
   StructureDB stdb(tr.config);
   if (is_verbose()) std::cout << "Done!" << std::endl;
@@ -322,7 +323,7 @@ void TadahCLI::subcommand_train() {
   if (is_verbose()) std::cout << "Training start..." << std::flush;
 
   // here we want to train with the locally allocated phi
-  tr.model->train(stdb,dc);
+  tr.model->train(stdb,tr.dc);
 
   if (is_verbose()) std::cout << "Done!" << std::endl;
 
@@ -337,8 +338,8 @@ void TadahCLI::subcommand_train() {
 
 #ifndef TADAH_BUILD_MPI
     if(train->count("--uncertainty")) {
-      t_type weights = model->get_weights();
-      t_type unc = model->get_weights_uncertainty();
+      t_type weights = tr.model->get_weights();
+      t_type unc = tr.model->get_weights_uncertainty();
       Output(param_file,false).print_train_unc(weights, unc);
     }
 #endif

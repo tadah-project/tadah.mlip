@@ -315,7 +315,6 @@ void TadahCLI::subcommand_hpo(
 
   int rank=0;
 
-  // HOST
 #ifdef TADAH_ENABLE_HPO
 
 #ifdef TADAH_BUILD_MPI
@@ -328,8 +327,8 @@ void TadahCLI::subcommand_hpo(
   }
 #endif
 
-    if (rank==0)
-      if (is_verbose()) std::cout << "HPO mode" << std::endl;
+  if (rank==0) {
+    if (is_verbose()) std::cout << "HPO mode" << std::endl;
 
     CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
 
@@ -348,31 +347,27 @@ void TadahCLI::subcommand_hpo(
       config.remove("STRESS");
       config.add("STRESS", "true");
     }
+  }
 
 #ifdef TADAH_BUILD_MPI
   if (rank==0) {
-      std::cout << "ROOT START: " << std::endl;
     hpo_run(config, target_file);
-      std::cout << "ROOT END: " << std::endl;
   }
   else { // WORKER
     while (true) {
-      std::cout << "WORKER START: " << std::endl;
-      int ready=0;
-      std::cout << "WORKER READ CONFIG 1 : " << std::endl;
-      MPI_Bcast(&ready, 1, MPI_INT, 0, MPI_COMM_WORLD);
-      std::cout << "WORKER READ CONFIG 2 : " << std::endl;
+      int cont; // continue?
+      MPI_Bcast(&cont, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-      if (!ready)
+      if (!cont)
         break;
 
+      // read config prepared by the host
+      // TODO broadcase config to all workers instead of dumping it on the disk
       Config config("config.temp");
-      std::cout << "WORKER READ CONFIG DONE: " << std::endl;
 
       MPI_Trainer tr(config);
       tr.init(rank, ncpu);
       MPI_Trainer_WORKER WORKER(tr, rank, ncpu);
-      std::cout << "WORKER INIT DONE: " << std::endl;
       while (true) {
         // ask for more work...
         MPI_Send (&tr.rows_available, 1, MPI_INT, 0, MPI_Trainer::WORK_TAG, MPI_COMM_WORLD);
@@ -397,10 +392,7 @@ void TadahCLI::subcommand_hpo(
         }
       }
 
-      std::cout << "WORKER SOLVE: " << std::endl;
       tr.solve();
-      std::cout << "WORKER SOLVE DONE: " << std::endl;
-      std::cout << "WORKER STOP: " << std::endl;
     }
   }
 #else

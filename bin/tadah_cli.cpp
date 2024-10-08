@@ -22,176 +22,159 @@
 #include <chrono>
 
 void TadahCLI::subcommand_train() {
-
-
-  if(train->count("--verbose"))
+  // Check if verbose mode is enabled and set it
+  if (train->count("--verbose")) {
     set_verbose();
+  }
 
+  // Load the configuration from the specified file
   Config config(config_file);
 
-  if(train->count("--Force")) {
+  // Enable FORCE and STRESS flags in the configuration if specified
+  if (train->count("--Force")) {
     config.remove("FORCE");
     config.add("FORCE", "true");
   }
-  if(train->count("--Stress")) {
+  if (train->count("--Stress")) {
     config.remove("STRESS");
     config.add("STRESS", "true");
   }
 
 #ifdef TADAH_BUILD_MPI
+  // Initialize MPI variables to determine the rank and the number of CPUs
   int rank = 0;
   int ncpu = 1;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
 
-  /* MPI CODE:
-   * The PHI matrix is divided into local phi matrices.
-   *
-   * The code follows host-worker pattern. Where host (rank 0)
-   * distributes work between remaining workers (rank>0).
-   * The work is distributed in packages. 
-   * Each package contains: filename, first structure to be read
-   * and the number of structures to process.
-   *
-   * Host does not calculate phi but still allocates memory to it.
-   * Each worker fills its local phi. 
-   * Once the local phi matrix is full a worker will ask host
-   * for a rank to send excees data.
-   * Host will first try to fill its own local phi.
-   * Once host phi matrix is full, the host will search for a worker
-   * with with free space in its local phi.
-   *
-   * 1. each rank reads config file
-   * 2. host calculates total number of structures
-   * 3. host calculates the dimensions of the PHI matrix
-   *    based on force and stress flags and type of the regression
-   * 4. host broadcasts PHI number of cols and rows to all workers
-   * 5. compute sizes for local phi matrices
-   * 6. Each worker allocates memory for a local matrix phi
-   */
-
-  // BEGIN HOST-WORKER
-  if (rank==0) {
-    if (ncpu<2) {
-      std::cout << "Minimum number of cpus for an mpi version is 2" << std::endl;
+  // Execute host or worker code based on rank
+  if (rank == 0) { // Host code
+                   // Ensure there are enough CPUs for MPI
+    if (ncpu < 2) {
+      std::cerr << "Minimum number of CPUs for an MPI version is 2" << std::endl;
       return;
     }
+
+    // Check if the uncertainty flag is incompatible with MPI
     if (train->count("--uncertainty")) {
-      if (rank==0) {
-        std::cout << "-----------------------------------------------------" << std::endl;
-        std::cout << "The --uncertainty flag is not supported by MPI build." << std::endl;
-        std::cout << "-----------------------------------------------" << std::endl;
-      }
+      std::cout << "-----------------------------------------------------" << std::endl;
+      std::cout << "The --uncertainty flag is not supported by MPI build." << std::endl;
+      std::cout << "-----------------------------------------------------" << std::endl;
       return;
     }
-    if (is_verbose()) std::cout << "Training..." << std::endl;
-    CLI::Timer timer_tot {"Training", CLI::Timer::Big};
-    // HOST is waiting for workers requests
-    MPI_Trainer_HOST HOST(config, rank, ncpu);
-    HOST.init();
-    HOST.prep_wpckgs();
-    while (true) {
-      if (!HOST.has_packages()) {
-        // no more packages, just skip remaining workers
-        // we will collect remaining data and release them outside of this loop
-        break;
-      }
 
-      // probe ANY request from ANY worker
+    // Start training timer if verbose mode is enabled
+    if (is_verbose()) std::cout << "Training..." << std::endl;
+    CLI::Timer timer_tot{"Training", CLI::Timer::Big};
+
+    // Initialize host MPI trainer
+    MPI_Trainer_HOST HOST(config, rank, ncpu);
+    HOST.prep_wpckgs();
+
+    // Process requests from workers
+    while (true) {
+      // Exit loop if there are no more packages
+      if (!HOST.has_packages()) break;
+
+      // Probe for incoming requests from any worker
       HOST.probe();
 
-      if (HOST.tag==MPI_Trainer::WORK_TAG) {
+      // Handle requests based on their tags
+      if (HOST.tag == MPI_Trainer::WORK_TAG) {
         HOST.work_tag();
-      }
-      else if (HOST.tag==MPI_Trainer::DATA_TAG) {
+      } else if (HOST.tag == MPI_Trainer::DATA_TAG) {
         HOST.data_tag();
-      }
-      else {
-        throw std::runtime_error("HOST1: Unexpected request from "
-            + std::to_string(HOST.worker));
+      } else {
+        throw std::runtime_error("HOST1: Unexpected request from " + std::to_string(HOST.worker));
       }
     }
 
-    // work finised, collect remaining data and release all workers
-    int count=1;  // count number of release workers, skip host
-    while(true) {
+    // Collect remaining data and release all workers
+    int count = 1;
+    while (true) {
       HOST.probe();
-      if (HOST.tag==MPI_Trainer::DATA_TAG) {
+      if (HOST.tag == MPI_Trainer::DATA_TAG) {
         HOST.data_tag();
-      }
-      else {
+      } else {
         HOST.release_tag(count);
       }
-      if (count==ncpu) {  break; }  // count starts from 1
+      if (count == ncpu) break; // Exit when all workers are released
     }
 
+    // Perform the final computation and save parameters
     HOST.solve();
     Config param_file = HOST.model->get_param_file();
     param_file.check_pot_file();
-    std::ofstream outfile;
-    outfile.open ("pot.tadah");
-    outfile << param_file << std::endl;;
+    std::ofstream outfile("pot.tadah");
+    if (outfile.is_open()) {
+      outfile << param_file << std::endl;
+    } else {
+      std::cerr << "Error: Unable to open file pot.tadah" << std::endl;
+    }
     if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
-  } 
-  else { // WORKER
+  } else { // Worker code
+           // Initialize worker MPI trainer
     MPI_Trainer_WORKER WORKER(config, rank, ncpu);
-    WORKER.init();
     while (true) {
-      // ask for more work...
-      MPI_Send (&WORKER.rows_available, 1, MPI_INT, 0, MPI_Trainer::WORK_TAG, MPI_COMM_WORLD);
+      // Send a request for more work to the host
+      MPI_Send(&WORKER.rows_available, 1, MPI_INT, 0, MPI_Trainer::WORK_TAG, MPI_COMM_WORLD);
 
-      // request from root or from other workers
+      // Probe and respond to host or worker requests
       WORKER.probe();
 
-      // release a worker
+      // Handle requests based on their tags
       if (WORKER.tag == MPI_Trainer::RELEASE_TAG) {
         WORKER.release_tag();
         break;
-      }
-      else if (WORKER.tag == MPI_Trainer::WAIT_TAG) {
-        // do nothing here; ask for more work in the next cycle
+      } else if (WORKER.tag == MPI_Trainer::WAIT_TAG) {
         WORKER.wait_tag();
-      }
-      else if (WORKER.tag == MPI_Trainer::DATA_TAG) {
+      } else if (WORKER.tag == MPI_Trainer::DATA_TAG) {
         WORKER.data_tag();
-      }
-      else if (WORKER.tag == MPI_Trainer::WORK_TAG) {
+      } else if (WORKER.tag == MPI_Trainer::WORK_TAG) {
         WORKER.work_tag();
       }
     }
-    WORKER.solve();
+    WORKER.solve(); // Perform worker computations
   }
-#else // NON MPI VERSION
-  CLI::Timer timer_tot {"Training", CLI::Timer::Big};
+#else // Non-MPI version
+      // Start training with a timer in the non-MPI mode
+  CLI::Timer timer_tot{"Training", CLI::Timer::Big};
   Trainer tr(config);
+
+  // Load structures and provide feedback if verbose
   if (is_verbose()) std::cout << "Loading structures..." << std::flush;
   StructureDB stdb(tr.config);
   if (is_verbose()) std::cout << "Done!" << std::endl;
 
-  if (is_verbose()) std::cout << "Finding nearest neighbours within: " <<
-    tr.config.get<double>("RCUTMAX") << " cutoff distance..." << std::flush;
+  // Calculate nearest neighbors and provide feedback
+  if (is_verbose()) std::cout << "Finding nearest neighbours within: "
+    << tr.config.get<double>("RCUTMAX") << " cutoff distance..." << std::flush;
   tr.nnf.calc(stdb);
   if (is_verbose()) std::cout << "Done!" << std::endl;
 
+  // Begin the training process and inform if verbose
   if (is_verbose()) std::cout << "Training start..." << std::flush;
-
-  // here we want to train with the locally allocated phi
-  tr.model->train(stdb,tr.dc);
-
+  tr.model->train(stdb, tr.dc);
   if (is_verbose()) std::cout << "Done!" << std::endl;
 
+  // Save the trained model parameters to a file
   Config param_file = tr.model->get_param_file();
   param_file.check_pot_file();
-  std::ofstream outfile;
-  outfile.open ("pot.tadah");
-  outfile << param_file << std::endl;;
-
-  if(train->count("--uncertainty")) {
-    t_type weights = tr.model->get_weights();
-    t_type unc = tr.model->get_weights_uncertainty();
-    Output(param_file,false).print_train_unc(weights, unc);
+  std::ofstream outfile("pot.tadah");
+  if (outfile.is_open()) {
+    outfile << param_file << std::endl;
+  } else {
+    std::cerr << "Error: Unable to open file pot.tadah" << std::endl;
   }
 
+  // Output uncertainty if requested
+  if (train->count("--uncertainty")) {
+    t_type weights = tr.model->get_weights();
+    t_type unc = tr.model->get_weights_uncertainty();
+    Output(param_file, false).print_train_unc(weights, unc);
+  }
+
+  // Output total training time if verbose
   if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
 #endif
 }
@@ -305,27 +288,12 @@ void TadahCLI::subcommand_hpo(
     [[maybe_unused]]int argc,
     [[maybe_unused]]char**argv) {
 
-  int rank=0;
 
 #ifdef TADAH_ENABLE_HPO
 
-#ifdef TADAH_BUILD_MPI
-  int ncpu=1;
-  MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  if (ncpu<2) {
-    std::cout << "Minimum number of cpus for an mpi version is 2" << std::endl;
-    return;
-  }
-#endif
-
-  if (rank==0)
-    if (is_verbose()) std::cout << "Optimising HPs..." << std::endl;
-
-  CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
-
   if(hpo->count("--verbose"))
     set_verbose();
+
   Config config(config_file);
   config.remove("CHECKPRESS");
   config.add("CHECKPRESS", "true");
@@ -341,6 +309,16 @@ void TadahCLI::subcommand_hpo(
   }
 
 #ifdef TADAH_BUILD_MPI
+  if (is_verbose()) std::cout << "Optimising HPs..." << std::endl;
+  CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
+  int rank=0;
+  int ncpu=1;
+  MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if (ncpu<2) {
+    std::cout << "Minimum number of cpus for an mpi version is 2" << std::endl;
+    return;
+  }
   if (rank==0) {
     hpo_run(config, target_file);
   }
@@ -357,7 +335,6 @@ void TadahCLI::subcommand_hpo(
       Config config("config.temp");
 
       MPI_Trainer_WORKER WORKER(config, rank, ncpu);
-      WORKER.init();
       while (true) {
         // ask for more work...
         MPI_Send (&WORKER.rows_available, 1, MPI_INT, 0, MPI_Trainer::WORK_TAG, MPI_COMM_WORLD);
@@ -385,12 +362,13 @@ void TadahCLI::subcommand_hpo(
     }
   }
 #else
+  CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
+  if (is_verbose()) std::cout << "Optimising HPs..." << std::endl;
   hpo_run(config, target_file);
+  if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
 #endif
 
-  if (rank==0)
-    if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
-#else
+#else // HPO is disabled
   std::cout << "-----------------------------------------------" << std::endl;
   std::cout << "This subcommand is not supported by this build." << std::endl;
   std::cout << "Tadah! Must by compiled with HPO support." << std::endl;

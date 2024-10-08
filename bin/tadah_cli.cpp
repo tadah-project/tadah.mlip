@@ -85,7 +85,8 @@ void TadahCLI::subcommand_train() {
       } else if (HOST.tag == MPI_Trainer::DATA_TAG) {
         HOST.data_tag();
       } else {
-        throw std::runtime_error("HOST1: Unexpected request from " + std::to_string(HOST.worker));
+        throw std::runtime_error("HOST: Unexpected request from "
+            + std::to_string(HOST.worker));
       }
     }
 
@@ -309,30 +310,32 @@ void TadahCLI::subcommand_hpo(
   }
 
 #ifdef TADAH_BUILD_MPI
-  if (is_verbose()) std::cout << "Optimising HPs..." << std::endl;
-  CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
   int rank=0;
   int ncpu=1;
   MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  if (ncpu<2) {
-    std::cout << "Minimum number of cpus for an mpi version is 2" << std::endl;
-    return;
-  }
   if (rank==0) {
+    if (ncpu<2) {
+      std::cout << "Minimum number of cpus for an mpi version is 2" << std::endl;
+      return;
+    }
+    if (is_verbose()) std::cout << "Optimising HPs..." << std::endl;
+    CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
     hpo_run(config, target_file);
+    if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
   }
   else { // WORKER
     while (true) {
-      int cont; // continue?
-      MPI_Bcast(&cont, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-      if (!cont)
+      int cs_size;
+      MPI_Bcast(&cs_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+      if (!cs_size)
         break;
 
-      // read config prepared by the host
-      // TODO broadcase config to all workers instead of dumping it on the disk
-      Config config("config.temp");
+      std::vector<char> serialized(cs_size);
+      MPI_Bcast(serialized.data(), cs_size, MPI_CHAR, 0, MPI_COMM_WORLD);
+      Config config;
+      config.deserialize(serialized);
+      config.postprocess();
 
       MPI_Trainer_WORKER WORKER(config, rank, ncpu);
       while (true) {

@@ -23,7 +23,7 @@
 
 void TadahCLI::subcommand_train() {
   // Check if verbose mode is enabled and set it
-  if (train->count("--verbose")) {
+  if (train->count("--Verbose")) {
     set_verbose();
   }
 
@@ -182,7 +182,7 @@ void TadahCLI::subcommand_train() {
 
 void TadahCLI::subcommand_predict() {
   CLI::Timer timer_tot {"Prediction", CLI::Timer::Big};
-  if(predict->count("--verbose"))
+  if(predict->count("--Verbose"))
     set_verbose();
   // if (is_verbose()) std::cout << "Prediction..." << std::endl;
   Config pot_config(pot_file);
@@ -292,7 +292,7 @@ void TadahCLI::subcommand_hpo(
 
 #ifdef TADAH_ENABLE_HPO
 
-  if(hpo->count("--verbose"))
+  if(hpo->count("--Verbose"))
     set_verbose();
 
   Config config(config_file);
@@ -321,7 +321,7 @@ void TadahCLI::subcommand_hpo(
     }
     if (is_verbose()) std::cout << "Optimising HPs..." << std::endl;
     CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
-    hpo_run(config, target_file);
+    hpo_run(config, target_file); // TODO pass prediction file
     if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
   }
   else { // WORKER
@@ -395,15 +395,6 @@ void TadahCLI::flag_version() {
     + "." + std::to_string(v_major) + "." + std::to_string(v_minor);
   std::cout << v << std::endl;
 }
-std::vector<fs::path> TadahCLI::read_targets(std::string path) {
-  std::vector<fs::path> s=read_files(path);
-  if(s.size()==0) 
-    throw std::runtime_error(
-        "No files found in the targets directory: "
-        +targets_dir+"\n");
-
-  return s;
-}
 std::vector<fs::path> TadahCLI::read_files(std::string path) {
   std::vector<fs::path> s;
   for (const auto & entry : fs::directory_iterator(path))
@@ -440,7 +431,7 @@ TadahCLI::TadahCLI():
 
   train->add_flag("-F,--Force", "Train with forces.");
   train->add_flag("-S,--Stress", "Train with stresses.");
-  train->add_flag("-v,--verbose", "Verbose mode on.");
+  train->add_flag("-V,--Verbose", "Verbose mode on.");
   train->add_flag("-u,--uncertainty", "Dump uncertainty on weights.");
 
 
@@ -470,7 +461,6 @@ TadahCLI::TadahCLI():
     ->check(CLI::ExistingFile)
     ->option_text("CONFIG_FILE");
 
-
   predict->add_option("-d,--datasets", datasets,
       "One or more datasets for prediction.")
     ->option_text("DATASETS ...")
@@ -479,7 +469,7 @@ TadahCLI::TadahCLI():
 
   predict->add_flag("-F,--Force", "Predict forces.");
   predict->add_flag("-S,--Stress", "Predict stresses.");
-  predict->add_flag("-v,--verbose", "Verbose mode on.");
+  predict->add_flag("-V,--Verbose", "Verbose mode on.");
   predict->add_flag("-e,--error", "Predict model error.");
   predict->add_flag("-a,--analytics",
       "Compare predicted values to those in the original dataset.");
@@ -495,24 +485,21 @@ TadahCLI::TadahCLI():
   /*     Hyperparameter Optimizer                                              */
   /*---------------------------------------------------------------------------*/
   ss.str(std::string());
-#ifndef TADAH_ENABLE_HPO
-  ss << "(UNAVAILABLE)" << std::endl;
-#endif
-  ss << "Optimise model's architecture.\n";
-  ss << "Find the best set of hyperparameters (HPs)\n";
-  ss << "subject to predefined constraints\n";
-  ss << "Minimises custom made loss function.\n";
+#ifdef TADAH_ENABLE_HPO
+  ss << "Optimize the model's architecture and determine\n";
+  ss << "the best hyperparameters within predefined constraints.\n";
+  ss << "This option uses hyperparameter optimization\n";
+  ss << "to minimize a custom loss function.\n";
+  ss << "See documentation for more details.\n";
 
   hpo = app.add_subcommand("hpo", ss.str());
 
   ss.str(std::string());
-  ss << "A config file containing all model parameters\n";
+  ss << "A config file containing model inital parameters\n";
   ss << "and training dataset(s).\n";
   ss << "The model parameters will be optimised\n";
   ss << "within constraints defined in the -t target file\n";
-  ss << "See documentation for more details.\n";
 
-#ifdef TADAH_ENABLE_HPO
   auto c_opt=hpo->add_option("-c,--config", config_file, ss.str())
     ->option_text("CONFIG_FILE")
     ->check(CLI::ExistingFile)
@@ -521,41 +508,27 @@ TadahCLI::TadahCLI():
   ss.str(std::string());
   ss << "A config file containing model's targets\n";
   ss << "and hyperparameters constraints.\n";
-  ss << "See documentation for more details.\n";
   auto t_opt=hpo->add_option("-t,--target", target_file, ss.str())
     ->option_text("TARGET_FILE")
+    ->required()
     ->check(CLI::ExistingFile);
 
-  // ss.str(std::string());
-  // ss << "Output directory for -d option.\n";
-  // auto o_opt=hpo->add_option("-o,--out_dir", targets_out_dir, ss.str())
-  //   ->option_text("OUTPUT_DIRECTORY")
-  //   ->check(CLI::ExistingDirectory)
-  //   ->excludes(t_opt)
-  //   ->needs(c_opt);
-
-  //ss.str(std::string());
-  //ss << "A direcory containing model's target files.\n";
-  //ss << "Each target file must contain a set of\n";
-  //ss << "hyperparameter constraints as in the -t option.\n";
-  //ss << "This option can be run with MPI.\n";
-  //ss << "Each MPI process will run independent\n";
-  //ss << "optimisation for every target in the directory\n";
-  //ss << "resulting in N models for N targets.\n";
-  //ss << "See documentation for more details.\n";
-  //hpo->add_option("-d,--dtargets", targets_dir, ss.str())
-  //  ->option_text("TARGETS_DIRECTORY")
-  //  ->check(CLI::ExistingDirectory)
-  //  ->excludes(t_opt)
-  //  ->needs(c_opt)
-  //  ->needs(o_opt);
-
+  ss.str(std::string());
+  ss << "A config file containing validation datasets only.\n";
+  ss << "The validation set will be used to test a set of HPs.\n";
+  auto v_opt=hpo->add_option("-v,--validation", validation_file, ss.str())
+    ->option_text("VALIDATION_FILE")
+    ->required()
+    ->check(CLI::ExistingFile);
 
   hpo->add_flag("-F,--Force", "Train with forces.");
   hpo->add_flag("-S,--Stress", "Train with stresses.");
-  hpo->add_flag("-v,--verbose", "Verbose mode on.");
+  hpo->add_flag("-V,--Verbose", "Verbose mode on.");
   //hpo->add_flag("-u,--uncertainty",
   //        "Dump uncertainty on weights."); // TODO check this
+
+#else
+  ss << "(UNAVAILABLE)" << std::endl;
 #endif
 }
 

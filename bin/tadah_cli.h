@@ -43,10 +43,8 @@ class TadahCLI {
     // PREDICTION
     std::string pot_file;
     std::string config_file;
-    std::string config_tpred;
+    std::string validation_file;
     std::string target_file;
-    std::string targets_dir;
-    std::string targets_out_dir;
     std::vector<std::string> datasets;
     void subcommand_train();
     void subcommand_predict();
@@ -54,7 +52,6 @@ class TadahCLI {
     void set_verbose();
     bool is_verbose();
     void flag_version();
-    std::vector<fs::path> read_targets(std::string path);
 
     /* Return a vector of absolute paths to every file in a directory.
      * Subdirectories are ommited.

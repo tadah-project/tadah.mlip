@@ -100,12 +100,16 @@ set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
-#get_filename_component(BUILD_DIR_NAME ${CMAKE_BINARY_DIR} NAME)
 
+execute_process(
+    COMMAND git branch --show-current
+    OUTPUT_VARIABLE GIT_BRANCH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 FetchContent_Declare(
   Tadah.MLIP
   GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
-  GIT_TAG origin/develop
+  GIT_TAG origin/${GIT_BRANCH}
   )
 FetchContent_MakeAvailable(Tadah.MLIP)
 
@@ -114,7 +118,7 @@ if(TADAH_ENABLE_HPO)
   FetchContent_Declare(
     Tadah.HPO
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
-    GIT_TAG origin/develop
+    GIT_TAG origin/${GIT_BRANCH}
     )
   FetchContent_MakeAvailable(Tadah.HPO)
   #add_subdirectory(HPO)

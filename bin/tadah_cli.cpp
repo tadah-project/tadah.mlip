@@ -1,20 +1,22 @@
 #include "tadah_cli.h"
-#include "../MLIP/output/output.h"
-#include "../CORE/core_types.h"
-#include "../LIBS/CLI11/Timer.hpp"
-#include "../CORE/config/config.h"
-#include "../MODELS/dc_selector.h"
-#include "../MLIP/descriptors_calc.h"
-#include "../MLIP/design_matrix/functions/dm_function_base.h"
-#include "../MLIP/models/m_tadah_base.h"
-#include "../MLIP/structure_db.h"
-#include "../MLIP/nn_finder.h"
-#include "../MLIP/analytics/analytics.h"
-#include "../MLIP/version.h"
-#include "../MLIP/design_matrix/design_matrix.h"
-#include "../MLIP/trainer.h"
+#include <tadah/core/core_types.h>
+#include <tadah/core/config.h>
+#include <tadah/models/dc_selector.h>
+#include <tadah/mlip/output/output.h>
+#include <tadah/mlip/descriptors_calc.h>
+#include <tadah/mlip/design_matrix/functions/dm_function_base.h>
+#include <tadah/mlip/models/m_tadah_base.h>
+#include <tadah/mlip/structure_db.h>
+#include <tadah/mlip/nn_finder.h>
+#include <tadah/mlip/analytics/analytics.h>
+#include <tadah/mlip/version.h>
+#include <tadah/mlip/design_matrix/design_matrix.h>
+#include <tadah/mlip/trainer.h>
+
+#include <CLI/Timer.hpp>
+
 #ifdef TADAH_ENABLE_HPO
-#include "../HPO/hpo.h"
+#include <tadah/hpo/hpo.h>
 #endif
 
 #include <iostream>
@@ -510,14 +512,19 @@ TadahCLI::TadahCLI():
   /*     Hyperparameter Optimizer                                              */
   /*---------------------------------------------------------------------------*/
   ss.str(std::string());
-#ifdef TADAH_ENABLE_HPO
+#ifndef TADAH_ENABLE_HPO
+  ss << "(UNAVAILABLE)" << std::endl;
+#endif
+
   ss << "Optimize the model's architecture and determine\n";
   ss << "the best hyperparameters within predefined constraints.\n";
   ss << "This option uses hyperparameter optimization\n";
   ss << "to minimize a custom loss function.\n";
   ss << "See documentation for more details.\n";
-
   hpo = app.add_subcommand("hpo", ss.str());
+
+#ifdef TADAH_ENABLE_HPO
+
 
   ss.str(std::string());
   ss << "A config file containing model inital parameters\n";
@@ -552,8 +559,6 @@ TadahCLI::TadahCLI():
   //hpo->add_flag("-u,--uncertainty",
   //        "Dump uncertainty on weights."); // TODO check this
 
-#else
-  ss << "(UNAVAILABLE)" << std::endl;
 #endif
 }
 

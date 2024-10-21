@@ -23,15 +23,6 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there. You may need to remove CMakeCache.txt and CMakeFiles dir. ")
 endif()
 
-if(UNIX AND NOT APPLE)
-endif()
-
-if(APPLE)
-endif()
-
-if(WIN32)
-endif()
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -109,73 +100,70 @@ set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
-get_filename_component(BUILD_DIR_NAME ${CMAKE_BINARY_DIR} NAME)
+#get_filename_component(BUILD_DIR_NAME ${CMAKE_BINARY_DIR} NAME)
 
 FetchContent_Declare(
   Tadah.MLIP
   GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
-  GIT_TAG origin/main
-  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MLIP
-  PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME}
-  BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MLIP/${BUILD_DIR_NAME}
+  GIT_TAG origin/develop
   )
 FetchContent_MakeAvailable(Tadah.MLIP)
-
-FetchContent_Declare(
-  Tadah.LIBS
-  GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/libs.git
-  GIT_TAG origin/main
-  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/LIBS
-  PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME}
-  BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/LIBS/${BUILD_DIR_NAME}
-  )
-FetchContent_MakeAvailable(Tadah.LIBS)
 
 if(TADAH_ENABLE_HPO)
   add_compile_definitions(TADAH_ENABLE_HPO)
   FetchContent_Declare(
     Tadah.HPO
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
-    GIT_TAG origin/main
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO
-    PATCH_COMMAND  mkdir -p ${BUILD_DIR_NAME}
-    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/HPO/${BUILD_DIR_NAME}
+    GIT_TAG origin/develop
     )
   FetchContent_MakeAvailable(Tadah.HPO)
   #add_subdirectory(HPO)
 endif()
 
-file(READ "MLIP/version.h" ver)
-string(REGEX MATCH "TADAH_WORLD_VERSION ([0-9])" _ "${ver}")
+file(READ "${tadah.mlip_SOURCE_DIR}/include/tadah/mlip/version.h" ver)
+string(REGEX MATCH "TADAH_WORLD_VERSION ([0-9]+)" _ "${ver}")
 set(ver_world ${CMAKE_MATCH_1})
-string(REGEX MATCH "TADAH_MAJOR_VERSION ([0-9])" _ "${ver}")
+string(REGEX MATCH "TADAH_MAJOR_VERSION ([0-9]+)" _ "${ver}")
 set(ver_major ${CMAKE_MATCH_1})
-string(REGEX MATCH "TADAH_MINOR_VERSION ([0-9])" _ "${ver}")
+string(REGEX MATCH "TADAH_MINOR_VERSION ([0-9]+)" _ "${ver}")
 set(ver_minor ${CMAKE_MATCH_1})
 
 project(Tadah VERSION ${ver_world}.${ver_major}.${ver_minor})
 message(STATUS "${TADAH} VERSION: ${ver_world}.${ver_major}.${ver_minor}")
 
-add_library(
-  libtadah 
-  $<TARGET_OBJECTS:tadah.core.obj>
-  $<TARGET_OBJECTS:tadah.models.obj>
-  $<TARGET_OBJECTS:tadah.mlip.obj>
-  $<TARGET_OBJECTS:config::rc>
-  )
+add_executable (tadah bin/main.cpp bin/tadah_cli.cpp)
 
-set_target_properties(libtadah PROPERTIES OUTPUT_NAME "tadah")
-target_link_libraries(libtadah PUBLIC config::rc)
+#add_library(
+#  libtadah 
+#"${Tadah.MODELS_SOURCE_DIR}/src"
+#"${Tadah.MODELS_SOURCE_DIR}/src"
+#"${Tadah.MLIP_SOURCE_DIR}/src"
+#)
+
+#add_subdirectory(external/CLI11)
+include_directories(external/CLI11/include)
+
+
+#set_target_properties(libtadah PROPERTIES OUTPUT_NAME "tadah")
+#target_link_libraries(libtadah PUBLIC config::rc)
 
 if(TADAH_ENABLE_HPO)
-  target_link_libraries(libtadah PUBLIC tadah.hpo)
+  #target_link_libraries(libtadah PUBLIC tadah.hpo)
 endif()
 
-add_executable (tadah bin/main.cpp bin/tadah_cli.cpp)
+target_include_directories(tadah PRIVATE ${Tadah.MLIP_SOURCE_DIR}/include)
+target_include_directories(tadah PRIVATE ${Tadah.MODELS_SOURCE_DIR}/include)
+target_include_directories(tadah PRIVATE ${Tadah.CORE_SOURCE_DIR}/include)
+target_include_directories(tadah PRIVATE ${Tadah.CORE_SOURCE_DIR}/external/toml11)
+
+#link_directories(<build_dir>/_deps/tadah-mlip-build/)
+target_link_libraries(tadah PRIVATE tadah.mlip tadah.models) # TODO
+
 if(TADAH_BUILD_MPI)
   set_target_properties(tadah PROPERTIES OUTPUT_NAME "tadah_mpi")
 endif()
-target_link_libraries(tadah PRIVATE libtadah)
+
+#target_link_libraries(tadah PRIVATE libtadah)
 
 #########################################################################
 if(TADAH_MARCH_NATIVE)
@@ -250,7 +238,7 @@ message(STATUS "${TADAH}: Build with Hyperparameter optimiser is ${TADAH_ENABLE_
 if(TADAH_ENABLE_OPENMP)
   find_package(OpenMP REQUIRED)
   if(OpenMP_CXX_FOUND)
-    target_link_libraries(libtadah PUBLIC OpenMP::OpenMP_CXX)
+    #target_link_libraries(libtadah PUBLIC OpenMP::OpenMP_CXX)
     target_link_libraries(tadah PUBLIC OpenMP::OpenMP_CXX)
     add_compile_definitions(TADAH_ENABLE_OPENMP)
   endif()
@@ -261,11 +249,11 @@ message(STATUS "${TADAH}: Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
 #########################################################################
 
 find_package(LAPACK)
-target_link_libraries (libtadah PRIVATE ${LAPACK_LIBRARIES})
+#target_link_libraries (libtadah PRIVATE ${LAPACK_LIBRARIES})
 target_link_libraries (tadah PUBLIC ${LAPACK_LIBRARIES})
 
 install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(TARGETS libtadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+#install(TARGETS libtadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
 if(TADAH_BUILD_TESTS)
   include(CTest) 

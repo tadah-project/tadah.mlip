@@ -3,17 +3,17 @@
 #include <stdexcept>
 #include <string>
 
-#include "../CORE/registry.h"
-#include "../CORE/config/config.h"
-#include "../MODELS/cutoffs/cutoffs.h"
-#include "../MODELS/descriptors/d_all.h"
-#include "../MODELS/functions/basis_functions/bf_all.h"
-#include "../MODELS/functions/kernels/kern_all.h"
-#include "../MLIP/models/m_all.h"
-#include "../MLIP/structure_db.h"
-#include "../MLIP/st_descriptors_db.h"
-#include "../MLIP/nn_finder.h"
-#include "../MLIP/design_matrix/functions/dm_function_base.h"
+#include <tadah/core/registry.h>
+#include <tadah/core/config.h>
+#include <tadah/models/cutoffs.h>
+#include <tadah/models/descriptors/d_all.h>
+#include <tadah/models/functions/basis_functions/bf_all.h>
+#include <tadah/models/functions/kernels/kern_all.h>
+#include <tadah/mlip/models/m_all.h>
+#include <tadah/mlip/structure_db.h>
+#include <tadah/mlip/st_descriptors_db.h>
+#include <tadah/mlip/nn_finder.h>
+#include <tadah/mlip/design_matrix/functions/dm_function_base.h>
 
     using BF=BF_Linear;
     using K=Kern_Linear;

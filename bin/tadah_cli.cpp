@@ -393,8 +393,7 @@ void TadahCLI::subcommand_hpo(
 #else
   CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
   if (is_verbose()) std::cout << "Optimising HPs..." << std::endl;
-  int dummy_comm=0;
-  hpo_run(config, target_file, validation_file, dummy_comm);
+  hpo_run(config, target_file, validation_file);
   if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
 #endif
 

@@ -133,22 +133,10 @@ message(STATUS "${TADAH} VERSION: ${ver_world}.${ver_major}.${ver_minor}")
 
 add_executable (tadah bin/main.cpp bin/tadah_cli.cpp)
 
-#add_library(
-#  libtadah 
-#"${Tadah.MODELS_SOURCE_DIR}/src"
-#"${Tadah.MODELS_SOURCE_DIR}/src"
-#"${Tadah.MLIP_SOURCE_DIR}/src"
-#)
-
-#add_subdirectory(external/CLI11)
 include_directories(external/CLI11/include)
 
-
-#set_target_properties(libtadah PROPERTIES OUTPUT_NAME "tadah")
-#target_link_libraries(libtadah PUBLIC config::rc)
-
 if(TADAH_ENABLE_HPO)
-  #target_link_libraries(libtadah PUBLIC tadah.hpo)
+  target_link_libraries(tadah PUBLIC tadah.hpo)
 endif()
 
 target_include_directories(tadah PRIVATE ${Tadah.MLIP_SOURCE_DIR}/include)
@@ -162,8 +150,6 @@ target_link_libraries(tadah PRIVATE tadah.mlip tadah.models) # TODO
 if(TADAH_BUILD_MPI)
   set_target_properties(tadah PROPERTIES OUTPUT_NAME "tadah_mpi")
 endif()
-
-#target_link_libraries(tadah PRIVATE libtadah)
 
 #########################################################################
 if(TADAH_MARCH_NATIVE)
@@ -238,7 +224,6 @@ message(STATUS "${TADAH}: Build with Hyperparameter optimiser is ${TADAH_ENABLE_
 if(TADAH_ENABLE_OPENMP)
   find_package(OpenMP REQUIRED)
   if(OpenMP_CXX_FOUND)
-    #target_link_libraries(libtadah PUBLIC OpenMP::OpenMP_CXX)
     target_link_libraries(tadah PUBLIC OpenMP::OpenMP_CXX)
     add_compile_definitions(TADAH_ENABLE_OPENMP)
   endif()
@@ -249,18 +234,14 @@ message(STATUS "${TADAH}: Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
 #########################################################################
 
 find_package(LAPACK)
-#target_link_libraries (libtadah PRIVATE ${LAPACK_LIBRARIES})
 target_link_libraries (tadah PUBLIC ${LAPACK_LIBRARIES})
 
 install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-#install(TARGETS libtadah DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
 if(TADAH_BUILD_TESTS)
   include(CTest) 
   add_subdirectory(tests)
 endif()
-
-
 
 message(STATUS "===================================================================")
 message(STATUS "                                                                   ")

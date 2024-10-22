@@ -5,7 +5,8 @@
 #ifndef TADAH_CLI_H
 #define TADAH_CLI_H
 
-#include "../LIBS/CLI11/CLI11.hpp"
+#include <CLI/CLI.hpp>
+
 #include <string>
 #include <vector>
 

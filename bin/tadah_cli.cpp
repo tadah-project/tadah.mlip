@@ -70,43 +70,13 @@ void TadahCLI::subcommand_train() {
     CLI::Timer timer_tot{"Training", CLI::Timer::Big};
 
     // Initialize host MPI trainer
-    MPI_Trainer_HOST HOST(config, rank, ncpu);
-    HOST.prep_wpckgs();
-
-    // Process requests from workers
-    while (true) {
-      // Exit loop if there are no more packages
-      if (!HOST.has_packages()) break;
-
-      // Probe for incoming requests from any worker
-      HOST.probe();
-
-      // Handle requests based on their tags
-      if (HOST.tag == MPI_Trainer::WORK_TAG) {
-        HOST.work_tag();
-      } else if (HOST.tag == MPI_Trainer::DATA_TAG) {
-        HOST.data_tag();
-      } else {
-        throw std::runtime_error("HOST: Unexpected request from "
-            + std::to_string(HOST.worker));
-      }
-    }
-
-    // Collect remaining data and release all workers
-    int count = 1;
-    while (true) {
-      HOST.probe();
-      if (HOST.tag == MPI_Trainer::DATA_TAG) {
-        HOST.data_tag();
-      } else {
-        HOST.release_tag(count);
-      }
-      if (count == ncpu) break; // Exit when all workers are released
-    }
+    TrainerHost host(config, rank, ncpu);
+    host.run();
 
     // Perform the final computation and save parameters
-    HOST.solve();
-    Config param_file = HOST.model->get_param_file();
+    host.solve();
+
+    Config param_file = host.model->get_param_file();
     param_file.check_pot_file();
     std::ofstream outfile("pot.tadah");
     if (outfile.is_open()) {
@@ -115,29 +85,12 @@ void TadahCLI::subcommand_train() {
       std::cerr << "Error: Unable to open file pot.tadah" << std::endl;
     }
     if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
-  } else { // Worker code
-           // Initialize worker MPI trainer
-    MPI_Trainer_WORKER WORKER(config, rank, ncpu);
-    while (true) {
-      // Send a request for more work to the host
-      MPI_Send(&WORKER.rows_available, 1, MPI_INT, 0, MPI_Trainer::WORK_TAG, MPI_COMM_WORLD);
-
-      // Probe and respond to host or worker requests
-      WORKER.probe();
-
-      // Handle requests based on their tags
-      if (WORKER.tag == MPI_Trainer::RELEASE_TAG) {
-        WORKER.release_tag();
-        break;
-      } else if (WORKER.tag == MPI_Trainer::WAIT_TAG) {
-        WORKER.wait_tag();
-      } else if (WORKER.tag == MPI_Trainer::DATA_TAG) {
-        WORKER.data_tag();
-      } else if (WORKER.tag == MPI_Trainer::WORK_TAG) {
-        WORKER.work_tag();
-      }
-    }
-    WORKER.solve(); // Perform worker computations
+  }
+  else { // Worker code
+         // Initialize worker MPI trainer
+    TrainerWorker worker(config, rank, ncpu);
+    worker.run();
+    worker.solve(); // Perform worker computations
   }
 #else // Non-MPI version
       // Start training with a timer in the non-MPI mode
@@ -246,10 +199,8 @@ void TadahCLI::subcommand_predict() {
     stpred = modelp->predict(pot_config,stdb,dc,predicted_error);
   }
   else {
-
     stpred = modelp->predict(pot_config,stdb,dc);
   }
-
 
   if (is_verbose()) std::cout << "Done!" << std::endl;
 
@@ -291,7 +242,6 @@ void TadahCLI::subcommand_hpo(
     [[maybe_unused]]int argc,
     [[maybe_unused]]char**argv) {
 
-
 #ifdef TADAH_ENABLE_HPO
 
   if(hpo->count("--Verbose"))
@@ -312,34 +262,25 @@ void TadahCLI::subcommand_hpo(
   }
 
 #ifdef TADAH_BUILD_MPI
-  int rank=0;
-  int ncpu=1;
+
+  int rank;
+  int ncpu;
   MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  // Create a communicator for LAMMPS
+  MPI_Status status;
   MPI_Group world_group;
   MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
-  std::vector<int> ranks;
-  ranks.push_back(0); // for now we use root to run LAMMPS
-                      // long term we want to distribute
-                      // work among available workers
-
-  MPI_Group lmp_group;
-  MPI_Group_incl(world_group, ranks.size(), ranks.data(), &lmp_group);
-
-  MPI_Comm lmp_comm;
-  MPI_Comm_create(MPI_COMM_WORLD, lmp_group, &lmp_comm);
-
   if (rank==0) {
     if (ncpu<2) {
-      std::cout << "Minimum number of cpus for an mpi version is 2" << std::endl;
+      std::cout << "Minimum number of cpus for an MPI version is 2" << std::endl;
       return;
     }
     if (is_verbose()) std::cout << "Optimising HPs..." << std::endl;
     CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
-    hpo_run(config, target_file, validation_file, lmp_comm);
+    hpo_run(config, target_file, validation_file);
+    if (is_verbose()) std::cout << "Done" << std::endl;
 
     // shut all workers
     int cont=0;
@@ -347,49 +288,33 @@ void TadahCLI::subcommand_hpo(
     if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
   }
   else { // WORKER
+    HPO_Worker hpo_worker(rank, ncpu, world_group);
+
     while (true) {
       int cs_size;
       MPI_Bcast(&cs_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
       if (!cs_size)
         break;
 
+      // Obtain updated config file from the HOST
       std::vector<char> serialized(cs_size);
       MPI_Bcast(serialized.data(), cs_size, MPI_CHAR, 0, MPI_COMM_WORLD);
       Config config;
       config.deserialize(serialized);
       config.postprocess();
 
-      MPI_Trainer_WORKER WORKER(config, rank, ncpu);
-      while (true) {
-        // ask for more work...
-        MPI_Send (&WORKER.rows_available, 1, MPI_INT, 0, MPI_Trainer::WORK_TAG, MPI_COMM_WORLD);
+      TrainerWorker worker(config, rank, ncpu);
+      worker.run();
+      worker.solve();
 
-        // request from root or from other workers
-        WORKER.probe();
-
-        // release a worker
-        if (WORKER.tag == MPI_Trainer::RELEASE_TAG) {
-          WORKER.release_tag();
-          break;
-        }
-        else if (WORKER.tag == MPI_Trainer::WAIT_TAG) {
-          // do nothing here; ask for more work in the next cycle
-          WORKER.wait_tag();
-        }
-        else if (WORKER.tag == MPI_Trainer::DATA_TAG) {
-          WORKER.data_tag();
-        }
-        else if (WORKER.tag == MPI_Trainer::WORK_TAG) {
-          WORKER.work_tag();
-        }
-      }
-      WORKER.solve();
-    }
+      // Run LAMMPS
+      if (hpo_worker.use_lammps)
+        hpo_worker.run();
+    } // end of WORKER external while loop
   }
   // Free the communicator and groups when done
   //MPI_Comm_free(&lmp_comm);
   MPI_Group_free(&world_group);
-  MPI_Group_free(&lmp_group);
 #else
   CLI::Timer timer_tot {"HPO", CLI::Timer::Big};
   if (is_verbose()) std::cout << "Optimising HPs..." << std::endl;

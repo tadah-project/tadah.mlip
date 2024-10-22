@@ -7,9 +7,9 @@ This project is currently under development. The goal is to enable the training 
 - use develop branch
 - Make use of CMake FETCHCONTENT_SOURCE_DIR_<uppercaseName> such that it points to the local copy of a MODULE:
   
-    - -DFETCHCONTENT_SOURCE_DIR_TADAH.LIBS=/full/local/path/to/TADAH/LIBS
-    - -DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=/full/local/path/to/TADAH/CORE
-    - -DFETCHCONTENT_SOURCE_DIR_TADAH.MODELS=/full/local/path/to/TADAH/MODELS
-    - -DFETCHCONTENT_SOURCE_DIR_TADAH.MLIP=/full/local/path/to/TADAH/MLIP
-    - -DFETCHCONTENT_SOURCE_DIR_TADAH.MD=/full/local/path/to/TADAH/MD
-    - -DFETCHCONTENT_SOURCE_DIR_TADAH.HPO=/full/local/path/to/TADAH/HPO
+    - TADAH_PATH=...
+    - -DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${TADAH_PATH}/CORE
+    - -DFETCHCONTENT_SOURCE_DIR_TADAH.MODELS=${TADAH_PATH}/MODELS
+    - -DFETCHCONTENT_SOURCE_DIR_TADAH.MLIP=${TADAH_PATH}/MLIP
+    - -DFETCHCONTENT_SOURCE_DIR_TADAH.MD=${TADAH_PATH}/MD
+    - -DFETCHCONTENT_SOURCE_DIR_TADAH.HPO=${TADAH_PATH}/HPO

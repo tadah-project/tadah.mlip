@@ -1,19 +1,19 @@
 # Global settings for the hyperparameter optimiser
-MAXCALLS  100  # Maximum number of optimisation cycles
-EPS  1e-3      # Accuracy convergence threshold.
-               # Smaller values increase precision but slow global exploration.
+MAXCALLS  10  # Maximum number of optimisation cycles
+EPS  1e-3      # Accuracy convergence threshold. (default 1e-2)
+               # Smaller values increase precision but slow down global exploration.
 
 # Model parameters to be optimised.
 # Model is specified in a separate config file.
-OPTIM RCUT2B 5.0 6.0       # Optimise RCUT2B within these bounds
-OPTIM CGRID2B 1.1 6.0      # Optimise CGRID2B within these bounds
-OPTIM SGRID2B 0.1 4.11     # Optimise SGRID2B within these bounds
-OPTIM AGRIDMB 0 2          # Optimise AGRIDMB within these bounds
-OPTIM EWEIGHT 1e-2 1e0     # Optimise EWEIGHT within these bounds
+OPTIM RCUT2B 3.0 6.0       # Optimise RCUT2B within these bounds
+OPTIM CGRID2B 1.0 6.0      # Optimise CGRID2B within these bounds
+OPTIM SGRID2B 0.01 6.0     # Optimise SGRID2B within these bounds
+#OPTIM AGRIDMB 0 2          # Optimise AGRIDMB within these bounds
+#OPTIM EWEIGHT 1e-2 1e0     # Optimise EWEIGHT within these bounds
 
 # Basic optimisation targets with weighted inclusion in global loss
 ERMSE  0 100   # Energy RMSE with weight 100, printed to properties.dat
-SRMSE  0 20    # Stress RMSE with weight 20, printed to properties.dat
+#SRMSE  0 20    # Stress RMSE with weight 20, printed to properties.dat
 
 # Default settings
 LOSSFUNC 2     # Loss function type (default 1): 
@@ -22,8 +22,8 @@ LOSSFUNC 2     # Loss function type (default 1):
 	       # [3] -> log(tloss)
 
 # Default settings for LAMMPS simulations
-FAILSCORE 100  # Score assigned if simulation fails (default 100)
-MAXTIME 2 1    # Maximum of 2 seconds for LAMMPS simulations, checked per step (default 10 1)
+FAILSCORE 100  # Score assigned if simulation fails (default 1000)
+MAXTIME 2      # Maximum of 2 seconds for LAMMPS simulations, checked every step (default 10)
 
 # Advanced optimisation targets used with LAMMPS
 # Default settings may be overridden with specific flags
@@ -37,16 +37,18 @@ MAXTIME 2 1    # Maximum of 2 seconds for LAMMPS simulations, checked per step (
 # 	-o, --outvar    # Output variable produced by the script, printed to properties.dat
 # 	-w, --weight    # Weighting factor for tloss: w*tloss
 # 	-f, --failscore # Custom FAILSCORE for this simulation
+# 	-l, --lossfunc  # Custom LOSSFUNC for this simulation
 # 	-m, --maxtime   # Max time for simulation; returns failscore if exceeded
+# 	-n, --ncpu 	# Number of cores to be used by this LAMMPS simulation, MPI only
 
 # Simulation 1: Optimise lattice constant using FCC lattice.
 # Executes LAMMPS with 'in.lata', fully defining the simulation and 'tloss'.
-LAMMPS --script in.lata --varloss tloss
+#LAMMPS --script in.lata --varloss tloss
 
-# Simulation 2: Similar setup as simulation 1, at varying pressures.
+# Simulation 2: Similar setup as simulation 1, but at different pressures.
 # 'tloss' is defined in 'in.mod_lata' as:
 #   tloss = abs(lata_exp - lata) / lata_exp
-LAMMPS --script in.mod_lata --varloss tloss --invar P 1 --invar lata_exp 3.3 --outvar lata
+LAMMPS --script in.mod_lata --varloss tloss --invar P 1 --invar lata_exp 3.3 --outvar lata --ncpu 4
 LAMMPS --script in.mod_lata --varloss tloss --invar P 100 --invar lata_exp 3.2 --outvar lata
-LAMMPS --script in.mod_lata --varloss tloss --invar P 1000 --invar lata_exp 3.1 --outvar lata
-
+LAMMPS --script in.mod_lata --varloss tloss --invar P 1000 --invar lata_exp 3.1 --outvar lata --ncpu 1
+LAMMPS --script in.mod2_lata --varloss tloss --invar P 1000 --invar lata_exp 3.1 --outvar lata --ncpu 4

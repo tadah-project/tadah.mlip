@@ -17,6 +17,7 @@
 
 #ifdef TADAH_ENABLE_HPO
 #include <tadah/hpo/hpo.h>
+#include <tadah/hpo/hpo_worker.h>
 #endif
 
 #include <iostream>

@@ -1,13 +1,13 @@
-#include <tadah/MODELS/cutoffs/cut_all.h>
-#include <tadah/MODELS/descriptors/d_all.h>
-#include <tadah/MLIP/models/m_all.h>
-#include <tadah/MLIP/design_matrix/functions/basis_functions/dm_bf_all.h>
-#include <tadah/MODELS/functions/kernels/kern_all.h>
-#include <tadah/CORE/config/config.h>
-#include <tadah/MLIP/structure.h>
-#include <tadah/MLIP/descriptors_calc.h>
-#include <tadah/MLIP/nn_finder.h>
-#include <tadah/MLIP/output/output.h>
+#include <tadah/models/cut_all.h>
+#include <tadah/models/descriptors/d_all.h>
+#include <tadah/mlip/models/m_all.h>
+#include <tadah/mlip/design_matrix/functions/basis_functions/dm_bf_all.h>
+#include <tadah/models/functions/kernels/kern_all.h>
+#include <tadah/core/config.h>
+#include <tadah/mlip/structure.h>
+#include <tadah/mlip/descriptors_calc.h>
+#include <tadah/mlip/nn_finder.h>
+#include <tadah/mlip/output/output.h>
 #include <fstream>
 
 /**  @file ex1.cpp

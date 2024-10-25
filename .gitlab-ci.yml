@@ -81,13 +81,13 @@ run-func-tests-shared:
   script:
     - cd $RELEASE_DIR
     - make install
-    - ls -l ~/.local/bin/ta-dah
+    - ls -l ~/.local/bin/tadah
     - ls -l ~/.local/lib/libtadah*
     - echo $PATH
-    - which ta-dah
-    - ta-dah
-    - ta-dah -h
-    - ldd ~/.local/bin/ta-dah
+    - which tadah
+    - tadah
+    - tadah -h
+    - ldd ~/.local/bin/tadah
 
 run-func-tests-static:
   stage: run.functional.tests
@@ -95,13 +95,13 @@ run-func-tests-static:
   script:
     - cd $RELEASE_DIR
     - make install
-    - ls -l ~/.local/bin/ta-dah
+    - ls -l ~/.local/bin/tadah
     - ls -l ~/.local/lib/libtadah*
     - echo $PATH
-    - which ta-dah
-    - ta-dah
-    - ta-dah -h
-    - ldd ~/.local/bin/ta-dah
+    - which tadah
+    - tadah
+    - tadah -h
+    - ldd ~/.local/bin/tadah
 
 build-example-1-static:
   stage: build.examples

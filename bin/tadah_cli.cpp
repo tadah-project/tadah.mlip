@@ -137,6 +137,12 @@ void TadahCLI::subcommand_train() {
 }
 
 void TadahCLI::subcommand_predict() {
+  int rank=0;
+#ifdef TADAH_BUILD_MPI
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#endif
+  if (rank!=0) return;
+
   CLI::Timer timer_tot {"Prediction", CLI::Timer::Big};
   if(predict->count("--Verbose"))
     set_verbose();

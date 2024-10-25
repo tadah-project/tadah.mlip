@@ -126,7 +126,13 @@ if(TADAH_ENABLE_HPO)
     GIT_TAG origin/${GIT_BRANCH}
     )
   FetchContent_MakeAvailable(Tadah.HPO)
-  #add_subdirectory(HPO)
+
+  FetchContent_Declare(
+    Tadah.LAMMPS
+    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git
+    GIT_TAG origin/${GIT_BRANCH}
+  )
+  FetchContent_MakeAvailable(Tadah.LAMMPS)
 endif()
 
 file(READ "${tadah.mlip_SOURCE_DIR}/include/tadah/mlip/version.h" ver)
@@ -146,6 +152,7 @@ include_directories(external/CLI11/include)
 
 if(TADAH_ENABLE_HPO)
   target_link_libraries(tadah PUBLIC tadah.hpo)
+  target_link_libraries(tadah PUBLIC tadah.lammps)
 endif()
 
 target_include_directories(tadah PRIVATE ${Tadah.MLIP_SOURCE_DIR}/include)

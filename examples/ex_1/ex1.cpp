@@ -1,9 +1,9 @@
-#include <tadah/MODELS/cutoffs/cut_all.h>
+#include <tadah/MODELS/cut_all.h>
 #include <tadah/MODELS/descriptors/d_all.h>
 #include <tadah/MLIP/models/m_all.h>
 #include <tadah/MLIP/design_matrix/functions/basis_functions/dm_bf_all.h>
 #include <tadah/MODELS/functions/kernels/kern_all.h>
-#include <tadah/CORE/config/config.h>
+#include <tadah/CORE/config.h>
 #include <tadah/MLIP/structure.h>
 #include <tadah/MLIP/descriptors_calc.h>
 #include <tadah/MLIP/nn_finder.h>

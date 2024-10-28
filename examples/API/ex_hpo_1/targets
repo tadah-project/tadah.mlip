@@ -1,0 +1,46 @@
+# Global settings for the hyperparameter optimiser
+MAXCALLS  1000  # Maximum number of optimisation cycles
+EPS  1e-3      # Accuracy convergence threshold. (default 1e-2)
+               # Smaller values increase precision but slow down global exploration.
+POTEVERY 100 pots
+
+# Model parameters to be optimised.
+# Model is specified in a separate config file.
+OPTIM RCUT2B 5.0 6.0       # Optimise RCUT2B within these bounds
+OPTIM CGRID2B 1.0 6.0      # Optimise CGRID2B within these bounds
+OPTIM SGRID2B 0.01 0.1     # Optimise SGRID2B within these bounds
+
+# Basic optimisation targets with weighted inclusion in global loss
+ERMSE  0 100   # Energy RMSE with weight 100, printed to properties.dat
+#SRMSE  0 20    # Stress RMSE with weight 20, printed to properties.dat
+
+# Default settings
+LOSSFUNC 2     # Loss function type (default 1): 
+	       # [1] -> (tloss)^1
+	       # [2] -> (tloss)^2
+	       # [3] -> log(tloss)
+
+# Default settings for LAMMPS simulations
+FAILSCORE 100  # Score assigned if simulation fails (default 1000)
+MAXTIME 5      # Maximum of 5 seconds for LAMMPS simulations, checked every step (default 10)
+
+# Advanced optimisation targets used with LAMMPS
+# Default settings may be overridden with specific flags
+#
+# Required:
+# 	-s, --script    # Specify the LAMMPS input file
+# 	-v, --varloss   # Specify the loss variable and associated weight
+#
+# Optional:
+# 	-i, --invar     # Input variable for the script
+# 	-o, --outvar    # Output variable produced by the script, printed to properties.dat
+# 	-w, --weight    # Weighting factor for tloss: w*tloss
+# 	-f, --failscore # Custom FAILSCORE for this simulation
+# 	-l, --lossfunc  # Custom LOSSFUNC for this simulation
+# 	-m, --maxtime   # Max time for simulation; returns failscore if exceeded
+# 	-n, --ncpu 	# Number of cores to be used by this LAMMPS simulation, MPI only
+
+# Simulation 1: Similar setup as simulation 1, but at different pressures.
+# 'loss_lata' is defined in 'in.lata' as:
+#  loss_lata = abs(lata_exp - lata) / lata_exp
+LAMMPS --script in.lata --varloss lata_loss 1.1 --invar P 1 --invar lata_exp 3.3 --outvar lata

@@ -109,11 +109,11 @@ build-example-1-static:
   script:
     - cd $RELEASE_DIR
     - make install
-    - cd ../examples/ex_1
+    - cd ../examples/API/ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
   artifacts:
     paths:
-      - examples/ex_1/a.out
+      - examples/API/ex_1/a.out
 
 build-example-2-static:
   stage: build.examples
@@ -121,11 +121,11 @@ build-example-2-static:
   script:
     - cd $RELEASE_DIR
     - make install
-    - cd ../examples/ex_2
+    - cd ../examples/API/ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
   artifacts:
     paths:
-      - examples/ex_2/a.out
+      - examples/API/ex_2/a.out
 
 build-example-1-shared:
   stage: build.examples
@@ -133,11 +133,11 @@ build-example-1-shared:
   script:
     - cd $RELEASE_DIR
     - make install
-    - cd ../examples/ex_1
+    - cd ../examples/API/ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
   artifacts:
     paths:
-      - examples/ex_1/a.out
+      - examples/API/ex_1/a.out
 
 build-example-2-shared:
   stage: build.examples
@@ -145,17 +145,17 @@ build-example-2-shared:
   script:
     - cd $RELEASE_DIR
     - make install
-    - cd ../examples/ex_2
+    - cd ../examples/API/ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
   artifacts:
     paths:
-      - examples/ex_2/a.out
+      - examples/API/ex_2/a.out
 
 run-example-1-static:
   stage: run.examples
   needs: [build-example-1-static]
   script:
-    - cd examples/ex_1
+    - cd examples/API/ex_1
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi
@@ -169,7 +169,7 @@ run-example-2-static:
   stage: run.examples
   needs: [build-example-2-static]
   script:
-    - cd examples/ex_2
+    - cd examples/API/ex_2
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi
@@ -185,7 +185,7 @@ run-example-1-shared:
   script:
     - cd $RELEASE_DIR
     - make install
-    - cd ../examples/ex_1
+    - cd ../examples/API/ex_1
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi
@@ -201,7 +201,7 @@ run-example-2-shared:
   script:
     - cd $RELEASE_DIR
     - make install
-    - cd ../examples/ex_2
+    - cd ../examples/API/ex_2
     - ./a.out
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi

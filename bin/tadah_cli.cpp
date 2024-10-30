@@ -1,6 +1,8 @@
 #include "tadah_cli.h"
 #include <tadah/core/core_types.h>
 #include <tadah/core/config.h>
+#include <tadah/core/element.h>
+#include <tadah/core/periodic_table.h>
 #include <tadah/models/dc_selector.h>
 #include <tadah/mlip/output/output.h>
 #include <tadah/mlip/descriptors_calc.h>
@@ -101,6 +103,7 @@ void TadahCLI::subcommand_train() {
   // Load structures and provide feedback if verbose
   if (is_verbose()) std::cout << "Loading structures..." << std::flush;
   StructureDB stdb(tr.config);
+
   if (is_verbose()) std::cout << "Done!" << std::endl;
 
   // Calculate nearest neighbors and provide feedback
@@ -489,6 +492,7 @@ TadahCLI::TadahCLI():
   //        "Dump uncertainty on weights."); // TODO check this
 
 #endif
+  PeriodicTable::initialize();
 }
 
 void TadahCLI::run(int argc, char** argv) {

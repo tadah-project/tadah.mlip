@@ -255,8 +255,6 @@ void TadahCLI::subcommand_hpo(
     set_verbose();
 
   Config config(config_file);
-  config.remove("CHECKPRESS");
-  config.add("CHECKPRESS", "true");
   config.check_for_training();
 
   if(hpo->count("--Force")) {

@@ -1,3 +1,5 @@
+ATOMS      Ti
+WATOMS     22
 DBFILE     tdata.db
 INIT2B     true
 RCUT2B     5.3

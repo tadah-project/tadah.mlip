@@ -82,13 +82,13 @@ Use CMake options to customize the build:
 - ``TADAH_BUILD_TESTS``: Include tests (default: OFF).
 - ``TADAH_BUILD_DOCUMENTATION``: Build documentation with Doxygen (default: OFF).
 
-Binary File
-...........
+Tadah! Software Binary
+----------------------
 
 The executable `tadah` is installed in the `bin` directory by default (${CMAKE_INSTALL_PREFIX}/bin). If MPI is enabled, the executable is named `tadah_mpi`.
 
 Example Commands
-----------------
+................
 
 - Display help information:
 
@@ -110,13 +110,10 @@ Example Commands
 
     tadah predict -p <pot.tadah> -d <dataset1> <dataset2> -V
 
-Tadah! MPI: Massively Parallel Version
----------------------------------------
+Massively Parallel Version
+..........................
 
 The Tadah! MPI version is designed for High-Performance Computing (HPC) architectures, making it suitable for handling large datasets like those from the Materials Project. This enables efficient computation and model training at scale.
-
-Installation
-------------
 
 To enable the MPI version, configure the build with the `TADAH_BUILD_MPI` option:
 

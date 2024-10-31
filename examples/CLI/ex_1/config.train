@@ -1,0 +1,19 @@
+# For a description of KEYS and corresponding values, see the documentation:
+# https://tadah.readthedocs.io/
+
+DBFILE tdata.db           # Training dataset
+
+INIT2B true               # Use two-body descriptor
+
+MODEL M_BLR BF_Linear     # Use linear model
+TYPE2B D2_Blip            # Use D2_Blip descriptor
+RCTYPE2B Cut_Cos          # Cutoff function for two-body descriptor
+
+RCUT2B 5.3                # Cutoff distance
+
+SGRID2B -2 4 0.1 1.0      # Automatic generation blips for SGRID
+CGRID2B -1 4 1.0 5.3      # Automatic generation blips for CGRID
+
+LAMBDA 0                  # Control optimization algorithm
+BIAS true                 # Append constant to descriptor
+

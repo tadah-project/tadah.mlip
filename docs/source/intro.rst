@@ -3,254 +3,241 @@
 Introduction
 ============
 
-Ta-dah! is a modular and fast machine learning **software** and C++ **library** specifically designed
-for the interatomic potential development in mind. It is written in modern C++
-with the intention to provide an easy to use, modular and extensible state-of-the-art toolkit.
+Tadah! is a fast and modular machine learning **software** and C++ **library** specifically for interatomic potential development. It’s built in modern C++ to provide an easy-to-use, modular, and extensible toolkit.
 
-Ta-dah provides LAMMPS interface which works with all provided descriptors and models.
+Tadah! offers a LAMMPS interface compatible with all descriptors and models. It can be used as command-line software for training models or using machine learning potentials for prediction, or as an advanced C++ library.
 
-Ta-dah! can be used as a software from the command line to train models
-or use already developed machine learning potentials (with Ta-dah!) for prediction.
-Alternatively, it can be included as a C++ library for the more advanced use.
+Key Features
+------------
 
-
-Why use Ta-dah!?
-----------------
-
- * Ta-dah! is community driven and new ideas are always welcome. 
-   If it is possible to implement it into Ta-dah! it will be done.
- * Ta-dah! is fast.
-   Typical model development cycle is much faster - no more waiting for hours
-   to refit a model.
- * Ta-dah! is improving almost every day.
-   New descriptors and models are being added. Bugs are squashed and issues are resolved.
- * Ta-dah! is open-sourced.
- * Ta-dah! allows to mix and match various descriptors with cutoffs and models.
-   Once model is trained it can be immediately tested with LAMMPS. It just works!
- * Ta-dah! is extensible.
-   Adding new descriptors is fairly easy and they will work seemingly with the rest
-   of the code (including LAMMPS) interface.
+- **Hyperparameter Optimizer**: Enhances potential transferability.
+- **Community-Driven**: Open to new ideas and implementations.
+- **Speed**: Fast model development cycles reduce wait times.
+- **LAMMPS Integration**: Fully interfaced.
+- **Regular Updates**: Frequent new features and optimizations.
+- **Open-Source**: Publicly accessible and modifiable.
+- **Modular Design**: Mix and match descriptors for flexible testing.
+- **Extensible**: Easy addition of new descriptors.
+- **Desktop and MPI Versions**: Suitable for various computational needs.
 
 .. _requirements:
 
 Requirements
 ------------
 
-Ta-dah! does not require any external libraries to be build or to be downloaded.
+Tadah! automatically includes all necessary libraries, so no external downloads are needed.
 
-.. _downloading:
+.. _obtaining_tadah:
 
-Obtaining Ta-dah!
------------------
+Obtaining Tadah!
+----------------
 
-The code lives here:
+The code repository is available at:
 
-    https://git.ecdf.ed.ac.uk/s1351949/ta-dah
+    https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
 
-To download use git and clone from the stable branch:
+Clone the main branch using:
 
 .. code-block:: bash
 
-    git clone -b stable https://git.ecdf.ed.ac.uk/s1351949/ta-dah.git
+    git clone https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
 
 .. _installation:
 
 Installation
 ------------
 
-The library uses CMake to control configuration and compilation process.
-The CMake will try to guess number of system depended variables based on the config file :file:`CMakeList.txt` located in the project root directory.
-
+Tadah! uses CMake for configuration.
 
 .. code-block:: bash
 
-    # cd into project dir
-    cd ta-dah
+    # Navigate to the project directory
+    cd tadah.mlip
 
-    # create build directory and cd to it
+    # Create and move into the build directory
     mkdir build && cd build
 
-    # Use cmake to configure
-    cmake .. 
+    # Configure with CMake
+    cmake ..
 
-    # compile and install 
+    # Compile and install
     make && make install
 
-To change default library installation location run below command instead of :code:`cmake ..`. This is useful when you don't have root privileges.
+To change the installation location:
 
 .. code-block:: bash
 
-	cmake .. -DCMAKE_INSTALL_PREFIX=/your/path
+    cmake .. -DCMAKE_INSTALL_PREFIX=/your/path
 
-Binary file
-...........
-
-The executable file :file:`ta-dah` will be installed to :file:`bin` directory inside your installation location. On most UNIX systems the default is :file:`/usr/local/bin/ta-dah`.
-
-In case of using :code:`-DCMAKE_INSTALL_PREFIX=/your/path` flag, the binary file location is :file:`/your/path/bin/ta-dah`.
-
-This is usually the end of the installation process for most users. If you are intending to use Ta-dah! as a C++ library continue to the next section.
-
-Shared Library and C++ Headers
-..............................
-
-The header files and shared library will be installed to the system default location (on UNIX headers are usually installed to: :file:`/usr/local/include` and :file:`libtadah.so` shared libary to :file:`/usr/local/lib`) or the path specified by the user with :code:`-DCMAKE_INSTALL_PREFIX` flag.
-
-When compiling code with Ta-dah! make sure that linker can find shared library object. On UNIX machines this is usually done by exporting LD_LIBRARY_PATH variable. Similarly compiler must know where header files are stored. For example, for GCC compiler this is done by exporting CPATH. This step is usually not required when library is installed to the system default location.
-
-.. code-block:: bash
-	
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/lib
-	export CPATH=$CPATH:/path/to/include
-
-
-.. _linking:
-
-Compiling and Linking
+Configuration Options
 ---------------------
 
-The library must be compiled with C++17 or higher.
-To include library header remember to use prefix :code:`tadah/`. For example to use methods defined in :code:`atom.h`
+Use CMake options to customize the build:
 
-.. code-block:: c
+- ``TADAH_ENABLE_HPO``: Enable Hyperparameter Optimizer (default: OFF).
+- ``TADAH_ENABLE_OPENMP``: Enable OpenMP for parallelisation (default: OFF).
+- ``TADAH_BUILD_MPI``: Build MPI version (default: OFF).
+- ``TADAH_MARCH_NATIVE``: Use native optimizations (default: OFF).
+- ``TADAH_ENABLE_FAST_MATH``: Enable fast math optimizations (default: OFF).
+- ``TADAH_BUILD_TESTS``: Include tests (default: OFF).
+- ``TADAH_BUILD_DOCUMENTATION``: Build documentation with Doxygen (default: OFF).
 
-    #include <tadah/atom.h>
+Tadah! Software Binary
+----------------------
 
-To compile code written with Ta-Dah! link :code:`ltadah`. If OpenMP is available link :code:`fopenmp`. See :ref:`gofasterstripe` for details.
+The executable `tadah` is installed in the `bin` directory by default (${CMAKE_INSTALL_PREFIX}/bin). If MPI is enabled, the executable is named `tadah_mpi`.
 
-For example, to compile :file:`test.cpp` with GNU :code:`g++` 
+Example Commands
+................
+
+- Display help information:
+
+  .. code-block:: bash
+
+    tadah -h
+
+- Train a model with a specified configuration file:
+
+  .. code-block:: bash
+
+    tadah train -c <config_file> -V
+
+  Use the `-V` flag for verbose output during training.
+
+- Make predictions using a trained potential file and datasets:
+
+  .. code-block:: bash
+
+    tadah predict -p <pot.tadah> -d <dataset1> <dataset2> -V
+
+Massively Parallel Version
+..........................
+
+The Tadah! MPI version is designed for High-Performance Computing (HPC) architectures, making it suitable for handling large datasets like those from the Materials Project. This enables efficient computation and model training at scale.
+
+To enable the MPI version, configure the build with the `TADAH_BUILD_MPI` option:
 
 .. code-block:: bash
 
-    g++ -O3 -std=c++17 -o output_file test.cpp -ltadah -fopenmp
+    cmake .. -DTADAH_BUILD_MPI=ON
 
-
-If the library is not installed in the standard search path you will have to link it manually, for example:
-
-.. code-block:: bash
-
-    g++ -O3 -std=c++17 -o output_file test.cpp -I/home/$USER/.local/include -L/home/$USER/.local/lib -ltadah -fopenmp
-
-.. _gofasterstripe:
-
-Go Faster Stripe
-----------------
-
-The library will be compiled with OpenMP if it is available on the system. OpenMP uses the system variable to control the number of threads.
-
-To set number of threads to be used by the library on a UNIX machine:
-
-.. code-block:: bash
-	
-	export OMP_NUM_THREADS=num_of_cores
-
-Always link :code:`fopenmp` when compiling code which uses Ta-dah! library.
-
+This will configure the executable as `tadah_mpi`, which is specifically optimized for parallel execution.
 
 .. _installation_lammps:
 
-Installing LAMMPS interface
+Installing LAMMPS Interface
 ---------------------------
 
-First, install Ta-dah! library as described in :ref:`installation`.
+The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! potentials. Follow these steps:
 
-To build Ta-dah with lammps you need to download LAMMPS source code if you don't have it.
+1. Clone the LAMMPS stable version from the GitHub repository:
 
-Copy :file:`tadah/build/USER-TADAH` directory to LAMMPS :file:`src` directory.
+   .. code-block:: bash
 
-.. warning:: Make sure you are copying :file:`USER-TADAH` from the build directory and NOT from the :file:`src/lammps/USER-TADAH`.
+     git clone -b stable https://github.com/lammps/lammps.git /path/to/lammps
 
-.. hint:: The file :file:`USER-TADAH/Makefile.lammps` specifies paths to :code:`libtadah`.
-          If it is not installed in the default location you might have to edit this file. Cmake will try to guess correct locations.
+2. Build the interface:
 
-Go to lammps source directory (e.g. :file:`mylammps/src`) and run :code:`make yes-user-tadah` and then recompile LAMMPS (e.g. :code:`make serial`).
+   .. code-block:: bash
 
-.. important:: Ta-dah should work with LAMMPS versions from June 2022 onwards.
-               It has been tested with the following LAMMPS version: 23 Jun 2022 - Update 2.
+     cd /path/to/lammps/lib
+     git clone https://git.ecdf.ed.ac.uk/tadah.lammps.git
+     cd /path/to/lammps/src
+     make lib-tadah.lammps
+     make yes-ml-tadah
+     make serial
 
-.. seealso:: Detailed instructions on how to build LAMMPS with extra features: 
+.. important:: Compatible with LAMMPS from June 2022 onwards.
+
+.. seealso:: For building LAMMPS with extra features, visit:
 
              https://lammps.sandia.gov/doc/Build_package.html
 
+
+Libraries and C++ Headers
+.......................................
+
+Headers and libraries are installed according to `-DCMAKE_INSTALL_PREFIX` or default locations. Set `LD_LIBRARY_PATH` and `CPATH` as needed.
+
+.. code-block:: bash
+
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/lib
+    export CPATH=$CPATH:/path/to/include
+
+Compiled Libraries
+------------------
+
+The following libraries are compiled, depending on the build settings:
+
+- `libtadah.core`
+- `libtadah.models`
+- `libtadah.mlip`
+- `libtadah.md`
+- `libtadah.hpo` (an MPI version: `libtadah.mpi.hpo`)
+
+.. _compiling_and_linking:
+
+Libraries - Compiling and Linking
+-------------------------------
+
+For C++ library use, compile with C++17 or higher. Include library headers using the prefix `tadah/`.
+
+.. code-block:: c
+
+    #include <tadah/mlip/atom.h>
+
+Link with `ltadah.mlip`.
+
+.. code-block:: bash
+
+    g++ -O3 -std=c++17 -o output_file test.cpp -ltadah.mlip
+
+If the library is outside the standard path:
+
+.. code-block:: bash
+
+    g++ -O3 -std=c++17 -o output_file test.cpp -I/home/$USER/.local/include -L/home/$USER/.local/lib -ltadah.mlip
+
+.. _gofasterstripe:
+
+Go Faster Stripe - Desktop version
+----------------------------------
+
+OpenMP is supported if available. Set thread usage:
+
+.. code-block:: bash
+
+    export OMP_NUM_THREADS=num_of_cores
+
+Always link `fopenmp` when compiling with Tadah!. 
 
 .. _troubleshooting:
 
 Troubleshooting
 ---------------
 
-If you have any issues with a compilation process do not hesitate to drop me an email.
-
-#. Issue: **Permission denied**
-
-   This error might happen when running :code:`make install`.
+#. **Permission Denied**
    
-   ::
-
-     Install the project...
-     -- Install configuration: "Release"
-     -- Installing: /usr/local/bin/ta-dah
-     CMake Error at src/cmake_install.cmake:55 (file):
-       file INSTALL cannot copy file
-       "/home/$USER/ta-dah/build/src/ta-dah" to
-       "/usr/local/bin/ta-dah": Permission denied.
-     Call Stack (most recent call first):
-       cmake_install.cmake:42 (include)
-
-
-     make: *** [Makefile:129: install] Error 1
-
-   You are installing to root directory without root privileges hence
-   files cannot be copied to the required destination.
-   Either run the command with root privileges (**sudo** or equivalent)
-   or change install location to user directory (e.g. :file:`$HOME/.local`
-   for most UNIX systems):
-
+   Run `make install` with `sudo` or change the installation path:
+   
    .. code-block:: bash
 
      cmake .. -DCMAKE_INSTALL_PREFIX=~/.local
      make install
 
-#. Issue: **Shared object ImportError**
+#. **Shared Object ImportError**
+
+   Update `LD_LIBRARY_PATH`:
 
    .. code-block:: bash
 
-      ImportError: libtadah.so: cannot open shared object file: No such file or directory
-  
-   libtadah is a dynamic library and your system does not know where to find it.
-   Adding the directory containing libtadah.so to LD_LIBRARY_PATH should solve the problem.
+     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/your/path/
 
-   .. code-block:: bash
+#. **Compatibility Issues with LAMMPS**
 
-      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/your/path/
+   Ensure compatibility with the correct LAMMPS version. See :ref:`installation_lammps`.
 
-   It usually make sense to add above command to '~/.bashrc' file so it is executed each time a new terminal window is opened.
+#. **New Issues**
 
-#. Issue: **error: ‘...class LAMMPS_NS::Comm’ has no member named... or similar**
+   Contact support for any unlisted issues.
 
-    ::
-    
-     ../pair_tadah_tadah.cpp: In member function ‘void LAMMPS_NS::PairTadah::compute_2b_mb_half(int, int)’:
-     ../pair_tadah_tadah.cpp:242:15: error: ‘class LAMMPS_NS::Comm’ has no member named ‘reverse_comm_pair’; did you mean   ‘reverse_comm’?
-     242          comm->reverse_comm_pair(this);
-     ../pair_tadah_tadah.cpp:263:15: error: ‘class LAMMPS_NS::Comm’ has no member named ‘forward_comm_pair’; did you mean     ‘forward_comm_array’?
-     263          comm->forward_comm_pair(this);
-
-   This is likely to be an incopatibility between your version of LAMMPS and Ta-dah!
-   See :ref:`installation_lammps` for more information.       
-
-
-#. Issue: **error: ‘...error: ‘int LAMMPS_NS::NeighRequest::half’ is protected within this context... or similar**
-
-    ::
-
-     ../pair_tadah_tadah.cpp: In member function ‘virtual void LAMMPS_NS::PairTadah::init_style()’:
-     ../pair_tadah_tadah.cpp:888:43: error: ‘int LAMMPS_NS::NeighRequest::half’ is protected within this context
-     ../pair_tadah_tadah.cpp:263:15: error: ‘class LAMMPS_NS::Comm’ has no member named ‘forward_comm_pair’; did you mean ‘forward_comm_array’?
-
-   This is likely to be an incopatibility between your version of LAMMPS and Ta-dah!
-   See :ref:`installation_lammps` for more information.       
-
-
-#. Issue: **New issue**
-
-   **If you have an issue which is not listed here please get in touch.**

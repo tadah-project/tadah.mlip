@@ -12,11 +12,6 @@ Welcome to Ta-dah!'s documentation!
     :hide_output:
     :filename: config/read_toml.py
 
-.. warning:: 
-    This project is in the early development stage. Use at own risk.
-
-    If you encounter any problems email: marcin.kirsz@ed.ac.uk
-
 .. toctree::
    :maxdepth: 2
    :caption: General

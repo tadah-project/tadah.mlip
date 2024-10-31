@@ -22,8 +22,8 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'Ta-dah!'
-copyright = '2023, Marcin Kirsz'
+project = 'Tadah!'
+copyright = '2024, Marcin Kirsz'
 author = 'Marcin Kirsz'
 
 # The short X.Y version
@@ -104,7 +104,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Ta-dahdoc'
+htmlhelp_basename = 'Tadahdoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -131,7 +131,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'Ta-dah.tex', 'Ta-dah! Documentation',
+    (master_doc, 'Tadah.tex', 'Tadah! Documentation',
      'Marcin Kirsz', 'manual'),
 ]
 
@@ -141,7 +141,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'ta-dah', 'Ta-dah! Documentation',
+    (master_doc, 'tadah', 'Tadah! Documentation',
      [author], 1)
 ]
 
@@ -152,8 +152,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'Ta-dah', 'Ta-dah! Documentation',
-     author, 'Ta-dah', 'One line description of project.',
+    (master_doc, 'Tadah', 'Tadah! Documentation',
+     author, 'Tadah', 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -182,17 +182,17 @@ read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
 if read_the_docs_build:
     extensions = ['breathe' ]
-    breathe_default_project = "Ta-dah!"
+    breathe_default_project = "Tadah!"
     subprocess.call('cd .. ; doxygen', shell=True)
-    breathe_projects = { "Ta-dah!": "../xml" }
+    breathe_projects = { "Tadah!": "../xml" }
     html_js_files = [
         ('https://www.googletagmanager.com/gtag/js?id=G-M4X1BWV25W', {'async': 'async'}),
             'js/ganalytics.js',
     ]
 else:
     subprocess.call('cd .. ; doxygen', shell=True)
-    breathe_default_project = "Ta-dah!"
-    breathe_projects = { "Ta-dah!": "../xml" }
+    breathe_default_project = "Tadah!"
+    breathe_projects = { "Tadah!": "../xml" }
 
 
 # exec_code

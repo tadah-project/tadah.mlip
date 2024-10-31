@@ -6,7 +6,8 @@ Examples
 Example 1 - Traininig Process and Simple Prediction
 ---------------------------------------------------
 
-.. include:: ../../examples/CLI/ex_1/README.rst
+.. literalinclude:: ../../examples/CLI/ex_1/README.rst
+   :language: none
 
 API Examples
 ------------

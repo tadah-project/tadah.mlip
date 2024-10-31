@@ -1,12 +1,22 @@
 .. _examples:
 
+Examples
+========
+
+Example 1 - Traininig Process and Simple Prediction
+---------------------------------------------------
+
+.. include:: ../../examples/CLI/ex_1/README.rst
+
 API Examples
-============
+------------
+
+Example usage of C++ Tadah! library.
 
 .. _ex1:
 
 Example 1 - Traininig Process and Simple Prediction
----------------------------------------------------
+...................................................
 .. doxygenfile:: ex1.cpp
    :no-link:
 
@@ -28,7 +38,7 @@ Config file used for prediction:
 .. _ex2:
 
 Example 2 - Prediction using existing model
--------------------------------------------
+...........................................
 .. doxygenfile:: ex2.cpp
    :no-link:
 

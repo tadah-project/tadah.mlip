@@ -7,8 +7,8 @@ Tadah! is a fast and modular machine learning **software** and C++ **library** s
 
 Tadah! offers a LAMMPS interface compatible with all descriptors and models. It can be used as command-line software for training models or using machine learning potentials for prediction, or as an advanced C++ library.
 
-Why Use Tadah!?
----------------
+Key Features
+------------
 
 - **Hyperparameter Optimizer**: Enhances potential transferability.
 - **Community-Driven**: Open to new ideas and implementations.
@@ -34,13 +34,13 @@ Obtaining Tadah!
 
 The code repository is available at:
 
-    https://git.ecdf.ed.ac.uk/tadah
+    https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
 
 Clone the main branch using:
 
 .. code-block:: bash
 
-    git clone https://git.ecdf.ed.ac.uk/tadah.git
+    git clone https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
 
 .. _installation:
 
@@ -52,7 +52,7 @@ Tadah! uses CMake for configuration.
 .. code-block:: bash
 
     # Navigate to the project directory
-    cd tadah
+    cd tadah.mlip
 
     # Create and move into the build directory
     mkdir build && cd build
@@ -87,7 +87,77 @@ Binary File
 
 The executable `tadah` is installed in the `bin` directory by default (${CMAKE_INSTALL_PREFIX}/bin). If MPI is enabled, the executable is named `tadah_mpi`.
 
-Shared/Static Libraries and C++ Headers
+Example Commands
+----------------
+
+- Display help information:
+
+  .. code-block:: bash
+
+    tadah -h
+
+- Train a model with a specified configuration file:
+
+  .. code-block:: bash
+
+    tadah train -c <config_file> -V
+
+  Use the `-V` flag for verbose output during training.
+
+- Make predictions using a trained potential file and datasets:
+
+  .. code-block:: bash
+
+    tadah predict -p <pot.tadah> -d <dataset1> <dataset2> -V
+
+Tadah! MPI: Massively Parallel Version
+---------------------------------------
+
+The Tadah! MPI version is designed for High-Performance Computing (HPC) architectures, making it suitable for handling large datasets like those from the Materials Project. This enables efficient computation and model training at scale.
+
+Installation
+------------
+
+To enable the MPI version, configure the build with the `TADAH_BUILD_MPI` option:
+
+.. code-block:: bash
+
+    cmake .. -DTADAH_BUILD_MPI=ON
+
+This will configure the executable as `tadah_mpi`, which is specifically optimized for parallel execution.
+
+.. _installation_lammps:
+
+Installing LAMMPS Interface
+---------------------------
+
+The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! potentials. Follow these steps:
+
+1. Clone the LAMMPS stable version from the GitHub repository:
+
+   .. code-block:: bash
+
+     git clone -b stable https://github.com/lammps/lammps.git /path/to/lammps
+
+2. Build the interface:
+
+   .. code-block:: bash
+
+     cd /path/to/lammps/lib
+     git clone https://git.ecdf.ed.ac.uk/tadah.lammps.git
+     cd /path/to/lammps/src
+     make lib-tadah.lammps
+     make yes-ml-tadah
+     make serial
+
+.. important:: Compatible with LAMMPS from June 2022 onwards.
+
+.. seealso:: For building LAMMPS with extra features, visit:
+
+             https://lammps.sandia.gov/doc/Build_package.html
+
+
+Libraries and C++ Headers
 .......................................
 
 Headers and libraries are installed according to `-DCMAKE_INSTALL_PREFIX` or default locations. Set `LD_LIBRARY_PATH` and `CPATH` as needed.
@@ -97,10 +167,21 @@ Headers and libraries are installed according to `-DCMAKE_INSTALL_PREFIX` or def
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/lib
     export CPATH=$CPATH:/path/to/include
 
+Compiled Libraries
+------------------
+
+The following libraries are compiled, depending on the build settings:
+
+- `libtadah.core`
+- `libtadah.models`
+- `libtadah.mlip`
+- `libtadah.md`
+- `libtadah.hpo` (an MPI version: `libtadah.mpi.hpo`)
+
 .. _compiling_and_linking:
 
-Compiling and Linking
----------------------
+Libraries - Compiling and Linking
+-------------------------------
 
 For C++ library use, compile with C++17 or higher. Include library headers using the prefix `tadah/`.
 
@@ -108,52 +189,30 @@ For C++ library use, compile with C++17 or higher. Include library headers using
 
     #include <tadah/mlip/atom.h>
 
-Link with `ltadah.mlip` and `fopenmp` if OpenMP is available.
+Link with `ltadah.mlip`.
 
 .. code-block:: bash
 
-    g++ -O3 -std=c++17 -o output_file test.cpp -ltadah.mlip -fopenmp
+    g++ -O3 -std=c++17 -o output_file test.cpp -ltadah.mlip
 
 If the library is outside the standard path:
 
 .. code-block:: bash
 
-    g++ -O3 -std=c++17 -o output_file test.cpp -I/home/$USER/.local/include -L/home/$USER/.local/lib -ltadah.mlip -fopenmp
+    g++ -O3 -std=c++17 -o output_file test.cpp -I/home/$USER/.local/include -L/home/$USER/.local/lib -ltadah.mlip
 
 .. _gofasterstripe:
 
-Go Faster Stripe
-----------------
+Go Faster Stripe - Desktop version
+----------------------------------
 
-OpenMP is included if available. Set thread usage:
+OpenMP is supported if available. Set thread usage:
 
 .. code-block:: bash
 
     export OMP_NUM_THREADS=num_of_cores
 
-Always link `fopenmp` when compiling with Tadah!.
-
-.. _installation_lammps:
-
-Installing LAMMPS Interface
----------------------------
-
-The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! potentials. Follow these steps:
-
-.. code-block:: bash
-
-    cd /path/to/lammps/lib
-    git clone https://git.ecdf.ed.ac.uk/tadah.lammps.git
-    cd /path/to/lammps/src
-    make lib-tadah.lammps
-    make yes-ml-tadah
-    make serial
-
-.. important:: Compatible with LAMMPS from June 2022 onwards.
-
-.. seealso:: For building LAMMPS with extra features, visit:
-
-             https://lammps.sandia.gov/doc/Build_package.html
+Always link `fopenmp` when compiling with Tadah!. 
 
 .. _troubleshooting:
 

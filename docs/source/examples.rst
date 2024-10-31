@@ -3,16 +3,12 @@
 Examples
 ========
 
-Example 1 - Traininig Process and Simple Prediction
----------------------------------------------------
-
-.. literalinclude:: ../../examples/CLI/ex_1/README.rst
-   :language: none
+.. include:: ../../examples/CLI/ex_1/README.rst
 
 API Examples
 ------------
 
-Example usage of C++ Tadah! library.
+Examples of using the C++ Tadah! library.
 
 .. _ex1:
 

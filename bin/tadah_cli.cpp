@@ -27,6 +27,14 @@
 #include <chrono>
 
 void TadahCLI::subcommand_train() {
+  int rank = 0;
+  int ncpu = 1;
+#ifdef TADAH_BUILD_MPI
+  // Initialize MPI variables to determine the rank and the number of CPUs
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
+#endif
+
   // Check if verbose mode is enabled and set it
   if (train->count("--Verbose")) {
     set_verbose();
@@ -34,6 +42,9 @@ void TadahCLI::subcommand_train() {
 
   // Load the configuration from the specified file
   Config config(config_file);
+  std::set<Element> unique_elements = StructureDB::find_unique_elements(config);
+  StructureDB::check_atoms_key(config, unique_elements);
+  StructureDB::check_watoms_key(config, unique_elements);
 
   // Enable FORCE and STRESS flags in the configuration if specified
   if (train->count("--Force")) {
@@ -46,12 +57,6 @@ void TadahCLI::subcommand_train() {
   }
 
 #ifdef TADAH_BUILD_MPI
-  // Initialize MPI variables to determine the rank and the number of CPUs
-  int rank = 0;
-  int ncpu = 1;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
-
   // Execute host or worker code based on rank
   if (rank == 0) { // Host code
                    // Ensure there are enough CPUs for MPI
@@ -60,7 +65,7 @@ void TadahCLI::subcommand_train() {
       return;
     }
 
-    // Check if the uncertainty flag is incompatible with MPI
+    // The uncertainty flag is incompatible with MPI
     if (train->count("--uncertainty")) {
       std::cout << "-----------------------------------------------------" << std::endl;
       std::cout << "The --uncertainty flag is not supported by MPI build." << std::endl;
@@ -254,28 +259,37 @@ void TadahCLI::subcommand_hpo(
 
 #ifdef TADAH_ENABLE_HPO
 
-  if(hpo->count("--Verbose"))
-    set_verbose();
+  int rank = 0;
+  int ncpu = 1;
+#ifdef TADAH_BUILD_MPI
+  // Initialize MPI variables to determine the rank and the number of CPUs
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
+#endif
 
+  // Check if verbose mode is enabled and set it
+  if (train->count("--Verbose")) {
+    set_verbose();
+  }
+
+  // Load the configuration from the specified file
   Config config(config_file);
+  std::set<Element> unique_elements = StructureDB::find_unique_elements(config);
+  StructureDB::check_atoms_key(config, unique_elements);
+  StructureDB::check_watoms_key(config, unique_elements);
   config.check_for_training();
 
-  if(hpo->count("--Force")) {
+  // Enable FORCE and STRESS flags in the configuration if specified
+  if (hpo->count("--Force")) {
     config.remove("FORCE");
     config.add("FORCE", "true");
   }
-  if(hpo->count("--Stress")) {
+  if (hpo->count("--Stress")) {
     config.remove("STRESS");
     config.add("STRESS", "true");
   }
 
 #ifdef TADAH_BUILD_MPI
-
-  int rank;
-  int ncpu;
-  MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
   MPI_Status status;
   MPI_Group world_group;
   MPI_Comm_group(MPI_COMM_WORLD, &world_group);

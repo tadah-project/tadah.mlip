@@ -3,6 +3,9 @@
 
 DBFILE tdata.db
 
+ATOMS Ta
+WATOMS 73
+
 INIT2B true
 INIT3B false
 INITMB false

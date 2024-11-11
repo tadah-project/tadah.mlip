@@ -48,32 +48,37 @@ Config File
 
 This section describes the format of the configuration file used by Tadah!.
 
-### Key/Value Pairs
+Key/Value Pairs
+---------------
 
 The primary structure in a configuration file is the KEY/VALUE pair. Each KEY/VALUE pair must be on a separate line, with the KEY appearing first. The KEY is always a string, followed by its VALUE. The format and type of a VALUE depend on the specific KEY.
 
-### Common Usage
+Common Usage
+------------
 
 Typically, only a subset of KEYS is needed to train a model. Tadah! will produce an error if a required KEY is missing:
 
 .. code-block:: bash
 
-    [user@host:~] $ tadah train -c config.train
-    terminate called after throwing an instance of 'std::runtime_error'
-      what():  Key not found: DBFILE
-    Aborted (core dumped)
+   [user@host:~] $ tadah train -c config.train
+   terminate called after throwing an instance of 'std::runtime_error'
+     what():  Key not found: DBFILE
+   Aborted (core dumped)
 
 This message indicates that the `DBFILE` KEY was not specified in the :file:`config.train` file. To resolve this, add the `DBFILE` key and its corresponding value to :file:`config.train`.
 
-### Key Specifics
+Key Specifics
+-------------
 
 The meaning of some KEYS may change based on the model or descriptor in use. Refer to the documentation for each model or descriptor to understand the required KEYS and their explanations.
 
-### Comments
+Comments
+--------
 
 Use the `#` symbol to add comments in the configuration file.
 
-### Multiple Values
+Multiple Values
+---------------
 
 A KEY can have multiple values, specified in one of two ways:
 
@@ -81,27 +86,27 @@ A KEY can have multiple values, specified in one of two ways:
 
   .. code-block:: bash
 
-    KEY VALUE1 VALUE2 VALUE3
+     KEY VALUE1 VALUE2 VALUE3
 
 - Multiple lines:
 
   .. code-block:: bash
 
-    KEY VALUE1
-    KEY VALUE2
-    KEY VALUE3
+     KEY VALUE1
+     KEY VALUE2
+     KEY VALUE3
 
-### Value Limits
+Value Limits
+------------
 
 If the number of values exceeds the maximum allowed, an error will occur. For example, specifying `RCTYPE2B` twice when only one value is allowed will result in:
 
 .. code-block:: bash
 
-    [user@host:~] $ tadah train -c config.train
-    terminate called after throwing an instance of 'std::runtime_error'
-      what():  Repeated key RCTYPE2B Cut_Cos
-    Aborted (core dumped)
-
+   [user@host:~] $ tadah train -c config.train
+   terminate called after throwing an instance of 'std::runtime_error'
+     what():  Repeated key RCTYPE2B Cut_Cos
+   Aborted (core dumped)
 \n
 '''
 f.write(header)

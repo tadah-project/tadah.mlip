@@ -1,5 +1,0 @@
-DescriptorsCalc
-===============
-
-.. doxygenclass:: DescriptorsCalc
-    :members:

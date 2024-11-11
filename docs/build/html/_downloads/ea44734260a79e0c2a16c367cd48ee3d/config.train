@@ -1,6 +1,0 @@
-DBFILE     db.train
-INIT2B     true
-RCUT2B     5.3
-TYPE2B     D2_LJ
-RCTYPE2B   Cut_Dummy
-MODEL      M_KRR     Kern_Linear

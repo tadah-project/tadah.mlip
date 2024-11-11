@@ -4,3 +4,4 @@ sphinx
 sphinx-exec-code
 sphinx_rtd_theme
 pytomlpp
+myst-parser

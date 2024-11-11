@@ -16,9 +16,6 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-# required for sphinx_exec_code
-#sys.path.insert(0, os.path.join(os.path.abspath('..'), 'src'))
-
 
 # -- Project information -----------------------------------------------------
 
@@ -41,7 +38,9 @@ release = ''
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['breathe','sphinx_exec_code']
+extensions = ['breathe',
+              'myst_parser',
+              'sphinx_exec_code']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -181,19 +180,19 @@ import subprocess, os
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
 if read_the_docs_build:
-    extensions = ['breathe' ]
+    extensions = ['breathe', 'myst_parser', 'sphinx_exec_code']
     breathe_default_project = "Tadah!"
-    subprocess.call('cd .. ; doxygen', shell=True)
-    breathe_projects = { "Tadah!": "../xml" }
+    #subprocess.call('cd ../build/docs ; doxygen', shell=True)
+    breathe_projects = { "Tadah!": "../../build/docs/xml" }
     html_js_files = [
         ('https://www.googletagmanager.com/gtag/js?id=G-M4X1BWV25W', {'async': 'async'}),
             'js/ganalytics.js',
     ]
 else:
-    subprocess.call('cd .. ; doxygen', shell=True)
+    #subprocess.call('cd ../build/docs ; doxygen', shell=True)
     breathe_default_project = "Tadah!"
-    breathe_projects = { "Tadah!": "../xml" }
+    breathe_projects = { "Tadah!": "../../build/docs/xml" }
 
 
-# exec_code
-import sphinx_exec_code
+def setup(app):
+    subprocess.run(['python', 'config/read_toml.py'])

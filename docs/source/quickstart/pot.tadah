@@ -1,19 +1,21 @@
-BIAS      true
+BIAS     true
 DIMER     false     0     false
-ESTDEV      0.007382261695
-EWEIGHT      1.0
-FSTDEV      1
-FWEIGHT      1.0
-INIT2B      true
-INIT3B      false
-INITMB      false
-LAMBDA      0
-MODEL     M_KRR     Kern_Linear
-NORM      false
-OUTPREC      10
-RCTYPE2B      Cut_Dummy
-RCUT2B      5.3
-SSTDEV     1     1     1     1     1     1
-SWEIGHT      1.0
-TYPE2B      D2_LJ
-WEIGHTS     -11.31560878     -15.14114237     -168.8936317
+EWEIGHT     1
+FWEIGHT     1
+INIT2B     true
+INIT3B     false
+INITMB     false
+LAMBDA     0
+MBLOCK     64
+MODEL     M_KRR     Kern_Linear     1
+MPIWPCKG     50
+NBLOCK     64
+NORM     false
+OUTPREC     10
+RCTYPE2B     Cut_Dummy
+RCUT2B     5.3
+SWEIGHT     1
+TYPE2B     D2_LJ
+VERBOSE     0
+WEIGHTS     -11.31560878     -2.822924848     -31.4886432
+

@@ -6,12 +6,6 @@
 Welcome to Tadah!'s documentation!
 ===================================
 
-.. Generate documentation with config KEY/VALUE pairs
-.. exec_code::
-    :hide_code:
-    :hide_output:
-    :filename: config/read_toml.py
-
 .. toctree::
    :maxdepth: 2
    :caption: General
@@ -19,10 +13,9 @@ Welcome to Tadah!'s documentation!
    intro.rst
    quickstart.rst
    config/config_keys.rst
-   glossary.rst
    examples.rst
    contribute.rst
-   LICENCE.rst
+   LICENSE.rst
 
 .. raw:: html
 
@@ -31,7 +24,6 @@ Welcome to Tadah!'s documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Getting Started
-
 
 .. raw:: html
 

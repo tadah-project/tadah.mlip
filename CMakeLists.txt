@@ -13,9 +13,6 @@ option(TADAH_BUILD_MPI "Build MPI version of ${TADAH}" OFF)
 option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
 option(TADAH_ENABLE_FAST_MATH "Enable fast math optimizations" OFF)
 option(TADAH_BUILD_TESTS "Build with tests" OFF)
-option(TADAH_BUILD_DOCUMENTATION "Create and install the HTML based        
-documentation (requires Doxygen)")
-
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 # Guard against in-source builds
@@ -181,30 +178,6 @@ message(STATUS "${TADAH} Build with -march=native in ${TADAH_MARCH_NATIVE}")
 #########################################################################
 
 #########################################################################
-if(TADAH_BUILD_DOCUMENTATION)
-  find_package(Doxygen)
-  if(NOT DOXYGEN_FOUND)
-    message(FATAL_ERROR "Doxygen is needed to build the documentation.")
-  endif()
-
-  set(doxyfile_in ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile)
-  set(doxyfile ${CMAKE_CURRENT_BINARY_DIR}/doxyfile)
-
-  configure_file(${doxyfile_in} ${doxyfile} @ONLY)
-
-  add_custom_target(
-    docs
-    COMMAND ${DOXYGEN_EXECUTABLE} ${doxyfile_in}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/docs
-    COMMAND make html
-    COMMENT "Generating API documentation with Doxygen"
-    VERBATIM
-    )
-endif()
-message(STATUS "${TADAH} Build documentation is ${TADAH_BUILD_DOCUMENTATION}")
-#########################################################################
-
-#########################################################################
 if(TADAH_ENABLE_FAST_MATH)
   if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID MATCHES "GNU"))
     add_compile_options(-ffast-math)
@@ -252,59 +225,68 @@ message(STATUS "${TADAH}: Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
 find_package(LAPACK)
 target_link_libraries (tadah PUBLIC ${LAPACK_LIBRARIES})
 
-install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(TARGETS tadah
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)
+
 
 if(TADAH_BUILD_TESTS)
+  enable_testing()
   include(CTest) 
   add_subdirectory(tests)
 endif()
 
+
+find_package(Doxygen REQUIRED)
+configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in ${CMAKE_BINARY_DIR}/docs/Doxyfile @ONLY)
+add_custom_target(docs
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/docs
+    COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/docs/Doxyfile
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Generating API documentation with Doxygen"
+    )
+
 message(STATUS "===================================================================")
 message(STATUS "                                                                   ")
-message(STATUS "${TADAH} in now configured and ready for installation.             ")
+message(STATUS "${TADAH} is now configured and ready for installation.")
 message(STATUS "                                                                   ")
 message(STATUS "--------------+----------------------------------------------------")
 message(STATUS "Command       |   Description                                      ")
 message(STATUS "--------------+----------------------------------------------------")
 message(STATUS "              |                                                    ")
-message(STATUS "make install  |   Install ${TADAH}                                 ")
+message(STATUS "make install  |   Install ${TADAH}.                                ")
 message(STATUS "              |                                                    ")
-message(STATUS "              |   Executable file will installed to:               ")
+message(STATUS "              |   Executable will be installed to:                 ")
 message(STATUS "              |      ${CMAKE_INSTALL_PREFIX}/bin                   ")
 message(STATUS "              |   Headers will be installed to:                    ")
 message(STATUS "              |      ${CMAKE_INSTALL_PREFIX}/include/tadah         ")
-message(STATUS "              |   Shared library will be installed to:             ")
+message(STATUS "              |   Library will be installed to:                    ")
 message(STATUS "              |      ${CMAKE_INSTALL_PREFIX}/lib                   ")
 message(STATUS "              |                                                    ")
-message(STATUS "              |   To change default install location run:          ")
+message(STATUS "              |   To change the install location, run:             ")
 message(STATUS "              |     cmake .. -DCMAKE_INSTALL_PREFIX=yourpath       ")
 message(STATUS "              |                                                    ")
-message(STATUS "make docs     |   Generate a local copy of html documentation:     ")
+message(STATUS "make docs     |   Generate a local copy of the documentation.      ")
 message(STATUS "              |                                                    ")
-message(STATUS "              |   doxygen style:                                   ")
-message(STATUS "              |      ${CMAKE_SOURCE_DIR}/docs/html/index.html      ")
-message(STATUS "              |   sphinx style:                                    ")
-message(STATUS "              |      ${CMAKE_SOURCE_DIR}/docs/build/html/index.html")
-message(STATUS "              |                                                    ")
-message(STATUS "make test     |   Run testing framework                            ")
+message(STATUS "make test     |   Run the test framework after building the code.  ")
 message(STATUS "              |                                                    ")
 message(STATUS "--------------+----------------------------------------------------")
 message(STATUS "              OPTIONAL FEATURES:                                   ")
 message(STATUS "--------------+----------------------------------------------------")
 message(STATUS "                                                                   ")
-message(STATUS "            * Build with Hyperparamter optimiser.                  ")
+message(STATUS "            * Hyperparameter Optimizer:                            ")
 message(STATUS "              TADAH_ENABLE_HPO is ${TADAH_ENABLE_HPO}              ")
 if(TADAH_ENABLE_HPO)
-  message(STATUS "              Requires LAMMPS to be compiled as either             ")
-  message(STATUS "              shared or static library with ${TADAH} interface.    ")
-
-  message(STATUS "              Additional cmake variables that must be set:         ")
+  message(STATUS "              Requires LAMMPS compiled with the ${TADAH} interface.")
+  message(STATUS "                                                                   ")
+  message(STATUS "              Additional CMake variables required:                 ")
   message(STATUS "                1. TADAH_LAMMPS_DIR                                ")
-  message(STATUS "                    Must points to the LAMMPS root dir, e.g.       ")
+  message(STATUS "                   Must point to LAMMPS root directory, e.g.,      ")
   message(STATUS "                   -DTADAH_LAMMPS_DIR=/path/to/lammps              ")
   message(STATUS "                                                                   ")
   message(STATUS "                2. TADAH_LAMMPS_LIB                                ")
-  message(STATUS "                   The name of the LAMMPS lib, e.g.                ")
+  message(STATUS "                   Name of the LAMMPS library, e.g.,               ")
   message(STATUS "                   -DTADAH_LAMMPS_LIB=liblammps.a                  ")
   message(STATUS "                                                                   ")
   message(STATUS "              To disable this option:                              ")
@@ -314,4 +296,22 @@ else()
   message(STATUS "                cmake .. -DTADAH_ENABLE_HPO=ON                     ")
 endif()
 message(STATUS "                                                                   ")
+message(STATUS "            * OpenMP Support:                                      ")
+message(STATUS "              TADAH_ENABLE_OPENMP is ${TADAH_ENABLE_OPENMP}        ")
+message(STATUS "                                                                   ")
+message(STATUS "            * MPI Build:                                           ")
+message(STATUS "              TADAH_BUILD_MPI is ${TADAH_BUILD_MPI}                ")
+message(STATUS "                                                                   ")
+message(STATUS "            * March Native:                                        ")
+message(STATUS "              TADAH_MARCH_NATIVE is ${TADAH_MARCH_NATIVE}          ")
+message(STATUS "                                                                   ")
+message(STATUS "            * Fast Math:                                           ")
+message(STATUS "              TADAH_ENABLE_FAST_MATH is ${TADAH_ENABLE_FAST_MATH}  ")
+message(STATUS "                                                                   ")
+message(STATUS "            * Build with Tests:                                    ")
+message(STATUS "              TADAH_BUILD_TESTS is ${TADAH_BUILD_TESTS}            ")
+message(STATUS "                                                                   ")
 message(STATUS "===================================================================")
+
+
+

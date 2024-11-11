@@ -263,6 +263,15 @@ if(TADAH_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
 
+find_package(Doxygen REQUIRED)
+configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in ${CMAKE_BINARY_DIR}/docs/Doxyfile @ONLY)
+add_custom_target(docs ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/docs
+    COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/docs/Doxyfile
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Generating API documentation with Doxygen"
+    )
+
 message(STATUS "===================================================================")
 message(STATUS "                                                                   ")
 message(STATUS "${TADAH} in now configured and ready for installation.             ")

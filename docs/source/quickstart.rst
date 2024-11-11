@@ -1,199 +1,135 @@
-Quick Start
-===========
+# Quick Start
 
-This section covers fundamentals and command line interface (CLI) of Ta-dah!
+This section introduces the basics of Tadah! and its command line interface (CLI), which provides tools for training and testing models. The trained model (interatomic potential) can be used for molecular dynamics simulations with LAMMPS via the Tadah.LAMMPS plugin.
 
-For installation instructions see :ref:`installation`.
+For installation instructions, see :ref:`installation`. For CLI examples, see :ref:`cli_examples`.
 
-If you are interested to use it as a C++ library have a look at the
-:ref:`examples` and browse through the API documentation.
-Still this section might prove useful.
+If you want to use Tadah! as a C++ library, refer to :ref:`api_examples` and browse the API documentation. This section might still be helpful.
 
-Overview
---------
+## Overview
 
-To train a model, a config file (see :ref:`config_file`)
-and a dataset (see :ref:`dataset`) are required.
+To train a model, you need a configuration file (see :ref:`config_file`) and a dataset (see :ref:`dataset`).
 
-For prediction, a potential (trained model) and a dataset are required.
-The potential file is an output of the training process.
-The potential file is technically the same as the config file.
+For prediction, a trained model (potential file) and a dataset are required. The potential file, output from the training process, is an ASCII text file with key-value pairs that define the potential.
 
-.. _training:
+## Training
 
-Training
---------
+To train a model, use the following command in a terminal:
 
-To train a model run the following command in a terminal:
+```bash
+tadah train -c config.train
+```
 
-.. code-block:: bash
-    
-    ta-dah train -c config.train
+This command trains a model using energies only. To include forces or stresses, add the `-F` or `-S` flags, or set `FORCE true` and `STRESS true` in the config file.
 
-This will train a model using energies only. To also train on forces add ``-F`` flag, for stresses ``-S`` flag,
-or add ``FORCE true`` and ``STRESS true`` keys to the config file. Note that flags take priority over config values.
+*Note*: Command line flags override config file settings.
 
-Here ``config.train`` is a :ref:`config_file`.
-Training dataset(s), descriptors, cutoffs, model and all parameters are specified in the config file.
-An output of this command is a trained model as a ``pot.tadah`` file.
+The `config.train` file specifies datasets, descriptors, cutoffs, model, and parameters. The output is a trained model as a `pot.tadah` file.
 
-:download:`Here <quickstart/config.train>` is the minimal example of the ``config.train`` file:
+:download:`Here <quickstart/config.train>` is a minimal `config.train` example:
 
 .. literalinclude:: quickstart/config.train
 
-For the explanation of KEYS see :ref:`Config`.
+For an explanation of KEYS, see :ref:`Config`.
 
 An example dataset can be downloaded from :download:`here <quickstart/db.train>`.
 
-.. _prediction:
+## Prediction
 
-Prediction
-----------
+To predict energies using a `pot.tadah` model, run:
 
-To predict energies using an existing ``pot.tadah`` model run:
+```bash
+tadah predict -p pot.tadah -d db.predict
+```
 
-.. code-block:: bash
-    
-    ta-dah predict -p pot.tadah -d db.predict
+To include forces, add the `-F` flag; for stresses, the `-S` flag.
 
-To also predict forces add ``-F`` flag, for stresses ``-S`` flag.
+Alternatively, use a :download:`config file <quickstart/config.predict>` to specify prediction datasets (:ref:`DBFILE`) and whether to calculate forces and stresses (FORCE and STRESS keys).
 
-Alternatively, a :download:`config file <quickstart/config.predict>` can be used
-to specify a :download:`prediction datasets <quickstart/db.predict>`
-(:ref:`DBFILE`) and whether forces and stresses are meant to be calculated (FORCE and STRESS keys).
-
-``config.pred`` example:
+`config.predict` example:
 
 .. literalinclude:: quickstart/config.predict
 
-To predict using ``pot.tadah`` model and ``config.predict``:
+To predict using `pot.tadah` and `config.predict`:
 
-.. code-block:: bash
-    
-    ta-dah predict -p pot.tadah -c config.predict
+```bash
+tadah predict -p pot.tadah -c config.predict
+```
 
-The output of ``predict`` subcommand are three files:
+The `predict` subcommand outputs:
 
- * ``energy.pred``
-   There are two columns. The first column lists datasets energy/atom, the second predicted energy/atom.
-   The ordering of rows follows ordering of datasets in a config file or with ``-d`` flag.
-   First all energies from the first dataset are listed then from the second and so on.
+- `energy.pred`: Lists dataset and predicted energy/atom in two columns.
+- `forces.pred`: Lists forces for each atom and direction.
+- `stress.pred`: Lists stress tensor components ordered as xx, xy, xz, yy, yz, zz.
 
- * ``forces.pred``
-   Similar idea as above but now forces are listed.
-   First row is a force on the first atom in the x-direcion from the first dataset,
-   second row is the force on the first atom in the y-direction, and so on.
+## Built-in Help
 
- * ``stress.pred``
-   First 6 rows list components of the *stress tenosor* from the first configuration,
-   followed by 6 components from the second configuration... Ordering is xx,xy,xz,yy,yz,zz
+Tadah! provides basic help. Use the `-h` flag:
 
+```bash
+tadah -h
+```
 
-Built in help
--------------
+For specific subcommand details:
 
-Ta-dah! provides some basic help. Try to run it with ``-h`` flag. 
+```bash
+tadah train -h
+```
 
-.. code-block:: bash
-    
-    ta-dah -h
+## Units and Tadah!
 
-To read more about particular subcommand try
+Tadah! will work with units from the training datasets. If your dataset uses electronvolts and Angstroms, the model will also. Force units must match (e.g., eV/Å). The stress tensor units are consistent with energy (pressure*volume).
 
-.. code-block:: bash
-    
-    ta-dah train -h
+Ensure LAMMPS units match these model units, typically *metal* units in LAMMPS.
 
-.. _units:
+*Note*: Tadah! is tested with eV and Angstrom. These are the recommended units.
 
-Units and Ta-dah!
------------------
+## Config File
 
-In principle Ta-dah! will work with any units.
-The units used are determined by the units in a training datasets.
-So if your dataset has energy units of electronvolt and distance in Angstrom
-then created model will have the same units.
-The unit of force must be eV/A in this case.
-The *stress tensor* has units of energy (pressure*volume).
-In other words, the units of stress are the same as energy and unit of force is energy/distance.
+For a list and explanation of supported KEY-VALUE pairs, see :ref:`CONFIG`.
 
-The units selected by LAMMPS must be consistent with the model units.
-In this case they would correspond to *metal* units in LAMMPS.
+## Dataset Format
 
-.. note:: 
+Include datasets using the :ref:`DBFILE` key in a config file. Multiple datasets with varying atom counts are supported.
 
-    Ta-dah! have been tested with units of eV and Angstrom. Unless you have a good reason to use different units those are the recommended ones.
+Dataset structure:
 
-.. _config_file:
+```
+Comment line
+eweight fweight sweight
+ENERGY
+cell vector a
+cell vector b
+cell vector c
+stress tensor row s_1
+stress tensor row s_2
+stress tensor row s_3
+Element px py pz fx fy fz
+...
+<blank line>
+```
 
-Config file
------------
+- The first line is a comment used as a structure label.
+- `eweight`, `fweight`, `sweight` are optional weights (default is 1.0 each).
+- Cell vectors and stress tensor rows have 3 numbers each.
+- Element is the atom's chemical symbol; `px, py, pz` are positions; `fx, fy, fz` are force components.
+- Each configuration is separated by a blank line.
 
-For a list and explanation of supported KEY-VALUE(S) pairs see :ref:`CONFIG`
+If forces/stresses are unavailable, set them to zero to satisfy the parser.
 
-.. _dataset:
+## Tadah! and LAMMPS
 
-Dataset format
---------------
+Once trained, use the `pot.tadah` file with LAMMPS:
 
-Dataset(s) are included using :ref:`DBFILE` key in a Config file.
-More than one dataset can be specified.
+```lammps
+pair_style      tadah
+pair_coeff      * * pot.tadah ELEMENT1 ELEMENT2
+```
 
-There is no restriction on a number of atoms in different structures,
-so it's ok to have a structure with 12 atoms and another one 
-with 24 atoms in the same dataset.
+Example LAMMPS :download:`script file <quickstart/in.ml>` and :download:`pot.file <quickstart/pot.tadah>`.
 
-The dataset has the following structure:
+See :ref:`installation_lammps` for Tadah.LAMMPS interface installation instructions.
 
-::
+## Support for Multi-species Systems
 
-    Comment line
-    eweight fweight sweight
-    ENERGY
-    cell vector a
-    cell vector b
-    cell vector c
-    stress tensor row s_1
-    stress tensor row s_2
-    stress tensor row s_3
-    Element px py pz fx fy fz
-    ...
-    <blank line>
-    Comment line
-    eweight fweight sweight
-    ...
-
-
-* First line is a comment line; it will be used as a label for a structure.
-* eweight fweight sweight are (optional) weighting parameters used for training.
-  If this line is missing it defaults to 1.0 1.0 1.0. Do not leave blank line.
-* Each cell vector contains 3 numbers.
-* Each stress tensor row contains 3 numbers.
-* Number of lines beginning with Element is equal to the number of atoms in a structure.
-* Element is an atom label, usually chemical element symbol.
-* px, py and pz are Cartesian coordinates of the atom position.
-* fx, fy and fz are components of the force vector acting on the atom.
-* Each configuration is separated by the blank line.
-
-If forces and/or stresses are not available they can be set to zero to satisfy parser.
-
-Also See :ref:`units`
-
-Ta-dah! and LAMMPS
-------------------
-
-Once trained the ``pot.tadah`` file can be used with LAMMPS like any other pair potential.
-
-::
-    
-    pair_style      tadah/tadah
-    pair_coeff      * * /path/to/pot.tadah ELEMENT
-
-Here is an example lammps :download:`script file<quickstart/in.ml>` and :download:`pot.file <quickstart/pot.tadah>`.
-
-See :ref:`installation_lammps` for interface installation instructions.
-
-Suport for muli-species systems
--------------------------------
-
-Ta-dah! is capable of generating machine-learned potentials for mono- and multi-component systems.
+Tadah! supports generating potentials for mono- and multi-component systems. The training dataset determines the species spaces for the interatomic potential.

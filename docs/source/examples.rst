@@ -1,4 +1,4 @@
-.. _examples:
+.. _cli_examples:
 
 Examples
 ========
@@ -8,6 +8,8 @@ Examples
 
 .. include:: ../../examples/CLI/ex_1/README.md
    :parser: myst_parser.sphinx_
+
+.. _api_examples:
 
 API Examples
 ------------

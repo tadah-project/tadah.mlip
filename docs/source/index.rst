@@ -11,11 +11,10 @@ Welcome to Tadah!'s documentation!
     import os
     current_directory = os.getcwd()
     print(current_directory)
+    print(os.listdir(current_directory))
 
 .. Generate documentation with config KEY/VALUE pairs
 .. exec_code::
-    :hide_code:
-    :hide_output:
     :filename: config/read_toml.py
 
 .. toctree::

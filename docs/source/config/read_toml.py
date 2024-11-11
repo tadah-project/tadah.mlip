@@ -31,12 +31,12 @@ def download_toml_file(repo_url, file_path, output_path):
 download_toml_file(
     'https://git.ecdf.ed.ac.uk/tadah/core.git',
     'config/config_keys.toml',
-    '../docs/source/config/config_keys.toml'
+    'source/config/config_keys.toml'
 )
 
 # Path to TOML dict
 # d = p.load("../src/configs/config_keys.toml",'r')
-d = p.load("../docs/source/config/config_keys.toml",'r')
+d = p.load("source/config/config_keys.toml",'r')
 
 # Path to rst outfile
 # f = open("source/config/config_keys.rst", "w")

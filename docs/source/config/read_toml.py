@@ -4,8 +4,11 @@ the TOML dictionary.
 '''
 import pytomlpp as p
 import os
+import sys
 import shutil
 import subprocess
+
+sys.path.insert(0, os.path.join(os.path.abspath('..'), 'docs/source'))
 
 def download_toml_file(repo_url, file_path, output_path):
     try:

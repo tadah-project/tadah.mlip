@@ -14,9 +14,9 @@ Welcome to Tadah!'s documentation!
     print(os.listdir(current_directory+"/source/config"))
 
 .. Generate documentation with config KEY/VALUE pairs
-.. exec_code::
-    :hide_code:
-    :filename: config/read_toml.py
+.. .. exec_code::
+..    :hide_code:
+..    :filename: config/read_toml.py
 
 .. exec_code::
 
@@ -31,7 +31,7 @@ Welcome to Tadah!'s documentation!
 
    intro.rst
    quickstart.rst
-   source/config/config_keys.rst
+   config/config_keys.rst
    glossary.rst
    examples.rst
    contribute.rst

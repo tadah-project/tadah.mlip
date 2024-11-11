@@ -196,5 +196,10 @@ else:
     breathe_default_project = "Tadah!"
     breathe_projects = { "Tadah!": "../xml" }
 
-# exec_code
-#import sphinx_exec_code
+
+def setup(app):
+    current_directory = os.getcwd()
+    print(current_directory)
+    print(os.listdir(current_directory+"/source/config"))
+    subprocess.run(['python', 'config/read_toml.py'])
+    print(os.listdir(current_directory+"/source/config"))

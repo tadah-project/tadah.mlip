@@ -4,6 +4,7 @@ Examples
 ========
 
 .. include:: ../../examples/CLI/ex_1/README.md
+    :parser: myst_parser
 
 API Examples
 ------------

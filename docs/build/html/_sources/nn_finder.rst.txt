@@ -1,5 +1,0 @@
-NNFiner
-=======
-
-.. doxygenclass:: NNFinder
-    :members:

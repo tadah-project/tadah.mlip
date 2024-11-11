@@ -6,8 +6,14 @@
 Welcome to Tadah!'s documentation!
 ===================================
 
+.. exec_code::
+
+   print('Easy!')
+
 .. Generate documentation with config KEY/VALUE pairs
 .. exec_code::
+    :hide_code:
+    :hide_output:
     :filename: config/read_toml.py
 
 .. toctree::

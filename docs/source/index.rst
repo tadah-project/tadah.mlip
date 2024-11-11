@@ -31,7 +31,7 @@ Welcome to Tadah!'s documentation!
 
    intro.rst
    quickstart.rst
-   config/config_keys.rst
+   source/config/config_keys.rst
    glossary.rst
    examples.rst
    contribute.rst

@@ -4,11 +4,8 @@ the TOML dictionary.
 '''
 import pytomlpp as p
 import os
-import sys
 import shutil
 import subprocess
-
-sys.path.insert(0, os.path.join(os.path.abspath('..'), 'docs/source'))
 
 def download_toml_file(repo_url, file_path, output_path):
     try:
@@ -37,19 +34,13 @@ download_toml_file(
     '../docs/source/config/config_keys.toml'
 )
 
-print("TEST1")
-print(os.path.abspath(os.curdir))
-print("TEST1")
-
 # Path to TOML dict
 # d = p.load("../src/configs/config_keys.toml",'r')
-d = p.load("config/config_keys.toml",'r')
-print("TEST1")
+d = p.load("../docs/source/config/config_keys.toml",'r')
 
 # Path to rst outfile
 # f = open("source/config/config_keys.rst", "w")
-f = open("config/config_keys.rst", "w")
-print("TEST1")
+f = open("../docs/source/config/config_keys.rst", "w")
 
 header='''
 Config KEYS

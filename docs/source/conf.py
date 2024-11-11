@@ -17,7 +17,7 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 # required for sphinx_exec_code
-#sys.path.insert(0, os.path.join(os.path.abspath('..'), 'src'))
+sys.path.insert(0, os.path.join(os.path.abspath('..'), 'src'))
 
 
 # -- Project information -----------------------------------------------------

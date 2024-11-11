@@ -17,7 +17,7 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 # required for sphinx_exec_code
-sys.path.insert(0, os.path.join(os.path.abspath('..'), 'src'))
+#sys.path.insert(0, os.path.join(os.path.abspath('..'), 'src'))
 
 
 # -- Project information -----------------------------------------------------
@@ -41,7 +41,9 @@ release = ''
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['breathe','sphinx_exec_code']
+extensions = ['breathe',
+              'myst_parser',
+              'sphinx_exec_code']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -181,7 +183,7 @@ import subprocess, os
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
 if read_the_docs_build:
-    extensions = ['breathe', 'myst_parser']
+    extensions = ['breathe', 'myst_parser', 'sphinx_exec_code']
     breathe_default_project = "Tadah!"
     subprocess.call('cd .. ; doxygen', shell=True)
     breathe_projects = { "Tadah!": "../xml" }
@@ -196,4 +198,4 @@ else:
 
 
 # exec_code
-import sphinx_exec_code
+#import sphinx_exec_code

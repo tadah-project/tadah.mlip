@@ -183,7 +183,7 @@ if read_the_docs_build:
     extensions = ['breathe', 'myst_parser', 'sphinx_exec_code']
     breathe_default_project = "Tadah!"
     #subprocess.call('cd ../build/docs ; doxygen', shell=True)
-    breathe_projects = { "Tadah!": "../build/xml" }
+    breathe_projects = { "Tadah!": "../../build/xml" }
     html_js_files = [
         ('https://www.googletagmanager.com/gtag/js?id=G-M4X1BWV25W', {'async': 'async'}),
             'js/ganalytics.js',
@@ -191,7 +191,7 @@ if read_the_docs_build:
 else:
     #subprocess.call('cd ../build/docs ; doxygen', shell=True)
     breathe_default_project = "Tadah!"
-    breathe_projects = { "Tadah!": "../build/xml" }
+    breathe_projects = { "Tadah!": "../../build/xml" }
 
 
 def setup(app):

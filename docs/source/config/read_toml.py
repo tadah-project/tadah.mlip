@@ -31,7 +31,7 @@ def download_toml_file(repo_url, file_path, output_path):
 download_toml_file(
     'https://git.ecdf.ed.ac.uk/tadah/core.git',
     'config/config_keys.toml',
-    'config/config_keys.toml'
+    'docs/source/config/config_keys.toml'
 )
 
 print("TEST1")

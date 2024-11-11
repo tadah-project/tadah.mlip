@@ -16,9 +16,6 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-# required for sphinx_exec_code
-#sys.path.insert(0, os.path.join(os.path.abspath('..'), 'src'))
-
 
 # -- Project information -----------------------------------------------------
 
@@ -198,11 +195,4 @@ else:
 
 
 def setup(app):
-    current_directory = os.getcwd()
-    print(current_directory)
-    config_files = os.listdir(os.path.join(current_directory, "config"))
-    print(config_files)
     subprocess.run(['python', 'config/read_toml.py'])
-    config_files = os.listdir(os.path.join(current_directory, "config"))
-    print(config_files)
-

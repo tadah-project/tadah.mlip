@@ -189,7 +189,7 @@ if read_the_docs_build:
             'js/ganalytics.js',
     ]
 else:
-    subprocess.call('cd ../buid/docs ; doxygen', shell=True)
+    subprocess.call('cd ../build/docs ; doxygen', shell=True)
     breathe_default_project = "Tadah!"
     breathe_projects = { "Tadah!": "../xml" }
 

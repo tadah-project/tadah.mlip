@@ -8,7 +8,9 @@ Welcome to Tadah!'s documentation!
 
 .. exec_code::
 
-   print('Easy!')
+    import os
+    current_directory = os.getcwd()
+    print(current_directory)
 
 .. Generate documentation with config KEY/VALUE pairs
 .. exec_code::

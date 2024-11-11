@@ -15,11 +15,15 @@ build:
     # rust: "1.64"
     # golang: "1.19"
   jobs:
+    pre_install:
+      - wget https://cmake.org/files/v3.22/cmake-3.22.0-linux-x86_64.sh
+      - chmod +x cmake-3.22.0-linux-x86_64.sh
+      - ./cmake-3.22.0-linux-x86_64.sh --skip-license --prefix=CMAKE
     post_install:
       - echo "TADAH TEST"
       - pwd
       - ls -la
-      - mkdir -p build && cd build && cmake .. && make docs
+      - mkdir -p build && cd build && ../CMAKE/bin/cmake .. && make docs
       - pwd
       - ls -la
 

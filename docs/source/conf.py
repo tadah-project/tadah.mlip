@@ -184,6 +184,7 @@ read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
 if read_the_docs_build:
     extensions = ['breathe', 'myst_parser', 'sphinx_exec_code']
+    exec_code_working_dir = '.'
     breathe_default_project = "Tadah!"
     subprocess.call('cd .. ; doxygen', shell=True)
     breathe_projects = { "Tadah!": "../xml" }

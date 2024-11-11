@@ -12,7 +12,7 @@ build:
     python: "3.11"
   jobs:
     post_install:
-        - python docs/source/config/read_toml.py
+      - mkdir -p build && cd build && cmake .. && make docs
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

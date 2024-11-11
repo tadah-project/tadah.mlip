@@ -40,7 +40,7 @@ d = p.load("../docs/source/config/config_keys.toml",'r')
 
 # Path to rst outfile
 # f = open("source/config/config_keys.rst", "w")
-f = open("config/config_keys.rst", "w")
+f = open("source/config/config_keys.rst", "w")
 
 header='''
 Config KEYS

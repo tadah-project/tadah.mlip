@@ -11,7 +11,7 @@ Welcome to Tadah!'s documentation!
     import os
     current_directory = os.getcwd()
     print(current_directory)
-    print(os.listdir(current_directory)+"/source")
+    print(os.listdir(current_directory+"/source"))
 
 .. Generate documentation with config KEY/VALUE pairs
 .. exec_code::
@@ -23,7 +23,7 @@ Welcome to Tadah!'s documentation!
     import os
     current_directory = os.getcwd()
     print(current_directory)
-    print(os.listdir(current_directory)+"/source")
+    print(os.listdir(current_directory+"/source"))
 
 .. toctree::
    :maxdepth: 2

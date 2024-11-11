@@ -3,7 +3,7 @@
 Examples
 ========
 
-.. include:: ../../examples/CLI/ex_1/README.rst
+.. include:: ../../examples/CLI/ex_1/README.md
 
 API Examples
 ------------

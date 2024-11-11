@@ -252,7 +252,11 @@ message(STATUS "${TADAH}: Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
 find_package(LAPACK)
 target_link_libraries (tadah PUBLIC ${LAPACK_LIBRARIES})
 
-install(TARGETS tadah DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(TARGETS tadah
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)
+
 
 if(TADAH_BUILD_TESTS)
   include(CTest) 

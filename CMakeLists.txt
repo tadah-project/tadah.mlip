@@ -238,7 +238,7 @@ if(TADAH_BUILD_TESTS)
 endif()
 
 
-find_package(Doxygen REQUIRED)
+find_package(Doxygen)
 configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in ${CMAKE_BINARY_DIR}/docs/Doxyfile @ONLY)
 add_custom_target(docs
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/docs

@@ -21,12 +21,7 @@ build:
       - mkdir CMAKE
       - ./cmake-3.22.0-linux-x86_64.sh --skip-license --prefix=CMAKE
     post_install:
-      - echo "TADAH TEST"
-      - pwd
-      - ls -la
       - mkdir -p build && cd build && ../CMAKE/bin/cmake .. && make docs
-      - pwd
-      - ls -la
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

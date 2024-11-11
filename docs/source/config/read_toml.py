@@ -23,15 +23,19 @@ download_toml_file(
     'config_keys.toml'
 )
 
+print("TEST1")
 print(os.path.abspath(os.curdir))
+print("TEST1")
 
 # Path to TOML dict
 # d = p.load("../src/configs/config_keys.toml",'r')
 d = p.load("docs/source/config/config_keys.toml",'r')
+print("TEST1")
 
 # Path to rst outfile
 # f = open("source/config/config_keys.rst", "w")
 f = open("docs/source/config/config_keys.rst", "w")
+print("TEST1")
 
 header='''
 Config KEYS

@@ -200,6 +200,9 @@ else:
 def setup(app):
     current_directory = os.getcwd()
     print(current_directory)
-    print(os.listdir(current_directory+"/source/config"))
+    config_files = os.listdir(os.path.join(current_directory, "config"))
+    print(config_files)
     subprocess.run(['python', 'config/read_toml.py'])
-    print(os.listdir(current_directory+"/source/config"))
+    config_files = os.listdir(os.path.join(current_directory, "config"))
+    print(config_files)
+

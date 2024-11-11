@@ -11,11 +11,19 @@ Welcome to Tadah!'s documentation!
     import os
     current_directory = os.getcwd()
     print(current_directory)
-    print(os.listdir(current_directory))
+    print(os.listdir(current_directory)+"/source")
 
 .. Generate documentation with config KEY/VALUE pairs
 .. exec_code::
+    :hide_code:
     :filename: config/read_toml.py
+
+.. exec_code::
+
+    import os
+    current_directory = os.getcwd()
+    print(current_directory)
+    print(os.listdir(current_directory)+"/source")
 
 .. toctree::
    :maxdepth: 2

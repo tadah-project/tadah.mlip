@@ -5,11 +5,29 @@ the TOML dictionary.
 import pytomlpp as p
 import os
 
+import subprocess
+
+def download_toml_file(repo_url, file_path, output_path):
+    try:
+        subprocess.run([
+            'git', 'archive', '--remote', repo_url, 'HEAD', file_path, 
+            '--output', output_path
+        ], check=True)
+        print(f"Successfully downloaded {file_path} to {output_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error downloading file: {e}")
+
+download_toml_file(
+    'https://git.ecdf.ed.ac.uk/tadah/core.git',
+    'config/config_keys.toml',
+    'config_keys.toml'
+)
+
 print(os.path.abspath(os.curdir))
 
 # Path to TOML dict
 # d = p.load("../src/configs/config_keys.toml",'r')
-d = p.load("src/configs/config_keys.toml",'r')
+d = p.load("docs/source/config/config_keys.toml",'r')
 
 # Path to rst outfile
 # f = open("source/config/config_keys.rst", "w")
@@ -19,7 +37,7 @@ header='''
 Config KEYS
 ===========
 
-This section describes the format of the configurational file as used by Ta-dah!.
+This section describes the format of the configurational file as used by Tadah!.
 
 The primary building block of a configurational file is a KEY/VALUE pair.
 Each KEY/VALUE pair must be on the same line - no more than one key on the same line.
@@ -27,11 +45,11 @@ The KEY is always a <string> type and must appear first on the line
 followed by the VALUE. The format and type of a VALUE is specific to a given KEY.
 
 It is usually the case that only a small subset of KEYs is being used to train
-the model. Ta-dah! will throw an error if required key is missing:
+the model. Tadah! will throw an error if required key is missing:
 
 .. code-block:: bash
 
-    [user@host:~] $ ta-dah train -c config.train
+    [user@host:~] $ tadah train -c config.train
     terminate called after throwing an instance of 'std::runtime_error'
       what():  Key not found: DBFILE
     Aborted (core dumped)
@@ -68,7 +86,7 @@ in the following error message:
 
 .. code-block:: bash
 
-    [user@host:~] $ ta-dah train -c config.train
+    [user@host:~] $ tadah train -c config.train
     terminate called after throwing an instance of 'std::runtime_error'
       what():  Repeated key RCTYPE2B Cut_Cos
     Aborted (core dumped)

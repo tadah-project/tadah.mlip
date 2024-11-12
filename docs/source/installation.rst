@@ -108,7 +108,7 @@ The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! p
    .. code-block:: bash
 
      cd /path/to/lammps/lib
-     git clone https://git.ecdf.ed.ac.uk/tadah.lammps.git
+     git clone https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git
      cd /path/to/lammps/src
      make lib-tadah.lammps
      make yes-ml-tadah
@@ -139,7 +139,7 @@ The following libraries can be compiled, depending on the build settings:
 - ``libtadah.models``
 - ``libtadah.mlip``
 - ``libtadah.md``
-- ``libtadah.hpo`` (MPI version: `libtadah.mpi.hpo`)
+- ``libtadah.hpo`` (MPI version: ``libtadah.mpi.hpo``)
 
 .. _compiling_and_linking:
 
@@ -152,7 +152,7 @@ For C++ library use, compile with C++17 or higher. Include library headers using
 
     #include <tadah/mlip/atom.h>
 
-Link with `ltadah.mlip`.
+Link with ``libtadah.mlip``.
 
 .. code-block:: bash
 
@@ -171,7 +171,7 @@ Troubleshooting
 
 #. **Permission Denied**
    
-   Run `make install` with `sudo` or change the installation path:
+   Run ``make install`` with ``sudo`` or change the installation path:
    
    .. code-block:: bash
 
@@ -180,7 +180,7 @@ Troubleshooting
 
 #. **Shared Object ImportError**
 
-   Update `LD_LIBRARY_PATH`:
+   Update ``LD_LIBRARY_PATH``:
 
    .. code-block:: bash
 

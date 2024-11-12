@@ -15,21 +15,18 @@ class TadahCLI {
   private:
     bool verbose=false;
     std::string logo=
-"                                                                       \n\
-           /$$$$$$$$                      /$$           /$$       /$$   \n\
-          |__  $$__/                     | $$          | $$      | $$   \n\
-             | $$  /$$$$$$           /$$$$$$$  /$$$$$$ | $$$$$$$ | $$   \n\
-             | $$ |____  $$ /$$$$$$ /$$__  $$ |____  $$| $$__  $$| $$   \n\
-             | $$  /$$$$$$$|______/| $$  | $$  /$$$$$$$| $$  \\ $$|__/  \n\
-             | $$ /$$__  $$        | $$  | $$ /$$__  $$| $$  | $$       \n\
-             | $$|  $$$$$$$        |  $$$$$$$|  $$$$$$$| $$  | $$ /$$   \n\
-             |__/ \\_______/         \\_______/ \\_______/|__/  |__/|__/\n\
-                                                                        \n\
-        Library for Machine Learning Interatomic Potentials Development.\n\
-                     https://ta-dah.readthedocs.io/en/latest            \n\
-                                                                        \n\
-                    Type `ta-dah -h SUBCOMMAND` for more info.          \n\
-                                                                        \n\
+"                                                                      \n\
+                       _____           _         _      _              \n\
+                      |_   _|__ _   __| |  __ _ | |__  | |             \n\
+                        | | / _` | / _` | / _` || '_ \\ | |             \n\
+                        | || (_| || (_| || (_| || | | ||_|             \n\
+                        |_| \\__,_| \\__,_| \\__,_||_| |_|(_)             \n\
+                                                                       \n\
+        Software for Developing Machine Learning Interatomic Potentials\n\
+                          https://tadah.readthedocs.io                 \n\
+                                                                       \n\
+                    Type `tadah -h SUBCOMMAND` for more info           \n\
+                                                                       \n\
 ";
   public:
     TadahCLI();

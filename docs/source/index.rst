@@ -12,31 +12,28 @@ Welcome to Tadah!'s documentation!
 
    intro.rst
    installation.rst
-   config/config_keys.rst
    contribute.rst
    LICENSE.rst
 
-.. raw:: html
-   <hr>
+----
 
 .. toctree::
    :maxdepth: 2
    :caption: Usage
 
    quickstart.rst
+   tutorials.rst
    examples.rst
-   tutorial.rst
-   hpo.rst
 
-.. raw:: html
-   <hr>
+----
 
+   config/config_keys.rst
    regressors.rst
    descriptors.rst
    cutoffs.rst
+   hpo.rst
 
-.. raw:: html
-   <hr>
+----
 
 .. toctree::
    :maxdepth: 2

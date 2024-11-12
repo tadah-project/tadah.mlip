@@ -24,6 +24,12 @@ Welcome to Tadah!'s documentation!
    quickstart.rst
    tutorials.rst
    examples.rst
+
+----
+
+.. toctree::
+   :maxdepth: 2
+
    config/config_keys.rst
    regressors.rst
    descriptors.rst

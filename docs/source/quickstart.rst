@@ -14,6 +14,21 @@ To train a model, a config file (see :ref:`config_file`) and a dataset (see :ref
 
 For prediction, a potential (trained model) and a dataset are required. The potential file is an output of the training process. It is an ASCII text file containing key-value pairs that fully determine the potential.
 
+Built-in Help
+-------------
+
+Tadah! provides some basic help. Try running it with the ``-h`` flag.
+
+.. code-block:: bash
+
+    tadah -h
+
+To read more about a particular subcommand, try:
+
+.. code-block:: bash
+
+    tadah train -h
+
 .. _training:
 
 Training
@@ -37,7 +52,9 @@ Here, ``config.train`` is a :ref:`config_file`. Training datasets, descriptors, 
 
 .. literalinclude:: quickstart/config.train
 
-For the explanation of KEYS, see :ref:`Config`.
+Here, :ref:`DBFILE` specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory. :ref:`INIT2B` controls whether the two-body descriptor is used. :ref:`TYPE2B`, :ref:`RCUT2B`, and :ref:`RCTYPE2B` refer to the two-body type, cutoff distance, and cutoff type, respectively. Finally, the regression model is selected; in this case, it is Kernel Ridge Regression with a linear kernel for simplicity.
+
+For a detailed explanation of KEYS and a general discussion about the configuration files, see :ref:`ConfigSection`.
 
 An example dataset can be downloaded from :download:`here <quickstart/db.train>`.
 
@@ -57,7 +74,7 @@ To predict energies using an existing ``pot.tadah`` model, run:
 
 To also predict forces, add the ``-F`` flag; for stresses, add the ``-S`` flag.
 
-Alternatively, a :download:`config file <quickstart/config.predict>` can be used to specify :download:`prediction datasets <quickstart/db.predict>` (:ref:`DBFILE`) and whether forces and stresses are meant to be calculated (FORCE and STRESS keys).
+Alternatively, a :download:`config file <quickstart/config.predict>` can be used to specify :download:`prediction datasets <quickstart/db.predict>` (:ref:`DBFILE`) and whether forces and stresses are meant to be calculated (:ref:`FORCE` and :ref:`STRESS` keys).
 
 ``config.pred`` example:
 
@@ -75,20 +92,6 @@ The output of the ``predict`` subcommand includes three files:
 - ``forces.pred``: Similar idea as above, but now forces are listed. The first row is the force on the first atom in the x-direction from the first dataset, the second row is the force on the first atom in the y-direction, and so on.
 - ``stress.pred``: The first six rows list components of the stress tensor from the first configuration, followed by six components from the second configuration, and so on. The ordering is xx, xy, xz, yy, yz, zz.
 
-Built-in Help
--------------
-
-Tadah! provides some basic help. Try running it with the ``-h`` flag.
-
-.. code-block:: bash
-
-    tadah -h
-
-To read more about a particular subcommand, try:
-
-.. code-block:: bash
-
-    tadah train -h
 
 .. _units:
 
@@ -108,7 +111,9 @@ The units selected by LAMMPS must be consistent with the model units. In this ca
 Config File
 -----------
 
-For a list and explanation of supported KEY-VALUE pairs, see :ref:`CONFIG`.
+The Tadah! configuration file manages the training process by specifying datasets, cutoff functions, radii, regression models, and descriptor choices. It supports two- and many-body descriptors. The file's structure consists of KEY/VALUE pairs, with each pair on a separate line. The KEY is a string followed by its VALUE, and the format of the VALUE depends on the KEY.
+
+For a list and explanation of supported KEY-VALUE pairs, see :ref:`ConfigSection`.
 
 .. _dataset:
 

@@ -59,7 +59,7 @@ void TadahCLI::subcommand_train() {
 #ifdef TADAH_BUILD_MPI
   // Execute host or worker code based on rank
   if (rank == 0) { // Host code
-                   // Ensure there are enough CPUs for MPI
+    // Ensure there are enough CPUs for MPI
     if (ncpu < 2) {
       std::cerr << "Minimum number of CPUs for an MPI version is 2" << std::endl;
       return;
@@ -95,13 +95,13 @@ void TadahCLI::subcommand_train() {
     if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
   }
   else { // Worker code
-         // Initialize worker MPI trainer
+    // Initialize worker MPI trainer
     TrainerWorker worker(config, rank, ncpu);
     worker.run();
     worker.solve(); // Perform worker computations
   }
 #else // Non-MPI version
-      // Start training with a timer in the non-MPI mode
+  // Start training with a timer in the non-MPI mode
   CLI::Timer timer_tot{"Training", CLI::Timer::Big};
   Trainer tr(config);
 
@@ -171,7 +171,7 @@ void TadahCLI::subcommand_predict() {
   }
   else {
     std::runtime_error("Either provide config file\n\
-        or datasets in a command line");
+or datasets in a command line");
   }
 
   // If force or Stress flag is set add it to config
@@ -200,13 +200,13 @@ void TadahCLI::subcommand_predict() {
   if (is_verbose()) std::cout << "Done!" << std::endl;
 
   DescriptorsCalc<> dc(pot_config,*DCS.d2b,*DCS.d3b,*DCS.dmb,
-      *DCS.c2b,*DCS.c3b,*DCS.cmb);
+                       *DCS.c2b,*DCS.c3b,*DCS.cmb);
 
   if (is_verbose()) std::cout << "Prediction..." << std::flush;
   DM_Function_Base *fb = CONFIG::factory<DM_Function_Base,Config&>(
-      pot_config.get<std::string>("MODEL",1),pot_config);
+    pot_config.get<std::string>("MODEL",1),pot_config);
   M_Tadah_Base *modelp = CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>(
-      pot_config.get<std::string>("MODEL",0),*fb,pot_config);
+    pot_config.get<std::string>("MODEL",0),*fb,pot_config);
 
   StructureDB stpred;
   aed_type2 predicted_error;
@@ -254,8 +254,8 @@ void TadahCLI::subcommand_predict() {
 }
 
 void TadahCLI::subcommand_hpo(
-    [[maybe_unused]]int argc,
-    [[maybe_unused]]char**argv) {
+  [[maybe_unused]]int argc,
+  [[maybe_unused]]char**argv) {
 
 #ifdef TADAH_ENABLE_HPO
 
@@ -371,8 +371,8 @@ void TadahCLI::flag_version() {
 std::vector<fs::path> TadahCLI::read_files(std::string path) {
   std::vector<fs::path> s;
   for (const auto & entry : fs::directory_iterator(path))
-    if(fs::is_regular_file(entry))
-      s.push_back(fs::absolute(entry.path()));
+  if(fs::is_regular_file(entry))
+    s.push_back(fs::absolute(entry.path()));
   return s;
 }
 
@@ -380,62 +380,81 @@ TadahCLI::TadahCLI():
   app(CLI::App{logo})
 {
 
-  std::stringstream ss;
+  std::string usage;
 
   app.add_flag("-v, --version",
-      "Print version number and exit");
+               "Print version number and exit");
 
   /*---------------------------------------------------------------------------*/
   /*     Training                                                              */
-  /*---------------------------------------------------------------------------*/
-  ss.str(std::string());
-  ss << "Train model using a config file.\n";
+  usage = "Train a model using a configuration file.\n";
 
-  train = app.add_subcommand("train", ss.str());
+  train = app.add_subcommand("train", usage);
 
-  ss.str(std::string());
-  ss << "A config file containing all model parameters\n";
-  ss << "and training dataset(s).\n";
-  ss << "See documentation for more details.\n";
-  train->add_option("-c,--config", config_file, ss.str())
+  usage = 
+    "Output Files:\n"
+    "pot.tadah\n\n"
+    "The train command requires a config file. It results in a pot.tadah file,\n"
+    "a trained interatomic potential. This file can be used with LAMMPS for\n"
+    "molecular dynamics using `pair_style tadah`. The model trains on energies\n"
+    "by default; training with forces and stresses is optional.\n"
+    "See documentation for details.\n\n"
+    "   Example: tadah train -c config.tadah";
+  train->usage(usage);
+
+  usage = 
+    "Specify the configuration file with model\n"
+    "parameters and datasets.\n"
+    "Contains user-defined KEY-VALUE pairs.\n"
+    "See documentation for details.\n";
+
+  train->add_option("-c,--config", config_file, usage)
     ->option_text("CONFIG_FILE")
     ->check(CLI::ExistingFile)
     ->required();
 
-  train->add_flag("-F,--Force", "Train with forces.");
-  train->add_flag("-S,--Stress", "Train with stresses.");
-  train->add_flag("-V,--Verbose", "Verbose mode on.");
-  train->add_flag("-u,--uncertainty", "Dump uncertainty on weights.");
+  train->add_flag("-F,--Force", "Include forces in training.");
+  train->add_flag("-S,--Stress", "Include stresses in training.");
+  train->add_flag("-V,--Verbose", "Enable verbose output.");
+  train->add_flag("-u,--uncertainty", "Output uncertainty on weights.");
+  /*---------------------------------------------------------------------------*/
 
 
   /*---------------------------------------------------------------------------*/
   /*     Prediction                                                            */
   /*---------------------------------------------------------------------------*/
-  ss.str(std::string());
-  ss << "Predict using already trained model.\n";
-  ss << "Energy per atom is always calculated.\n";
-  ss << "Calculation of forces and stresses is optional.\n\n";
-  ss << "Option 1:\n Use the config file with\n";
-  ss << "with DBFILE, FORCE and STRESS keys.\n";
-  ss << "Note: --Force and --Stress flags take\n";
-  ss << "priority over config keys.\n";
-  ss << "-e.g. tadah predict -c config.tadah -p pot.tadah\n\n";
-  ss << "Option 2:\n Provide datasets and flags in the command line.\n";
-  ss << "-e.g. tadah predict -p pot-tadah -FS -d db1.tadah\n";
+  usage =
+    "Predict using an already trained model.\n"
+    "Energy per atom is always calculated.\n"
+    "Calculating forces and stresses is optional.\n";
 
-  predict = app.add_subcommand("predict", ss.str());
+  predict = app.add_subcommand("predict", usage);
 
-  ss.str(std::string());
-  ss << "A config file containing prediction dataset(s).\n";
-  ss << "Required Config KEYS: DBFILE.\n";
-  ss << "Optional Config KEYS: FORCE, STRESS.\n";
-  ss << "See documentation for more details.\n";
-  predict->add_option("-c,--config", config_file,ss.str())
+  usage =
+    "Output Files:\n"
+    "Energies are written to `energy.pred`. Forces and stresses, if calculated,\n"
+    "are written to `forces.pred` and `stress.pred` files, respectively\n\n"
+    "Option 1:\n"
+    "Use a config file with the DBFILE key. Include FORCE and STRESS keys as needed.\n"
+    "Note that --Force and --Stress flags override config keys.\n\n"
+    "   Example: tadah predict -c config.tadah -p pot.tadah\n\n"
+    "Option 2:\n"
+    "Provide datasets and flags via command line.\n\n"
+    "   Example: tadah predict -p pot.tadah -FS -d db1.tadah";
+
+  predict->usage(usage);
+
+  usage=
+    "A config file containing prediction dataset(s).\n"
+    "Required Config KEYS: DBFILE.\n"
+    "Optional Config KEYS: FORCE, STRESS.\n"
+    "See documentation for more details.\n";
+  predict->add_option("-c,--config", config_file,usage)
     ->check(CLI::ExistingFile)
     ->option_text("CONFIG_FILE");
 
   predict->add_option("-d,--datasets", datasets,
-      "One or more datasets for prediction.")
+                      "One or more datasets for prediction.")
     ->option_text("DATASETS ...")
     ->excludes("-c")
     ->check(CLI::ExistingFile);
@@ -445,11 +464,11 @@ TadahCLI::TadahCLI():
   predict->add_flag("-V,--Verbose", "Verbose mode on.");
   predict->add_flag("-e,--error", "Predict model error.");
   predict->add_flag("-a,--analytics",
-      "Compare predicted values to those in the original dataset.");
+                    "Compare predicted values to those in\nthe original dataset.");
 
   std::string pot_opt="-p,--potential";
   predict->add_option(pot_opt, pot_file,
-      "Trained model")
+                      "Trained model")
     ->option_text("POT_FILE")
     ->check(CLI::ExistingFile)
     ->required();
@@ -457,55 +476,52 @@ TadahCLI::TadahCLI():
   /*---------------------------------------------------------------------------*/
   /*     Hyperparameter Optimizer                                              */
   /*---------------------------------------------------------------------------*/
-  ss.str(std::string());
 #ifndef TADAH_ENABLE_HPO
-  ss << "(UNAVAILABLE)" << std::endl;
+  usage = "(UNAVAILABLE)\n";
 #endif
 
-  ss << "Optimize the model's architecture and determine\n";
-  ss << "the best hyperparameters within predefined constraints.\n";
-  ss << "This option uses hyperparameter optimization\n";
-  ss << "to minimize a custom loss function.\n";
-  ss << "See documentation for more details.\n";
-  hpo = app.add_subcommand("hpo", ss.str());
+  usage +=
+    "Optimize model architecture and find the best\n"
+    "hyperparameters. This process uses hyperparameter\n"
+    "optimization to minimize a custom loss function.\n"
+    "See documentation for more details.\n";
+  hpo = app.add_subcommand("hpo", usage);
 
-#ifdef TADAH_ENABLE_HPO
+  usage =
+    "Provide a config file with initial model parameters and training datasets.\n"
+    "Parameters will be optimized within constraints defined in the target file.\n\n"
+    "   Example: tadah hpo -c config.tadah -t targets -v valid.tadah";
+  hpo->usage(usage);
 
-
-  ss.str(std::string());
-  ss << "A config file containing model inital parameters\n";
-  ss << "and training dataset(s).\n";
-  ss << "The model parameters will be optimised\n";
-  ss << "within constraints defined in the -t target file\n";
-
-  auto c_opt=hpo->add_option("-c,--config", config_file, ss.str())
+  usage = 
+    "Specify a config file with initial model\n"
+    "parameters and training datasets.";
+  auto c_opt=hpo->add_option("-c,--config", config_file, usage)
     ->option_text("CONFIG_FILE")
     ->check(CLI::ExistingFile)
     ->required();
 
-  ss.str(std::string());
-  ss << "A config file containing model's targets\n";
-  ss << "and hyperparameters constraints.\n";
-  auto t_opt=hpo->add_option("-t,--target", target_file, ss.str())
+  usage = 
+    "Specify a target file with model targets and\n"
+    "hyperparameter constraints.";
+  auto t_opt=hpo->add_option("-t,--target", target_file, usage)
     ->option_text("TARGET_FILE")
     ->required()
     ->check(CLI::ExistingFile);
 
-  ss.str(std::string());
-  ss << "A config file containing validation datasets only.\n";
-  ss << "The validation set will be used to test a set of HPs.\n";
-  auto v_opt=hpo->add_option("-v,--validation", validation_file, ss.str())
+  usage = "Provide a validation file with datasets for\n"
+    "testing hyperparameters.";
+  auto v_opt=hpo->add_option("-v,--validation", validation_file, usage)
     ->option_text("VALIDATION_FILE")
     ->required()
     ->check(CLI::ExistingFile);
 
   hpo->add_flag("-F,--Force", "Train with forces.");
   hpo->add_flag("-S,--Stress", "Train with stresses.");
-  hpo->add_flag("-V,--Verbose", "Verbose mode on.");
+  hpo->add_flag("-V,--Verbose", "Enable verbose mode.");
   //hpo->add_flag("-u,--uncertainty",
   //        "Dump uncertainty on weights."); // TODO check this
 
-#endif
   PeriodicTable::initialize();
 }
 

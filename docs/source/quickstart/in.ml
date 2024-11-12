@@ -12,7 +12,7 @@ create_atoms    1 box
 mass            1 180.95 # Ta
 
 timestep        0.003
-pair_style      tadah/tadah
+pair_style      tadah
 pair_coeff      * * pot.tadah Ta
 
 neighbor        1.0 bin

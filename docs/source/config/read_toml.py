@@ -43,10 +43,16 @@ d = p.load("config/config_keys.toml",'r')
 f = open("config/config_keys.rst", "w")
 
 header='''
-Config File
-===========
+.. _ConfigSection:
+
+Configuration File
+==================
 
 This section describes the format of the configuration file used by Tadah!.
+
+The configuration file controls the training process, specifying one or more datasets for use during the training stage. It defines cutoff functions and corresponding radii along with the regression model and descriptor choices.
+
+Tadah! supports two- and many-body descriptors, allowing for separate descriptors with their corresponding cutoff radii.
 
 Key/Value Pairs
 ---------------
@@ -56,7 +62,7 @@ The primary structure in a configuration file is the KEY/VALUE pair. Each KEY/VA
 Common Usage
 ------------
 
-Typically, only a subset of KEYS is needed to train a model. Tadah! will produce an error if a required KEY is missing:
+Typically, only a subset of KEYS is needed to train a model. Tadah! will use default values for some keys. An error will occur if a required KEY with no default value is missing:
 
 .. code-block:: bash
 
@@ -65,12 +71,12 @@ Typically, only a subset of KEYS is needed to train a model. Tadah! will produce
      what():  Key not found: DBFILE
    Aborted (core dumped)
 
-This message indicates that the `DBFILE` KEY was not specified in the :file:`config.train` file. To resolve this, add the `DBFILE` key and its corresponding value to :file:`config.train`.
+This message indicates that the :ref:`DBFILE` KEY was not specified in the :file:`config.train` file. To resolve this, add the :ref:`DBFILE` key and its corresponding value to :file:`config.train`.
 
 Key Specifics
 -------------
 
-The meaning of some KEYS may change based on the model or descriptor in use. Refer to the documentation for each model or descriptor to understand the required KEYS and their explanations.
+The meaning of some KEYS may change based on the model or descriptor in use. Refer to :ref:`SupportedKEYS` for each model or descriptor to understand the required KEYS and their explanations.
 
 Comments
 --------
@@ -80,7 +86,7 @@ Use the `#` symbol to add comments in the configuration file.
 Multiple Values
 ---------------
 
-A KEY can have multiple values, specified in one of two ways:
+Some KEYS can have multiple values, specified in one of two ways:
 
 - Single line:
 
@@ -99,7 +105,7 @@ A KEY can have multiple values, specified in one of two ways:
 Value Limits
 ------------
 
-If the number of values exceeds the maximum allowed, an error will occur. For example, specifying `RCTYPE2B` twice when only one value is allowed will result in:
+If the number of values exceeds the maximum allowed, an error will occur. For example, specifying :ref:`RCTYPE2B` twice when only one value is allowed will result in:
 
 .. code-block:: bash
 
@@ -107,6 +113,13 @@ If the number of values exceeds the maximum allowed, an error will occur. For ex
    terminate called after throwing an instance of 'std::runtime_error'
      what():  Repeated key RCTYPE2B Cut_Cos
    Aborted (core dumped)
+
+.. _SupportedKEYS
+
+Supported KEYS:
+---------------
+
+This section contains all KEYS currently used by Tadah!.
 \n
 '''
 f.write(header)

@@ -7,7 +7,7 @@ INIT3B     false
 INITMB     false
 LAMBDA     0
 MBLOCK     64
-MODEL     M_KRR     Kern_Linear     1
+MODEL     M_KRR     Kern_Linear
 MPIWPCKG     50
 NBLOCK     64
 NORM     false

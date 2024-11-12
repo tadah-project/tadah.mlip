@@ -11,43 +11,46 @@ Welcome to Tadah!'s documentation!
    :caption: General
 
    intro.rst
-   quickstart.rst
-   config/config_keys.rst
-   examples.rst
+   installation.rst
    contribute.rst
    LICENSE.rst
 
-.. raw:: html
-
-   <hr>
+----
 
 .. toctree::
    :maxdepth: 2
-   :caption: Getting Started
+   :caption: Usage
 
-.. raw:: html
+   quickstart.rst
+   tutorials.rst
+   examples.rst
+   config/config_keys.rst
+   regressors.rst
+   descriptors.rst
+   cutoffs.rst
+   hpo.rst
 
-   <hr>
+----
 
 .. toctree::
    :maxdepth: 2
    :caption: API
 
-   atom.rst
-   structure.rst
-   structure_db.rst
-   st_descriptors.rst
-   st_descriptors_db.rst
-   nn_finder.rst
-   descriptors_calc.rst
-   cutoffs.rst
-   config.rst
-   descriptors.rst
-   kernels.rst
-   basisfunctions.rst
-   models.rst
-   design_matrix.rst
-   func_base.rst
+   API/atom.rst
+   API/basisfunctions.rst
+   API/config.rst
+   API/cutoffs.rst
+   API/descriptors.rst
+   API/descriptors_calc.rst
+   API/design_matrix.rst
+   API/func_base.rst
+   API/kernels.rst
+   API/models.rst
+   API/nn_finder.rst
+   API/structure.rst
+   API/structure_db.rst
+   API/st_descriptors.rst
+   API/st_descriptors_db.rst
 
 Indices and tables
 ==================

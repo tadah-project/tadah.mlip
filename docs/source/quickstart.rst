@@ -37,7 +37,7 @@ Here, ``config.train`` is a :ref:`config_file`. Training datasets, descriptors, 
 
 .. literalinclude:: quickstart/config.train
 
-For the explanation of KEYS, see :ref:`Config`.
+For the explanation of KEYS, see :ref:`ConfigSection`.
 
 An example dataset can be downloaded from :download:`here <quickstart/db.train>`.
 
@@ -108,7 +108,7 @@ The units selected by LAMMPS must be consistent with the model units. In this ca
 Config File
 -----------
 
-For a list and explanation of supported KEY-VALUE pairs, see :ref:`CONFIG`.
+For a list and explanation of supported KEY-VALUE pairs, see :ref:`ConfigSection`.
 
 .. _dataset:
 

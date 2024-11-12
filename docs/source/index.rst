@@ -24,9 +24,6 @@ Welcome to Tadah!'s documentation!
    quickstart.rst
    tutorials.rst
    examples.rst
-
-----
-
    config/config_keys.rst
    regressors.rst
    descriptors.rst

@@ -11,15 +11,12 @@ Welcome to Tadah!'s documentation!
    :caption: General
 
    intro.rst
+   installation.rst
    config/config_keys.rst
    contribute.rst
-   regressors.rst
-   descriptors.rst
-   cutoffs.rst
    LICENSE.rst
 
 .. raw:: html
-
    <hr>
 
 .. toctree::
@@ -32,7 +29,13 @@ Welcome to Tadah!'s documentation!
    hpo.rst
 
 .. raw:: html
+   <hr>
 
+   regressors.rst
+   descriptors.rst
+   cutoffs.rst
+
+.. raw:: html
    <hr>
 
 .. toctree::

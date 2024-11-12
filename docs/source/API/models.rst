@@ -1,7 +1,7 @@
 Models
 ======
 
-.. doxygenclass:: M_Base
+.. doxygenclass:: M_Core
     :members:
 
 M_BLR

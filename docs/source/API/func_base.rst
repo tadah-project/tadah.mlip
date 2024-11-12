@@ -1,5 +1,5 @@
 Func_Base
 ==========
 
-.. doxygenstruct:: Func_Base
+.. doxygenstruct:: Function_Base
     :members:

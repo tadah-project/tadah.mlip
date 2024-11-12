@@ -45,8 +45,8 @@ f = open("config/config_keys.rst", "w")
 header='''
 .. _ConfigSection:
 
-Config File
-===========
+Configuration File
+==================
 
 This section describes the format of the configuration file used by Tadah!.
 
@@ -71,12 +71,12 @@ Typically, only a subset of KEYS is needed to train a model. Tadah! will use def
      what():  Key not found: DBFILE
    Aborted (core dumped)
 
-This message indicates that the `DBFILE` KEY was not specified in the :file:`config.train` file. To resolve this, add the `DBFILE` key and its corresponding value to :file:`config.train`.
+This message indicates that the :ref:`DBFILE` KEY was not specified in the :file:`config.train` file. To resolve this, add the :ref:`DBFILE` key and its corresponding value to :file:`config.train`.
 
 Key Specifics
 -------------
 
-The meaning of some KEYS may change based on the model or descriptor in use. Refer to the documentation for each model or descriptor to understand the required KEYS and their explanations.
+The meaning of some KEYS may change based on the model or descriptor in use. Refer to :ref:`SupportedKEYS` for each model or descriptor to understand the required KEYS and their explanations.
 
 Comments
 --------
@@ -105,7 +105,7 @@ Some KEYS can have multiple values, specified in one of two ways:
 Value Limits
 ------------
 
-If the number of values exceeds the maximum allowed, an error will occur. For example, specifying `RCTYPE2B` twice when only one value is allowed will result in:
+If the number of values exceeds the maximum allowed, an error will occur. For example, specifying :ref:`RCTYPE2B` twice when only one value is allowed will result in:
 
 .. code-block:: bash
 
@@ -113,6 +113,8 @@ If the number of values exceeds the maximum allowed, an error will occur. For ex
    terminate called after throwing an instance of 'std::runtime_error'
      what():  Repeated key RCTYPE2B Cut_Cos
    Aborted (core dumped)
+
+.. _SupportedKEYS
 
 Supported KEYS:
 ---------------

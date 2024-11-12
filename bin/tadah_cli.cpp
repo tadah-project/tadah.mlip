@@ -482,37 +482,35 @@ TadahCLI::TadahCLI():
 
   usage +=
     "Optimize model architecture and find the best\n"
-    "hyperparameters. This uses hyperparameter\n"
+    "hyperparameters. This process uses hyperparameter\n"
     "optimization to minimize a custom loss function.\n"
     "See documentation for more details.\n";
   hpo = app.add_subcommand("hpo", usage);
 
-#ifdef TADAH_ENABLE_HPO
-
   usage =
-    "A config file containing model inital parameters\n"
-    "and training dataset(s).\n"
-    "The model parameters will be optimised\n"
-    "within constraints defined in the -t target file\n\n"
-    "   Example: tadah hpo -c config.tadah -t targets";
+    "Provide a config file with initial model parameters and training datasets.\n"
+    "Parameters will be optimized within constraints defined in the target file.\n\n"
+    "   Example: tadah hpo -c config.tadah -t targets -v valid.tadah";
   hpo->usage(usage);
 
+  usage = 
+    "Specify a config file with initial model\n"
+    "parameters and training datasets.";
   auto c_opt=hpo->add_option("-c,--config", config_file, usage)
     ->option_text("CONFIG_FILE")
     ->check(CLI::ExistingFile)
     ->required();
 
   usage = 
-    "A config file containing model's targets\n"
-    "and hyperparameters constraints.\n";
+    "Specify a target file with model targets and\n"
+    "hyperparameter constraints.";
   auto t_opt=hpo->add_option("-t,--target", target_file, usage)
     ->option_text("TARGET_FILE")
     ->required()
     ->check(CLI::ExistingFile);
 
-  usage = 
-    "A config file containing validation datasets only.\n"
-    "The validation set will be used to test a set of HPs.\n";
+  usage = "Provide a validation file with datasets for\n"
+    "testing hyperparameters.";
   auto v_opt=hpo->add_option("-v,--validation", validation_file, usage)
     ->option_text("VALIDATION_FILE")
     ->required()
@@ -520,11 +518,10 @@ TadahCLI::TadahCLI():
 
   hpo->add_flag("-F,--Force", "Train with forces.");
   hpo->add_flag("-S,--Stress", "Train with stresses.");
-  hpo->add_flag("-V,--Verbose", "Verbose mode on.");
+  hpo->add_flag("-V,--Verbose", "Enable verbose mode.");
   //hpo->add_flag("-u,--uncertainty",
   //        "Dump uncertainty on weights."); // TODO check this
 
-#endif
   PeriodicTable::initialize();
 }
 

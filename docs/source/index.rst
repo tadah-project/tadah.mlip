@@ -37,20 +37,20 @@ Welcome to Tadah!'s documentation!
    :caption: API
 
    API/atom.rst
+   API/basisfunctions.rst
+   API/config.rst
+   API/cutoffs.rst
+   API/descriptors.rst
+   API/descriptors_calc.rst
+   API/design_matrix.rst
+   API/func_base.rst
+   API/kernels.rst
+   API/models.rst
+   API/nn_finder.rst
    API/structure.rst
    API/structure_db.rst
    API/st_descriptors.rst
    API/st_descriptors_db.rst
-   API/nn_finder.rst
-   API/descriptors_calc.rst
-   API/cutoffs.rst
-   API/config.rst
-   API/descriptors.rst
-   API/kernels.rst
-   API/basisfunctions.rst
-   API/models.rst
-   API/design_matrix.rst
-   API/func_base.rst
 
 Indices and tables
 ==================

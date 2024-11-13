@@ -482,8 +482,9 @@ TadahCLI::TadahCLI():
 #endif
 
   usage +=
-    "Optimize the model architecture and find the best\n"
-    "hyperparameters by optimizing a custom loss function.\n";
+    "Optimize the model architecture and find\n"
+    "the best hyperparameters by optimizing\n"
+    "a custom loss function.\n";
   hpo = app.add_subcommand("hpo", usage);
 
   usage =

@@ -476,20 +476,21 @@ TadahCLI::TadahCLI():
   /*---------------------------------------------------------------------------*/
   /*     Hyperparameter Optimizer                                              */
   /*---------------------------------------------------------------------------*/
+  usage = ""; // reset previous value b/c of below if
 #ifndef TADAH_ENABLE_HPO
   usage = "(UNAVAILABLE)\n";
 #endif
 
   usage +=
-    "Optimize model architecture and find the best\n"
-    "hyperparameters. This process uses hyperparameter\n"
-    "optimization to minimize a custom loss function.\n"
-    "See documentation for more details.\n";
+    "Optimize the model architecture and find the best\n"
+    "hyperparameters by optimizing a custom loss function.\n";
   hpo = app.add_subcommand("hpo", usage);
 
   usage =
     "Provide a config file with initial model parameters and training datasets.\n"
-    "Parameters will be optimized within constraints defined in the target file.\n\n"
+    "Parameters will be optimized within constraints defined in the target file.\n"
+    "The energies predicted will be validated again the validation file.\n"
+    "See documentation for more details.\n\n"
     "   Example: tadah hpo -c config.tadah -t targets -v valid.tadah";
   hpo->usage(usage);
 

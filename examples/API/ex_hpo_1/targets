@@ -1,9 +1,9 @@
 # Global Settings for the Hyperparameter Optimizer
-MAXCALLS 1000    # Maximum number of optimization cycles.
-EPS 1e-3         # Accuracy convergence threshold (default 1e-2).
-                 # Smaller values increase precision but slow down global exploration.
-POTEVERY 100     # Controls how often the potential file is written 
-		 # to the pots directory, regardless of the score.
+MAXCALLS 1000         # Maximum number of optimization cycles.
+EPS 1e-3              # Accuracy convergence threshold (default 1e-2).
+                      # Smaller values increase precision but slow down global exploration.
+POTEVERY 100 potdir   # Controls how often the potential file is written 
+		              # to the pots directory, regardless of the score.
 
 # Model Parameters to be Optimized
 # The initial model is specified in a separate config file.

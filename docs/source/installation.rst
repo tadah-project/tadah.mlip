@@ -66,7 +66,7 @@ Customize the Tadah!MLIP build using CMake options:
 - ``TADAH_ENABLE_FAST_MATH``: Enable fast math optimizations (default: OFF).
 - ``TADAH_BUILD_TESTS``: Include tests (default: OFF).
 - ``TADAH_BUILD_DOCUMENTATION``: Build documentation with Doxygen (default: OFF).
-- ``TADAH_ENABLE_HPO``: Enable Hyperparameter Optimizer (default: OFF), see :ref:`_installation_hpo`.
+- ``TADAH_ENABLE_HPO``: Enable Hyperparameter Optimizer (default: OFF), see :ref:`installation_hpo`.
 - ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_HPO``).
 - ``TADAH_LAMMPS_LIB``: Name of the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_HPO``).
 
@@ -141,7 +141,7 @@ Building Tadah!MLIP with HPO is slightly more challenging, and for this reason, 
 
 To build Tadah!MLIP with HPO, follow these steps:
 
-1. **Compile LAMMPS with the Tadah.LAMMPS Interface** (:ref:`_installation_lammps`):
+1. **Compile LAMMPS with the Tadah.LAMMPS Interface** (:ref:`installation_lammps`):
    
    - **Shared vs. Static Builds**: It is recommended to build the shared version of LAMMPS (e.g., ``make mode=shared serial``), as shared libraries are typically less problematic during the linking stage. 
      - Shared LAMMPS builds produce files like ``liblammps_serial.so``.
@@ -152,7 +152,7 @@ To build Tadah!MLIP with HPO, follow these steps:
      - **Serial**: For single-threaded applications, use commands like ``make mode=shared serial``. The serial LAMMPS version must be linked to the Desktop version of Tadah!.
      - **MPI**: For parallel applications, compile LAMMPS with MPI support, e.g., ``make mode=shared mpi``. The MPI version of LAMMPS must be linked to the Massively Parallel version of Tadah!.
 
-2. **Configure Tadah!** (:ref:`_building_tadah`) using CMake with these additional flags:
+2. **Configure Tadah!** (:ref:`building_tadah`) using CMake with these additional flags:
 
     - ``-DTADAH_ENABLE_HPO=ON``
     - ``-DTADAH_LAMMPS_DIR=/path/to/lammps``: This should be the root directory of your LAMMPS installation, not ``lammps/src``.
@@ -162,7 +162,7 @@ To build Tadah!MLIP with HPO, follow these steps:
 
 3. **Build and Install**:
    
-   Proceed with ``make`` and ``make install`` as described in :ref:`_building_tadah`.
+   Proceed with ``make`` and ``make install`` as described in :ref:`building_tadah`.
 
 Libraries and C++ Headers
 -------------------------

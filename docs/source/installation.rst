@@ -3,8 +3,8 @@
 Installation
 ============
 
-Installing CLI Tool
--------------------
+Installing Tadah! Software
+--------------------------
 
 Tadah!MLIP provides a command-line interface binary, ``tadah``, for developing machine learning interatomic potentials.
 
@@ -23,6 +23,10 @@ Requirements
 ............
 
 Tadah!MLIP includes all necessary libraries, so no external downloads are needed.
+
+The internet connection is required during the installation process.
+
+.. _building_tadah:
 
 Configuration and Compilation
 .............................
@@ -52,17 +56,24 @@ To change the installation location:
     cmake .. -DCMAKE_INSTALL_PREFIX=/your/path
 
 Configuration Options
-.....................
+---------------------
 
-Use CMake options to customize the build:
+Customize the Tadah!MLIP build using CMake options:
 
-- ``TADAH_ENABLE_HPO``: Enable Hyperparameter Optimizer (default: OFF).
 - ``TADAH_ENABLE_OPENMP``: Enable OpenMP for parallelization (default: OFF).
 - ``TADAH_BUILD_MPI``: Build MPI version (default: OFF).
 - ``TADAH_MARCH_NATIVE``: Use native optimizations (default: OFF).
 - ``TADAH_ENABLE_FAST_MATH``: Enable fast math optimizations (default: OFF).
 - ``TADAH_BUILD_TESTS``: Include tests (default: OFF).
 - ``TADAH_BUILD_DOCUMENTATION``: Build documentation with Doxygen (default: OFF).
+- ``TADAH_ENABLE_HPO``: Enable Hyperparameter Optimizer (default: OFF), see :ref:`_installation_hpo`.
+- ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_HPO``).
+- ``TADAH_LAMMPS_LIB``: Name of the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_HPO``).
+
+Additional CMake options to consider:
+
+- ``CMAKE_INSTALL_PREFIX``: Set the install directory destination when ``make install`` is invoked. A common choice is ``-DCMAKE_INSTALL_PREFIX=~/.local``.
+- ``BUILD_SHARED_LIBS``: Whether to build shared or static Tadah!MLIP libraries (default: ON).
 
 .. _gofasterstripe:
 
@@ -119,6 +130,39 @@ The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! p
 .. seealso:: For building LAMMPS with extra features, visit:
 
              https://lammps.sandia.gov/doc/Build_package.html
+
+
+.. _installation_hpo:
+
+Building Tadah!MLIP with Hyperparameter Optimiser
+-------------------------------------------------
+
+Building Tadah!MLIP with HPO is slightly more challenging, and for this reason, it is not built by default. Please read these notes carefully before proceeding.
+
+To build Tadah!MLIP with HPO, follow these steps:
+
+1. **Compile LAMMPS with the Tadah.LAMMPS Interface** (:ref:`_installation_lammps`):
+   
+   - **Shared vs. Static Builds**: It is recommended to build the shared version of LAMMPS (e.g., ``make mode=shared serial``), as shared libraries are typically less problematic during the linking stage. 
+     - Shared LAMMPS builds produce files like ``liblammps_serial.so``.
+     - Static builds are not compiled with position-independent code by default, which prevents linking with a shared Tadah!MLIP build.
+     - **Recommendation**: Build both Tadah!MLIP and LAMMPS as shared libraries unless you have specific requirements.
+
+   - **Serial vs. MPI**:
+     - **Serial**: For single-threaded applications, use commands like ``make mode=shared serial``. The serial LAMMPS version must be linked to the Desktop version of Tadah!.
+     - **MPI**: For parallel applications, compile LAMMPS with MPI support, e.g., ``make mode=shared mpi``. The MPI version of LAMMPS must be linked to the Massively Parallel version of Tadah!.
+
+2. **Configure Tadah!** (:ref:`_building_tadah`) using CMake with these additional flags:
+
+    - ``-DTADAH_ENABLE_HPO=ON``
+    - ``-DTADAH_LAMMPS_DIR=/path/to/lammps``: This should be the root directory of your LAMMPS installation, not ``lammps/src``.
+    - ``-DTADAH_LAMMPS_LIB=liblammps_name.ext``: Replace ``liblammps_name`` with the name of your compiled LAMMPS library:
+        - For shared builds: ``.ext=.so`` (e.g., ``liblammps_serial.so`` for serial or ``liblammps_mpi.so`` for MPI).
+        - For static builds: ``.ext=.a`` (e.g., ``liblammps_serial.a``).
+
+3. **Build and Install**:
+   
+   Proceed with ``make`` and ``make install`` as described in :ref:`_building_tadah`.
 
 Libraries and C++ Headers
 -------------------------

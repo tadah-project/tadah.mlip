@@ -1,4 +1,6 @@
 #include "tadah_cli.h"
+#include "CLI/CLI.hpp"
+#include "tadah/mlip/dataset_readers/dataset_reader.h"
 #include <tadah/core/core_types.h>
 #include <tadah/core/config.h>
 #include <tadah/core/element.h>
@@ -14,6 +16,7 @@
 #include <tadah/mlip/version.h>
 #include <tadah/mlip/design_matrix/design_matrix.h>
 #include <tadah/mlip/trainer.h>
+#include <tadah/mlip/dataset_readers/dataset_reader_selector.h>
 
 #include <CLI/Timer.hpp>
 
@@ -353,6 +356,31 @@ void TadahCLI::subcommand_hpo(
 #endif
 
 }
+void TadahCLI::subcommand_convert() {
+  int rank=0;
+#ifdef TADAH_BUILD_MPI
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#endif
+  if (rank!=0) return;
+
+  CLI::Timer timer_tot {"Conversion", CLI::Timer::Big};
+  if(convert->count("--Verbose"))
+    set_verbose();
+
+  StructureDB stdb;
+
+  for (auto &ds: datasets) {
+    std::unique_ptr<DatasetReader> reader = DatasetReaderSelector::get_reader(ds,stdb);
+  }
+
+  if (convert->count("--precision"))
+    stdb.dump_to_file(out_file, outprec);
+  else
+    stdb.dump_to_file(out_file);
+
+  if (is_verbose()) std::cout << "Done!" << std::endl;
+
+}
 
 bool TadahCLI::is_verbose() {
   return verbose;
@@ -524,6 +552,42 @@ TadahCLI::TadahCLI():
   //hpo->add_flag("-u,--uncertainty",
   //        "Dump uncertainty on weights."); // TODO check this
 
+
+  /*---------------------------------------------------------------------------*/
+  /*     CONVERSION                                                            */
+  /*---------------------------------------------------------------------------*/
+  usage =
+    "Conversion tool.\n";
+
+  convert = app.add_subcommand("convert", usage);
+
+  usage =
+    "Output Files:\n"
+    "   Example: tadah convert -d run1.md run2.geom run3.castep -o mydata.tadah";
+
+  convert->usage(usage);
+
+  usage=
+    "See documentation for more details.\n";
+  convert->add_option("-o,--outfile", out_file,usage)
+    ->check(CLI::NonexistentPath)
+    ->required()
+    ->option_text("OUT_FILE");
+
+  convert->add_option("-d,--datasets", datasets,
+                      "One or more datasets.")
+    ->option_text("DATASETS ...")
+    ->required()
+    //->excludes("-c")
+    ->check(CLI::ExistingFile);
+
+  convert->add_option("-p,--precision", outprec,
+                      "Control number of decimal places.")
+    ->option_text("OUTPREC");
+
+  convert->add_flag("-V,--Verbose", "Enable verbose mode.");
+
+
   PeriodicTable::initialize();
 }
 
@@ -532,21 +596,19 @@ void TadahCLI::run(int argc, char** argv) {
   if(app.count_all()==1) {
     std::cout << "Type: `tadah -h` for help" << std::endl;
   }
-
-  if (app.count("--version")) {
+  else if (app.count("--version")) {
     flag_version();
   }
-  // HPO
-  if (hpo->count_all()) {
+  else if (hpo->count_all()) {
     subcommand_hpo(argc,argv);
   }
-  // TRAINING
-  if (train->count_all()) {
+  else if (train->count_all()) {
     subcommand_train();
   }
-
-  // PREDICTION
   else if (predict->count_all()) {
     subcommand_predict();
+  }
+  else if (convert->count_all()) {
+    subcommand_convert();
   }
 }

@@ -28,33 +28,37 @@ class TadahCLI {
                     Type `tadah -h SUBCOMMAND` for more info           \n\
                                                                        \n\
 ";
-  public:
-    TadahCLI();
-    void run(int argc, char** argv);
-    CLI::App app;
+public:
+  TadahCLI();
+  void run(int argc, char** argv);
+  CLI::App app;
 
-    // subcommands:
-    CLI::App *train;
-    CLI::App *predict;
-    CLI::App *hpo;
+  // subcommands:
+  CLI::App *train;
+  CLI::App *predict;
+  CLI::App *hpo;
+  CLI::App *convert;
 
-    // PREDICTION
-    std::string pot_file;
-    std::string config_file;
-    std::string validation_file;
-    std::string target_file;
-    std::vector<std::string> datasets;
-    void subcommand_train();
-    void subcommand_predict();
-    void subcommand_hpo(int argc, char**argv);
-    void set_verbose();
-    bool is_verbose();
-    void flag_version();
+  // PREDICTION
+  std::string pot_file;
+  std::string config_file;
+  std::string out_file;
+  std::string validation_file;
+  std::string target_file;
+  std::vector<std::string> datasets;
+  size_t outprec;
+  void subcommand_train();
+  void subcommand_predict();
+  void subcommand_hpo(int argc, char**argv);
+  void subcommand_convert();
+  void set_verbose();
+  bool is_verbose();
+  void flag_version();
 
-    /* Return a vector of absolute paths to every file in a directory.
+  /* Return a vector of absolute paths to every file in a directory.
      * Subdirectories are ommited.
      */
-    std::vector<fs::path> read_files(std::string path);
+  std::vector<fs::path> read_files(std::string path);
 
 };
 #endif

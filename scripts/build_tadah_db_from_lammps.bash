@@ -18,6 +18,8 @@
 # compute 1 all reduce sum c_S[1] c_S[2] c_S[3] c_S[4] c_S[5] c_S[6]
 # thermo_style    custom step temp vol pe ke etotal press c_1[1] c_1[2] c_1[3] c_1[4] c_1[5] c_1[6]
 #
+# Note that stress/atom outputs stress*volume term so we have to divide by cell volume
+#
 # dump file must be generated with this setting:
 #    dump            4 all custom ${THERMO} db.dat element x y z fx fy fz
 #    dump_modify     4 element Ti sort id
@@ -44,54 +46,62 @@ i=1 # line counter
 while IFS= read -r line
 do
 
-    if [[ "$i" -eq $cellx ]]; then
-        xlow=$(echo $line | cut -d " " -f 1)
-        xhigh=$(echo $line | cut -d " " -f 2)
-    fi
-    if [[ "$i" -eq $celly ]]; then
-        ylow=$(echo $line | cut -d " " -f 1)
-        yhigh=$(echo $line | cut -d " " -f 2)
-    fi
-    if [[ "$i" -eq $cellz ]]; then
-        zlow=$(echo $line | cut -d " " -f 1)
-        zhigh=$(echo $line | cut -d " " -f 2)
-    fi
-    if [[ "$i" -eq "$header" ]]; then
-        echo "Structure " $s
-        thermoline=$(sed "$(($s+$skip))q;d" $logfile)
-        echo $thermoline | cut -d " " -f $enecol
-        echo "$(awk -v xlow="$xlow" -v xhigh="$xhigh" 'BEGIN{printf "%.13f", xhigh-xlow}')  0.0  0.0"
-        echo "0.0  $(awk -v ylow="$ylow" -v yhigh="$yhigh" 'BEGIN{printf "%.13f", yhigh-ylow}')  0.0"
-        echo "0.0  0.0  $(awk -v zlow="$zlow" -v zhigh="$zhigh" 'BEGIN{printf "%.13f", zhigh-zlow}')"
+  if [[ "$i" -eq $cellx ]]; then
+    xlow=$(echo $line | cut -d " " -f 1)
+    xhigh=$(echo $line | cut -d " " -f 2)
+  fi
+  if [[ "$i" -eq $celly ]]; then
+    ylow=$(echo $line | cut -d " " -f 1)
+    yhigh=$(echo $line | cut -d " " -f 2)
+  fi
+  if [[ "$i" -eq $cellz ]]; then
+    zlow=$(echo $line | cut -d " " -f 1)
+    zhigh=$(echo $line | cut -d " " -f 2)
+  fi
+  if [[ "$i" -eq "$header" ]]; then
+    # Calculate lengths
+    Lx=$(echo "$xhi - $xlo" | bc -l)
+    Ly=$(echo "$yhi - $ylo" | bc -l)
+    Lz=$(echo "$zhi - $zlo" | bc -l)
 
-        sxx=$(echo $thermoline | cut -d " " -f $sxxcol)
-        syy=$(echo $thermoline | cut -d " " -f $syycol)
-        szz=$(echo $thermoline | cut -d " " -f $szzcol)
-        sxy=$(echo $thermoline | cut -d " " -f $sxycol)
-        sxz=$(echo $thermoline | cut -d " " -f $sxzcol)
-        syz=$(echo $thermoline | cut -d " " -f $syzcol)
+    # Calculate volume
+    volume=$(echo "$Lx * $Ly * $Lz" | bc -l)
 
-        # convert from bars*angstrom^3 to eV
-        # conversion factor 6.241509744511500288*10^-7
-        sxx=$(echo "$sxx" | awk '{printf "%f", 6.241509744511500288*10^-7*$1}')
-        syy=$(echo "$syy" | awk '{printf "%f", 6.241509744511500288*10^-7*$1}')
-        szz=$(echo "$szz" | awk '{printf "%f", 6.241509744511500288*10^-7*$1}')
-        sxy=$(echo "$sxy" | awk '{printf "%f", 6.241509744511500288*10^-7*$1}')
-        sxz=$(echo "$sxz" | awk '{printf "%f", 6.241509744511500288*10^-7*$1}')
-        syz=$(echo "$syz" | awk '{printf "%f", 6.241509744511500288*10^-7*$1}')
+    echo "Structure " $s
+    thermoline=$(sed "$(($s+$skip))q;d" $logfile)
+    echo $thermoline | cut -d " " -f $enecol
+    echo "$(awk -v xlow="$xlow" -v xhigh="$xhigh" 'BEGIN{printf "%.13f", xhigh-xlow}')  0.0  0.0"
+    echo "0.0  $(awk -v ylow="$ylow" -v yhigh="$yhigh" 'BEGIN{printf "%.13f", yhigh-ylow}')  0.0"
+    echo "0.0  0.0  $(awk -v zlow="$zlow" -v zhigh="$zhigh" 'BEGIN{printf "%.13f", zhigh-zlow}')"
 
-        echo $sxx $sxy $sxz
-        echo $sxy $syy $syz
-        echo $sxz $syz $szz
-        s=$(($s+1))
-    fi
-    if [[ "$i" -gt "$header" ]]; then
-        echo "$line" | awk -v xlow="$xlow" -v ylow="$ylow" -v zlow="$zlow" -v xhigh="$xhigh" -v yhigh="$yhigh" -v zhigh="$zhigh" '{printf "%s %.13f %.13f %.13f %.13f %.13f %.13f\n", $1,$2-xlow,$3-ylow,$4-zlow,$5,$6,$7}'
-    fi
-    if [[ "$i" -eq $(($natoms + $header)) ]]; then
-        i=0
-        echo ""
-    fi
+    sxx=$(echo $thermoline | cut -d " " -f $sxxcol)
+    syy=$(echo $thermoline | cut -d " " -f $syycol)
+    szz=$(echo $thermoline | cut -d " " -f $szzcol)
+    sxy=$(echo $thermoline | cut -d " " -f $sxycol)
+    sxz=$(echo $thermoline | cut -d " " -f $sxzcol)
+    syz=$(echo $thermoline | cut -d " " -f $syzcol)
 
-    i=$(($i+1))
+    # convert from bars*angstrom^3 to eV
+    # conversion factor 6.241509744511500288*10^-7
+    sxx=$(echo "$sxx $volume" | awk '{printf "%f", 6.241509744511500288*10^-7*$1/$2}')
+    syy=$(echo "$syy $volume" | awk '{printf "%f", 6.241509744511500288*10^-7*$1/$2}')
+    szz=$(echo "$szz $volume" | awk '{printf "%f", 6.241509744511500288*10^-7*$1/$2}')
+    sxy=$(echo "$sxy $volume" | awk '{printf "%f", 6.241509744511500288*10^-7*$1/$2}')
+    sxz=$(echo "$sxz $volume" | awk '{printf "%f", 6.241509744511500288*10^-7*$1/$2}')
+    syz=$(echo "$syz $volume" | awk '{printf "%f", 6.241509744511500288*10^-7*$1/$2}')
+
+    echo $sxx $sxy $sxz
+    echo $sxy $syy $syz
+    echo $sxz $syz $szz
+    s=$(($s+1))
+  fi
+  if [[ "$i" -gt "$header" ]]; then
+    echo "$line" | awk -v xlow="$xlow" -v ylow="$ylow" -v zlow="$zlow" -v xhigh="$xhigh" -v yhigh="$yhigh" -v zhigh="$zhigh" '{printf "%s %.13f %.13f %.13f %.13f %.13f %.13f\n", $1,$2-xlow,$3-ylow,$4-zlow,$5,$6,$7}'
+  fi
+  if [[ "$i" -eq $(($natoms + $header)) ]]; then
+    i=0
+    echo ""
+  fi
+
+  i=$(($i+1))
 done < "$dumpfile"

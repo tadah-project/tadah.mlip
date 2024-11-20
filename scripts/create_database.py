@@ -24,11 +24,11 @@ for i,p in enumerate(tqdm(paths)):
     # vasp stress in Kb, volume in Angstrom
     # convert from kbars*angstrom^3 to eV
     # conversion factor 6.241509744511500288*10^-4
-    volume = (6.241509744511500288*10.0**-4)*v.structures[0].lattice.volume
+    # volume = (6.241509744511500288*10.0**-4)*v.structures[0].lattice.volume
     # stress convenction:
     # VASP  negative sign below
     # LAMMPS positive sign below
-    stress = -np.asarray(v.ionic_steps[0]["stress"])*volume
+    stress = -np.asarray(v.ionic_steps[0]["stress"])*6.241509744511500288*10.0**-4  # convert from kB -> eV/A^3
     np.savetxt(outfile,stress,fmt='%.10f')
     # write Element px py px fx fy fz
     for sym,site,f in zip(v.structures[0].species, v.structures[0].sites, v.ionic_steps[0]['forces']):

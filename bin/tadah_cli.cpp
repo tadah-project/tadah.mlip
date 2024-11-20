@@ -27,9 +27,9 @@
 #include <chrono>
 
 void TadahCLI::subcommand_train() {
+#ifdef TADAH_BUILD_MPI
   int rank = 0;
   int ncpu = 1;
-#ifdef TADAH_BUILD_MPI
   // Initialize MPI variables to determine the rank and the number of CPUs
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
@@ -259,9 +259,9 @@ void TadahCLI::subcommand_hpo(
 
 #ifdef TADAH_ENABLE_HPO
 
+#ifdef TADAH_BUILD_MPI
   int rank = 0;
   int ncpu = 1;
-#ifdef TADAH_BUILD_MPI
   // Initialize MPI variables to determine the rank and the number of CPUs
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
@@ -498,7 +498,7 @@ TadahCLI::TadahCLI():
   usage = 
     "Specify a config file with initial model\n"
     "parameters and training datasets.";
-  auto c_opt=hpo->add_option("-c,--config", config_file, usage)
+  hpo->add_option("-c,--config", config_file, usage)
     ->option_text("CONFIG_FILE")
     ->check(CLI::ExistingFile)
     ->required();
@@ -506,14 +506,14 @@ TadahCLI::TadahCLI():
   usage = 
     "Specify a target file with model targets and\n"
     "hyperparameter constraints.";
-  auto t_opt=hpo->add_option("-t,--target", target_file, usage)
+  hpo->add_option("-t,--target", target_file, usage)
     ->option_text("TARGET_FILE")
     ->required()
     ->check(CLI::ExistingFile);
 
   usage = "Provide a validation file with datasets for\n"
     "testing hyperparameters.";
-  auto v_opt=hpo->add_option("-v,--validation", validation_file, usage)
+  hpo->add_option("-v,--validation", validation_file, usage)
     ->option_text("VALIDATION_FILE")
     ->required()
     ->check(CLI::ExistingFile);

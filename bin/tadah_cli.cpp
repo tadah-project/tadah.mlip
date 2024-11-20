@@ -556,33 +556,52 @@ TadahCLI::TadahCLI():
   /*---------------------------------------------------------------------------*/
   /*     CONVERSION                                                            */
   /*---------------------------------------------------------------------------*/
-  usage =
-    "Conversion tool.\n";
+
+  usage = 
+    "Converts and processes computational\n"
+    "model datasets into the Tadah!\n"
+    "database format.\n"; 
 
   convert = app.add_subcommand("convert", usage);
 
   usage =
+    "This tool extracts necessary information from DFT\n"
+    "calculations, such as atomic positions, chemical elements, forces,\n"
+    "potential energy, and the virial stress tensor if available.\n\n"
+    "Input Files:\n"
+    "Currently supported input formats include:\n"
+    "  - VASP: OUTCAR and vasprun.xml\n"
+    "  - CASTEP: .castep, .md, and .geom files\n\n"
+    "Example Usage:\n"
+    "  tadah convert -d run1.outcar -o single_output.tadah\n"
+    "  tadah convert -d run1.md run2.geom run3.castep -o mydata.tadah\n\n"
     "Output Files:\n"
-    "   Example: tadah convert -d run1.md run2.geom run3.castep -o mydata.tadah";
+    "  The converted dataset will be in a format suitable for use with Tadah!.\n";
 
   convert->usage(usage);
 
-  usage=
-    "See documentation for more details.\n";
-  convert->add_option("-o,--outfile", out_file,usage)
+  usage =
+    "Specify the output file.\n"
+    "The converted data will be saved to this file.";
+
+  convert->add_option("-o,--outfile", out_file, usage)
     ->check(CLI::NonexistentPath)
     ->required()
-    ->option_text("OUT_FILE");
+    ->option_text("OUTFILE");
 
-  convert->add_option("-d,--datasets", datasets,
-                      "One or more datasets.")
+  usage = 
+    "Specify one or more dataset files to convert.\n"
+    "Supported formats include:\n"
+    ".md, .geom, .castep, OUTCAR, and vasprun.xml.";
+
+  convert->add_option("-d,--datasets", datasets, usage)
     ->option_text("DATASETS ...")
     ->required()
     //->excludes("-c")
     ->check(CLI::ExistingFile);
 
   convert->add_option("-p,--precision", outprec,
-                      "Control number of decimal places.")
+                      "Set the number of decimal places for numerical output.")
     ->option_text("OUTPREC");
 
   convert->add_flag("-V,--Verbose", "Enable verbose mode.");

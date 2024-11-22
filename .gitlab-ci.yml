@@ -10,6 +10,8 @@ stages:
 cache:
     paths:
     - ${BUILD_DIR}
+    - ${RELEASE_SHARED_DIR}
+    - ${RELEASE_STATIC_DIR}
   
 before_script:
   - mkdir -p ${DEBUG_DIR}

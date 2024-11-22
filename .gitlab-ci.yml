@@ -27,15 +27,16 @@ build_debug:
     - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install
-    - find . -name CMakeFiles -exec rm -r {} + # cleanup b/c artifact is too large
+    - tar -czvf archive.tar.gz .
   artifacts:
     paths:
-      - ${DEBUG_DIR}
+      - ${DEBUG_DIR}/archive.tar.gz
 
 run_unit_tests:
   stage: run_unit_tests
   script:
     - cd ${DEBUG_DIR}
+    - tar -xzvf archive.tar.gz -C .
     - make test
     - cd ..; gcovr -e '.*tests.*|.*lib.*|.*docs.*|.*example.*|.*scripts.*|.*LIBS.*|build' -r .
   coverage: /^TOTAL.*\s+(\d+\%)$/

@@ -63,7 +63,7 @@ run_functional_tests_shared:
 run_functional_tests_static:
   stage: run_functional_tests
   script:
-    - cd $RELEASE_STATIC_DIR
+    - cd ${RELEASE_STATIC_DIR}
     - make install
     - ls -l ~/.local/bin/tadah
     - ls -l ~/.local/lib/libtadah*
@@ -76,39 +76,43 @@ run_functional_tests_static:
 build_examples_1_static:
   stage: build_examples
   script:
-    - cd $RELEASE_STATIC_DIR
-    - make install
-    - cd ../../examples/API/ex_1
+    - cd ${RELEASE_STATIC_DIR}
+    - rm -r ex_1
+    - cp -r ../../examples/API/ex_1 .
+    - cd ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
 
 build_examples_2_static:
   stage: build_examples
   script:
-    - cd $RELEASE_STATIC_DIR
-    - make install
-    - cd ../../examples/API/ex_2
+    - cd ${RELEASE_STATIC_DIR}
+    - rm -r ex_2
+    - cp -r ../../examples/API/ex_2 .
+    - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
 
 build_examples_1_shared:
   stage: build_examples
   script:
-    - cd $RELEASE_SHARED_DIR
-    - make install
-    - cd ../../examples/API/ex_1
+    - cd ${RELEASE_SHARED_DIR}
+    - rm -r ex_1
+    - cp -r ../../examples/API/ex_1 .
+    - cd ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
 
 build_examples_2_shared:
   stage: build_examples
   script:
-    - cd $RELEASE_SHARED_DIR
-    - make install
-    - cd ../../examples/API/ex_2
+    - cd ${RELEASE_SHARED_DIR}
+    - rm -r ex_2
+    - cp -r ../../examples/API/ex_2 .
+    - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
 
 run_examples_1_static:
   stage: run_examples
   script:
-    - cd examples/API/ex_1
+    - cd ${RELEASE_STATIC_DIR}/ex_1
     - ./a.static
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi
@@ -121,7 +125,7 @@ run_examples_1_static:
 run_examples_2_static:
   stage: run_examples
   script:
-    - cd examples/API/ex_2
+    - cd ${RELEASE_STATIC_DIR}/ex_2
     - ./a.static
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi
@@ -136,7 +140,7 @@ run_examples_1_shared:
   script:
     - cd $RELEASE_DIR
     - make install
-    - cd ../examples/API/ex_1
+    - cd ${RELEASE_SHARED_DIR}/ex_1
     - ./a.shared
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi
@@ -151,7 +155,7 @@ run_examples_2_shared:
   script:
     - cd $RELEASE_DIR
     - make install
-    - cd ../examples/API/ex_2
+    - cd ${RELEASE_SHARED_DIR}/ex_2
     - ./a.shared
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi

@@ -10,6 +10,7 @@ stages:
 cache:
     paths:
     - ${BUILD_DIR}
+    - .local
   
 before_script:
   - mkdir -p ${DEBUG_DIR}
@@ -80,7 +81,6 @@ build_examples_1_static:
   stage: build_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
-    - make install
     - cp -r ../../examples/API/ex_1 .
     - cd ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
@@ -89,7 +89,6 @@ build_examples_2_static:
   stage: build_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
-    - make install
     - cp -r ../../examples/API/ex_2 .
     - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
@@ -98,7 +97,6 @@ build_examples_1_shared:
   stage: build_examples
   script:
     - cd ${RELEASE_SHARED_DIR}
-    - make install
     - cp -r ../../examples/API/ex_1 .
     - cd ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
@@ -107,7 +105,6 @@ build_examples_2_shared:
   stage: build_examples
   script:
     - cd ${RELEASE_SHARED_DIR}
-    - make install
     - cp -r ../../examples/API/ex_2 .
     - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared

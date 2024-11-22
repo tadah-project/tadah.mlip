@@ -25,6 +25,7 @@ build_debug:
     - make -j ${CPU_BUILD}
     - make install
     - tar -czvf archive.tar.gz .
+    - du -hs archive.tar.gz
   artifacts:
     paths:
       - ${DEBUG_DIR}/archive.tar.gz

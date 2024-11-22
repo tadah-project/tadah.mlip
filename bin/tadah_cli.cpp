@@ -1,4 +1,7 @@
 #include "tadah_cli.h"
+#include "CLI/CLI.hpp"
+#include "tadah/mlip/dataset_readers/dataset_reader.h"
+#include <string>
 #include <tadah/core/core_types.h>
 #include <tadah/core/config.h>
 #include <tadah/core/element.h>
@@ -14,6 +17,7 @@
 #include <tadah/mlip/version.h>
 #include <tadah/mlip/design_matrix/design_matrix.h>
 #include <tadah/mlip/trainer.h>
+#include <tadah/mlip/dataset_readers/dataset_reader_selector.h>
 
 #include <CLI/Timer.hpp>
 
@@ -27,9 +31,9 @@
 #include <chrono>
 
 void TadahCLI::subcommand_train() {
+#ifdef TADAH_BUILD_MPI
   int rank = 0;
   int ncpu = 1;
-#ifdef TADAH_BUILD_MPI
   // Initialize MPI variables to determine the rank and the number of CPUs
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
@@ -259,9 +263,9 @@ void TadahCLI::subcommand_hpo(
 
 #ifdef TADAH_ENABLE_HPO
 
+#ifdef TADAH_BUILD_MPI
   int rank = 0;
   int ncpu = 1;
-#ifdef TADAH_BUILD_MPI
   // Initialize MPI variables to determine the rank and the number of CPUs
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
@@ -351,6 +355,58 @@ void TadahCLI::subcommand_hpo(
   std::cout << "See documentation for details." << std::endl;
   std::cout << "-----------------------------------------------" << std::endl;
 #endif
+
+}
+void TadahCLI::subcommand_convert() {
+  int rank=0;
+#ifdef TADAH_BUILD_MPI
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#endif
+  if (rank!=0) return;
+
+  CLI::Timer timer_tot {"Conversion", CLI::Timer::Big};
+  if(convert->count("--Verbose"))
+    set_verbose();
+
+  StructureDB stdb;
+
+  std::vector<std::string> sum_str;
+  for (auto &ds: datasets) {
+    StructureDB stdb_;
+    std::unique_ptr<DatasetReader> reader = DatasetReaderSelector::get_reader(ds,stdb_);
+    reader->parse_data();
+    if (reader)
+      sum_str.push_back(reader->get_summary());
+    stdb.add(stdb_);
+  }
+
+  if (convert->count("--precision"))
+    stdb.dump_to_file(out_file, outprec);
+  else
+    stdb.dump_to_file(out_file);
+
+  if (is_verbose()) {
+    int count = 0;
+    for (const auto &s : sum_str) {
+      std::cout << "Set: " << std::to_string(count+1) << " | File: " << datasets[count] << std::endl;
+      std::cout<< "   " << s;
+      count++;
+    }
+    std::cout << "-----------------------------------------" << std::endl;
+    std::cout << "|                SUMMARY                |" << std::endl;
+    std::cout << "-----------------------------------------" << std::endl;
+    std::cout << "Total number of sets: " << sum_str.size() << std::endl;
+    std::cout << "Total number of configurations: " << stdb.size() << std::endl;
+    std::cout << "Total number of atoms: " << stdb.calc_natoms() << std::endl;
+    std::cout << "Elements: ";
+    for (const auto &e: stdb.get_unique_elements()) {
+      std::cout << e.symbol << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "Dataset dumped to: " << out_file << std::endl;
+    std::cout << timer_tot.to_string() << std::endl;
+    std::cout << "Done!" << std::endl;
+  }
 
 }
 
@@ -498,7 +554,7 @@ TadahCLI::TadahCLI():
   usage = 
     "Specify a config file with initial model\n"
     "parameters and training datasets.";
-  auto c_opt=hpo->add_option("-c,--config", config_file, usage)
+  hpo->add_option("-c,--config", config_file, usage)
     ->option_text("CONFIG_FILE")
     ->check(CLI::ExistingFile)
     ->required();
@@ -506,14 +562,14 @@ TadahCLI::TadahCLI():
   usage = 
     "Specify a target file with model targets and\n"
     "hyperparameter constraints.";
-  auto t_opt=hpo->add_option("-t,--target", target_file, usage)
+  hpo->add_option("-t,--target", target_file, usage)
     ->option_text("TARGET_FILE")
     ->required()
     ->check(CLI::ExistingFile);
 
   usage = "Provide a validation file with datasets for\n"
     "testing hyperparameters.";
-  auto v_opt=hpo->add_option("-v,--validation", validation_file, usage)
+  hpo->add_option("-v,--validation", validation_file, usage)
     ->option_text("VALIDATION_FILE")
     ->required()
     ->check(CLI::ExistingFile);
@@ -524,6 +580,60 @@ TadahCLI::TadahCLI():
   //hpo->add_flag("-u,--uncertainty",
   //        "Dump uncertainty on weights."); // TODO check this
 
+
+  /*---------------------------------------------------------------------------*/
+  /*     CONVERSION                                                            */
+  /*---------------------------------------------------------------------------*/
+
+  usage = 
+    "Converts and processes computational\n"
+    "model datasets into the Tadah!\n"
+    "database format.\n"; 
+
+  convert = app.add_subcommand("convert", usage);
+
+  usage =
+    "This tool extracts necessary information from DFT\n"
+    "calculations, such as atomic positions, chemical elements, forces,\n"
+    "potential energy, and the virial stress tensor if available.\n\n"
+    "Input Files:\n"
+    "Currently supported input formats include:\n"
+    "  - VASP: OUTCAR and vasprun.xml\n"
+    "  - CASTEP: .castep, .md, and .geom files\n\n"
+    "Example Usage:\n"
+    "  tadah convert -d run1.outcar -o single_output.tadah\n"
+    "  tadah convert -d run1.md run2.geom run3.castep -o mydata.tadah\n\n"
+    "Output Files:\n"
+    "  The converted dataset will be in a format suitable for use with Tadah!.\n";
+
+  convert->usage(usage);
+
+  usage =
+    "Specify the output file.\n"
+    "The converted data will be saved to this file.";
+
+  convert->add_option("-o,--outfile", out_file, usage)
+    ->check(CLI::NonexistentPath)
+    ->required()
+    ->option_text("OUTFILE");
+
+  usage = 
+    "Specify one or more dataset files to convert.\n"
+    "Supported formats include:\n"
+    ".md, .geom, .castep, OUTCAR, and vasprun.xml.";
+
+  convert->add_option("-d,--datasets", datasets, usage)
+    ->option_text("DATASETS ...")
+    ->required()
+    //->excludes("-c")
+    ->check(CLI::ExistingFile);
+
+  convert->add_option("-p,--precision", outprec,
+                      "Set the number of decimal places for numerical output.")
+    ->option_text("OUTPREC");
+
+  convert->add_flag("-V,--Verbose", "Enable verbose mode.");
+
   PeriodicTable::initialize();
 }
 
@@ -532,21 +642,19 @@ void TadahCLI::run(int argc, char** argv) {
   if(app.count_all()==1) {
     std::cout << "Type: `tadah -h` for help" << std::endl;
   }
-
-  if (app.count("--version")) {
+  else if (app.count("--version")) {
     flag_version();
   }
-  // HPO
-  if (hpo->count_all()) {
+  else if (hpo->count_all()) {
     subcommand_hpo(argc,argv);
   }
-  // TRAINING
-  if (train->count_all()) {
+  else if (train->count_all()) {
     subcommand_train();
   }
-
-  // PREDICTION
   else if (predict->count_all()) {
     subcommand_predict();
+  }
+  else if (convert->count_all()) {
+    subcommand_convert();
   }
 }

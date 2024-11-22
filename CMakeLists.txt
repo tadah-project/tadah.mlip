@@ -13,6 +13,7 @@ option(TADAH_BUILD_MPI "Build MPI version of ${TADAH}" OFF)
 option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
 option(TADAH_ENABLE_FAST_MATH "Enable fast math optimizations" OFF)
 option(TADAH_BUILD_TESTS "Build with tests" OFF)
+
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 # Guard against in-source builds

@@ -98,9 +98,9 @@ The output of the ``predict`` subcommand includes three files:
 Units and Tadah!
 ----------------
 
-In principle, Tadah! will work with any units. The units used are determined by the units in the training datasets. So if your dataset has energy units of electronvolts and distance in Angstroms, then the created model will have the same units. The unit of force must be eV/Å in this case. The stress tensor has units of energy (pressure*volume), meaning the units of stress are the same as energy and the unit of force is energy/distance.
+In principle, Tadah! will work with any units. The units used are determined by the units in the training datasets. So if your dataset has energy units of electronvolts and distance in Angstroms, then the created model will have the same units. The unit of force must be eV/Å in this case. The virial stress tensor should be in units of pressure (eV/Å^3).
 
-The units selected by LAMMPS must be consistent with the model units. In this case, they would correspond to *metal* units in LAMMPS.
+The units selected by LAMMPS must be consistent with the model units of energy and forces. In this case, they would correspond to *metal* units in LAMMPS.
 
 .. note::
 

@@ -31,7 +31,7 @@ build_debug:
     #- tar -czvf archive.tar.gz .
   artifacts:
     paths:
-      - ${DEBUG_DIR}#/archive.tar.gz
+      - .
 
 run_unit_tests:
   stage: run_unit_tests

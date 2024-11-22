@@ -16,9 +16,9 @@ before_script:
   - mkdir -p ${RELEASE_SHARED_DIR}
   - mkdir -p ${RELEASE_STATIC_DIR}
   - export OMP_NUM_THREADS=${CPU_SIM}
-  - export PATH="${INSTALL_PATH}/bin:$PATH"
-  - export CPATH="${INSTALL_PATH}/include:$CPATH"
-  - export LD_LIBRARY_PATH="${INSTALL_PATH}/lib:$LD_LIBRARY_PATH"
+  - export PATH=${INSTALL_PATH}/bin:$PATH
+  - export CPATH=${INSTALL_PATH}/include:$CPATH
+  - export LD_LIBRARY_PATH=${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
 
 build_debug:
   stage: build_debug
@@ -27,6 +27,9 @@ build_debug:
     - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install
+  artifacts:
+    paths:
+      - ${DEBUG_DIR}
 
 run_unit_tests:
   stage: run_unit_tests
@@ -56,22 +59,6 @@ build_release_static:
     paths:
       - ${RELEASE_STATIC_DIR}  
 
-run_functional_tests_shared:
-  stage: run_functional_tests
-  script:
-    - cd $RELEASE_SHARED_DIR
-    - make install
-    - ls -l ${INSTALL_PATH}/bin/tadah
-    - ls -l ${INSTALL_PATH}/lib/libtadah*
-    - echo $PATH
-    - which tadah
-    - tadah
-    - tadah -h
-    - ldd ${INSTALL_PATH}/bin/tadah
-  artifacts:
-    paths:
-      - ${INSTALL_DIR}
-
 run_functional_tests_static:
   stage: run_functional_tests
   script:
@@ -86,19 +73,33 @@ run_functional_tests_static:
     - ldd ${INSTALL_PATH}/bin/tadah
   artifacts:
     paths:
-      - ${INSTALL_DIR}
+      - ${INSTALL_PATH}
+
+run_functional_tests_shared:
+  stage: run_functional_tests
+  needs: [run_functional_tests_static]
+  script:
+    - cd $RELEASE_SHARED_DIR
+    - make install
+    - ls -l ${INSTALL_PATH}/bin/tadah
+    - ls -l ${INSTALL_PATH}/lib/libtadah*
+    - echo $PATH
+    - which tadah
+    - tadah
+    - tadah -h
+    - ldd ${INSTALL_PATH}/bin/tadah
+  artifacts:
+    paths:
+      - ${INSTALL_PATH}
 
 build_examples_1_static:
   stage: build_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
     - cp -r ../../examples/API/ex_1 .
+    - echo $CPATH
     - pwd
     - ls -l
-    - ls -l ../
-    - ls -l ../..
-    - ls -la ../../..
-    - ls -la ~
     - ls ${INSTALL_PATH}
     - ls ${INSTALL_PATH}/include
     - ls ${INSTALL_PATH}/lib

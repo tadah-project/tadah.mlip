@@ -10,7 +10,6 @@ stages:
 cache:
     paths:
     - ${BUILD_DIR}
-    - .local
   
 before_script:
   - mkdir -p ${DEBUG_DIR}

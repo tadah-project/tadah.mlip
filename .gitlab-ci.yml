@@ -1,77 +1,56 @@
-cache:
-  key: "$CI_JOB_NAME-${CI_PIPELINE_ID}"
-  
-variables:
-  GIT_CLONE_PATH: $CI_BUILDS_DIR/$CI_COMMIT_SHA/$CI_PROJECT_NAME
-  
 stages:
-  - build.debug
-  - run.unit.tests
-  - build.release
-  - run.functional.tests
-  - build.examples
-  - run.examples
+  - build_debug
+  - run_unit_tests
+  - build_release
+  - run_functional_tests
+  - build_examples
+  - run_examples
   - trigger
 
+cache:
+    paths:
+    - ${BUILD_DIR}
+  
 before_script:
   - mkdir -p ${DEBUG_DIR}
-  - mkdir -p ${RELEASE_DIR}
+  - mkdir -p ${RELEASE_SHARED_DIR}
+  - mkdir -p ${RELEASE_STATIC_DIR}
   - export OMP_NUM_THREADS=${CPU_SIM}
 
-build-debug:
-  stage: build.debug
+build_debug:
+  stage: build_debug
   script:
     - cd ${DEBUG_DIR}
-    - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install
 
-build-tests:
-  variables: 
-    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR} -e CORE -e MODELS -e MLIP -e LIBS -e HPO  
-  stage: build.debug
-  needs: [build-debug]
-  script:
-    - cd ${DEBUG_DIR}
-    - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
-    - make -j ${CPU_BUILD}
-
-run-unit-tests-1:
-  variables: 
-    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR} -e CORE -e MODELS -e MLIP -e LIBS -e HPO  
-  stage: run.unit.tests
-  needs: [build-tests]
+run_unit_tests:
+  stage: run_unit_tests
   script:
     - cd ${DEBUG_DIR}
     - make test
     - cd ..; gcovr -e '.*tests.*|.*lib.*|.*docs.*|.*example.*|.*scripts.*|.*LIBS.*|build' -r .
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
-build-release-shared:
-  stage: build.release
+build_release_shared:
+  stage: build_release
   script:
-    - cd ${RELEASE_DIR}
-    - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - cd ${RELEASE_SHARED_DIR}
+    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-  artifacts:
-    paths:
-      - $RELEASE_DIR/*
 
-build-release-static:
-  stage: build.release
+build_release_static:
+  stage: build_release
   script:
-    - cd ${RELEASE_DIR}
-    - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - cd ${RELEASE_STATIC_DIR}
+    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-  artifacts:
-    paths:
-      - $RELEASE_DIR/*
 
-run-func-tests-shared:
-  stage: run.functional.tests
-  needs: [build-release-shared]
+run_functional_tests_shared:
+  stage: run_functional_tests
   script:
-    - cd $RELEASE_DIR
+    - cd $RELEASE_SHARED_DIR
     - make install
     - ls -l ~/.local/bin/tadah
     - ls -l ~/.local/lib/libtadah*
@@ -81,11 +60,11 @@ run-func-tests-shared:
     - tadah -h
     - ldd ~/.local/bin/tadah
 
-run-func-tests-static:
-  stage: run.functional.tests
-  needs: [build-release-static]
+run_functional_tests_static:
+  stage: run_functional_tests
+  needs: [run_functional_tests_shared]
   script:
-    - cd $RELEASE_DIR
+    - cd $RELEASE_STATIC_DIR
     - make install
     - ls -l ~/.local/bin/tadah
     - ls -l ~/.local/lib/libtadah*
@@ -95,57 +74,40 @@ run-func-tests-static:
     - tadah -h
     - ldd ~/.local/bin/tadah
 
-build-example-1-static:
-  stage: build.examples
-  needs: [build-release-static]
+build_examples_1_static:
+  stage: build_examples
   script:
-    - cd $RELEASE_DIR
+    - cd $RELEASE_STATIC_DIR
     - make install
-    - cd ../examples/API/ex_1
+    - cd ../../examples/API/ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
-  artifacts:
-    paths:
-      - examples/API/ex_1/a.static
 
-build-example-2-static:
-  stage: build.examples
-  needs: [build-release-static]
+build_examples_2_static:
+  stage: build_examples
   script:
-    - cd $RELEASE_DIR
+    - cd $RELEASE_STATIC_DIR
     - make install
-    - cd ../examples/API/ex_2
+    - cd ../../examples/API/ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
-  artifacts:
-    paths:
-      - examples/API/ex_2/a.static
 
-build-example-1-shared:
-  stage: build.examples
-  needs: [build-release-shared]
+build_examples_1_shared:
+  stage: build_examples
   script:
-    - cd $RELEASE_DIR
+    - cd $RELEASE_SHARED_DIR
     - make install
-    - cd ../examples/API/ex_1
+    - cd ../../examples/API/ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
-  artifacts:
-    paths:
-      - examples/API/ex_1/a.shared
 
-build-example-2-shared:
-  stage: build.examples
-  needs: [build-release-shared]
+build_examples_2_shared:
+  stage: build_examples
   script:
-    - cd $RELEASE_DIR
+    - cd $RELEASE_SHARED__DIR
     - make install
-    - cd ../examples/API/ex_2
+    - cd ../../examples/API/ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
-  artifacts:
-    paths:
-      - examples/API/ex_2/a.shared
 
-run-example-1-static:
-  stage: run.examples
-  needs: [build-example-1-static]
+run_examples_1_static:
+  stage: run_examples
   script:
     - cd examples/API/ex_1
     - ./a.static
@@ -157,9 +119,8 @@ run-example-1-static:
     - if [ $? -ne 0 ]; then exit 3; fi
     - echo "Success"
 
-run-example-2-static:
-  stage: run.examples
-  needs: [build-example-2-static]
+run_examples_2_static:
+  stage: run_examples
   script:
     - cd examples/API/ex_2
     - ./a.static
@@ -171,9 +132,8 @@ run-example-2-static:
     - if [ $? -ne 0 ]; then exit 3; fi
     - echo "Success"
 
-run-example-1-shared:
-  stage: run.examples
-  needs: [build-example-1-shared, build-release-shared, run-example-1-static]
+run_examples_1_shared:
+  stage: run_examples
   script:
     - cd $RELEASE_DIR
     - make install
@@ -187,9 +147,8 @@ run-example-1-shared:
     - if [ $? -ne 0 ]; then exit 3; fi
     - echo "Success"
 
-run-example-2-shared:
-  stage: run.examples
-  needs: [build-example-2-shared, build-release-shared, run-example-2-static]
+run_examples_2_shared:
+  stage: run_examples
   script:
     - cd $RELEASE_DIR
     - make install

@@ -85,8 +85,8 @@ build_examples_1_static:
     - ls -l
     - ls -l ../
     - ls -l ../..
-    - ls -l ../../..
-    - ls ~
+    - ls -la ../../..
+    - ls -la ~
     - ls ~/.local
     - ls ~/.local/include
     - ls ~/.local/lib

@@ -8,10 +8,6 @@ before_script:
   - mkdir -p ${RELEASE_SHARED_DIR}
   - mkdir -p ${RELEASE_STATIC_DIR}
   - export OMP_NUM_THREADS=${CPU_SIM}
-  - export PATH=${INSTALL_PATH}/bin:$PATH
-  - export CPATH=${INSTALL_PATH}/include:$CPATH
-  - export LD_LIBRARY_PATH=${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
-  - export LIBRARY_PATH=${INSTALL_PATH}/lib:$LIBRARY_PATH
 
 build_debug:
   stage: build_debug
@@ -19,7 +15,6 @@ build_debug:
     - cd ${DEBUG_DIR}
     - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-    - make install
     - make test
     - cd ..; gcovr -e '.*tests.*|.*lib.*|.*docs.*|.*example.*|.*scripts.*|.*LIBS.*|build' -r .
   coverage: /^TOTAL.*\s+(\d+\%)$/
@@ -40,7 +35,7 @@ build_release_shared:
     - ldd ${INSTALL_PATH}/bin/tadah
   artifacts:
     paths:
-      - ${INSTALL_PATH}  
+      - ${RELEASE_SHARED_DIR}/${INSTALL_PATH}  
 
 build_release_static:
   stage: build_release
@@ -58,12 +53,16 @@ build_release_static:
     - ldd ${INSTALL_PATH}/bin/tadah
   artifacts:
     paths:
-      - ${INSTALL_PATH}
+      - ${RELEASE_STATIC_DIR}/${INSTALL_PATH}
 
 build_examples_1_static:
   stage: build_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH   
     - cp -r ../../examples/API/ex_1 .
     - echo $CPATH
     - pwd
@@ -90,6 +89,10 @@ build_examples_2_static:
   stage: build_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
     - cp -r ../../examples/API/ex_2 .
     - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
@@ -107,6 +110,10 @@ build_examples_1_shared:
   stage: build_examples
   script:
     - cd ${RELEASE_SHARED_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
     - cp -r ../../examples/API/ex_1 .
     - cd ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
@@ -124,6 +131,10 @@ build_examples_2_shared:
   stage: build_examples
   script:
     - cd ${RELEASE_SHARED_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
     - cp -r ../../examples/API/ex_2 .
     - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared   

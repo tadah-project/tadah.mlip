@@ -78,13 +78,8 @@ build_examples_1_static:
     - echo $CPATH
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
     - ./a.static
-    - diff energy.pred EXPECTED_OUTPUT/energy.pred
+    - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
-    - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if [ $? -ne 0 ]; then exit 2; fi
-    - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if [ $? -ne 0 ]; then exit 3; fi
-    - echo "Success"
   
 build_examples_2_static:
   stage: build_examples
@@ -98,13 +93,8 @@ build_examples_2_static:
     - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
     - ./a.static
-    - diff energy.pred EXPECTED_OUTPUT/energy.pred
+    - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
-    - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if [ $? -ne 0 ]; then exit 2; fi
-    - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if [ $? -ne 0 ]; then exit 3; fi
-    - echo "Success"
 
 build_examples_1_shared:
   stage: build_examples
@@ -118,13 +108,8 @@ build_examples_1_shared:
     - cd ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
     - ./a.shared
-    - diff energy.pred EXPECTED_OUTPUT/energy.pred
+    - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
-    - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if [ $? -ne 0 ]; then exit 2; fi
-    - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if [ $? -ne 0 ]; then exit 3; fi
-    - echo "Success"
 
 build_examples_2_shared:
   stage: build_examples
@@ -138,10 +123,5 @@ build_examples_2_shared:
     - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared   
     - ./a.shared
-    - diff energy.pred EXPECTED_OUTPUT/energy.pred
+    - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
-    - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if [ $? -ne 0 ]; then exit 2; fi
-    - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if [ $? -ne 0 ]; then exit 3; fi
-    - echo "Success"

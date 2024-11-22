@@ -85,6 +85,9 @@ build_examples_1_static:
     - ls -l
     - ls -l ../
     - ls -l ../..
+    - ls -l ../../..
+    - ls ~
+    - ls ~/.local
     - cd ex_1
     - ls -l ~/.local/include/tadah/models/*
     - ls -l ~/.local/lib/*

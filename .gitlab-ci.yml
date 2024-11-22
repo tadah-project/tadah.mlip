@@ -47,9 +47,10 @@ build_release_shared:
     - cd ${RELEASE_SHARED_DIR}
     - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
+    - tar -czvf archive.tar.gz .
   artifacts:
     paths:
-      - ${RELEASE_SHARED_DIR}
+      - ${RELEASE_SHARED_DIR}/archive.tar.gz
 
 build_release_static:
   stage: build_release
@@ -57,14 +58,16 @@ build_release_static:
     - cd ${RELEASE_STATIC_DIR}
     - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
+    - tar -czvf archive.tar.gz .
   artifacts:
     paths:
-      - ${RELEASE_STATIC_DIR}  
+      - ${RELEASE_STATIC_DIR}/archive.tar.gz
 
 run_functional_tests_static:
   stage: run_functional_tests
   script:
     - cd ${RELEASE_STATIC_DIR}
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - ls -l ${INSTALL_PATH}/bin/tadah
     - ls -l ${INSTALL_PATH}/lib/libtadah*
@@ -73,15 +76,13 @@ run_functional_tests_static:
     - tadah
     - tadah -h
     - ldd ${INSTALL_PATH}/bin/tadah
-  artifacts:
-    paths:
-      - ${INSTALL_PATH}
 
 run_functional_tests_shared:
   stage: run_functional_tests
   needs: [run_functional_tests_static]
   script:
     - cd $RELEASE_SHARED_DIR
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - ls -l ${INSTALL_PATH}/bin/tadah
     - ls -l ${INSTALL_PATH}/lib/libtadah*
@@ -90,14 +91,13 @@ run_functional_tests_shared:
     - tadah
     - tadah -h
     - ldd ${INSTALL_PATH}/bin/tadah
-  artifacts:
-    paths:
-      - ${INSTALL_PATH}
 
 build_examples_1_static:
   stage: build_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
+    - tar -xzvf archive.tar.gz -C .
+    - make install
     - cp -r ../../examples/API/ex_1 .
     - echo $CPATH
     - pwd
@@ -110,30 +110,48 @@ build_examples_1_static:
     - ls -l ${INSTALL_PATH}/lib/*
     - echo $CPATH
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
+  artifacts:
+    paths:
+      - ${RELEASE_STATIC_DIR}/ex_1
 
 build_examples_2_static:
   stage: build_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
+    - tar -xzvf archive.tar.gz -C .
+    - make install
     - cp -r ../../examples/API/ex_2 .
     - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
+  artifacts:
+    paths:
+      - ${RELEASE_STATIC_DIR}/ex_2  
 
 build_examples_1_shared:
   stage: build_examples
   script:
     - cd ${RELEASE_SHARED_DIR}
+    - tar -xzvf archive.tar.gz -C .
+    - make install
     - cp -r ../../examples/API/ex_1 .
     - cd ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
+  artifacts:
+    paths:
+      - ${RELEASE_SHARED_DIR}/ex_1  
 
 build_examples_2_shared:
   stage: build_examples
   script:
     - cd ${RELEASE_SHARED_DIR}
+    - tar -xzvf archive.tar.gz -C .
+    - make install
     - cp -r ../../examples/API/ex_2 .
     - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
+  artifacts:
+    paths:
+      - ${RELEASE_SHARED_DIR}/ex_2    
 
 run_examples_1_static:
   stage: run_examples

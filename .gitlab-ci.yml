@@ -83,6 +83,9 @@ build_examples_1_static:
     - cd ${RELEASE_STATIC_DIR}
     - cp -r ../../examples/API/ex_1 .
     - cd ex_1
+    - ls -l ~/.local/include/tadah/models/*
+    - ls -l ~/.local/lib/*
+    - echo $CPATH
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
 
 build_examples_2_static:

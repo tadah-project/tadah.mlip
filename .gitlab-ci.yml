@@ -56,26 +56,26 @@ run_functional_tests_shared:
   script:
     - cd $RELEASE_SHARED_DIR
     - make install
-    - ls -l ${INSTAL_PATH}/bin/tadah
-    - ls -l ${INSTAL_PATH}/lib/libtadah*
+    - ls -l ${INSTALL_PATH}/bin/tadah
+    - ls -l ${INSTALL_PATH}/lib/libtadah*
     - echo $PATH
     - which tadah
     - tadah
     - tadah -h
-    - ldd ${INSTAL_PATH}/bin/tadah
+    - ldd ${INSTALL_PATH}/bin/tadah
 
 run_functional_tests_static:
   stage: run_functional_tests
   script:
     - cd ${RELEASE_STATIC_DIR}
     - make install
-    - ls -l ${INSTAL_PATH}/bin/tadah
-    - ls -l ${INSTAL_PATH}/lib/libtadah*
+    - ls -l ${INSTALL_PATH}/bin/tadah
+    - ls -l ${INSTALL_PATH}/lib/libtadah*
     - echo $PATH
     - which tadah
     - tadah
     - tadah -h
-    - ldd ${INSTAL_PATH}/bin/tadah
+    - ldd ${INSTALL_PATH}/bin/tadah
 
 build_examples_1_static:
   stage: build_examples
@@ -88,12 +88,12 @@ build_examples_1_static:
     - ls -l ../..
     - ls -la ../../..
     - ls -la ~
-    - ls ${INSTAL_PATH}
-    - ls ${INSTAL_PATH}/include
-    - ls ${INSTAL_PATH}/lib
+    - ls ${INSTALL_PATH}
+    - ls ${INSTALL_PATH}/include
+    - ls ${INSTALL_PATH}/lib
     - cd ex_1
-    - ls -l ${INSTAL_PATH}/include/tadah/models/*
-    - ls -l ${INSTAL_PATH}/lib/*
+    - ls -l ${INSTALL_PATH}/include/tadah/models/*
+    - ls -l ${INSTALL_PATH}/lib/*
     - echo $CPATH
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
 

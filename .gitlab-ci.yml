@@ -10,8 +10,7 @@ stages:
 cache:
     paths:
     - ${BUILD_DIR}
-    - ${RELEASE_SHARED_DIR}
-    - ${RELEASE_STATIC_DIR}
+    - ${INSTALL_PATH}
   
 before_script:
   - mkdir -p ${DEBUG_DIR}
@@ -57,26 +56,26 @@ run_functional_tests_shared:
   script:
     - cd $RELEASE_SHARED_DIR
     - make install
-    - ls -l ~/.local/bin/tadah
-    - ls -l ~/.local/lib/libtadah*
+    - ls -l ${INSTAL_PATH}/bin/tadah
+    - ls -l ${INSTAL_PATH}/lib/libtadah*
     - echo $PATH
     - which tadah
     - tadah
     - tadah -h
-    - ldd ~/.local/bin/tadah
+    - ldd ${INSTAL_PATH}/bin/tadah
 
 run_functional_tests_static:
   stage: run_functional_tests
   script:
     - cd ${RELEASE_STATIC_DIR}
     - make install
-    - ls -l ~/.local/bin/tadah
-    - ls -l ~/.local/lib/libtadah*
+    - ls -l ${INSTAL_PATH}/bin/tadah
+    - ls -l ${INSTAL_PATH}/lib/libtadah*
     - echo $PATH
     - which tadah
     - tadah
     - tadah -h
-    - ldd ~/.local/bin/tadah
+    - ldd ${INSTAL_PATH}/bin/tadah
 
 build_examples_1_static:
   stage: build_examples
@@ -89,12 +88,12 @@ build_examples_1_static:
     - ls -l ../..
     - ls -la ../../..
     - ls -la ~
-    - ls ~/.local
-    - ls ~/.local/include
-    - ls ~/.local/lib
+    - ls ${INSTAL_PATH}
+    - ls ${INSTAL_PATH}/include
+    - ls ${INSTAL_PATH}/lib
     - cd ex_1
-    - ls -l ~/.local/include/tadah/models/*
-    - ls -l ~/.local/lib/*
+    - ls -l ${INSTAL_PATH}/include/tadah/models/*
+    - ls -l ${INSTAL_PATH}/lib/*
     - echo $CPATH
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
 

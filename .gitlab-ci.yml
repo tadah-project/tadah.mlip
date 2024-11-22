@@ -24,16 +24,16 @@ build_debug:
     - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install
-    #- tar -czvf archive.tar.gz .
+    - tar -czvf archive.tar.gz .
   artifacts:
     paths:
-      - ${DEBUG_DIR}
+      - ${DEBUG_DIR}/archive.tar.gz
 
 run_unit_tests:
   stage: run_unit_tests
   script:
     - cd ${DEBUG_DIR}
-    #- tar -xzvf archive.tar.gz -C .
+    - tar -xzvf archive.tar.gz -C .
     - make test
     - cd ..; gcovr -e '.*tests.*|.*lib.*|.*docs.*|.*example.*|.*scripts.*|.*LIBS.*|build' -r .
   coverage: /^TOTAL.*\s+(\d+\%)$/
@@ -44,10 +44,10 @@ build_release_shared:
     - cd ${RELEASE_SHARED_DIR}
     - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-    #- tar -czvf archive.tar.gz .
+    - tar -czvf archive.tar.gz .
   artifacts:
     paths:
-      - ${RELEASE_SHARED_DIR}#/archive.tar.gz
+      - ${RELEASE_SHARED_DIR}/archive.tar.gz
 
 build_release_static:
   stage: build_release
@@ -55,16 +55,16 @@ build_release_static:
     - cd ${RELEASE_STATIC_DIR}
     - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-    #- tar -czvf archive.tar.gz .
+    - tar -czvf archive.tar.gz .
   artifacts:
     paths:
-      - ${RELEASE_STATIC_DIR}#/archive.tar.gz
+      - ${RELEASE_STATIC_DIR}/archive.tar.gz
 
 run_functional_tests_static:
   stage: run_functional_tests
   script:
     - cd ${RELEASE_STATIC_DIR}
-    #- tar -xzvf archive.tar.gz -C .
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - ls -l ${INSTALL_PATH}/bin/tadah
     - ls -l ${INSTALL_PATH}/lib/libtadah*
@@ -79,7 +79,7 @@ run_functional_tests_shared:
   needs: [run_functional_tests_static]
   script:
     - cd $RELEASE_SHARED_DIR
-    #- tar -xzvf archive.tar.gz -C .
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - ls -l ${INSTALL_PATH}/bin/tadah
     - ls -l ${INSTALL_PATH}/lib/libtadah*
@@ -93,7 +93,7 @@ build_examples_1_static:
   stage: build_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
-    #- tar -xzvf archive.tar.gz -C .
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - cp -r ../../examples/API/ex_1 .
     - echo $CPATH
@@ -115,7 +115,7 @@ build_examples_2_static:
   stage: build_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
-    #- tar -xzvf archive.tar.gz -C .
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - cp -r ../../examples/API/ex_2 .
     - cd ex_2
@@ -128,7 +128,7 @@ build_examples_1_shared:
   stage: build_examples
   script:
     - cd ${RELEASE_SHARED_DIR}
-    #- tar -xzvf archive.tar.gz -C .
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - cp -r ../../examples/API/ex_1 .
     - cd ex_1
@@ -141,7 +141,7 @@ build_examples_2_shared:
   stage: build_examples
   script:
     - cd ${RELEASE_SHARED_DIR}
-    #- tar -xzvf archive.tar.gz -C .
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - cp -r ../../examples/API/ex_2 .
     - cd ex_2
@@ -154,7 +154,7 @@ run_examples_1_static:
   stage: run_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
-    #- tar -xzvf archive.tar.gz -C .
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - cd ex_1
     - ./a.static
@@ -170,7 +170,7 @@ run_examples_2_static:
   stage: run_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
-    #- tar -xzvf archive.tar.gz -C .
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - cd ex_2
     - ./a.static
@@ -186,7 +186,7 @@ run_examples_1_shared:
   stage: run_examples
   script:
     - cd ${RELEASE_SHARED_DIR}
-    #- tar -xzvf archive.tar.gz -C .
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - cd ex_1
     - ./a.shared
@@ -202,7 +202,7 @@ run_examples_2_shared:
   stage: run_examples
   script:
     - cd ${RELEASE_SHARED_DIR}
-    #- tar -xzvf archive.tar.gz -C .
+    - tar -xzvf archive.tar.gz -C .
     - make install
     - cd ex_2
     - ./a.shared

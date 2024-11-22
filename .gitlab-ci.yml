@@ -74,13 +74,7 @@ build_examples_1_static:
     - cp -r ../../examples/API/ex_1 .
     - echo $CPATH
     - pwd
-    - ls -l
-    - ls ${INSTALL_PATH}
-    - ls ${INSTALL_PATH}/include
-    - ls ${INSTALL_PATH}/lib
     - cd ex_1
-    - ls -l ${INSTALL_PATH}/include/tadah/models/*
-    - ls -l ${INSTALL_PATH}/lib/*
     - echo $CPATH
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
     - ./a.static
@@ -92,7 +86,6 @@ build_examples_1_static:
     - if [ $? -ne 0 ]; then exit 3; fi
     - echo "Success"
   
-
 build_examples_2_static:
   stage: build_examples
   script:
@@ -113,7 +106,6 @@ build_examples_2_static:
     - if [ $? -ne 0 ]; then exit 3; fi
     - echo "Success"
 
-
 build_examples_1_shared:
   stage: build_examples
   script:
@@ -133,7 +125,6 @@ build_examples_1_shared:
     - diff forces.pred EXPECTED_OUTPUT/forces.pred
     - if [ $? -ne 0 ]; then exit 3; fi
     - echo "Success"
-
 
 build_examples_2_shared:
   stage: build_examples

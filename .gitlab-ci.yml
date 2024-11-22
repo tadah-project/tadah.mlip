@@ -6,10 +6,6 @@ stages:
   - build_examples
   - run_examples
   - trigger
-
-cache:
-    paths:
-    - ${BUILD_DIR}
   
 before_script:
   - mkdir -p ${DEBUG_DIR}

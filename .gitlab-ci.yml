@@ -19,6 +19,7 @@ before_script:
   - export PATH=${INSTALL_PATH}/bin:$PATH
   - export CPATH=${INSTALL_PATH}/include:$CPATH
   - export LD_LIBRARY_PATH=${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+  - export LIBRARY_PATH=${INSTALL_PATH}/lib:$LIBRARY_PATH
 
 build_debug:
   stage: build_debug

@@ -181,7 +181,7 @@ run-example-2-static:
 
 run-example-1-shared:
   stage: run.examples
-  needs: [build-example-1-shared, build-release-shared]
+  needs: [build-example-1-shared, build-release-shared, run-example-1-static]
   script:
     - cd $RELEASE_DIR
     - make install
@@ -197,7 +197,7 @@ run-example-1-shared:
 
 run-example-2-shared:
   stage: run.examples
-  needs: [build-example-2-shared, build-release-shared]
+  needs: [build-example-2-shared, build-release-shared, run-example-2-static]
   script:
     - cd $RELEASE_DIR
     - make install

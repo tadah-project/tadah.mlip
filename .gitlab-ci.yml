@@ -27,6 +27,7 @@ build_debug:
     - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install
+    - find . -type d ! -name 'CMakeFiles' ! -name 'Testing' -exec rm -r {} + # cleanup as artifact is too large
   artifacts:
     paths:
       - ${DEBUG_DIR}

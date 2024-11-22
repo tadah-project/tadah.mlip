@@ -110,10 +110,10 @@ build-example-1-static:
     - cd $RELEASE_DIR
     - make install
     - cd ../examples/API/ex_1
-    - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
+    - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
   artifacts:
     paths:
-      - examples/API/ex_1/a.out
+      - examples/API/ex_1/a.static
 
 build-example-2-static:
   stage: build.examples
@@ -122,10 +122,10 @@ build-example-2-static:
     - cd $RELEASE_DIR
     - make install
     - cd ../examples/API/ex_2
-    - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
+    - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
   artifacts:
     paths:
-      - examples/API/ex_2/a.out
+      - examples/API/ex_2/a.static
 
 build-example-1-shared:
   stage: build.examples
@@ -134,10 +134,10 @@ build-example-1-shared:
     - cd $RELEASE_DIR
     - make install
     - cd ../examples/API/ex_1
-    - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
+    - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
   artifacts:
     paths:
-      - examples/API/ex_1/a.out
+      - examples/API/ex_1/a.shared
 
 build-example-2-shared:
   stage: build.examples
@@ -146,17 +146,17 @@ build-example-2-shared:
     - cd $RELEASE_DIR
     - make install
     - cd ../examples/API/ex_2
-    - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
+    - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
   artifacts:
     paths:
-      - examples/API/ex_2/a.out
+      - examples/API/ex_2/a.shared
 
 run-example-1-static:
   stage: run.examples
   needs: [build-example-1-static]
   script:
     - cd examples/API/ex_1
-    - ./a.out
+    - ./a.static
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi
     - diff stress.pred EXPECTED_OUTPUT/stress.pred
@@ -170,7 +170,7 @@ run-example-2-static:
   needs: [build-example-2-static]
   script:
     - cd examples/API/ex_2
-    - ./a.out
+    - ./a.static
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi
     - diff stress.pred EXPECTED_OUTPUT/stress.pred
@@ -186,7 +186,7 @@ run-example-1-shared:
     - cd $RELEASE_DIR
     - make install
     - cd ../examples/API/ex_1
-    - ./a.out
+    - ./a.shared
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi
     - diff stress.pred EXPECTED_OUTPUT/stress.pred
@@ -202,7 +202,7 @@ run-example-2-shared:
     - cd $RELEASE_DIR
     - make install
     - cd ../examples/API/ex_2
-    - ./a.out
+    - ./a.shared
     - diff energy.pred EXPECTED_OUTPUT/energy.pred
     - if [ $? -ne 0 ]; then exit 1; fi
     - diff stress.pred EXPECTED_OUTPUT/stress.pred

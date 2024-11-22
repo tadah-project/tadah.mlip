@@ -81,6 +81,7 @@ build_examples_1_static:
   script:
     - cd ${RELEASE_STATIC_DIR}
     - cp -r ../../examples/API/ex_1 .
+    - pwd
     - ls -l
     - ls -l ../
     - ls -l ../..

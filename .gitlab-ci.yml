@@ -56,12 +56,6 @@ build-release-shared:
   artifacts:
     paths:
       - $RELEASE_DIR/*
-      - CORE/*
-      - MODELS/*
-      - MLIP/*
-      - HPO/*
-      - LIBS/*
-
 
 build-release-static:
   stage: build.release
@@ -72,11 +66,6 @@ build-release-static:
   artifacts:
     paths:
       - $RELEASE_DIR/*
-      - CORE/*
-      - MODELS/*
-      - MLIP/*
-      - HPO/*
-      - LIBS/*
 
 run-func-tests-shared:
   stage: run.functional.tests

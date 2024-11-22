@@ -62,7 +62,6 @@ run_functional_tests_shared:
 
 run_functional_tests_static:
   stage: run_functional_tests
-  needs: [run_functional_tests_shared]
   script:
     - cd $RELEASE_STATIC_DIR
     - make install
@@ -101,7 +100,7 @@ build_examples_1_shared:
 build_examples_2_shared:
   stage: build_examples
   script:
-    - cd $RELEASE_SHARED__DIR
+    - cd $RELEASE_SHARED_DIR
     - make install
     - cd ../../examples/API/ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared

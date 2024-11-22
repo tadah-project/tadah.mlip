@@ -1,6 +1,7 @@
 #include "tadah_cli.h"
 #include "CLI/CLI.hpp"
 #include "tadah/mlip/dataset_readers/dataset_reader.h"
+#include <string>
 #include <tadah/core/core_types.h>
 #include <tadah/core/config.h>
 #include <tadah/core/element.h>
@@ -369,8 +370,14 @@ void TadahCLI::subcommand_convert() {
 
   StructureDB stdb;
 
+  std::vector<std::string> sum_str;
   for (auto &ds: datasets) {
-    std::unique_ptr<DatasetReader> reader = DatasetReaderSelector::get_reader(ds,stdb);
+    StructureDB stdb_;
+    std::unique_ptr<DatasetReader> reader = DatasetReaderSelector::get_reader(ds,stdb_);
+    reader->parse_data();
+    if (reader)
+      sum_str.push_back(reader->get_summary());
+    stdb.add(stdb_);
   }
 
   if (convert->count("--precision"))
@@ -378,7 +385,28 @@ void TadahCLI::subcommand_convert() {
   else
     stdb.dump_to_file(out_file);
 
-  if (is_verbose()) std::cout << "Done!" << std::endl;
+  if (is_verbose()) {
+    int count = 0;
+    for (const auto &s : sum_str) {
+      std::cout << "Set: " << std::to_string(count+1) << " | File: " << datasets[count] << std::endl;
+      std::cout<< "   " << s;
+      count++;
+    }
+    std::cout << "-----------------------------------------" << std::endl;
+    std::cout << "|                SUMMARY                |" << std::endl;
+    std::cout << "-----------------------------------------" << std::endl;
+    std::cout << "Total number of sets: " << sum_str.size() << std::endl;
+    std::cout << "Total number of configurations: " << stdb.size() << std::endl;
+    std::cout << "Total number of atoms: " << stdb.calc_natoms() << std::endl;
+    std::cout << "Elements: ";
+    for (const auto &e: stdb.get_unique_elements()) {
+      std::cout << e.symbol << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "Dataset dumped to: " << out_file << std::endl;
+    std::cout << timer_tot.to_string() << std::endl;
+    std::cout << "Done!" << std::endl;
+  }
 
 }
 
@@ -605,7 +633,6 @@ TadahCLI::TadahCLI():
     ->option_text("OUTPREC");
 
   convert->add_flag("-V,--Verbose", "Enable verbose mode.");
-
 
   PeriodicTable::initialize();
 }

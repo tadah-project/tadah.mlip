@@ -1,6 +1,5 @@
 stages:
-  - build_debug
-  - build_release
+  - build
   - build_examples
   
 before_script:
@@ -10,7 +9,7 @@ before_script:
   - export OMP_NUM_THREADS=${CPU_SIM}
 
 build_debug:
-  stage: build_debug
+  stage: build
   script:
     - cd ${DEBUG_DIR}
     - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
@@ -20,7 +19,7 @@ build_debug:
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build_release_shared:
-  stage: build_release
+  stage: build
   script:
     - cd ${RELEASE_SHARED_DIR}
     - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
@@ -42,7 +41,7 @@ build_release_shared:
       - ${RELEASE_SHARED_DIR}/${INSTALL_PATH}  
 
 build_release_static:
-  stage: build_release
+  stage: build
   script:
     - cd ${RELEASE_STATIC_DIR}
     - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH

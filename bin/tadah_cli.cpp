@@ -634,19 +634,27 @@ TadahCLI::TadahCLI():
   /*     FIND DUPLICATES                                                       */
   /*---------------------------------------------------------------------------*/
   usage = "Identify duplicate structures within the specified datasets. "
-    "If no output file is specified, it will provide a summary only.";
+    "If no output file is specified, it will provide a summary only.\n\n"
+    "The structures are considered the same if: \n"
+    "  1. number of atoms is the same.\n"
+    "  2. the cell vectors are within thersholf value.\n"
+    "  3. atomc coordiantes and element types are the same (order does not matter).\n\n"
+    "This tool is unable to distinguish between rotated or translated configurations.";
 
   dups = db->add_subcommand("dups", usage);
 
-  usage = "Specify one or more Tadah! datasets to scan for duplicates. Must exist.";
+  usage = "Specify one or more Tadah! datasets to scan for duplicates. Must exist. If -c option is used, provide single out_file; otherwise number of out files must be equal to the number of provided datasets";
   dups->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
 
   usage =
-    "Specify the output file where pruned data will be saved. Path must not exist.";
-  dups->add_option("-o,--outfile", out_file, usage)
+    "Specify the output file(s) where pruned data will be saved. Path must not exist.";
+  dups->add_option("-o,--outfiles", out_files, usage)
     ->check(CLI::NonexistentPath);
+
+  dups->add_option("-t,--threshold", val, "Threshold value used when comparing atomic positions and box vectors. Default: 1e-6");
+  dups->add_flag("-m,--merge", "Merge result into single dataset.")->needs("-o");
   dups->add_flag("-V,--Verbose", verbose, "Enable verbose output for detailed processing information.");
 
   /*---------------------------------------------------------------------------*/
@@ -774,6 +782,7 @@ void TadahCLI::run(int argc, char** argv) {
   }
   else if (*db) {
     if (*dups) {
+      subsub_dups();
     }
     else if (*join) {
       subsub_join();
@@ -929,5 +938,103 @@ void TadahCLI::subsub_sample() {
 
   out_stdb.dump_to_file(out_file);
   if (verbose) std::cout << out_stdb.summary();
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
+}
+void TadahCLI::subsub_dups() {
+  CLI::Timer timer_tot{"Duplicates", CLI::Timer::Big};
+  std::vector<StructureDB> in_stdbs(datasets.size());
+
+  if (!dups->count("--threshold")) {
+    val=1e-6;
+  }
+  if (dups->count("--merge") && out_files.size()!=1) {
+    throw std::runtime_error("-m option requires single outfile.");
+  }
+
+  size_t total=0;
+  sizes.resize(in_stdbs.size());
+  for (size_t i=0; i < in_stdbs.size(); ++i) {
+    in_stdbs[i].add(datasets[i]);
+    total += in_stdbs[i].size();
+    sizes[i] = in_stdbs[i].size();
+  }
+
+  std::vector<std::pair<size_t, size_t>> indices(total);
+  size_t idx=0;
+  for (size_t i=0; i < in_stdbs.size(); ++i) {
+    for (size_t j=0; j < in_stdbs[i].size(); ++j) {
+      indices[idx++] = std::make_pair(i,j);
+    }
+  }
+
+  std::vector<std::pair<size_t, size_t>> duplicates;
+  for (size_t i=0; i < indices.size(); ++i) {
+    for (size_t j=i+1; j < indices.size(); ++j) {
+      Structure &st_i = in_stdbs[indices[i].first](indices[i].second);
+      Structure &st_j = in_stdbs[indices[j].first](indices[j].second);
+      if (st_i.is_the_same(st_j,val)) {
+        duplicates.push_back(std::make_pair(i,j));
+      }
+    }
+  }
+
+  if (verbose || !dups->count("-o")) {
+    size_t d=0;
+    for (const auto &db : datasets) if (d<db.size()) d=db.size()+2;
+    size_t w = 10;
+    for (const auto &dup: duplicates) {
+      size_t i1 = dup.first;
+      size_t i2 = dup.second;
+      std::cout  << std::setw(d) << std::left
+        << datasets[indices[i1].first]
+        << " : #"
+        << std::setw(w)
+        << indices[i1].second 
+        << "  "
+        << std::setw(d)
+        << datasets[indices[i2].first]
+        << " : #"
+        << std::setw(w)
+        << indices[i2].second 
+        << std::endl;
+    }
+  }
+
+  // finaly prune...
+  for (size_t idx = duplicates.size(); idx-- > 0;) {
+    auto &dup = duplicates[idx];
+    size_t i1 = dup.first;  
+    in_stdbs[indices[i1].first].remove(indices[i1].second);
+  }
+
+  size_t new_total=0;
+  for (size_t i=0; i < in_stdbs.size(); ++i) {
+    new_total += in_stdbs[i].size();
+  }
+
+  if (dups->count("-o")) {
+    if (dups->count("-m")) {
+      StructureDB stdb;
+      for (const auto& _stdb : in_stdbs) stdb.add(_stdb);
+      stdb.dump_to_file(out_files[0]);
+    }
+    else {
+      std::cout << std::endl; 
+      for (size_t i=0; i<in_stdbs.size(); ++i) {
+        in_stdbs[i].dump_to_file(out_files[i]);
+        if (verbose) {
+          std::cout << datasets[i] << " --> " << out_files[i] << "   "
+            << sizes[i] << " --> " << in_stdbs[i].size()
+          << std::endl;
+        }
+      }
+    }
+  }
+
+  std::cout << std::endl; 
+  std::cout << "Total number of duplicates found: " << duplicates.size() <<std::endl; 
+  std::cout << "Total number of unique structures: " << new_total <<std::endl; 
+
+  //if (verbose) std::cout << out_stdb.summary();
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
 }

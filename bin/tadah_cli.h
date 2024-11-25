@@ -32,18 +32,18 @@ public:
   TadahCLI();
   void run(int argc, char** argv);
   CLI::App app;
-    CLI::App *train;  //
-    CLI::App *predict;  //
-    CLI::App *hpo;  //
-    CLI::App *convert;  //
-    CLI::App *db; //
+    CLI::App *train;
+    CLI::App *predict;
+    CLI::App *hpo;
+    CLI::App *convert;
+    CLI::App *db;
       CLI::App *dups;
-      CLI::App *sample; //
-        CLI::Option_group *sample_group; //
-      CLI::App *join; //
-      CLI::App *split;  //
-        CLI::Option_group *split_group; //
-      CLI::App *summary;  //
+      CLI::App *sample;
+        CLI::Option_group *sample_group;
+      CLI::App *join;
+      CLI::App *split;
+        CLI::Option_group *split_group;
+      CLI::App *summary;
     CLI::App *desc;
       CLI::App *calc;
 
@@ -59,6 +59,7 @@ public:
   std::vector<std::size_t> sizes;
   size_t outprec;
   size_t N;
+  double val;
 
   void sub_train();
   void sub_predict();

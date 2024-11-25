@@ -1,6 +1,7 @@
 #include "tadah_cli.h"
 #include "CLI/CLI.hpp"
 #include "tadah/mlip/dataset_readers/dataset_reader.h"
+#include <iterator>
 #include <string>
 #include <tadah/core/core_types.h>
 #include <tadah/core/config.h>
@@ -20,6 +21,7 @@
 #include <tadah/mlip/dataset_readers/dataset_reader_selector.h>
 
 #include <CLI/Timer.hpp>
+#include <utility>
 
 #ifdef TADAH_ENABLE_HPO
 #include <tadah/hpo/hpo.h>
@@ -30,7 +32,7 @@
 #include <stdexcept>
 #include <chrono>
 
-void TadahCLI::subcommand_train() {
+void TadahCLI::sub_train() {
 #ifdef TADAH_BUILD_MPI
   int rank = 0;
   int ncpu = 1;
@@ -148,7 +150,7 @@ void TadahCLI::subcommand_train() {
 #endif
 }
 
-void TadahCLI::subcommand_predict() {
+void TadahCLI::sub_predict() {
   int rank=0;
 #ifdef TADAH_BUILD_MPI
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -257,7 +259,7 @@ or datasets in a command line");
     delete fb;
 }
 
-void TadahCLI::subcommand_hpo(
+void TadahCLI::sub_hpo(
   [[maybe_unused]]int argc,
   [[maybe_unused]]char**argv) {
 
@@ -357,7 +359,7 @@ void TadahCLI::subcommand_hpo(
 #endif
 
 }
-void TadahCLI::subcommand_convert() {
+void TadahCLI::sub_convert() {
   int rank=0;
 #ifdef TADAH_BUILD_MPI
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -465,7 +467,6 @@ TadahCLI::TadahCLI():
     "See documentation for details.\n";
 
   train->add_option("-c,--config", config_file, usage)
-    ->option_text("CONFIG_FILE")
     ->check(CLI::ExistingFile)
     ->required();
 
@@ -506,12 +507,10 @@ TadahCLI::TadahCLI():
     "Optional Config KEYS: FORCE, STRESS.\n"
     "See documentation for more details.\n";
   predict->add_option("-c,--config", config_file,usage)
-    ->check(CLI::ExistingFile)
-    ->option_text("CONFIG_FILE");
+    ->check(CLI::ExistingFile);
 
   predict->add_option("-d,--datasets", datasets,
                       "One or more datasets for prediction.")
-    ->option_text("DATASETS ...")
     ->excludes("-c")
     ->check(CLI::ExistingFile);
 
@@ -525,7 +524,6 @@ TadahCLI::TadahCLI():
   std::string pot_opt="-p,--potential";
   predict->add_option(pot_opt, pot_file,
                       "Trained model")
-    ->option_text("POT_FILE")
     ->check(CLI::ExistingFile)
     ->required();
 
@@ -555,7 +553,6 @@ TadahCLI::TadahCLI():
     "Specify a config file with initial model\n"
     "parameters and training datasets.";
   hpo->add_option("-c,--config", config_file, usage)
-    ->option_text("CONFIG_FILE")
     ->check(CLI::ExistingFile)
     ->required();
 
@@ -563,14 +560,12 @@ TadahCLI::TadahCLI():
     "Specify a target file with model targets and\n"
     "hyperparameter constraints.";
   hpo->add_option("-t,--target", target_file, usage)
-    ->option_text("TARGET_FILE")
     ->required()
     ->check(CLI::ExistingFile);
 
   usage = "Provide a validation file with datasets for\n"
     "testing hyperparameters.";
   hpo->add_option("-v,--validation", validation_file, usage)
-    ->option_text("VALIDATION_FILE")
     ->required()
     ->check(CLI::ExistingFile);
 
@@ -614,8 +609,7 @@ TadahCLI::TadahCLI():
 
   convert->add_option("-o,--outfile", out_file, usage)
     ->check(CLI::NonexistentPath)
-    ->required()
-    ->option_text("OUTFILE");
+    ->required();
 
   usage = 
     "Specify one or more dataset files to convert.\n"
@@ -623,16 +617,145 @@ TadahCLI::TadahCLI():
     ".md, .geom, .castep, OUTCAR, and vasprun.xml.";
 
   convert->add_option("-d,--datasets", datasets, usage)
-    ->option_text("DATASETS ...")
     ->required()
     //->excludes("-c")
     ->check(CLI::ExistingFile);
 
   convert->add_option("-p,--precision", outprec,
-                      "Set the number of decimal places for numerical output.")
-    ->option_text("OUTPREC");
+                      "Set the number of decimal places for numerical output.");
 
-  convert->add_flag("-V,--Verbose", "Enable verbose mode.");
+  convert->add_flag("-V,--Verbose", verbose, "Enable verbose mode.");
+
+  usage = "A set of tools for editing databases";
+
+  db = app.add_subcommand("db", "Perform operations on Tadah! datasets.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     FIND DUPLICATES                                                       */
+  /*---------------------------------------------------------------------------*/
+  usage = "Identify duplicate structures within the specified datasets. "
+    "If no output file is specified, it will provide a summary only.\n\n"
+    "The structures are considered the same if: \n"
+    "  1. number of atoms is the same.\n"
+    "  2. the cell vectors are within thersholf value.\n"
+    "  3. atomc coordiantes and element types are the same (order does not matter).\n\n"
+    "This tool is unable to distinguish between rotated or translated configurations.";
+
+  dups = db->add_subcommand("dups", usage);
+
+  usage = "Specify one or more Tadah! datasets to scan for duplicates. Must exist. If -c option is used, provide single out_file; otherwise number of out files must be equal to the number of provided datasets";
+  dups->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "Specify the output file(s) where pruned data will be saved. Path must not exist.";
+  dups->add_option("-o,--outfiles", out_files, usage)
+    ->check(CLI::NonexistentPath);
+
+  dups->add_option("-t,--threshold", val, "Threshold value used when comparing atomic positions and box vectors. Default: 1e-6");
+  dups->add_flag("-m,--merge", "Merge result into single dataset.")->needs("-o");
+  dups->add_flag("-V,--Verbose", verbose, "Enable verbose output for detailed processing information.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     JOIN                                                                  */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Merge multiple datasets into a unified dataset file.";
+  join = db->add_subcommand("join", usage);
+
+  usage = "Provide a list of Tadah! datasets to merge. Must exist.";
+  join->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "Specify the output file for combined data. Path must not exist.";
+  join->add_option("-o,--outfile", out_file, usage)
+    ->required()
+    ->check(CLI::NonexistentPath);
+
+  join->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     SPLIT                                                                 */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Divide the dataset into smaller parts using specified algorithms.";
+  split = db->add_subcommand("split", usage);
+
+  usage = "Specify the Tadah! dataset to split. Must exist.";
+  split->add_option("-d,--datasets", in_file, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "List the output files for the resulting datasets. Paths must not exist.";
+  split->add_option("-o,--outfiles", out_files, usage)
+    ->required()
+    ->check(CLI::NonexistentPath);
+
+  split->add_flag("-r, --randomize", "Randomize the order of entries before splitting.");
+
+  split_group = split->add_option_group("Split Algorithm", "Choose an algorithm for splitting the dataset.");
+  split_group->required();
+
+  split_group->add_flag("-e,--equal", "Split the dataset into equal-sized parts.");
+
+  usage= 
+    "Specify sizes for each part. Sum must not exceed total size.";
+  split_group->add_option("-s,--sizes", sizes, usage)
+    ->excludes("-e");
+
+  usage =
+    "Specify percentages for each part. Total must sum to 100%.";
+  split_group->add_option("-p,--percentage", sizes, usage)
+    ->excludes("-e")
+    ->excludes("-s");
+
+  split->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     SAMPLE                                                                */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Create a new dataset by sampling from existing datasets using specified algorithms.";
+  sample = db->add_subcommand("sample", usage);
+
+  usage = "Specify the Tadah! datasets to sample from. Must exist.";
+  sample->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "Specify the location for the output sample file.";
+  sample->add_option("-o,--outfile", out_file, usage)
+    ->required()
+    ->check(CLI::NonexistentPath);
+
+  sample_group = sample->add_option_group("Sampling Algorithm", "Select a sampling algorithm.");
+  sample_group->required();
+
+  sample_group->add_option("-e,--every", N, "Sample every N-th entry from the dataset.");
+
+  usage= 
+    "Randomly select N entries from the dataset.";
+  sample_group->add_option("-r,--random", N, usage)
+    ->excludes("-e");
+
+  sample->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     SUMMARY                                                               */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Generate a summary report of the specified dataset(s).";
+  summary = db->add_subcommand("summary", usage);
+
+  usage = "Specify one or more Tadah! datasets to summarize. Must exist.";
+  summary->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
 
   PeriodicTable::initialize();
 }
@@ -645,16 +768,273 @@ void TadahCLI::run(int argc, char** argv) {
   else if (app.count("--version")) {
     flag_version();
   }
-  else if (hpo->count_all()) {
-    subcommand_hpo(argc,argv);
+  else if (*hpo) {
+    sub_hpo(argc,argv);
   }
-  else if (train->count_all()) {
-    subcommand_train();
+  else if (*train) {
+    sub_train();
   }
-  else if (predict->count_all()) {
-    subcommand_predict();
+  else if (*predict) {
+    sub_predict();
   }
-  else if (convert->count_all()) {
-    subcommand_convert();
+  else if (*convert) {
+    sub_convert();
   }
+  else if (*db) {
+    if (*dups) {
+      subsub_dups();
+    }
+    else if (*join) {
+      subsub_join();
+    }
+    else if (*split) {
+      subsub_split();
+    }
+    else if (*summary) {
+      subsub_summary();
+    }
+    else if (*sample) {
+      subsub_sample();
+    }
+  }
+}
+
+void TadahCLI::subsub_join() {
+  CLI::Timer timer_tot{"Joining", CLI::Timer::Big};
+  StructureDB stdb;
+  for (const auto &s: datasets) {
+    stdb.add(s);
+  }
+  stdb.dump_to_file(out_file);
+  if (verbose) std::cout << stdb.summary();
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
+}
+
+// helper functions
+std::vector<size_t> divide_into_parts(size_t number, size_t n) {
+    std::vector<size_t> parts(n, number / n);
+    size_t remainder = number % n;
+    for (size_t i = 0; i < remainder; ++i) {
+        parts[i] += 1;
+    }
+    return parts;
+}
+
+std::vector<size_t> divide_by_percentage(size_t number, const std::vector<size_t>& percentages) {
+    std::vector<size_t> parts(percentages.size(), 0);
+    size_t totalAssigned = 0;
+
+    for (size_t i = 0; i < percentages.size(); ++i) {
+        parts[i] = number * percentages[i] / 100;
+        totalAssigned += parts[i];
+    }
+
+    size_t remainder = number - totalAssigned;
+
+    // Distribute remaining amount due to rounding
+    for (size_t i = 0; remainder > 0; ++i, --remainder) {
+        parts[i]++;
+    }
+
+    return parts;
+}
+
+void TadahCLI::subsub_split() {
+  CLI::Timer timer_tot{"Splitting", CLI::Timer::Big};
+  //target db split db1 -o db2 db3 db4 -e -- equal
+  //target db split db1 -o db2 db3 db4 -p --percentage 30 40 70 
+  //target db split db1 -o db2 db3 db4 -s --size 120 240 230
+  // -r randomize
+  StructureDB main_stdb;
+  main_stdb.add(in_file);
+
+  if (split->count("--equal")) {
+    sizes = divide_into_parts(main_stdb.size(),out_files.size());
+  }
+  else if (split->count("--sizes")) {
+    size_t total=0;
+    for (const auto &s: sizes) total+= s;
+    if (total>main_stdb.size()) throw std::runtime_error("Parts sizes > available total.");
+  }
+  else if (split->count("--percentage")) {
+    size_t total=0;
+    for (const auto &s: sizes) total+= s;
+    if (total!=100) throw std::runtime_error("Percentages do not add up to 100.");
+    sizes = divide_by_percentage(main_stdb.size(),sizes);
+  }
+
+  std::vector<StructureDB> stdbs(out_files.size());
+
+  std::vector<size_t> indices(main_stdb.size());
+  std::iota(indices.begin(), indices.end(), 0);
+
+  if (split->count("--randomize")) {
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(indices.begin(), indices.end(), g);
+
+  }
+
+  if (out_files.size()!=sizes.size()) throw std::runtime_error("size(percentages)!=size(out_files)");
+
+  size_t total = 0;
+  for (size_t i=0; i < stdbs.size(); ++i) {
+    StructureDB &stdb = stdbs[i];
+    for (size_t j=0; j < sizes[i]; ++j) {
+      stdb.add(main_stdb(indices[total++]));
+    }
+    stdb.dump_to_file(out_files[i]);
+       if (verbose) std::cout << stdb.summary();
+  }
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
+}
+void TadahCLI::subsub_summary() {
+  for (const auto &infile: datasets) {
+    StructureDB stdb;
+    stdb.add(infile);
+    std::cout << stdb.summary();
+  }
+}
+void TadahCLI::subsub_sample() {
+  CLI::Timer timer_tot{"Sampling", CLI::Timer::Big};
+  std::vector<StructureDB> in_stdbs(datasets.size());
+
+  size_t total=0;
+  for (size_t i=0; i < in_stdbs.size(); ++i) {
+    in_stdbs[i].add(datasets[i]);
+    total += in_stdbs[i].size();
+  }
+
+  if (N>total) throw std::runtime_error(
+    "Selected number is larger than total number of configurations availble.");
+
+  StructureDB out_stdb;
+  if (sample->count("--every")) {
+    size_t idx=0;
+    for (const auto &stdb: in_stdbs) {
+      for (size_t j=0; j < stdb.size(); ++j) {
+        if (!(idx++ % N)) out_stdb.add(stdb(j));
+      }
+    }
+  }
+  else if (sample->count("--random")) {
+
+    std::vector<std::pair<size_t, size_t>> indices(total);
+    size_t idx=0;
+    for (size_t i=0; i < in_stdbs.size(); ++i) {
+      for (size_t j=0; j < in_stdbs[i].size(); ++j) {
+        indices[idx++] = std::make_pair(i,j);
+      }
+    }
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(indices.begin(), indices.end(), g);
+    for (size_t idx=0; idx < N; ++idx) {
+      size_t i = indices[idx].first;
+      size_t j = indices[idx].second;
+      out_stdb.add(in_stdbs[i](j));
+    }
+  }
+
+  out_stdb.dump_to_file(out_file);
+  if (verbose) std::cout << out_stdb.summary();
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
+}
+void TadahCLI::subsub_dups() {
+  CLI::Timer timer_tot{"Duplicates", CLI::Timer::Big};
+  std::vector<StructureDB> in_stdbs(datasets.size());
+
+  if (!dups->count("--threshold")) {
+    val=1e-6;
+  }
+  if (dups->count("--merge") && out_files.size()!=1) {
+    throw std::runtime_error("-m option requires single outfile.");
+  }
+
+  size_t total=0;
+  sizes.resize(in_stdbs.size());
+  for (size_t i=0; i < in_stdbs.size(); ++i) {
+    in_stdbs[i].add(datasets[i]);
+    total += in_stdbs[i].size();
+    sizes[i] = in_stdbs[i].size();
+  }
+
+  std::vector<std::pair<size_t, size_t>> indices(total);
+  size_t idx=0;
+  for (size_t i=0; i < in_stdbs.size(); ++i) {
+    for (size_t j=0; j < in_stdbs[i].size(); ++j) {
+      indices[idx++] = std::make_pair(i,j);
+    }
+  }
+
+  std::vector<std::pair<size_t, size_t>> duplicates;
+  for (size_t i=0; i < indices.size(); ++i) {
+    for (size_t j=i+1; j < indices.size(); ++j) {
+      Structure &st_i = in_stdbs[indices[i].first](indices[i].second);
+      Structure &st_j = in_stdbs[indices[j].first](indices[j].second);
+      if (st_i.is_the_same(st_j,val)) {
+        duplicates.push_back(std::make_pair(i,j));
+      }
+    }
+  }
+
+  if (verbose || !dups->count("-o")) {
+    size_t d=0;
+    for (const auto &db : datasets) if (d<db.size()) d=db.size()+2;
+    size_t w = 10;
+    for (const auto &dup: duplicates) {
+      size_t i1 = dup.first;
+      size_t i2 = dup.second;
+      std::cout  << std::setw(d) << std::left
+        << datasets[indices[i1].first]
+        << " : #"
+        << std::setw(w)
+        << indices[i1].second 
+        << "  "
+        << std::setw(d)
+        << datasets[indices[i2].first]
+        << " : #"
+        << std::setw(w)
+        << indices[i2].second 
+        << std::endl;
+    }
+  }
+
+  // finaly prune...
+  for (size_t idx = duplicates.size(); idx-- > 0;) {
+    auto &dup = duplicates[idx];
+    size_t i1 = dup.first;  
+    in_stdbs[indices[i1].first].remove(indices[i1].second);
+  }
+
+  size_t new_total=0;
+  for (size_t i=0; i < in_stdbs.size(); ++i) {
+    new_total += in_stdbs[i].size();
+  }
+
+  if (dups->count("-o")) {
+    if (dups->count("-m")) {
+      StructureDB stdb;
+      for (const auto& _stdb : in_stdbs) stdb.add(_stdb);
+      stdb.dump_to_file(out_files[0]);
+    }
+    else {
+      std::cout << std::endl; 
+      for (size_t i=0; i<in_stdbs.size(); ++i) {
+        in_stdbs[i].dump_to_file(out_files[i]);
+        if (verbose) {
+          std::cout << datasets[i] << " --> " << out_files[i] << "   "
+            << sizes[i] << " --> " << in_stdbs[i].size()
+          << std::endl;
+        }
+      }
+    }
+  }
+
+  std::cout << std::endl; 
+  std::cout << "Total number of duplicates found: " << duplicates.size() <<std::endl; 
+  std::cout << "Total number of unique structures: " << new_total <<std::endl; 
+
+  //if (verbose) std::cout << out_stdb.summary();
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
 }

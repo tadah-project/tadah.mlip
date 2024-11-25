@@ -32,25 +32,44 @@ public:
   TadahCLI();
   void run(int argc, char** argv);
   CLI::App app;
+    CLI::App *train;
+    CLI::App *predict;
+    CLI::App *hpo;
+    CLI::App *convert;
+    CLI::App *db;
+      CLI::App *dups;
+      CLI::App *sample;
+        CLI::Option_group *sample_group;
+      CLI::App *join;
+      CLI::App *split;
+        CLI::Option_group *split_group;
+      CLI::App *summary;
+    CLI::App *desc;
+      CLI::App *calc;
 
-  // subcommands:
-  CLI::App *train;
-  CLI::App *predict;
-  CLI::App *hpo;
-  CLI::App *convert;
-
-  // PREDICTION
   std::string pot_file;
   std::string config_file;
-  std::string out_file;
   std::string validation_file;
   std::string target_file;
+  std::string in_file;
+  std::vector<std::string> in_files;
+  std::string out_file;
+  std::vector<std::string> out_files;
   std::vector<std::string> datasets;
+  std::vector<std::size_t> sizes;
   size_t outprec;
-  void subcommand_train();
-  void subcommand_predict();
-  void subcommand_hpo(int argc, char**argv);
-  void subcommand_convert();
+  size_t N;
+  double val;
+
+  void sub_train();
+  void sub_predict();
+  void sub_hpo(int argc, char**argv);
+  void sub_convert();
+  void subsub_dups();
+  void subsub_sample();
+  void subsub_join();
+  void subsub_split();
+  void subsub_summary();
   void set_verbose();
   bool is_verbose();
   void flag_version();

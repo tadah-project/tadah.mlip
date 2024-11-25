@@ -31,7 +31,7 @@
 #include <stdexcept>
 #include <chrono>
 
-void TadahCLI::subcommand_train() {
+void TadahCLI::sub_train() {
 #ifdef TADAH_BUILD_MPI
   int rank = 0;
   int ncpu = 1;
@@ -149,7 +149,7 @@ void TadahCLI::subcommand_train() {
 #endif
 }
 
-void TadahCLI::subcommand_predict() {
+void TadahCLI::sub_predict() {
   int rank=0;
 #ifdef TADAH_BUILD_MPI
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -258,7 +258,7 @@ or datasets in a command line");
     delete fb;
 }
 
-void TadahCLI::subcommand_hpo(
+void TadahCLI::sub_hpo(
   [[maybe_unused]]int argc,
   [[maybe_unused]]char**argv) {
 
@@ -358,7 +358,7 @@ void TadahCLI::subcommand_hpo(
 #endif
 
 }
-void TadahCLI::subcommand_convert() {
+void TadahCLI::sub_convert() {
   int rank=0;
 #ifdef TADAH_BUILD_MPI
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -623,26 +623,102 @@ TadahCLI::TadahCLI():
   convert->add_option("-p,--precision", outprec,
                       "Set the number of decimal places for numerical output.");
 
-  convert->add_flag("-V,--Verbose", "Enable verbose mode.");
+  convert->add_flag("-V,--Verbose", verbose, "Enable verbose mode.");
 
   usage = "A set of tools for editing databases";
 
   db = app.add_subcommand("db", usage);
 
+  /*---------------------------------------------------------------------------*/
+  /*     FIND DUPLICATES                                                       */
+  /*---------------------------------------------------------------------------*/
   usage = "Find duplicate structure.";
-  duplicates = db->add_subcommand("duplicates", usage);
+  dups = db->add_subcommand("dups", usage);
 
   usage = "One or more Tadah! datasets.";
-  duplicates->add_option("-d,--datasets", datasets, usage)
+  dups->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
 
   usage =
     "Specify the output file.\n"
     "The pruned data will be saved to this file.";
-  duplicates->add_option("-o,--outfile", out_file, usage)
+  dups->add_option("-o,--outfile", out_file, usage)
+    ->check(CLI::NonexistentPath);
+  dups->add_flag("-V,--Verbose", verbose, "Enable verbose mode.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     JOIN                                                                  */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Combine multiple datasets into\n"
+    "a single dataset file.";
+  join = db->add_subcommand("join", usage);
+
+  usage = "One or more Tadah! datasets.";
+  join->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "Specify the output file.\n"
+    "The combined data will be saved to this file.";
+  join->add_option("-o,--outfile", out_file, usage)
+    ->required()
     ->check(CLI::NonexistentPath);
 
+  join->add_flag("-V,--Verbose", verbose, "Enable verbose mode.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     SPLIT                                                                 */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Split dataset into smaller datasets.\n"
+    "using one of available algorithms.";
+  split = db->add_subcommand("split", usage);
+
+  usage = "Tadah! dataset to be splitted.";
+  split->add_option("-d,--datasets", in_file, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "Specify one or more output dataset files.\n";
+  split->add_option("-o,--outfiles", out_files, usage)
+    ->required()
+    ->check(CLI::NonexistentPath);
+
+  split->add_flag("-r, --randomize", "Randomize order");
+
+  split_group = split->add_option_group("Split Algorithm","Select on of the algorithms for splitting.");
+  split_group -> required();
+
+  split_group->add_flag("-e,--equal", "Split dataset into equal parts.");
+
+  usage= 
+    "Split based on sizes. sum(parts) <= total.\n";
+  split_group->add_option("-s,--sizes", sizes, usage)
+    ->excludes("-e");
+
+  usage =
+    "Split based on percentages. Must add up to 100.\n";
+  split_group->add_option("-p,--percentage", sizes, usage)
+    ->excludes("-e")
+    ->excludes("-s");
+
+  split->add_flag("-V,--Verbose", verbose, "Enable verbose mode.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     SUMMARY                                                               */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Print summary of a database(s).\n";
+  summary = db->add_subcommand("summary", usage);
+
+  usage = "One or more Tadah! datasets.";
+  summary->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
 
   PeriodicTable::initialize();
 }
@@ -656,19 +732,121 @@ void TadahCLI::run(int argc, char** argv) {
     flag_version();
   }
   else if (*hpo) {
-    subcommand_hpo(argc,argv);
+    sub_hpo(argc,argv);
   }
   else if (*train) {
-    subcommand_train();
+    sub_train();
   }
   else if (*predict) {
-    subcommand_predict();
+    sub_predict();
   }
   else if (*convert) {
-    subcommand_convert();
+    sub_convert();
   }
   else if (*db) {
-    if (*duplicates) {
+    if (*dups) {
     }
+    else if (*join) {
+      subsub_join();
+    }
+    else if (*split) {
+      subsub_split();
+    }
+    else if (*summary) {
+      subsub_summary();
+    }
+  }
+}
+
+void TadahCLI::subsub_join() {
+  StructureDB stdb;
+  for (const auto &s: datasets) {
+    stdb.add(s);
+  }
+  stdb.dump_to_file(out_file);
+  if (verbose) std::cout << stdb.summary();
+}
+
+// helper functions
+std::vector<size_t> divide_into_parts(size_t number, size_t n) {
+    std::vector<size_t> parts(n, number / n);
+    size_t remainder = number % n;
+    for (size_t i = 0; i < remainder; ++i) {
+        parts[i] += 1;
+    }
+    return parts;
+}
+
+std::vector<size_t> divide_by_percentage(size_t number, const std::vector<size_t>& percentages) {
+    std::vector<size_t> parts(percentages.size(), 0);
+    size_t totalAssigned = 0;
+
+    for (size_t i = 0; i < percentages.size(); ++i) {
+        parts[i] = number * percentages[i] / 100;
+        totalAssigned += parts[i];
+    }
+
+    size_t remainder = number - totalAssigned;
+
+    // Distribute remaining amount due to rounding
+    for (size_t i = 0; remainder > 0; ++i, --remainder) {
+        parts[i]++;
+    }
+
+    return parts;
+}
+
+void TadahCLI::subsub_split() {
+  //target db split db1 -o db2 db3 db4 -e -- equal
+  //target db split db1 -o db2 db3 db4 -p --percentage 30 40 70 
+  //target db split db1 -o db2 db3 db4 -s --size 120 240 230
+  // -r randomize
+  StructureDB main_stdb;
+  main_stdb.add(in_file);
+
+  if (split->count("--equal")) {
+    sizes = divide_into_parts(main_stdb.size(),out_files.size());
+  }
+  else if (split->count("--sizes")) {
+    size_t total=0;
+    for (const auto &s: sizes) total+= s;
+    if (total>main_stdb.size()) throw std::runtime_error("Parts sizes > available total.");
+  }
+  else if (split->count("--percentage")) {
+    size_t total=0;
+    for (const auto &s: sizes) total+= s;
+    if (total!=100) throw std::runtime_error("Percentages do not add up to 100.");
+    sizes = divide_by_percentage(main_stdb.size(),sizes);
+  }
+
+  std::vector<StructureDB> stdbs(out_files.size());
+
+  std::vector<size_t> indices(main_stdb.size());
+  std::iota(indices.begin(), indices.end(), 0);
+
+  if (split->count("--randomize")) {
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(indices.begin(), indices.end(), g);
+
+  }
+
+  if (out_files.size()!=sizes.size()) throw std::runtime_error("size(percentages)!=size(out_files)");
+
+  size_t total = 0;
+  for (size_t i=0; i < stdbs.size(); ++i) {
+    StructureDB &stdb = stdbs[i];
+    for (size_t j=0; j < sizes[i]; ++j) {
+      stdb.add(main_stdb(indices[total++]));
+    }
+    stdb.dump_to_file(out_files[i]);
+       if (verbose) std::cout << stdb.summary();
+  }
+}
+void TadahCLI::subsub_summary() {
+  for (const auto &infile: datasets) {
+    StructureDB stdb;
+    stdb.add(infile);
+    std::cout << stdb.summary();
   }
 }

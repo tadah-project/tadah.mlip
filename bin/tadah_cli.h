@@ -38,7 +38,8 @@ public:
     CLI::App *convert;  //
     CLI::App *db; //
       CLI::App *dups;
-      CLI::App *sample;
+      CLI::App *sample; //
+        CLI::Option_group *sample_group; //
       CLI::App *join; //
       CLI::App *split;  //
         CLI::Option_group *split_group; //
@@ -57,6 +58,7 @@ public:
   std::vector<std::string> datasets;
   std::vector<std::size_t> sizes;
   size_t outprec;
+  size_t N;
 
   void sub_train();
   void sub_predict();

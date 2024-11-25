@@ -38,6 +38,8 @@ public:
   CLI::App *predict;
   CLI::App *hpo;
   CLI::App *convert;
+  CLI::App *db;
+  CLI::App *duplicates; // sub db
 
   // PREDICTION
   std::string pot_file;

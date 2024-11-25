@@ -1,6 +1,7 @@
 #include "tadah_cli.h"
 #include "CLI/CLI.hpp"
 #include "tadah/mlip/dataset_readers/dataset_reader.h"
+#include <iterator>
 #include <string>
 #include <tadah/core/core_types.h>
 #include <tadah/core/config.h>
@@ -465,7 +466,6 @@ TadahCLI::TadahCLI():
     "See documentation for details.\n";
 
   train->add_option("-c,--config", config_file, usage)
-    ->option_text("CONFIG_FILE")
     ->check(CLI::ExistingFile)
     ->required();
 
@@ -506,12 +506,10 @@ TadahCLI::TadahCLI():
     "Optional Config KEYS: FORCE, STRESS.\n"
     "See documentation for more details.\n";
   predict->add_option("-c,--config", config_file,usage)
-    ->check(CLI::ExistingFile)
-    ->option_text("CONFIG_FILE");
+    ->check(CLI::ExistingFile);
 
   predict->add_option("-d,--datasets", datasets,
                       "One or more datasets for prediction.")
-    ->option_text("DATASETS ...")
     ->excludes("-c")
     ->check(CLI::ExistingFile);
 
@@ -525,7 +523,6 @@ TadahCLI::TadahCLI():
   std::string pot_opt="-p,--potential";
   predict->add_option(pot_opt, pot_file,
                       "Trained model")
-    ->option_text("POT_FILE")
     ->check(CLI::ExistingFile)
     ->required();
 
@@ -555,7 +552,6 @@ TadahCLI::TadahCLI():
     "Specify a config file with initial model\n"
     "parameters and training datasets.";
   hpo->add_option("-c,--config", config_file, usage)
-    ->option_text("CONFIG_FILE")
     ->check(CLI::ExistingFile)
     ->required();
 
@@ -563,14 +559,12 @@ TadahCLI::TadahCLI():
     "Specify a target file with model targets and\n"
     "hyperparameter constraints.";
   hpo->add_option("-t,--target", target_file, usage)
-    ->option_text("TARGET_FILE")
     ->required()
     ->check(CLI::ExistingFile);
 
   usage = "Provide a validation file with datasets for\n"
     "testing hyperparameters.";
   hpo->add_option("-v,--validation", validation_file, usage)
-    ->option_text("VALIDATION_FILE")
     ->required()
     ->check(CLI::ExistingFile);
 
@@ -614,8 +608,7 @@ TadahCLI::TadahCLI():
 
   convert->add_option("-o,--outfile", out_file, usage)
     ->check(CLI::NonexistentPath)
-    ->required()
-    ->option_text("OUTFILE");
+    ->required();
 
   usage = 
     "Specify one or more dataset files to convert.\n"
@@ -623,16 +616,33 @@ TadahCLI::TadahCLI():
     ".md, .geom, .castep, OUTCAR, and vasprun.xml.";
 
   convert->add_option("-d,--datasets", datasets, usage)
-    ->option_text("DATASETS ...")
     ->required()
     //->excludes("-c")
     ->check(CLI::ExistingFile);
 
   convert->add_option("-p,--precision", outprec,
-                      "Set the number of decimal places for numerical output.")
-    ->option_text("OUTPREC");
+                      "Set the number of decimal places for numerical output.");
 
   convert->add_flag("-V,--Verbose", "Enable verbose mode.");
+
+  usage = "A set of tools for editing databases";
+
+  db = app.add_subcommand("db", usage);
+
+  usage = "Find duplicate structure.";
+  duplicates = db->add_subcommand("duplicates", usage);
+
+  usage = "One or more Tadah! datasets.";
+  duplicates->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "Specify the output file.\n"
+    "The pruned data will be saved to this file.";
+  duplicates->add_option("-o,--outfile", out_file, usage)
+    ->check(CLI::NonexistentPath);
+
 
   PeriodicTable::initialize();
 }
@@ -645,16 +655,20 @@ void TadahCLI::run(int argc, char** argv) {
   else if (app.count("--version")) {
     flag_version();
   }
-  else if (hpo->count_all()) {
+  else if (*hpo) {
     subcommand_hpo(argc,argv);
   }
-  else if (train->count_all()) {
+  else if (*train) {
     subcommand_train();
   }
-  else if (predict->count_all()) {
+  else if (*predict) {
     subcommand_predict();
   }
-  else if (convert->count_all()) {
+  else if (*convert) {
     subcommand_convert();
+  }
+  else if (*db) {
+    if (*duplicates) {
+    }
   }
 }

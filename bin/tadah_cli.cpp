@@ -235,29 +235,41 @@ TadahCLI::TadahCLI():
   /*---------------------------------------------------------------------------*/
   /*     DB DUPLICATES                                                         */
   /*---------------------------------------------------------------------------*/
-  usage = "Identify duplicate structures within the specified datasets. "
-    "If no output file is specified, it will provide a summary only.\n\n"
-    "The structures are considered the same if: \n"
-    "  1. number of atoms is the same.\n"
-    "  2. the cell vectors are within thersholf value.\n"
-    "  3. atomc coordiantes and element types are the same (order does not matter).\n\n"
-    "This tool is unable to distinguish between rotated or translated configurations.";
+  usage = 
+    "Identify duplicate structures within specified datasets. "
+    "If no output file is specified, a summary is provided only.\n\n"
+    "Structures are considered the same if:\n"
+    "  1. Number of atoms matches.\n"
+    "  2. Cell vectors are within a threshold.\n"
+    "  3. Atomic coordinates and element types are identical (order-independent).\n\n"
+    "Note: This tool cannot distinguish between rotated or translated configurations.";
 
   dups = db->add_subcommand("dups", usage);
 
-  usage = "Specify one or more Tadah! datasets to scan for duplicates. Must exist. If -c option is used, provide single out_file; otherwise number of out files must be equal to the number of provided datasets";
+  usage = 
+    "Specify one or more Tadah! datasets to scan for duplicates. "
+    "If using -c, provide a single output file. Otherwise, "
+    "the number of output files must match the datasets.";
+
   dups->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
 
   usage =
-    "Specify the output file(s) where pruned data will be saved. Path must not exist.";
+    "Specify the output file(s) for pruned data. Path must not exist.";
+
   dups->add_option("-o,--outfiles", out_files, usage)
     ->check(CLI::NonexistentPath);
 
-  dups->add_option("-t,--threshold", val, "Threshold value used when comparing atomic positions and box vectors. Default: 1e-6");
-  dups->add_flag("-m,--merge", "Merge result into single dataset.")->needs("-o");
-  dups->add_flag("-V,--Verbose", verbose, "Enable verbose output for detailed processing information.");
+  dups->add_option("-t,--threshold", val, 
+                   "Threshold value for comparing atomic positions and box vectors. Default: 1e-6");
+
+  dups->add_flag("-m,--merge", 
+                 "Merge results into a single dataset.")
+    ->needs("-o");
+
+  dups->add_flag("-V,--verbose", verbose, 
+                 "Enable verbose output for detailed information.");
 
   /*---------------------------------------------------------------------------*/
   /*     DB JOIN                                                               */
@@ -266,7 +278,7 @@ TadahCLI::TadahCLI():
     "Merge multiple datasets into a unified dataset file.";
   join = db->add_subcommand("join", usage);
 
-  usage = "Provide a list of Tadah! datasets to merge. Must exist.";
+  usage = "Provide a list of Tadah! datasets to merge.";
   join->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
@@ -286,7 +298,7 @@ TadahCLI::TadahCLI():
     "Divide the dataset into smaller parts using specified algorithms.";
   split = db->add_subcommand("split", usage);
 
-  usage = "Specify the Tadah! dataset to split. Must exist.";
+  usage = "Specify the Tadah! dataset to split.";
   split->add_option("-d,--datasets", in_file, usage)
     ->required()
     ->check(CLI::ExistingFile);
@@ -324,7 +336,7 @@ TadahCLI::TadahCLI():
     "Create a new dataset by sampling from existing datasets using specified algorithms.";
   sample = db->add_subcommand("sample", usage);
 
-  usage = "Specify the Tadah! datasets to sample from. Must exist.";
+  usage = "Specify the Tadah! datasets to sample from.";
   sample->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
@@ -345,16 +357,19 @@ TadahCLI::TadahCLI():
   sample_group->add_option("-r,--random", N, usage)
     ->excludes("-e");
 
-  sample_group->add_option("-i,--indices", indices, 
-                           "(pseudo) Sample using user specified indices.\n"
-                           "Accepted tokens: single number, range\n"
-                           "(START-STOP), range with step\n"
-                           "(START-STOP:STEP).\n"
-                           "Tokens are seprated by comma.\n"
-                           "Duplicate tokens are removed.\n"
-                           "Indexing starts from 1;\n"
-                           "e.g., 1,2,4,4-6,10-14:2\n"
-                           "expands to: 1,2,4,5,6,10,12,14")
+  sample_group->add_option("-i,--indices",
+                           indices,
+                           "Sample using specified indices.\n"
+                           "Supports:\n"
+                           "- Single numbers\n"
+                           "- Ranges (START-STOP)\n"
+                           "- Ranges with steps\n"
+                           "  (START-STOP:STEP)\n"
+                           "Separate tokens with commas.\n"
+                           "Duplicates are removed.\n"
+                           "Indexing starts at 1.\n"
+                           "e.g., 1,2,4,4-6,10-14:2 expands to:\n"
+                           "1,2,4,5,6,10,12,14.")
     ->excludes("-r")
     ->excludes("-e");
 
@@ -367,7 +382,7 @@ TadahCLI::TadahCLI():
     "Generate a summary report of the specified dataset(s).";
   summary = db->add_subcommand("summary", usage);
 
-  usage = "Specify one or more Tadah! datasets to summarize. Must exist.";
+  usage = "Specify one or more Tadah! datasets to summarize.";
   summary->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
@@ -386,34 +401,36 @@ TadahCLI::TadahCLI():
   /*     DESC CALC                                                             */
   /*---------------------------------------------------------------------------*/
   usage = 
-    "Calculate descriptors given potential file for specified dataset(s).";
+    "Calculate descriptors using a potential "
+    "file for specified datasets.";
 
   dcalc = desc->add_subcommand("dcalc", usage);
 
-  usage = "Specify the Tadah! datasets to be used for descriptor calculation.";
+  usage =
+    "Specify the Tadah! datasets for "
+    "descriptor calculation.";
   dcalc->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
 
   usage =
-    "Specify the location for the output file(s).";
+    "Specify the output file location.";
   dcalc->add_option("-o,--outfile", out_files, usage)
     ->check(CLI::NonexistentPath);
 
-  dcalc->add_option("-p,--potential", pot_file, "Trained model")
+  dcalc->add_option("-p,--potential", pot_file, "Trained model file")
     ->check(CLI::ExistingFile)
     ->required();
 
-  dcalc->add_option("-i,--indices", indices, 
-                    "Structure numbers to calculate.\n" 
-                    "Accepted tokens: single number,\n"
-                    "range (START-STOP), range with step\n"
-                    "(START-STOP:STEP).\n"
-                    "Tokens are seprated by comma.\n"
-                    "Duplicate tokens are removed.\n"
-                    "Indexing starts from 1;\n"
-                    "e.g., 1,2,4,4-6,10-14:2\n"
-                    "expands to: 1,2,4,5,6,10,12,14");
+  dcalc->add_option("-i,--indices", indices,
+                    "Specify structure numbers to calculate:\n"
+                    "- Single numbers\n"
+                    "- Ranges (START-STOP)\n"
+                    "- Ranges with steps (START-STOP:STEP)\n"
+                    "Separate tokens with commas.\n"
+                    "Removes duplicates. Starts at 1.\n"
+                    "e.g., 1,2,4,4-6,10-14:2 expands to:\n"
+                    "1,2,4,5,6,10,12,14.");
 
   dcalc->add_flag("-m,--merge", "Merge result into single output file.")->needs("-o");
   dcalc->add_flag("-F,--Force", "Calculate force descriptors.");

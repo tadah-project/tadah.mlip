@@ -22,6 +22,7 @@ Welcome to Tadah!'s documentation!
    :caption: Usage
 
    quickstart.rst
+   cli.rst
    tutorials.rst
    examples.rst
    config/config_keys.rst

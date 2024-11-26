@@ -50,9 +50,9 @@ Basis Functions
 BF_Linear
 ~~~~~~~~~
 
-.. doxygenclass:: BF_Linear
+.. doxygenstruct:: BF_Linear
 
 BF_Polynomial2
 ~~~~~~~~~~~~~~
 
-.. doxygenclass:: BF_Polynomial2
+.. doxygenstruct:: BF_Polynomial2

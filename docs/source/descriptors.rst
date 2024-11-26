@@ -60,6 +60,11 @@ DM_mEAD
 
 .. doxygenclass:: DM_mEAD
 
+DM_mEAD functions
+~~~~~~~~~~~~~~~~~
+
+.. doxygenclass:: F_RLR
+
 DM_Dummy
 ........
 

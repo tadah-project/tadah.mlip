@@ -1,36 +1,485 @@
 #include "tadah_cli.h"
-#include "CLI/CLI.hpp"
-#include "tadah/mlip/dataset_readers/dataset_reader.h"
-#include <iterator>
-#include <string>
-#include <tadah/core/core_types.h>
+
 #include <tadah/core/config.h>
+#include <tadah/core/core_types.h>
 #include <tadah/core/element.h>
 #include <tadah/core/periodic_table.h>
-#include <tadah/models/dc_selector.h>
-#include <tadah/mlip/output/output.h>
-#include <tadah/mlip/descriptors_calc.h>
-#include <tadah/mlip/design_matrix/functions/dm_function_base.h>
-#include <tadah/mlip/models/m_tadah_base.h>
-#include <tadah/mlip/structure_db.h>
-#include <tadah/mlip/nn_finder.h>
+#include <tadah/core/utils.h>
+
 #include <tadah/mlip/analytics/analytics.h>
-#include <tadah/mlip/version.h>
-#include <tadah/mlip/design_matrix/design_matrix.h>
-#include <tadah/mlip/trainer.h>
 #include <tadah/mlip/dataset_readers/dataset_reader_selector.h>
+#include <tadah/mlip/design_matrix/design_matrix.h>
+#include <tadah/mlip/design_matrix/functions/dm_function_base.h>
+#include <tadah/mlip/descriptors_calc.h>
+#include <tadah/mlip/models/m_tadah_base.h>
+#include <tadah/mlip/nn_finder.h>
+#include <tadah/mlip/output/output.h>
+#include <tadah/mlip/structure_db.h>
+#include <tadah/mlip/trainer.h>
+#include <tadah/mlip/version.h>
+
+#include <tadah/models/dc_selector.h>
 
 #include <CLI/Timer.hpp>
-#include <utility>
 
 #ifdef TADAH_ENABLE_HPO
 #include <tadah/hpo/hpo.h>
 #include <tadah/hpo/hpo_worker.h>
 #endif
 
+#include <algorithm>
 #include <iostream>
+#include <set>
+#include <sstream>
 #include <stdexcept>
-#include <chrono>
+#include <string>
+#include <utility>
+#include <vector>
+
+TadahCLI::TadahCLI():
+  app(CLI::App{logo})
+{
+  PeriodicTable::initialize();
+
+  std::string usage;
+
+  app.add_flag("-v, --version",
+               "Print version number and exit");
+
+  /*---------------------------------------------------------------------------*/
+  /*     Training                                                              */
+  usage = "Train a model using a configuration file.\n";
+
+  train = app.add_subcommand("train", usage);
+
+  usage = 
+    "Output Files:\n"
+    "pot.tadah\n\n"
+    "The train command requires a config file. It results in a pot.tadah file,\n"
+    "a trained interatomic potential. This file can be used with LAMMPS for\n"
+    "molecular dynamics using `pair_style tadah`. The model trains on energies\n"
+    "by default; training with forces and stresses is optional.\n"
+    "See documentation for details.\n\n"
+    "   Example: tadah train -c config.tadah";
+  train->usage(usage);
+
+  usage = 
+    "Specify the configuration file with model\n"
+    "parameters and datasets.\n"
+    "Contains user-defined KEY-VALUE pairs.\n"
+    "See documentation for details.\n";
+
+  train->add_option("-c,--config", config_file, usage)
+    ->check(CLI::ExistingFile)
+    ->required();
+
+  train->add_flag("-F,--Force", "Include forces in training.");
+  train->add_flag("-S,--Stress", "Include stresses in training.");
+  train->add_flag("-V,--Verbose", "Enable verbose output.");
+  train->add_flag("-u,--uncertainty", "Output uncertainty on weights.");
+  /*---------------------------------------------------------------------------*/
+
+
+  /*---------------------------------------------------------------------------*/
+  /*     Prediction                                                            */
+  /*---------------------------------------------------------------------------*/
+  usage =
+    "Predict using an already trained model.\n"
+    "Energy per atom is always calculated.\n"
+    "Calculating forces and stresses is optional.\n";
+
+  predict = app.add_subcommand("predict", usage);
+
+  usage =
+    "Output Files:\n"
+    "Energies are written to `energy.pred`. Forces and stresses, if calculated,\n"
+    "are written to `forces.pred` and `stress.pred` files, respectively\n\n"
+    "Option 1:\n"
+    "Use a config file with the DBFILE key. Include FORCE and STRESS keys as needed.\n"
+    "Note that --Force and --Stress flags override config keys.\n\n"
+    "   Example: tadah predict -c config.tadah -p pot.tadah\n\n"
+    "Option 2:\n"
+    "Provide datasets and flags via command line.\n\n"
+    "   Example: tadah predict -p pot.tadah -FS -d db1.tadah";
+
+  predict->usage(usage);
+
+  usage=
+    "A config file containing prediction dataset(s).\n"
+    "Required Config KEYS: DBFILE.\n"
+    "Optional Config KEYS: FORCE, STRESS.\n"
+    "See documentation for more details.\n";
+  predict->add_option("-c,--config", config_file,usage)
+    ->check(CLI::ExistingFile);
+
+  predict->add_option("-d,--datasets", datasets,
+                      "One or more datasets for prediction.")
+    ->excludes("-c")
+    ->check(CLI::ExistingFile);
+
+  predict->add_flag("-F,--Force", "Predict forces.");
+  predict->add_flag("-S,--Stress", "Predict stresses.");
+  predict->add_flag("-V,--Verbose", "Verbose mode on.");
+  predict->add_flag("-e,--error", "Predict model error.");
+  predict->add_flag("-a,--analytics",
+                    "Compare predicted values to those in\nthe original dataset.");
+
+  predict->add_option("-p,--potential", pot_file,
+                      "Trained model")
+    ->check(CLI::ExistingFile)
+    ->required();
+
+  /*---------------------------------------------------------------------------*/
+  /*     Hyperparameter Optimizer                                              */
+  /*---------------------------------------------------------------------------*/
+  usage = ""; // reset previous value b/c of below if
+#ifndef TADAH_ENABLE_HPO
+  usage = "(UNAVAILABLE)\n";
+#endif
+
+  usage +=
+    "Optimize the model architecture and find\n"
+    "the best hyperparameters by optimizing\n"
+    "a custom loss function.\n";
+  hpo = app.add_subcommand("hpo", usage);
+
+  usage =
+    "Provide a config file with initial model parameters and training datasets.\n"
+    "Parameters will be optimized within constraints defined in the target file.\n"
+    "The energies predicted will be validated again the validation file.\n"
+    "See documentation for more details.\n\n"
+    "   Example: tadah hpo -c config.tadah -t targets -v valid.tadah";
+  hpo->usage(usage);
+
+  usage = 
+    "Specify a config file with initial model\n"
+    "parameters and training datasets.";
+  hpo->add_option("-c,--config", config_file, usage)
+    ->check(CLI::ExistingFile)
+    ->required();
+
+  usage = 
+    "Specify a target file with model targets and\n"
+    "hyperparameter constraints.";
+  hpo->add_option("-t,--target", target_file, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage = "Provide a validation file with datasets for\n"
+    "testing hyperparameters.";
+  hpo->add_option("-v,--validation", validation_file, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  hpo->add_flag("-F,--Force", "Train with forces.");
+  hpo->add_flag("-S,--Stress", "Train with stresses.");
+  hpo->add_flag("-V,--Verbose", "Enable verbose mode.");
+  //hpo->add_flag("-u,--uncertainty",
+  //        "Dump uncertainty on weights."); // TODO check this
+
+
+  /*---------------------------------------------------------------------------*/
+  /*    DB CONVERSION                                                          */
+  /*---------------------------------------------------------------------------*/
+
+  usage = 
+    "Converts and processes computational\n"
+    "model datasets into the Tadah!\n"
+    "database format.\n"; 
+
+  convert = app.add_subcommand("convert", usage);
+
+  usage =
+    "This tool extracts necessary information from DFT\n"
+    "calculations, such as atomic positions, chemical elements, forces,\n"
+    "potential energy, and the virial stress tensor if available.\n\n"
+    "Input Files:\n"
+    "Currently supported input formats include:\n"
+    "  - VASP: OUTCAR and vasprun.xml\n"
+    "  - CASTEP: .castep, .md, and .geom files\n\n"
+    "Example Usage:\n"
+    "  tadah convert -d run1.outcar -o single_output.tadah\n"
+    "  tadah convert -d run1.md run2.geom run3.castep -o mydata.tadah\n\n"
+    "Output Files:\n"
+    "  The converted dataset will be in a format suitable for use with Tadah!.\n";
+
+  convert->usage(usage);
+
+  usage =
+    "Specify the output file.\n"
+    "The converted data will be saved to this file.";
+
+  convert->add_option("-o,--outfile", out_file, usage)
+    ->check(CLI::NonexistentPath)
+    ->required();
+
+  usage = 
+    "Specify one or more dataset files to convert.\n"
+    "Supported formats include:\n"
+    ".md, .geom, .castep, OUTCAR, and vasprun.xml.";
+
+  convert->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    //->excludes("-c")
+    ->check(CLI::ExistingFile);
+
+  convert->add_option("-p,--precision", outprec,
+                      "Set the number of decimal places for numerical output.");
+
+  convert->add_flag("-V,--Verbose", verbose, "Enable verbose mode.");
+
+  usage = "A set of tools for editing databases";
+
+  db = app.add_subcommand("db", "Perform operations on Tadah! datasets.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     DB DUPLICATES                                                         */
+  /*---------------------------------------------------------------------------*/
+  usage = "Identify duplicate structures within the specified datasets. "
+    "If no output file is specified, it will provide a summary only.\n\n"
+    "The structures are considered the same if: \n"
+    "  1. number of atoms is the same.\n"
+    "  2. the cell vectors are within thersholf value.\n"
+    "  3. atomc coordiantes and element types are the same (order does not matter).\n\n"
+    "This tool is unable to distinguish between rotated or translated configurations.";
+
+  dups = db->add_subcommand("dups", usage);
+
+  usage = "Specify one or more Tadah! datasets to scan for duplicates. Must exist. If -c option is used, provide single out_file; otherwise number of out files must be equal to the number of provided datasets";
+  dups->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "Specify the output file(s) where pruned data will be saved. Path must not exist.";
+  dups->add_option("-o,--outfiles", out_files, usage)
+    ->check(CLI::NonexistentPath);
+
+  dups->add_option("-t,--threshold", val, "Threshold value used when comparing atomic positions and box vectors. Default: 1e-6");
+  dups->add_flag("-m,--merge", "Merge result into single dataset.")->needs("-o");
+  dups->add_flag("-V,--Verbose", verbose, "Enable verbose output for detailed processing information.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     DB JOIN                                                               */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Merge multiple datasets into a unified dataset file.";
+  join = db->add_subcommand("join", usage);
+
+  usage = "Provide a list of Tadah! datasets to merge. Must exist.";
+  join->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "Specify the output file for combined data. Path must not exist.";
+  join->add_option("-o,--outfile", out_file, usage)
+    ->required()
+    ->check(CLI::NonexistentPath);
+
+  join->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     DB SPLIT                                                              */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Divide the dataset into smaller parts using specified algorithms.";
+  split = db->add_subcommand("split", usage);
+
+  usage = "Specify the Tadah! dataset to split. Must exist.";
+  split->add_option("-d,--datasets", in_file, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "List the output files for the resulting datasets. Paths must not exist.";
+  split->add_option("-o,--outfiles", out_files, usage)
+    ->required()
+    ->check(CLI::NonexistentPath);
+
+  split->add_flag("-r, --randomize", "Randomize the order of entries before splitting.");
+
+  split_group = split->add_option_group("Split Algorithm", "Choose an algorithm for splitting the dataset.");
+  split_group->required();
+
+  split_group->add_flag("-e,--equal", "Split the dataset into equal-sized parts.");
+
+  usage= 
+    "Specify sizes for each part. Sum must not exceed total size.";
+  split_group->add_option("-s,--sizes", sizes, usage)
+    ->excludes("-e");
+
+  usage =
+    "Specify percentages for each part. Total must sum to 100%.";
+  split_group->add_option("-p,--percentage", sizes, usage)
+    ->excludes("-e")
+    ->excludes("-s");
+
+  split->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     DB SAMPLE                                                             */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Create a new dataset by sampling from existing datasets using specified algorithms.";
+  sample = db->add_subcommand("sample", usage);
+
+  usage = "Specify the Tadah! datasets to sample from. Must exist.";
+  sample->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "Specify the location for the output sample file.";
+  sample->add_option("-o,--outfile", out_file, usage)
+    ->required()
+    ->check(CLI::NonexistentPath);
+
+  sample_group = sample->add_option_group("Sampling Algorithm", "Select a sampling algorithm.");
+  sample_group->required();
+
+  sample_group->add_option("-e,--every", N, "Sample every N-th entry from the dataset.");
+
+  usage= 
+    "Randomly select N entries from the dataset.";
+  sample_group->add_option("-r,--random", N, usage)
+    ->excludes("-e");
+
+  sample_group->add_option("-i,--indices", indices, 
+                           "(pseudo) Sample using user specified indices.\n"
+                           "Accepted tokens: single number, range\n"
+                           "(START-STOP), range with step\n"
+                           "(START-STOP:STEP).\n"
+                           "Tokens are seprated by comma.\n"
+                           "Duplicate tokens are removed.\n"
+                           "Indexing starts from 1;\n"
+                           "e.g., 1,2,4,4-6,10-14:2\n"
+                           "expands to: 1,2,4,5,6,10,12,14")
+    ->excludes("-r")
+    ->excludes("-e");
+
+  sample->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+
+  /*---------------------------------------------------------------------------*/
+  /*     DB SUMMARY                                                            */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Generate a summary report of the specified dataset(s).";
+  summary = db->add_subcommand("summary", usage);
+
+  usage = "Specify one or more Tadah! datasets to summarize. Must exist.";
+  summary->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+
+  /*---------------------------------------------------------------------------*/
+  /*     DESCRIPTORS                                                           */
+  /*---------------------------------------------------------------------------*/
+
+  usage = 
+    "Descriptors tool.\n";
+
+  desc = app.add_subcommand("desc", usage);
+
+  /*---------------------------------------------------------------------------*/
+  /*     DESC CALC                                                             */
+  /*---------------------------------------------------------------------------*/
+  usage = 
+    "Calculate descriptors given potential file for specified dataset(s).";
+
+  dcalc = desc->add_subcommand("dcalc", usage);
+
+  usage = "Specify the Tadah! datasets to be used for descriptor calculation.";
+  dcalc->add_option("-d,--datasets", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage =
+    "Specify the location for the output file(s).";
+  dcalc->add_option("-o,--outfile", out_files, usage)
+    ->check(CLI::NonexistentPath);
+
+  dcalc->add_option("-p,--potential", pot_file, "Trained model")
+    ->check(CLI::ExistingFile)
+    ->required();
+
+  dcalc->add_option("-i,--indices", indices, 
+                    "Structure numbers to calculate.\n" 
+                    "Accepted tokens: single number,\n"
+                    "range (START-STOP), range with step\n"
+                    "(START-STOP:STEP).\n"
+                    "Tokens are seprated by comma.\n"
+                    "Duplicate tokens are removed.\n"
+                    "Indexing starts from 1;\n"
+                    "e.g., 1,2,4,4-6,10-14:2\n"
+                    "expands to: 1,2,4,5,6,10,12,14");
+
+  dcalc->add_flag("-m,--merge", "Merge result into single output file.")->needs("-o");
+  dcalc->add_flag("-F,--Force", "Calculate force descriptors.");
+  dcalc->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+}
+
+void TadahCLI::run(int argc, char** argv) {
+
+  if(app.count_all()==1) {
+    std::cout << "Type: `tadah -h` for help" << std::endl;
+  }
+  else if (app.count("--version")) {
+    flag_version();
+  }
+  else if (*hpo) {
+    sub_hpo(argc,argv);
+  }
+  else if (*train) {
+    sub_train();
+  }
+  else if (*predict) {
+    sub_predict();
+  }
+  else if (*convert) {
+    sub_convert();
+  }
+  else if (*db) {
+    if (*dups) {
+      subsub_dups();
+    }
+    else if (*join) {
+      subsub_join();
+    }
+    else if (*split) {
+      subsub_split();
+    }
+    else if (*summary) {
+      subsub_summary();
+    }
+    else if (*sample) {
+      subsub_sample();
+    }
+  }
+  else if (*desc) {
+    if (*dcalc) {
+      subsub_dcalc();
+    }
+  }
+}
+
+bool TadahCLI::is_verbose() {
+  return verbose;
+}
+
+void TadahCLI::set_verbose() {
+  verbose=true;
+}
+
+void TadahCLI::flag_version() {
+  int v_world = TADAH_WORLD_VERSION;
+  int v_major = TADAH_MAJOR_VERSION;
+  int v_minor = TADAH_MINOR_VERSION;
+  std::string v= "tadah version " + std::to_string(v_world)
+    + "." + std::to_string(v_major) + "." + std::to_string(v_minor);
+  std::cout << v << std::endl;
+}
 
 void TadahCLI::sub_train() {
 #ifdef TADAH_BUILD_MPI
@@ -359,6 +808,7 @@ void TadahCLI::sub_hpo(
 #endif
 
 }
+
 void TadahCLI::sub_convert() {
   int rank=0;
 #ifdef TADAH_BUILD_MPI
@@ -412,393 +862,6 @@ void TadahCLI::sub_convert() {
 
 }
 
-bool TadahCLI::is_verbose() {
-  return verbose;
-}
-void TadahCLI::set_verbose() {
-  verbose=true;
-}
-void TadahCLI::flag_version() {
-  int v_world = TADAH_WORLD_VERSION;
-  int v_major = TADAH_MAJOR_VERSION;
-  int v_minor = TADAH_MINOR_VERSION;
-  std::string v= "tadah version " + std::to_string(v_world)
-    + "." + std::to_string(v_major) + "." + std::to_string(v_minor);
-  std::cout << v << std::endl;
-}
-std::vector<fs::path> TadahCLI::read_files(std::string path) {
-  std::vector<fs::path> s;
-  for (const auto & entry : fs::directory_iterator(path))
-  if(fs::is_regular_file(entry))
-    s.push_back(fs::absolute(entry.path()));
-  return s;
-}
-
-TadahCLI::TadahCLI():
-  app(CLI::App{logo})
-{
-
-  std::string usage;
-
-  app.add_flag("-v, --version",
-               "Print version number and exit");
-
-  /*---------------------------------------------------------------------------*/
-  /*     Training                                                              */
-  usage = "Train a model using a configuration file.\n";
-
-  train = app.add_subcommand("train", usage);
-
-  usage = 
-    "Output Files:\n"
-    "pot.tadah\n\n"
-    "The train command requires a config file. It results in a pot.tadah file,\n"
-    "a trained interatomic potential. This file can be used with LAMMPS for\n"
-    "molecular dynamics using `pair_style tadah`. The model trains on energies\n"
-    "by default; training with forces and stresses is optional.\n"
-    "See documentation for details.\n\n"
-    "   Example: tadah train -c config.tadah";
-  train->usage(usage);
-
-  usage = 
-    "Specify the configuration file with model\n"
-    "parameters and datasets.\n"
-    "Contains user-defined KEY-VALUE pairs.\n"
-    "See documentation for details.\n";
-
-  train->add_option("-c,--config", config_file, usage)
-    ->check(CLI::ExistingFile)
-    ->required();
-
-  train->add_flag("-F,--Force", "Include forces in training.");
-  train->add_flag("-S,--Stress", "Include stresses in training.");
-  train->add_flag("-V,--Verbose", "Enable verbose output.");
-  train->add_flag("-u,--uncertainty", "Output uncertainty on weights.");
-  /*---------------------------------------------------------------------------*/
-
-
-  /*---------------------------------------------------------------------------*/
-  /*     Prediction                                                            */
-  /*---------------------------------------------------------------------------*/
-  usage =
-    "Predict using an already trained model.\n"
-    "Energy per atom is always calculated.\n"
-    "Calculating forces and stresses is optional.\n";
-
-  predict = app.add_subcommand("predict", usage);
-
-  usage =
-    "Output Files:\n"
-    "Energies are written to `energy.pred`. Forces and stresses, if calculated,\n"
-    "are written to `forces.pred` and `stress.pred` files, respectively\n\n"
-    "Option 1:\n"
-    "Use a config file with the DBFILE key. Include FORCE and STRESS keys as needed.\n"
-    "Note that --Force and --Stress flags override config keys.\n\n"
-    "   Example: tadah predict -c config.tadah -p pot.tadah\n\n"
-    "Option 2:\n"
-    "Provide datasets and flags via command line.\n\n"
-    "   Example: tadah predict -p pot.tadah -FS -d db1.tadah";
-
-  predict->usage(usage);
-
-  usage=
-    "A config file containing prediction dataset(s).\n"
-    "Required Config KEYS: DBFILE.\n"
-    "Optional Config KEYS: FORCE, STRESS.\n"
-    "See documentation for more details.\n";
-  predict->add_option("-c,--config", config_file,usage)
-    ->check(CLI::ExistingFile);
-
-  predict->add_option("-d,--datasets", datasets,
-                      "One or more datasets for prediction.")
-    ->excludes("-c")
-    ->check(CLI::ExistingFile);
-
-  predict->add_flag("-F,--Force", "Predict forces.");
-  predict->add_flag("-S,--Stress", "Predict stresses.");
-  predict->add_flag("-V,--Verbose", "Verbose mode on.");
-  predict->add_flag("-e,--error", "Predict model error.");
-  predict->add_flag("-a,--analytics",
-                    "Compare predicted values to those in\nthe original dataset.");
-
-  std::string pot_opt="-p,--potential";
-  predict->add_option(pot_opt, pot_file,
-                      "Trained model")
-    ->check(CLI::ExistingFile)
-    ->required();
-
-  /*---------------------------------------------------------------------------*/
-  /*     Hyperparameter Optimizer                                              */
-  /*---------------------------------------------------------------------------*/
-  usage = ""; // reset previous value b/c of below if
-#ifndef TADAH_ENABLE_HPO
-  usage = "(UNAVAILABLE)\n";
-#endif
-
-  usage +=
-    "Optimize the model architecture and find\n"
-    "the best hyperparameters by optimizing\n"
-    "a custom loss function.\n";
-  hpo = app.add_subcommand("hpo", usage);
-
-  usage =
-    "Provide a config file with initial model parameters and training datasets.\n"
-    "Parameters will be optimized within constraints defined in the target file.\n"
-    "The energies predicted will be validated again the validation file.\n"
-    "See documentation for more details.\n\n"
-    "   Example: tadah hpo -c config.tadah -t targets -v valid.tadah";
-  hpo->usage(usage);
-
-  usage = 
-    "Specify a config file with initial model\n"
-    "parameters and training datasets.";
-  hpo->add_option("-c,--config", config_file, usage)
-    ->check(CLI::ExistingFile)
-    ->required();
-
-  usage = 
-    "Specify a target file with model targets and\n"
-    "hyperparameter constraints.";
-  hpo->add_option("-t,--target", target_file, usage)
-    ->required()
-    ->check(CLI::ExistingFile);
-
-  usage = "Provide a validation file with datasets for\n"
-    "testing hyperparameters.";
-  hpo->add_option("-v,--validation", validation_file, usage)
-    ->required()
-    ->check(CLI::ExistingFile);
-
-  hpo->add_flag("-F,--Force", "Train with forces.");
-  hpo->add_flag("-S,--Stress", "Train with stresses.");
-  hpo->add_flag("-V,--Verbose", "Enable verbose mode.");
-  //hpo->add_flag("-u,--uncertainty",
-  //        "Dump uncertainty on weights."); // TODO check this
-
-
-  /*---------------------------------------------------------------------------*/
-  /*     CONVERSION                                                            */
-  /*---------------------------------------------------------------------------*/
-
-  usage = 
-    "Converts and processes computational\n"
-    "model datasets into the Tadah!\n"
-    "database format.\n"; 
-
-  convert = app.add_subcommand("convert", usage);
-
-  usage =
-    "This tool extracts necessary information from DFT\n"
-    "calculations, such as atomic positions, chemical elements, forces,\n"
-    "potential energy, and the virial stress tensor if available.\n\n"
-    "Input Files:\n"
-    "Currently supported input formats include:\n"
-    "  - VASP: OUTCAR and vasprun.xml\n"
-    "  - CASTEP: .castep, .md, and .geom files\n\n"
-    "Example Usage:\n"
-    "  tadah convert -d run1.outcar -o single_output.tadah\n"
-    "  tadah convert -d run1.md run2.geom run3.castep -o mydata.tadah\n\n"
-    "Output Files:\n"
-    "  The converted dataset will be in a format suitable for use with Tadah!.\n";
-
-  convert->usage(usage);
-
-  usage =
-    "Specify the output file.\n"
-    "The converted data will be saved to this file.";
-
-  convert->add_option("-o,--outfile", out_file, usage)
-    ->check(CLI::NonexistentPath)
-    ->required();
-
-  usage = 
-    "Specify one or more dataset files to convert.\n"
-    "Supported formats include:\n"
-    ".md, .geom, .castep, OUTCAR, and vasprun.xml.";
-
-  convert->add_option("-d,--datasets", datasets, usage)
-    ->required()
-    //->excludes("-c")
-    ->check(CLI::ExistingFile);
-
-  convert->add_option("-p,--precision", outprec,
-                      "Set the number of decimal places for numerical output.");
-
-  convert->add_flag("-V,--Verbose", verbose, "Enable verbose mode.");
-
-  usage = "A set of tools for editing databases";
-
-  db = app.add_subcommand("db", "Perform operations on Tadah! datasets.");
-
-  /*---------------------------------------------------------------------------*/
-  /*     FIND DUPLICATES                                                       */
-  /*---------------------------------------------------------------------------*/
-  usage = "Identify duplicate structures within the specified datasets. "
-    "If no output file is specified, it will provide a summary only.\n\n"
-    "The structures are considered the same if: \n"
-    "  1. number of atoms is the same.\n"
-    "  2. the cell vectors are within thersholf value.\n"
-    "  3. atomc coordiantes and element types are the same (order does not matter).\n\n"
-    "This tool is unable to distinguish between rotated or translated configurations.";
-
-  dups = db->add_subcommand("dups", usage);
-
-  usage = "Specify one or more Tadah! datasets to scan for duplicates. Must exist. If -c option is used, provide single out_file; otherwise number of out files must be equal to the number of provided datasets";
-  dups->add_option("-d,--datasets", datasets, usage)
-    ->required()
-    ->check(CLI::ExistingFile);
-
-  usage =
-    "Specify the output file(s) where pruned data will be saved. Path must not exist.";
-  dups->add_option("-o,--outfiles", out_files, usage)
-    ->check(CLI::NonexistentPath);
-
-  dups->add_option("-t,--threshold", val, "Threshold value used when comparing atomic positions and box vectors. Default: 1e-6");
-  dups->add_flag("-m,--merge", "Merge result into single dataset.")->needs("-o");
-  dups->add_flag("-V,--Verbose", verbose, "Enable verbose output for detailed processing information.");
-
-  /*---------------------------------------------------------------------------*/
-  /*     JOIN                                                                  */
-  /*---------------------------------------------------------------------------*/
-  usage = 
-    "Merge multiple datasets into a unified dataset file.";
-  join = db->add_subcommand("join", usage);
-
-  usage = "Provide a list of Tadah! datasets to merge. Must exist.";
-  join->add_option("-d,--datasets", datasets, usage)
-    ->required()
-    ->check(CLI::ExistingFile);
-
-  usage =
-    "Specify the output file for combined data. Path must not exist.";
-  join->add_option("-o,--outfile", out_file, usage)
-    ->required()
-    ->check(CLI::NonexistentPath);
-
-  join->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
-
-  /*---------------------------------------------------------------------------*/
-  /*     SPLIT                                                                 */
-  /*---------------------------------------------------------------------------*/
-  usage = 
-    "Divide the dataset into smaller parts using specified algorithms.";
-  split = db->add_subcommand("split", usage);
-
-  usage = "Specify the Tadah! dataset to split. Must exist.";
-  split->add_option("-d,--datasets", in_file, usage)
-    ->required()
-    ->check(CLI::ExistingFile);
-
-  usage =
-    "List the output files for the resulting datasets. Paths must not exist.";
-  split->add_option("-o,--outfiles", out_files, usage)
-    ->required()
-    ->check(CLI::NonexistentPath);
-
-  split->add_flag("-r, --randomize", "Randomize the order of entries before splitting.");
-
-  split_group = split->add_option_group("Split Algorithm", "Choose an algorithm for splitting the dataset.");
-  split_group->required();
-
-  split_group->add_flag("-e,--equal", "Split the dataset into equal-sized parts.");
-
-  usage= 
-    "Specify sizes for each part. Sum must not exceed total size.";
-  split_group->add_option("-s,--sizes", sizes, usage)
-    ->excludes("-e");
-
-  usage =
-    "Specify percentages for each part. Total must sum to 100%.";
-  split_group->add_option("-p,--percentage", sizes, usage)
-    ->excludes("-e")
-    ->excludes("-s");
-
-  split->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
-
-  /*---------------------------------------------------------------------------*/
-  /*     SAMPLE                                                                */
-  /*---------------------------------------------------------------------------*/
-  usage = 
-    "Create a new dataset by sampling from existing datasets using specified algorithms.";
-  sample = db->add_subcommand("sample", usage);
-
-  usage = "Specify the Tadah! datasets to sample from. Must exist.";
-  sample->add_option("-d,--datasets", datasets, usage)
-    ->required()
-    ->check(CLI::ExistingFile);
-
-  usage =
-    "Specify the location for the output sample file.";
-  sample->add_option("-o,--outfile", out_file, usage)
-    ->required()
-    ->check(CLI::NonexistentPath);
-
-  sample_group = sample->add_option_group("Sampling Algorithm", "Select a sampling algorithm.");
-  sample_group->required();
-
-  sample_group->add_option("-e,--every", N, "Sample every N-th entry from the dataset.");
-
-  usage= 
-    "Randomly select N entries from the dataset.";
-  sample_group->add_option("-r,--random", N, usage)
-    ->excludes("-e");
-
-  sample->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
-
-  /*---------------------------------------------------------------------------*/
-  /*     SUMMARY                                                               */
-  /*---------------------------------------------------------------------------*/
-  usage = 
-    "Generate a summary report of the specified dataset(s).";
-  summary = db->add_subcommand("summary", usage);
-
-  usage = "Specify one or more Tadah! datasets to summarize. Must exist.";
-  summary->add_option("-d,--datasets", datasets, usage)
-    ->required()
-    ->check(CLI::ExistingFile);
-
-  PeriodicTable::initialize();
-}
-
-void TadahCLI::run(int argc, char** argv) {
-
-  if(app.count_all()==1) {
-    std::cout << "Type: `tadah -h` for help" << std::endl;
-  }
-  else if (app.count("--version")) {
-    flag_version();
-  }
-  else if (*hpo) {
-    sub_hpo(argc,argv);
-  }
-  else if (*train) {
-    sub_train();
-  }
-  else if (*predict) {
-    sub_predict();
-  }
-  else if (*convert) {
-    sub_convert();
-  }
-  else if (*db) {
-    if (*dups) {
-      subsub_dups();
-    }
-    else if (*join) {
-      subsub_join();
-    }
-    else if (*split) {
-      subsub_split();
-    }
-    else if (*summary) {
-      subsub_summary();
-    }
-    else if (*sample) {
-      subsub_sample();
-    }
-  }
-}
-
 void TadahCLI::subsub_join() {
   CLI::Timer timer_tot{"Joining", CLI::Timer::Big};
   StructureDB stdb;
@@ -808,35 +871,6 @@ void TadahCLI::subsub_join() {
   stdb.dump_to_file(out_file);
   if (verbose) std::cout << stdb.summary();
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
-}
-
-// helper functions
-std::vector<size_t> divide_into_parts(size_t number, size_t n) {
-    std::vector<size_t> parts(n, number / n);
-    size_t remainder = number % n;
-    for (size_t i = 0; i < remainder; ++i) {
-        parts[i] += 1;
-    }
-    return parts;
-}
-
-std::vector<size_t> divide_by_percentage(size_t number, const std::vector<size_t>& percentages) {
-    std::vector<size_t> parts(percentages.size(), 0);
-    size_t totalAssigned = 0;
-
-    for (size_t i = 0; i < percentages.size(); ++i) {
-        parts[i] = number * percentages[i] / 100;
-        totalAssigned += parts[i];
-    }
-
-    size_t remainder = number - totalAssigned;
-
-    // Distribute remaining amount due to rounding
-    for (size_t i = 0; remainder > 0; ++i, --remainder) {
-        parts[i]++;
-    }
-
-    return parts;
 }
 
 void TadahCLI::subsub_split() {
@@ -888,6 +922,7 @@ void TadahCLI::subsub_split() {
   }
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
 }
+
 void TadahCLI::subsub_summary() {
   for (const auto &infile: datasets) {
     StructureDB stdb;
@@ -895,6 +930,7 @@ void TadahCLI::subsub_summary() {
     std::cout << stdb.summary();
   }
 }
+
 void TadahCLI::subsub_sample() {
   CLI::Timer timer_tot{"Sampling", CLI::Timer::Big};
   std::vector<StructureDB> in_stdbs(datasets.size());
@@ -905,8 +941,13 @@ void TadahCLI::subsub_sample() {
     total += in_stdbs[i].size();
   }
 
-  if (N>total) throw std::runtime_error(
-    "Selected number is larger than total number of configurations availble.");
+  if (sample->count("--every") || sample->count("--random")) {
+    if (N>total) throw std::runtime_error(
+      "Selected number is larger than total number of configurations availble.");
+  }
+  if (sample->count("--indices") && datasets.size()!=1) {
+    throw std::runtime_error("-i option requires single datafile.");
+  }
 
   StructureDB out_stdb;
   if (sample->count("--every")) {
@@ -918,7 +959,6 @@ void TadahCLI::subsub_sample() {
     }
   }
   else if (sample->count("--random")) {
-
     std::vector<std::pair<size_t, size_t>> indices(total);
     size_t idx=0;
     for (size_t i=0; i < in_stdbs.size(); ++i) {
@@ -935,11 +975,22 @@ void TadahCLI::subsub_sample() {
       out_stdb.add(in_stdbs[i](j));
     }
   }
+  else if (sample->count("--indices")) {
+    std::cout << indices << std::endl;
+    std::vector<size_t> idx = parse_indices(indices);
+    size_t max_index = *std::max_element(idx.begin(), idx.end());
+    if (max_index>in_stdbs[0].size()) 
+      throw std::runtime_error("Selected index is larger than the number of available structures.");
+    for (const auto &i : idx) {
+      out_stdb.add(in_stdbs[0](i-1));
+    }
+  }
 
   out_stdb.dump_to_file(out_file);
   if (verbose) std::cout << out_stdb.summary();
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
 }
+
 void TadahCLI::subsub_dups() {
   CLI::Timer timer_tot{"Duplicates", CLI::Timer::Big};
   std::vector<StructureDB> in_stdbs(datasets.size());
@@ -989,13 +1040,13 @@ void TadahCLI::subsub_dups() {
         << datasets[indices[i1].first]
         << " : #"
         << std::setw(w)
-        << indices[i1].second 
+        << indices[i1].second + 1
         << "  "
         << std::setw(d)
         << datasets[indices[i2].first]
         << " : #"
         << std::setw(w)
-        << indices[i2].second 
+        << indices[i2].second + 1
         << std::endl;
     }
   }
@@ -1036,5 +1087,155 @@ void TadahCLI::subsub_dups() {
   std::cout << "Total number of unique structures: " << new_total <<std::endl; 
 
   //if (verbose) std::cout << out_stdb.summary();
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
+}
+
+void TadahCLI::subsub_dcalc() {
+  CLI::Timer timer_tot{"Descriptors Calculator", CLI::Timer::Big};
+  std::vector<StructureDB> stdbs(datasets.size());
+
+  if (dcalc->count("--indices") && datasets.size()!=1) {
+    throw std::runtime_error("-i option requires single datafile.");
+  }
+  if (dcalc->count("-o")) {
+    if (dcalc->count("--merge") && out_files.size()!=1) {
+      throw std::runtime_error("-m option requires single outfile.");
+    }
+    else if (!dcalc->count("--merge") && datasets.size()!=out_files.size())
+      throw std::runtime_error("Number of datasets != number of out files");
+  }
+
+  Config pot_config(pot_file);
+  if (dcalc->count("--Force")) {
+    pot_config.remove("FORCE");
+    pot_config.add("FORCE", "true");
+  }
+  if (dcalc->count("--Stress")) {
+    pot_config.remove("STRESS");
+    pot_config.add("STRESS", "true");
+  }
+
+  DC_Selector DCS(pot_config);
+  NNFinder nnf(pot_config);
+
+
+  // size_t total=0;
+  //sizes.resize(stdbs.size());
+  for (size_t i=0; i < stdbs.size(); ++i) {
+    stdbs[i].add(datasets[i]);
+    // total += stdbs[i].size();
+    //sizes[i] = stdbs[i].size();
+    nnf.calc(stdbs[i]);
+  }
+
+  std::vector<std::vector<size_t>> idxs;
+  if (dcalc->count("-i")) {
+    idxs.push_back(parse_indices(indices));
+  }
+  else {
+    for (size_t i=0; i < stdbs.size(); ++i) {
+      std::vector<size_t> idx;
+      for (size_t j=0; j < stdbs[i].size(); ++j) {
+        idx.push_back(j+1);
+      }
+      idxs.push_back(idx);
+    }
+  }
+
+  DescriptorsCalc<> dc(pot_config,*DCS.d2b,*DCS.d3b,*DCS.dmb,
+                       *DCS.c2b,*DCS.c3b,*DCS.cmb);
+
+  //StDescriptors st_d = dc.calc(stdbs[0](0));
+
+  std::vector<StDescriptorsDB> st_desc_dbs(datasets.size());
+  if (dcalc->count("-i")) {
+    // inidces start from 1
+    size_t max_index = *std::max_element(idxs[0].begin(), idxs[0].end());
+    if (max_index>stdbs[0].size()) 
+      throw std::runtime_error("Selected index is larger than the number of available structures.");
+
+    for (auto const &i : idxs[0]) {
+      StDescriptors st_d = dc.calc(stdbs[0](i-1));
+      st_desc_dbs[0].add(st_d);
+    }
+  }
+  else {
+    for (size_t i=0; i < datasets.size(); ++i) {
+      //st_desc_dbs.push_back(dc.calc(stdbs[i])); // does not work!
+      for (auto const &j : idxs[i]) {
+        StDescriptors st_d = dc.calc(stdbs[i](j-1));
+        st_desc_dbs[i].add(st_d);
+      }
+    }
+  }
+
+  std::vector<std::string> output;
+  size_t hw = 12;
+  size_t prec = 6;
+  size_t w = prec + 8;
+  std::string dim[] = {"x","y","z"}; 
+  for (size_t b=0; b < idxs.size(); ++b) {
+    std::ostringstream oss;
+    for (size_t i=0; i < idxs[b].size(); ++i) {
+      const auto &st_d = st_desc_dbs[b](i);
+      const auto &st = stdbs[b](idxs[b][i]-1);
+      oss << "Label: " << st.label << std::endl;
+      for (size_t a=0; a<st.natoms(); ++a) {
+        const aed_type2 &aed = st_d.get_aed(a);
+        oss << std::left << std::setw(hw) << ("E " + std::to_string(a+1)) << " ";
+        oss << std::scientific << std::setprecision(prec);
+        for (size_t s=0; s<aed.size(); ++s) {
+          oss << std::right << std::setw(w) <<  aed(s) << "  ";
+        }
+        oss<<std::endl;
+      }
+
+      if (dcalc->count("--Force")) {
+        for (size_t a1=0; a1<st.natoms(); ++a1) {
+          for (size_t jj=0; jj<st_d.fd[a1].size(); ++jj) {
+            const size_t a2=st.near_neigh_idx[a1][jj];
+            const fd_type &fij = st_d.fd[a1][jj];
+            for (size_t k=0; k<3; ++k) {
+              oss << std::left << std::setw(hw) << ("F"+dim[k]+ " " + std::to_string(a1+1)) + " - " +  std::to_string(a2+1) << " ";
+              oss << std::scientific << std::setprecision(prec);
+              for (size_t d=0; d<fij.rows(); ++d) {
+                oss << std::right << std::setw(w) <<  fij(d,k) << "  ";
+              }
+              oss<<std::endl;
+            }
+          }
+        }
+      }
+      oss << std::endl;
+    }
+    output.push_back(oss.str());
+  }
+
+  if (dcalc->count("-o")) {
+    if (dcalc->count("-m")) {
+      auto ds = datasets.begin();
+      std::ofstream outfile(out_files[0]);
+      for (auto const &out : output) {
+        outfile << "Dataset: " << *ds++ << std::endl;
+        outfile << out;
+      }
+    }
+    else {
+      auto ds = datasets.begin();
+      auto of = out_files.begin();
+      for (auto const &out : output) {
+        std::ofstream outfile(*of++);
+        outfile << "Dataset: " << *ds++ << std::endl;
+        outfile << out;
+      }
+    }
+  }
+  else {
+    auto ds = datasets.begin();
+    for (auto const &out : output) {
+      std::cout << "Dataset: " << *ds++ << std::endl;
+      std::cout << out;
+    }
+  }
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
 }

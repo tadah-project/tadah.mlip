@@ -14,7 +14,9 @@ Main Features/Tools
 Extended Description
 --------------------
 
-- **Training**:
+Training
+.........
+
   Train a model using a configuration file. The output is a ``pot.tadah`` file for use with
   LAMMPS. The model can train on energies, forces, and stresses.
 
@@ -24,7 +26,9 @@ Extended Description
     - ``tadah train -c config.tadah -F`` : Include forces in training.
     - ``tadah train -c config.tadah -S -V`` : Include stresses and enable verbose output.
 
-- **Prediction**:
+Prediction
+..........
+
   Predict properties using a trained model. Energies are always calculated, while forces
   and stresses are optional.
 
@@ -34,7 +38,9 @@ Extended Description
     - ``tadah predict -p pot.tadah -FS -d db1.tadah`` : Predict forces and stresses using datasets.
     - ``tadah predict -p pot.tadah -e -a`` : Predict model error and perform analytics.
 
-- **Hyperparameter Optimization**:
+Hyperparameter Optimization
+...........................
+
   Optimize model parameters and architecture against a custom loss function using a config
   file and target constraints. See :ref:`hyperparameter_optimisation` for more details.
 
@@ -42,7 +48,9 @@ Extended Description
 
     - ``tadah hpo -c config.tadah -t targets -v valid.tadah`` : Optimize with initial parameters and validate against ``valid.tadah``.
 
-- **Database Conversion**:
+Database Conversion
+...................
+
   Convert datasets from formats such as VASP and CASTEP into the Tadah! database format. This tool supports a variety of input file formats:
 
     - **VASP**: ``OUTCAR``, ``vasprun.xml``
@@ -57,7 +65,9 @@ Extended Description
     - ``tadah convert -d run1.md run2.geom -o combined.tadah`` : Combine multiple files into one Tadah! formatted file.
     - ``tadah convert -d $(find . -name "*.md") -o all_md_files.tadah`` : Use bash to efficiently find and convert all ``.md`` files in a directory.
 
-- **Database Management**:
+Database Management
+...................
+
   - **Duplicates**: Identify duplicate structures considering atom counts and configurations.
     
     Examples:
@@ -89,7 +99,9 @@ Extended Description
       - ``tadah db sample -d dataset1.tadah dataset2.tadah -o sample_data.tadah -e 10 -m`` : Evenly sample every 10 entries and merge.
       - ``tadah db sample -d dataset.tadah -o sample_data.tadah -i 1,2,5-10`` : Sample specific indices.
 
-- **Descriptor Calculation**:
+Descriptor Calculation
+......................
+
   Compute descriptors for specified datasets using a potential file. Supports indexing
   via single numbers, ranges, and steps.
 

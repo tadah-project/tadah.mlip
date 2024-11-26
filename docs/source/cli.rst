@@ -1,8 +1,8 @@
 Command Line Tools
 ==================
 
-Main Features/Tools
--------------------
+Features
+--------
 
 - **Training**: Train models using configuration files to generate interatomic potentials.
 - **Prediction**: Use trained models to predict energies and optionally forces and stresses.
@@ -11,8 +11,8 @@ Main Features/Tools
 - **Database Management**: Identify duplicates, join, split, and sample datasets.
 - **Descriptor Calculation**: Calculate descriptors for datasets using a potential file.
 
-Extended Description
---------------------
+Tools Description
+-----------------
 
 Training
 .........
@@ -59,6 +59,7 @@ Database Conversion
   The conversion process extracts essential data such as atomic positions, chemical elements, forces, potential energy, and the virial stress tensor if available. It is fairly robust and can handle many cases where input files are incomplete, damaged, or contain write errors.
 
   This feature can be combined with bash tools for efficient workflow integration, allowing users to automate and streamline the conversion process.
+
   Examples:
 
     - ``tadah convert -d run1.outcar -o mydata.tadah`` : Convert a single OUTCAR file into a Tadah! format.
@@ -68,7 +69,10 @@ Database Conversion
 Database Management
 ...................
 
-  - **Duplicates**: Identify duplicate structures considering atom counts and configurations.
+Duplicates
+~~~~~~~~~~
+
+Identify duplicate structures considering atom counts and configurations.
     
     Examples:
 
@@ -77,13 +81,19 @@ Database Management
       - ``tadah db dups -d dataset1.tadah -dataset2.tadah -o pruned_data.tadah -m`` : Identify and remove duplicates and merge into single file.
       - ``tadah db dups -d dataset1.tadah`` : Provide a summary of duplicates without output file.
 
-  - **Join**: Merge multiple datasets into a unified dataset.
+Join
+~~~~
+
+Merge multiple datasets into a unified dataset.
     
     Example:
 
       - ``tadah db join -d dataset1.tadah dataset2.tadah -o merged_data.tadah`` : Merge datasets into ``merged_data.tadah``.
 
-  - **Split**: Divide a large dataset using different algorithms.
+Split
+~~~~~
+
+Divide a large dataset using different algorithms.
     
     Examples:
 
@@ -91,7 +101,10 @@ Database Management
       - ``tadah db split -d large_dataset.tadah -o split1.tadah split2.tadah split3.tadah -s 70 20 14`` : Split using sizes.
       - ``tadah db split -d large_dataset.tadah -o split1.tadah split2.tadah split3.tadah -p 25 25 50`` : Split using percentages.
 
-  - **Sample**: Create a dataset by sampling from existing datasets.
+Sample
+~~~~~~
+
+Create a dataset by sampling from existing datasets.
     
     Examples:
 
@@ -102,8 +115,7 @@ Database Management
 Descriptor Calculation
 ......................
 
-  Compute descriptors for specified datasets using a potential file. Supports indexing
-  via single numbers, ranges, and steps.
+  Compute descriptors for specified datasets using a potential file. Supports indexing with single numbers, ranges, and steps. Output can be printed to the screen or saved to a file.
 
   Example:
 

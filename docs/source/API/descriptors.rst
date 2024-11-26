@@ -5,7 +5,7 @@ Descriptors
 
 Two-Body
 --------
-List of all two-body descriptors supported by Ta-dah!
+List of all two-body descriptors supported by Tadah!
 
 D2_LJ
 .....
@@ -45,14 +45,14 @@ D2_Base
 
 Three-Body
 ----------
-As is stands Ta-dah! does not support three-body type descriptors.
+As is stands Tadah! does not support three-body type descriptors.
 They are simply slow to compute and there exist a number of angularly dependend
 many-body descriptors. However if there is enough interest in three-body
 descriptors they can be fairly easily added to the library. Just drop us an email...
 
 Many-Body
 ----------
-List of all many-body type descriptors supported by Ta-dah!
+List of all many-body type descriptors supported by Tadah!
 Note that some many-body type descriptors can calculate non-spherical
 charge distributionis hence they overcome Embedded Atom Method limitations.
 

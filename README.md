@@ -1,15 +1,37 @@
-# Desktop and Massively Parallel version of Tadah!MLIP
+# Desktop and Massively Parallel Version of Tadah!MLIP
 
-This project can be compiled either as desktop or MPI version.
+This project can be compiled as either a desktop or MPI version.
 
-# For developers
+The user firendy README:
 
-- use develop branch
-- Make use of CMake FETCHCONTENT_SOURCE_DIR_<uppercaseName> such that it points to the local copy of a MODULE:
-  
-    - TADAH_PATH=...
-    - -DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${TADAH_PATH}/CORE
-    - -DFETCHCONTENT_SOURCE_DIR_TADAH.MODELS=${TADAH_PATH}/MODELS
-    - -DFETCHCONTENT_SOURCE_DIR_TADAH.MLIP=${TADAH_PATH}/MLIP
-    - -DFETCHCONTENT_SOURCE_DIR_TADAH.MD=${TADAH_PATH}/MD
-    - -DFETCHCONTENT_SOURCE_DIR_TADAH.HPO=${TADAH_PATH}/HPO
+[https://git.ecdf.ed.ac.uk/tadah](https://git.ecdf.ed.ac.uk/tadah)
+
+## For Developers
+
+For the Develop build, manual configuration is required to use local copies of `CORE`, `MLIP`, and other modules. This allows you to modify the code locally without needing to commit changes to the GitLab repository. For the Release build, all modules will be cloned automatically from the repository. Below configuration is not necessary in this case.
+
+- Add new branch or use `develop` branch.
+- Set `-DCMAKE_BUILD_TYPE=Develop` when building.
+
+### Required Directory Structure
+
+Your root `TADAH` directory should contain the following subdirectories (cloned manually from git):
+
+- Tadah.MLIP
+- CORE 
+- MODELS 
+- MLIP 
+- HPO
+
+Export the system variable: `TADAH_PATH=/path/to/TADAH`.
+
+### Manual Configuration
+
+Instead of using the Develop build, configure manually by using `CMake`'s `FETCHCONTENT_SOURCE_DIR_<uppercaseName>` to point to the local copy of a module:
+
+```bash
+export TADAH_PATH=...
+-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${TADAH_PATH}/CORE
+-DFETCHCONTENT_SOURCE_DIR_TADAH.MODELS=${TADAH_PATH}/MODELS
+-DFETCHCONTENT_SOURCE_DIR_TADAH.MLIP=${TADAH_PATH}/MLIP
+-DFETCHCONTENT_SOURCE_DIR_TADAH.HPO=${TADAH_PATH}/HPO

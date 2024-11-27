@@ -58,7 +58,7 @@ set(CMAKE_CXX_FLAGS_DEBUG
   FORCE)
 
 set(CMAKE_CXX_FLAGS_RELEASE
-  "-g -O3 -Wall -Wpedantic -Wextra"
+  "-g -O3 -Wall"
   CACHE STRING
   "Release build."
   FORCE)
@@ -68,6 +68,22 @@ set(CMAKE_CXX_FLAGS_PROFILE
   CACHE STRING
   "Flags used by the C++ compiler during profile builds."
   FORCE)
+
+set(CMAKE_CXX_FLAGS_DEVELOP
+  "-g -O3 -Wall -Wpedantic -Wextra"
+  CACHE STRING
+  "Develop build."
+  FORCE)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Develop")
+  set(FETCHCONTENT_SOURCE_DIR_TADAH.CORE "$ENV{TADAH_PATH}/CORE")
+  set(FETCHCONTENT_SOURCE_DIR_TADAH.MODELS "$ENV{TADAH_PATH}/MODELS")
+  set(FETCHCONTENT_SOURCE_DIR_TADAH.MLIP "$ENV{TADAH_PATH}/MLIP")
+  if(TADAH_ENABLE_HPO)
+    set(FETCHCONTENT_SOURCE_DIR_TADAH.HPO "$ENV{TADAH_PATH}/HPO")
+  endif()
+endif()
+
 
 # Set default build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -81,6 +97,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "DEBUG"
     CMAKE_BUILD_TYPE STREQUAL "RELEASE"
     OR
     CMAKE_BUILD_TYPE STREQUAL "PROFILE"
+    OR
+    CMAKE_BUILD_TYPE STREQUAL "DEVELOP"
     )
   message(STATUS "${TADAH} Build type:  ${CMAKE_BUILD_TYPE}.")
 else()

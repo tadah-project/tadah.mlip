@@ -16,8 +16,8 @@ build:
     # golang: "1.19"
   jobs:
     pre_install:
+      - git status
       - git status | grep origin | sed -e s/.*origin\\/// -e s/[^a-zA-Z].*//
-      - git status | grep origin | sed -e 's/.*origin\\///' -e 's/[^a-zA-Z].*//'
       - wget https://cmake.org/files/v3.22/cmake-3.22.0-linux-x86_64.sh
       - chmod +x cmake-3.22.0-linux-x86_64.sh
       - mkdir CMAKE

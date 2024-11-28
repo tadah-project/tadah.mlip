@@ -143,7 +143,7 @@ include(FetchContent)
 if(DEFINED ENV{CI_COMMIT_REF_NAME})
   set(GIT_BRANCH "$ENV{CI_COMMIT_REF_NAME}")
 elseif(DEFINED ENV{READTHEDOCS})
-  set(GIT_BRANCH "$ENV{READTHEDOCS_VERSION}")
+  set(GIT_BRANCH "$ENV{TADAH_BRANCH_READTHEDOCS}")
 else()
   execute_process(
     COMMAND git rev-parse --symbolic-full-name --abbrev-ref HEAD

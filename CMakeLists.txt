@@ -75,12 +75,35 @@ set(CMAKE_CXX_FLAGS_DEVELOP
   "Develop build."
   FORCE)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Develop")
-  set(FETCHCONTENT_SOURCE_DIR_TADAH.CORE "$ENV{TADAH_PATH}/CORE")
-  set(FETCHCONTENT_SOURCE_DIR_TADAH.MODELS "$ENV{TADAH_PATH}/MODELS")
-  set(FETCHCONTENT_SOURCE_DIR_TADAH.MLIP "$ENV{TADAH_PATH}/MLIP")
+string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
+if (CMAKE_BUILD_TYPE STREQUAL "DEVELOP")
+  function(find_directory_case_insensitive target_name search_dir result_var)
+    execute_process(
+        COMMAND find "${search_dir}" -maxdepth 1 -type d -iname "${target_name}"
+        OUTPUT_VARIABLE found_dir
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    if(found_dir)
+      set(${result_var} "${found_dir}" PARENT_SCOPE)
+      message("${TADAH} Develop build: Found directory: ${found_dir}")
+    else()
+      set(${result_var} "" PARENT_SCOPE)
+      message("${TADAH} Develop build: Directory not found.")
+    endif()
+  endfunction()
+
+  find_directory_case_insensitive("core" "$ENV{TADAH_PATH}" DEVELOP_CORE_DIR)
+  find_directory_case_insensitive("models" "$ENV{TADAH_PATH}" DEVELOP_MODELS_DIR)
+  find_directory_case_insensitive("mlip" "$ENV{TADAH_PATH}" DEVELOP_MLIP_DIR)
+  set(FETCHCONTENT_SOURCE_DIR_TADAH.CORE "${DEVELOP_CORE_DIR}")
+  set(FETCHCONTENT_SOURCE_DIR_TADAH.MODELS "${DEVELOP_MODELS_DIR}")
+  set(FETCHCONTENT_SOURCE_DIR_TADAH.MLIP "${DEVELOP_MLIP_DIR}")
   if(TADAH_ENABLE_HPO)
-    set(FETCHCONTENT_SOURCE_DIR_TADAH.HPO "$ENV{TADAH_PATH}/HPO")
+    find_directory_case_insensitive("hpo" "$ENV{TADAH_PATH}" DEVELOP_HPO_DIR)
+    find_directory_case_insensitive("tadah.lammps" "$ENV{TADAH_PATH}" DEVELOP_TADAH_LAMMPS_DIR)
+    set(FETCHCONTENT_SOURCE_DIR_TADAH.HPO "${DEVELOP_HPO_DIR}")
+    set(FETCHCONTENT_SOURCE_DIR_TADAH.LAMMPS "${DEVELOP_TADAH_LAMMPS_DIR}")
   endif()
 endif()
 
@@ -104,7 +127,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "DEBUG"
 else()
   message(FATAL_ERROR "
   Selected build type is not supported: ${CMAKE_BUILD_TYPE}.
-  Supported build types: Release, Debug, Profile"
+  Supported build types: Release, Debug, Profile Develop"
   )
 endif()
 
@@ -117,16 +140,18 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
+message(STATUS "${TADAH} Obtaining branch name...")
 if(DEFINED ENV{CI_COMMIT_REF_NAME})
     set(GIT_BRANCH "$ENV{CI_COMMIT_REF_NAME}")
 else()
     execute_process(
     #COMMAND git rev-parse --symbolic-full-name --abbrev-ref HEAD
-    COMMAND git status | grep origin | sed -e 's/.*origin\///' -e 's/[^a-zA-Z].*//'
+    COMMAND bash -c "git status | grep origin | sed -e 's/.*origin\\///' -e 's/[^a-zA-Z].*//'"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE GIT_BRANCH
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
+message(STATUS "${TADAH} Using GIT_BRANCH:  ${GIT_BRANCH}.")
 
 FetchContent_Declare(
   Tadah.MLIP

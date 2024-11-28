@@ -1,212 +1,126 @@
-variables:
-  GIT_CLONE_PATH: $CI_BUILDS_DIR/$CI_COMMIT_SHA/$CI_PROJECT_NAME
-  
 stages:
-  - build.debug
-  - run.unit.tests
-  - build.release
-  - run.functional.tests
-  - build.examples
-  - run.examples
-  - trigger
-
+  - build
+  - build_examples
+  
 before_script:
   - mkdir -p ${DEBUG_DIR}
-  - mkdir -p ${RELEASE_DIR}
+  - mkdir -p ${RELEASE_SHARED_DIR}
+  - mkdir -p ${RELEASE_STATIC_DIR}
   - export OMP_NUM_THREADS=${CPU_SIM}
 
-build-debug:
-  stage: build.debug
+build_debug:
+  stage: build
   script:
     - cd ${DEBUG_DIR}
-    - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-    - make install
-
-build-tests:
-  variables: 
-    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR} -e CORE -e MODELS -e MLIP -e LIBS -e HPO  
-  stage: build.debug
-  needs: [build-debug]
-  script:
-    - cd ${DEBUG_DIR}
-    - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DTADAH_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
-    - make -j ${CPU_BUILD}
-
-run-unit-tests-1:
-  variables: 
-    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR} -e CORE -e MODELS -e MLIP -e LIBS -e HPO  
-  stage: run.unit.tests
-  needs: [build-tests]
-  script:
-    - cd ${DEBUG_DIR}
     - make test
     - cd ..; gcovr -e '.*tests.*|.*lib.*|.*docs.*|.*example.*|.*scripts.*|.*LIBS.*|build' -r .
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
-build-release-shared:
-  stage: build.release
+build_release_shared:
+  stage: build
   script:
-    - cd ${RELEASE_DIR}
-    - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - cd ${RELEASE_SHARED_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
-  artifacts:
-    paths:
-      - $RELEASE_DIR/*
-      - CORE/*
-      - MODELS/*
-      - MLIP/*
-      - HPO/*
-      - LIBS/*
-
-
-build-release-static:
-  stage: build.release
-  script:
-    - cd ${RELEASE_DIR}
-    - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
-    - make -j ${CPU_BUILD}
-  artifacts:
-    paths:
-      - $RELEASE_DIR/*
-      - CORE/*
-      - MODELS/*
-      - MLIP/*
-      - HPO/*
-      - LIBS/*
-
-run-func-tests-shared:
-  stage: run.functional.tests
-  needs: [build-release-shared]
-  script:
-    - cd $RELEASE_DIR
     - make install
-    - ls -l ~/.local/bin/tadah
-    - ls -l ~/.local/lib/libtadah*
+    - ls -l ${INSTALL_PATH}/bin/tadah
+    - ls -l ${INSTALL_PATH}/lib/libtadah*
     - echo $PATH
     - which tadah
     - tadah
     - tadah -h
-    - ldd ~/.local/bin/tadah
+    - ldd ${INSTALL_PATH}/bin/tadah
+  artifacts:
+    paths:
+      - ${RELEASE_SHARED_DIR}/${INSTALL_PATH}  
 
-run-func-tests-static:
-  stage: run.functional.tests
-  needs: [build-release-static]
+build_release_static:
+  stage: build
   script:
-    - cd $RELEASE_DIR
+    - cd ${RELEASE_STATIC_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - make -j ${CPU_BUILD}
     - make install
-    - ls -l ~/.local/bin/tadah
-    - ls -l ~/.local/lib/libtadah*
+    - ls -l ${INSTALL_PATH}/bin/tadah
+    - ls -l ${INSTALL_PATH}/lib/libtadah*
     - echo $PATH
     - which tadah
     - tadah
     - tadah -h
-    - ldd ~/.local/bin/tadah
-
-build-example-1-static:
-  stage: build.examples
-  needs: [build-release-static]
-  script:
-    - cd $RELEASE_DIR
-    - make install
-    - cd ../examples/API/ex_1
-    - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
+    - ldd ${INSTALL_PATH}/bin/tadah
   artifacts:
     paths:
-      - examples/API/ex_1/a.out
+      - ${RELEASE_STATIC_DIR}/${INSTALL_PATH}
 
-build-example-2-static:
-  stage: build.examples
-  needs: [build-release-static]
+build_examples_1_static:
+  stage: build_examples
   script:
-    - cd $RELEASE_DIR
-    - make install
-    - cd ../examples/API/ex_2
-    - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
-  artifacts:
-    paths:
-      - examples/API/ex_2/a.out
-
-build-example-1-shared:
-  stage: build.examples
-  needs: [build-release-shared]
-  script:
-    - cd $RELEASE_DIR
-    - make install
-    - cd ../examples/API/ex_1
-    - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
-  artifacts:
-    paths:
-      - examples/API/ex_1/a.out
-
-build-example-2-shared:
-  stage: build.examples
-  needs: [build-release-shared]
-  script:
-    - cd $RELEASE_DIR
-    - make install
-    - cd ../examples/API/ex_2
-    - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp
-  artifacts:
-    paths:
-      - examples/API/ex_2/a.out
-
-run-example-1-static:
-  stage: run.examples
-  needs: [build-example-1-static]
-  script:
-    - cd examples/API/ex_1
-    - ./a.out
-    - diff energy.pred EXPECTED_OUTPUT/energy.pred
+    - cd ${RELEASE_STATIC_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH   
+    - cp -r ../../examples/API/ex_1 .
+    - echo $CPATH
+    - pwd
+    - cd ex_1
+    - echo $CPATH
+    - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
+    - ./a.static
+    - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
-    - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if [ $? -ne 0 ]; then exit 2; fi
-    - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if [ $? -ne 0 ]; then exit 3; fi
-    - echo "Success"
-
-run-example-2-static:
-  stage: run.examples
-  needs: [build-example-2-static]
+  
+build_examples_2_static:
+  stage: build_examples
   script:
-    - cd examples/API/ex_2
-    - ./a.out
-    - diff energy.pred EXPECTED_OUTPUT/energy.pred
+    - cd ${RELEASE_STATIC_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - cp -r ../../examples/API/ex_2 .
+    - cd ex_2
+    - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static
+    - ./a.static
+    - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
-    - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if [ $? -ne 0 ]; then exit 2; fi
-    - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if [ $? -ne 0 ]; then exit 3; fi
-    - echo "Success"
 
-run-example-1-shared:
-  stage: run.examples
-  needs: [build-example-1-shared, build-release-shared]
+build_examples_1_shared:
+  stage: build_examples
   script:
-    - cd $RELEASE_DIR
-    - make install
-    - cd ../examples/API/ex_1
-    - ./a.out
-    - diff energy.pred EXPECTED_OUTPUT/energy.pred
+    - cd ${RELEASE_SHARED_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - cp -r ../../examples/API/ex_1 .
+    - cd ex_1
+    - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
+    - ./a.shared
+    - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
-    - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if [ $? -ne 0 ]; then exit 2; fi
-    - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if [ $? -ne 0 ]; then exit 3; fi
-    - echo "Success"
 
-run-example-2-shared:
-  stage: run.examples
-  needs: [build-example-2-shared, build-release-shared]
+build_examples_2_shared:
+  stage: build_examples
   script:
-    - cd $RELEASE_DIR
-    - make install
-    - cd ../examples/API/ex_2
-    - ./a.out
-    - diff energy.pred EXPECTED_OUTPUT/energy.pred
+    - cd ${RELEASE_SHARED_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - cp -r ../../examples/API/ex_2 .
+    - cd ex_2
+    - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared   
+    - ./a.shared
+    - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
-    - diff stress.pred EXPECTED_OUTPUT/stress.pred
-    - if [ $? -ne 0 ]; then exit 2; fi
-    - diff forces.pred EXPECTED_OUTPUT/forces.pred
-    - if [ $? -ne 0 ]; then exit 3; fi
-    - echo "Success"

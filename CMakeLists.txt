@@ -75,6 +75,11 @@ set(CMAKE_CXX_FLAGS_DEVELOP
   "Develop build."
   FORCE)
 
+# Set default build type
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
 if (CMAKE_BUILD_TYPE STREQUAL "DEVELOP")
   function(find_directory_case_insensitive target_name search_dir result_var)
@@ -107,11 +112,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "DEVELOP")
   endif()
 endif()
 
-
-# Set default build type
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif()
 
 # Check is build supported
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)

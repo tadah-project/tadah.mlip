@@ -20,8 +20,6 @@ Examples of using the C++ Tadah! library.
 
 Example 1 - Traininig Process and Simple Prediction
 ...................................................
-.. doxygenfile:: ex1.cpp
-   :no-link:
 
 Example 1 c++ file:
 
@@ -42,8 +40,6 @@ Config file used for prediction:
 
 Example 2 - Prediction using existing model
 ...........................................
-.. doxygenfile:: ex2.cpp
-   :no-link:
 
 Example 2 c++ file:
 

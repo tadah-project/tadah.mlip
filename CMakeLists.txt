@@ -58,7 +58,7 @@ set(CMAKE_CXX_FLAGS_DEBUG
   FORCE)
 
 set(CMAKE_CXX_FLAGS_RELEASE
-  "-g -O3 -Wall -Wpedantic -Wextra"
+  "-g -O3 -Wall"
   CACHE STRING
   "Release build."
   FORCE)
@@ -69,10 +69,49 @@ set(CMAKE_CXX_FLAGS_PROFILE
   "Flags used by the C++ compiler during profile builds."
   FORCE)
 
+set(CMAKE_CXX_FLAGS_DEVELOP
+  "-g -O3 -Wall -Wpedantic -Wextra"
+  CACHE STRING
+  "Develop build."
+  FORCE)
+
 # Set default build type
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
+
+string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
+if (CMAKE_BUILD_TYPE STREQUAL "DEVELOP")
+  function(find_directory_case_insensitive target_name search_dir result_var)
+    execute_process(
+        COMMAND find "${search_dir}" -maxdepth 1 -type d -iname "${target_name}"
+        OUTPUT_VARIABLE found_dir
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    if(found_dir)
+      set(${result_var} "${found_dir}" PARENT_SCOPE)
+      message("${TADAH} Develop build: Found directory: ${found_dir}")
+    else()
+      set(${result_var} "" PARENT_SCOPE)
+      message("${TADAH} Develop build: Directory not found.")
+    endif()
+  endfunction()
+
+  find_directory_case_insensitive("core" "$ENV{TADAH_PATH}" DEVELOP_CORE_DIR)
+  find_directory_case_insensitive("models" "$ENV{TADAH_PATH}" DEVELOP_MODELS_DIR)
+  find_directory_case_insensitive("mlip" "$ENV{TADAH_PATH}" DEVELOP_MLIP_DIR)
+  set(FETCHCONTENT_SOURCE_DIR_TADAH.CORE "${DEVELOP_CORE_DIR}")
+  set(FETCHCONTENT_SOURCE_DIR_TADAH.MODELS "${DEVELOP_MODELS_DIR}")
+  set(FETCHCONTENT_SOURCE_DIR_TADAH.MLIP "${DEVELOP_MLIP_DIR}")
+  if(TADAH_ENABLE_HPO)
+    find_directory_case_insensitive("hpo" "$ENV{TADAH_PATH}" DEVELOP_HPO_DIR)
+    find_directory_case_insensitive("tadah.lammps" "$ENV{TADAH_PATH}" DEVELOP_TADAH_LAMMPS_DIR)
+    set(FETCHCONTENT_SOURCE_DIR_TADAH.HPO "${DEVELOP_HPO_DIR}")
+    set(FETCHCONTENT_SOURCE_DIR_TADAH.LAMMPS "${DEVELOP_TADAH_LAMMPS_DIR}")
+  endif()
+endif()
+
 
 # Check is build supported
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
@@ -81,12 +120,14 @@ if (CMAKE_BUILD_TYPE STREQUAL "DEBUG"
     CMAKE_BUILD_TYPE STREQUAL "RELEASE"
     OR
     CMAKE_BUILD_TYPE STREQUAL "PROFILE"
-    )
+    OR
+    CMAKE_BUILD_TYPE STREQUAL "DEVELOP"
+)
   message(STATUS "${TADAH} Build type:  ${CMAKE_BUILD_TYPE}.")
 else()
   message(FATAL_ERROR "
   Selected build type is not supported: ${CMAKE_BUILD_TYPE}.
-  Supported build types: Release, Debug, Profile"
+  Supported build types: Release, Debug, Profile Develop"
   )
 endif()
 
@@ -100,20 +141,23 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(FetchContent)
 
 if(DEFINED ENV{CI_COMMIT_REF_NAME})
-    set(GIT_BRANCH "$ENV{CI_COMMIT_REF_NAME}")
+  set(GIT_BRANCH "$ENV{CI_COMMIT_REF_NAME}")
+elseif(DEFINED ENV{READTHEDOCS})
+  set(GIT_BRANCH "$ENV{READTHEDOCS_VERSION}")
 else()
-    execute_process(
+  execute_process(
     COMMAND git rev-parse --symbolic-full-name --abbrev-ref HEAD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE GIT_BRANCH
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
+message(STATUS "${TADAH} Using GIT_BRANCH:  ${GIT_BRANCH}.")
 
 FetchContent_Declare(
   Tadah.MLIP
   GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
   GIT_TAG origin/${GIT_BRANCH}
-  )
+)
 FetchContent_MakeAvailable(Tadah.MLIP)
 
 if(TADAH_ENABLE_HPO)
@@ -122,7 +166,7 @@ if(TADAH_ENABLE_HPO)
     Tadah.HPO
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
     GIT_TAG origin/${GIT_BRANCH}
-    )
+  )
   FetchContent_MakeAvailable(Tadah.HPO)
 
   FetchContent_Declare(
@@ -246,7 +290,7 @@ add_custom_target(docs
     COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/docs/Doxyfile
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Generating API documentation with Doxygen"
-    )
+)
 
 message(STATUS "===================================================================")
 message(STATUS "                                                                   ")

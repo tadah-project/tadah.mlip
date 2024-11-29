@@ -191,6 +191,9 @@ message(STATUS "${TADAH} VERSION: ${ver_world}.${ver_major}.${ver_minor}")
 
 add_executable (tadah bin/main.cpp bin/tadah_cli.cpp)
 
+file(GLOB BOOST_SRC_FILES external/boost/libs/iostreams/src/*.cpp)
+add_library(boost STATIC ${BOOST_SRC_FILES})
+
 include_directories(external/CLI11/include)
 
 if(TADAH_ENABLE_HPO)

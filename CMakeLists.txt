@@ -81,6 +81,9 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
+if(NOT DEFINED ENV{TADAH_PATH})
+  message(FATAL_ERROR "TADAH_PATH system variable is undefined for the ${CMAKE_BUILD_TYPE} build")
+endif()
 if (CMAKE_BUILD_TYPE STREQUAL "DEVELOP")
   function(find_directory_case_insensitive target_name search_dir result_var)
     execute_process(

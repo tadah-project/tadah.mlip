@@ -81,10 +81,10 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
+if (CMAKE_BUILD_TYPE STREQUAL "DEVELOP")
 if(NOT DEFINED ENV{TADAH_PATH})
   message(FATAL_ERROR "TADAH_PATH system variable is undefined for the ${CMAKE_BUILD_TYPE} build")
 endif()
-if (CMAKE_BUILD_TYPE STREQUAL "DEVELOP")
   function(find_directory_case_insensitive target_name search_dir result_var)
     execute_process(
         COMMAND find "${search_dir}" -maxdepth 1 -type d -iname "${target_name}"

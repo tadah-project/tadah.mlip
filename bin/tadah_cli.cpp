@@ -27,18 +27,18 @@
 #include <tadah/hpo/hpo_worker.h>
 #endif
 
-#include <algorithm>
 #include <iostream>
-#include <set>
-#include <sstream>
-#include <stdexcept>
 #include <string>
-#include <utility>
-#include <vector>
 
 TadahCLI::TadahCLI():
   app(CLI::App{logo})
 {
+
+#ifdef TADAH_BUILD_MPI
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
+#endif
+
   PeriodicTable::initialize();
 
   std::string usage;
@@ -437,48 +437,50 @@ TadahCLI::TadahCLI():
   dcalc->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
 }
 
-void TadahCLI::run(int argc, char** argv) {
+int TadahCLI::run(int argc, char** argv) {
 
-  if(app.count_all()==1) {
+  if(rank==0 && app.count_all()==1) {
     std::cout << "Type: `tadah -h` for help" << std::endl;
+    return 0;
   }
-  else if (app.count("--version")) {
-    flag_version();
+  else if (rank==0 && app.count("--version")) {
+    return flag_version();
   }
   else if (*hpo) {
-    sub_hpo(argc,argv);
+    return sub_hpo(argc,argv);
   }
   else if (*train) {
-    sub_train();
+    return sub_train();
   }
   else if (*predict) {
-    sub_predict();
+    return sub_predict();
   }
   else if (*convert) {
-    sub_convert();
+    return sub_convert();
   }
   else if (*db) {
     if (*dups) {
-      subsub_dups();
+      return subsub_dups();
     }
     else if (*join) {
-      subsub_join();
+      return subsub_join();
     }
     else if (*split) {
-      subsub_split();
+      return subsub_split();
     }
     else if (*summary) {
-      subsub_summary();
+      return subsub_summary();
     }
     else if (*sample) {
-      subsub_sample();
+      return subsub_sample();
     }
   }
   else if (*desc) {
     if (*dcalc) {
-      subsub_dcalc();
+      return subsub_dcalc();
     }
   }
+  return 0;
 }
 
 bool TadahCLI::is_verbose() {
@@ -489,23 +491,17 @@ void TadahCLI::set_verbose() {
   verbose=true;
 }
 
-void TadahCLI::flag_version() {
+int TadahCLI::flag_version() {
   int v_world = TADAH_WORLD_VERSION;
   int v_major = TADAH_MAJOR_VERSION;
   int v_minor = TADAH_MINOR_VERSION;
   std::string v= "tadah version " + std::to_string(v_world)
     + "." + std::to_string(v_major) + "." + std::to_string(v_minor);
   std::cout << v << std::endl;
+  return 0;
 }
 
-void TadahCLI::sub_train() {
-#ifdef TADAH_BUILD_MPI
-  int rank = 0;
-  int ncpu = 1;
-  // Initialize MPI variables to determine the rank and the number of CPUs
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
-#endif
+int TadahCLI::sub_train() {
 
   // Check if verbose mode is enabled and set it
   if (train->count("--Verbose")) {
@@ -614,14 +610,11 @@ void TadahCLI::sub_train() {
   // Output total training time if verbose
   if (is_verbose()) std::cout << timer_tot.to_string() << std::endl;
 #endif
+  return 0;
 }
 
-void TadahCLI::sub_predict() {
-  int rank=0;
-#ifdef TADAH_BUILD_MPI
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#endif
-  if (rank!=0) return;
+int TadahCLI::sub_predict() {
+  if (rank!=0) return 0;
 
   CLI::Timer timer_tot {"Prediction", CLI::Timer::Big};
   if(predict->count("--Verbose"))
@@ -723,21 +716,16 @@ or datasets in a command line");
     delete modelp;
   if(fb)
     delete fb;
+
+  return 0;
 }
 
-void TadahCLI::sub_hpo(
+int TadahCLI::sub_hpo(
   [[maybe_unused]]int argc,
   [[maybe_unused]]char**argv) {
 
 #ifdef TADAH_ENABLE_HPO
 
-#ifdef TADAH_BUILD_MPI
-  int rank = 0;
-  int ncpu = 1;
-  // Initialize MPI variables to determine the rank and the number of CPUs
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &ncpu);
-#endif
 
   // Check if verbose mode is enabled and set it
   if (train->count("--Verbose")) {
@@ -824,14 +812,11 @@ void TadahCLI::sub_hpo(
   std::cout << "-----------------------------------------------" << std::endl;
 #endif
 
+  return 0;
 }
 
-void TadahCLI::sub_convert() {
-  int rank=0;
-#ifdef TADAH_BUILD_MPI
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#endif
-  if (rank!=0) return;
+int TadahCLI::sub_convert() {
+  if (rank!=0) return 0;
 
   CLI::Timer timer_tot {"Conversion", CLI::Timer::Big};
   if(convert->count("--Verbose"))
@@ -876,10 +861,11 @@ void TadahCLI::sub_convert() {
     std::cout << timer_tot.to_string() << std::endl;
     std::cout << "Done!" << std::endl;
   }
-
+  return 0;
 }
 
-void TadahCLI::subsub_join() {
+int TadahCLI::subsub_join() {
+  if (rank!=0) return 0;
   CLI::Timer timer_tot{"Joining", CLI::Timer::Big};
   StructureDB stdb;
   for (const auto &s: datasets) {
@@ -888,9 +874,11 @@ void TadahCLI::subsub_join() {
   stdb.dump_to_file(out_file);
   if (verbose) std::cout << stdb.summary();
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  return 0;
 }
 
-void TadahCLI::subsub_split() {
+int TadahCLI::subsub_split() {
+  if (rank!=0) return 0;
   CLI::Timer timer_tot{"Splitting", CLI::Timer::Big};
   //target db split db1 -o db2 db3 db4 -e -- equal
   //target db split db1 -o db2 db3 db4 -p --percentage 30 40 70 
@@ -938,17 +926,21 @@ void TadahCLI::subsub_split() {
        if (verbose) std::cout << stdb.summary();
   }
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  return 0;
 }
 
-void TadahCLI::subsub_summary() {
+int TadahCLI::subsub_summary() {
+  if (rank!=0) return 0;
   for (const auto &infile: datasets) {
     StructureDB stdb;
     stdb.add(infile);
     std::cout << stdb.summary();
   }
+  return 0;
 }
 
-void TadahCLI::subsub_sample() {
+int TadahCLI::subsub_sample() {
+  if (rank!=0) return 0;
   CLI::Timer timer_tot{"Sampling", CLI::Timer::Big};
   std::vector<StructureDB> in_stdbs(datasets.size());
 
@@ -1006,9 +998,11 @@ void TadahCLI::subsub_sample() {
   out_stdb.dump_to_file(out_file);
   if (verbose) std::cout << out_stdb.summary();
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  return 0;
 }
 
-void TadahCLI::subsub_dups() {
+int TadahCLI::subsub_dups() {
+  if (rank!=0) return 0;
   CLI::Timer timer_tot{"Duplicates", CLI::Timer::Big};
   std::vector<StructureDB> in_stdbs(datasets.size());
 
@@ -1105,9 +1099,11 @@ void TadahCLI::subsub_dups() {
 
   //if (verbose) std::cout << out_stdb.summary();
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  return 0;
 }
 
-void TadahCLI::subsub_dcalc() {
+int TadahCLI::subsub_dcalc() {
+  if (rank!=0) return 0;
   CLI::Timer timer_tot{"Descriptors Calculator", CLI::Timer::Big};
   std::vector<StructureDB> stdbs(datasets.size());
 
@@ -1255,4 +1251,5 @@ void TadahCLI::subsub_dcalc() {
     }
   }
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  return 0;
 }

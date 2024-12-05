@@ -12,9 +12,11 @@
 
 namespace fs = std::filesystem;
 class TadahCLI {
-  private:
-    bool verbose=false;
-    std::string logo=
+private:
+  int rank=0;
+  int ncpu = 1;
+  bool verbose=false;
+  std::string logo=
 "                                                                      \n\
                        _____           _         _      _              \n\
                       |_   _|__ _   __| |  __ _ | |__  | |             \n\
@@ -30,7 +32,7 @@ class TadahCLI {
 ";
 public:
   TadahCLI();
-  void run(int argc, char** argv);
+  int run(int argc, char** argv);
   CLI::App app;
     CLI::App *train=nullptr;
     CLI::App *predict=nullptr;
@@ -62,19 +64,19 @@ public:
   size_t N;
   double val;
 
-  void sub_train();
-  void sub_predict();
-  void sub_hpo(int argc, char**argv);
-  void sub_convert();
-  void subsub_dups();
-  void subsub_sample();
-  void subsub_join();
-  void subsub_split();
-  void subsub_summary();
-  void subsub_dcalc();
   void set_verbose();
   bool is_verbose();
-  void flag_version();
+  int sub_train();
+  int sub_predict();
+  int sub_hpo(int argc, char**argv);
+  int sub_convert();
+  int subsub_dups();
+  int subsub_sample();
+  int subsub_join();
+  int subsub_split();
+  int subsub_summary();
+  int subsub_dcalc();
+  int flag_version();
 
   /* Return a vector of absolute paths to every file in a directory.
      * Subdirectories are ommited.

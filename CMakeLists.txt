@@ -82,6 +82,9 @@ endif()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
 if (CMAKE_BUILD_TYPE STREQUAL "DEVELOP")
+if(NOT DEFINED ENV{TADAH_PATH})
+  message(FATAL_ERROR "TADAH_PATH system variable is undefined for the ${CMAKE_BUILD_TYPE} build")
+endif()
   function(find_directory_case_insensitive target_name search_dir result_var)
     execute_process(
         COMMAND find "${search_dir}" -maxdepth 1 -type d -iname "${target_name}"
@@ -187,6 +190,9 @@ project(Tadah VERSION ${ver_world}.${ver_major}.${ver_minor})
 message(STATUS "${TADAH} VERSION: ${ver_world}.${ver_major}.${ver_minor}")
 
 add_executable (tadah bin/main.cpp bin/tadah_cli.cpp)
+
+file(GLOB BOOST_SRC_FILES external/boost/libs/iostreams/src/*.cpp)
+add_library(boost STATIC ${BOOST_SRC_FILES})
 
 include_directories(external/CLI11/include)
 

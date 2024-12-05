@@ -3,6 +3,7 @@
 int main(int argc, char** argv) {
 
   int rank=0;
+  int retval=0;
 
 #ifdef TADAH_BUILD_MPI
   MPI_Init(&argc, &argv);
@@ -15,7 +16,12 @@ int main(int argc, char** argv) {
   /*---------------------------------------------------------------------------*/
   try {
     cli.app.parse(argc, argv);
-  } catch (const CLI::ParseError &e) {
+  } 
+  catch (const CLI::CallForHelp& e) {
+    std::cout << cli.app.help() << std::endl;
+    return 0;
+  } 
+  catch (const CLI::ParseError &e) {
 #ifdef TADAH_BUILD_MPI
     MPI_Finalize();
 #endif
@@ -28,24 +34,10 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (cli.app.count_all()==1) {
-    // no argument given to tadah 
-    // print help message by rank 0 only
-    if (rank==0) {
-      cli.run(argc,argv);
-    }
-  }
-  else if (cli.app.count("--version")) {
-    if (rank==0) {
-      cli.run(argc,argv);
-    }
-  }
-  else {
-    cli.run(argc,argv);
-  }
+  retval = cli.run(argc,argv);
 
 #ifdef TADAH_BUILD_MPI
   MPI_Finalize();
 #endif
-  return 0;
+  return retval;
 }

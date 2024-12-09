@@ -193,8 +193,11 @@ add_executable (tadah bin/main.cpp bin/tadah_cli.cpp)
 
 file(GLOB BOOST_SRC_FILES external/boost/libs/iostreams/src/*.cpp)
 add_library(boost STATIC ${BOOST_SRC_FILES})
+target_include_directories(boost PRIVATE external/boost/include)
+target_include_directories(boost PRIVATE external/boost/libs/iostreams/src)
 
 include_directories(external/CLI11/include)
+include_directories(external/boost/include)
 
 if(TADAH_ENABLE_HPO)
   target_link_libraries(tadah PUBLIC tadah.hpo)

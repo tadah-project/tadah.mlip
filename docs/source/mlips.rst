@@ -8,7 +8,7 @@ Here you can find interatomic potentials created by our group and gain insight i
 N2
 --
 
-Machine-learned interatomic potential specifically designed to study the phase diagram of N₂ up to 10 GPa. The model requires the Tadah!LAMMPS plugin to be installed (:ref:`installation_lammps`).
+Machine-learned interatomic potential specifically designed to study the phase diagram of N₂ up to 10 GPa. The model requires the ``Tadah!LAMMPS`` plugin to be installed (:ref:`installation_lammps`).
 
 :download:`Tadah!N2 <mlips/tadah.n2>`
 
@@ -17,9 +17,9 @@ Machine-learned interatomic potential specifically designed to study the phase d
 Kr
 --
 
-A two-body interatomic potential that performs exceptionally well given its simplicity. Two versions are provided. The first model (`Tadah!Kr1`) was fitted to CCSD(T) dimers, while the second model's energies were corrected using equilateral Kr trimers (`Tadah!Kr2`).
+A two-body interatomic potential that performs exceptionally well given its simplicity. Two versions are provided. The first model (``Tadah!Kr1``) was fitted to CCSD(T) dimers, while the second model's energies were corrected using equilateral Kr trimers (``Tadah!Kr2``).
 
-Both potentials are provided in two formats: the native Tadah! format, which requires the Tadah!LAMMPS plugin (:ref:`installation_lammps`), and a tabulated potential formatted for LAMMPS pair_style table.
+Both potentials are provided in two formats: the native Tadah! format, which requires the ``Tadah!LAMMPS`` plugin (:ref:`installation_lammps`), and a tabulated potential formatted for LAMMPS ``pair_style table``.
 
 :download:`Tadah!Kr1 <mlips/tadah.kr1>`
 :download:`Tadah!Kr1 tabulated <mlips/tadah.kr1.tab>`

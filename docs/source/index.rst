@@ -1,6 +1,9 @@
 Welcome to the Tadah! Website
 =============================
 
+.. image:: images/tadah_cli.png
+   :align: center
+
 This is the home of Tadah! software, used for developing machine learning interatomic potentials. This website provides comprehensive documentation with examples to help users quickly get up to speed, along with an associated API for developers.
 
 Here we also publish selected interatomic potentials developed by `Prof. Ackland's group <https://www.ph.ed.ac.uk/people/graeme-ackland>`_ using Tadah!

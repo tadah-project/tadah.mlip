@@ -1,25 +1,26 @@
-.. Tadah! documentation master file, created by
-   sphinx-quickstart on Sat Aug 14 23:30:23 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Welcome to the Tadah! Website
+=============================
 
-Welcome to Tadah!'s documentation!
-===================================
+.. seealso:: 
+   For our interatomic potentials, see :ref:`mlips`.
+
+   Visit the Tadah! Git repository for more resources: https://git.ecdf.ed.ac.uk/tadah
 
 .. toctree::
    :maxdepth: 2
-   :caption: General
+   :caption: General Information
 
    intro.rst
    installation.rst
    contribute.rst
    LICENSE.rst
+   mlips.rst
 
 ----
 
 .. toctree::
    :maxdepth: 2
-   :caption: Usage
+   :caption: How to Use Tadah!
 
    quickstart.rst
    cli.rst
@@ -35,7 +36,7 @@ Welcome to Tadah!'s documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: API
+   :caption: API Reference
 
    API/atom.rst
    API/basisfunctions.rst
@@ -53,7 +54,7 @@ Welcome to Tadah!'s documentation!
    API/st_descriptors.rst
    API/st_descriptors_db.rst
 
-Indices and tables
+Indices and Tables
 ==================
 
 * :ref:`genindex`

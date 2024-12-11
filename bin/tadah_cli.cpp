@@ -8,6 +8,7 @@
 
 #include <tadah/mlip/analytics/analytics.h>
 #include <tadah/mlip/dataset_readers/dataset_reader_selector.h>
+#include <tadah/mlip/dataset_writers/dataset_writer_selector.h>
 #include <tadah/mlip/design_matrix/design_matrix.h>
 #include <tadah/mlip/design_matrix/functions/dm_function_base.h>
 #include <tadah/mlip/descriptors_calc.h>
@@ -19,6 +20,8 @@
 #include <tadah/mlip/version.h>
 
 #include <tadah/models/dc_selector.h>
+
+#include <boost/algorithm/string.hpp>
 
 #include <CLI/Timer.hpp>
 
@@ -179,7 +182,7 @@ TadahCLI::TadahCLI():
 
 
   /*---------------------------------------------------------------------------*/
-  /*    DB CONVERSION                                                          */
+  /*    CONVERSION                                                          */
   /*---------------------------------------------------------------------------*/
 
   usage = 
@@ -228,21 +231,22 @@ TadahCLI::TadahCLI():
 
   convert->add_flag("-V,--Verbose", verbose, "Enable verbose mode.");
 
-  usage = "A set of tools for editing databases";
-
-  db = app.add_subcommand("db", "Perform operations on Tadah! datasets.");
+  /*---------------------------------------------------------------------------*/
+  /*     DB                                                                    */
+  /*---------------------------------------------------------------------------*/
+  db = app.add_subcommand("db", "A set of tools for editing Tadah! datasets");
 
   /*---------------------------------------------------------------------------*/
   /*     DB DUPLICATES                                                         */
   /*---------------------------------------------------------------------------*/
   usage = 
-    "Identify duplicate structures within specified datasets. "
-    "If no output file is specified, a summary is provided only.\n\n"
+    "Identify duplicate structures within specified datasets.\n"
+    "If no output file is specified,\na summary is provided only.\n\n"
     "Structures are considered the same if:\n"
     "  1. Number of atoms matches.\n"
     "  2. Cell vectors are within a threshold.\n"
-    "  3. Atomic coordinates and element types are identical (order-independent).\n\n"
-    "Note: This tool cannot distinguish between rotated or translated configurations.";
+    "  3. Atomic coordinates and element types are identical\n (order-independent).\n\n"
+    "Note: This tool cannot distinguish between\n rotated or translated configurations.";
 
   dups = db->add_subcommand("dups", usage);
 
@@ -295,7 +299,7 @@ TadahCLI::TadahCLI():
   /*     DB SPLIT                                                              */
   /*---------------------------------------------------------------------------*/
   usage = 
-    "Divide the dataset into smaller parts using specified algorithms.";
+    "Divide the dataset into smaller parts\nusing specified algorithms.";
   split = db->add_subcommand("split", usage);
 
   usage = "Specify the Tadah! dataset to split.";
@@ -333,7 +337,7 @@ TadahCLI::TadahCLI():
   /*     DB SAMPLE                                                             */
   /*---------------------------------------------------------------------------*/
   usage = 
-    "Create a new dataset by sampling from existing datasets using specified algorithms.";
+    "Create a new dataset by sampling from existing\ndatasets using specified algorithms.";
   sample = db->add_subcommand("sample", usage);
 
   usage = "Specify the Tadah! datasets to sample from.";
@@ -435,6 +439,67 @@ TadahCLI::TadahCLI():
   dcalc->add_flag("-m,--merge", "Merge result into single output file.")->needs("-o");
   dcalc->add_flag("-F,--Force", "Calculate force descriptors.");
   dcalc->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+
+  /*---------------------------------------------------------------------------*/
+  /*    SWRITER                                                             */
+  /*---------------------------------------------------------------------------*/
+
+  usage = 
+    "Dump selected Tadah! dataset structure\n"
+    "into CASTEP/VASP/LAMMPS formatted file.\n";
+
+  swriter = app.add_subcommand("swriter", usage);
+
+  usage =
+    "This tool allows you to transform a selected Tadah! dataset structure\n"
+    "into a format compatible with popular simulation software\n"
+    "such as CASTEP, VASP, and LAMMPS.\n"
+    "This enables seamless integration into your simulation workflows using the Tadah! framework.\n\n"
+    "Input File: Tadah! dataset\n\n"
+    "Currently supported output formats include:\n"
+    "  - VASP: POSCAR/CONTCAR\n"
+    "  - CASTEP: .cell\n"
+    "  - LAMMPS (read_data command format) \n\n"
+    "Example Usage:\n"
+    "  tadah swriter -d db.tadah -i 7 -f castep -o structure7.cell \n\n"
+    "Output File:\n"
+    "  The converted dataset will be prepared in the selected format.\n";
+
+  swriter->usage(usage);
+
+  usage =
+    "Specify the output file.\n"
+    "The converted structure will be saved to this file.";
+
+  swriter->add_option("-o,--outfile", out_file, usage)
+    ->check(CLI::NonexistentPath)
+    ->required();
+
+  usage = 
+    "Specify single Tadah! dataset file.\n";
+
+  swriter->add_option("-d,--dataset", datasets, usage)
+    ->required()
+    ->check(CLI::ExistingFile);
+
+  usage = 
+    "Specify format of an output file.\n"
+    "Supported formats:\n"
+    "  castep\n"
+    "  vasp\n"
+    "  lammps\n";
+  swriter->add_option("-f,--format", format, usage)
+    ->required();
+
+  swriter->add_option("-i,--index", index,
+                      "Structure number from the selected dataset (1-N).")
+    ->required();
+
+  swriter->add_option("-p,--precision", outprec,
+                      "Set the number of decimal places for numerical output.");
+
+  swriter->add_flag("-V,--Verbose", verbose, "Enable verbose mode.");
+
 }
 
 int TadahCLI::run(int argc, char** argv) {
@@ -479,6 +544,9 @@ int TadahCLI::run(int argc, char** argv) {
     if (*dcalc) {
       return subsub_dcalc();
     }
+  }
+  else if (*swriter) {
+    return sub_swriter();
   }
   return 0;
 }
@@ -1251,5 +1319,21 @@ int TadahCLI::subsub_dcalc() {
     }
   }
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  return 0;
+}
+int TadahCLI::sub_swriter() {
+  if (rank!=0) return 0;
+  CLI::Timer timer_tot{"Structure Writer", CLI::Timer::Big};
+  StructureDB stdb;
+
+  stdb.add(datasets[0],index-1,1);
+  boost::to_upper(format);
+  auto writer = DatasetWriterSelector::get_writer(format,stdb);
+
+  if (convert->count("--precision"))
+    writer->set_precision(outprec);
+
+  writer->write_data(out_file,0);
+
   return 0;
 }

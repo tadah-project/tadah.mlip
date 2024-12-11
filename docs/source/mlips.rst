@@ -8,7 +8,7 @@ Here you can find interatomic potentials created by our group and gain insight i
 N2
 --
 
-Machine-learned interatomic potential specifically designed to study the phase diagram of N₂ up to 10 GPa. The model requires the ``Tadah!LAMMPS`` plugin to be installed (:ref:`installation_lammps`).
+A machine-learned interatomic potential specifically designed to study the phase diagram of N₂ up to 10 GPa. The model requires the ``Tadah!LAMMPS`` plugin to be installed (:ref:`installation_lammps`). The potential is robust and highly transferable, although its performance above 10 GPa is unknown. We expect that its predictions will gradually diverge from experimental results. It won't support high-pressure polymerisation or bond breaking in general due to its rigid nature.
 
 :download:`Tadah!N2 <mlips/tadah.n2>`
 
@@ -17,13 +17,12 @@ Machine-learned interatomic potential specifically designed to study the phase d
 Kr
 --
 
-A two-body interatomic potential that performs exceptionally well given its simplicity. Two versions are provided. The first model (``Tadah!Kr1``) was fitted to CCSD(T) dimers, while the second model's energies were corrected using equilateral Kr trimers (``Tadah!Kr2``).
+A two-body interatomic potential that performs exceptionally well given its simplicity. Two versions are provided. The first model (``Tadah!Kr1``) was fitted to CCSD(T) dimers, while the second model's energies were corrected using equilateral Kr trimers (``Tadah!Kr2``). The latter model is recommended.
+Both potentials show very good agreement with the experimental data for the equation of state, melting point, and neutron scattering for the fluid. They offer significant improvements over classic LJ potentials at higher pressures.
 
-Both potentials are provided in two formats: the native Tadah! format, which requires the ``Tadah!LAMMPS`` plugin (:ref:`installation_lammps`), and a tabulated potential formatted for LAMMPS ``pair_style table``.
+Both potentials are provided in LAMMPS tabulated formats to be used with ``pair_style table``.
 
-:download:`Tadah!Kr1 <mlips/tadah.kr1>`
 :download:`Tadah!Kr1 tabulated <mlips/tadah.kr1.tab>`
-:download:`Tadah!Kr2 <mlips/tadah.kr2>`
 :download:`Tadah!Kr2 tabulated <mlips/tadah.kr2.tab>`
 
 **Under review**

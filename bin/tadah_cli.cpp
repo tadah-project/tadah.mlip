@@ -234,7 +234,7 @@ TadahCLI::TadahCLI():
   /*---------------------------------------------------------------------------*/
   /*     DB                                                                    */
   /*---------------------------------------------------------------------------*/
-  db = app.add_subcommand("db", "A set of tools for editing Tadah! datasets");
+  db = app.add_subcommand("db", "A set of tools for editing Tadah! datasets\n");
 
   /*---------------------------------------------------------------------------*/
   /*     DB DUPLICATES                                                         */

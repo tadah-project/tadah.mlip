@@ -8,7 +8,7 @@ Here you can find interatomic potentials created by our group and gain insight i
 N2
 --
 
-A machine-learned interatomic potential specifically designed to study the phase diagram of N₂ up to 10 GPa. The model requires the ``Tadah!LAMMPS`` plugin to be installed (:ref:`installation_lammps`). The potential is robust and highly transferable, although its performance above 10 GPa is unknown. We expect that its predictions will gradually diverge from experimental results. It won't support high-pressure polymerisation or bond breaking in general due to its rigid nature.
+A machine-learned interatomic potential specifically designed to study the phase diagram of N₂ up to 10 GPa. The model uses ``pair_style tadah`` which requires the ``Tadah!LAMMPS`` plugin to be installed (:ref:`installation_lammps`). The potential is robust and highly transferable, although its performance above 10 GPa is unknown. At higher pressure, we expect that its predictions will gradually diverge from experimental results. It won't support high-pressure polymerisation or bond breaking in general due to its rigid nature.
 
 :download:`Tadah!N2 <mlips/tadah.n2>`
 

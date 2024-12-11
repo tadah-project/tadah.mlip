@@ -13,7 +13,7 @@ Here we also publish selected interatomic potentials developed by
        <span style="vertical-align:middle;">Prof. Ackland's group</span>
        <span style="font-size:small; vertical-align:middle;">🔗</span>
    </a>
-using Tadah!
+using Tadah! software.
 
 .. seealso:: 
    For our interatomic potentials, see :ref:`mlips`.

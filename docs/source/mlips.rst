@@ -20,10 +20,19 @@ Kr
 A two-body interatomic potential that performs exceptionally well given its simplicity. Two versions are provided. The first model (``Tadah!Kr1``) was fitted to CCSD(T) dimers, while the second model's energies were corrected using equilateral Kr trimers (``Tadah!Kr2``). The latter model is recommended.
 Both potentials show very good agreement with the experimental data for the equation of state, melting point, and neutron scattering for the fluid. They offer significant improvements over classic LJ potentials at higher pressures.
 
-Both potentials are provided in LAMMPS tabulated formats to be used with ``pair_style table``.
+Potentials are provided in both the native Tadah! format, which uses ``pair_style tadah``, and the LAMMPS tabulated format, used with ``pair_style table``.
 
-:download:`Tadah!Kr1 tabulated <mlips/tadah.kr1.tab>`
-:download:`Tadah!Kr2 tabulated <mlips/tadah.kr2.tab>`
+We are currently re-optimizing both potentials using HPO and will make them available for the current version of Tadah!.
+
+- :download:`Tadah!Kr1 <mlips/tadah.kr1>`
+- :download:`Tadah!Kr2 <mlips/tadah.kr2>`
+- :download:`Tadah!Kr1 tabulated <mlips/tadah.kr1.tab>`
+- :download:`Tadah!Kr2 tabulated <mlips/tadah.kr2.tab>`
+
+Below are two original potentials designed for an older version of Ta-dah! (``pair_style tadah/tadah``), which is discontinued but still available online: `Ta-dah old version <https://ta-dah.readthedocs.io/en/latest/>`_.
+
+- :download:`Ta-dah!Kr1 <mlips/ta-dah.kr1>`
+- :download:`Ta-dah!Kr2 <mlips/ta-dah.kr2>`
 
 **Under review**
 

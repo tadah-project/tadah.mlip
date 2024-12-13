@@ -660,6 +660,8 @@ TadahCLI::TadahCLI():
                      "  - ...\n")
     ->required();
 
+  cutoff->add_flag("-D,--Derivative", "Plot also derivative of the cutoff fucntion.\n");
+
   cutoff->add_option("-n,--numeric", outprec,
                       "Set the number of decimal places for numerical output.\n");
 
@@ -1759,8 +1761,13 @@ int TadahCLI::subsub_cutoff() {
       outfile << std::fixed << std::setprecision(outprec)
         << std::setw(outprec+5)
         << range[j] << "    "
-        << std::setw(outprec+5) << cut->calc(range[j])
-        << std::endl;
+        << std::setw(outprec+5) << cut->calc(range[j]);
+      if(cutoff->count("--Derivative")) {
+        outfile << std::fixed << std::setprecision(outprec)
+          << "    "
+          << std::setw(outprec+5) << cut->calc_prime(range[j]);
+      }
+      outfile << std::endl;
     }
     outfile << std::endl << std::endl;
   }

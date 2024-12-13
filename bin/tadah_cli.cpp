@@ -1,4 +1,5 @@
 #include "tadah_cli.h"
+#include "boost/algorithm/string/case_conv.hpp"
 
 #include <tadah/core/config.h>
 #include <tadah/core/core_types.h>
@@ -20,6 +21,7 @@
 #include <tadah/mlip/version.h>
 
 #include <tadah/models/dc_selector.h>
+#include <tadah/models/descriptors/d_basis_functions.h>
 
 #include <boost/algorithm/string.hpp>
 
@@ -63,7 +65,7 @@ TadahCLI::TadahCLI():
     "molecular dynamics using `pair_style tadah`. The model trains on energies\n"
     "by default; training with forces and stresses is optional.\n"
     "See documentation for details.\n\n"
-    "   Example: tadah train -c config.tadah";
+    "   Example: tadah train -c config.tadah\n";
   train->usage(usage);
 
   usage = 
@@ -76,10 +78,10 @@ TadahCLI::TadahCLI():
     ->check(CLI::ExistingFile)
     ->required();
 
-  train->add_flag("-F,--Force", "Include forces in training.");
-  train->add_flag("-S,--Stress", "Include stresses in training.");
-  train->add_flag("-V,--Verbose", "Enable verbose output.");
-  train->add_flag("-u,--uncertainty", "Output uncertainty on weights.");
+  train->add_flag("-F,--Force", "Include forces in training.\n");
+  train->add_flag("-S,--Stress", "Include stresses in training.\n");
+  train->add_flag("-V,--Verbose", "Enable verbose output.\n");
+  train->add_flag("-u,--uncertainty", "Output uncertainty on weights.\n");
   /*---------------------------------------------------------------------------*/
 
 
@@ -103,7 +105,7 @@ TadahCLI::TadahCLI():
     "   Example: tadah predict -c config.tadah -p pot.tadah\n\n"
     "Option 2:\n"
     "Provide datasets and flags via command line.\n\n"
-    "   Example: tadah predict -p pot.tadah -FS -d db1.tadah";
+    "   Example: tadah predict -p pot.tadah -FS -d db1.tadah\n";
 
   predict->usage(usage);
 
@@ -116,19 +118,19 @@ TadahCLI::TadahCLI():
     ->check(CLI::ExistingFile);
 
   predict->add_option("-d,--datasets", datasets,
-                      "One or more datasets for prediction.")
+                      "One or more datasets for prediction.\n")
     ->excludes("-c")
     ->check(CLI::ExistingFile);
 
-  predict->add_flag("-F,--Force", "Predict forces.");
-  predict->add_flag("-S,--Stress", "Predict stresses.");
-  predict->add_flag("-V,--Verbose", "Verbose mode on.");
-  predict->add_flag("-e,--error", "Predict model error.");
+  predict->add_flag("-F,--Force", "Predict forces.\n");
+  predict->add_flag("-S,--Stress", "Predict stresses.\n");
+  predict->add_flag("-V,--Verbose", "Verbose mode on.\n");
+  predict->add_flag("-e,--error", "Predict model error.\n");
   predict->add_flag("-a,--analytics",
-                    "Compare predicted values to those in\nthe original dataset.");
+                    "Compare predicted values to those in\nthe original dataset.\n");
 
   predict->add_option("-p,--potential", pot_file,
-                      "Trained model")
+                      "Trained model\n")
     ->check(CLI::ExistingFile)
     ->required();
 
@@ -151,32 +153,32 @@ TadahCLI::TadahCLI():
     "Parameters will be optimized within constraints defined in the target file.\n"
     "The energies predicted will be validated again the validation file.\n"
     "See documentation for more details.\n\n"
-    "   Example: tadah hpo -c config.tadah -t targets -v valid.tadah";
+    "   Example: tadah hpo -c config.tadah -t targets -v valid.tadah\n";
   hpo->usage(usage);
 
   usage = 
     "Specify a config file with initial model\n"
-    "parameters and training datasets.";
+    "parameters and training datasets.\n";
   hpo->add_option("-c,--config", config_file, usage)
     ->check(CLI::ExistingFile)
     ->required();
 
   usage = 
     "Specify a target file with model targets and\n"
-    "hyperparameter constraints.";
+    "hyperparameter constraints.\n";
   hpo->add_option("-t,--target", target_file, usage)
     ->required()
     ->check(CLI::ExistingFile);
 
   usage = "Provide a validation file with datasets for\n"
-    "testing hyperparameters.";
+    "testing hyperparameters.\n";
   hpo->add_option("-v,--validation", validation_file, usage)
     ->required()
     ->check(CLI::ExistingFile);
 
-  hpo->add_flag("-F,--Force", "Train with forces.");
-  hpo->add_flag("-S,--Stress", "Train with stresses.");
-  hpo->add_flag("-V,--Verbose", "Enable verbose mode.");
+  hpo->add_flag("-F,--Force", "Train with forces.\n");
+  hpo->add_flag("-S,--Stress", "Train with stresses.\n");
+  hpo->add_flag("-V,--Verbose", "Enable verbose mode.\n");
   //hpo->add_flag("-u,--uncertainty",
   //        "Dump uncertainty on weights."); // TODO check this
 
@@ -210,7 +212,7 @@ TadahCLI::TadahCLI():
 
   usage =
     "Specify the output file.\n"
-    "The converted data will be saved to this file.";
+    "The converted data will be saved to this file.\n";
 
   convert->add_option("-o,--outfile", out_file, usage)
     ->check(CLI::NonexistentPath)
@@ -219,17 +221,17 @@ TadahCLI::TadahCLI():
   usage = 
     "Specify one or more dataset files to convert.\n"
     "Supported formats include:\n"
-    ".md, .geom, .castep, OUTCAR, and vasprun.xml.";
+    ".md, .geom, .castep, OUTCAR, and vasprun.xml.\n";
 
   convert->add_option("-d,--datasets", datasets, usage)
     ->required()
     //->excludes("-c")
     ->check(CLI::ExistingFile);
 
-  convert->add_option("-p,--precision", outprec,
-                      "Set the number of decimal places for numerical output.");
+  convert->add_option("-n,--numeric", outprec,
+                      "Set the number of decimal places for numerical output.\n");
 
-  convert->add_flag("-V,--Verbose", verbose, "Enable verbose mode.");
+  convert->add_flag("-V,--Verbose", verbose, "Enable verbose mode.\n");
 
   /*---------------------------------------------------------------------------*/
   /*     DB                                                                    */
@@ -246,118 +248,118 @@ TadahCLI::TadahCLI():
     "  1. Number of atoms matches.\n"
     "  2. Cell vectors are within a threshold.\n"
     "  3. Atomic coordinates and element types are identical\n (order-independent).\n\n"
-    "Note: This tool cannot distinguish between\n rotated or translated configurations.";
+    "Note: This tool cannot distinguish between\n rotated or translated configurations.\n";
 
   dups = db->add_subcommand("dups", usage);
 
   usage = 
-    "Specify one or more Tadah! datasets to scan for duplicates. "
-    "If using -c, provide a single output file. Otherwise, "
-    "the number of output files must match the datasets.";
+    "Specify one or more Tadah! datasets to scan for duplicates. \n"
+    "If using -c, provide a single output file. Otherwise, \n"
+    "the number of output files must match the datasets.\n";
 
   dups->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
 
   usage =
-    "Specify the output file(s) for pruned data. Path must not exist.";
+    "Specify the output file(s) for pruned data. Path must not exist.\n";
 
   dups->add_option("-o,--outfiles", out_files, usage)
     ->check(CLI::NonexistentPath);
 
   dups->add_option("-t,--threshold", val, 
-                   "Threshold value for comparing atomic positions and box vectors. Default: 1e-6");
+                   "Threshold value for comparing atomic positions and box vectors. Default: 1e-6\n");
 
   dups->add_flag("-m,--merge", 
-                 "Merge results into a single dataset.")
+                 "Merge results into a single dataset.\n")
     ->needs("-o");
 
-  dups->add_flag("-V,--verbose", verbose, 
-                 "Enable verbose output for detailed information.");
+  dups->add_flag("-V,--Verbose", verbose, 
+                 "Enable verbose output for detailed information.\n");
 
   /*---------------------------------------------------------------------------*/
   /*     DB JOIN                                                               */
   /*---------------------------------------------------------------------------*/
   usage = 
-    "Merge multiple datasets into a unified dataset file.";
+    "Merge multiple datasets into a unified dataset file.\n";
   join = db->add_subcommand("join", usage);
 
-  usage = "Provide a list of Tadah! datasets to merge.";
+  usage = "Provide a list of Tadah! datasets to merge.\n";
   join->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
 
   usage =
-    "Specify the output file for combined data. Path must not exist.";
+    "Specify the output file for combined data. Path must not exist.\n";
   join->add_option("-o,--outfile", out_file, usage)
     ->required()
     ->check(CLI::NonexistentPath);
 
-  join->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+  join->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.\n");
 
   /*---------------------------------------------------------------------------*/
   /*     DB SPLIT                                                              */
   /*---------------------------------------------------------------------------*/
   usage = 
-    "Divide the dataset into smaller parts\nusing specified algorithms.";
+    "Divide the dataset into smaller parts\nusing specified algorithms.\n";
   split = db->add_subcommand("split", usage);
 
-  usage = "Specify the Tadah! dataset to split.";
+  usage = "Specify the Tadah! dataset to split.\n";
   split->add_option("-d,--datasets", in_file, usage)
     ->required()
     ->check(CLI::ExistingFile);
 
   usage =
-    "List the output files for the resulting datasets. Paths must not exist.";
+    "List the output files for the resulting datasets. Paths must not exist.\n";
   split->add_option("-o,--outfiles", out_files, usage)
     ->required()
     ->check(CLI::NonexistentPath);
 
-  split->add_flag("-r, --randomize", "Randomize the order of entries before splitting.");
+  split->add_flag("-r, --randomize", "Randomize the order of entries before splitting.\n");
 
-  split_group = split->add_option_group("Split Algorithm", "Choose an algorithm for splitting the dataset.");
+  split_group = split->add_option_group("Split Algorithm", "Choose an algorithm for splitting the dataset.\n");
   split_group->required();
 
-  split_group->add_flag("-e,--equal", "Split the dataset into equal-sized parts.");
+  split_group->add_flag("-e,--equal", "Split the dataset into equal-sized parts.\n");
 
   usage= 
-    "Specify sizes for each part. Sum must not exceed total size.";
+    "Specify sizes for each part. Sum must not exceed total size.\n";
   split_group->add_option("-s,--sizes", sizes, usage)
     ->excludes("-e");
 
   usage =
-    "Specify percentages for each part. Total must sum to 100%.";
+    "Specify percentages for each part. Total must sum to 100%.\n";
   split_group->add_option("-p,--percentage", sizes, usage)
     ->excludes("-e")
     ->excludes("-s");
 
-  split->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+  split->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.\n");
 
   /*---------------------------------------------------------------------------*/
   /*     DB SAMPLE                                                             */
   /*---------------------------------------------------------------------------*/
   usage = 
-    "Create a new dataset by sampling from existing\ndatasets using specified algorithms.";
+    "Create a new dataset by sampling from existing\ndatasets using specified algorithms.\n";
   sample = db->add_subcommand("sample", usage);
 
-  usage = "Specify the Tadah! datasets to sample from.";
+  usage = "Specify the Tadah! datasets to sample from.\n";
   sample->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
 
   usage =
-    "Specify the location for the output sample file.";
+    "Specify the location for the output sample file.\n";
   sample->add_option("-o,--outfile", out_file, usage)
     ->required()
     ->check(CLI::NonexistentPath);
 
-  sample_group = sample->add_option_group("Sampling Algorithm", "Select a sampling algorithm.");
+  sample_group = sample->add_option_group("Sampling Algorithm", "Select a sampling algorithm.\n");
   sample_group->required();
 
-  sample_group->add_option("-e,--every", N, "Sample every N-th entry from the dataset.");
+  sample_group->add_option("-e,--every", N, "Sample every N-th entry from the dataset.\n");
 
   usage= 
-    "Randomly select N entries from the dataset.";
+    "Randomly select N entries from the dataset.\n";
   sample_group->add_option("-r,--random", N, usage)
     ->excludes("-e");
 
@@ -373,20 +375,20 @@ TadahCLI::TadahCLI():
                            "Duplicates are removed.\n"
                            "Indexing starts at 1.\n"
                            "e.g., 1,2,4,4-6,10-14:2 expands to:\n"
-                           "1,2,4,5,6,10,12,14.")
+                           "1,2,4,5,6,10,12,14.\n")
     ->excludes("-r")
     ->excludes("-e");
 
-  sample->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+  sample->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.\n");
 
   /*---------------------------------------------------------------------------*/
   /*     DB SUMMARY                                                            */
   /*---------------------------------------------------------------------------*/
   usage = 
-    "Generate a summary report of the specified dataset(s).";
+    "Generate a summary report of the specified dataset(s).\n";
   summary = db->add_subcommand("summary", usage);
 
-  usage = "Specify one or more Tadah! datasets to summarize.";
+  usage = "Specify one or more Tadah! datasets to summarize.\n";
   summary->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
@@ -405,24 +407,24 @@ TadahCLI::TadahCLI():
   /*     DESC CALC                                                             */
   /*---------------------------------------------------------------------------*/
   usage = 
-    "Calculate descriptors using a potential "
-    "file for specified datasets.";
+    "Calculate descriptors using a potential \n"
+    "file for specified datasets.\n";
 
   dcalc = desc->add_subcommand("dcalc", usage);
 
   usage =
-    "Specify the Tadah! datasets for "
-    "descriptor calculation.";
+    "Specify the Tadah! datasets for \n"
+    "descriptor calculation.\n";
   dcalc->add_option("-d,--datasets", datasets, usage)
     ->required()
     ->check(CLI::ExistingFile);
 
   usage =
-    "Specify the output file location.";
+    "Specify the output file location.\n";
   dcalc->add_option("-o,--outfile", out_files, usage)
     ->check(CLI::NonexistentPath);
 
-  dcalc->add_option("-p,--potential", pot_file, "Trained model file")
+  dcalc->add_option("-p,--potential", pot_file, "Trained model file\n")
     ->check(CLI::ExistingFile)
     ->required();
 
@@ -434,11 +436,11 @@ TadahCLI::TadahCLI():
                     "Separate tokens with commas.\n"
                     "Removes duplicates. Starts at 1.\n"
                     "e.g., 1,2,4,4-6,10-14:2 expands to:\n"
-                    "1,2,4,5,6,10,12,14.");
+                    "1,2,4,5,6,10,12,14.\n");
 
-  dcalc->add_flag("-m,--merge", "Merge result into single output file.")->needs("-o");
-  dcalc->add_flag("-F,--Force", "Calculate force descriptors.");
-  dcalc->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.");
+  dcalc->add_flag("-m,--merge", "Merge result into single output file.\n")->needs("-o");
+  dcalc->add_flag("-F,--Force", "Calculate force descriptors.\n");
+  dcalc->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.\n");
 
   /*---------------------------------------------------------------------------*/
   /*    SWRITER                                                             */
@@ -469,7 +471,7 @@ TadahCLI::TadahCLI():
 
   usage =
     "Specify the output file.\n"
-    "The converted structure will be saved to this file.";
+    "The converted structure will be saved to this file.\n";
 
   swriter->add_option("-o,--outfile", out_file, usage)
     ->check(CLI::NonexistentPath)
@@ -492,13 +494,179 @@ TadahCLI::TadahCLI():
     ->required();
 
   swriter->add_option("-i,--index", index,
-                      "Structure number from the selected dataset (1-N).")
+                      "Structure number from the selected dataset (1-N).\n")
     ->required();
 
-  swriter->add_option("-p,--precision", outprec,
-                      "Set the number of decimal places for numerical output.");
+  swriter->add_option("-n,--numeric", outprec,
+                      "Set the number of decimal places for numerical output.\n");
 
-  swriter->add_flag("-V,--Verbose", verbose, "Enable verbose mode.");
+  swriter->add_flag("-V,--Verbose", verbose, "Enable verbose mode.\n");
+
+  /*---------------------------------------------------------------------------*/
+  /*     PLOT                                                                  */
+  /*---------------------------------------------------------------------------*/
+  plot = app.add_subcommand("plot", "Toolkit for plotting\n");
+
+  /*---------------------------------------------------------------------------*/
+  /*     PLOT BASIS FUNCTIONS                                                  */
+  /*---------------------------------------------------------------------------*/
+
+  usage = 
+    "Plot basis functions\n(and optionally cutoff values)\nused in two- and many-body expansions.\n"
+    "GNUPLUT plotting IS NOT IMPLEMENTED everything else should work\n";
+  bf = plot->add_subcommand("bf", usage);
+
+  usage = 
+    "This function can generate a formatted text file for plotting with external software, or it can use gnuplot  (if available during Tadah! compilation) for visualization.\n"
+    "Input must be either a trained potential model or a configuration file with the following keys:\n"
+    "  - SGRID2B (or SGRIDMB) <--REQUIRED\n"
+    "  - CGRID2B (or CGRIDMB) <--REQUIRED\n"
+    "  - RCTYPE2B (or RCTYPEMB) <--OPTIONAL\n"
+    "  - RCUT2B (or RCUTMB) <--OPTIONAL\n"
+    "Keys in brackets represent alternatives.\n"
+    "The output file contains two columns: (distance) and (basis function value).\n"
+    "Multiple basis functions will be separated by two blank lines in the output.\n";
+
+  bf->usage(usage);
+
+  usage = 
+    "Provide either a potential file\nor a config file containing\nthe necessary keys.\n";
+
+  bf->add_option("-c,--config", config_file, usage)
+    ->check(CLI::ExistingFile)
+    ->required();
+
+  usage =
+    "Specify the output file for text data\nand (optionally) a plot file using gnuplot.\n"
+    "Supported plot file extensions:\n.png, .pdf, .eps, .svg.\n"
+    "Pathnames must not exist.\n";
+
+  bf->add_option("-o,--outfile", out_files, usage)
+    ->required()
+    ->check(CLI::NonexistentPath);
+
+  bf->add_option("-r,--range", range, "Range for plotting:\nSTART STOP NPOINTS.\n")
+    ->required();
+
+  bf->add_option("-t,--type", types, 
+                 "Specify the type of basis function and interaction:\n"
+                 "  - \"B 2b Y/N\": Blips for two-body interactions\n"
+                 "  - \"B mb Y/N\": Blips for many-body interactions\n"
+                 "  - \"G 2b Y/N\": Gaussians for two-body interactions\n"
+                 "  - \"G mb Y/N\": Gaussians for many-body interactions\n"
+                 "Y/N indicates whether to plot the cutoff function.\n")
+    ->required();
+
+  bf->add_flag("-s,--scale", "Scale the heights of the basis\nfunctions by the cutoff value.\n");
+
+  usage =
+    "Indices of basis functions to be plotted\n"
+    "- Single numbers\n"
+    "- Ranges (START-STOP)\n"
+    "- Ranges with steps (START-STOP:STEP)\n"
+    "Separate tokens with commas.\n"
+    "Duplicated indices are removed.\n"
+    "Range starts at 1.\n"
+    "e.g., 1,2,4,4-6,10-14:2 expands to:\n"
+    "1,2,4,5,6,10,12,14.\n";
+
+  bf->add_option("-i,--indices", indices, usage)
+    ->check(CLI::NonexistentPath);
+
+  bf->add_option("-n,--numeric", outprec,
+                      "Set the number of decimal places for numerical output.\n");
+
+  bf->add_flag("-V,--Verbose", verbose, 
+                 "Enable verbose output for detailed information.\n");
+
+  /*---------------------------------------------------------------------------*/
+  /*     PLOT TWOBODY                                                          */
+  /*---------------------------------------------------------------------------*/
+
+  usage = 
+    "Plot two-body potential.\n"
+    "GNUPLUT plotting IS NOT IMPLEMENTED everything else should work\n";
+
+  twobody = plot->add_subcommand("twobody", usage);
+
+  usage = 
+    "This tool will plot two-body potential within a specified range.\n";
+
+  twobody->usage(usage);
+
+  twobody->add_option("-p,--potential", pot_file,
+                      "Tadah! potential file.\n")
+    ->check(CLI::ExistingFile)
+    ->required();
+
+  usage =
+    "Specify the output file for text data\nand (optionally) a plot file using gnuplot.\n"
+    "Supported plot file extensions:\n.png, .pdf, .eps, .svg.\n"
+    "Pathnames must not exist.\n";
+
+  twobody->add_option("-o,--outfile", out_files, usage)
+    ->required()
+    ->check(CLI::NonexistentPath);
+
+  twobody->add_option("-r,--range", range, "Range for plotting:\nSTART STOP NPOINTS.\n")
+    ->required();
+
+  twobody->add_option("-a,--atoms", types, 
+                 "Specify two chemical elements: e.g. \"Kr Kr\"\n")
+    ->required();
+
+  twobody->add_flag("-F,--Force", "Predict forces.\n");
+
+  twobody->add_option("-n,--numeric", outprec,
+                      "Set the number of decimal places for numerical output.\n");
+
+  twobody->add_flag("-e,--error", "Predict model error.\n");
+
+  twobody->add_flag("-V,--Verbose", verbose, 
+                 "Enable verbose output for detailed information.\n");
+
+
+  /*---------------------------------------------------------------------------*/
+  /*     PLOT CUTOFFS                                                          */
+  /*---------------------------------------------------------------------------*/
+
+  usage = 
+    "Plot cutoffs.\n"
+    "GNUPLUT plotting IS NOT IMPLEMENTED everything else should work\n";
+
+  cutoff = plot->add_subcommand("cutoff", usage);
+
+  usage = 
+    "This tool will plot cutoff function within a specified range.\n";
+
+  cutoff->usage(usage);
+
+  usage =
+    "Specify the output file for text data\nand (optionally) a plot file using gnuplot.\n"
+    "Supported plot file extensions:\n.png, .pdf, .eps, .svg.\n"
+    "Pathnames must not exist.\n";
+
+  cutoff->add_option("-o,--outfile", out_files, usage)
+    ->required()
+    ->check(CLI::NonexistentPath);
+
+  cutoff->add_option("-r,--range", range, "Range for plotting:\nSTART STOP NPOINTS.\n")
+    ->required();
+
+  cutoff->add_option("-t,--type", types, 
+                     "Specify the type(s) of cutoff functions, e.g.\n"
+                     "  - Cut_Cos\n"
+                     "  - Cut_Tanh\n"
+                     "  - ...\n")
+    ->required();
+
+  cutoff->add_flag("-D,--Derivative", "Plot also derivative of the cutoff fucntion.\n");
+
+  cutoff->add_option("-n,--numeric", outprec,
+                      "Set the number of decimal places for numerical output.\n");
+
+  cutoff->add_flag("-V,--Verbose", verbose, 
+                 "Enable verbose output for detailed information.\n");
 
 }
 
@@ -547,6 +715,17 @@ int TadahCLI::run(int argc, char** argv) {
   }
   else if (*swriter) {
     return sub_swriter();
+  }
+  else if (*plot) {
+    if (*bf) {
+      return subsub_bf();
+    }
+    else if (*twobody) {
+      return subsub_twobody();
+    }
+    else if (*cutoff) {
+      return subsub_cutoff();
+    }
   }
   return 0;
 }
@@ -902,7 +1081,7 @@ int TadahCLI::sub_convert() {
     stdb.add(stdb_);
   }
 
-  if (convert->count("--precision"))
+  if (convert->count("--numeric"))
     stdb.dump_to_file(out_file, outprec);
   else
     stdb.dump_to_file(out_file);
@@ -1330,10 +1509,274 @@ int TadahCLI::sub_swriter() {
   boost::to_upper(format);
   auto writer = DatasetWriterSelector::get_writer(format,stdb);
 
-  if (convert->count("--precision"))
+  if (convert->count("--numeric"))
     writer->set_precision(outprec);
 
   writer->write_data(out_file,0);
 
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  return 0;
+}
+int TadahCLI::subsub_bf() {
+  if (rank!=0) return 0;
+  CLI::Timer timer_tot{"Basis Function Plotter", CLI::Timer::Big};
+
+  Config config(config_file);
+  DC_Selector DCS(config);
+
+  v_type cgrid;
+  v_type sgrid;
+
+  boost::to_upper(types[0]);
+  boost::to_upper(types[1]);
+  boost::to_upper(types[2]);
+  Cut_Base *fcut = nullptr;
+  if (types[1]=="2B") {
+    DCS.d2b->get_grid(config, "CGRID2B", cgrid);
+    DCS.d2b->get_grid(config, "SGRID2B", sgrid);
+    if (types[2]=="Y") {
+      double rcut = config.get<double>("RCUT2B");
+      fcut = CONFIG::factory<Cut_Base,double>( config.get<std::string>("RCTYPE2B"), rcut);
+    }
+  }
+  else if (types[1]=="MB") {
+    DCS.dmb->get_grid(config, "CGRIDMB", cgrid);
+    DCS.dmb->get_grid(config, "SGRIDMB", sgrid);
+    if (types[2]=="Y") {
+      double rcut = config.get<double>("RCUTMB");
+      fcut = CONFIG::factory<Cut_Base,double>( config.get<std::string>("RCTYPEMB"), rcut);
+    }
+  }
+  else {
+    throw std::runtime_error("Unsupported -t, --type: " + types[0] + " " + types[1]);
+  }
+
+  double (*fb)(double,double,double) = nullptr;
+  if (types[0]=="B") {
+    std::cout << "B type: " << types[0] << std::endl;
+    fb = &B;
+  }
+  else if (types[0]=="G") {
+    std::cout << "G type: " << types[0] << std::endl;
+    fb = &G;
+  }
+  else {
+    throw std::runtime_error("Unsupported -t, --type: " + types[0] + " " + types[1]);
+  }
+
+  std::vector<size_t> idx;
+  if (bf->count("-i")) {
+    idx = parse_indices(indices);
+    // prune indices if too large values are given by the user
+    for (auto it = idx.begin(); it != idx.end(); ) {
+      if (*it > cgrid.size()) { // remember indices start from 1
+        std::cerr << "WARNING: index " << *it << " is out of range. This index will be removed from the list." << std::endl;
+        it = idx.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+  else {
+    for (size_t j=0; j < cgrid.size(); ++j) {
+      idx.push_back(j+1);
+    }
+  }
+
+  // generate range
+  double start = range[0];
+  double stop = range[1];
+  size_t N = static_cast<size_t>(range[2]);
+  v_type range = linspace(start,stop,N);
+
+  if (!bf->count("--numeric")) {
+    outprec = 5;
+  }
+  bool scale = bf->count("--scale");
+  v_type cutoff_values (range.size(), 1.0);
+  if (scale) {
+    for (size_t i=0; i<range.size(); ++i) {
+      cutoff_values[i] = fcut->calc(range[i]);
+    }
+  }
+
+  std::ofstream outfile(out_files[0]);
+  for (const auto &i : idx) {
+    double c = cgrid[i-1];
+    double s = sgrid[i-1];
+    for (size_t j=0; j<range.size(); ++j) {
+      outfile << std::fixed << std::setprecision(outprec)
+        << std::setw(outprec+5)
+        << range[j] << "    "
+        << std::setw(outprec+5) << fb(range[j],s,c)*cutoff_values[j] << std::endl;
+    }
+    outfile << std::endl << std::endl;
+  }
+
+  if (types[2]=="Y") {
+    for (size_t i=0; i<range.size(); ++i) {
+      outfile << std::fixed << std::setprecision(outprec)
+        << std::setw(outprec+5)
+        << range[i] << "    "
+        << std::setw(outprec+5) << fcut->calc(range[i]) << std::endl;
+    }
+    outfile << std::endl << std::endl;
+
+  }
+  outfile.flush();
+
+  // next we do plotting if gnuplot is available
+  // TADAH_GNUPLOT
+
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  return 0;
+}
+int TadahCLI::subsub_twobody() {
+  if (rank!=0) return 0;
+  CLI::Timer timer_tot{"Two-Body Potential Plotter", CLI::Timer::Big};
+
+  if(twobody->count("--Verbose"))
+    set_verbose();
+  Config pot_config(pot_file);
+  pot_config.check_for_predict();
+  if (pot_config.exist("STRESS") && pot_config.get<bool>("STRESS")) pot_config.remove("STRESS");
+  if (pot_config.exist("VERBOSE") && pot_config.get<bool>("VERBOSE")) pot_config.remove("VERBOSE");
+
+  if(twobody->count("--Force")) {
+    pot_config.remove("FORCE");
+    pot_config.add("FORCE", "true");
+  }
+
+  // generate range
+  double start = range[0];
+  double stop = range[1];
+  size_t N = static_cast<size_t>(range[2]);
+  v_type range = linspace(start,stop,N);
+
+  if (!bf->count("--numeric")) {
+    outprec = 5;
+  }
+
+  DC_Selector DCS(pot_config);
+
+  if (is_verbose()) std::cout << "Generating dataset..." << std::flush;
+  StructureDB stdb;
+  double cutoff = pot_config.get<double>("RCUT2B");
+  double cell_v = range.back() > cutoff? 4*range.back() : 4*cutoff;
+  Matrix3d cell;
+  cell.set_zero();
+  cell(0,0) = cell(1,1) = cell(2,2) = cell_v;
+  if (types.size()!=2) throw std::runtime_error("-e,--element: Two elements must be specified.");
+  std::string e1 = types[0];
+  std::string e2 = types[1];
+  Atom a1(Element(e1),0,0,0,0,0,0);
+  Atom a2(Element(e2),0,0,0,0,0,0);
+  for (const auto& r: range) {
+    Structure s;
+    s.cell = cell;
+    a2.position[0]=r;
+    s.add_atom(a1);
+    s.add_atom(a2);
+    stdb.add(s);
+  }
+  if (is_verbose()) std::cout << "Done!" << std::endl;
+
+  if (is_verbose()) std::cout << "Finding nearest neighbours within: " <<
+    pot_config.get<double>("RCUTMAX") << " cutoff distance..." << std::flush;
+  NNFinder nnf(pot_config);
+  nnf.calc(stdb);
+  if (is_verbose()) std::cout << "Done!" << std::endl;
+
+  DescriptorsCalc<> dc(pot_config,*DCS.d2b,*DCS.d3b,*DCS.dmb,
+                       *DCS.c2b,*DCS.c3b,*DCS.cmb);
+
+  if (is_verbose()) std::cout << "Prediction..." << std::flush;
+  DM_Function_Base *fb = CONFIG::factory<DM_Function_Base,Config&>(
+    pot_config.get<std::string>("MODEL",1),pot_config);
+  M_Tadah_Base *modelp = CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>(
+    pot_config.get<std::string>("MODEL",0),*fb,pot_config);
+
+  StructureDB stpred;
+  aed_type2 predicted_error;
+  if (twobody->count("--error")) {
+    stpred = modelp->predict(pot_config,stdb,dc,predicted_error);
+  }
+  else {
+    stpred = modelp->predict(pot_config,stdb,dc);
+  }
+  if (is_verbose()) std::cout << "Done!" << std::endl;
+
+  if (is_verbose()) std::cout << "Dumping output..." << std::flush;
+
+  std::ofstream outfile(out_files[0]);
+  for (size_t j=0; j<range.size(); ++j) {
+    outfile << std::fixed << std::setprecision(outprec)
+      << std::setw(outprec+5)
+      << range[j] << "    "
+      << std::setw(outprec+5) << stpred(j).energy;
+    if(twobody->count("--Force")) {
+      outfile << std::fixed << std::setprecision(outprec)
+        << "    "
+        << std::setw(outprec+5) << stpred(j)(1).force[0];
+    }
+    if (twobody->count("--error")) {
+      outfile << std::fixed << std::setprecision(outprec)
+        << "    "
+        << std::setw(outprec+5) << predicted_error[j];
+    }
+    outfile << std::endl;
+  }
+  outfile << std::endl << std::endl;
+  outfile.flush();
+
+  // next we do plotting if gnuplot is available
+  // TADAH_GNUPLOT
+
+  if (is_verbose()) std::cout << "Done!" << std::endl;
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  return 0;
+}
+int TadahCLI::subsub_cutoff() {
+  if (rank!=0) return 0;
+  CLI::Timer timer_tot{"Cutoff Plotter", CLI::Timer::Big};
+
+  if(cutoff->count("--Verbose"))
+    set_verbose();
+
+  // generate range
+  double start = range[0];
+  double stop = range[1];
+  size_t N = static_cast<size_t>(range[2]);
+  v_type range = linspace(start,stop,N);
+
+  if (!cutoff->count("--numeric")) {
+    outprec = 5;
+  }
+
+  if (is_verbose()) std::cout << "Dumping output..." << std::flush;
+  std::ofstream outfile(out_files[0]);
+  for (const auto &type: types) {
+    Cut_Base *cut = CONFIG::factory<Cut_Base,double>( type, range.back() );
+    for (size_t j=0; j<range.size(); ++j) {
+      outfile << std::fixed << std::setprecision(outprec)
+        << std::setw(outprec+5)
+        << range[j] << "    "
+        << std::setw(outprec+5) << cut->calc(range[j]);
+      if(cutoff->count("--Derivative")) {
+        outfile << std::fixed << std::setprecision(outprec)
+          << "    "
+          << std::setw(outprec+5) << cut->calc_prime(range[j]);
+      }
+      outfile << std::endl;
+    }
+    outfile << std::endl << std::endl;
+  }
+  outfile.flush();
+
+  // next we do plotting if gnuplot is available
+  // TADAH_GNUPLOT
+
+  if (is_verbose()) std::cout << "Done!" << std::endl;
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
   return 0;
 }

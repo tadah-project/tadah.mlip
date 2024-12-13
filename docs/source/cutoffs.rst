@@ -1,3 +1,5 @@
+.. _cutoffs:
+
 Cutoff Functions
 ================
 

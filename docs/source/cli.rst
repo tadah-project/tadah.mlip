@@ -10,6 +10,8 @@ Features
 - **Database Conversion**: Process computational datasets into Tadah! database format.
 - **Database Management**: Identify duplicates, join, split, and sample datasets.
 - **Descriptor Calculation**: Calculate descriptors for datasets using a potential file.
+- **Plotting Toolkit**: Visualize basis functions, cutoffs, and two-body potentials.
+
 
 Tools Description
 -----------------
@@ -121,3 +123,38 @@ Examples:
 
   - ``tadah dcalc -d dataset.tadah -p pot.tadah -o descriptors.tadah``: Calculate descriptors using a potential file and save to a file.
   - ``tadah dcalc -d dataset.tadah -p pot.tadah -i 1,3,5-7``: Calculate specific structures.
+
+Plotting Toolkit
+................
+
+Basis Functions Plotter
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Plot two- or many-body basis functions (BF) from the existing potential file or a simple config file containing ``SGRID2B/SGRIDMB`` and ``CGRID2B/CGRIDMB`` keys. This tool can also plot cutoffs (requires ``RCYTYPE2B/RCYTYPEMB`` and ``RCUT2B/RCUTMB``) and optionally scale basis functions accordingly.
+
+Examples:
+
+  - ``tadah plot bf -c config -o output.dat -r 0.0 9.5 100 -t G 2b N`` : Plot Gaussian two-body BFs in the 0.0-9.5 range with 100 points
+  - ``tadah plot bf -c config -o output.dat -r 0.0 9.5 100 -t B mb N`` : Plot Blip many-body BFs in the 0.0-9.5 range with 100 points
+  - ``tadah plot bf -c config -o output.dat -r 0.0 9.5 100 -t B mb N -i 2-4`` : As above, but plot only 2, 3, 4 BFs
+  - ``tadah plot bf -c config -o output.dat -r 0.0 9.5 100 -t B mb Y -i 2-4`` : As above, but plot cutoffs as well
+  - ``tadah plot bf -c config -o output.dat -r 0.0 9.5 100 -t B mb Y -i 2-4 -s`` : As above, but scale blips by the cutoff value
+
+Cutoff Plotter
+~~~~~~~~~~~~~~
+
+Plot cutoff functions in a specified range. The ``-t,--type`` option is one of :ref:`cutoffs`.
+
+Examples:
+
+  - ``tadah plot cutoff -o output.dat -r 0.0 9.5 100 -t Cut_Cos``: Plot Cut_Cos in the 0.0-9.5 range with 100 points.
+
+Two Body Plotter
+~~~~~~~~~~~~~~~~
+
+Plot two-body potential energy and optionally force curves.
+
+Examples:
+
+  - ``tadah plot twobody -p pot.tadah -o output.dat -a Kr Kr -r 2.0 9.5 100``: Plot Kr-Kr in the 2.0-9.5 range with 100 points.
+  - ``tadah plot twobody -p pot.tadah -o output.dat -a Kr Kr -r 2.0 9.5 100 -F`` : As above but also plot forces

@@ -148,6 +148,7 @@ Plot cutoff functions in a specified range. The ``-t,--type`` option is one of :
 Examples:
 
   - ``tadah plot cutoff -o output.dat -r 0.0 9.5 100 -t Cut_Cos``: Plot Cut_Cos in the 0.0-9.5 range with 100 points.
+  - ``tadah plot cutoff -o output.dat -r 0.0 9.5 100 -t Cut_Cos Cut_Tanh``: Plot Cut_Cos and Cut_Tanh.
 
 Two Body Plotter
 ~~~~~~~~~~~~~~~~

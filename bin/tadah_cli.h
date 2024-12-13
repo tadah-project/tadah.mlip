@@ -65,6 +65,7 @@ private:
   int sub_swriter();
   int subsub_bf();
   int subsub_twobody();
+  int subsub_cutoff();
   int flag_version();
 
   /* Return a vector of absolute paths to every file in a directory.
@@ -93,6 +94,7 @@ public:
     CLI::App *swriter=nullptr;
     CLI::App *plot=nullptr;
       CLI::App *bf=nullptr;
+      CLI::App *cutoff=nullptr;
       CLI::App *twobody=nullptr;
 
 };

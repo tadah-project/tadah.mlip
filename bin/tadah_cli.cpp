@@ -625,6 +625,47 @@ TadahCLI::TadahCLI():
   twobody->add_flag("-V,--Verbose", verbose, 
                  "Enable verbose output for detailed information.\n");
 
+
+  /*---------------------------------------------------------------------------*/
+  /*     PLOT CUTOFFS                                                          */
+  /*---------------------------------------------------------------------------*/
+
+  usage = 
+    "Plot cutoffs.\n"
+    "GNUPLUT plotting IS NOT IMPLEMENTED everything else should work\n";
+
+  cutoff = plot->add_subcommand("cutoff", usage);
+
+  usage = 
+    "This tool will plot cutoff function within a specified range.\n";
+
+  cutoff->usage(usage);
+
+  usage =
+    "Specify the output file for text data\nand (optionally) a plot file using gnuplot.\n"
+    "Supported plot file extensions:\n.png, .pdf, .eps, .svg.\n"
+    "Pathnames must not exist.\n";
+
+  cutoff->add_option("-o,--outfile", out_files, usage)
+    ->required()
+    ->check(CLI::NonexistentPath);
+
+  cutoff->add_option("-r,--range", range, "Range for plotting:\nSTART STOP NPOINTS.\n")
+    ->required();
+
+  cutoff->add_option("-t,--type", types, 
+                     "Specify the type(s) of cutoff functions, e.g.\n"
+                     "  - Cut_Cos\n"
+                     "  - Cut_Tanh\n"
+                     "  - ...\n")
+    ->required();
+
+  cutoff->add_option("-n,--numeric", outprec,
+                      "Set the number of decimal places for numerical output.\n");
+
+  cutoff->add_flag("-V,--Verbose", verbose, 
+                 "Enable verbose output for detailed information.\n");
+
 }
 
 int TadahCLI::run(int argc, char** argv) {
@@ -679,6 +720,9 @@ int TadahCLI::run(int argc, char** argv) {
     }
     else if (*twobody) {
       return subsub_twobody();
+    }
+    else if (*cutoff) {
+      return subsub_cutoff();
     }
   }
   return 0;
@@ -1591,7 +1635,6 @@ int TadahCLI::subsub_twobody() {
 
   if(twobody->count("--Verbose"))
     set_verbose();
-  // if (is_verbose()) std::cout << "Prediction..." << std::endl;
   Config pot_config(pot_file);
   pot_config.check_for_predict();
   if (pot_config.exist("STRESS") && pot_config.get<bool>("STRESS")) pot_config.remove("STRESS");
@@ -1682,6 +1725,45 @@ int TadahCLI::subsub_twobody() {
     outfile << std::endl;
   }
   outfile << std::endl << std::endl;
+  outfile.flush();
+
+  // next we do plotting if gnuplot is available
+  // TADAH_GNUPLOT
+
+  if (is_verbose()) std::cout << "Done!" << std::endl;
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  return 0;
+}
+int TadahCLI::subsub_cutoff() {
+  if (rank!=0) return 0;
+  CLI::Timer timer_tot{"Cutoff Plotter", CLI::Timer::Big};
+
+  if(cutoff->count("--Verbose"))
+    set_verbose();
+
+  // generate range
+  double start = range[0];
+  double stop = range[1];
+  size_t N = static_cast<size_t>(range[2]);
+  v_type range = linspace(start,stop,N);
+
+  if (!cutoff->count("--numeric")) {
+    outprec = 5;
+  }
+
+  if (is_verbose()) std::cout << "Dumping output..." << std::flush;
+  std::ofstream outfile(out_files[0]);
+  for (const auto &type: types) {
+    Cut_Base *cut = CONFIG::factory<Cut_Base,double>( type, range.back() );
+    for (size_t j=0; j<range.size(); ++j) {
+      outfile << std::fixed << std::setprecision(outprec)
+        << std::setw(outprec+5)
+        << range[j] << "    "
+        << std::setw(outprec+5) << cut->calc(range[j])
+        << std::endl;
+    }
+    outfile << std::endl << std::endl;
+  }
   outfile.flush();
 
   // next we do plotting if gnuplot is available

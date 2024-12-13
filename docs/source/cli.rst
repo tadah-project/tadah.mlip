@@ -9,6 +9,7 @@ Features
 - **Hyperparameter Optimization**: Optimize model architecture and hyperparameters.
 - **Database Conversion**: Process computational datasets into Tadah! database format.
 - **Database Management**: Identify duplicates, join, split, and sample datasets.
+- **Structure  Writer**: Seamless integration with CASTEP, VASP and LAMMPS.
 - **Descriptor Calculation**: Calculate descriptors for datasets using a potential file.
 - **Plotting Toolkit**: Visualize basis functions, cutoffs, and two-body potentials.
 
@@ -113,6 +114,19 @@ Examples:
   - ``tadah db sample -d dataset.tadah -o sample_data.tadah -r 100`` : Randomly sample 100 entries.
   - ``tadah db sample -d dataset1.tadah dataset2.tadah -o sample_data.tadah -e 10 -m`` : Evenly sample every 10 entries and merge.
   - ``tadah db sample -d dataset.tadah -o sample_data.tadah -i 1,2,5-10`` : Sample specific indices.
+
+Structure Writer
+................
+
+This tool allows you to convert a structure from Tadah! dataset into one of:
+
+  - **VASP**: ``POSCAR/CONTCAR``
+  - **CASTEP**: ``.cell``
+  - **LAMMPS**: ``read_data format``
+
+Examples:
+
+  - ``tadah swriter -d db.tadah -i 7 -f castep -o structure7.cell`` : Dump structure 7 to castep .cell format.
 
 Descriptor Calculation
 ......................

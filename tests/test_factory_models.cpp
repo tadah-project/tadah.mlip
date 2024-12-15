@@ -15,6 +15,15 @@
 #include <tadah/mlip/nn_finder.h>
 #include <tadah/mlip/design_matrix/functions/dm_function_base.h>
 
+
+struct GlobalSetup {
+    GlobalSetup() {
+        PeriodicTable::initialize();
+    }
+};
+
+GlobalSetup globalSetup;
+
 using BF=BF_Linear;
 using K=Kern_Linear;
 using D2=D2_Dummy;
@@ -24,7 +33,7 @@ using C2=Cut_Dummy;
 using C3=Cut_Dummy;
 using CM=Cut_Dummy;
 
-TEST_CASE("Testing Atom PeriodicTable Initialization") {
+TEST_CASE("TFM Testing Atom PeriodicTable Initialization") {
   PeriodicTable::initialize();
 }
 

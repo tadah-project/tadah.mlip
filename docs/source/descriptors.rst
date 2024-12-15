@@ -37,6 +37,11 @@ D2_Dummy
 
 .. doxygenclass:: D2_Dummy
 
+D2_mJoin
+........
+
+.. doxygenclass:: D2_mJoin
+
 
 Many-Body
 ----------

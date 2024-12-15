@@ -16,14 +16,6 @@
 #include <tadah/mlip/design_matrix/functions/dm_function_base.h>
 
 
-struct GlobalSetup {
-    GlobalSetup() {
-        PeriodicTable::initialize();
-    }
-};
-
-GlobalSetup globalSetup;
-
 using BF=BF_Linear;
 using K=Kern_Linear;
 using D2=D2_Dummy;
@@ -38,6 +30,7 @@ TEST_CASE("TFM Testing Atom PeriodicTable Initialization") {
 }
 
 TEST_CASE( "Testing Factory: Models", "[factory_models]" ) {
+  PeriodicTable::initialize();
 
   Config config;
   config.add("MPARAMS",1);
@@ -91,6 +84,7 @@ TEST_CASE( "Testing Factory: Models", "[factory_models]" ) {
 }
 
 TEST_CASE( "Testing M_BLR", "[m_blr]" ) {
+  PeriodicTable::initialize();
 
   Config config;
   config.add("ATOMS", "H");
@@ -112,6 +106,7 @@ TEST_CASE( "Testing M_BLR", "[m_blr]" ) {
 }
 
 TEST_CASE( "Testing M_KRR", "[m_krr]" ) {
+  PeriodicTable::initialize();
 
   Config config;
   config.add("ATOMS", "H");

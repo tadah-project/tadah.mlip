@@ -1535,7 +1535,7 @@ int TadahCLI::subsub_bf() {
     DCS.d2b->get_grid(config, "CGRID2B", cgrid);
     DCS.d2b->get_grid(config, "SGRID2B", sgrid);
     if (types[2]=="Y") {
-      double rcut = config.get<double>("RCUT2B");
+      double rcut = config.get<double>("RCUT2BMAX");
       fcut = CONFIG::factory<Cut_Base,double>( config.get<std::string>("RCTYPE2B"), rcut);
     }
   }
@@ -1543,7 +1543,7 @@ int TadahCLI::subsub_bf() {
     DCS.dmb->get_grid(config, "CGRIDMB", cgrid);
     DCS.dmb->get_grid(config, "SGRIDMB", sgrid);
     if (types[2]=="Y") {
-      double rcut = config.get<double>("RCUTMB");
+      double rcut = config.get<double>("RCUTMBMAX");
       fcut = CONFIG::factory<Cut_Base,double>( config.get<std::string>("RCTYPEMB"), rcut);
     }
   }
@@ -1661,7 +1661,7 @@ int TadahCLI::subsub_twobody() {
 
   if (is_verbose()) std::cout << "Generating dataset..." << std::flush;
   StructureDB stdb;
-  double cutoff = pot_config.get<double>("RCUT2B");
+  double cutoff = pot_config.get<double>("RCUT2BMAX");
   double cell_v = range.back() > cutoff? 4*range.back() : 4*cutoff;
   Matrix3d cell;
   cell.set_zero();

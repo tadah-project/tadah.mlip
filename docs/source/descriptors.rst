@@ -76,3 +76,8 @@ DM_Dummy
 ........
 
 .. doxygenclass:: DM_Dummy
+
+DM_mJoin
+........
+
+.. doxygenclass:: DM_mJoin

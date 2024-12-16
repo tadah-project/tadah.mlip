@@ -85,3 +85,9 @@ DM_Base
 
 .. doxygenclass:: DM_Base
     :members:
+
+DM_mJoin
+........
+
+.. doxygenclass:: DM_mJoin
+    :members:

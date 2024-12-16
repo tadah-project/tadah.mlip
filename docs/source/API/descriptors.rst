@@ -47,6 +47,7 @@ D2_mJoin
 ........
 
 .. doxygenclass:: D2_mJoin
+    :members:
 
 Three-Body
 ----------

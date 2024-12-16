@@ -45,7 +45,7 @@ D2_mJoin
 
 Many-Body
 ----------
-This section lists all many-body type descriptors supported by Tadah. Some can calculate non-spherical charge distributions, thus overcoming the limitations of the Embedded Atom Method:
+This section lists all many-body type descriptors supported by Tadah! Some can calculate non-spherical charge distributions, thus overcoming the limitations of the Embedded Atom Method:
 
 DM_Blip
 .......

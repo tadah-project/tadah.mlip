@@ -1629,6 +1629,7 @@ int TadahCLI::subsub_bf() {
   // TADAH_GNUPLOT
 
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  if (fcut) delete fcut;
   return 0;
 }
 int TadahCLI::subsub_twobody() {
@@ -1770,6 +1771,7 @@ int TadahCLI::subsub_cutoff() {
       outfile << std::endl;
     }
     outfile << std::endl << std::endl;
+    if (cut) delete cut;
   }
   outfile.flush();
 

@@ -995,7 +995,16 @@ int TadahCLI::sub_hpo(
     config.remove("STRESS");
     config.add("STRESS", "true");
   }
-
+  // parse config with D2 and DM_mJoin
+  // to get expanded grids
+  if (config.exist("INIT2B") && config.get<bool>("INIT2B")) {
+    D2_Base *d2 = CONFIG::factory<D2_Base,Config&>("D2_mJoin", config);
+    delete d2;
+  }
+  if (config.exist("INITMB") && config.get<bool>("INITMB")) {
+    DM_Base *dm = CONFIG::factory<DM_Base,Config&>("DM_mJoin", config);
+    delete dm;
+  }
 #ifdef TADAH_BUILD_MPI
   MPI_Status status;
   MPI_Group world_group;

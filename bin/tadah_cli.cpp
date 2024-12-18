@@ -921,7 +921,7 @@ or datasets in a command line");
     pot_config.get<std::string>("MODEL",0),*fb,pot_config);
 
   StructureDB stpred;
-  aed_type2 predicted_error;
+  aed_type predicted_error;
   if (predict->count("--error")) {
     stpred = modelp->predict(pot_config,stdb,dc,predicted_error);
   }
@@ -1450,7 +1450,7 @@ int TadahCLI::subsub_dcalc() {
       const auto &st = stdbs[b](idxs[b][i]-1);
       oss << "Label: " << st.label << std::endl;
       for (size_t a=0; a<st.natoms(); ++a) {
-        const aed_type2 &aed = st_d.get_aed(a);
+        const aed_type &aed = st_d.get_aed(a);
         oss << std::left << std::setw(hw) << ("E " + std::to_string(a+1)) << " ";
         oss << std::scientific << std::setprecision(prec);
         for (size_t s=0; s<aed.size(); ++s) {
@@ -1707,7 +1707,7 @@ int TadahCLI::subsub_twobody() {
     pot_config.get<std::string>("MODEL",0),*fb,pot_config);
 
   StructureDB stpred;
-  aed_type2 predicted_error;
+  aed_type predicted_error;
   if (twobody->count("--error")) {
     stpred = modelp->predict(pot_config,stdb,dc,predicted_error);
   }

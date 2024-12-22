@@ -474,7 +474,6 @@ TadahCLI::TadahCLI():
     "The converted structure will be saved to this file.\n";
 
   swriter->add_option("-o,--outfile", out_file, usage)
-    ->check(CLI::NonexistentPath)
     ->required();
 
   usage = 
@@ -542,8 +541,7 @@ TadahCLI::TadahCLI():
     "Pathnames must not exist.\n";
 
   bf->add_option("-o,--outfile", out_files, usage)
-    ->required()
-    ->check(CLI::NonexistentPath);
+    ->required();
 
   bf->add_option("-r,--range", range, "Range for plotting:\nSTART STOP NPOINTS.\n")
     ->required();
@@ -570,8 +568,7 @@ TadahCLI::TadahCLI():
     "e.g., 1,2,4,4-6,10-14:2 expands to:\n"
     "1,2,4,5,6,10,12,14.\n";
 
-  bf->add_option("-i,--indices", indices, usage)
-    ->check(CLI::NonexistentPath);
+  bf->add_option("-i,--indices", indices, usage);
 
   bf->add_option("-n,--numeric", outprec,
                       "Set the number of decimal places for numerical output.\n");
@@ -605,8 +602,7 @@ TadahCLI::TadahCLI():
     "Pathnames must not exist.\n";
 
   twobody->add_option("-o,--outfile", out_files, usage)
-    ->required()
-    ->check(CLI::NonexistentPath);
+    ->required();
 
   twobody->add_option("-r,--range", range, "Range for plotting:\nSTART STOP NPOINTS.\n")
     ->required();
@@ -647,8 +643,7 @@ TadahCLI::TadahCLI():
     "Pathnames must not exist.\n";
 
   cutoff->add_option("-o,--outfile", out_files, usage)
-    ->required()
-    ->check(CLI::NonexistentPath);
+    ->required();
 
   cutoff->add_option("-r,--range", range, "Range for plotting:\nSTART STOP NPOINTS.\n")
     ->required();
@@ -953,8 +948,8 @@ or datasets in a command line");
     }
 
     if (predict->count("--Stress")) {
-      std::cout << "Stress MAE (eV): "<< a.calc_s_mae() << std::endl;
-      std::cout << "Stress RMSE (eV): "<< a.calc_s_rmse() << std::endl;
+      std::cout << "Stress MAE (eV/A^3): "<< a.calc_s_mae() << std::endl;
+      std::cout << "Stress RMSE (eV/A^3): "<< a.calc_s_rmse() << std::endl;
       std::cout << "Stress R^2: " << a.calc_s_r_sq() << std::endl;
     }
   }

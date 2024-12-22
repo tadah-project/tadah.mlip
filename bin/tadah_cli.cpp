@@ -1367,10 +1367,6 @@ int TadahCLI::subsub_dcalc() {
     pot_config.remove("FORCE");
     pot_config.add("FORCE", "true");
   }
-  if (dcalc->count("--Stress")) {
-    pot_config.remove("STRESS");
-    pot_config.add("STRESS", "true");
-  }
 
   DC_Selector DCS(pot_config);
   NNFinder nnf(pot_config);

@@ -7,10 +7,10 @@ POTEVERY 100 potdir   # Controls how often the potential file is written
 
 # Model Parameters to be Optimized
 # The initial model is specified in a separate config file.
-OPTIM RCUT2B 5.0 6.0    # Optimize two-body cutoff within these bounds.
-OPTIM CGRID2B 1.0 6.0   # Optimize CGRID2B within these bounds.
-OPTIM SGRID2B 0.01 0.1  # Optimize SGRID2B within these bounds.
-OPTIM WATOMS 0.1 20     # Optimize atomic weights within these bounds.
+OPTIM RCUT2B (1) 5.0 6.0    # Optimize two-body cutoff within these bounds.
+OPTIM CGRID2B (1-5) 1.0 6.0   # Optimize CGRID2B within these bounds.
+OPTIM SGRID2B (1,2,3,4,5) 0.01 0.1  # Optimize SGRID2B within these bounds.
+OPTIM WATOMS (1) 0.1 20     # Optimize atomic weights within these bounds.
 
 # Basic Optimization Targets with Weighted Inclusion in Global Loss
 ERMSE 0 100      # Energy RMSE with weight 100, printed to properties.dat.

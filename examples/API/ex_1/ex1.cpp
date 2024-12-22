@@ -43,136 +43,136 @@
  *      https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.134101
  */
 int main() {
-    
-    std::cout << "TRAINING STAGE" << std::endl;
-    // Config file configures almost all model parameters.
-    // See below for a more detailed explanation of used key-value(s) pairs.
-	Config config("config");
 
-    // First we load all training data from a list
-    // of training datasets into StrutureDB object.
-    // Paths to datasets are specified with a key DBFILE in a config file.
-    std::cout << "StructureDB loading data..." << std::flush;
-    StructureDB stdb(config);
-    std::cout << "Done!" << std::endl;
+  std::cout << "TRAINING STAGE" << std::endl;
+  // Config file configures almost all model parameters.
+  // See below for a more detailed explanation of used key-value(s) pairs.
+  Config config("config");
 
-    // Next we pass StructureDB object to the nearest neighbour calculator.
-    // NNFinder will create full nearest neighbours lists for every atom
-    // in every structure. These lists will be stored by individual Structures
-    // in a StructureDB object.
-    // The lists are calculated up to the max cutoff from the config file:
-    // cutoff_max = max(RCUT2B, RCUT3B, RCUTMB).
-    std::cout << "Calculating nearest neighbours..." << std::flush;
-    NNFinder nnf(config);
-    nnf.calc(stdb);
-    std::cout << "Done!" << std::endl;
+  // First we load all training data from a list
+  // of training datasets into StrutureDB object.
+  // Paths to datasets are specified with a key DBFILE in a config file.
+  std::cout << "StructureDB loading data..." << std::flush;
+  StructureDB stdb(config);
+  std::cout << "Done!" << std::endl;
 
-    // STEP 1a: Select descriptors.
-    // All three types must be specified.
-    // Use Dummy if given type is not required.
+  // Next we pass StructureDB object to the nearest neighbour calculator.
+  // NNFinder will create full nearest neighbours lists for every atom
+  // in every structure. These lists will be stored by individual Structures
+  // in a StructureDB object.
+  // The lists are calculated up to the max cutoff from the config file:
+  // cutoff_max = max(RCUT2B, RCUT3B, RCUTMB).
+  std::cout << "Calculating nearest neighbours..." << std::flush;
+  NNFinder nnf(config);
+  nnf.calc(stdb);
+  std::cout << "Done!" << std::endl;
 
-    // D2 - TWO-BODY
-    //using D2=D2_LJ;
-    //using D2=D2_BP;
-    using D2=D2_Blip;
-    //using D2=D2_Dummy;
-    //using D2=D2_EAM;
+  // STEP 1a: Select descriptors.
+  // All three types must be specified.
+  // Use Dummy if given type is not required.
 
-    // D3 - THREE-BODY
-    using D3=D3_Dummy;
+  // D2 - TWO-BODY
+  //using D2=D2_LJ;
+  //using D2=D2_BP;
+  using D2=D2_Blip;
+  //using D2=D2_Dummy;
+  //using D2=D2_EAM;
 
-    // DM - MANY-BODY
-    //using DM=DM_EAM;
-    //using DM=DM_EAD;
-    using DM=DM_Dummy;
+  // D3 - THREE-BODY
+  using D3=D3_Dummy;
 
-    // STEP 1b: Select cutoffs, C2 for D2, etc
-    using C2=Cut_Cos;
-    using C3=Cut_Dummy;
-    using CM=Cut_Dummy;
+  // DM - MANY-BODY
+  //using DM=DM_EAM;
+  //using DM=DM_EAD;
+  using DM=DM_Dummy;
 
-    // STEP 1c: Prepare descriptor calculator
-    DescriptorsCalc<D2,D3,DM,C2,C3,CM> dc(config);
+  // STEP 1b: Select cutoffs, C2 for D2, etc
+  using C2=Cut_Cos;
+  using C3=Cut_Dummy;
+  using CM=Cut_Dummy;
 
-    // STEP 2a: Select Basis Function (BF) or Kernels (K).
-    // BF is used for M_BLR - Bayesian Linear Regression
-    // K is used with M_KRR - Kernel Ridge Regression
-    // See documentation for more BF and K
-    using BF=DM_BF_Linear;
-    //using BF=BF_Polynomial2;
-    //using K=Kern_Linear;
-    //using K=Kern_Quadratic;
+  // STEP 1c: Prepare descriptor calculator
+  DescriptorsCalc<D2,D3,DM,C2,C3,CM> dc(config);
 
-    // STEP 2b: Select Model
-    using M=M_BLR<BF>;
-    //using M=M_KRR<K>;
+  // STEP 2a: Select Basis Function (BF) or Kernels (K).
+  // BF is used for M_BLR - Bayesian Linear Regression
+  // K is used with M_KRR - Kernel Ridge Regression
+  // See documentation for more BF and K
+  using BF=DM_BF_Linear;
+  //using BF=BF_Polynomial2;
+  //using K=Kern_Linear;
+  //using K=Kern_Quadratic;
 
-    //// STEP 2c: Instantiate a model
-    M model(config);
+  // STEP 2b: Select Model
+  using M=M_BLR<BF>;
+  //using M=M_KRR<K>;
 
-    //std::cout << "TRAINING STAGE..." << std::flush;
+  //// STEP 2c: Instantiate a model
+  M model(config);
 
-    // STEP 3: Training - Option 1.
-    // Train with StructureDB only. We have to provide calculators here.
-    // Descriptors are calculated in batches to construct a design matrix
-    // and then are discarded.
-    // This is usually the best choice unless you need descriptors for something else
-    // after the training is done.
-    model.train(stdb,dc);
+  //std::cout << "TRAINING STAGE..." << std::flush;
 
-    // STEP 3: Training - Option 2.
-    // Train with StructureDB and precalcualted StDescriptorsDB.
-    //StDescriptorsDB st_desc_db = dc.calc(stdb);
-    //model.train(st_desc_db,stdb);
-    std::cout << "Done!" << std::endl;
+  // STEP 3: Training - Option 1.
+  // Train with StructureDB only. We have to provide calculators here.
+  // Descriptors are calculated in batches to construct a design matrix
+  // and then are discarded.
+  // This is usually the best choice unless you need descriptors for something else
+  // after the training is done.
+  model.train(stdb,dc);
 
-    // STEP 4: Save model to a text file.
-    // Once model is trained we can dump it to a file. 
-    // Saved models can be used with LAMMPS or can be reloaded
-    // to make predictions.
-    std::cout << "Saving LAMMPS pot.tadah file..." << std::flush;
-    Config param_file = model.get_param_file();
-    std::ofstream outfile("pot.tadah");
-    outfile << param_file << std::endl;
-    outfile.close();
-    std::cout << "Done!" << std::endl;
+  // STEP 3: Training - Option 2.
+  // Train with StructureDB and precalcualted StDescriptorsDB.
+  //StDescriptorsDB st_desc_db = dc.calc(stdb);
+  //model.train(st_desc_db,stdb);
+  std::cout << "Done!" << std::endl;
 
-    std::cout << "PREDICTION STAGE..." << std::endl;
-    // STEP 1: We will reuse LAMMPS param file and add to it
-    // DBFILE(s) from config_pred file.
-    // In other words training datasets go to the config file
-    // and validation datasets are in the config_pred
-    param_file.add("config_pred");
+  // STEP 4: Save model to a text file.
+  // Once model is trained we can dump it to a file. 
+  // Saved models can be used with LAMMPS or can be reloaded
+  // to make predictions.
+  std::cout << "Saving LAMMPS pot.tadah file..." << std::flush;
+  Config param_file = model.get_param_file();
+  std::ofstream outfile("pot.tadah");
+  outfile << param_file << std::endl;
+  outfile.close();
+  std::cout << "Done!" << std::endl;
 
-    // STEP 2: Load DBFILE from config_pred
-    std::cout << "StructureDB loading data..." << std::flush;
-    StructureDB stdb2(param_file);
-    std::cout << "Done!" << std::endl;
+  std::cout << "PREDICTION STAGE..." << std::endl;
+  // STEP 1: We will reuse LAMMPS param file and add to it
+  // DBFILE(s) from config_pred file.
+  // In other words training datasets go to the config file
+  // and validation datasets are in the config_pred
+  param_file.add("config_pred");
 
-    // STEP 3: Calculate nearest neighbours
-    std::cout << "Calculating nearest neighbours..." << std::flush;
-    NNFinder nnf2(param_file);
-    nnf2.calc(stdb2);
-    std::cout << "Done!" << std::endl;
+  // STEP 2: Load DBFILE from config_pred
+  std::cout << "StructureDB loading data..." << std::flush;
+  StructureDB stdb2(param_file);
+  std::cout << "Done!" << std::endl;
 
-    // STEP 4: Prepare DescriptorCalc
-    DescriptorsCalc<D2,D3,DM,C2,C3,CM> dc2(param_file);
+  // STEP 3: Calculate nearest neighbours
+  std::cout << "Calculating nearest neighbours..." << std::flush;
+  NNFinder nnf2(param_file);
+  nnf2.calc(stdb2);
+  std::cout << "Done!" << std::endl;
 
-    // STEP 5: Results are saved to new StructureDB object 
-    // - it will only contain predicted values
-    // so there are no atom positions, etc...
+  // STEP 4: Prepare DescriptorCalc
+  DescriptorsCalc<D2,D3,DM,C2,C3,CM> dc2(param_file);
 
-    bool err_bool=false;       // predict error, requires LAMBDA -1
-    t_type predicted_error;    // container for prediction error
-    std::cout << "Predicting..." << std::flush;
-    StructureDB stpred = model.predict(param_file,stdb2,dc2);
-    //StructureDB stpred = model.predict(param_file,stdb2,dc2,predicted_error);
-    std::cout << "Done!" << std::endl;
+  // STEP 5: Results are saved to new StructureDB object 
+  // - it will only contain predicted values
+  // so there are no atom positions, etc...
 
-    std::cout << "Dumping results to disk..." << std::flush;
-    Output output(param_file,err_bool);
-    output.print_predict_all(stdb,stpred,predicted_error);
-    std::cout << "Done!" << std::endl;
+  bool err_bool=false;       // predict error, requires LAMBDA -1
+  t_type predicted_error;    // container for prediction error
+  std::cout << "Predicting..." << std::flush;
+  StructureDB stpred = model.predict(param_file,stdb2,dc2);
+  //StructureDB stpred = model.predict(param_file,stdb2,dc2,predicted_error);
+  std::cout << "Done!" << std::endl;
 
-    return 0;
+  std::cout << "Dumping results to disk..." << std::flush;
+  Output output(param_file,err_bool);
+  output.print_predict_all(stdb,stpred,predicted_error);
+  std::cout << "Done!" << std::endl;
+
+  return 0;
 }

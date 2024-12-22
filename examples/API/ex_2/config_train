@@ -7,8 +7,7 @@ ATOMS Ta
 WATOMS 73
 
 INIT2B true
-INIT3B false
-INITMB false
+TYPE2B D2_Blip 4 4 Ta Ta
 
 RCUT2B 5.3
 

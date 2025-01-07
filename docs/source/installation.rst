@@ -165,6 +165,10 @@ To build Tadah!MLIP with HPO, follow these steps:
 Libraries and C++ Headers
 -------------------------
 
+.. note::
+   This section is relevant only if you intend to use the Tadah! API. If you're using the command line interface (CLI), you can safely skip this section.
+
+
 Headers and libraries are installed according to ``-DCMAKE_INSTALL_PREFIX`` or default locations. Set ``LD_LIBRARY_PATH`` and ``CPATH`` as needed.
 
 .. code-block:: bash

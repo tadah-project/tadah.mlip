@@ -6,7 +6,7 @@ DBFILE tdata.db           # Training dataset
 INIT2B true               # Use two-body descriptor
 
 MODEL M_BLR BF_Linear     # Use linear model
-TYPE2B D2_Blip            # Use D2_Blip descriptor
+TYPE2B D2_Blip 4 4 Ta Ta  # Use D2_Blip descriptor
 RCTYPE2B Cut_Cos          # Cutoff function for two-body descriptor
 
 RCUT2B 5.3                # Cutoff distance

@@ -43,6 +43,12 @@ D2_Base
 .. doxygenclass:: D2_Base
     :members:
 
+D2_mJoin
+........
+
+.. doxygenclass:: D2_mJoin
+    :members:
+
 Three-Body
 ----------
 As is stands Tadah! does not support three-body type descriptors.
@@ -78,4 +84,10 @@ DM_Base
 .......
 
 .. doxygenclass:: DM_Base
+    :members:
+
+DM_mJoin
+........
+
+.. doxygenclass:: DM_mJoin
     :members:

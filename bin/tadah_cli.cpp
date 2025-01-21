@@ -474,7 +474,6 @@ TadahCLI::TadahCLI():
     "The converted structure will be saved to this file.\n";
 
   swriter->add_option("-o,--outfile", out_file, usage)
-    ->check(CLI::NonexistentPath)
     ->required();
 
   usage = 
@@ -542,8 +541,7 @@ TadahCLI::TadahCLI():
     "Pathnames must not exist.\n";
 
   bf->add_option("-o,--outfile", out_files, usage)
-    ->required()
-    ->check(CLI::NonexistentPath);
+    ->required();
 
   bf->add_option("-r,--range", range, "Range for plotting:\nSTART STOP NPOINTS.\n")
     ->required();
@@ -570,8 +568,7 @@ TadahCLI::TadahCLI():
     "e.g., 1,2,4,4-6,10-14:2 expands to:\n"
     "1,2,4,5,6,10,12,14.\n";
 
-  bf->add_option("-i,--indices", indices, usage)
-    ->check(CLI::NonexistentPath);
+  bf->add_option("-i,--indices", indices, usage);
 
   bf->add_option("-n,--numeric", outprec,
                       "Set the number of decimal places for numerical output.\n");
@@ -605,8 +602,7 @@ TadahCLI::TadahCLI():
     "Pathnames must not exist.\n";
 
   twobody->add_option("-o,--outfile", out_files, usage)
-    ->required()
-    ->check(CLI::NonexistentPath);
+    ->required();
 
   twobody->add_option("-r,--range", range, "Range for plotting:\nSTART STOP NPOINTS.\n")
     ->required();
@@ -647,8 +643,7 @@ TadahCLI::TadahCLI():
     "Pathnames must not exist.\n";
 
   cutoff->add_option("-o,--outfile", out_files, usage)
-    ->required()
-    ->check(CLI::NonexistentPath);
+    ->required();
 
   cutoff->add_option("-r,--range", range, "Range for plotting:\nSTART STOP NPOINTS.\n")
     ->required();
@@ -921,7 +916,7 @@ or datasets in a command line");
     pot_config.get<std::string>("MODEL",0),*fb,pot_config);
 
   StructureDB stpred;
-  aed_type2 predicted_error;
+  aed_type predicted_error;
   if (predict->count("--error")) {
     stpred = modelp->predict(pot_config,stdb,dc,predicted_error);
   }
@@ -953,8 +948,8 @@ or datasets in a command line");
     }
 
     if (predict->count("--Stress")) {
-      std::cout << "Stress MAE (eV): "<< a.calc_s_mae() << std::endl;
-      std::cout << "Stress RMSE (eV): "<< a.calc_s_rmse() << std::endl;
+      std::cout << "Stress MAE (eV/A^3): "<< a.calc_s_mae() << std::endl;
+      std::cout << "Stress RMSE (eV/A^3): "<< a.calc_s_rmse() << std::endl;
       std::cout << "Stress R^2: " << a.calc_s_r_sq() << std::endl;
     }
   }
@@ -995,6 +990,8 @@ int TadahCLI::sub_hpo(
     config.remove("STRESS");
     config.add("STRESS", "true");
   }
+  // parse config to get expanded grids
+  D_mJoin::expand_grids(config);
 
 #ifdef TADAH_BUILD_MPI
   MPI_Status status;
@@ -1370,10 +1367,6 @@ int TadahCLI::subsub_dcalc() {
     pot_config.remove("FORCE");
     pot_config.add("FORCE", "true");
   }
-  if (dcalc->count("--Stress")) {
-    pot_config.remove("STRESS");
-    pot_config.add("STRESS", "true");
-  }
 
   DC_Selector DCS(pot_config);
   NNFinder nnf(pot_config);
@@ -1441,7 +1434,7 @@ int TadahCLI::subsub_dcalc() {
       const auto &st = stdbs[b](idxs[b][i]-1);
       oss << "Label: " << st.label << std::endl;
       for (size_t a=0; a<st.natoms(); ++a) {
-        const aed_type2 &aed = st_d.get_aed(a);
+        const aed_type &aed = st_d.get_aed(a);
         oss << std::left << std::setw(hw) << ("E " + std::to_string(a+1)) << " ";
         oss << std::scientific << std::setprecision(prec);
         for (size_t s=0; s<aed.size(); ++s) {
@@ -1535,7 +1528,7 @@ int TadahCLI::subsub_bf() {
     DCS.d2b->get_grid(config, "CGRID2B", cgrid);
     DCS.d2b->get_grid(config, "SGRID2B", sgrid);
     if (types[2]=="Y") {
-      double rcut = config.get<double>("RCUT2B");
+      double rcut = config.get<double>("RCUT2BMAX");
       fcut = CONFIG::factory<Cut_Base,double>( config.get<std::string>("RCTYPE2B"), rcut);
     }
   }
@@ -1543,7 +1536,7 @@ int TadahCLI::subsub_bf() {
     DCS.dmb->get_grid(config, "CGRIDMB", cgrid);
     DCS.dmb->get_grid(config, "SGRIDMB", sgrid);
     if (types[2]=="Y") {
-      double rcut = config.get<double>("RCUTMB");
+      double rcut = config.get<double>("RCUTMBMAX");
       fcut = CONFIG::factory<Cut_Base,double>( config.get<std::string>("RCTYPEMB"), rcut);
     }
   }
@@ -1629,6 +1622,7 @@ int TadahCLI::subsub_bf() {
   // TADAH_GNUPLOT
 
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  if (fcut) delete fcut;
   return 0;
 }
 int TadahCLI::subsub_twobody() {
@@ -1648,6 +1642,7 @@ int TadahCLI::subsub_twobody() {
   }
 
   // generate range
+  if (range.size()!=3) throw std::runtime_error("-r,--range: Range must contain START STOP STEP\n");
   double start = range[0];
   double stop = range[1];
   size_t N = static_cast<size_t>(range[2]);
@@ -1661,7 +1656,7 @@ int TadahCLI::subsub_twobody() {
 
   if (is_verbose()) std::cout << "Generating dataset..." << std::flush;
   StructureDB stdb;
-  double cutoff = pot_config.get<double>("RCUT2B");
+  double cutoff = pot_config.get<double>("RCUT2BMAX");
   double cell_v = range.back() > cutoff? 4*range.back() : 4*cutoff;
   Matrix3d cell;
   cell.set_zero();
@@ -1697,7 +1692,7 @@ int TadahCLI::subsub_twobody() {
     pot_config.get<std::string>("MODEL",0),*fb,pot_config);
 
   StructureDB stpred;
-  aed_type2 predicted_error;
+  aed_type predicted_error;
   if (twobody->count("--error")) {
     stpred = modelp->predict(pot_config,stdb,dc,predicted_error);
   }
@@ -1770,6 +1765,7 @@ int TadahCLI::subsub_cutoff() {
       outfile << std::endl;
     }
     outfile << std::endl << std::endl;
+    if (cut) delete cut;
   }
   outfile.flush();
 

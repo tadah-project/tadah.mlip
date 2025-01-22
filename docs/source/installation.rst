@@ -144,6 +144,10 @@ The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! p
 Building Tadah!MLIP with Hyperparameter Optimiser
 -------------------------------------------------
 
+.. warning::
+
+   The HPO module of Tadah!MLIP requires LAMMPS to be compiled with Tadah!LAMMPS and ``-DLAMMPS_EXCEPTIONS=yes``. Note that this setting is the default only for versions from 29 Aug 2024 onwards. For older versions, users must set it manually.
+
 Building Tadah!MLIP with HPO is slightly more challenging, and for this reason, it is not built by default. Please read these notes carefully before proceeding.
 
 To build Tadah!MLIP with HPO, follow these steps:

@@ -512,7 +512,7 @@ TadahCLI::TadahCLI():
 
   usage = 
     "Plot basis functions\n(and optionally cutoff values)\nused in two- and many-body expansions.\n"
-    "GNUPLUT plotting IS NOT IMPLEMENTED everything else should work\n";
+    "GNUPLOT plotting IS NOT IMPLEMENTED everything else should work\n";
   bf = plot->add_subcommand("bf", usage);
 
   usage = 
@@ -582,7 +582,7 @@ TadahCLI::TadahCLI():
 
   usage = 
     "Plot two-body potential.\n"
-    "GNUPLUT plotting IS NOT IMPLEMENTED everything else should work\n";
+    "GNUPLOT plotting IS NOT IMPLEMENTED everything else should work\n";
 
   twobody = plot->add_subcommand("twobody", usage);
 
@@ -628,7 +628,7 @@ TadahCLI::TadahCLI():
 
   usage = 
     "Plot cutoffs.\n"
-    "GNUPLUT plotting IS NOT IMPLEMENTED everything else should work\n";
+    "GNUPLOT plotting IS NOT IMPLEMENTED everything else should work\n";
 
   cutoff = plot->add_subcommand("cutoff", usage);
 

@@ -2,6 +2,8 @@
 
 This example demonstrates how to train a model using the Tadah! software. The `config.train` file defines the necessary parameters for the model.
 
+To use this example, ensure you have access to all required files available in the Git repository at [https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/edit/main/examples/CLI/ex_1](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/edit/main/examples/CLI/ex_1)
+
 ## Training
 
 To train the model, use the following command:

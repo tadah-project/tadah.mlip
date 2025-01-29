@@ -1,6 +1,6 @@
-# Example 0 - Basic Usage
+# Example 0 - Help Guide
 
-In this example, we cover the essential usage of Tadah! by demonstrating how to access help information. Ensure Tadah! is installed and accessible through your `$PATH`. If not, use the full path to the Tadah binary in your commands.
+In this example, we demonstrate how to access help information using `tadah` binary. Ensure Tadah! is installed and accessible through your `$PATH`. If not, use the full path to the Tadah! binary in your commands.
 
 ## Accessing Tadah! Help
 
@@ -8,6 +8,12 @@ To display a list of subcommands and their descriptions, use:
 
 ```bash
 tadah --help
+```
+
+or
+
+```bash
+tadah -h
 ```
 
 ## Subcommand Help

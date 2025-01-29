@@ -32,6 +32,11 @@ D2_MIE
 
 .. doxygenclass:: D2_MIE
 
+D2_ZBL
+........
+
+.. doxygenclass:: D2_ZBL
+
 D2_Dummy
 ........
 

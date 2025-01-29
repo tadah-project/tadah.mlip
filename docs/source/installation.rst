@@ -3,7 +3,21 @@
 Installation
 ============
 
-Installing Tadah! Software
+This section provides step-by-step instructions for installation of Tadah!MLIP and Tadah!LAMMPS.
+
+.. _requirements:
+
+Requirements
+------------
+
+Both Tadah!MLIP and Tadah!LAMMPS utilize CMake for configuration and building of its components.
+The Tadah!LAMMPS interface and Tadah!MLIP toolkit require C++11 and C++17 compatible compilers, respectively. 
+LAPACK and ScaLAPACK (Tadah!MLIP MPI version only) must be available on the user’s system.
+
+Other necessary libraries are either included in the codebase or downloaded during the compilation process.
+The internet connection is required during the installation process.
+
+Installing Tadah!MLIP Software
 --------------------------
 
 Tadah!MLIP provides a command-line interface binary, ``tadah``, for developing machine learning interatomic potentials.
@@ -17,14 +31,7 @@ To obtain Tadah!MLIP, clone the main branch using:
 
     git clone https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
 
-.. _requirements:
 
-Requirements
-............
-
-Tadah!MLIP includes all necessary libraries, so no external downloads are needed.
-
-The internet connection is required during the installation process.
 
 .. _building_tadah:
 
@@ -137,6 +144,10 @@ The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! p
 Building Tadah!MLIP with Hyperparameter Optimiser
 -------------------------------------------------
 
+.. warning::
+
+   The HPO module of Tadah!MLIP requires LAMMPS to be compiled with Tadah!LAMMPS and ``-DLAMMPS_EXCEPTIONS=yes``. Note that this setting is the default only for versions from 29 Aug 2024 onwards. For older versions, users must set it manually.
+
 Building Tadah!MLIP with HPO is slightly more challenging, and for this reason, it is not built by default. Please read these notes carefully before proceeding.
 
 To build Tadah!MLIP with HPO, follow these steps:
@@ -165,6 +176,10 @@ To build Tadah!MLIP with HPO, follow these steps:
 Libraries and C++ Headers
 -------------------------
 
+.. note::
+   This section is relevant only if you intend to use the Tadah! API. If you're using the command line interface (CLI), you can safely skip this section.
+
+
 Headers and libraries are installed according to ``-DCMAKE_INSTALL_PREFIX`` or default locations. Set ``LD_LIBRARY_PATH`` and ``CPATH`` as needed.
 
 .. code-block:: bash
@@ -188,7 +203,7 @@ The following libraries can be compiled, depending on the build settings:
 Compiling and Linking with Library
 ..................................
 
-For C++ library use, compile with C++17 or higher. Include library headers using the prefix `tadah/`.
+For C++ library use, compile with C++17 or higher. Include library headers using the prefix `tadah/` and link relevant libraries. For ``libtadah.mlip`` it is often the case that both ``libtadah.models`` and ``libtadah.core`` must be linked as well.
 
 .. code-block:: c
 

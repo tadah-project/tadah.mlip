@@ -24,3 +24,8 @@ Cut_Poly2
 .........
 
 .. doxygenclass:: Cut_Poly2
+
+Cut_PT
+.........
+
+.. doxygenclass:: Cut_PT

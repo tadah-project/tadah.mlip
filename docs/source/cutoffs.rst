@@ -20,6 +20,11 @@ Cut_Tanh
 
 .. doxygenclass:: Cut_Tanh
 
+Cut_Poly1
+.........
+
+.. doxygenclass:: Cut_Poly1
+
 Cut_Poly2
 .........
 

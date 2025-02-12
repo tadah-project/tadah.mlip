@@ -35,9 +35,7 @@ Below are two original potentials designed for an older version of Ta-dah! (``pa
 - :download:`Ta-dah!Kr1 <mlips/ta-dah.kr1>`
 - :download:`Ta-dah!Kr2 <mlips/ta-dah.kr2>`
 
-**Under review**
-
-`This link will be updated once published <https://doi.org/>`_
+`An Accurate Machine-Learned Potential for Krypton under Extreme Conditions <https://doi.org/10.1021/acs.jpclett.4c03272>`_
 
 Ta
 --

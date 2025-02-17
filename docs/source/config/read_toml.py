@@ -9,9 +9,19 @@ import subprocess
 
 def download_toml_file(repo_url, file_path, output_path):
     try:
-        # Clone the repository into a temporary directory
+        # Retrieve the branch name from the environment variable
+        branch = os.environ.get('READTHEDOCS_VERSION', 'main')
+
+        # Clone the repository into a temporary directory with the specific branch
         repo_name = "temp_repo"
-        subprocess.run(['git', 'clone', '--depth', '1', repo_url, repo_name], check=True)
+        subprocess.run(
+            [
+                'git', 'clone', '--depth', '1',
+                '--branch', branch,
+                repo_url, repo_name
+            ],
+            check=True
+        )
 
         # Copy the desired file to the output path
         full_file_path = os.path.join(repo_name, file_path)
@@ -27,6 +37,7 @@ def download_toml_file(repo_url, file_path, output_path):
         # Clean up
         if os.path.exists(repo_name):
             shutil.rmtree(repo_name)
+
 
 download_toml_file(
     'https://git.ecdf.ed.ac.uk/tadah/core.git',

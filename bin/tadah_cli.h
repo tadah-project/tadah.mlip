@@ -61,11 +61,13 @@ private:
   int subsub_join();
   int subsub_split();
   int subsub_summary();
+  int subsub_rescale();
   int subsub_dcalc();
   int sub_swriter();
   int subsub_bf();
   int subsub_twobody();
   int subsub_cutoff();
+  int subsub_data();
   int flag_version();
 
   /* Return a vector of absolute paths to every file in a directory.
@@ -89,6 +91,7 @@ public:
       CLI::App *split=nullptr;
         CLI::Option_group *split_group=nullptr;
       CLI::App *summary=nullptr;
+      CLI::App *rescale=nullptr;
     CLI::App *desc=nullptr;
       CLI::App *dcalc=nullptr;
     CLI::App *swriter=nullptr;
@@ -96,6 +99,8 @@ public:
       CLI::App *bf=nullptr;
       CLI::App *cutoff=nullptr;
       CLI::App *twobody=nullptr;
+      CLI::App *vdata=nullptr;
+        CLI::Option_group *data_group=nullptr;
 
 };
 #endif

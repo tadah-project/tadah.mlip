@@ -869,7 +869,8 @@ int TadahCLI::sub_train() {
 #else // Non-MPI version
   // Start training with a timer in the non-MPI mode
   CLI::Timer timer_tot{"Training", CLI::Timer::Big};
-  Trainer tr(config);
+  tadah::mlip::memory::MLIPWorkspaceManager workspaceManager;
+  Trainer tr(config, workspaceManager);
 
   // Load structures and provide feedback if verbose
   if (is_verbose()) std::cout << "Loading structures..." << std::flush;

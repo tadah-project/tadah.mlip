@@ -134,6 +134,9 @@ TadahCLI::TadahCLI():
     ->check(CLI::ExistingFile)
     ->required();
 
+  predict->add_option("-n,--numeric", outprec,
+                      "Set the number of decimal places for numerical output.\n");
+
   /*---------------------------------------------------------------------------*/
   /*     Hyperparameter Optimizer                                              */
   /*---------------------------------------------------------------------------*/
@@ -983,6 +986,10 @@ or datasets in a command line");
   if (is_verbose()) std::cout << "Dumping output..." << std::flush;
 
   Output output(pot_config,predict->count("--error"));
+
+  if (predict->count("--numeric"))
+    output.set_numeric(outprec);
+
   output.print_predict_all(stdb,stpred,predicted_error);
 
   if (is_verbose()) std::cout << "Done!" << std::endl;

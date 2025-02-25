@@ -399,16 +399,101 @@ TadahCLI::TadahCLI():
   /*---------------------------------------------------------------------------*/
   /*     DB RESCALE                                                            */
   /*---------------------------------------------------------------------------*/
-  usage = 
-    "Add energy rescaling factors to dataset(s)\n";
-  rescale = db->add_subcommand("rescale", usage);
 
-  usage = "Specify one or more Tadah! datasets\n to add energy rescaling factors\n"
-    "The output is saved to new datasets(s) named:\n"
-    "ORIGNAL_FILE_rescaled\n";
-  rescale->add_option("-d,--datasets", datasets, usage)
-    ->required()
-    ->check(CLI::ExistingFile);
+  rescale = db->add_subcommand("rescale", "Usage"
+  R"USAGE(
+  Add energy, force, and stress rescaling to one or more Tadah! datasets.
+
+  Usage:
+    tadah db rescale -d <DATASET1> [<DATASET2> ...] [--scale] [--eshift <FLOAT>] [Options]
+
+  Description:
+    This subcommand processes each specified dataset file, where each "configuration" 
+    may contain multiple atoms.
+
+    -d, --datasets <FILES>  (Required)
+      One or more existing Tadah! dataset files to be rescaled.
+    
+    -s, --scale
+      Enables the computation of energy, force, and stress scaling:
+        -  eweight = 1/|energy| (if safe),
+        -  fweight = 1/(3 × sum_of_atomic_force_norms),
+        -  sweight = 1/(9 × Frobenius_norm_of_stress).
+
+    -e, --eshift <FLOAT>
+      Shifts the total energy of each configuration by:
+          energy += (eshift × number_of_atoms)
+      The user supplies the shift in energy units *per atom*. 
+      If both --scale and --eshift are used, the shift is applied first, 
+      and then the new (post-shift) energy is used in the scaling formulas above.
+
+    -n, --numeric <INT>
+      Sets the number of decimal places for numerical output in the new files.
+      If omitted, the default precision is used.
+
+  Behavior:
+    At least one of --scale or --eshift must be provided. 
+    If both are specified, the energy shift occurs first, followed by the scaling calculation. 
+    The updated data is saved to new files named:
+        ORIGINAL_FILE_rescaled
+    Any existing file with that name is overwritten, by default.
+
+  Additional Notes:
+    • The entire rescale step is timed; if '--verbose' is on, a timing summary prints.
+
+  Example:
+    tadah db rescale --datasets sampleA.tadah --scale --eshift 0.5 --numeric 6
+
+      1) Reads 'sampleA.tadah'.
+      2) For each configuration of size N:
+           - energy is first shifted by 0.5 eV/atom × N
+           - eweight = 1 / |energy|
+           - fweight and sweight computed as described
+      3) Writes results to 'sampleA.tadah_rescaled' with 6 decimal places.
+  )USAGE"
+  );
+
+  //---------------------------------------------------------------------
+  // Options for "rescale" subcommand
+  //---------------------------------------------------------------------
+  rescale->add_option(
+      "-d,--datasets", 
+      datasets,
+      "Specify one or more Tadah! datasets to rescale."
+  )->required()->check(CLI::ExistingFile);
+
+  auto scale_opt = rescale->add_flag(
+      "-s,--scale", 
+      "Enable energy/force/stress scaling."
+  );
+
+  auto eshift_opt = rescale->add_option(
+      "-e,--eshift", 
+      val, 
+      "Shift energy by a constant value (energy += val)."
+  );
+
+  rescale->add_option(
+      "-n,--numeric", 
+      outprec,
+      "Set the number of decimal places for numerical output."
+  );
+
+  rescale->add_flag("-V,--Verbose", verbose, "Enable verbose mode for detailed output.\n");
+
+// ---------------------------------------------------------------------
+// Enforce that at least --scale or --eshift must be used
+// by adding a callback on the subcommand itself.
+// ---------------------------------------------------------------------
+rescale->callback([scale_opt, eshift_opt]() {
+    // If neither --scale nor --eshift is specified, throw an error
+    if (!scale_opt->count() && !eshift_opt->count()) {
+        throw CLI::ValidationError(
+            "--scale/--eshift",
+            "At least one of '--scale' or '--eshift' must be provided"
+        );
+    }
+});
 
   /*---------------------------------------------------------------------------*/
   /*     DESCRIPTORS                                                           */
@@ -1140,9 +1225,9 @@ int TadahCLI::sub_convert() {
   }
 
   if (convert->count("--numeric"))
-    stdb.dump_to_file(out_file, outprec);
+    stdb.dump_to_file(out_file, true, outprec);
   else
-    stdb.dump_to_file(out_file);
+    stdb.dump_to_file(out_file, true);
 
   if (is_verbose()) {
     int count = 0;
@@ -1176,7 +1261,7 @@ int TadahCLI::subsub_join() {
   for (const auto &s: datasets) {
     stdb.add(s);
   }
-  stdb.dump_to_file(out_file);
+  stdb.dump_to_file(out_file, true);
   if (verbose) std::cout << stdb.summary();
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
   return 0;
@@ -1227,7 +1312,7 @@ int TadahCLI::subsub_split() {
     for (size_t j=0; j < sizes[i]; ++j) {
       stdb.add(main_stdb(indices[total++]));
     }
-    stdb.dump_to_file(out_files[i]);
+    stdb.dump_to_file(out_files[i], true);
        if (verbose) std::cout << stdb.summary();
   }
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
@@ -1244,19 +1329,79 @@ int TadahCLI::subsub_summary() {
   return 0;
 }
 int TadahCLI::subsub_rescale() {
-  // TODO this is wrong
-  if (rank!=0) return 0;
+  // Only run on rank == 0
+  if (rank != 0) return 0;
+
+  // Timer for logging
   CLI::Timer timer_tot{"Rescaling", CLI::Timer::Big};
+
+  double eshift = 0.0;
+  if (rescale->count("--eshift")) {
+    eshift = val;
+  }
+
+  // Process each dataset
   for (const auto &infile: datasets) {
     StructureDB stdb;
     stdb.add(infile);
-    for (auto &s: stdb) {
-      s.eweight = std::abs(1/s.energy);
+
+    if (rescale->count("--eshift")) {
+      for (auto &s: stdb) {
+        s.energy += eshift*s.natoms();  // Shift energy by eshift first
+      }
     }
+    if (rescale->count("--scale")) {
+      for (auto &s: stdb) {
+        // ------------------
+        // ENERGY WEIGHT
+        // ------------------
+        // Protect against dividing by zero if s.energy is near zero
+        if (std::fabs(s.energy) < 1.0e-14) {
+          // Fallback / special case
+          s.eweight = 0.0;
+        } else {
+          s.eweight = 1.0 / std::fabs(s.energy);
+        }
+
+        // ------------------
+        // FORCE WEIGHT
+        // ------------------
+        double fweight = 0.0;
+        for (auto &atom : s) {
+          double fnorm = atom.force.norm();
+          fweight += fnorm;
+        }
+        // If total force norm is near zero, set fweight safely
+        if (std::fabs(fweight) < 1.0e-14) {
+          s.fweight = 0.0;  // or some fallback
+        } else {
+          s.fweight = 1.0 / (fweight * 3.0);
+        }
+
+        // ------------------
+        // STRESS WEIGHT
+        // ------------------
+        double sweight = s.stress.norm();
+        if (std::fabs(sweight) < 1.0e-14) {
+          s.sweight = 0.0;  // or fallback
+        } else {
+          s.sweight = 1.0 / (sweight * 9.0);
+        }
+      }
+    }
+
+    // Write updated data to a new file (erase existing file)
     std::string outfile = infile + "_rescaled";
-    stdb.dump_to_file(outfile);
+    if (rescale->count("--numeric")) {
+      stdb.dump_to_file(outfile, false, outprec);
+    } else {
+      stdb.dump_to_file(outfile, false);
+    }
   }
-  if (verbose) std::cout << timer_tot.to_string() << std::endl;
+
+  if (verbose) {
+    std::cout << timer_tot.to_string() << std::endl;
+  }
   return 0;
 }
 
@@ -1316,7 +1461,7 @@ int TadahCLI::subsub_sample() {
     }
   }
 
-  out_stdb.dump_to_file(out_file);
+  out_stdb.dump_to_file(out_file, true);
   if (verbose) std::cout << out_stdb.summary();
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
   return 0;
@@ -1399,12 +1544,12 @@ int TadahCLI::subsub_dups() {
     if (dups->count("-m")) {
       StructureDB stdb;
       for (const auto& _stdb : in_stdbs) stdb.add(_stdb);
-      stdb.dump_to_file(out_files[0]);
+      stdb.dump_to_file(out_files[0], true);
     }
     else {
       std::cout << std::endl; 
       for (size_t i=0; i<in_stdbs.size(); ++i) {
-        in_stdbs[i].dump_to_file(out_files[i]);
+        in_stdbs[i].dump_to_file(out_files[i], true);
         if (verbose) {
           std::cout << datasets[i] << " --> " << out_files[i] << "   "
             << sizes[i] << " --> " << in_stdbs[i].size()

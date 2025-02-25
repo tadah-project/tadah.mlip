@@ -150,7 +150,6 @@ the energy weight.
     #    Output precision set to 6 decimals.
     tadah db rescale -d dataset.tadah --eshift 0.5 --scale --numeric 6
 
-
 Split
 ~~~~~
 

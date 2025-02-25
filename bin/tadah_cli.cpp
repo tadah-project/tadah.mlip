@@ -1244,6 +1244,7 @@ int TadahCLI::subsub_summary() {
   return 0;
 }
 int TadahCLI::subsub_rescale() {
+  // TODO this is wrong
   if (rank!=0) return 0;
   CLI::Timer timer_tot{"Rescaling", CLI::Timer::Big};
   for (const auto &infile: datasets) {

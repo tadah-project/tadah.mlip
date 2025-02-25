@@ -93,6 +93,65 @@ Example:
 
   - ``tadah db join -d dataset1.tadah dataset2.tadah -o merged_data.tadah`` : Merge datasets into ``merged_data.tadah``.
 
+Rescale
+~~~~~~~
+
+Add per-configuration energy, force, and stress scaling factors, and optionally shift
+the energy of each configuration by a per-atom offset. If both scaling and shifting
+are requested, the energy is shifted first, then the new energy is used for calculating
+the energy weight.
+
+**Mandatory Options**:
+  
+  - Either ``-s,--scale`` or ``-e,--eshift`` (or both) must be provided.
+
+  - ``-d, --datasets``  
+    One or more Tadah! dataset files. The resulting output is saved to new files
+    named ``<DATASET>_rescaled``, overwriting any existing file by that name.
+
+**Scaling**:
+
+  - ``-s,--scale``  
+    Compute per-structure scaling factors:  
+    - *Energy Weight*: ``eweight = 1/|energy|`` (set to 0 if near zero)  
+    - *Force Weight*: ``fweight = 1/(3 × sum_of_force_norms)`` (0 if near zero)  
+    - *Stress Weight*: ``sweight = 1/(9 × Frobenius_norm_of_stress)`` (0 if near zero)
+
+**Energy Shifting**:
+
+  - ``-e,--eshift <FLOAT>``  
+    Shift each structure's energy by ``eshift × (number_of_atoms)``  
+    (the user-supplied value is in energy units per atom).  
+    If used together with ``--scale``, the shift is applied first, then scaling
+    weights (including eweight) are calculated from the updated energy.
+
+**Additional Options**:  
+
+  - ``-n,--numeric <INT>``
+    Number of decimal places for numeric output. If omitted, a default precision is used.
+
+Examples
+--------
+
+.. code-block:: console
+
+    # 1) Shift only. Shifts energy by 0.5 eV/atom for each structure,
+    #    saving output to dataset_rescaled.
+    tadah db rescale -d dataset.tadah --eshift 0.5
+    
+.. code-block:: console
+
+    # 2) Scale only. Compute eweight, fweight, sweight with no shift.
+    tadah db rescale -d dataset1.tadah dataset2.tadah --scale
+
+.. code-block:: console
+
+    # 3) Both shift and scale. First shift energy by 0.5 eV/atom,
+    #    then compute eweight = 1/|energy|, etc.
+    #    Output precision set to 6 decimals.
+    tadah db rescale -d dataset.tadah --eshift 0.5 --scale --numeric 6
+
+
 Split
 ~~~~~
 

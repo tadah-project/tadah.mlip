@@ -1358,7 +1358,7 @@ int TadahCLI::subsub_rescale() {
         // Protect against dividing by zero if s.energy is near zero
         if (std::fabs(s.energy) < 1.0e-14) {
           // Fallback / special case
-          s.eweight = 0.0;
+          s.eweight = 1.0;
         } else {
           s.eweight = 1.0 / std::fabs(s.energy);
         }
@@ -1373,7 +1373,7 @@ int TadahCLI::subsub_rescale() {
         }
         // If total force norm is near zero, set fweight safely
         if (std::fabs(fweight) < 1.0e-14) {
-          s.fweight = 0.0;  // or some fallback
+          s.fweight = 1.0;  // or some fallback
         } else {
           s.fweight = 1.0 / (fweight * 3.0);
         }
@@ -1383,7 +1383,7 @@ int TadahCLI::subsub_rescale() {
         // ------------------
         double sweight = s.stress.norm();
         if (std::fabs(sweight) < 1.0e-14) {
-          s.sweight = 0.0;  // or fallback
+          s.sweight = 1.0;  // or fallback
         } else {
           s.sweight = 1.0 / (sweight * 9.0);
         }

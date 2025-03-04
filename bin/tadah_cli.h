@@ -64,6 +64,7 @@ private:
   int subsub_rescale();
   int subsub_dcalc();
   int sub_swriter();
+  int sub_sreader();
   int subsub_bf();
   int subsub_twobody();
   int subsub_cutoff();
@@ -95,6 +96,7 @@ public:
     CLI::App *desc=nullptr;
       CLI::App *dcalc=nullptr;
     CLI::App *swriter=nullptr;
+    CLI::App *sreader=nullptr;
     CLI::App *plot=nullptr;
       CLI::App *bf=nullptr;
       CLI::App *cutoff=nullptr;

@@ -1,6 +1,11 @@
 stages:
   - build
   - build_examples
+
+cache:
+    key: "$CI_PIPELINE_ID"
+    paths:
+    - ${BUILD_DIR}
   
 before_script:
   - mkdir -p ${DEBUG_DIR}

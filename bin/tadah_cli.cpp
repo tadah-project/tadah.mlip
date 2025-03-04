@@ -9,7 +9,7 @@
 
 #include <tadah/mlip/analytics/analytics.h>
 #include <tadah/mlip/dataset_readers/dataset_reader_selector.h>
-#include <tadah/mlip/dataset_writers/dataset_writer_selector.h>
+#include <tadah/mlip/structure_writers/structure_writer_selector.h>
 #include <tadah/mlip/design_matrix/design_matrix.h>
 #include <tadah/mlip/design_matrix/functions/dm_function_base.h>
 #include <tadah/mlip/descriptors_calc.h>
@@ -1722,7 +1722,7 @@ int TadahCLI::sub_swriter() {
 
   stdb.add(datasets[0],index-1,1);
   boost::to_upper(format);
-  auto writer = DatasetWriterSelector::get_writer(format,stdb);
+  auto writer = StructureWriterSelector::get_writer(format,stdb);
 
   if (convert->count("--numeric"))
     writer->set_precision(outprec);

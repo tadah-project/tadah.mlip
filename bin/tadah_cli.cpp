@@ -10,6 +10,7 @@
 #include <tadah/mlip/analytics/analytics.h>
 #include <tadah/mlip/dataset_readers/dataset_reader_selector.h>
 #include <tadah/mlip/structure_writers/structure_writer_selector.h>
+#include <tadah/mlip/structure_readers/structure_reader_selector.h>
 #include <tadah/mlip/design_matrix/design_matrix.h>
 #include <tadah/mlip/design_matrix/functions/dm_function_base.h>
 #include <tadah/mlip/descriptors_calc.h>
@@ -585,11 +586,12 @@ rescale->callback([scale_opt, eshift_opt]() {
     ->check(CLI::ExistingFile);
 
   usage = 
-    "Specify format of an output file.\n"
+    "Specify source format.\n"
     "Supported formats:\n"
-    "  castep\n"
-    "  vasp\n"
-    "  lammps\n";
+    "  MP\n"
+    "  CIF\n"
+    "  CELL\n"
+    "  POSCAR\n";
   swriter->add_option("-f,--format", format, usage)
     ->required();
 
@@ -601,6 +603,46 @@ rescale->callback([scale_opt, eshift_opt]() {
                       "Set the number of decimal places for numerical output.\n");
 
   swriter->add_flag("-V,--Verbose", verbose, "Enable verbose mode.\n");
+
+  /*---------------------------------------------------------------------------*/
+  /*    SREADER                                                             */
+  /*---------------------------------------------------------------------------*/
+
+  usage = 
+    "Reads different sources of structures (files or online databases)\n"
+    "and prints a summary. This tool is for testing purposes only.\n"
+    "Currently supported sources include:\n"
+    "  - Materials Project\n"
+    "  - Crystallography Open Database (COD)\n"
+    "  - NOMAD Archive\n"
+    "  - AFLOW database\n"
+    "  - VASP POSCAR/CONTCAR\n"
+    "  - CASTEP .cell\n"
+    "  - Crystallographic Information File .cif \n";
+
+
+  sreader = app.add_subcommand("sreader", usage);
+
+  usage =
+    "This tool allows ...\n";
+
+  sreader->usage(usage);
+
+  usage =
+    "Specify the input source.\n";
+
+  sreader->add_option("-s,--source", in_file, usage)
+    ->required();
+
+  /*sreader->add_option("-i,--input", in_file,*/
+  /*                    "Specify the input file or online database structure id.\n")*/
+  /*  ->required();*/
+
+  sreader->add_option("-n,--numeric", outprec,
+                      "Set the number of decimal places for numerical output.\n");
+
+  sreader->add_flag("-V,--Verbose", verbose, "Enable verbose mode.\n");
+
 
   /*---------------------------------------------------------------------------*/
   /*     PLOT                                                                  */
@@ -848,6 +890,9 @@ int TadahCLI::run(int argc, char** argv) {
   }
   else if (*swriter) {
     return sub_swriter();
+  }
+  else if (*sreader) {
+    return sub_sreader();
   }
   else if (*plot) {
     if (*bf) {
@@ -1728,6 +1773,31 @@ int TadahCLI::sub_swriter() {
     writer->set_precision(outprec);
 
   writer->write_data(out_file,0);
+
+  if (verbose) std::cout << timer_tot.to_string() << std::endl;
+  return 0;
+}
+int TadahCLI::sub_sreader() {
+  if (rank!=0) return 0;
+  CLI::Timer timer_tot{"Structure Reader", CLI::Timer::Big};
+  /*boost::to_upper(format);*/
+  /*std::cout << "Format: " << format << std::endl;*/
+  auto reader = StructureReaderSelector::getReader(in_file);
+  std::cout << "Reader loaded " << std::endl;
+
+  /*if (convert->count("--numeric"))*/
+  /*  reader->set_precision(outprec);*/
+
+  reader->read(in_file);
+  std::cout << "Reader parse done " << std::endl;
+  Structure s = reader->getStructure();
+  std::cout << "Reader getStructure() done " << std::endl;
+
+  for (auto &atom : s) {
+    std::cout << atom << std::endl;
+  }
+
+  std::cout << s << std::endl;
 
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
   return 0;

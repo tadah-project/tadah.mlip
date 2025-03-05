@@ -1780,18 +1780,13 @@ int TadahCLI::sub_swriter() {
 int TadahCLI::sub_sreader() {
   if (rank!=0) return 0;
   CLI::Timer timer_tot{"Structure Reader", CLI::Timer::Big};
-  /*boost::to_upper(format);*/
-  /*std::cout << "Format: " << format << std::endl;*/
   auto reader = StructureReaderSelector::getReader(in_file);
-  std::cout << "Reader loaded " << std::endl;
 
   /*if (convert->count("--numeric"))*/
   /*  reader->set_precision(outprec);*/
 
   reader->read(in_file);
-  std::cout << "Reader parse done " << std::endl;
   Structure s = reader->getStructure();
-  std::cout << "Reader getStructure() done " << std::endl;
 
   for (auto &atom : s) {
     std::cout << atom << std::endl;

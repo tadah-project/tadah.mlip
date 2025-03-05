@@ -1799,6 +1799,11 @@ int TadahCLI::sub_sreader() {
 
   std::cout << s << std::endl;
 
+  StructureDB stdb;
+  stdb.add(s);
+  auto writer = StructureWriterSelector::get_writer("VASP",stdb);
+  writer->write_data("CONTCAR",0);
+
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
   return 0;
 }

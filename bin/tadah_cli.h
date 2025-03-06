@@ -1,3 +1,4 @@
+#include "CLI/CLI.hpp"
 #ifdef TADAH_BUILD_MPI
 #include <mpi.h>
 #endif
@@ -35,11 +36,13 @@ private:
   std::string validation_file;
   std::string target_file;
   std::string in_file;
+  std::string source;
   std::string format;
   std::string f;
   size_t index;
   std::string indices;
   std::vector<std::string> in_files;
+  std::vector<std::string> sources;
   std::string out_file;
   std::vector<std::string> out_files;
   std::vector<std::string> datasets;
@@ -82,6 +85,7 @@ public:
   CLI::App app;
     CLI::App *train=nullptr;
     CLI::App *predict=nullptr;
+      CLI::Option_group *input_group=nullptr;
     CLI::App *hpo=nullptr;
     CLI::App *convert=nullptr;
     CLI::App *db=nullptr;

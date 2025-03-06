@@ -89,6 +89,8 @@ TadahCLI::TadahCLI():
   /*---------------------------------------------------------------------------*/
   /*     Prediction                                                            */
   /*---------------------------------------------------------------------------*/
+
+    // High-level usage for 'predict' subcommand.
   usage =
     "Predict using an already trained model.\n"
     "Energy per atom is always calculated.\n"
@@ -96,10 +98,12 @@ TadahCLI::TadahCLI():
 
   predict = app.add_subcommand("predict", usage);
 
+  // Extended usage for this subcommand.
+  // Describes output files and shows examples of usage.
   usage =
     "Output Files:\n"
     "Energies are written to `energy.pred`. Forces and stresses, if calculated,\n"
-    "are written to `forces.pred` and `stress.pred` files, respectively\n\n"
+    "are written to `forces.pred` and `stress.pred` files, respectively.\n\n"
     "Option 1:\n"
     "Use a config file with the DBFILE key. Include FORCE and STRESS keys as needed.\n"
     "Note that --Force and --Stress flags override config keys.\n\n"
@@ -107,34 +111,53 @@ TadahCLI::TadahCLI():
     "Option 2:\n"
     "Provide datasets and flags via command line.\n\n"
     "   Example: tadah predict -p pot.tadah -FS -d db1.tadah\n";
-
   predict->usage(usage);
 
-  usage=
+  // Detailed usage for the config file option
+  usage =
     "A config file containing prediction dataset(s).\n"
     "Required Config KEYS: DBFILE.\n"
     "Optional Config KEYS: FORCE, STRESS.\n"
     "See documentation for more details.\n";
-  predict->add_option("-c,--config", config_file,usage)
+
+  // Create an option group to enforce that exactly one of (-c, -d, -s) is used
+  input_group = predict->add_option_group(
+    "Input Selection",
+    "Exactly one of [-c, --config, -d, --datasets, -s, --sources] must be provided");
+
+  // The three mutually exclusive input options
+  input_group
+    ->add_option("-c,--config", config_file, usage)
     ->check(CLI::ExistingFile);
 
-  predict->add_option("-d,--datasets", datasets,
-                      "One or more datasets for prediction.\n")
-    ->excludes("-c")
+  input_group
+    ->add_option("-d,--datasets", datasets,
+                 "One or more datasets for prediction.\n")
     ->check(CLI::ExistingFile);
 
+  input_group
+    ->add_option("-s,--sources", sources,
+                 "One or more source files or structure IDs.\n");
+
+  // Exactly one of these three options is required
+  input_group->require_option(1, 1);
+
+  // Other flags
   predict->add_flag("-F,--Force", "Predict forces.\n");
   predict->add_flag("-S,--Stress", "Predict stresses.\n");
   predict->add_flag("-V,--Verbose", "Verbose mode on.\n");
   predict->add_flag("-e,--error", "Predict model error.\n");
   predict->add_flag("-a,--analytics",
-                    "Compare predicted values to those in\nthe original dataset.\n");
+                    "Compare predicted values to those in\n"
+                    "the original dataset.\n")
+    ->excludes("-s");
 
-  predict->add_option("-p,--potential", pot_file,
-                      "Trained model\n")
+  // Potential file is always required
+  predict->add_option("-p,--potential", pot_file, "Trained model.\n")
     ->check(CLI::ExistingFile)
     ->required();
 
+  // Output precision
   predict->add_option("-n,--numeric", outprec,
                       "Set the number of decimal places for numerical output.\n");
 
@@ -610,12 +633,12 @@ rescale->callback([scale_opt, eshift_opt]() {
 
   usage = 
     "Reads different sources of structures (files or online databases)\n"
-    "and prints a summary. This tool is for testing purposes only.\n"
+    "and prints structure summary. \n"
     "Currently supported sources include:\n"
     "  - Materials Project\n"
-    "  - Crystallography Open Database (COD)\n"
-    "  - NOMAD Archive\n"
-    "  - AFLOW database\n"
+    //"  - Crystallography Open Database (COD)\n"
+    //"  - NOMAD Archive\n"
+    //"  - AFLOW database\n"
     "  - VASP POSCAR/CONTCAR\n"
     "  - CASTEP .cell\n"
     "  - Crystallographic Information File .cif \n";
@@ -629,9 +652,9 @@ rescale->callback([scale_opt, eshift_opt]() {
   sreader->usage(usage);
 
   usage =
-    "Specify the input source.\n";
+    "Specify the input source(s).\n";
 
-  sreader->add_option("-s,--source", in_file, usage)
+  sreader->add_option("-s,--sources", sources, usage)
     ->required();
 
   /*sreader->add_option("-i,--input", in_file,*/
@@ -1046,27 +1069,37 @@ int TadahCLI::sub_predict() {
   if (rank!=0) return 0;
 
   CLI::Timer timer_tot {"Prediction", CLI::Timer::Big};
-  if(predict->count("--Verbose"))
-    set_verbose();
-  // if (is_verbose()) std::cout << "Prediction..." << std::endl;
+  if(predict->count("--Verbose")) set_verbose();
   Config pot_config(pot_file);
   pot_config.check_for_predict();
   pot_config.remove("VERBOSE");
+  pot_config.add("VERBOSE",0);
+
+  if (is_verbose()) std::cout << "Loading structures..." << std::flush;
+  StructureDB stdb;
   if(predict->count("--config")) {
     pot_config.add(config_file);
-    if (!pot_config.exist("VERBOSE"))
-      pot_config.add("VERBOSE",0);
+    stdb.add(pot_config);
   }
   else if(predict->count("--datasets")) {
     for (auto &ds: datasets) {
       pot_config.add("DBFILE",ds);
     }
-    pot_config.add("VERBOSE",0);
+    stdb.add(pot_config);
   }
-  else {
+  else if(predict->count("--sources")) {
+    for (std::string &src : sources) {
+      auto reader = StructureReaderSelector::getReader(src);
+      reader->read(src);
+      Structure s = reader->getStructure();
+      stdb.add(s);
+    }
+  } else {
     std::runtime_error("Either provide config file\n\
 or datasets in a command line");
   }
+
+  if (is_verbose()) std::cout << "Done!" << std::endl;
 
   // If force or Stress flag is set add it to config
   // overwrite existing flags if present.
@@ -1083,9 +1116,6 @@ or datasets in a command line");
 
   DC_Selector DCS(pot_config);
 
-  if (is_verbose()) std::cout << "Loading structures..." << std::flush;
-  StructureDB stdb(pot_config);
-  if (is_verbose()) std::cout << "Done!" << std::endl;
 
   if (is_verbose()) std::cout << "Finding nearest neighbours within: " <<
     pot_config.get<double>("RCUTMAX") << " cutoff distance..." << std::flush;
@@ -1780,24 +1810,20 @@ int TadahCLI::sub_swriter() {
 int TadahCLI::sub_sreader() {
   if (rank!=0) return 0;
   CLI::Timer timer_tot{"Structure Reader", CLI::Timer::Big};
-  auto reader = StructureReaderSelector::getReader(in_file);
 
   /*if (convert->count("--numeric"))*/
   /*  reader->set_precision(outprec);*/
 
-  reader->read(in_file);
-  Structure s = reader->getStructure();
-
-  for (auto &atom : s) {
-    std::cout << atom << std::endl;
+  for (std::string &src : sources) {
+    auto reader = StructureReaderSelector::getReader(src);
+    reader->read(src);
+    Structure s = reader->getStructure();
+    std::cout << s << std::endl;
+    // StructureDB stdb;
+    // stdb.add(s);
+    // auto writer = StructureWriterSelector::get_writer("VASP",stdb);
+    // writer->write_data("CONTCAR",0);
   }
-
-  std::cout << s << std::endl;
-
-  StructureDB stdb;
-  stdb.add(s);
-  auto writer = StructureWriterSelector::get_writer("VASP",stdb);
-  writer->write_data("CONTCAR",0);
 
   if (verbose) std::cout << timer_tot.to_string() << std::endl;
   return 0;

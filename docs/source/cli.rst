@@ -114,9 +114,9 @@ the energy weight.
 
   - ``-s,--scale``  
     Compute per-structure scaling factors:  
-    - *Energy Weight*: ``eweight = 1/|energy|`` (set to 0 if near zero)  
-    - *Force Weight*: ``fweight = 1/(3 × sum_of_force_norms)`` (0 if near zero)  
-    - *Stress Weight*: ``sweight = 1/(9 × Frobenius_norm_of_stress)`` (0 if near zero)
+    - *Energy Weight*: ``eweight = 1/|energy|`` (set to 1 if near zero)  
+    - *Force Weight*: ``fweight = 1/(3 × sum_of_force_norms)`` (1 if near zero)  
+    - *Stress Weight*: ``sweight = 1/(9 × Frobenius_norm_of_stress)`` (1 if near zero)
 
 **Energy Shifting**:
 

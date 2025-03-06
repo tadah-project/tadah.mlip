@@ -37,9 +37,9 @@ and stresses are optional.
 
 **Examples**:
 
-  - ``tadah predict -c config.tadah -p pot.tadah`` : Predict using a config file.
+  - ``tadah predict -c config.tadah -p pot.tadah`` : Predict energies only using datasets specified in the config file.
   - ``tadah predict -p pot.tadah -FS -d db1.tadah`` : Predict forces and stresses using datasets.
-  - ``tadah predict -p pot.tadah -e -a`` : Predict model error and perform analytics.
+  - ``tadah predict -p pot.tadah -d db1.tadah -e -a`` : Predict energies, model error and perform analytics.
 
 Hyperparameter Optimization
 ...........................

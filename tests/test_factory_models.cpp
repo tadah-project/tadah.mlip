@@ -38,22 +38,22 @@ TEST_CASE( "Testing Factory: Models", "[factory_models]" ) {
   config.add("MPARAMS",3);
   // Config contains defaults only, we want to run prediction
   // should compile and run
-  for (auto b:CONFIG::Registry<DM_Function_Base,Config&>::registry) {
-    DM_Function_Base *fb = CONFIG::factory<DM_Function_Base,Config&>(b.first,config);
-    for (auto c:CONFIG::Registry<M_Tadah_Base,DM_Function_Base&,Config&>::registry) {
+  for (auto b:tadah::core::Registry<DM_Function_Base,Config&>::registry) {
+    DM_Function_Base *fb = tadah::core::factory<DM_Function_Base,Config&>(b.first,config);
+    for (auto c:tadah::core::Registry<M_Tadah_Base,DM_Function_Base&,Config&>::registry) {
       if (dynamic_cast<Kern_Base*>(fb) != nullptr && c.first=="M_KRR") {
         M_Tadah_Base *tdb=nullptr;
-        REQUIRE((tdb=CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)));
+        REQUIRE((tdb=tadah::core::factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)));
         if (tdb) delete tdb;
       }
       else if (dynamic_cast<BF_Base*>(fb) != nullptr && c.first=="M_BLR") {
         M_Tadah_Base *tdb=nullptr;
-        REQUIRE((tdb=CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)));
+        REQUIRE((tdb=tadah::core::factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)));
         if (tdb) delete tdb;
       }
       else {
         M_Tadah_Base *tdb=nullptr;
-        REQUIRE_THROWS_AS((tdb=CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)),
+        REQUIRE_THROWS_AS((tdb=tadah::core::factory<M_Tadah_Base,DM_Function_Base&,Config&>(c.first,*fb,config)),
                           std::invalid_argument);
         if (tdb) delete tdb;
       }

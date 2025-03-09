@@ -1127,9 +1127,9 @@ or datasets in a command line");
                        *DCS.c2b,*DCS.c3b,*DCS.cmb);
 
   if (is_verbose()) std::cout << "Prediction..." << std::flush;
-  DM_Function_Base *fb = CONFIG::factory<DM_Function_Base,Config&>(
+  DM_Function_Base *fb = tadah::core::factory<DM_Function_Base,Config&>(
     pot_config.get<std::string>("MODEL",1),pot_config);
-  M_Tadah_Base *modelp = CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>(
+  M_Tadah_Base *modelp = tadah::core::factory<M_Tadah_Base,DM_Function_Base&,Config&>(
     pot_config.get<std::string>("MODEL",0),*fb,pot_config);
 
   StructureDB stpred;
@@ -1848,7 +1848,7 @@ int TadahCLI::subsub_bf() {
     dtype = config.get<std::string>("TYPE2B");
     if (types[1]=="Y" || bf->count("--scale")) {
       double rcut = config.get<double>("RCUT2BMAX");
-      fcut = CONFIG::factory<Cut_Base,double>( config.get<std::string>("RCTYPE2B"), rcut);
+      fcut = tadah::core::factory<Cut_Base,double>( config.get<std::string>("RCTYPE2B"), rcut);
     }
   } else if (types[0]=="MB") {
     cgridtype="CGRIDMB";
@@ -1856,7 +1856,7 @@ int TadahCLI::subsub_bf() {
     dtype = config.get<std::string>("TYPEMB");
     if (types[1]=="Y" || bf->count("--scale")) {
       double rcut = config.get<double>("RCUTMBMAX");
-      fcut = CONFIG::factory<Cut_Base,double>( config.get<std::string>("RCTYPEMB"), rcut);
+      fcut = tadah::core::factory<Cut_Base,double>( config.get<std::string>("RCTYPEMB"), rcut);
     }
   } else {
     throw std::runtime_error("Unsupported -t, --type: " + types[0] + " " + types[1]);
@@ -2020,9 +2020,9 @@ int TadahCLI::subsub_twobody() {
                        *DCS.c2b,*DCS.c3b,*DCS.cmb);
 
   if (is_verbose()) std::cout << "Prediction..." << std::flush;
-  DM_Function_Base *fb = CONFIG::factory<DM_Function_Base,Config&>(
+  DM_Function_Base *fb = tadah::core::factory<DM_Function_Base,Config&>(
     pot_config.get<std::string>("MODEL",1),pot_config);
-  M_Tadah_Base *modelp = CONFIG::factory<M_Tadah_Base,DM_Function_Base&,Config&>(
+  M_Tadah_Base *modelp = tadah::core::factory<M_Tadah_Base,DM_Function_Base&,Config&>(
     pot_config.get<std::string>("MODEL",0),*fb,pot_config);
 
   StructureDB stpred;
@@ -2085,7 +2085,7 @@ int TadahCLI::subsub_cutoff() {
   if (is_verbose()) std::cout << "Dumping output..." << std::flush;
   std::ofstream outfile(out_files[0]);
   for (const auto &type: types) {
-    Cut_Base *cut = CONFIG::factory<Cut_Base,double>( type, range.back() );
+    Cut_Base *cut = tadah::core::factory<Cut_Base,double>( type, range.back() );
     for (size_t j=0; j<range.size(); ++j) {
       outfile << std::fixed << std::setprecision(outprec)
         << std::setw(outprec+5)

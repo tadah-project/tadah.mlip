@@ -24,10 +24,18 @@ int TrainCLI::run() {
   CLI::Timer timer_tot("Training", CLI::Timer::Big);
   try {
     tadah::core::Config config(config_file_);
-    if (include_force_)
+    if (include_force_) {
+      config.remove("FORCE");
       config.add("FORCE", "true");
-    if (include_stress_)
+    }
+    if (include_stress_) {
+      config.remove("STRESS", "true");
       config.add("STRESS", "true");
+    }
+std::set<tadah::core::Element> unique_elements =
+    StructureDB::find_unique_elements(config);
+StructureDB::check_atoms_key(config, unique_elements);
+StructureDB::check_watoms_key(config, unique_elements);
 
     int ret = tadah::engines::TrainEngine::train(config);
     Logger::log(timer_tot.to_string());

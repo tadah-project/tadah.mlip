@@ -1,5 +1,8 @@
-#include <tadah/cli/properties_cli.h>
-#include <tadah/engines/properties_engine.h>
+#include <tadah/cli/predict_cli.h>
+#include <tadah/mlip/engines/predict_engine.h>
+#include <tadah/core/config.h>
+#include <tadah/mlip/StructureDB.h>
+#include <tadah/cli/unified_input.h>
 #include <tadah/cli/logging.h>
 #include "CLI/Timer.hpp"
 #include <iostream>
@@ -8,95 +11,116 @@
 namespace tadah {
 namespace cli {
 
-void PropertiesCLI::register_module(CLI::App &app) {
-  auto props = app.add_subcommand("properties", "Physical property evaluation commands.");
-  
-  auto twobody = props->add_subcommand("twobody",
-    "Compute two-body potential (E vs. r).\nExample: tadah properties twobody -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\"");
-  twobody->add_option("-p,--potential", pot_file_, "Trained model file")
-         ->required()->check(CLI::ExistingFile);
-  twobody->add_option("-o,--outfile", out_file_, "Output file")
-         ->required()->check(CLI::NonexistentPath);
-  twobody->add_option("-r,--range", range_, "Plotting range (START, STOP, NPOINTS)")
-         ->required();
-  twobody->add_option("-a,--atoms", atoms_, "Chemical element pair")
-         ->required();
-  twobody->add_flag("-F,--force", predict_force_, "Predict forces");
-  twobody->add_option("--numeric", numeric_precision_, "Decimal precision");
-  twobody->add_flag("-E,--error", predict_error_, "Predict error");
-  twobody->add_flag("-V,--verbose", verbose_, "Enable verbose output");
-  twobody->callback([this]() { std::exit(this->run_twobody()); });
-  
-  auto ecurve = props->add_subcommand("ecurve",
-    "Compute energy vs. volume/density/pressure curve.\nExample: tadah properties ecurve -s structure_file -r 10 100 200 --quantity volume -o out.txt");
-  ecurve->add_option("-s,--structure", structures_, "Unified structure input")
-         ->required();
-  ecurve->add_option("-r,--range", range_, "Plotting range (START, STOP, NPOINTS)")
-         ->required();
-  ecurve->add_option("--quantity", quantity_, "Quantity to vary (volume/density/pressure)")
-         ->required();
-  ecurve->add_option("-o,--outfile", out_file_, "Output file")
-         ->required()->check(CLI::NonexistentPath);
-  ecurve->add_option("--numeric", numeric_precision_, "Decimal precision");
-  ecurve->add_flag("-V,--verbose", verbose_, "Enable verbose output");
-  ecurve->callback([this]() { std::exit(this->run_ecurve()); });
-  
-  auto eos = props->add_subcommand("eos",
-    "Compute Equation of State (stub).");
-  eos->add_option("-s,--structure", structures_, "Unified structure input")
-     ->required();
-  eos->add_option("-r,--range", range_, "Range for EOS (START, STOP, NPOINTS)")
-     ->required();
-  eos->add_option("-o,--outfile", out_file_, "Output file")
-     ->required()->check(CLI::NonexistentPath);
-  eos->add_flag("-V,--verbose", verbose_, "Enable verbose output");
-  eos->callback([this]() { std::exit(this->run_eos()); });
-  
-  auto defect = props->add_subcommand("defect",
-    "Compute defect formation energies (stub).");
-  defect->callback([this]() { std::exit(this->run_defect()); });
-  
-  auto surface = props->add_subcommand("surface",
-    "Compute surface energies (stub).");
-  surface->callback([this]() { std::exit(this->run_surface()); });
-  
-  auto mechanics = props->add_subcommand("mechanics",
-    "Compute bulk modulus and elastic constants (stub).");
-  mechanics->callback([this]() { std::exit(this->run_mechanics()); });
+void PredictCLI::register_module(CLI::App &app) {
+  auto predict = app.add_subcommand("predict",
+    "Perform prediction using a trained model.\nEnergy per atom is always calculated; forces/stresses are optional.");
+  auto input_group = predict->add_option_group("Input Selection",
+    "Exactly one of --config, --dataset or --structure must be provided");
+  input_group->add_option("-c,--config", config_file_, "Path to configuration file")
+              ->check(CLI::ExistingFile);
+  input_group->add_option("-d,--dataset", datasets_, "Tadah! dataset file(s)")
+              ->check(CLI::ExistingFile);
+  input_group->add_option("-s,--structure", sources_, "Unified structure input (files/online)")
+              ->required();
+  predict->require_option(1,1);
+
+  predict->add_flag("-F,--force", predict_force_, "Predict forces");
+  predict->add_flag("-S,--stress", predict_stress_, "Predict stresses");
+  predict->add_flag("-V,--verbose", verbose_, "Enable verbose output");
+  predict->add_flag("-E,--error", predict_error_, "Predict model error");
+  predict->add_flag("-A,--analytics", analytics_, "Perform analytics on predictions")
+           ->excludes("-s");
+  predict->add_option("-p,--potential", pot_file_, "Trained model file")
+           ->required()->check(CLI::ExistingFile);
+  predict->add_option("--numeric", numeric_precision_, "Numeric output precision");
+
+  predict->callback([this]() { std::exit(this->run()); });
 }
 
-int PropertiesCLI::run_twobody() {
-  CLI::Timer timer_tot("Twobody", CLI::Timer::Big);
-  int ret = PropertiesEngine::twobody(pot_file_, out_file_, range_, atoms_, false, false, numeric_precision_);
-  Logger::log(timer_tot.to_string());
-  return ret;
-}
+int PredictCLI::run() {
+  CLI::Timer timer_tot("Prediction", CLI::Timer::Big);
+  try {
 
-int PropertiesCLI::run_ecurve() {
-  CLI::Timer timer_tot("Ecurve", CLI::Timer::Big);
-  int ret = PropertiesEngine::ecurve(structures_, range_, out_file_, quantity_);
-  Logger::log(timer_tot.to_string());
-  return ret;
-}
+  Logger::instance().log(LogLevel::INFO, "Loading structures...");
+  StructureDB stdb;
+  if(predict->count("--config")) {
+    pot_config.add(config_file);
+    stdb.add(pot_config);
+  }
+  else if(predict->count("--datasets")) {
+    for (auto &ds: datasets) {
+      pot_config.add("DBFILE",ds);
+    }
+    stdb.add(pot_config);
+  }
+  else if(predict->count("--sources")) {
+    for (std::string &src : sources) {
+      auto reader = StructureReaderSelector::getReader(src);
+      reader->read(src);
+      Structure s = reader->getStructure();
+      stdb.add(s);
+    }
+  } else {
+    std::runtime_error("Either provide config file\n\
+or datasets in a command line");
+  }
 
-int PropertiesCLI::run_eos() {
-  Logger::log("PropertiesCLI: EOS stub executed.");
-  return PropertiesEngine::eos(structures_, range_, out_file_);
-}
+  if (is_verbose()) std::cout << "Done!" << std::endl;
 
-int PropertiesCLI::run_defect() {
-  Logger::log("PropertiesCLI: Defect energies stub executed.");
-  return PropertiesEngine::defect();
-}
+  // If force or Stress flag is set add it to config
+  // overwrite existing flags if present.
+  // If flags are not set either keep existing
+  // setting from the config file or set to false
+  if(predict->count("--Force")) {
+    pot_config.remove("FORCE");
+    pot_config.add("FORCE", "true");
+  }
+  if(predict->count("--Stress")) {
+    pot_config.remove("STRESS");
+    pot_config.add("STRESS", "true");
+  }
 
-int PropertiesCLI::run_surface() {
-  Logger::log("PropertiesCLI: Surface energy stub executed.");
-  return PropertiesEngine::surface();
-}
 
-int PropertiesCLI::run_mechanics() {
-  Logger::log("PropertiesCLI: Mechanics stub executed.");
-  return PropertiesEngine::mechanics();
+
+    /////////////
+    tadah::core::Config pot_config(pot_file_);
+    pot_config.check_for_predict();
+    pot_config.remove("verbose");
+    pot_config.add("verbose", 0);
+
+    tadah::mlip::StructureDB stdb;
+    auto allSources = UnifiedInput::processInput(sources_);
+    if (!config_file_.empty()) {
+      pot_config.add(config_file_);
+      stdb.add(pot_config);
+    } else if (!datasets_.empty()) {
+      for (const auto &ds : datasets_)
+        pot_config.add("DBFILE", ds);
+      stdb.add(pot_config);
+    } else {
+      for (const auto &src : allSources) {
+        std::string actual_src = src.substr(src.find(":") + 1);
+        tadah::mlip::Structure dummy_structure;
+        stdb.add(dummy_structure);
+      }
+    }
+
+    if (predict_force_) {
+      pot_config.remove("force");
+      pot_config.add("force", "true");
+    }
+    if (predict_stress_) {
+      pot_config.remove("stress");
+      pot_config.add("stress", "true");
+    }
+
+    tadah::engines::PredictEngine::predict(pot_config, stdb);
+    Logger::log(timer_tot.to_string());
+    return EXIT_SUCCESS;
+  } catch (const std::exception &e) {
+    std::cerr << "Prediction error: " << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
 }
 
 } // namespace cli

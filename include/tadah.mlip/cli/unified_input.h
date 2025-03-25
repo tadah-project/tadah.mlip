@@ -6,6 +6,10 @@
 #include <string>
 #include <vector>
 
+namespace tadah {
+namespace mlip {
+namespace cli {
+
 /**
  * @brief Provides unified input detection.
  *
@@ -65,5 +69,8 @@ private:
   }
 };
 
-#endif // TADAH_MLIP_CLI_UNIFIED_INPUT_H
+} // namespace cli
+} // namespace mlip
+} // namespace tadah
 
+#endif // TADAH_MLIP_CLI_UNIFIED_INPUT_H

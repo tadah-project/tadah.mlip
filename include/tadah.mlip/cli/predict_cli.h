@@ -7,6 +7,7 @@
 #include <vector>
 
 namespace tadah {
+namespace mlip {
 namespace cli {
 
 /**
@@ -32,6 +33,7 @@ private:
 };
 
 } // namespace cli
+} // namespace mlip
 } // namespace tadah
 
 #endif // TADAH_MLIP_CLI_PREDICT_CLI_H

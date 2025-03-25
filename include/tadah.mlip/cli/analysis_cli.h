@@ -7,6 +7,7 @@
 #include <vector>
 
 namespace tadah {
+namespace mlip {
 namespace cli {
 
 /**
@@ -22,18 +23,10 @@ public:
   int run_bfunc();
   int run_cutoff();
 
-private:
-  std::string pot_file_;
-  std::vector<std::string> datasets_;
-  std::string config_file_;
-  std::vector<double> range_;
-  std::vector<std::string> types_;
-  std::string out_file_;
-  int numeric_precision_ = 0;
-  bool force_descriptors_ = false;
 };
 
 } // namespace cli
+} // namespace mlip
 } // namespace tadah
 
 #endif // TADAH_MLIP_CLI_ANALYSIS_CLI_H

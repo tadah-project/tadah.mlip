@@ -30,7 +30,6 @@ private:
 ";
   int rank=0;
   int ncpu = 1;
-  bool verbose=false;
   std::string pot_file;
   std::string config_file;
   std::string validation_file;
@@ -53,8 +52,6 @@ private:
   size_t N;
   double val;
 
-  void set_verbose();
-  bool is_verbose();
   int sub_train();
   int sub_predict();
   int sub_hpo(int argc, char**argv);

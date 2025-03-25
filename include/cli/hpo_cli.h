@@ -22,7 +22,6 @@ private:
   std::string config_file_;
   std::string hpotarget_file_;
   std::string validation_file_;
-  bool verbose_ = false;
   bool include_force_ = false;
   bool include_stress_ = false;
 };

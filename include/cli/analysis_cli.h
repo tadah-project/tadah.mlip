@@ -30,7 +30,6 @@ private:
   std::vector<std::string> types_;
   std::string out_file_;
   int numeric_precision_ = 0;
-  bool verbose_ = false;
   bool force_descriptors_ = false;
 };
 

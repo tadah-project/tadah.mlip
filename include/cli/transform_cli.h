@@ -25,7 +25,6 @@ public:
 private:
   std::vector<std::string> datasets_;
   std::string out_file_;
-  bool verbose_ = false;
   double eshift_val_ = 0.0;
   bool scale_ = false;
   int numeric_precision_ = 0;

@@ -30,7 +30,6 @@ private:
   std::vector<std::string> datasets_;
   std::string out_file_;
   std::vector<std::string> out_files_;
-  bool verbose_ = false;
 };
 
 } // namespace cli

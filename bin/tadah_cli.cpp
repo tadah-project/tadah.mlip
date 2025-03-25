@@ -6,6 +6,7 @@
 #include <tadah/core/element.h>
 #include <tadah/core/periodic_table.h>
 #include <tadah/core/utils.h>
+#include <tadah/core/logger.h>
 
 #include <tadah/mlip/analytics/analytics.h>
 #include <tadah/mlip/dataset_readers/dataset_reader_selector.h>
@@ -1004,7 +1005,6 @@ int TadahCLI::sub_train() {
     host.solve();
 
     Config param_file = host.model->get_param_file();
-    param_file.check_pot_file();
     std::ofstream outfile("pot.tadah");
     if (outfile.is_open()) {
       outfile << param_file << std::endl;
@@ -1044,7 +1044,6 @@ int TadahCLI::sub_train() {
 
   // Save the trained model parameters to a file
   Config param_file = tr.model->get_param_file();
-  param_file.check_pot_file();
   std::ofstream outfile("pot.tadah");
   if (outfile.is_open()) {
     outfile << param_file << std::endl;
@@ -1200,7 +1199,6 @@ int TadahCLI::sub_hpo(
   std::set<Element> unique_elements = StructureDB::find_unique_elements(config);
   StructureDB::check_atoms_key(config, unique_elements);
   StructureDB::check_watoms_key(config, unique_elements);
-  config.check_for_training();
 
   // Enable FORCE and STRESS flags in the configuration if specified
   if (hpo->count("--Force")) {
@@ -2113,9 +2111,6 @@ int TadahCLI::subsub_cutoff() {
 int TadahCLI::subsub_data() {
   if (rank!=0) return 0;
   CLI::Timer timer_tot{"Data Visualiser", CLI::Timer::Big};
-
-  if(vdata->count("--Verbose"))
-    set_verbose();
 
   if (datasets.size()<1) throw std::runtime_error("At least one dataset is required. Check -d, --datasets");
   if (sizes.size()!=2) throw std::runtime_error("Number of bins are requires. Provide two integer values. Check -b, --bins\n");

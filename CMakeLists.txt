@@ -1,8 +1,17 @@
 cmake_minimum_required(VERSION 3.12)
 
-# There is usually no need to change anything here...
-
 set(TADAH "Tadah!")
+
+file(READ "${CMAKE_SOURCE_DIR}/include/tadah.mlip/cli/version.h" ver)
+string(REGEX MATCH "TADAH_WORLD_VERSION ([0-9]+)" _ "${ver}")
+set(ver_world ${CMAKE_MATCH_1})
+string(REGEX MATCH "TADAH_MAJOR_VERSION ([0-9]+)" _ "${ver}")
+set(ver_major ${CMAKE_MATCH_1})
+string(REGEX MATCH "TADAH_MINOR_VERSION ([0-9]+)" _ "${ver}")
+set(ver_minor ${CMAKE_MATCH_1})
+
+project(Tadah VERSION ${ver_world}.${ver_major}.${ver_minor})
+message(STATUS "${TADAH} VERSION: ${ver_world}.${ver_major}.${ver_minor}")
 
 # Here are the options... set them with -D,
 # for example:
@@ -80,42 +89,6 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
-if (CMAKE_BUILD_TYPE STREQUAL "DEVELOP")
-if(NOT DEFINED ENV{TADAH_PATH})
-  message(FATAL_ERROR "TADAH_PATH system variable is undefined for the ${CMAKE_BUILD_TYPE} build")
-endif()
-  function(find_directory_case_insensitive target_name search_dir result_var)
-    execute_process(
-        COMMAND find "${search_dir}" -maxdepth 1 -type d -iname "${target_name}"
-        OUTPUT_VARIABLE found_dir
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
-    if(found_dir)
-      set(${result_var} "${found_dir}" PARENT_SCOPE)
-      message("${TADAH} Develop build: Found directory: ${found_dir}")
-    else()
-      set(${result_var} "" PARENT_SCOPE)
-      message("${TADAH} Develop build: Directory not found.")
-    endif()
-  endfunction()
-
-  find_directory_case_insensitive("core" "$ENV{TADAH_PATH}" DEVELOP_CORE_DIR)
-  find_directory_case_insensitive("models" "$ENV{TADAH_PATH}" DEVELOP_MODELS_DIR)
-  find_directory_case_insensitive("mlip" "$ENV{TADAH_PATH}" DEVELOP_MLIP_DIR)
-  set(FETCHCONTENT_SOURCE_DIR_TADAH.CORE "${DEVELOP_CORE_DIR}")
-  set(FETCHCONTENT_SOURCE_DIR_TADAH.MODELS "${DEVELOP_MODELS_DIR}")
-  set(FETCHCONTENT_SOURCE_DIR_TADAH.MLIP "${DEVELOP_MLIP_DIR}")
-  if(TADAH_ENABLE_HPO)
-    find_directory_case_insensitive("hpo" "$ENV{TADAH_PATH}" DEVELOP_HPO_DIR)
-    find_directory_case_insensitive("tadah.lammps" "$ENV{TADAH_PATH}" DEVELOP_TADAH_LAMMPS_DIR)
-    set(FETCHCONTENT_SOURCE_DIR_TADAH.HPO "${DEVELOP_HPO_DIR}")
-    set(FETCHCONTENT_SOURCE_DIR_TADAH.LAMMPS "${DEVELOP_TADAH_LAMMPS_DIR}")
-  endif()
-endif()
-
-
 # Check is build supported
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG" 
@@ -140,6 +113,36 @@ set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
   FORCE)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
+if (CMAKE_BUILD_TYPE STREQUAL "DEVELOP")
+if(NOT DEFINED ENV{TADAH_PATH})
+  message(FATAL_ERROR "TADAH_PATH system variable is undefined for the ${CMAKE_BUILD_TYPE} build")
+endif()
+  function(find_directory_case_insensitive target_name search_dir result_var)
+    execute_process(
+        COMMAND find "${search_dir}" -maxdepth 1 -type d -iname "${target_name}"
+        OUTPUT_VARIABLE found_dir
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(found_dir)
+      set(${result_var} "${found_dir}" PARENT_SCOPE)
+      message("${TADAH} Develop build: Found directory: ${found_dir}")
+    else()
+      set(${result_var} "" PARENT_SCOPE)
+      message("${TADAH} Develop build: Directory not found.")
+    endif()
+  endfunction()
+  find_directory_case_insensitive("mlip" "$ENV{TADAH_PATH}" DEVELOP_MLIP_DIR)
+  set(FETCHCONTENT_SOURCE_DIR_TADAH.MLIP "${DEVELOP_MLIP_DIR}")
+  if(TADAH_ENABLE_HPO)
+    find_directory_case_insensitive("hpo" "$ENV{TADAH_PATH}" DEVELOP_HPO_DIR)
+    find_directory_case_insensitive("tadah.lammps" "$ENV{TADAH_PATH}" DEVELOP_TADAH_LAMMPS_DIR)
+    set(FETCHCONTENT_SOURCE_DIR_TADAH.HPO "${DEVELOP_HPO_DIR}")
+    set(FETCHCONTENT_SOURCE_DIR_TADAH.LAMMPS "${DEVELOP_TADAH_LAMMPS_DIR}")
+  endif()
+endif()
+
 
 include(FetchContent)
 
@@ -178,18 +181,9 @@ if(TADAH_ENABLE_HPO)
   FetchContent_MakeAvailable(Tadah.LAMMPS)
 endif()
 
-file(READ "${tadah.mlip_SOURCE_DIR}/include/tadah/mlip/version.h" ver)
-string(REGEX MATCH "TADAH_WORLD_VERSION ([0-9]+)" _ "${ver}")
-set(ver_world ${CMAKE_MATCH_1})
-string(REGEX MATCH "TADAH_MAJOR_VERSION ([0-9]+)" _ "${ver}")
-set(ver_major ${CMAKE_MATCH_1})
-string(REGEX MATCH "TADAH_MINOR_VERSION ([0-9]+)" _ "${ver}")
-set(ver_minor ${CMAKE_MATCH_1})
-
-project(Tadah VERSION ${ver_world}.${ver_major}.${ver_minor})
-message(STATUS "${TADAH} VERSION: ${ver_world}.${ver_major}.${ver_minor}")
-
-add_executable (tadah bin/main.cpp bin/tadah_cli.cpp)
+file(GLOB TADAH_SRC_FILES src/*.cpp)
+add_executable (tadah ${TADAH_SRC_FILES})
+target_include_directories(tadah PRIVATE include)
 
 file(GLOB BOOST_SRC_FILES external/boost/libs/iostreams/src/*.cpp)
 add_library(boost_iostream STATIC ${BOOST_SRC_FILES})

@@ -7,7 +7,10 @@
 #include <vector>
 #include <string>
 
+#include <tadah.mlip/cli/all_cli_files.h>
+
 namespace tadah {
+namespace mlip {
 namespace cli {
 
 /**
@@ -33,13 +36,13 @@ public:
 private:
   CLI::App app_;
   std::vector<std::unique_ptr<CLIPlugin>> plugins_;
-  std::unique_ptr<class TrainCLI> train_cli_;
+  /*std::unique_ptr<class TrainCLI> train_cli_;*/
   std::unique_ptr<class PredictCLI> predict_cli_;
-  std::unique_ptr<class HPOCLI> hpo_cli_;
-  std::unique_ptr<class DataCLI> data_cli_;
-  std::unique_ptr<class TransformCLI> transform_cli_;
-  std::unique_ptr<class PropertiesCLI> properties_cli_;
-  std::unique_ptr<class AnalysisCLI> analysis_cli_;
+  /*std::unique_ptr<class HPOCLI> hpo_cli_;*/
+  /*std::unique_ptr<class DataCLI> data_cli_;*/
+  /*std::unique_ptr<class TransformCLI> transform_cli_;*/
+  /*std::unique_ptr<class PropertiesCLI> properties_cli_;*/
+  /*std::unique_ptr<class AnalysisCLI> analysis_cli_;*/
 
   /**
    * @brief Registers all command modules.
@@ -48,6 +51,7 @@ private:
 };
 
 } // namespace cli
+} // namespace mlip
 } // namespace tadah
 
 #endif // TADAH_MLIP_CLI_TADAH_CLI_H

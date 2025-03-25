@@ -4,6 +4,10 @@
 #include "CLI/CLI.hpp"
 #include <string>
 
+namespace tadah {
+namespace mlip {
+namespace cli {
+
 /**
  * @brief Attaches common options to a CLI subcommand.
  *
@@ -37,6 +41,10 @@ inline void checkFlagSuggestions(int argc, char** argv) {
         }
     }
 }
+
+} // namespace cli
+} // namespace mlip
+} // namespace tadah
 
 #endif // TADAH_MLIP_CLI_COMMON_CLI_H
 

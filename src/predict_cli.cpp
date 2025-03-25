@@ -65,8 +65,6 @@ int PredictCLI::run() {
 or datasets in a command line");
   }
 
-  if (is_verbose()) std::cout << "Done!" << std::endl;
-
   // If force or Stress flag is set add it to config
   // overwrite existing flags if present.
   // If flags are not set either keep existing
@@ -80,13 +78,9 @@ or datasets in a command line");
     pot_config.add("STRESS", "true");
   }
 
-
-
     /////////////
     tadah::core::Config pot_config(pot_file_);
     pot_config.check_for_predict();
-    pot_config.remove("verbose");
-    pot_config.add("verbose", 0);
 
     tadah::mlip::StructureDB stdb;
     auto allSources = UnifiedInput::processInput(sources_);

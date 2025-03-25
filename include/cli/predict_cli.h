@@ -24,7 +24,6 @@ private:
   std::string config_file_;
   std::vector<std::string> datasets_;
   std::vector<std::string> sources_;
-  bool verbose_ = false;
   bool predict_force_ = false;
   bool predict_stress_ = false;
   bool predict_error_ = false;

@@ -32,7 +32,6 @@ private:
   std::vector<std::string> atoms_;
   std::string quantity_;
   int numeric_precision_ = 0;
-  bool verbose_ = false;
   bool predict_force_ = false;
   bool predict_stress_ = false;
   bool predict_error_ = false;

@@ -1,7 +1,6 @@
 #include <tadah.mlip/cli/predict_cli.h>
 #include <tadah.mlip/cli/unified_input.h>
 #include <tadah/mlip/engines/predict_engine.h>
-#include <tadah/core/config.h>
 #include <tadah/core/blueprint_parser.h>
 #include <tadah/mlip/structure_db.h>
 #include "CLI/Timer.hpp"
@@ -14,10 +13,17 @@ namespace cli {
 
 void PredictCLI::register_module(CLI::App &app) {
   auto &tasksMap = core::BlueprintParser::getTasksMapRef();
-  auto &predictTask = tasksMap.at("predict");
-  for (const auto &param : predictTask) {
-    std::cout << param.first << " " << param.second << std::endl;
+  for (const auto &itemPair : tasksMap) {
+    std::string task = itemPair.first;
+    std::transform(task.begin(), task.end(), task.begin(), ::toupper);
+    std::cout << "Task: " << task << std::endl;
+    std::cout << "Task Name: " << itemPair.second.taskName << std::endl;
   }
+  auto predictTask = tasksMap.at("PREDICT");
+  std::cout << "Predict task: " << predictTask.taskName << std::endl;
+  /*for (const auto &param : predictTask) {*/
+  /*  std::cout << param.first << std::endl;*/
+  /*}*/
 
 
 

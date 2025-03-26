@@ -19,6 +19,12 @@ public:
    * @param app The CLI::App instance.
    */
   virtual void register_module(CLI::App &app) = 0;
+
+  /**
+   * @brief Runs the module's main functionality.
+   * @return int Exit code.
+   */
+  virtual int run() = 0;
   virtual ~CLIPlugin() = default;
 
 protected:

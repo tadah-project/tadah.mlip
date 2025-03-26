@@ -1,12 +1,6 @@
 #include <tadah.mlip/cli/tadah_cli.h>
-#include <tadah.mlip/cli/train_cli.h>
-#include <tadah.mlip/cli/predict_cli.h>
-#include <tadah.mlip/cli/hpo_cli.h>
-#include <tadah.mlip/cli/data_cli.h>
-#include <tadah.mlip/cli/transform_cli.h>
-#include <tadah.mlip/cli/properties_cli.h>
-#include <tadah.mlip/cli/analysis_cli.h>
-#include <tadah.mlip/cli/common_cli.h>
+#include <tadah/core/context.h>
+#include <tadah/core/blueprint_parser.h>
 #include <iostream>
 #include <memory>
 
@@ -23,27 +17,14 @@ TadahCLI::TadahCLI()
 }
 
 void TadahCLI::registerModules() {
-  /*train_cli_ = std::make_unique<TrainCLI>();*/
-  /*train_cli_->register_module(app_);*/
 
-  /**/
-  predict_cli_ = std::make_unique<PredictCLI>();
-  predict_cli_->register_module(app_);
-  /**/
-  /*hpo_cli_ = std::make_unique<HPOCLI>();*/
-  /*hpo_cli_->register_module(app_);*/
-  /**/
-  /*data_cli_ = std::make_unique<DataCLI>();*/
-  /*data_cli_->register_module(app_);*/
-  /**/
-  /*transform_cli_ = std::make_unique<TransformCLI>();*/
-  /*transform_cli_->register_module(app_);*/
-  /**/
-  /*properties_cli_ = std::make_unique<PropertiesCLI>();*/
-  /*properties_cli_->register_module(app_);*/
-
-  /*analysis_cli_ = std::make_unique<AnalysisCLI>();*/
-  /*analysis_cli_->register_module(app_);*/
+  auto &tasksMap = core::BlueprintParser::getTasksMapRef();
+  for (const auto &itemPair : tasksMap) {
+    std::string task = itemPair.first;
+    std::transform(task.begin(), task.end(), task.begin(), ::toupper);
+    std::cout << "Task: " << task << std::endl;
+    std::cout << "Task Name: " << itemPair.second.taskName << std::endl;
+  }
 }
 
 int TadahCLI::run(int argc, char **argv) {

@@ -2,52 +2,65 @@
 #define TADAH_MLIP_CLI_TADAH_CLI_H
 
 #include "CLI/CLI.hpp"
-#include "cli_plugin.h"
-#include <memory>
-#include <vector>
 #include <string>
-
-#include <tadah.mlip/cli/all_cli_files.h>
+#include <map>
+#include <tadah/core/blueprint_parser.h>
+#include <tadah/mlip/engine_factory.h>
 
 namespace tadah {
 namespace mlip {
 namespace cli {
 
 /**
- * @brief Main CLI driver.
+ * @brief Main CLI driver that sets up commands/subcommands from the blueprint,
+ *        and registers engine callbacks purely by the dot-separated task name.
  *
- * Sets up the full command hierarchy and dispatches user input.
+ * This class does not parse user-config files or merges contexts; that logic
+ * is external. The user can call EngineFactory::create(...) in the callback
+ * and pass an externally prepared Context if desired.
  */
 class TadahCLI {
 public:
   /**
-   * @brief Constructs a new TadahCLI.
+   * @brief Constructs a new TadahCLI with a base description.
    */
   TadahCLI();
 
   /**
-   * @brief Parses command-line arguments and runs the corresponding command.
-   * @param argc Argument count.
-   * @param argv Argument vector.
-   * @return int Exit code.
+   * @brief Parses CLI arguments and lets CLI11 handle subcommand callbacks.
+   * @return An integer exit code, typically 0 if OK.
    */
   int run(int argc, char** argv);
 
 private:
   CLI::App app_;
-  std::vector<std::unique_ptr<CLIPlugin>> plugins_;
-  /*std::unique_ptr<class TrainCLI> train_cli_;*/
-  std::unique_ptr<class PredictCLI> predict_cli_;
-  /*std::unique_ptr<class HPOCLI> hpo_cli_;*/
-  /*std::unique_ptr<class DataCLI> data_cli_;*/
-  /*std::unique_ptr<class TransformCLI> transform_cli_;*/
-  /*std::unique_ptr<class PropertiesCLI> properties_cli_;*/
-  /*std::unique_ptr<class AnalysisCLI> analysis_cli_;*/
 
   /**
-   * @brief Registers all command modules.
+   * @brief Registers subcommands from the blueprint tasks.
    */
   void registerModules();
+
+  /**
+   * @brief Splits a dot notation e.g. "DATA.MERGE" into up to 2 tokens.
+   * @param s The string to split.
+   * @return A vector of token(s). If '.' is not found, returns 1 token.
+   */
+  std::vector<std::string> splitOnDot(const std::string &s);
+
+  /**
+   * @brief Locates or creates a top-level command in the CLI by name.
+   * @param cmdName The uppercase name, e.g. "DATA".
+   * @param desc The description to set if creating.
+   * @return A pointer to the CLI::App.
+   */
+  CLI::App* findOrCreateTopLevelCommand(const std::string &cmdName,
+                                        const std::string &desc="");
+
+  std::map<std::string, CLI::App*> topCommands_;
+
+private:
+  std::map<CLI::App *, bool> hasCallback_;
+
 };
 
 } // namespace cli
@@ -55,4 +68,3 @@ private:
 } // namespace tadah
 
 #endif // TADAH_MLIP_CLI_TADAH_CLI_H
-

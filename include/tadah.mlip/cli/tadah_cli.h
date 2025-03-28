@@ -4,7 +4,15 @@
 #include "CLI/CLI.hpp"
 #include <string>
 #include <map>
+#include <unordered_map>
+#include <vector>
+
+/**
+ * Project's internal headers
+ */
+#include <tadah/core/context.h>
 #include <tadah/core/blueprint_parser.h>
+#include <tadah/core/logger.h>
 #include <tadah/mlip/engine_factory.h>
 
 namespace tadah {
@@ -12,55 +20,85 @@ namespace mlip {
 namespace cli {
 
 /**
- * @brief Main CLI driver that sets up commands/subcommands from the blueprint,
- *        and registers engine callbacks purely by the dot-separated task name.
+ * @brief Holds user-entered CLI tokens plus the lowercased blueprint task name
+ *        e.g. "data.split" or "train".
  *
- * This class does not parse user-config files or merges contexts; that logic
- * is external. The user can call EngineFactory::create(...) in the callback
- * and pass an externally prepared Context if desired.
+ * - storage: map of "someKey" -> user tokens
+ * - blueprintTaskName: e.g. "data.split"
+ */
+struct SubcommandContext {
+  std::unordered_map<std::string, std::vector<std::string>> storage;
+  std::string blueprintTaskName;  ///< Lowercase dot name (e.g. "data.split")
+};
+
+/**
+ * @class TadahCLI
+ * @brief Builds a CLI that uses lowercase for tasks and subcommands, preserves original
+ *        flags from blueprint, and allows both command and subcommand to be callable.
+ *
+ * The steps:
+ *  - register iEngines in EngineFactory
+ *  - registerModules() creates commands/subcommands from the blueprint, storing
+ *    "data.split" in subcommandContexts_
+ *  - run(...) after parse => identify subcommand => build context => engineFactory->create("data.split")
  */
 class TadahCLI {
 public:
-  /**
-   * @brief Constructs a new TadahCLI with a base description.
-   */
+  /// Constructs the CLI, verifying blueprint and registering tasks.
   TadahCLI();
 
   /**
-   * @brief Parses CLI arguments and lets CLI11 handle subcommand callbacks.
-   * @return An integer exit code, typically 0 if OK.
+   * @brief Parses arguments, identifies the chosen command/subcommand, merges context,
+   * and calls the correct engine outside subcommand callbacks.
+   * @param argc Arg count
+   * @param argv Arg array
+   * @return 0 if success, else parse error code
    */
   int run(int argc, char** argv);
 
 private:
-  CLI::App app_;
 
   /**
-   * @brief Registers subcommands from the blueprint tasks.
+   * @brief Creates CLI subcommands from each blueprint task, storing "data.split" in subcommandContexts_.
    */
   void registerModules();
 
   /**
-   * @brief Splits a dot notation e.g. "DATA.MERGE" into up to 2 tokens.
-   * @param s The string to split.
-   * @return A vector of token(s). If '.' is not found, returns 1 token.
+   * @brief Ensures a top-level command for "data" or "train" is created (lowercase).
+   * @param cmdName Already-lowercased text
+   * @param desc from blueprint
+   * @return The CLI::App pointer
    */
-  std::vector<std::string> splitOnDot(const std::string &s);
+  CLI::App* createTopLevelCommand(const std::string &cmdName,
+                                        const std::string &desc);
 
   /**
-   * @brief Locates or creates a top-level command in the CLI by name.
-   * @param cmdName The uppercase name, e.g. "DATA".
-   * @param desc The description to set if creating.
-   * @return A pointer to the CLI::App.
+   * @brief Adds all CLI flags/options from the blueprint keys, preserving case for flags.
+   * @param cmd The subcommand pointer
+   * @param task The blueprint task containing keyValuePairs
    */
-  CLI::App* findOrCreateTopLevelCommand(const std::string &cmdName,
-                                        const std::string &desc="");
+  void buildOptionsForTask(CLI::App *cmd,
+                           const tadah::core::BlueprintTask &task);
 
-  std::map<std::string, CLI::App*> topCommands_;
+  /**
+   * @brief Builds a new Context from subcommandContexts_[sub], i.e. user CLI input.
+   * @param sub The chosen subcommand
+   * @return The resulting tadah::core::Context
+   */
+  tadah::core::Context buildContextFromCLI(CLI::App *sub);
 
 private:
-  std::map<CLI::App *, bool> hasCallback_;
+  CLI::App app_;  ///< Root CLI
 
+  /**
+   * @brief Maps each subcommand pointer to SubcommandContext with:
+   *  - blueprintTaskName = e.g. "data.split"
+   *  - storage = key-> tokens
+   */
+  std::unordered_map<CLI::App*, SubcommandContext> subcommandContexts_;
+
+  /// For storing references to top commands by name.
+  std::map<std::string, CLI::App*> topCommands_;
 };
 
 } // namespace cli
@@ -68,3 +106,4 @@ private:
 } // namespace tadah
 
 #endif // TADAH_MLIP_CLI_TADAH_CLI_H
+

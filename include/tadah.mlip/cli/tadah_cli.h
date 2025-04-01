@@ -20,13 +20,13 @@ namespace mlip {
 namespace cli {
 
 /**
- * @brief Holds user-entered CLI tokens plus the lowercased blueprint task name
- *        e.g. "data.split" or "train".
+ * @brief Represents a CLI task with its associated storage and blueprint task name.
  *
- * - storage: map of "someKey" -> user tokens
- * - blueprintTaskName: e.g. "data.split"
+ * The storage maps BlueprintKey.keyName to a vector of strings, allowing for flexible
+ * storage of command-line arguments. The blueprintTaskName is the name of the task
+ * as defined in the BlueprintTask.taskName.
  */
-struct SubcommandContext {
+struct CLITask{
   std::unordered_map<std::string, std::vector<std::string>> storage;
   std::string blueprintTaskName;  ///< Lowercase dot name (e.g. "data.split")
 };
@@ -39,7 +39,7 @@ struct SubcommandContext {
  * The steps:
  *  - register iEngines in EngineFactory
  *  - registerModules() creates commands/subcommands from the blueprint, storing
- *    "data.split" in subcommandContexts_
+ *    "data.split" in cliOptions_
  *  - run(...) after parse => identify subcommand => build context => engineFactory->create("data.split")
  */
 class TadahCLI {
@@ -59,7 +59,7 @@ public:
 private:
 
   /**
-   * @brief Creates CLI subcommands from each blueprint task, storing "data.split" in subcommandContexts_.
+   * @brief Creates CLI subcommands from each blueprint task, storing "data.split" in cliOptions_.
    */
   void registerModules();
 
@@ -73,15 +73,15 @@ private:
                                         const std::string &desc);
 
   /**
-   * @brief Adds all CLI flags/options from the blueprint keys, preserving case for flags.
+   * @brief Adds all CLI flags/options from the blueprint keys.
    * @param cmd The subcommand pointer
-   * @param task The blueprint task containing keyValuePairs
+   * @param bpTask The blueprint task containing keyValuePairs
    */
-  void buildOptionsForTask(CLI::App *cmd,
-                           const tadah::core::BlueprintTask &task);
+  void buildCLITask(CLI::App *cmd,
+                           const tadah::core::BlueprintTask &bpTask);
 
   /**
-   * @brief Builds a new Context from subcommandContexts_[sub], i.e. user CLI input.
+   * @brief Builds a new Context from cliTasks_[sub], i.e. user CLI input.
    * @param sub The chosen subcommand
    * @return The resulting tadah::core::Context
    */
@@ -91,11 +91,9 @@ private:
   CLI::App app_;  ///< Root CLI
 
   /**
-   * @brief Maps each subcommand pointer to SubcommandContext with:
-   *  - blueprintTaskName = e.g. "data.split"
-   *  - storage = key-> tokens
+   * @brief Maps each subcommand pointer to cliTask with:
    */
-  std::unordered_map<CLI::App*, SubcommandContext> subcommandContexts_;
+  std::unordered_map<CLI::App*, CLITask> cliTasks_;
 
   /// For storing references to top commands by name.
   std::map<std::string, CLI::App*> topCommands_;

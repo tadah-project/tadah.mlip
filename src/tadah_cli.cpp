@@ -1,5 +1,7 @@
 #include <tadah.mlip/cli/tadah_cli.h>
 #include <tadah/mlip/all_engines.h>
+#include <tadah/mlip/task.h>
+#include <tadah/mlip/mlip_user_config_parser.h>
 #include <tadah/core/utils.h>
 #include <algorithm>
 #include <stdexcept>
@@ -32,6 +34,7 @@ TadahCLI::TadahCLI()
 int TadahCLI::run(int argc, char** argv) {
   try {
     app_.parse(argc, argv);
+    core::Logger::instance().setLogLevel(core::LogLevel::INFO);
 
     // logic: 
     // 1. if tadah is called without any subcommand, print help;
@@ -45,13 +48,13 @@ int TadahCLI::run(int argc, char** argv) {
     //    - run
 
     // Identify the chosen command or subcommand
-    auto chosenSubs = app_.get_subcommands();
-    std::cout << "Chosen subcommands size: " << chosenSubs.size() << std::endl;
-    if (chosenSubs.empty()) {
+    auto subCmds = app_.get_subcommands();
+    std::cout << "Chosen subcommands size: " << subCmds.size() << std::endl;
+    if (subCmds.empty()) {
       std::cout << "No command/subcommand chosen. Use '--help' for details.\n";
       return 0;
     }
-    CLI::App *cmd = chosenSubs.front();
+    CLI::App *cmd = subCmds.front();
 
     if (!cmd->get_subcommands().empty()) {
       // If there are subcommands, choose the first one
@@ -59,26 +62,42 @@ int TadahCLI::run(int argc, char** argv) {
     }
 
     // Retrieve subcommand context
-    auto it = subcommandContexts_.find(cmd);
-    SubcommandContext &scx = it->second;
-    std::cout << "Subcommand " << scx.blueprintTaskName << std::endl;
+    auto it = cliTasks_.find(cmd);
+    CLITask &cliTask = it->second;
+    std::cout << "Command Name: " << cliTask.blueprintTaskName << std::endl;
 
     // Build a Context from user CLI tokens
     tadah::core::Context cliCtx = buildContextFromCLI(cmd);
-    std::cout << "Context " << cliCtx << std::endl;
+    std::cout << "Context:\n" << cliCtx << std::endl;
 
-    // Parse a config file & merge.
+    // Check if a user config file is provided
+    if (cliTask.storage.find(cliTask.blueprintTaskName+".config") != cliTask.storage.end()) {
+      std::string userConfigFile = cliTask.storage[cliTask.blueprintTaskName+".config"].front();
+      std::cout << "User config file: " << userConfigFile << std::endl;
+      // Parse the user config file
+      tadah::mlip::MLIPUserConfigParser parser;
+      auto contexts = parser.parse(userConfigFile, true);
+      if (contexts.empty()) {
+        throw std::runtime_error("No valid sections found in the user config file.");
+      }
+      std::cout << "Parsed user config file into " << contexts.size() << " sections.\n";
+      for (const auto &ctx : contexts) {
+        std::cout << "Section:\n" << ctx << std::endl;
+      }
+      // Merge the first context with the CLI context
+      // cliCtx = parser.merge(contexts[0], cliCtx);
+    }
     tadah::core::Context mergedCtx = cliCtx;
 
     // Create the engine. e.g. "data.split"
-    auto eng = tadah::mlip::EngineFactory::create(scx.blueprintTaskName);
+    auto eng = tadah::mlip::EngineFactory::create(cliTask.blueprintTaskName);
 
     // Validate + run
     eng->validate(mergedCtx);
     int code = eng->run(mergedCtx);
     tadah::core::Logger::instance().log(
-      tadah::core::LogLevel::INFO,
-      "Engine for task '", scx.blueprintTaskName, "' finished with code=", code);
+        tadah::core::LogLevel::INFO,
+        "Engine for task '", cliTask.blueprintTaskName, "' finished with code=", code);
 
   } catch (const CLI::ParseError &pe) {
     return app_.exit(pe);
@@ -90,39 +109,34 @@ void TadahCLI::registerModules() {
   using tadah::core::BlueprintParser;
   const auto &tasksMap = BlueprintParser::getTasksMapRef();
 
-  for (auto &pair : tasksMap) {
-    std::string upperTaskName = pair.first;  // e.g. "DATA.SPLIT"
-    const auto &taskObj       = pair.second;
+  for (const auto &pair : tasksMap) {
+    std::string taskName = toLower(pair.first);
+    const auto &bpTask       = pair.second;
 
-    // Convert to all-lower 
-    std::string lowerTaskName = toLower(upperTaskName);
     std::vector<std::string> tokens;
-    boost::split(tokens, lowerTaskName, boost::is_any_of("."));
+    boost::split(tokens, taskName, boost::is_any_of("."));
 
     if (tokens.size() == 1) {
       // top-level
-      CLI::App *cmd = createTopLevelCommand(tokens[0], taskObj.description);
+      CLI::App *cmd = createTopLevelCommand(tokens[0], bpTask.description);
 
-      buildOptionsForTask(cmd, taskObj);
+      buildCLITask(cmd, bpTask);
 
-      // store "data" or "train" in subcommandContexts_ if it is fully callable
-      // Actually we want the entire dot name, e.g. "data". If there's no dot, it's just cmd->blueprint
-      subcommandContexts_[cmd].blueprintTaskName = lowerTaskName;
+      cliTasks_[cmd].blueprintTaskName = taskName;
     }
     else if (tokens.size() == 2) {
       CLI::App *parent = createTopLevelCommand(tokens[0], "");
-      CLI::App *child = parent->add_subcommand(tokens[1], taskObj.description);
+      CLI::App *child = parent->add_subcommand(tokens[1], bpTask.description);
 
-      buildOptionsForTask(child, taskObj);
+      buildCLITask(child, bpTask);
 
-      // store "data.split"
-      subcommandContexts_[child].blueprintTaskName = lowerTaskName;
+      cliTasks_[child].blueprintTaskName = taskName;
     }
   }
 }
 
 CLI::App* TadahCLI::createTopLevelCommand(const std::string &cmdName,
-                                                const std::string &desc) {
+    const std::string &desc) {
   auto it = topCommands_.find(cmdName);
   if (it != topCommands_.end()) {
     if (!desc.empty()) {
@@ -133,46 +147,37 @@ CLI::App* TadahCLI::createTopLevelCommand(const std::string &cmdName,
   CLI::App* newCmd = app_.add_subcommand(cmdName, desc);
   topCommands_[cmdName] = newCmd;
 
-  // also create subcommand context
-  subcommandContexts_[newCmd] = SubcommandContext();
   return newCmd;
 }
 
-void TadahCLI::buildOptionsForTask(CLI::App *cmd,
-                                   const tadah::core::BlueprintTask &task) {
+void TadahCLI::buildCLITask(CLI::App *cmd,
+    const tadah::core::BlueprintTask &bpTask) {
   // track duplicates in this subcommand
-  std::unordered_set<std::string> usedSpecs;
+  // std::unordered_set<std::string> usedSpecs;
 
-  auto &scx = subcommandContexts_[cmd];
+  auto &cliTask = cliTasks_[cmd];
 
-  for (auto &bk : task.keyValuePairs) {
-    if (bk.cli_long_flag.empty()) {
+  for (auto &bpKey : bpTask.keyValuePairs) {
+    if (bpKey.cli_long_flag.empty()) {
       continue; 
     }
-    // We do NOT transform them to lower or manipulate them
-    // e.g. if blueprint says "cli_long_flag=--SomeFlag", we keep it as is
-    std::string spec = bk.cli_long_flag;
+    std::string spec = bpKey.cli_long_flag;
 
     // if cli_short_flag is present, append with comma
-    if (!bk.cli_short_flag.empty()) {
-      spec += "," + bk.cli_short_flag;
+    if (!bpKey.cli_short_flag.empty()) {
+      spec += "," + bpKey.cli_short_flag;
     }
 
-    // check duplicates
-    if (!usedSpecs.insert(spec).second) {
-      throw std::runtime_error("Duplicate spec '" + spec +
-        "' in subcommand: " + cmd->get_name());
-    }
 
-    // We'll store user tokens under a key: e.g. toLower(bk.keyName)
-    // or just use bk.keyName as is, e.g. "DATA.SPLIT.KEY"? 
+    // We'll store user tokens under a key: e.g. toLower(bpKey.keyName)
+    // or just use bpKey.keyName as is, e.g. "DATA.SPLIT.KEY"? 
     // We'll do a simple approach: keyName -> vector
-    std::string storeKey = toLower(bk.keyName);
-    scx.storage[storeKey];
-    auto &dest = scx.storage[storeKey];
+    std::string storeKey = toLower(bpKey.keyName);
+    //cliTask.storage[storeKey];
+    auto &dest = cliTask.storage[storeKey];
 
-    CLI::Option *opt = cmd->add_option(spec, dest, bk.description);
-    if (bk.cli_required) {
+    CLI::Option *opt = cmd->add_option(spec, dest, bpKey.description);
+    if (bpKey.cli_required) {
       opt->required();
     }
     // excludes logic if needed
@@ -181,13 +186,13 @@ void TadahCLI::buildOptionsForTask(CLI::App *cmd,
 
 tadah::core::Context TadahCLI::buildContextFromCLI(CLI::App *sub) {
   tadah::core::Context c;
-  auto it = subcommandContexts_.find(sub);
-  if (it == subcommandContexts_.end()) {
+  auto it = cliTasks_.find(sub);
+  if (it == cliTasks_.end()) {
     return c;
   }
-  auto &scx = it->second;
+  auto &cliTask = it->second;
   // copy each key->vector of tokens into the Context
-  for (auto &kv : scx.storage) {
+  for (auto &kv : cliTask.storage) {
     std::vector<std::string> tokens;
     boost::split(tokens, kv.first, boost::is_any_of("."));
     const std::string &key = tokens.back();

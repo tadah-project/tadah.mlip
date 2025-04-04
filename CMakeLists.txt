@@ -205,7 +205,7 @@ target_include_directories(tadah PRIVATE ${Tadah.CORE_SOURCE_DIR}/include)
 target_include_directories(tadah PRIVATE ${Tadah.CORE_SOURCE_DIR}/external/toml11)
 
 #link_directories(<build_dir>/_deps/tadah-mlip-build/)
-target_link_libraries(tadah PRIVATE tadah.mlip tadah.models) # TODO
+target_link_libraries(tadah PRIVATE tadah.mlip tadah.mlip) # TODO
 
 if(TADAH_BUILD_MPI)
   set_target_properties(tadah PROPERTIES OUTPUT_NAME "tadah_mpi")

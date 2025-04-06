@@ -70,9 +70,25 @@ int TadahCLI::run(int argc, char** argv) {
     }
 
     auto tasks = TaskFactory().createTasksFromInput(parsedTask);
+    // DEBUG print the tasks
+    for (const auto &task : tasks) {
+      std::cout << "Task created: " << task.getTaskType() << "\n";
+      std::cout << "  Context: \n";
+      const core::Context &ctx = task.effectiveContext();
+      std::cout << ctx << std::endl;
+    }
+
     TaskManager taskManager;
     taskManager.store(tasks);
 
+    // DEBUG print all tasks
+    std::cout << "Stored tasks:\n";
+    for (const auto &task : taskManager.getTasks()) {
+      std::cout << "  Task name: " << task.getTaskType() << "\n";
+      std::cout << "  Context: \n";
+      const core::Context &ctx = task.effectiveContext();
+      std::cout << ctx << std::endl;
+    }
 
     // Return success
     return 0;

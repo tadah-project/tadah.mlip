@@ -4,139 +4,114 @@
 #include <tadah/mlip/task_manager.h>
 
 #include <boost/algorithm/string.hpp> // for boost::split
-#include <algorithm>
-#include <stdexcept>
 #include <iostream>
+#include <vector>
 
 namespace tadah {
 namespace mlip {
 namespace cli {
 
-//---------------------------------------------------------------------
-// TadahCLI constructor
-//---------------------------------------------------------------------
 TadahCLI::TadahCLI()
-  : app_("Tadah CLI - Dynamically generated from blueprint tasks.\n")
+: app_("Tadah CLI - Dynamically generated from blueprint tasks.\n")
 {
+  app_.require_subcommand(0,10);
   registerModules();
+
+  const auto &blueprintTadah = core::BlueprintParser::getBlueprintTadahRef();
+  for (const auto &kv : blueprintTadah.keyValuePairs) {
+    auto &dest = optionsStorage_[kv.keyName];
+    app_.add_option(kv.cli_long_flag, dest, kv.description);
+  }
+  app_.immediate_callback(true);
+  app_.callback(std::bind(&TadahCLI::handleCmdCallback, this, "tadah"));
 }
 
-//---------------------------------------------------------------------
-// run()
-//---------------------------------------------------------------------
 int TadahCLI::run(int argc, char** argv) {
+  tadah::core::Logger::instance().setLogLevel(tadah::core::LogLevel::INFO);
   try {
-    // Parse command-line arguments
     app_.parse(argc, argv);
-    tadah::core::Logger::instance().setLogLevel(tadah::core::LogLevel::INFO);
+  } catch (const CLI::ParseError &e) {
+    std::cout << "CLI11 Exit code: " << e.get_exit_code() << std::endl;
+    std::cerr << "CLI11 Error parsing command line arguments: " << e.what() << "\n";
+    return app_.exit(e);
+  }
+  // std::cout << "Parsed command line arguments successfully.\n";
 
-    // Identify chosen subcommands
-    auto chosen = app_.get_subcommands();
-    // If no subcommand was selected, show help or exit gracefully
-    if (chosen.empty()) {
-      std::cout << "No command/subcommand chosen. Use '--help' for details.\n";
-      return 0;
-    }
-
-    // Typically the first subcommand is the chosen top-level, then possibly a sub-subcommand
-    CLI::App *cmd = chosen.front();
-    if (!cmd->get_subcommands().empty()) {
-      cmd = cmd->get_subcommands().front();
-    }
-
-    // Retrieve the associated CLITask
-    auto it = cliTasks_.find(cmd);
-    if (it == cliTasks_.end()) {
-      std::cout << "No recognized command. Exiting.\n";
-      return 0;
-    }
-
-    // At this point, we have a fully-populated CLITask (via CLI11).
-    // The higher-level logic might:
-    //   1) Pass this CLITask to TaskFactory to create real Task objects
-    //   2) Store tasks in TaskManager
-    //   3) Possibly run an Engine, etc.
-
-    // We'll just print out some debug info here:
-    CLITask &parsedTask = it->second;
-    std::cout << "Selected blueprintTaskName: " << parsedTask.blueprintTaskName << std::endl;
-    std::cout << "Collected CLI data:\n";
-    for (auto &kv : parsedTask.storage) {
-      std::cout << "  Key='" << kv.first << "' Values=[";
-      for (auto &val : kv.second) {
-        std::cout << val << " ";
-      }
-      std::cout << "]\n";
-    }
-
-    auto tasks = TaskFactory().createTasksFromInput(parsedTask);
-    // DEBUG print the tasks
-    for (const auto &task : tasks) {
-      std::cout << "Task created: " << task.getTaskType() << "\n";
-      std::cout << "  Context: \n";
-      const core::Context &ctx = task.effectiveContext();
-      std::cout << ctx << std::endl;
-    }
-
-    TaskManager taskManager;
+  TaskManager taskManager;
+  for (auto &cliTask : cliTasks_) {
+    // std::cout << "Creating tasks from CLI task: " << cliTask.blueprintTaskName << "\n";
+    auto tasks = TaskFactory().createTasksFromInput(cliTask);
     taskManager.store(tasks);
-
-    // DEBUG print all tasks
-    std::cout << "Stored tasks:\n";
-    for (const auto &task : taskManager.getTasks()) {
-      std::cout << "  Task name: " << task.getTaskType() << "\n";
-      std::cout << "  Context: \n";
-      const core::Context &ctx = task.effectiveContext();
-      std::cout << ctx << std::endl;
-    }
-
-    // Return success
-    return 0;
   }
-  catch (const CLI::ParseError &pe) {
-    // Let CLI11 handle parse errors
-    return app_.exit(pe);
+
+  std::cout << "Stored tasks:\n";
+  for (const auto &task : taskManager.getTasks()) {
+    task.print();
   }
+
+  return 0;
 }
 
-//---------------------------------------------------------------------
-// registerModules()
-//---------------------------------------------------------------------
 void TadahCLI::registerModules() {
   using tadah::core::BlueprintParser;
   const auto &tasksMap = BlueprintParser::getTasksMapRef();
-  
+
   // For each blueprint task, create the necessary CLI subcommands.
   for (const auto &pair : tasksMap) {
-    const std::string blueprintName = pair.first;   // e.g. "DATA.SPLIT"
+    const std::string blueprintName = pair.first;   // e.g. "DATA.split"
     const tadah::core::BlueprintTask &bpTask = pair.second;
 
     std::vector<std::string> tokens;
     boost::split(tokens, blueprintName, boost::is_any_of("."));
 
-    // If only one token => top-level command
+    // If only one token => first-level command
     if (tokens.size() == 1) {
-      CLI::App *topCmd = createTopLevelCommand(core::to_lower(tokens[0]), bpTask.description);
-      buildCLITask(topCmd, bpTask);
-      // Store blueprint name for later reference
-      cliTasks_[topCmd].blueprintTaskName = core::to_upper(blueprintName);
+      CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]), bpTask.description);
+      addCmdOptions(parent, bpTask);  // question is how to store??
+      parent->immediate_callback(true);
+      parent->callback(std::bind(&TadahCLI::handleCmdCallback, this, blueprintName));
+
     }
-    // If two tokens => top-level + subcommand
+    // If two tokens => first-level + subcommand
     else if (tokens.size() == 2) {
-      CLI::App *parent = createTopLevelCommand(core::to_lower(tokens[0]), "");
+      CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]));
       CLI::App *child  = parent->add_subcommand(core::to_lower(tokens[1]), bpTask.description);
-      buildCLITask(child, bpTask);
-      cliTasks_[child].blueprintTaskName = core::to_upper(blueprintName);
+      addCmdOptions(child, bpTask);
+      child->immediate_callback(true);
+      child->callback(std::bind(&TadahCLI::handleCmdCallback, this, blueprintName));
     }
   }
 }
 
-//---------------------------------------------------------------------
-// createTopLevelCommand()
-//---------------------------------------------------------------------
-CLI::App* TadahCLI::createTopLevelCommand(const std::string &cmdName, const std::string &desc) {
-  auto it = topCommands_.find(cmdName);
-  if (it != topCommands_.end()) {
+void TadahCLI::handleCmdCallback(const std::string &blueprintName) { 
+  CLITask cliTask;
+  cliTask.blueprintTaskName = blueprintName;
+  cliTask.storage = this->optionsStorage_;
+
+  // Check if the storage map is empty. If so, we do not store it.
+  bool isEmpty = true;
+  for (auto &kv : cliTask.storage) {
+    if (!kv.second.empty()) {
+      isEmpty = false;
+      break;
+    }
+  }
+  if (isEmpty) {
+    // This must be first level command
+    // without any options, we do not store it.
+    return;
+  }
+
+  cliTasks_.push_back(cliTask);
+  // Clear storage map for next command.
+  for (auto &kv : this->optionsStorage_) {
+    kv.second.clear();
+  }
+}
+
+CLI::App* TadahCLI::createCmdSafe(const std::string &cmdName, const std::string &desc) {
+  auto it = firstLevelCommands_.find(cmdName);
+  if (it != firstLevelCommands_.end()) {
     // Command already exists. Possibly update description if provided.
     if (!desc.empty()) {
       it->second->description(desc);
@@ -146,18 +121,12 @@ CLI::App* TadahCLI::createTopLevelCommand(const std::string &cmdName, const std:
 
   // Create a new command
   CLI::App* newCmd = app_.add_subcommand(cmdName, desc);
-  topCommands_[cmdName] = newCmd;
+  firstLevelCommands_[cmdName] = newCmd;
   return newCmd;
 }
 
-//---------------------------------------------------------------------
-// buildCLITask()
-//---------------------------------------------------------------------
-void TadahCLI::buildCLITask(CLI::App *cmd, const tadah::core::BlueprintTask &bpTask) {
-  // Retrieve the CLITask object (associated with this subcommand)
-  auto &cliTask = cliTasks_[cmd];
+void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bpTask) {
 
-  // For each blueprint key, create a CLI option and store user input in cliTask.storage
   for (auto &bpKey : bpTask.keyValuePairs) {
     if (bpKey.cli_long_flag.empty()) {
       // If there's no CLI flag definition, skip
@@ -168,23 +137,20 @@ void TadahCLI::buildCLITask(CLI::App *cmd, const tadah::core::BlueprintTask &bpT
     // If we have a short flag, add it
     if (!bpKey.cli_short_flag.empty()) {
       // e.g., "--rcut2b,-r"
-      spec += "," + bpKey.cli_short_flag;
+      spec = spec + "," + bpKey.cli_short_flag;
     }
 
-    std::vector<std::string> tokens;
-    boost::split(tokens, bpKey.keyName, boost::is_any_of("."));
+    std::vector<std::string> keyTokens;
+    boost::split(keyTokens, bpKey.keyName, boost::is_any_of("."));
 
-    // Create the CLI option, binding to a std::vector<std::string>& in cliTask.storage[storeKey].
-    auto &dest = cliTask.storage[tokens.back()];
+    auto &dest = optionsStorage_[keyTokens.back()];
     CLI::Option *opt = cmd->add_option(spec, dest, bpKey.description);
     if (bpKey.cli_required) {
       opt->required();
     }
-    // Additional constraints or validators can be added here if needed.
   }
 }
 
 } // namespace cli
 } // namespace mlip
 } // namespace tadah
-

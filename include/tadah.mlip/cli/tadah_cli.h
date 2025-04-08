@@ -28,6 +28,7 @@
 #include <tadah/core/blueprint_parser.h>
 #include <tadah/core/logger.h>
 #include <tadah/mlip/engine_factory.h>
+#include <tadah/mlip/task_manager.h>
 
 namespace tadah {
 namespace mlip {
@@ -57,7 +58,7 @@ public:
    *
    * The constructor calls registerModules() internally to build a subcommand
    * hierarchy using the blueprint tasks. For example, a blueprint task named
-   * "DATA.SPLIT" will create a top-level "data" command with a "split" subcommand.
+   * "DATA.SPLIT" will create a first-level "data" command with a "split" subcommand.
    */
   TadahCLI();
 
@@ -82,20 +83,20 @@ private:
   /**
    * @brief Registers blueprint tasks as CLI subcommands.
    *
-   * For each task from the blueprint, creates either a top-level CLI command or
-   * a subcommand based on the dot notation. Example: "DATA.SPLIT" => top command
+   * For each task from the blueprint, creates either a first-level CLI command or
+   * a subcommand based on the dot notation. Example: "DATA.SPLIT" => first-level command
    * "data" with subcommand "split".
    */
   void registerModules();
 
   /**
-   * @brief Ensures a top-level command for the given name exists or creates it.
+   * @brief Ensures a first-level command for the given name exists or creates it.
    *
    * @param cmdName The command name in lowercase (e.g. "data").
    * @param desc A short description for this command if newly created.
-   * @return A pointer to the CLI::App that represents the top-level command.
+   * @return A pointer to the CLI::App that represents the first-level command.
    */
-  CLI::App* createTopLevelCommand(const std::string &cmdName, const std::string &desc);
+  CLI::App* createCmdSafe(const std::string &cmdName, const std::string &desc="");
 
   /**
    * @brief Builds CLI flags/options for a given blueprint task.
@@ -106,7 +107,10 @@ private:
    * @param cmd A pointer to the CLI::App subcommand representing this blueprint task.
    * @param bpTask The blueprint data containing keyValuePairs for the task.
    */
-  void buildCLITask(CLI::App *cmd, const tadah::core::BlueprintTask &bpTask);
+  void addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bpTask);
+
+  // task name train or data.split as in blueprint
+void handleCmdCallback(const std::string &blueprintTaskName);
 
 private:
   CLI::App app_; ///< The root CLI11 application.
@@ -114,17 +118,23 @@ private:
   /**
    * @brief Maps subcommand pointers to their associated CLITask.
    *
+   * TODO require update
    * Each subcommand is associated with one CLITask. When the user invokes that
    * subcommand, CLI11 populates the CLITask's storage.
    */
-  std::unordered_map<CLI::App*, CLITask> cliTasks_;
+  // std::unordered_map<CLI::App*, std::vector<CLITask>> cliTasks_;
+  std::vector<CLITask> cliTasks_;
 
   /**
-   * @brief Stores references to top-level commands by lowercase name.
+   * @brief Stores references to first-level commands by lowercase name.
    *
    * For example, "data" -> CLI::App pointer. This helps in grouping subcommands.
    */
-  std::unordered_map<std::string, CLI::App*> topCommands_;
+  std::unordered_map<std::string, CLI::App*> firstLevelCommands_;
+
+  ///
+  // std::vector<std::string> optionsStorage_; ///< Storage for options.
+  std::unordered_map<std::string, std::vector<std::string>> optionsStorage_; ///< Storage for options.
 };
 
 } // namespace cli

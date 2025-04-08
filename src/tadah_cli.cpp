@@ -14,22 +14,54 @@ namespace cli {
 TadahCLI::TadahCLI()
 : app_("Tadah CLI - Dynamically generated from blueprint tasks.\n")
 {
+
+  auto myFormatter = std::make_shared<CLI::Formatter>();
+
+  myFormatter->column_width(30);  // left column width
+  myFormatter->right_column_width(50); // description width for options/flags/subcommands
+  myFormatter->description_paragraph_width(80); // description width for the main command
+  myFormatter->footer_paragraph_width(80); // description width of footer, if any
+
+  app_.formatter(myFormatter);
+
   app_.require_subcommand(0,10);
   registerModules();
 
   const auto &blueprintTadah = core::BlueprintParser::getBlueprintTadahRef();
-  for (const auto &kv : blueprintTadah.keyValuePairs) {
+  for (const auto &kv : blueprintTadah.blueprintKeys) {
     auto &dest = optionsStorage_[kv.keyName];
-    app_.add_option(kv.cli_long_flag, dest, kv.description);
+    auto *opt = app_.add_option(kv.cli_long_flag, dest, kv.description);
+    if (kv.cli_required) {
+      opt->required();
+    }
   }
+
+  app_.usage(blueprintTadah.longDescription);
+
+  if (!blueprintTadah.examples.empty()) {
+    std::string exampleText = "EXAMPLES:\n";
+    for (const auto &ex : blueprintTadah.examples) {
+      exampleText += "\u00A0\u00A0" + ex + "\n";
+    }
+    app_.footer(exampleText);
+  }
+
   app_.immediate_callback(true);
   app_.callback(std::bind(&TadahCLI::handleCmdCallback, this, "tadah"));
+
 }
 
 int TadahCLI::run(int argc, char** argv) {
   tadah::core::Logger::instance().setLogLevel(tadah::core::LogLevel::INFO);
   try {
     app_.parse(argc, argv);
+    if(app_.count_all()==1) {
+      std::cout << "Type: `tadah -h` for help" << std::endl;
+      return 0;
+    }
+  } catch (const CLI::CallForHelp& e) {
+    std::cout << app_.help() << std::endl;
+    return 0;
   } catch (const CLI::ParseError &e) {
     std::cout << "CLI11 Exit code: " << e.get_exit_code() << std::endl;
     std::cerr << "CLI11 Error parsing command line arguments: " << e.what() << "\n";
@@ -68,6 +100,14 @@ void TadahCLI::registerModules() {
     if (tokens.size() == 1) {
       CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]), bpTask.description);
       addCmdOptions(parent, bpTask);  // question is how to store??
+      parent->usage(bpTask.longDescription);
+      if (!bpTask.examples.empty()) {
+        std::string exampleText = "EXAMPLES:\n";
+        for (const auto &ex : bpTask.examples) {
+          exampleText += "\u00A0\u00A0" + ex + "\n";
+        }
+        parent->footer(exampleText);
+      }
       parent->immediate_callback(true);
       parent->callback(std::bind(&TadahCLI::handleCmdCallback, this, blueprintName));
 
@@ -77,6 +117,14 @@ void TadahCLI::registerModules() {
       CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]));
       CLI::App *child  = parent->add_subcommand(core::to_lower(tokens[1]), bpTask.description);
       addCmdOptions(child, bpTask);
+      child->usage(bpTask.longDescription);
+      if (!bpTask.examples.empty()) {
+        std::string exampleText = "EXAMPLES:\n";
+        for (const auto &ex : bpTask.examples) {
+          exampleText += "\u00A0\u00A0" + ex + "\n";
+        }
+        child->footer(exampleText);
+      }
       child->immediate_callback(true);
       child->callback(std::bind(&TadahCLI::handleCmdCallback, this, blueprintName));
     }
@@ -127,7 +175,8 @@ CLI::App* TadahCLI::createCmdSafe(const std::string &cmdName, const std::string 
 
 void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bpTask) {
 
-  for (auto &bpKey : bpTask.keyValuePairs) {
+  // add each key as an option
+  for (auto &bpKey : bpTask.blueprintKeys) {
     if (bpKey.cli_long_flag.empty()) {
       // If there's no CLI flag definition, skip
       continue;
@@ -149,6 +198,51 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
       opt->required();
     }
   }
+  
+  // exclude options that are not allowed to coexist
+  for (auto &bpKey : bpTask.blueprintKeys) {
+    if (bpKey.cli_excludes.empty()) {
+      continue;
+    }
+    for (auto &excl : bpKey.cli_excludes) {
+      cmd->get_option(bpKey.cli_long_flag)->excludes("--"+excl);
+    }
+  }
+
+  // Add each group as an option group
+  for (auto &group : bpTask.groups) {
+    // Combine description lines into a single string:
+    std::string groupDesc;
+    for (size_t i = 0; i < group.description.size(); i++) {
+      if (i > 0) groupDesc += "\n";
+      groupDesc += group.description[i];
+    }
+
+    CLI::Option_group *grp = cmd->add_option_group(group.groupName, groupDesc);
+
+    // If "exactly 1" or "at least 1" from the group is required:
+    grp->require_option(group.requiredMin, group.requiredMax);
+
+    // For each key in this group:
+    for (auto &bpKey : group.blueprintKeys) {
+      if (bpKey.cli_long_flag.empty()) {
+        continue;
+      }
+
+      std::string spec = bpKey.cli_long_flag;
+      if (!bpKey.cli_short_flag.empty()) {
+        spec += "," + bpKey.cli_short_flag;
+      }
+
+      // Use last token for storing results
+      std::vector<std::string> keyTokens;
+      boost::split(keyTokens, bpKey.keyName, boost::is_any_of("."));
+      auto &dest = optionsStorage_[keyTokens.back()];
+
+      /*CLI::Option *opt = */grp->add_option(spec, dest, bpKey.description);
+
+    } // end for each key in group
+  } // end for each group
 }
 
 } // namespace cli

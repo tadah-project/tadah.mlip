@@ -12,7 +12,7 @@ namespace mlip {
 namespace cli {
 
 TadahCLI::TadahCLI()
-: app_("Tadah CLI - Dynamically generated from blueprint tasks.\n")
+: app_("", "Tadah!")
 {
 
   auto myFormatter = std::make_shared<CLI::Formatter>();
@@ -20,14 +20,15 @@ TadahCLI::TadahCLI()
   myFormatter->column_width(30);  // left column width
   myFormatter->right_column_width(50); // description width for options/flags/subcommands
   myFormatter->description_paragraph_width(80); // description width for the main command
-  myFormatter->footer_paragraph_width(80); // description width of footer, if any
+  myFormatter->footer_paragraph_width(80); // description width of footer, used for examples
 
   app_.formatter(myFormatter);
 
-  app_.require_subcommand(0,10);
+  app_.require_subcommand(0,0); // 0 or more subcommands are required, no max limit
   registerModules();
 
   const auto &blueprintTadah = core::BlueprintParser::getBlueprintTadahRef();
+  app_.usage(blueprintTadah.logo);
   for (const auto &kv : blueprintTadah.blueprintKeys) {
     auto &dest = optionsStorage_[kv.keyName];
     auto *opt = app_.add_option(kv.cli_long_flag, dest, kv.description);
@@ -35,8 +36,6 @@ TadahCLI::TadahCLI()
       opt->required();
     }
   }
-
-  app_.usage(blueprintTadah.longDescription);
 
   if (!blueprintTadah.examples.empty()) {
     std::string exampleText = "EXAMPLES:\n";

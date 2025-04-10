@@ -89,6 +89,8 @@ private:
    */
   void registerModules();
 
+  void registerExclusions();
+
   /**
    * @brief Ensures a first-level command for the given name exists or creates it.
    *

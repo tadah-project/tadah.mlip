@@ -42,6 +42,7 @@ TadahCLI::TadahCLI()
     for (const auto &ex : blueprintTadah.examples) {
       exampleText += "\u00A0\u00A0" + ex + "\n";
     }
+    // remove the last newline character from a string
     app_.footer(exampleText);
   }
 
@@ -192,19 +193,21 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
     boost::split(keyTokens, bpKey.keyName, boost::is_any_of("."));
 
     auto &dest = optionsStorage_[keyTokens.back()];
-    CLI::Option *opt = cmd->add_option(spec, dest, bpKey.description);
+    CLI::Option *opt;
+    if (bpKey.value_N.size()==1 && bpKey.value_type[0] == "BOOL") {
+      // For boolean options, use add_flag
+      opt = cmd->add_flag(spec, dest, bpKey.description);
+    } else {
+      // For options, use add_option and specify the value type
+      opt = cmd->add_option(spec, dest, bpKey.description);
+      std::string valueFormat = bpKey.value_format[0];
+      for (size_t i=1; i < bpKey.value_format.size(); ++i) {
+        valueFormat += "\n" + bpKey.value_format[i];
+      }
+      opt->option_text(valueFormat);
+    }
     if (bpKey.cli_required) {
       opt->required();
-    }
-  }
-  
-  // exclude options that are not allowed to coexist
-  for (auto &bpKey : bpTask.blueprintKeys) {
-    if (bpKey.cli_excludes.empty()) {
-      continue;
-    }
-    for (auto &excl : bpKey.cli_excludes) {
-      cmd->get_option(bpKey.cli_long_flag)->excludes("--"+excl);
     }
   }
 
@@ -221,6 +224,7 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
 
     // If "exactly 1" or "at least 1" from the group is required:
     grp->require_option(group.requiredMin, group.requiredMax);
+    grp->set_help_flag("", "");
 
     // For each key in this group:
     for (auto &bpKey : group.blueprintKeys) {
@@ -238,10 +242,69 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
       boost::split(keyTokens, bpKey.keyName, boost::is_any_of("."));
       auto &dest = optionsStorage_[keyTokens.back()];
 
-      /*CLI::Option *opt = */grp->add_option(spec, dest, bpKey.description);
+    CLI::Option *opt;
+    if (bpKey.value_N.size()==1 && bpKey.value_type[0] == "BOOL") {
+      // For boolean options, use add_flag
+      opt = grp->add_flag(spec, dest, bpKey.description);
+    } else {
+      // For options, use add_option and specify the value type
+      opt = grp->add_option(spec, dest, bpKey.description);
+      std::string valueFormat = bpKey.value_format[0];
+      for (size_t i=1; i < bpKey.value_format.size(); ++i) {
+        valueFormat += "\n" + bpKey.value_format[i];
+      }
+      opt->option_text(valueFormat);
+    }
+      // /*CLI::Option *opt = */grp->add_option(spec, dest, bpKey.description);
 
     } // end for each key in group
   } // end for each group
+  // for (auto &bpKey : bpTask.blueprintKeys) {
+  //   if (bpKey.cli_excludes.empty()) {
+  //     continue;
+  //   }
+  //   for (auto &excl : bpKey.cli_excludes) {
+  //     cmd->get_option(bpKey.cli_long_flag)->excludes("--"+excl);
+  //     // if "ALL" we exclude all options
+  //   }
+  // }
+  
+  // exclude options that are not allowed to coexist
+  // for (auto &bpKey : bpTask.blueprintKeys) {
+  //   // Skip if no exclusions defined
+  //   if (bpKey.cli_excludes.empty()) {
+  //     continue;
+  //   }
+  //
+  //   // Obtain the CLI option for the current key
+  //   CLI::Option* currentOption = cmd->get_option(bpKey.cli_long_flag);
+  //   if (!currentOption) {
+  //     continue;
+  //   }
+  //
+  //   // If first entry is "ALL", exclude every other option
+  //   if (bpKey.cli_excludes[0] == "ALL") {
+  //     std::cout << "Excluding all options from " << currentOption->get_name() << std::endl;
+  //     for (auto* otherOption : cmd->get_options()) {
+  //       // Avoid excluding the current option from itself
+  //       if (otherOption != currentOption) {
+  //         std::cout << "Excluding " << otherOption->get_name() << std::endl;
+  //         currentOption->excludes(otherOption->get_name());
+  //       }
+  //     }
+  //   } else {
+  //     std::cout << "Excluding specific options from " << currentOption->get_name() << std::endl;
+  //     std::cout << "Excludes: ";
+  //     for (auto &excl : bpKey.cli_excludes) {
+  //       std::cout << excl << " ";
+  //     }
+  //     // Otherwise, exclude only the specified options
+  //     for (auto &excl : bpKey.cli_excludes) {
+  //       currentOption->excludes("--" + excl);
+  //     }
+  //   }
+  // }
+
 }
 
 } // namespace cli

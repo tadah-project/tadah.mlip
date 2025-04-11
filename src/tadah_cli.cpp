@@ -30,6 +30,8 @@ TadahCLI::TadahCLI()
 
   app_.require_subcommand(0,0); // 0 or more subcommands are required, no max limit
   registerModules();
+  // registerRequired();
+  registerNeeds();
   registerExclusions();
 
   const auto &blueprintTadah = core::BlueprintParser::getBlueprintTadahRef();
@@ -76,11 +78,9 @@ int TadahCLI::run(int argc, char** argv) {
     std::cerr << "CLI11 Error parsing command line arguments: " << e.what() << "\n";
     return app_.exit(e);
   }
-  // std::cout << "Parsed command line arguments successfully.\n";
 
   TaskManager taskManager;
   for (auto &cliTask : cliTasks_) {
-    // std::cout << "Creating tasks from CLI task: " << cliTask.blueprintTaskName << "\n";
     auto tasks = TaskFactory().createTasksFromInput(cliTask);
     taskManager.store(tasks);
   }
@@ -210,11 +210,12 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
     } else {
       // For options, use add_option and specify the value type
       opt = cmd->add_option(spec, dest, bpKey.description);
-      std::string valueFormat = bpKey.value_format[0];
-      for (size_t i=1; i < bpKey.value_format.size(); ++i) {
-        valueFormat += "\n" + bpKey.value_format[i];
-      }
-      opt->option_text(valueFormat);
+      // TODO fix printing of value_format such that exclude is shown
+      // std::string valueFormat = bpKey.value_format[0];
+      // for (size_t i=1; i < bpKey.value_format.size(); ++i) {
+      //   valueFormat += "\n" + bpKey.value_format[i];
+      // }
+      // opt->option_text(valueFormat);
     }
     if (bpKey.cli_required) {
       opt->required();
@@ -266,7 +267,6 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
       }
     } // end for each key in group
   } // end for each group
-
 }
 void TadahCLI::registerExclusions() {
   using tadah::core::BlueprintParser;
@@ -291,40 +291,104 @@ void TadahCLI::registerExclusions() {
       CLI::App *parent = app_.get_subcommand(core::to_lower(tokens[0]));
       cmd = parent->get_subcommand(core::to_lower(tokens[1]));
     }
-    std::cout << "Excluding options for command: " << cmd->get_name() << std::endl;
     for (auto &bpKey : bpTask.blueprintKeys) {
       if (bpKey.cli_excludes.empty() || bpKey.cli_long_flag.empty()) {
         continue;
       }
 
-      // currentOption is the pointer for the "main" key
+      // currentOption is the pointer for the option we are excluding from
       CLI::Option *currentOption = cmd->get_option(bpKey.cli_long_flag);
-      if (!currentOption) {
-        // Might be in a group, or short name only, or not found
-        continue;
-      }
-      std::cout << "Excluding options for currentOption: " << currentOption->get_name() << std::endl;
 
       if (bpKey.cli_excludes.size()==1 && bpKey.cli_excludes[0] == "ALL") {
         // Exclude from *all* other options in that subcommand
-        std::cout << "Excluding from all other options:" << std::endl;
         for (auto *otherOpt : cmd->get_options()) {
           if (otherOpt != currentOption) {
             currentOption->excludes(otherOpt);
-            std::cout << "Excluding options for cmd/currentOption: " << cmd->get_name() << "/" << currentOption->get_name() << std::endl;
-            std::cout << "Excluding options for cmd/otherOpt: " << cmd->get_name() << "/"  << otherOpt->get_name() << std::endl;
           }
         }
       } else {
         // Exclude from the listed options
         for (auto &exclName : bpKey.cli_excludes) {
-          // Typically the blueprint says "structure", so we want the primary name 
-          // e.g. "--structure". If short too, it might be "--structure,-s".
-          // Usually retrieving "cmd->get_option('--' + exclName)" works,
-          // or you can try the same short/long logic as addCmdOptions
           CLI::Option *excludedOption = cmd->get_option("--" + exclName);
           if (excludedOption) {
             currentOption->excludes(excludedOption);
+          }
+        }
+      }
+    }
+
+    // Now deal with the group options
+    for (auto &group : bpTask.groups) {
+      for (auto &bpKey : group.blueprintKeys) {
+        CLI::App *grp = cmd->get_option_group(group.groupName);
+        auto *grpOpt = grp->get_option(bpKey.cli_long_flag);
+        if (bpKey.cli_excludes.size()==1 && bpKey.cli_excludes[0] == "ALL") {
+          // Exclude from *all* other options in that subcommand
+          for (auto *otherOpt : cmd->get_options()) {
+            if (otherOpt != grpOpt) {
+              grpOpt->excludes(otherOpt);
+              otherOpt->excludes(grpOpt);
+            }
+          }
+        } else {
+          // Exclude from the listed options
+          for (auto &exclName : bpKey.cli_excludes) {
+            CLI::Option *excludedOption = cmd->get_option("--" + exclName);
+            if (excludedOption) {
+              grpOpt->excludes(excludedOption);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void TadahCLI::registerNeeds() {
+  using tadah::core::BlueprintParser;
+
+  // Retrieve the tasks from the blueprint
+  const auto &tasksMap = BlueprintParser::getTasksMapRef();
+
+  for (const auto &pair : tasksMap) {
+    const std::string blueprintName = pair.first;   // e.g. "DATA.split"
+    const tadah::core::BlueprintTask &bpTask = pair.second;
+
+    std::vector<std::string> tokens;
+    boost::split(tokens, blueprintName, boost::is_any_of("."));
+
+    // If only one token => first-level command
+    CLI::App *cmd = nullptr;
+    if (tokens.size() == 1) {
+      cmd = app_.get_subcommand(core::to_lower(tokens[0]));
+    }
+    // If two tokens => first-level + subcommand
+    else if (tokens.size() == 2) {
+      CLI::App *parent = app_.get_subcommand(core::to_lower(tokens[0]));
+      cmd = parent->get_subcommand(core::to_lower(tokens[1]));
+    }
+
+    // first deal with the top level options
+    for (auto &bpKey : bpTask.blueprintKeys) {
+      // currentOption is the pointer for the option we are excluding from
+      CLI::Option *currentOption = cmd->get_option(bpKey.cli_long_flag);
+
+      if (bpKey.cli_needs.size()) {
+        for (auto &needName : bpKey.cli_needs) {
+          currentOption->needs("--"+needName);
+        }
+      }
+    }
+
+    // Now deal with the group options
+    for (auto &group : bpTask.groups) {
+      for (auto &bpKey : group.blueprintKeys) {
+        if (bpKey.cli_needs.size()) {
+          CLI::App *grp = cmd->get_option_group(group.groupName);
+          auto *grpOpt = grp->get_option(bpKey.cli_long_flag);
+          for (auto &needName : bpKey.cli_needs) {
+            CLI::Option *needOption = cmd->get_option("--" + needName);
+            grpOpt->needs(needOption);
           }
         }
       }

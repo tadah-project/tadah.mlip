@@ -89,6 +89,8 @@ private:
    */
   void registerModules();
 
+  // void registerRequired();
+  void registerNeeds();
   void registerExclusions();
 
   /**

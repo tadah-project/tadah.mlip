@@ -89,9 +89,10 @@ private:
    */
   void registerModules();
 
-  // void registerRequired();
+  void registerRequired();
   void registerNeeds();
   void registerExclusions();
+  void createOptionsLabels();
 
   /**
    * @brief Ensures a first-level command for the given name exists or creates it.
@@ -139,6 +140,22 @@ private:
   ///
   // std::vector<std::string> optionsStorage_; ///< Storage for options.
   std::unordered_map<std::string, std::vector<std::string>> optionsStorage_; ///< Storage for options.
+
+  /**
+   * @brief Processes all tasks in the blueprint and calls user-defined handlers for top-level options and group-level options.
+   * @param topLevelHandler Callback that handles an individual top-level option.
+   * @param groupHandler Callback that handles an individual group-level option.
+   */
+  template <typename TopLevelHandler, typename GroupHandler>
+  void processBlueprintTasks(TopLevelHandler&& topLevelHandler,
+      GroupHandler&& groupHandler);
+
+
+  size_t left_column_width = 30;
+  size_t right_column_width = 50;
+  size_t description_paragraph_width = 80;
+  size_t footer_paragraph_width = 80;
+
 };
 
 } // namespace cli

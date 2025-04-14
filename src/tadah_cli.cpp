@@ -21,27 +21,26 @@ TadahCLI::TadahCLI()
 
   auto myFormatter = std::make_shared<CLI::Formatter>();
 
-  myFormatter->column_width(30);  // left column width
-  myFormatter->right_column_width(50); // description width for options/flags/subcommands
-  myFormatter->description_paragraph_width(80); // description width for the main command
-  myFormatter->footer_paragraph_width(80); // description width of footer, used for examples
-
+  myFormatter->column_width(left_column_width);  // left column width
+  myFormatter->right_column_width(right_column_width); // description width for options/flags/subcommands
+  myFormatter->description_paragraph_width(description_paragraph_width); // description width for the main command
+  myFormatter->footer_paragraph_width(footer_paragraph_width); // description width of footer, used for examples
   app_.formatter(myFormatter);
+
 
   app_.require_subcommand(0,0); // 0 or more subcommands are required, no max limit
   registerModules();
-  // registerRequired();
+  registerRequired();
   registerNeeds();
   registerExclusions();
+  createOptionsLabels();
+
 
   const auto &blueprintTadah = core::BlueprintParser::getBlueprintTadahRef();
   app_.usage(blueprintTadah.logo);
   for (const auto &kv : blueprintTadah.blueprintKeys) {
     auto &dest = optionsStorage_[kv.keyName];
-    auto *opt = app_.add_option(kv.cli_long_flag, dest, kv.description);
-    if (kv.cli_required) {
-      opt->required();
-    }
+    app_.add_option(kv.cli_long_flag, dest, kv.description);
   }
 
   if (!blueprintTadah.examples.empty()) {
@@ -110,7 +109,7 @@ void TadahCLI::registerModules() {
     if (tokens.size() == 1) {
       CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]), bpTask.description);
       addCmdOptions(parent, bpTask);  // question is how to store??
-      parent->usage(bpTask.longDescription);
+      parent->usage(core::wrapText(bpTask.longDescription, description_paragraph_width,true, ""));
       if (!bpTask.examples.empty()) {
         std::string exampleText = "EXAMPLES:\n";
         for (const auto &ex : bpTask.examples) {
@@ -127,7 +126,7 @@ void TadahCLI::registerModules() {
       CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]));
       CLI::App *child  = parent->add_subcommand(core::to_lower(tokens[1]), bpTask.description);
       addCmdOptions(child, bpTask);
-      child->usage(bpTask.longDescription);
+      child->usage(core::wrapText(bpTask.longDescription, description_paragraph_width,true, ""));
       if (!bpTask.examples.empty()) {
         std::string exampleText = "EXAMPLES:\n";
         for (const auto &ex : bpTask.examples) {
@@ -203,22 +202,12 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
     boost::split(keyTokens, bpKey.keyName, boost::is_any_of("."));
 
     auto &dest = optionsStorage_[keyTokens.back()];
-    CLI::Option *opt;
     if (bpKey.value_N.size()==1 && bpKey.value_type[0] == "BOOL") {
       // For boolean options, use add_flag
-      opt = cmd->add_flag(spec, dest, bpKey.description);
+      cmd->add_flag(spec, dest, bpKey.description);
     } else {
-      // For options, use add_option and specify the value type
-      opt = cmd->add_option(spec, dest, bpKey.description);
-      // TODO fix printing of value_format such that exclude is shown
-      // std::string valueFormat = bpKey.value_format[0];
-      // for (size_t i=1; i < bpKey.value_format.size(); ++i) {
-      //   valueFormat += "\n" + bpKey.value_format[i];
-      // }
-      // opt->option_text(valueFormat);
-    }
-    if (bpKey.cli_required) {
-      opt->required();
+      // For options, use add_option
+      cmd->add_option(spec, dest, bpKey.description);
     }
   }
 
@@ -237,7 +226,7 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
     grp->require_option(group.requiredMin, group.requiredMax);
     grp->set_help_flag("", "");
 
-    // For each key in this group:
+    // For each key in this group add it to the group as an option
     for (auto &bpKey : group.blueprintKeys) {
       if (bpKey.cli_long_flag.empty()) {
         continue;
@@ -252,145 +241,203 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
       boost::split(keyTokens, bpKey.keyName, boost::is_any_of("."));
       auto &dest = optionsStorage_[keyTokens.back()];
 
-      CLI::Option *opt;
       if (bpKey.value_N.size()==1 && bpKey.value_type[0] == "BOOL") {
         // For boolean options, use add_flag
-        opt = grp->add_flag(spec, dest, bpKey.description);
+        grp->add_flag(spec, dest, bpKey.description);
       } else {
-        // For options, use add_option and specify the value type
-        opt = grp->add_option(spec, dest, bpKey.description);
-        std::string valueFormat = bpKey.value_format[0];
-        for (size_t i=1; i < bpKey.value_format.size(); ++i) {
-          valueFormat += "\n" + bpKey.value_format[i];
-        }
-        opt->option_text(valueFormat);
+        // For options, use add_option
+        grp->add_option(spec, dest, bpKey.description);
       }
     } // end for each key in group
   } // end for each group
 }
+
 void TadahCLI::registerExclusions() {
-  using tadah::core::BlueprintParser;
-
-  // Retrieve the tasks from the blueprint
-  const auto &tasksMap = BlueprintParser::getTasksMapRef();
-
-  for (const auto &pair : tasksMap) {
-    const std::string blueprintName = pair.first;   // e.g. "DATA.split"
-    const tadah::core::BlueprintTask &bpTask = pair.second;
-
-    std::vector<std::string> tokens;
-    boost::split(tokens, blueprintName, boost::is_any_of("."));
-
-    // If only one token => first-level command
-    CLI::App *cmd = nullptr;
-    if (tokens.size() == 1) {
-      cmd = app_.get_subcommand(core::to_lower(tokens[0]));
-    }
-    // If two tokens => first-level + subcommand
-    else if (tokens.size() == 2) {
-      CLI::App *parent = app_.get_subcommand(core::to_lower(tokens[0]));
-      cmd = parent->get_subcommand(core::to_lower(tokens[1]));
-    }
-    for (auto &bpKey : bpTask.blueprintKeys) {
-      if (bpKey.cli_excludes.empty() || bpKey.cli_long_flag.empty()) {
-        continue;
-      }
-
-      // currentOption is the pointer for the option we are excluding from
-      CLI::Option *currentOption = cmd->get_option(bpKey.cli_long_flag);
-
+  auto topLevelAction = [](CLI::App* cmd, CLI::Option* opt,
+      const tadah::core::BlueprintKey& bpKey) {
       if (bpKey.cli_excludes.size()==1 && bpKey.cli_excludes[0] == "ALL") {
         // Exclude from *all* other options in that subcommand
         for (auto *otherOpt : cmd->get_options()) {
-          if (otherOpt != currentOption) {
-            currentOption->excludes(otherOpt);
+          if (otherOpt != opt && otherOpt->get_name() != "--help") {
+            opt->excludes(otherOpt);
           }
         }
       } else {
         // Exclude from the listed options
         for (auto &exclName : bpKey.cli_excludes) {
-          CLI::Option *excludedOption = cmd->get_option("--" + exclName);
-          if (excludedOption) {
-            currentOption->excludes(excludedOption);
+          CLI::Option *otherOpt = cmd->get_option("--" + exclName);
+          if (otherOpt) {
+            opt->excludes(otherOpt);
           }
         }
       }
-    }
+  };
 
-    // Now deal with the group options
-    for (auto &group : bpTask.groups) {
-      for (auto &bpKey : group.blueprintKeys) {
-        CLI::App *grp = cmd->get_option_group(group.groupName);
-        auto *grpOpt = grp->get_option(bpKey.cli_long_flag);
-        if (bpKey.cli_excludes.size()==1 && bpKey.cli_excludes[0] == "ALL") {
-          // Exclude from *all* other options in that subcommand
-          for (auto *otherOpt : cmd->get_options()) {
-            if (otherOpt != grpOpt) {
-              grpOpt->excludes(otherOpt);
-              otherOpt->excludes(grpOpt);
-            }
-          }
-        } else {
-          // Exclude from the listed options
-          for (auto &exclName : bpKey.cli_excludes) {
-            CLI::Option *excludedOption = cmd->get_option("--" + exclName);
-            if (excludedOption) {
-              grpOpt->excludes(excludedOption);
-            }
-          }
+  auto groupAction = [](CLI::App* cmd, CLI::App*, CLI::Option* grpOpt,
+      const tadah::core::BlueprintKey& bpKey) {
+    if (bpKey.cli_excludes.size()==1 && bpKey.cli_excludes[0] == "ALL") {
+      // Exclude from *all* other options in that subcommand
+      // which are not in the group apart from --help
+      for (auto *otherOpt : cmd->get_options()) {
+        if (otherOpt != grpOpt && otherOpt->get_name() != "--help") {
+          grpOpt->excludes(otherOpt);
+        }
+      }
+    } else {
+      // Exclude from the listed options
+      for (auto &exclName : bpKey.cli_excludes) {
+        CLI::Option *otherOpt = cmd->get_option("--" + exclName);
+        if (otherOpt) {
+          grpOpt->excludes(otherOpt);
         }
       }
     }
-  }
+  };
+
+  processBlueprintTasks(topLevelAction, groupAction);
 }
 
 void TadahCLI::registerNeeds() {
+  auto topLevelAction = [](CLI::App* cmd, CLI::Option* opt,
+      const tadah::core::BlueprintKey& bpKey) {
+    if (bpKey.cli_needs.size()) {
+      for (auto &needName : bpKey.cli_needs) {
+        CLI::Option *otherOpt = cmd->get_option("--" + needName);
+        opt->needs(otherOpt);
+      }
+    }
+  };
+
+  auto groupAction = [](CLI::App* cmd, CLI::App* , CLI::Option* grpOpt,
+      const tadah::core::BlueprintKey& bpKey) {
+    if (bpKey.cli_needs.size()) {
+      for (auto &needName : bpKey.cli_needs) {
+        CLI::Option *otherOpt = cmd->get_option("--" + needName);
+        grpOpt->needs(otherOpt);
+      }
+    }
+  };
+
+  processBlueprintTasks(topLevelAction, groupAction);
+}
+
+void TadahCLI::registerRequired() {
+  auto topLevelAction = [](CLI::App* , CLI::Option* opt,
+      const tadah::core::BlueprintKey& bpKey) {
+    if (bpKey.cli_required) {
+      opt->required();
+    }
+  };
+
+  auto groupAction = [](CLI::App* , CLI::App* , CLI::Option* grpOpt,
+      const tadah::core::BlueprintKey& bpKey) {
+    if (bpKey.cli_required) {
+      grpOpt->required();
+    }
+  };
+
+  processBlueprintTasks(topLevelAction, groupAction);
+}
+
+void TadahCLI::createOptionsLabels() {
+  auto topLevelAction = [this](CLI::App* , CLI::Option* opt,
+      const tadah::core::BlueprintKey& bpKey) {
+    size_t padding = 12;
+    // For options we create custom labels
+    // 1. Value format
+    std::string valueFormat = bpKey.value_format.size() ? bpKey.value_format[0] : "";
+    for (size_t i=1; i < bpKey.value_format.size(); ++i) {
+      valueFormat += "\n" + bpKey.value_format[i];
+    }
+    valueFormat += "\n";
+
+    // 2. Needs
+    std::string needsFormat = "";
+    auto needs = opt->get_needs();
+    if (needs.size() > 0) {
+      for (auto &need: needs) {
+        needsFormat += " "+need->get_name();
+      }
+    }
+    needsFormat = core::wrapText(needsFormat, description_paragraph_width-padding,true,std::string(padding, ' '));  
+    if (needsFormat.size() && needsFormat[0] == '-') needsFormat = "  Needs:    " + needsFormat;
+
+    // 3. Excludes
+    std::string excludesFormat = "";
+    auto excludes = opt->get_excludes();
+    if (excludes.size() > 0) {
+      for (auto &excl: excludes) {
+        excludesFormat += " "+excl->get_name();
+      }
+    }
+    excludesFormat = core::wrapText(excludesFormat, description_paragraph_width-padding,true,std::string(padding, ' '));  
+    if (excludesFormat.size() && excludesFormat[0] == '-') excludesFormat = "  Excludes: " + excludesFormat;
+
+    std::string fullFormat = "";
+    if (!core::is_blank_line(valueFormat)) {
+      fullFormat += valueFormat;
+    }
+    if (!core::is_blank_line(needsFormat)) {
+      fullFormat += needsFormat;
+    }
+    if (!core::is_blank_line(excludesFormat)) {
+      fullFormat += excludesFormat;
+    }
+    if (!core::is_blank_line(fullFormat)) {
+      opt->option_text(fullFormat);
+    }
+  };
+
+  auto groupAction = [topLevelAction](CLI::App* cmd, CLI::App* , CLI::Option* grpOpt,
+      const tadah::core::BlueprintKey& bpKey) {
+    topLevelAction(cmd, grpOpt, bpKey);
+  };
+
+  processBlueprintTasks(topLevelAction, groupAction);
+}
+
+template <typename TopLevelHandler, typename GroupHandler>
+void TadahCLI::processBlueprintTasks(
+  TopLevelHandler&& topLevelHandler,
+  GroupHandler&& groupHandler)
+{
   using tadah::core::BlueprintParser;
 
   // Retrieve the tasks from the blueprint
   const auto &tasksMap = BlueprintParser::getTasksMapRef();
 
-  for (const auto &pair : tasksMap) {
-    const std::string blueprintName = pair.first;   // e.g. "DATA.split"
-    const tadah::core::BlueprintTask &bpTask = pair.second;
+  // Repetitive loop logic is centralized here
+  for (auto& pair : tasksMap) {
+    const std::string& blueprintName = pair.first;
+    const tadah::core::BlueprintTask& bpTask = pair.second;
 
+    // Split into tokens, e.g.: "DATA.split" -> ["DATA","split"]
     std::vector<std::string> tokens;
     boost::split(tokens, blueprintName, boost::is_any_of("."));
 
-    // If only one token => first-level command
-    CLI::App *cmd = nullptr;
-    if (tokens.size() == 1) {
+    // Retrieve the CLI::App* for these tokens
+    CLI::App* cmd = nullptr;
+    if (!tokens.empty()) {
+      // First token -> top-level
       cmd = app_.get_subcommand(core::to_lower(tokens[0]));
-    }
-    // If two tokens => first-level + subcommand
-    else if (tokens.size() == 2) {
-      CLI::App *parent = app_.get_subcommand(core::to_lower(tokens[0]));
-      cmd = parent->get_subcommand(core::to_lower(tokens[1]));
-    }
-
-    // first deal with the top level options
-    for (auto &bpKey : bpTask.blueprintKeys) {
-      // currentOption is the pointer for the option we are excluding from
-      CLI::Option *currentOption = cmd->get_option(bpKey.cli_long_flag);
-
-      if (bpKey.cli_needs.size()) {
-        for (auto &needName : bpKey.cli_needs) {
-          currentOption->needs("--"+needName);
-        }
+      // Additional tokens -> subcommands
+      for (size_t i = 1; i < tokens.size(); ++i) {
+        cmd = cmd->get_subcommand(core::to_lower(tokens[i]));
       }
     }
 
-    // Now deal with the group options
-    for (auto &group : bpTask.groups) {
-      for (auto &bpKey : group.blueprintKeys) {
-        if (bpKey.cli_needs.size()) {
-          CLI::App *grp = cmd->get_option_group(group.groupName);
-          auto *grpOpt = grp->get_option(bpKey.cli_long_flag);
-          for (auto &needName : bpKey.cli_needs) {
-            CLI::Option *needOption = cmd->get_option("--" + needName);
-            grpOpt->needs(needOption);
-          }
-        }
+    // Process top-level options
+    for (auto& bpKey : bpTask.blueprintKeys) {
+      CLI::Option* currentOpt = cmd->get_option(bpKey.cli_long_flag);
+      topLevelHandler(cmd, currentOpt, bpKey);
+    }
+
+    // Process group-level options
+    for (auto& group : bpTask.groups) {
+      CLI::App* grp = cmd->get_option_group(group.groupName);
+      for (auto& bpKey : group.blueprintKeys) {
+        CLI::Option* groupOpt = grp->get_option(bpKey.cli_long_flag);
+        groupHandler(cmd, grp, groupOpt, bpKey);
       }
     }
   }

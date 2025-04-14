@@ -46,17 +46,14 @@ TadahCLI::TadahCLI()
   if (!blueprintTadah.examples.empty()) {
     std::string exampleText = "EXAMPLES:\n";
     for (const auto &ex : blueprintTadah.examples) {
+      // Enforce indentation
       exampleText += "\u00A0\u00A0" + ex + "\n";
     }
-    // remove the last newline character from a string
     app_.footer(exampleText);
   }
 
   app_.immediate_callback(true);
   app_.callback(std::bind(&TadahCLI::handleCmdCallback, this, "tadah"));
-
-  using tadah::mlip::engines::EngineFactory;
-  using tadah::mlip::engines::TrainEngine;
 
   mlip::engines::registerAllEngines();
 }
@@ -73,8 +70,6 @@ int TadahCLI::run(int argc, char** argv) {
     std::cout << app_.help() << std::endl;
     return 0;
   } catch (const CLI::ParseError &e) {
-    std::cout << "CLI11 Exit code: " << e.get_exit_code() << std::endl;
-    std::cerr << "CLI11 Error parsing command line arguments: " << e.what() << "\n";
     return app_.exit(e);
   }
 
@@ -85,9 +80,10 @@ int TadahCLI::run(int argc, char** argv) {
   }
 
   std::cout << "Stored tasks:\n";
-  for (const auto &task : taskManager.getTasks()) {
+  for (Task &task : taskManager.getTasks()) {
     task.print();
     auto engine = mlip::engines::EngineFactory::create(task.getTaskName());
+    engine->run(task);
   }
 
   return 0;
@@ -109,7 +105,9 @@ void TadahCLI::registerModules() {
     if (tokens.size() == 1) {
       CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]), bpTask.description);
       addCmdOptions(parent, bpTask);  // question is how to store??
-      parent->usage(core::wrapText(bpTask.longDescription, description_paragraph_width,true, ""));
+      std::string ldesc = core::wrapText(bpTask.longDescription, description_paragraph_width,true, "");
+      ldesc.pop_back(); // remove last \n
+      parent->usage(ldesc);
       if (!bpTask.examples.empty()) {
         std::string exampleText = "EXAMPLES:\n";
         for (const auto &ex : bpTask.examples) {
@@ -126,7 +124,9 @@ void TadahCLI::registerModules() {
       CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]));
       CLI::App *child  = parent->add_subcommand(core::to_lower(tokens[1]), bpTask.description);
       addCmdOptions(child, bpTask);
-      child->usage(core::wrapText(bpTask.longDescription, description_paragraph_width,true, ""));
+      std::string ldesc = core::wrapText(bpTask.longDescription, description_paragraph_width,true, "");
+      ldesc.pop_back(); // remove last \n
+      child->usage(ldesc);
       if (!bpTask.examples.empty()) {
         std::string exampleText = "EXAMPLES:\n";
         for (const auto &ex : bpTask.examples) {
@@ -342,50 +342,44 @@ void TadahCLI::registerRequired() {
 void TadahCLI::createOptionsLabels() {
   auto topLevelAction = [this](CLI::App* , CLI::Option* opt,
       const tadah::core::BlueprintKey& bpKey) {
-    size_t padding = 12;
     // For options we create custom labels
     // 1. Value format
     std::string valueFormat = bpKey.value_format.size() ? bpKey.value_format[0] : "";
     for (size_t i=1; i < bpKey.value_format.size(); ++i) {
       valueFormat += "\n" + bpKey.value_format[i];
     }
-    valueFormat += "\n";
 
     // 2. Needs
-    std::string needsFormat = "";
+    std::string needsFormat;
     auto needs = opt->get_needs();
     if (needs.size() > 0) {
       for (auto &need: needs) {
-        needsFormat += " "+need->get_name();
+        needsFormat += need->get_name() + " ";
       }
+      // remove last space
+      needsFormat = needsFormat.substr(0, needsFormat.size()-1);
     }
-    needsFormat = core::wrapText(needsFormat, description_paragraph_width-padding,true,std::string(padding, ' '));  
-    if (needsFormat.size() && needsFormat[0] == '-') needsFormat = "  Needs:    " + needsFormat;
+    if (needsFormat.size() && needsFormat[0] == '-') 
+      needsFormat = " (Needs:    " + needsFormat + ")";
+
 
     // 3. Excludes
-    std::string excludesFormat = "";
+    std::string excludesFormat;
     auto excludes = opt->get_excludes();
     if (excludes.size() > 0) {
       for (auto &excl: excludes) {
-        excludesFormat += " "+excl->get_name();
+        excludesFormat += excl->get_name() + " ";
       }
+      // remove last space
+      excludesFormat = excludesFormat.substr(0, excludesFormat.size()-1);
     }
-    excludesFormat = core::wrapText(excludesFormat, description_paragraph_width-padding,true,std::string(padding, ' '));  
-    if (excludesFormat.size() && excludesFormat[0] == '-') excludesFormat = "  Excludes: " + excludesFormat;
+    if (excludesFormat.size() && excludesFormat[0] == '-')
+      excludesFormat = " (Excludes: " + excludesFormat + ")";
 
-    std::string fullFormat = "";
-    if (!core::is_blank_line(valueFormat)) {
-      fullFormat += valueFormat;
-    }
-    if (!core::is_blank_line(needsFormat)) {
-      fullFormat += needsFormat;
-    }
-    if (!core::is_blank_line(excludesFormat)) {
-      fullFormat += excludesFormat;
-    }
-    if (!core::is_blank_line(fullFormat)) {
-      opt->option_text(fullFormat);
-    }
+    std::string currentDescription = opt->get_description();
+    currentDescription += needsFormat + excludesFormat;
+    opt->description(currentDescription);
+    opt->option_text(valueFormat);
   };
 
   auto groupAction = [topLevelAction](CLI::App* cmd, CLI::App* , CLI::Option* grpOpt,

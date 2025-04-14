@@ -7,6 +7,8 @@
 #include <tadah/mlip/engines/engine_factory.h>
 #include <tadah/mlip/engines/all_engines.h>
 
+#include <tadah/core/periodic_table.h>
+
 #include <boost/algorithm/string.hpp> // for boost::split
 #include <iostream>
 #include <vector>
@@ -38,9 +40,13 @@ TadahCLI::TadahCLI()
 
   const auto &blueprintTadah = core::BlueprintParser::getBlueprintTadahRef();
   app_.usage(blueprintTadah.logo);
-  for (const auto &kv : blueprintTadah.blueprintKeys) {
-    auto &dest = optionsStorage_[kv.keyName];
-    app_.add_option(kv.cli_long_flag, dest, kv.description);
+  for (const auto &bpKey : blueprintTadah.blueprintKeys) {
+    auto &dest = optionsStorage_[bpKey.keyName];
+    std::string spec = bpKey.cli_long_flag;
+    if (!bpKey.cli_short_flag.empty()) {
+      spec = spec + "," + bpKey.cli_short_flag;
+    }
+    app_.add_option(spec, dest, bpKey.description);
   }
 
   if (!blueprintTadah.examples.empty()) {
@@ -56,6 +62,8 @@ TadahCLI::TadahCLI()
   app_.callback(std::bind(&TadahCLI::handleCmdCallback, this, "tadah"));
 
   mlip::engines::registerAllEngines();
+
+  core::PeriodicTable::initialize();
 }
 
 int TadahCLI::run(int argc, char** argv) {
@@ -82,7 +90,10 @@ int TadahCLI::run(int argc, char** argv) {
   std::cout << "Stored tasks:\n";
   for (Task &task : taskManager.getTasks()) {
     task.print();
+    size_t verbose = task.getContext().get<size_t>("VERBOSE");
+    core::Logger::instance().setLogLevel(static_cast<core::LogLevel>(verbose));
     auto engine = mlip::engines::EngineFactory::create(task.getTaskName());
+    engine->validate(task);
     engine->run(task);
   }
 
@@ -190,11 +201,8 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
       // If there's no CLI flag definition, skip
       continue;
     }
-    // e.g., "--rcut2b"
     std::string spec = bpKey.cli_long_flag;
-    // If we have a short flag, add it
     if (!bpKey.cli_short_flag.empty()) {
-      // e.g., "--rcut2b,-r"
       spec = spec + "," + bpKey.cli_short_flag;
     }
 

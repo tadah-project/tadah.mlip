@@ -118,6 +118,7 @@ private:
 void handleCmdCallback(const std::string &blueprintTaskName);
 
 private:
+  int rank=0;
   CLI::App app_; ///< The root CLI11 application.
 
   /**

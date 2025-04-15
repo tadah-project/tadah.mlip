@@ -3,6 +3,7 @@
 
 #include <tadah/mlip/task_factory.h>
 #include <tadah/mlip/task_manager.h>
+#include <tadah/mlip/scheduler.h>
 #include <tadah/mlip/engines/train_engine.h>
 #include <tadah/mlip/engines/engine_factory.h>
 #include <tadah/mlip/engines/all_engines.h>
@@ -13,6 +14,10 @@
 #include <iostream>
 #include <vector>
 
+#ifdef TADAH_BUILD_MPI
+#include <mpi.h>
+#endif
+
 namespace tadah {
 namespace mlip {
 namespace cli {
@@ -21,45 +26,55 @@ TadahCLI::TadahCLI()
 : app_("", "Tadah!")
 {
 
-  auto myFormatter = std::make_shared<CLI::Formatter>();
+#ifdef TADAH_BUILD_MPI
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#endif
 
-  myFormatter->column_width(left_column_width);  // left column width
-  myFormatter->right_column_width(right_column_width); // description width for options/flags/subcommands
-  myFormatter->description_paragraph_width(description_paragraph_width); // description width for the main command
-  myFormatter->footer_paragraph_width(footer_paragraph_width); // description width of footer, used for examples
-  app_.formatter(myFormatter);
-
-
-  app_.require_subcommand(0,0); // 0 or more subcommands are required, no max limit
-  registerModules();
-  registerRequired();
-  registerNeeds();
-  registerExclusions();
-  createOptionsLabels();
+  if (rank == 0) {
+    auto myFormatter = std::make_shared<CLI::Formatter>();
+    myFormatter->column_width(left_column_width);  // left column width
+    myFormatter->right_column_width(right_column_width); // description width for options/flags/subcommands
+    myFormatter->description_paragraph_width(description_paragraph_width); // description width for the main command
+    myFormatter->footer_paragraph_width(footer_paragraph_width); // description width of footer, used for examples
+    app_.formatter(myFormatter);
 
 
-  const auto &blueprintTadah = core::BlueprintParser::getBlueprintTadahRef();
-  app_.usage(blueprintTadah.logo);
-  for (const auto &bpKey : blueprintTadah.blueprintKeys) {
-    auto &dest = optionsStorage_[bpKey.keyName];
-    std::string spec = bpKey.cli_long_flag;
-    if (!bpKey.cli_short_flag.empty()) {
-      spec = spec + "," + bpKey.cli_short_flag;
+    app_.require_subcommand(0,0); // 0 or more subcommands are required, no max limit
+    registerModules();
+    registerRequired();
+    registerNeeds();
+    registerExclusions();
+    createOptionsLabels();
+
+
+    const auto &blueprintTadah = core::BlueprintParser::getBlueprintTadahRef();
+    app_.usage(blueprintTadah.logo);
+    for (const auto &bpKey : blueprintTadah.blueprintKeys) {
+      auto &dest = optionsStorage_[bpKey.keyName];
+      std::string spec = bpKey.cli_long_flag;
+      if (!bpKey.cli_short_flag.empty()) {
+        spec = spec + "," + bpKey.cli_short_flag;
+      }
+      auto *opt = app_.add_option(spec, dest, bpKey.description);
+      std::string valueFormat = bpKey.value_format.size() ? bpKey.value_format[0] : "";
+      for (size_t i=1; i < bpKey.value_format.size(); ++i) {
+        valueFormat += "\n" + bpKey.value_format[i];
+      }
+      opt->option_text(valueFormat);
     }
-    app_.add_option(spec, dest, bpKey.description);
-  }
 
-  if (!blueprintTadah.examples.empty()) {
-    std::string exampleText = "EXAMPLES:\n";
-    for (const auto &ex : blueprintTadah.examples) {
-      // Enforce indentation
-      exampleText += "\u00A0\u00A0" + ex + "\n";
+    if (!blueprintTadah.examples.empty()) {
+      std::string exampleText = "EXAMPLES:\n";
+      for (const auto &ex : blueprintTadah.examples) {
+        // Enforce indentation
+        exampleText += "\u00A0\u00A0" + ex + "\n";
+      }
+      app_.footer(exampleText);
     }
-    app_.footer(exampleText);
-  }
 
-  app_.immediate_callback(true);
-  app_.callback(std::bind(&TadahCLI::handleCmdCallback, this, "tadah"));
+    app_.immediate_callback(true);
+    app_.callback(std::bind(&TadahCLI::handleCmdCallback, this, "tadah"));
+  }
 
   mlip::engines::registerAllEngines();
 
@@ -67,35 +82,37 @@ TadahCLI::TadahCLI()
 }
 
 int TadahCLI::run(int argc, char** argv) {
-  core::Logger::instance().setLogLevel(tadah::core::LogLevel::INFO);
-  try {
-    app_.parse(argc, argv);
-    if(app_.count_all()==1) {
-      std::cout << "Type: `tadah -h` for help" << std::endl;
+  core::Logger::instance().setLogLevel(tadah::core::LogLevel::WARNING);
+  Scheduler scheduler;
+  if (rank==0) {
+    try {
+      app_.parse(argc, argv);
+      if(app_.count_all()==1) {
+        std::cout << "Type: `tadah -h` for help" << std::endl;
+        return 0;
+      }
+    } catch (const CLI::CallForHelp& e) {
+      std::cout << app_.help() << std::endl;
       return 0;
+    } catch (const CLI::ParseError &e) {
+      return app_.exit(e);
     }
-  } catch (const CLI::CallForHelp& e) {
-    std::cout << app_.help() << std::endl;
-    return 0;
-  } catch (const CLI::ParseError &e) {
-    return app_.exit(e);
+
+    TaskManager taskManager;
+    std::cout << "DEBUG: TadahCLI::run() rank " << rank << std::endl;
+    std::cout << "DEBUG cliTasks_.size() = " << cliTasks_.size() << std::endl;
+    for (auto &cliTask : cliTasks_) {
+      auto tasks = TaskFactory().createTasksFromInput(cliTask);
+      taskManager.store(tasks);
+    }
+    std::cout << "DEBUG: taskManager.getTasks().size() = " << taskManager.getTasks().size() << std::endl;
+
+    std::vector<Task> tasks = taskManager.getTasks();
+    scheduler.addTasks(tasks);
   }
 
-  TaskManager taskManager;
-  for (auto &cliTask : cliTasks_) {
-    auto tasks = TaskFactory().createTasksFromInput(cliTask);
-    taskManager.store(tasks);
-  }
-
-  std::cout << "Stored tasks:\n";
-  for (Task &task : taskManager.getTasks()) {
-    task.print();
-    size_t verbose = task.getContext().get<size_t>("VERBOSE");
-    core::Logger::instance().setLogLevel(static_cast<core::LogLevel>(verbose));
-    auto engine = mlip::engines::EngineFactory::create(task.getTaskName());
-    engine->validate(task);
-    engine->run(task);
-  }
+  scheduler.distributeTasks();
+  scheduler.execute();
 
   return 0;
 }

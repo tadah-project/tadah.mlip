@@ -95,6 +95,14 @@ private:
   void createOptionsLabels();
 
   /**
+   * @brief Sets default values for CLI options.
+   *
+   * This method is called after all register commands and before parsing.
+   * It ensures that all options have default values set if not provided by the user.
+   */
+  void setDefaultsLabels();
+
+  /**
    * @brief Ensures a first-level command for the given name exists or creates it.
    *
    * @param cmdName The command name in lowercase (e.g. "data").
@@ -140,7 +148,7 @@ private:
 
   ///
   // std::vector<std::string> optionsStorage_; ///< Storage for options.
-  std::unordered_map<std::string, std::vector<std::string>> optionsStorage_; ///< Storage for options.
+  std::unordered_map<std::string,std::unordered_map<std::string, std::vector<std::string>>> optionsStorage_; ///< Storage for options.
 
   /**
    * @brief Processes all tasks in the blueprint and calls user-defined handlers for top-level options and group-level options.

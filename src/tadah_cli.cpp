@@ -44,13 +44,14 @@ TadahCLI::TadahCLI()
     registerRequired();
     registerNeeds();
     registerExclusions();
+    setDefaultsLabels();
     createOptionsLabels();
 
 
     const auto &blueprintTadah = core::BlueprintParser::getBlueprintTadahRef();
     app_.usage(blueprintTadah.logo);
     for (const auto &bpKey : blueprintTadah.blueprintKeys) {
-      auto &dest = optionsStorage_[bpKey.keyName];
+      auto &dest = optionsStorage_["tadah"][bpKey.keyName];
       std::string spec = bpKey.cli_long_flag;
       if (!bpKey.cli_short_flag.empty()) {
         spec = spec + "," + bpKey.cli_short_flag;
@@ -99,13 +100,10 @@ int TadahCLI::run(int argc, char** argv) {
     }
 
     TaskManager taskManager;
-    std::cout << "DEBUG: TadahCLI::run() rank " << rank << std::endl;
-    std::cout << "DEBUG cliTasks_.size() = " << cliTasks_.size() << std::endl;
     for (auto &cliTask : cliTasks_) {
       auto tasks = TaskFactory().createTasksFromInput(cliTask);
       taskManager.store(tasks);
     }
-    std::cout << "DEBUG: taskManager.getTasks().size() = " << taskManager.getTasks().size() << std::endl;
 
     std::vector<Task> tasks = taskManager.getTasks();
     scheduler.addTasks(tasks);
@@ -171,7 +169,7 @@ void TadahCLI::registerModules() {
 void TadahCLI::handleCmdCallback(const std::string &blueprintName) { 
   CLITask cliTask;
   cliTask.blueprintTaskName = blueprintName;
-  cliTask.storage = this->optionsStorage_;
+  cliTask.storage = this->optionsStorage_[blueprintName];
 
   // Check if the storage map is empty. If so, we do not store it.
   bool isEmpty = true;
@@ -189,7 +187,7 @@ void TadahCLI::handleCmdCallback(const std::string &blueprintName) {
 
   cliTasks_.push_back(cliTask);
   // Clear storage map for next command.
-  for (auto &kv : this->optionsStorage_) {
+  for (auto &kv : this->optionsStorage_[blueprintName]) {
     kv.second.clear();
   }
 }
@@ -226,7 +224,7 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
     std::vector<std::string> keyTokens;
     boost::split(keyTokens, bpKey.keyName, boost::is_any_of("."));
 
-    auto &dest = optionsStorage_[keyTokens.back()];
+    auto &dest = optionsStorage_[bpTask.taskName][keyTokens.back()];
     if (bpKey.value_N.size()==1 && bpKey.value_type[0] == "BOOL") {
       // For boolean options, use add_flag
       cmd->add_flag(spec, dest, bpKey.description);
@@ -264,7 +262,7 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
 
       std::vector<std::string> keyTokens;
       boost::split(keyTokens, bpKey.keyName, boost::is_any_of("."));
-      auto &dest = optionsStorage_[keyTokens.back()];
+      auto &dest = optionsStorage_[bpTask.taskName][keyTokens.back()];
 
       if (bpKey.value_N.size()==1 && bpKey.value_type[0] == "BOOL") {
         // For boolean options, use add_flag
@@ -368,11 +366,24 @@ void TadahCLI::createOptionsLabels() {
   auto topLevelAction = [this](CLI::App* , CLI::Option* opt,
       const tadah::core::BlueprintKey& bpKey) {
     // For options we create custom labels
-    // 1. Value format
-    std::string valueFormat = bpKey.value_format.size() ? bpKey.value_format[0] : "";
-    for (size_t i=1; i < bpKey.value_format.size(); ++i) {
-      valueFormat += "\n" + bpKey.value_format[i];
+    // 1.1 Value format
+    std::string valueFormat;
+    if (bpKey.value_type[0]=="BOOL") {
+      // None for boolean options
+      valueFormat = "";
+    } else {
+      valueFormat = bpKey.value_format.size() ? bpKey.value_format[0] : "";
+      for (size_t i=1; i < bpKey.value_format.size(); ++i) {
+        valueFormat += "\n" + bpKey.value_format[i];
+      }
     }
+
+    // 1.2 Add default_value
+    auto defaultValues = opt->get_default_str();
+    if (defaultValues.size() > 0) {
+      valueFormat += " [" + defaultValues+ "]";
+    }
+
 
     // 2. Needs
     std::string needsFormat;
@@ -401,6 +412,7 @@ void TadahCLI::createOptionsLabels() {
     if (excludesFormat.size() && excludesFormat[0] == '-')
       excludesFormat = " (Excludes: " + excludesFormat + ")";
 
+
     std::string currentDescription = opt->get_description();
     currentDescription += needsFormat + excludesFormat;
     opt->description(currentDescription);
@@ -412,6 +424,28 @@ void TadahCLI::createOptionsLabels() {
     topLevelAction(cmd, grpOpt, bpKey);
   };
 
+  processBlueprintTasks(topLevelAction, groupAction);
+}
+
+void TadahCLI::setDefaultsLabels() {
+  auto topLevelAction = [](CLI::App* , CLI::Option* opt,
+      const tadah::core::BlueprintKey& bpKey) {
+    if (bpKey.default_value.size()) {
+      std::string defaultValue = bpKey.default_value[0];
+      for (size_t i=1; i < bpKey.default_value.size(); ++i) {
+        defaultValue += " " + bpKey.default_value[i];
+      }
+      // do not run callback for default values
+      // otherwise they tak precedence over user input in the config file
+      opt->run_callback_for_default(false);
+      opt->default_val(defaultValue);
+    }
+  };
+
+  auto groupAction = [topLevelAction](CLI::App* cmd, CLI::App* , CLI::Option* grpOpt,
+      const tadah::core::BlueprintKey& bpKey) {
+    topLevelAction(cmd, grpOpt, bpKey);
+  };
   processBlueprintTasks(topLevelAction, groupAction);
 }
 

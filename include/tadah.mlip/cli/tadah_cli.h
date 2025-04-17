@@ -172,4 +172,3 @@ private:
 } // namespace tadah
 
 #endif // TADAH_MLIP_CLI_TADAH_CLI_H
-

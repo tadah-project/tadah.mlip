@@ -230,7 +230,10 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
       cmd->add_flag(spec, dest, bpKey.description);
     } else {
       // For options, use add_option
-      cmd->add_option(spec, dest, bpKey.description);
+      auto *opt = cmd->add_option(spec, dest, bpKey.description);
+      if (!bpKey.value_N.empty()) {
+        opt->expected(1, std::abs(bpKey.value_N[0]));
+      }
     }
   }
 
@@ -269,7 +272,10 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
         grp->add_flag(spec, dest, bpKey.description);
       } else {
         // For options, use add_option
-        grp->add_option(spec, dest, bpKey.description);
+        auto *opt = grp->add_option(spec, dest, bpKey.description);
+        if (!bpKey.value_N.empty()) {
+          opt->expected(1, std::abs(bpKey.value_N[0]));
+        }
       }
     } // end for each key in group
   } // end for each group
@@ -366,7 +372,7 @@ void TadahCLI::createOptionsLabels() {
   auto topLevelAction = [this](CLI::App* , CLI::Option* opt,
       const tadah::core::BlueprintKey& bpKey) {
     // For options we create custom labels
-    // 1.1 Value format
+    // 1.2 Value format - format
     std::string valueFormat;
     if (bpKey.value_type[0]=="BOOL") {
       // None for boolean options
@@ -378,12 +384,19 @@ void TadahCLI::createOptionsLabels() {
       }
     }
 
-    // 1.2 Add default_value
-    auto defaultValues = opt->get_default_str();
-    if (defaultValues.size() > 0) {
-      valueFormat += " [" + defaultValues+ "]";
+    // 1.2 Value format - min/max
+    if (bpKey.value_type[0]!="BOOL") {
+      if (bpKey.value_N.size() == 1) {
+        int maxint= std::abs(bpKey.value_N[0]);
+        std::string maxValue = maxint == 2147483647 ? "MAX_INT" : core::to_string(maxint);
+        valueFormat += " (Min: 1, Max: " + maxValue + ")";
+      } else if (bpKey.value_N.size() == 2) {
+        std::string minValue = core::to_string(std::abs(bpKey.value_N[0]));
+        int maxint= std::abs(bpKey.value_N[1]);
+        std::string maxValue = maxint == 2147483647 ? "MAX_INT" : core::to_string(maxint);
+        valueFormat += " (Min: " + minValue + ", Max: " + maxValue + ")";
+      }
     }
-
 
     // 2. Needs
     std::string needsFormat;
@@ -412,9 +425,20 @@ void TadahCLI::createOptionsLabels() {
     if (excludesFormat.size() && excludesFormat[0] == '-')
       excludesFormat = " (Excludes: " + excludesFormat + ")";
 
+    // 4. Add default_value
+    auto defaultValues = opt->get_default_str();
+    if (defaultValues.size() > 0) {
+      defaultValues = " (Default: " + defaultValues+ ")";
+    }
+
+    // 5. If long_description is not empty, prompt user to read it
+    std::string longDescFormat;
+    if (!bpKey.longDescription.empty()) {
+      longDescFormat = " (Run `tadah explain " + core::to_lower(bpKey.keyName) + "` for more info)";
+    }
 
     std::string currentDescription = opt->get_description();
-    currentDescription += needsFormat + excludesFormat;
+    currentDescription += needsFormat + excludesFormat + defaultValues + longDescFormat;
     opt->description(currentDescription);
     opt->option_text(valueFormat);
   };

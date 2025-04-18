@@ -94,8 +94,8 @@ TEST_CASE( "Testing M_BLR", "[m_blr]" ) {
   PeriodicTable::initialize();
 
   Config config;
-  config.add("ATOMS", "H");
-  config.add("WATOMS", 1);
+  config.add("ATOM", "H");
+  config.add("WATOM", 1);
   // Config contains defaults only, we run prediction
   // should throw runtime b/c key is not found
   //using M2=M_BLR<BF>;
@@ -116,8 +116,8 @@ TEST_CASE( "Testing M_KRR", "[m_krr]" ) {
   PeriodicTable::initialize();
 
   Config config;
-  config.add("ATOMS", "H");
-  config.add("WATOMS", 1);
+  config.add("ATOM", "H");
+  config.add("WATOM", 1);
   // Config contains defaults only, we want to run prediction
   // should throw runtime b/c e.g. WEIGHTS key is not found
   //using M2=M_KRR<K>;

@@ -7,6 +7,7 @@
 #include <tadah/mlip/engines/train_engine.h>
 #include <tadah/mlip/engines/engine_factory.h>
 #include <tadah/mlip/engines/all_engines.h>
+#include <tadah/hpo/engines/all_engines.h>
 
 #include <tadah/core/periodic_table.h>
 
@@ -77,7 +78,8 @@ TadahCLI::TadahCLI()
     app_.callback(std::bind(&TadahCLI::handleCmdCallback, this, "tadah"));
   }
 
-  mlip::engines::registerAllEngines();
+  mlip::engines::registerAllMLIPEngines();
+  hpo::engines::registerAllHPOEngines();
 
   core::PeriodicTable::initialize();
 }

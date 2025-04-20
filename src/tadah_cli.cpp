@@ -50,7 +50,8 @@ TadahCLI::TadahCLI()
 
 
     const auto &blueprintTadah = core::BlueprintParser::getBlueprintTadahRef();
-    app_.usage(blueprintTadah.logo);
+    app_.allow_extras(false);
+    app_.validate_positionals(true);
     for (const auto &bpKey : blueprintTadah.blueprintKeys) {
       auto &dest = optionsStorage_["tadah"][bpKey.keyName];
       std::string spec = bpKey.cli_long_flag;
@@ -79,7 +80,9 @@ TadahCLI::TadahCLI()
   }
 
   mlip::engines::registerAllMLIPEngines();
+#ifdef TADAH_ENABLE_HPO
   hpo::engines::registerAllHPOEngines();
+#endif
 
   core::PeriodicTable::initialize();
 }
@@ -95,6 +98,11 @@ int TadahCLI::run(int argc, char** argv) {
         return 0;
       }
     } catch (const CLI::CallForHelp& e) {
+      if(!app_.remaining(false).empty()) {
+        // Throw an ExtrasError containing all leftover positional arguments
+        throw CLI::ExtrasError(app_.remaining(false));
+      }
+      // Otherwise, show the default CLI11 help output
       std::cout << app_.help() << std::endl;
       return 0;
     } catch (const CLI::ParseError &e) {
@@ -374,7 +382,7 @@ void TadahCLI::createOptionsLabels() {
   auto topLevelAction = [this](CLI::App* , CLI::Option* opt,
       const tadah::core::BlueprintKey& bpKey) {
     // For options we create custom labels
-    // 1.2 Value format - format
+    // 1.1 Value format - format
     std::string valueFormat;
     if (bpKey.value_type[0]=="BOOL") {
       // None for boolean options
@@ -386,7 +394,11 @@ void TadahCLI::createOptionsLabels() {
       }
     }
 
-    // 1.2 Value format - min/max
+    // 1.2 Value format - required
+    bool required= bpKey.cli_required;
+    valueFormat += required ? " (Required)" : "";
+ 
+    // 1.3 Value format - min/max
     if (bpKey.value_type[0]!="BOOL") {
       if (bpKey.value_N.size() == 1) {
         int maxint= std::abs(bpKey.value_N[0]);

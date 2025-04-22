@@ -39,7 +39,6 @@ TadahCLI::TadahCLI()
     myFormatter->footer_paragraph_width(footer_paragraph_width); // description width of footer, used for examples
     app_.formatter(myFormatter);
 
-
     app_.require_subcommand(0,0); // 0 or more subcommands are required, no max limit
     registerModules();
     registerRequired();
@@ -52,16 +51,17 @@ TadahCLI::TadahCLI()
     const auto &blueprintTadah = core::BlueprintParser::getBlueprintTadahRef();
     app_.allow_extras(false);
     app_.validate_positionals(true);
+    app_.usage(blueprintTadah.logo);
     for (const auto &bpKey : blueprintTadah.blueprintKeys) {
       auto &dest = optionsStorage_["tadah"][bpKey.keyName];
       std::string spec = bpKey.cli_long_flag;
       if (!bpKey.cli_short_flag.empty()) {
         spec = spec + "," + bpKey.cli_short_flag;
       }
-      auto *opt = app_.add_option(spec, dest, bpKey.description);
+      auto *opt = app_.add_option(spec, dest, "");
       std::string valueFormat = bpKey.value_format.size() ? bpKey.value_format[0] : "";
       for (size_t i=1; i < bpKey.value_format.size(); ++i) {
-        valueFormat += "\n" + bpKey.value_format[i];
+        valueFormat += " | " + bpKey.value_format[i];
       }
       opt->option_text(valueFormat);
     }
@@ -240,7 +240,7 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
       cmd->add_flag(spec, dest, bpKey.description);
     } else {
       // For options, use add_option
-      auto *opt = cmd->add_option(spec, dest, bpKey.description);
+      auto *opt = cmd->add_option(spec, dest, "");
       if (!bpKey.value_N.empty()) {
         opt->expected(1, std::abs(bpKey.value_N[0]));
       }
@@ -279,10 +279,10 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
 
       if (bpKey.value_N.size()==1 && bpKey.value_type[0] == "BOOL") {
         // For boolean options, use add_flag
-        grp->add_flag(spec, dest, bpKey.description);
+        grp->add_flag(spec, dest, "");
       } else {
         // For options, use add_option
-        auto *opt = grp->add_option(spec, dest, bpKey.description);
+        auto *opt = grp->add_option(spec, dest, "");
         if (!bpKey.value_N.empty()) {
           opt->expected(1, std::abs(bpKey.value_N[0]));
         }
@@ -381,16 +381,14 @@ void TadahCLI::registerRequired() {
 void TadahCLI::createOptionsLabels() {
   auto topLevelAction = [this](CLI::App* , CLI::Option* opt,
       const tadah::core::BlueprintKey& bpKey) {
+    bool isBool= bpKey.value_type[0]=="BOOL";
     // For options we create custom labels
     // 1.1 Value format - format
-    std::string valueFormat;
-    if (bpKey.value_type[0]=="BOOL") {
-      // None for boolean options
-      valueFormat = "";
-    } else {
-      valueFormat = bpKey.value_format.size() ? bpKey.value_format[0] : "";
+    std::string valueFormat="\u00A0"; // pretend string is never empty
+    if (!isBool) {
+      valueFormat += bpKey.value_format.size() ? bpKey.value_format[0] : "";
       for (size_t i=1; i < bpKey.value_format.size(); ++i) {
-        valueFormat += "\n" + bpKey.value_format[i];
+        valueFormat += " or " + bpKey.value_format[i];
       }
     }
 
@@ -399,7 +397,7 @@ void TadahCLI::createOptionsLabels() {
     valueFormat += required ? " (Required)" : "";
  
     // 1.3 Value format - min/max
-    if (bpKey.value_type[0]!="BOOL") {
+    if (!isBool) {
       if (bpKey.value_N.size() == 1) {
         int maxint= std::abs(bpKey.value_N[0]);
         std::string maxValue = maxint == 2147483647 ? "MAX_INT" : core::to_string(maxint);
@@ -427,7 +425,7 @@ void TadahCLI::createOptionsLabels() {
 
 
     // 3. Excludes
-    std::string excludesFormat;
+    std::string excludesFormat= "";
     auto excludes = opt->get_excludes();
     if (excludes.size() > 0) {
       for (auto &excl: excludes) {
@@ -451,7 +449,8 @@ void TadahCLI::createOptionsLabels() {
       longDescFormat = " (Run `tadah explain " + core::to_lower(bpKey.keyName) + "` for more info)";
     }
 
-    std::string currentDescription = opt->get_description();
+    std::string currentDescription = isBool ? "\u00A0"+bpKey.description : bpKey.description;
+    // std::string currentDescription = opt->get_description();
     currentDescription += needsFormat + excludesFormat + defaultValues + longDescFormat;
     opt->description(currentDescription);
     opt->option_text(valueFormat);

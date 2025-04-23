@@ -124,6 +124,7 @@ private:
 
   // task name train or data.split as in blueprint
 void handleCmdCallback(const std::string &blueprintTaskName);
+std::string handleFooterCallback(const core::BlueprintTask &bpTask);
 
 private:
   int rank=0;

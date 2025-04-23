@@ -66,17 +66,9 @@ TadahCLI::TadahCLI()
       opt->option_text(valueFormat);
     }
 
-    if (!blueprintTadah.examples.empty()) {
-      std::string exampleText = "EXAMPLES:\n";
-      for (const auto &ex : blueprintTadah.examples) {
-        // Enforce indentation
-        exampleText += "\u00A0\u00A0" + ex + "\n";
-      }
-      app_.footer(exampleText);
-    }
-
     app_.immediate_callback(true);
     app_.callback(std::bind(&TadahCLI::handleCmdCallback, this, "tadah"));
+    app_.footer(std::bind(&TadahCLI::handleFooterCallback, this, blueprintTadah));
   }
 
   mlip::engines::registerAllMLIPEngines();
@@ -144,15 +136,9 @@ void TadahCLI::registerModules() {
       std::string ldesc = core::wrapText(bpTask.longDescription, description_paragraph_width,true, "");
       ldesc.pop_back(); // remove last \n
       parent->usage(ldesc);
-      if (!bpTask.examples.empty()) {
-        std::string exampleText = "EXAMPLES:\n";
-        for (const auto &ex : bpTask.examples) {
-          exampleText += "\u00A0\u00A0" + ex + "\n";
-        }
-        parent->footer(exampleText);
-      }
       parent->immediate_callback(true);
       parent->callback(std::bind(&TadahCLI::handleCmdCallback, this, blueprintName));
+      parent->footer(std::bind(&TadahCLI::handleFooterCallback, this, bpTask));
 
     }
     // If two tokens => first-level + subcommand
@@ -163,17 +149,23 @@ void TadahCLI::registerModules() {
       std::string ldesc = core::wrapText(bpTask.longDescription, description_paragraph_width,true, "");
       ldesc.pop_back(); // remove last \n
       child->usage(ldesc);
-      if (!bpTask.examples.empty()) {
-        std::string exampleText = "EXAMPLES:\n";
-        for (const auto &ex : bpTask.examples) {
-          exampleText += "\u00A0\u00A0" + ex + "\n";
-        }
-        child->footer(exampleText);
-      }
       child->immediate_callback(true);
       child->callback(std::bind(&TadahCLI::handleCmdCallback, this, blueprintName));
+      child->footer(std::bind(&TadahCLI::handleFooterCallback, this, bpTask));
     }
   }
+}
+
+std::string TadahCLI::handleFooterCallback(const core::BlueprintTask &bpTask) {
+  std::string footerText = "";
+  if (!bpTask.examples.empty()) {
+    std::string exampleText = "EXAMPLES:\n";
+    for (const auto &ex : bpTask.examples) {
+      exampleText += "\u00A0\u00A0" + ex + "\n";
+    }
+    footerText += exampleText;
+  }
+  return footerText;
 }
 
 void TadahCLI::handleCmdCallback(const std::string &blueprintName) { 

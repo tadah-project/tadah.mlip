@@ -25,7 +25,7 @@ using namespace tadah::mlip;
  *  $ ./ex2.out
  * \endcode
  *
- * Ta-dah! models and descriptors are selected at compile time but all model
+ * Tadah! models and descriptors are selected at compile time but all model
  * parameters are provided in the `pot.tadah` file. Model, cutoff and descriptors
  * in the `ex2.cpp` file must match those in the `pot.tadah` file.
  * See code comment bellow for more detail.

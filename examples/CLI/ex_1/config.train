@@ -11,9 +11,9 @@ RCTYPE2B Cut_Cos          # Cutoff function for two-body descriptor
 
 RCUT2B 5.3                # Cutoff distance
 
-SGRID2B -2 4 0.1 1.0      # Automatic generation blips for SGRID
-CGRID2B -1 4 1.0 5.3      # Automatic generation blips for CGRID
+SGRID2B GEOM 4 0.1 1.0    # Automatic generation blips for SGRID
+CGRID2B LIN 4 1.0 5.3     # Automatic generation blips for CGRID
 
-LAMBDA 0                  # Control optimization algorithm
+LAMBDA 1e-7               # Control regularization parameter
+OALGO  3                  # Select optimization algorithm
 BIAS true                 # Append constant to descriptor
-

@@ -438,7 +438,24 @@ void TadahCLI::createOptionsLabels() {
     // 5. If long_description is not empty, prompt user to read it
     std::string longDescFormat;
     if (!bpKey.longDescription.empty()) {
-      longDescFormat = " (Run `tadah explain " + core::to_lower(bpKey.keyName) + "` for more info)";
+      // strip "input." and "group." if present from the key name
+      std::string keyName = core::to_lower(bpKey.keyName);
+      {
+        std::string toRemove = "input.";
+        auto pos = keyName.find(toRemove);
+        if (pos != std::string::npos) {
+          keyName.erase(pos, toRemove.size());
+        }
+      }
+      {
+        std::string toRemove = "group.";
+        auto pos = keyName.find(toRemove);
+        if (pos != std::string::npos) {
+          keyName.erase(pos, toRemove.size());
+        }
+      }
+      // Strip "input." or "group." if found at position 0
+      longDescFormat = " (Run `tadah explain " + keyName + "` for more info)";
     }
 
     std::string currentDescription = isBool ? "\u00A0"+bpKey.description : bpKey.description;

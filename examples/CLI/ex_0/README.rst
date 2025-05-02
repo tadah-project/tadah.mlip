@@ -57,7 +57,7 @@ Tadah! offers an ``explain`` subcommand to help you understand the purpose of ea
 
 - The argument represents a query about either a particular (sub)command or an option.
 - It prints an extended description, including usage, purpose, and any additional helpful information.
-- To specify which subcommand or option to explain usie a *dot-separated* format. Each dot (``.``) separates the main command, subcommand(s), and the specific option of interest.
+- To specify which subcommand or option to explain use a *dot-separated* format. Each dot separates the subcommand(s), and the specific option of interest.
 
 For example, to learn about the ``train`` command’s ``--task`` option:
 

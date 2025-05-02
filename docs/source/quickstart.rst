@@ -38,9 +38,9 @@ To train a model, run the following command in a terminal:
 
 .. code-block:: bash
 
-    tadah train -c config.train -V
+    tadah train -c config.train -v 2
 
-- ``-V``: Enables verbosity, resulting in detailed output being printed to the screen during the training process.
+- ``-v 2``: Enables verbosity INFO level, resulting in detailed output being printed to the screen during the training process.
 
 This will train a model using energies only. To also train on forces, add the ``-F`` flag; for stresses, add the ``-S`` flag, or include ``FORCE true`` and ``STRESS true`` keys in the config file.
 
@@ -63,28 +63,16 @@ An example dataset can be downloaded from :download:`here <quickstart/db.train>`
 Prediction
 ----------
 
-To predict energies using an existing ``pot.tadah`` model, run:
+To predict energies on :download:`prediction dataset <quickstart/db.predict>` using an existing ``pot.tadah`` model, run:
 
 .. code-block:: bash
 
-    tadah predict -p pot.tadah -d db.predict -V -a
+    tadah predict -p pot.tadah -d db.predict -v 2 -A
 
-- ``-V``: Enables verbosity, resulting in detailed output being printed to the screen.
-- ``-a``: Provides some basic analysis of the prediction, such as the RMSE (Root Mean Square Error) between true and predicted values.
+- ``-v 2``: Enables verbosity INFO level, resulting in detailed output being printed to the screen.
+- ``-A``: Provides some basic analysis of the prediction, such as the RMSE (Root Mean Square Error) between true and predicted values.
 
 To also predict forces, add the ``-F`` flag; for stresses, add the ``-S`` flag.
-
-Alternatively, a :download:`config file <quickstart/config.predict>` can be used to specify :download:`prediction datasets <quickstart/db.predict>` (:ref:`DBFILE`) and whether forces and stresses are meant to be calculated (:ref:`FORCE` and :ref:`STRESS` keys).
-
-``config.pred`` example:
-
-.. literalinclude:: quickstart/config.predict
-
-To predict using the ``pot.tadah`` model and ``config.predict``:
-
-.. code-block:: bash
-
-    tadah predict -p pot.tadah -c config.predict
 
 The output of the ``predict`` subcommand includes three files:
 

@@ -58,6 +58,8 @@ option(TADAH_BUILD_MPI "Build MPI version of ${TADAH}" OFF)
 option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
 option(TADAH_ENABLE_FAST_MATH "Enable fast math optimizations" OFF)
 option(TADAH_BUILD_TESTS "Build with tests" OFF)
+option(TADAH_BUILD_DOCS_ONLY "Skip checks for required libraries; only build docs" OFF)
+
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
@@ -227,8 +229,10 @@ tadah_message(STATUS "Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
 
 #########################################################################
 
+if (NOT TADAH_BUILD_DOCS_ONLY)
 find_package(LAPACK)
 target_link_libraries (tadah PUBLIC ${LAPACK_LIBRARIES})
+endif()
 
 install(TARGETS tadah
         RUNTIME DESTINATION bin

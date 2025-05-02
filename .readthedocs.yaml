@@ -25,7 +25,7 @@ build:
       - mkdir CMAKE
       - ./cmake-3.22.0-linux-x86_64.sh --skip-license --prefix=CMAKE
     post_install:
-      - mkdir -p build && cd build && ../CMAKE/bin/cmake .. && make docs
+      - mkdir -p build && cd build && ../CMAKE/bin/cmake .. -DTADAH_BUILD_DOCS_ONLY=ON  && make docs
       - ls -l
 
 # Build documentation in the docs/ directory with Sphinx

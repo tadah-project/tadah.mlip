@@ -10,42 +10,42 @@ Below is a list of all two-body descriptors supported by Tadah:
 D2_LJ
 .....
 
-.. doxygenclass:: D2_LJ
+.. doxygenclass:: tadah::models::D2_LJ
 
 D2_BP
 .....
 
-.. doxygenclass:: D2_BP
+.. doxygenclass:: tadah::models::D2_BP
 
 D2_Blip
 .......
 
-.. doxygenclass:: D2_Blip
+.. doxygenclass:: tadah::models::D2_Blip
 
 D2_EAM
 ......
 
-.. doxygenclass:: D2_EAM
+.. doxygenclass:: tadah::models::D2_EAM
 
 D2_MIE
 ......
 
-.. doxygenclass:: D2_MIE
+.. doxygenclass:: tadah::models::D2_MIE
 
 D2_ZBL
 ........
 
-.. doxygenclass:: D2_ZBL
+.. doxygenclass:: tadah::models::D2_ZBL
 
 D2_Dummy
 ........
 
-.. doxygenclass:: D2_Dummy
+.. doxygenclass:: tadah::models::D2_Dummy
 
 D2_mJoin
 ........
 
-.. doxygenclass:: D2_mJoin
+.. doxygenclass:: tadah::models::D2_mJoin
 
 
 Many-Body
@@ -55,34 +55,34 @@ This section lists all many-body type descriptors supported by Tadah! Some can c
 DM_Blip
 .......
 
-.. doxygenclass:: DM_Blip
+.. doxygenclass:: tadah::models::DM_Blip
 
 DM_EAD
 ......
 
-.. doxygenclass:: DM_EAD
+.. doxygenclass:: tadah::models::DM_EAD
 
 DM_EAM
 ......
 
-.. doxygenclass:: DM_EAM
+.. doxygenclass:: tadah::models::DM_EAM
 
 DM_mEAD
 .......
 
-.. doxygenclass:: DM_mEAD
+.. doxygenclass:: tadah::models::DM_mEAD
 
 DM_mEAD functions
 ~~~~~~~~~~~~~~~~~
 
-.. doxygenclass:: F_RLR
+.. doxygenclass:: tadah::models::F_RLR
 
 DM_Dummy
 ........
 
-.. doxygenclass:: DM_Dummy
+.. doxygenclass:: tadah::models::DM_Dummy
 
 DM_mJoin
 ........
 
-.. doxygenclass:: DM_mJoin
+.. doxygenclass:: tadah::models::DM_mJoin

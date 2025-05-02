@@ -3,5 +3,5 @@
 Atom
 ====
 
-.. doxygenstruct:: Atom
+.. doxygenstruct:: tadah::mlip::Atom
     :members:

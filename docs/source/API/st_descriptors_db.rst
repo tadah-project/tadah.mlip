@@ -1,5 +1,5 @@
 StDescriptorsDB
 ===============
 
-.. doxygenstruct:: StDescriptorsDB
+.. doxygenstruct:: tadah::mlip::StDescriptorsDB
     :members:

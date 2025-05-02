@@ -1,21 +1,17 @@
-BIAS     true
+BIAS     false
 DIMER     false     0     false
-EWEIGHT     1
-FWEIGHT     1
+EWEIGHT     1.0
+FWEIGHT     1.0
 INIT2B     true
-INIT3B     false
 INITMB     false
 LAMBDA     0
-MBLOCK     64
-MODEL     M_KRR     Kern_Linear
-MPIWPCKG     50
-NBLOCK     64
+MODEL     M_KRR     Kern_Linear     1
 NORM     false
-OUTPREC     10
+OALGO     1
 RCTYPE2B     Cut_Dummy
 RCUT2B     5.3
-SWEIGHT     1
-TYPE2B     D2_LJ
-VERBOSE     0
-WEIGHTS     -11.31560878     -2.822924848     -31.4886432
+SWEIGHT     1.0
+TYPE2B     D2_LJ     Ti     Ti
+UNCERTAINTY     false
+WEIGHTS     1150.553313147994458632     229149.840144735615467653
 

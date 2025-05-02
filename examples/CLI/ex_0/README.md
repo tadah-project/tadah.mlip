@@ -1,58 +1,86 @@
-# Example 0 - Basics
+==========================
+Example 0 - Tadah! Basics
+==========================
 
-`tadah` is a command-line tool designed to simplify the process of training and evaluating machine learning models. It provides a user-friendly interface for managing configurations, datasets, and training processes. It is the main entry point to other subcommands, which are used to perform specific tasks related to machine learning workflows.
+``tadah`` is a command-line tool designed to simplify training and evaluation of machine learning models. It provides a user-friendly interface for managing configurations, datasets, and training processes. ``tadah`` is the main entry point for subcommands that perform specific tasks within your machine learning workflow.
 
-In this example, we demonstrate how to access help information using `tadah` binary and how to use the `explain` subcommand to understand the purpose of different subcommands and their options.
+In this example, we demonstrate how to:
+  
+- Access help information using the ``tadah`` binary.
+- Use the ``explain`` subcommand to understand the purpose of different subcommands and their options.
 
-Ensure Tadah! is installed and accessible through your `$PATH`. If not, use the full path to the Tadah! binary in your commands.
+Before getting started, ensure that **Tadah!** is installed and accessible through your ``$PATH``. If it is not, either add it to your ``$PATH`` or use the full path to the Tadah! binary in your commands.
+
+.. note::
+
+   If you need installation instructions or system prerequisites, refer to :ref:`installation`.
+
+Accessing Tadah! Help
+---------------------
+
+The ``tadah`` binary provides a help command to display information about available subcommands and their options. This is especially useful for first-time users or those needing a refresher on Tadah!’s capabilities.
+
+.. code-block:: bash
+
+   tadah --help
+
+or:
+
+.. code-block:: bash
+
+   tadah -h
+
+These commands will print a list of subcommands and their short descriptions.
+
+Subcommand Hierarchy
+--------------------
+
+Tadah! supports multiple levels of subcommands for better organization and clarity:
+
+- **Top-level subcommands**: These include commands like ``train`` or ``data``.
+- **Second-level subcommands**: Certain commands (like ``data``) have subcommands of their own (e.g., ``split``, ``balance``).
+
+For instance, ``tadah data split`` is an example of a second-level subcommand where ``data`` is the top-level subcommand and ``split`` is a subset of data-related operations.
+
+Subcommand Help
+---------------
+
+For help with a specific subcommand, such as ``train``:
+
+.. code-block:: bash
+
+   tadah train --help
 
 
-## Accessing Tadah! Help
+Tadah! explain command
+----------------------
 
-`tadah` binary provides a help command to display information about the available subcommands and their options. This is useful for users who are new to the tool or need a refresher on its capabilities.
+Tadah! offers an ``explain`` subcommand to help you understand the purpose of each subcommand and its options. The ``explain`` subcommand takes a single argument:
 
-To display a list of subcommands and their short descriptions, use:
+- The argument represents a query about either a particular (sub)command or an option.
+- It prints an extended description, including usage, purpose, and any additional helpful information.
 
-```bash
-tadah --help
-```
+For example, to learn about the ``train`` command’s ``--task`` option:
 
-or
+.. code-block:: bash
 
-```bash
-tadah -h
-```
+   tadah explain train.task
 
-## Subcommand Help
+For a second-level subcommand, such as ``tadah data split``:
 
-For help with specific subcommands, such as `train`, use:
+.. code-block:: bash
 
-```bash
-tadah train --help
-```
+   tadah explain data.split
 
-## Tadah! explain command
+And to learn more about the ``--dbfile`` option of ``tadah data split``:
 
-Tadah! provides simple `explain` subcommand to help you understand the purpose of each tool and its options. The `explain` subcommand takes single argument. The argument represents query about either particular (sub)command or its option. It will print an extended description for the command or option, including its purpose, usage, and any additional information that may be helpful.
+.. code-block:: bash
 
-For example, to learn about the `train` `--task` option, use:
+   tadah explain data.split.dbfile
 
-```bash
-tadah explain train.task
-```
+Runtime Errors
+--------------
 
-or for a second level subcommand, such as `tadah data split`, use:
+Tadah! provides helpful runtime errors, such as when a configuration file is missing a necessary key. While we strive for reliability, no code is entirely bug-free. If you encounter any issues, please report them on **Tadah!’s GitLab**:
 
-```bash
-tadah explain data.balance
-```
-
-and for say for `--dbfile` option of `tadah data split`, use:
-
-```bash
-tadah explain data.split.dbfile
-```
-
-## Runtime Errors
-
-Tadah! provides useful runtime errors, such as when a configuration file is missing a necessary key. While we strive for reliability, no code is entirely bug-free. If you encounter issues, please report them on Tadah!'s GitLab repository.
+- `Tadah! GitLab Issues <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_

@@ -1,7 +1,7 @@
-.. _CONFIG:
+.. _CONTEXT:
 
-Config
-======
+Context
+=======
 
-.. doxygenclass:: Config
+.. doxygenclass:: tadah::core::Context
     :members:

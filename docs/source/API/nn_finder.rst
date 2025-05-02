@@ -1,5 +1,5 @@
 NNFiner
 =======
 
-.. doxygenclass:: NNFinder
+.. doxygenclass:: tadah::mlip::NNFinder
     :members:

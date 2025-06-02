@@ -68,8 +68,8 @@ int main() {
   // The lists are calculated up to the max cutoff from the config file:
   // cutoff_max = max(RCUT2B, RCUTMB).
   std::cout << "Calculating nearest neighbours..." << std::flush;
-  NNFinder nnf(context);
-  nnf.calc(stdb);
+  NNFinder nnf;
+  nnf.calc(stdb,context);
   std::cout << "Done!" << std::endl;
 
   // STEP 1a: Select descriptors.

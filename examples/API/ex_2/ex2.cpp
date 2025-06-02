@@ -95,8 +95,8 @@ int main() {
 
     // Calculate nearest neighbours
     std::cout << "Calculating nearest neighbours..." << std::flush;
-    NNFinder nnf2(param_file);
-    nnf2.calc(stdb);
+    NNFinder nnf;
+    nnf.calc(stdb,param_file);
     std::cout << "Done!" << std::endl;
 
     // Calculate descriptors and store them in StDescriptorsDB

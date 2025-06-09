@@ -118,8 +118,8 @@ set(CMAKE_CXX_FLAGS_PROFILE
   FORCE)
 
 set(CMAKE_CXX_FLAGS_DEVELOP
-  # "-g -O3 -Wall -Wpedantic -Wextra"
-  "-g -O2 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra"
+  "-g -O3 -Wall -Wpedantic -Wextra"
+  # "-g -O2 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra"
   CACHE STRING
   "Develop build."
   FORCE)

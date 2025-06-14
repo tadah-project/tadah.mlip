@@ -13,7 +13,7 @@ INITMB      true
 LAMBDA      1e-11
 MODEL     M_BLR     BF_Polynomial2
 NORM      false
-OUTPREC      15
+NUMERIC      15
 RCTYPE2B      Cut_Cos
 RCTYPEMB      Cut_Cos
 RCUT2B      12.0

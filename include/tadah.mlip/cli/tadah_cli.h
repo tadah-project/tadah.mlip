@@ -78,6 +78,7 @@ public:
    * @return An integer exit code. 0 indicates success.
    */
   int run(int argc, char** argv);
+  CLI::App app_; ///< The root CLI11 application.
 
 private:
   /**
@@ -128,7 +129,6 @@ std::string handleFooterCallback(const core::BlueprintTask &bpTask);
 
 private:
   int rank=0;
-  CLI::App app_; ///< The root CLI11 application.
 
   /**
    * @brief Maps subcommand pointers to their associated CLITask.

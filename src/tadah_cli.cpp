@@ -7,7 +7,10 @@
 #include <tadah/mlip/engines/train_engine.h>
 #include <tadah/mlip/engines/engine_factory.h>
 #include <tadah/mlip/engines/all_engines.h>
+
+#ifdef TADAH_ENABLE_HPO
 #include <tadah/hpo/engines/all_engines.h>
+#endif
 
 #include <tadah/core/periodic_table.h>
 

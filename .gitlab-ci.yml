@@ -27,10 +27,10 @@ build_release_shared:
   stage: build_release
   script:
     - cd ${RELEASE_SHARED_DIR}
-    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
-    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
-    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
-    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - export PATH=${INSTALL_PATH}/bin:$PATH
+    - export CPATH=${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=${INSTALL_PATH}/lib:$LIBRARY_PATH
     - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install
@@ -63,10 +63,10 @@ build_release_static:
   stage: build_release
   script:
     - cd ${RELEASE_STATIC_DIR}
-    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
-    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
-    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
-    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - export PATH=${INSTALL_PATH}/bin:$PATH
+    - export CPATH=${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=${INSTALL_PATH}/lib:$LIBRARY_PATH
     - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install

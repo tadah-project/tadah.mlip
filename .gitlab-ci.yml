@@ -34,6 +34,7 @@ build_release_shared:
     - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install
+# run basic cli commands    
     - ls -l ${INSTALL_PATH}/bin/tadah
     - ls -l ${INSTALL_PATH}/lib/libtadah*
     - echo $PATH
@@ -42,11 +43,7 @@ build_release_shared:
     - tadah -h
     - ldd ${INSTALL_PATH}/bin/tadah
 # run example 1
-#    - cd ${RELEASE_SHARED_DIR}
-#    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
-#    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
-#    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
-#    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - cd ${RELEASE_SHARED_DIR}
     - cp -r ../../examples/API/ex_1 .
     - cd ex_1
     - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
@@ -54,11 +51,7 @@ build_release_shared:
     - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
 # run example 2  
-#    - cd ${RELEASE_SHARED_DIR}
-#    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
-#    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
-#    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
-#    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - cd ${RELEASE_SHARED_DIR}
     - cp -r ../../examples/API/ex_2 .
     - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared   
@@ -77,6 +70,7 @@ build_release_static:
     - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install
+# run basic cli commands    
     - ls -l ${INSTALL_PATH}/bin/tadah
     - ls -l ${INSTALL_PATH}/lib/libtadah*
     - echo $PATH
@@ -85,11 +79,7 @@ build_release_static:
     - tadah -h
     - ldd ${INSTALL_PATH}/bin/tadah
 # run example 1
-#    - cd ${RELEASE_STATIC_DIR}
-#    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
-#    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
-#    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
-#    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH   
+    - cd ${RELEASE_STATIC_DIR} 
     - cp -r ../../examples/API/ex_1 .
     - echo $CPATH
     - pwd
@@ -100,11 +90,7 @@ build_release_static:
     - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
 # run example 2
-#    - cd ${RELEASE_STATIC_DIR}
-#    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
-#    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
-#    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
-#    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - cd ${RELEASE_STATIC_DIR}
     - cp -r ../../examples/API/ex_2 .
     - cd ex_2
     - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.static

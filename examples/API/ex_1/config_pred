@@ -1,3 +1,4 @@
 DBFILE tdata.db
 FORCE true
 Stress true
+NUMERIC 5

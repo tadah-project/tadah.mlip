@@ -3,7 +3,7 @@
 Contribute to Tadah!
 ====================
 
-We welcome contributions to Tadah!, an open-source project.
+Tadah! is open-source, and we invite everyone to contribute
 
 Getting Help
 ------------

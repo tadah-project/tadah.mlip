@@ -77,6 +77,8 @@ DM_mEAD functions
 
 .. doxygenclass:: tadah::models::F_RLR
 
+.. doxygenclass:: F_SQRT
+
 DM_Dummy
 ........
 

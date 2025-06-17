@@ -2,8 +2,10 @@
 file(GLOB tests_src "*.cpp")
 #file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tests_data DESTINATION .)
 
-add_executable(test_tadah ${tests_src} "../bin/tadah_cli.cpp")
+add_executable(test_tadah ${tests_src} "../src/cli_task.cpp" "../src/tadah_cli.cpp")
+target_include_directories(test_tadah PRIVATE ../include)
 target_link_libraries(test_tadah PRIVATE Catch2 tadah.mlip)
+target_link_libraries(test_tadah PRIVATE Catch2 tadah.core)
 target_include_directories(test_tadah PRIVATE ${Tadah.CORE_SOURCE_DIR}/include)
 target_include_directories(test_tadah PRIVATE ${Tadah.CORE_SOURCE_DIR}/external/toml11)
 target_include_directories(test_tadah PRIVATE ${Tadah.MODELS_SOURCE_DIR}/include)

@@ -2,12 +2,17 @@
 #include <tadah/models/descriptors/d_all.h>
 #include <tadah/mlip/models/m_all.h>
 #include <tadah/mlip/descriptors_calc.h>
-#include <tadah/core/config.h>
+#include <tadah/core/context.h>
+#include <tadah/core/core_user_config_parser.h>
 #include <tadah/mlip/structure.h>
 #include <tadah/mlip/nn_finder.h>
 #include <tadah/mlip/output/output.h>
 #include <tadah/mlip/design_matrix/functions/dm_f_all.h>
 #include <fstream>
+
+using namespace tadah::core;
+using namespace tadah::models;
+using namespace tadah::mlip;
 
 /**  @file ex2.cpp
  * This example shows how to predict with a trained model.
@@ -16,11 +21,11 @@
  * To compile with `g++` and run:
  *
  * \code{.sh}
- *  $ g++ -std=c++17 -O3 ex2.cpp -o ex2.out -ltadah -llapack -fopenmp
+ *  $ g++ -std=c++17 -O3 ex2.cpp -o ex2.out -ltadah.mlip -ltadah.models -ltadah.core -llapack -lblas -fopenmp
  *  $ ./ex2.out
  * \endcode
  *
- * Ta-dah! models and descriptors are selected at compile time but all model
+ * Tadah! models and descriptors are selected at compile time but all model
  * parameters are provided in the `pot.tadah` file. Model, cutoff and descriptors
  * in the `ex2.cpp` file must match those in the `pot.tadah` file.
  * See code comment bellow for more detail.
@@ -41,32 +46,27 @@
 int main() {
     
     // STEP 0: Load model saved in a `pot.tadah` as a Config object.
-    Config param_file("pot.tadah");
+    Context param_file = CoreUserConfigParser().parse("pot.tadah");
 
-    // STEP 1a: Select descriptors. All three types must be specified.
+    // STEP 1a: Select descriptors. Both types must be specified.
     // Use Dummy if given type is not required.
-    // Look for keywords `TYPE2B` `TYPE3B` and `TYPEMB` in a `pot.tadah`
+    // Look for keywords `TYPE2B` and `TYPEMB` in a `pot.tadah`
     // If keyword is not listed use `D2_Dummy` as a descriptor.
 
     // D2 - TWO-BODY
     // `pot.tadah`: TYPE2B      D2_Blip
     using D2=D2_Blip;
 
-    // D3 - THREE-BODY
-    // `pot.tadah` no keyword
-    using D3=D3_Dummy;
-
     // DM - MANY-BODY
     // `pot.tadah` no keyword
     using DM=DM_Dummy;
 
-    // STEP 2b: Select cutoffs for descriptors, C2 for D2, etc
-    // Look for keywords `RCTYPE2B` `RCTYPE3B` and `RCTYPEMB` in the `pot.tadah`
+    // STEP 2b: Select cutoffs for descriptors, C2 for D2, CM for DM
+    // Look for keywords `RCTYPE2B` and `RCTYPEMB` in the `pot.tadah`
     // If keyword is not listed use `Cut_Dummy`.
     // `pot.tadah`: RCTYPE2B      Cut_Cos
     using C2=Cut_Cos;
-    // `pot.tadah` no keywords for three-body and many-body
-    using C3=Cut_Dummy;
+    // `pot.tadah` no keywords for many-body
     using CM=Cut_Dummy;
 
     // STEP 2a: Select Basis Function (BF) or Kernels (K).
@@ -85,11 +85,8 @@ int main() {
     // We will reuse param_file Config file and add to it
     // DBFILE(s) from config_pred file.
     // config_pred contain 
-    // As we are reusing existing config we have
-    // to remove FORCE and STRESS keys first
-    param_file.remove("FORCE");
-    param_file.remove("STRESS");
-    param_file.add("config_pred");
+    Context temp = CoreUserConfigParser().parse("config_pred");
+    param_file = Context::merge(param_file,temp);
 
     // Load DBFILE from config_pred
     std::cout << "StructureDB loading data..." << std::flush;
@@ -98,13 +95,13 @@ int main() {
 
     // Calculate nearest neighbours
     std::cout << "Calculating nearest neighbours..." << std::flush;
-    NNFinder nnf2(param_file);
-    nnf2.calc(stdb);
+    NNFinder nnf;
+    nnf.calc(stdb,param_file);
     std::cout << "Done!" << std::endl;
 
     // Calculate descriptors and store them in StDescriptorsDB
     //std::cout << "Calculating descriptors..." << std::flush;
-    DescriptorsCalc<D2,D3,DM,C2,C3,CM> dc2(param_file);
+    DescriptorsCalc<D2,DM,C2,CM> dc2(param_file);
     //StDescriptorsDB st_desc_db = dc2.calc(stdb);
     //std::cout << "Done!" << std::endl;
 
@@ -122,15 +119,17 @@ int main() {
     //StructureDB stpred = model.predict(param_file,st_desc_db, stdb);
     //std::cout << "Done!" << std::endl;
 
-    bool err_bool=false;       // predict error, requires LAMBDA -1
     t_type predicted_error;    // container for prediction error
+    param_file.add("OUTFILE","energy.pred");
+    param_file.add("OUTFILE","forces.pred");
+    param_file.add("OUTFILE","stress.pred");
     std::cout << "Predicting..." << std::flush;
     StructureDB stpred = model.predict(param_file,stdb,dc2);
     //StructureDB stpred = model.predict(param_file,stdb,dc2,predicted_error);
     std::cout << "Done!" << std::endl;
 
     std::cout << "Dumping results to disk..." << std::flush;
-    Output output(param_file,err_bool);
+    Output output(param_file);
     output.print_predict_all(stdb,stpred,predicted_error);
     std::cout << "Done!" << std::endl;
 

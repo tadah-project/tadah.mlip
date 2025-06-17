@@ -4,7 +4,7 @@ Regressors
 M_KRR
 -----
 
-.. doxygenclass:: M_KRR
+.. doxygenclass:: tadah::mlip::M_KRR
 
 Kernels
 .......
@@ -12,37 +12,37 @@ Kernels
 Kern_Linear
 ~~~~~~~~~~~
 
-.. doxygenclass:: Kern_Linear
+.. doxygenclass:: tadah::models::Kern_Linear
 
 Kern_LQ
 ~~~~~~~
 
-.. doxygenclass:: Kern_LQ
+.. doxygenclass:: tadah::models::Kern_LQ
 
 Kern_Polynomial
 ~~~~~~~~~~~~~~~
 
-.. doxygenclass:: Kern_Polynomial
+.. doxygenclass:: tadah::models::Kern_Polynomial
 
 Kern_Quadratic
 ~~~~~~~~~~~~~~
 
-.. doxygenclass:: Kern_Quadratic
+.. doxygenclass:: tadah::models::Kern_Quadratic
 
 Kern_RBF
 ~~~~~~~~
 
-.. doxygenclass:: Kern_RBF
+.. doxygenclass:: tadah::models::Kern_RBF
 
 Kern_Sigmoid
 ~~~~~~~~~~~~
 
-.. doxygenclass:: Kern_Sigmoid
+.. doxygenclass:: tadah::models::Kern_Sigmoid
 
 M_BLR
 -----
 
-.. doxygenclass:: M_BLR
+.. doxygenclass:: tadah::mlip::M_BLR
 
 Basis Functions
 ...............
@@ -50,9 +50,9 @@ Basis Functions
 BF_Linear
 ~~~~~~~~~
 
-.. doxygenstruct:: BF_Linear
+.. doxygenstruct:: tadah::models::BF_Linear
 
 BF_Polynomial2
 ~~~~~~~~~~~~~~
 
-.. doxygenstruct:: BF_Polynomial2
+.. doxygenstruct:: tadah::models::BF_Polynomial2

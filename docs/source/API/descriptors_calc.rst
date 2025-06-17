@@ -1,5 +1,5 @@
 DescriptorsCalc
 ===============
 
-.. doxygenclass:: DescriptorsCalc
+.. doxygenclass:: tadah::mlip::DescriptorsCalc
     :members:

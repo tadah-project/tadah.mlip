@@ -27,9 +27,9 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
 
    intro.rst
    installation.rst
+   mlips.rst
    contribute.rst
    LICENSE.rst
-   mlips.rst
 
 ----
 
@@ -48,6 +48,13 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    hpo.rst
 
 ----
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API
+
+   API_quickstart.rst
+   API_examples.rst
 
 .. toctree::
    :maxdepth: 2

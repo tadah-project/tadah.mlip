@@ -1,15 +1,15 @@
 Models
 ======
 
-.. doxygenclass:: M_Core
+.. doxygenclass:: tadah::models::M_Core
     :members:
 
 M_BLR
 -----
-.. doxygenclass:: M_BLR
+.. doxygenclass:: tadah::mlip::M_BLR
     :members:
 
 M_KRR
 -----
-.. doxygenclass:: M_KRR
+.. doxygenclass:: tadah::mlip::M_KRR
     :members:

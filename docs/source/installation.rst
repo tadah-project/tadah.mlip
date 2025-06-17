@@ -113,7 +113,7 @@ This will configure the executable as ``tadah_mpi``, optimized for parallel exec
 Installing LAMMPS Interface
 ---------------------------
 
-The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! potentials. It is also required for building Tadah!MLIP with the Hyperparameter Optimiser (HPO) module. 
+The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! potentials. It is also required for building Tadah!MLIP with the Hyperparameter Optimizer (HPO) module. 
 The compilation of Tadah! plugin follows typical LAMMPS compilation steps.
 
 1. Clone the LAMMPS stable version from the GitHub repository:
@@ -142,7 +142,7 @@ The compilation of Tadah! plugin follows typical LAMMPS compilation steps.
 
 .. _installation_hpo:
 
-Building Tadah!MLIP with Hyperparameter Optimiser
+Building Tadah!MLIP with Hyperparameter Optimizer
 -------------------------------------------------
 
 .. warning::

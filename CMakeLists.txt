@@ -52,7 +52,7 @@ set_project_name()
 
 # Here are the options... set them with -D in the command line,
 # for example: cmake .. -DTADAH_BUILD_TESTS=ON
-option(TADAH_ENABLE_HPO "Enable Hyperparamter optimiser." OFF)
+option(TADAH_ENABLE_HPO "Enable Hyperparamter optimizer." OFF)
 option(TADAH_ENABLE_OPENMP "Enable shared-memory parallelisation via OpenMP" OFF)
 option(TADAH_BUILD_MPI "Build MPI version of ${TADAH}" OFF)
 option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
@@ -214,7 +214,7 @@ tadah_message(STATUS "Build MPI version of ${TADAH} is ${TADAH_BUILD_MPI}")
 #########################################################################
 
 #########################################################################     
-tadah_message(STATUS "Build with Hyperparameter optimiser is ${TADAH_ENABLE_HPO}")
+tadah_message(STATUS "Build with Hyperparameter optimizer is ${TADAH_ENABLE_HPO}")
 #########################################################################
 
 #########################################################################

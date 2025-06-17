@@ -1,5 +1,0 @@
-g++ ex_hpo_1.cpp -I /path/to/lammps/src \
-    -I /path/to/lammps/src/STUBS \
-    -ltadah.hpo -L /path/to/lammps/lib/tadah.lammps/build -ltadah.lammps \
-    -L /path/to/lammps/src -llammps_serial  \
-    -ltadah.mlip -ltadah.models -ltadah.core -llapack -lblas -ldlib 

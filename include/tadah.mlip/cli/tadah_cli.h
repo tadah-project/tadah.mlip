@@ -27,7 +27,7 @@
 #include <tadah/core/context.h>
 #include <tadah/core/blueprint_parser.h>
 #include <tadah/core/logger.h>
-#include <tadah/mlip/engine_factory.h>
+#include <tadah/mlip/engines/engine_factory.h>
 #include <tadah/mlip/task_manager.h>
 
 namespace tadah {

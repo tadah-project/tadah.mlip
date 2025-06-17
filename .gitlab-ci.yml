@@ -42,6 +42,7 @@ build_release_shared:
     - tadah -h
     - ldd ${INSTALL_PATH}/bin/tadah
   artifacts:
+    expire_in: 5 minutes
     paths:
       - ${RELEASE_SHARED_DIR}/${INSTALL_PATH}  
 
@@ -64,6 +65,7 @@ build_release_static:
     - tadah -h
     - ldd ${INSTALL_PATH}/bin/tadah
   artifacts:
+    expire_in: 5 minutes
     paths:
       - ${RELEASE_STATIC_DIR}/${INSTALL_PATH}
 

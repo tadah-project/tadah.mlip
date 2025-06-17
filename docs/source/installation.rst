@@ -3,16 +3,16 @@
 Installation
 ============
 
-This section provides step-by-step instructions for installation of Tadah!MLIP and Tadah!LAMMPS.
+This section provides step-by-step instructions for installation of `Tadah!MLIP` (MLIP training) and `Tadah!LAMMPS` (LAMMPS plugin).
 
 .. _requirements:
 
 Requirements
 ------------
 
-Both Tadah!MLIP and Tadah!LAMMPS utilize CMake for configuration and building of its components.
-The Tadah!LAMMPS interface and Tadah!MLIP toolkit require C++11 and C++17 compatible compilers, respectively. 
-LAPACK and ScaLAPACK (Tadah!MLIP MPI version only) must be available on the user’s system.
+Both `Tadah!MLIP` and `Tadah!LAMMPS` utilize CMake for configuration and building of its components.
+The `Tadah!LAMMPS` interface and `Tadah!MLIP` toolkit require C++11 and C++17 compatible compilers, respectively. 
+`LAPACK` and `ScaLAPACK` (Tadah!MLIP MPI version only) must be available on the user’s system.
 
 Other necessary libraries are either included in the codebase or downloaded during the compilation process.
 The internet connection is required during the installation process.

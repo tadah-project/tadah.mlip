@@ -153,8 +153,8 @@ int main() {
 
   // STEP 3: Calculate nearest neighbours
   std::cout << "Calculating nearest neighbours..." << std::flush;
-  NNFinder nnf2(param_file);
-  nnf2.calc(stdb2);
+  NNFinder nnf2;
+  nnf2.calc(stdb2,param_file);
   std::cout << "Done!" << std::endl;
 
   // STEP 4: Prepare DescriptorCalc

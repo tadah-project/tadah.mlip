@@ -52,6 +52,7 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
 .. toctree::
    :maxdepth: 2
    :caption: API
+   :hidden:
 
    API_quickstart.rst
    API_examples.rst
@@ -59,6 +60,7 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
 .. toctree::
    :maxdepth: 2
    :caption: API Reference
+   :hidden:
 
    API/atom.rst
    API/basisfunctions.rst
@@ -75,10 +77,3 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    API/structure_db.rst
    API/st_descriptors.rst
    API/st_descriptors_db.rst
-
-Indices and Tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

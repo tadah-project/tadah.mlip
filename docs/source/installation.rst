@@ -3,22 +3,22 @@
 Installation
 ============
 
-This section provides step-by-step instructions for installation of `Tadah!MLIP` (MLIP training) and `Tadah!LAMMPS` (LAMMPS plugin).
+This section provides step-by-step instructions for installation of Tadah!MLIP (MLIP training) and Tadah!LAMMPS (LAMMPS plugin).
 
 .. _requirements:
 
 Requirements
 ------------
 
-Both `Tadah!MLIP` and `Tadah!LAMMPS` utilize CMake for configuration and building of its components.
-The `Tadah!LAMMPS` interface and `Tadah!MLIP` toolkit require C++11 and C++17 compatible compilers, respectively. 
-`LAPACK` and `ScaLAPACK` (Tadah!MLIP MPI version only) must be available on the user’s system.
+Both Tadah!MLIP and Tadah!LAMMPS utilize CMake for configuration and building of its components.
+The Tadah!LAMMPS interface and Tadah!MLIP toolkit require C++11 and C++17 compatible compilers, respectively. 
+LAPACK and ScaLAPACK (Tadah!MLIP MPI version only) must be available on the user’s system.
 
 Other necessary libraries are either included in the codebase or downloaded during the compilation process.
 The internet connection is required during the installation process.
 
 Installing Tadah!MLIP Software
---------------------------
+------------------------------
 
 Tadah!MLIP provides a command-line interface binary, ``tadah``, for developing machine learning interatomic potentials.
 
@@ -113,7 +113,8 @@ This will configure the executable as ``tadah_mpi``, optimized for parallel exec
 Installing LAMMPS Interface
 ---------------------------
 
-The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! potentials. Follow these steps:
+The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! potentials. It is also required for building Tadah!MLIP with the Hyperparameter Optimiser (HPO) module. 
+The compilation of Tadah! plugin follows typical LAMMPS compilation steps.
 
 1. Clone the LAMMPS stable version from the GitHub repository:
 
@@ -250,4 +251,3 @@ Troubleshooting
 #. **New Issues**
 
    Contact support for any unlisted issues.
-

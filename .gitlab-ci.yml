@@ -24,6 +24,7 @@ build_debug:
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build_release_shared:
+
   stage: build
   script:
     - cd ${RELEASE_SHARED_DIR}
@@ -41,12 +42,35 @@ build_release_shared:
     - tadah
     - tadah -h
     - ldd ${INSTALL_PATH}/bin/tadah
-  artifacts:
-    expire_in: 5 minutes
-    paths:
-      - ${RELEASE_SHARED_DIR}/${INSTALL_PATH}  
+
+  stage: build_examples
+  script:
+    - cd ${RELEASE_SHARED_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - cp -r ../../examples/API/ex_1 .
+    - cd ex_1
+    - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
+    - ./a.shared
+    - bash EXPECTED_OUTPUT/compare.bash
+    - if [ $? -ne 0 ]; then exit 1; fi
+  script:
+    - cd ${RELEASE_SHARED_DIR}
+    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
+    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
+    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
+    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - cp -r ../../examples/API/ex_2 .
+    - cd ex_2
+    - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared   
+    - ./a.shared
+    - bash EXPECTED_OUTPUT/compare.bash
+    - if [ $? -ne 0 ]; then exit 1; fi
 
 build_release_static:
+
   stage: build
   script:
     - cd ${RELEASE_STATIC_DIR}
@@ -64,12 +88,7 @@ build_release_static:
     - tadah
     - tadah -h
     - ldd ${INSTALL_PATH}/bin/tadah
-  artifacts:
-    expire_in: 5 minutes
-    paths:
-      - ${RELEASE_STATIC_DIR}/${INSTALL_PATH}
 
-build_examples_1_static:
   stage: build_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
@@ -86,9 +105,6 @@ build_examples_1_static:
     - ./a.static
     - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
-  
-build_examples_2_static:
-  stage: build_examples
   script:
     - cd ${RELEASE_STATIC_DIR}
     - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
@@ -102,32 +118,5 @@ build_examples_2_static:
     - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
 
-build_examples_1_shared:
-  stage: build_examples
-  script:
-    - cd ${RELEASE_SHARED_DIR}
-    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
-    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
-    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
-    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
-    - cp -r ../../examples/API/ex_1 .
-    - cd ex_1
-    - g++ -O3 ex1.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared
-    - ./a.shared
-    - bash EXPECTED_OUTPUT/compare.bash
-    - if [ $? -ne 0 ]; then exit 1; fi
 
-build_examples_2_shared:
-  stage: build_examples
-  script:
-    - cd ${RELEASE_SHARED_DIR}
-    - export PATH=$(pwd)/${INSTALL_PATH}/bin:$PATH
-    - export CPATH=$(pwd)/${INSTALL_PATH}/include:$CPATH
-    - export LD_LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
-    - export LIBRARY_PATH=$(pwd)/${INSTALL_PATH}/lib:$LIBRARY_PATH
-    - cp -r ../../examples/API/ex_2 .
-    - cd ex_2
-    - g++ -O3 ex2.cpp -ltadah.mlip -ltadah.models -ltadah.core -lblas -llapack -fopenmp -o a.shared   
-    - ./a.shared
-    - bash EXPECTED_OUTPUT/compare.bash
-    - if [ $? -ne 0 ]; then exit 1; fi
+

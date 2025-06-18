@@ -85,11 +85,6 @@ endif()
 # Set the project name and version
 set_project_name()
 
-# 4. External dependencies
-# Tiny Boost
-file(GLOB BOOST_SRC external/boost/libs/iostreams/src/*.cpp)
-add_library(boost_iostream STATIC ${BOOST_SRC})
-target_include_directories(boost_iostream PRIVATE external/boost)
 
 file(GLOB TADAH_SRC_FILES src/*.cpp)
 add_executable (tadah ${TADAH_SRC_FILES})
@@ -101,9 +96,9 @@ target_include_directories(tadah
   )
 
 if(TADAH_ENABLE_HPO)
-  target_link_libraries(tadah PUBLIC tadah::compile_options tadah.hpo PRIVATE boost_iostream)
+  target_link_libraries(tadah PUBLIC tadah::compile_options tadah.hpo)
 else()
-  target_link_libraries(tadah PUBLIC tadah::compile_options tadah.mlip PRIVATE boost_iostream)
+  target_link_libraries(tadah PUBLIC tadah::compile_options tadah.mlip)
 endif()
 
 

@@ -39,7 +39,7 @@ else()
 endif()
 tadah_message(STATUS "Using GIT_BRANCH:  ${GIT_BRANCH}")
 
-tadah_message("Fetching ${TADAH} modules...")
+tadah_message("Fetching ${PROJECT_NAME} modules...")
 FetchContent_Declare(
   Tadah.MLIP
   GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
@@ -54,7 +54,7 @@ set_project_name()
 # for example: cmake .. -DTADAH_BUILD_TESTS=ON
 option(TADAH_ENABLE_HPO "Enable Hyperparamter optimizer." OFF)
 option(TADAH_ENABLE_OPENMP "Enable shared-memory parallelisation via OpenMP" OFF)
-option(TADAH_BUILD_MPI "Build MPI version of ${TADAH}" OFF)
+option(TADAH_BUILD_MPI "Build MPI version of ${PROJECT_NAME}" OFF)
 option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
 option(TADAH_ENABLE_FAST_MATH "Enable fast math optimizations" OFF)
 option(TADAH_BUILD_TESTS "Build with tests" OFF)
@@ -210,7 +210,7 @@ if(TADAH_BUILD_MPI)
   find_package(SCALAPACK REQUIRED)
   target_link_libraries(tadah PUBLIC scalapack)
 endif()
-tadah_message(STATUS "Build MPI version of ${TADAH} is ${TADAH_BUILD_MPI}")
+tadah_message(STATUS "Build MPI version of ${PROJECT_NAME} is ${TADAH_BUILD_MPI}")
 #########################################################################
 
 #########################################################################     
@@ -259,12 +259,12 @@ add_custom_target(docs
 
 message(STATUS "===================================================================")
 message(STATUS "")
-message(STATUS "${TADAH} is now configured and ready for installation.")
+message(STATUS "${PROJECT_NAME} is now configured and ready for installation.")
 message(STATUS "")
 message(STATUS "--------------+----------------------------------------------------")
 message(STATUS " Command      | Description                                        ")
 message(STATUS "--------------+----------------------------------------------------")
-message(STATUS " make install | Install ${TADAH}.                                  ")
+message(STATUS " make install | Install ${PROJECT_NAME}.                                  ")
 message(STATUS "              |   • Binaries will go into:                         ")
 message(STATUS "              |       ${CMAKE_INSTALL_PREFIX}/bin                  ")
 message(STATUS "              |   • Headers will go into:                          ")
@@ -286,7 +286,7 @@ message(STATUS "")
 message(STATUS "  * Hyperparameter Optimizer (HPO):")
 message(STATUS "    TADAH_ENABLE_HPO = ${TADAH_ENABLE_HPO}")
 if(TADAH_ENABLE_HPO)
-  message(STATUS "    Requires LAMMPS compiled with the ${TADAH} interface.")
+  message(STATUS "    Requires LAMMPS compiled with the ${PROJECT_NAME} interface.")
   if(NOT TADAH_LAMMPS_DIR)
     message(STATUS "    Additional CMake variables:")
     message(STATUS "      REQUIRED: TADAH_LAMMPS_DIR")

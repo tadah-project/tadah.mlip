@@ -18,7 +18,7 @@
 #ifndef TADAH_MLIP_CLI_TADAH_CLI_H
 #define TADAH_MLIP_CLI_TADAH_CLI_H
 
-#include "CLI/CLI11.hpp"
+#include <CLI/CLI11.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>

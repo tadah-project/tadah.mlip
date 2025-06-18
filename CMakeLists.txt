@@ -54,20 +54,10 @@ tadah_use_local_module(Tadah.MLIP MLIP)  # FetchContent name + folder name
 tadah_get_git_branch(GIT_BRANCH)
 tadah_message(STATUS "Using GIT_BRANCH:  ${GIT_BRANCH}")
 
-tadah_message("Fetching ${PROJECT_NAME} modules...")
-FetchContent_Declare(
-  Tadah.MLIP
-  GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
-  GIT_TAG origin/${GIT_BRANCH}
-)
-FetchContent_MakeAvailable(Tadah.MLIP)
-
-# Set the project name and version
-set_project_name()
 
 if(TADAH_ENABLE_HPO)
   tadah_use_local_module(Tadah.HPO HPO)  # FetchContent name + folder name
-  tadah_use_local_module(Tadah.LAMMPS Tadah.LAMMPS)  # FetchContent name + folder name
+  # tadah_use_local_module(Tadah.LAMMPS Tadah.LAMMPS)  # FetchContent name + folder name
   add_compile_definitions(TADAH_ENABLE_HPO)
   FetchContent_Declare(
     Tadah.HPO
@@ -76,13 +66,24 @@ if(TADAH_ENABLE_HPO)
   )
   FetchContent_MakeAvailable(Tadah.HPO)
 
+  # FetchContent_Declare(
+  #   Tadah.LAMMPS
+  #   GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git
+  #   GIT_TAG origin/${GIT_BRANCH}
+  # )
+  # FetchContent_MakeAvailable(Tadah.LAMMPS)
+else()
+  tadah_message("Fetching ${PROJECT_NAME} modules...")
   FetchContent_Declare(
-    Tadah.LAMMPS
-    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git
+    Tadah.MLIP
+    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
     GIT_TAG origin/${GIT_BRANCH}
   )
-  FetchContent_MakeAvailable(Tadah.LAMMPS)
+  FetchContent_MakeAvailable(Tadah.MLIP)
 endif()
+
+# Set the project name and version
+set_project_name()
 
 # 4. External dependencies
 # Tiny Boost
@@ -98,11 +99,11 @@ target_include_directories(tadah
     $<INSTALL_INTERFACE:include>
     PRIVATE ${PROJECT_SOURCE_DIR}/external/CLI11/include
   )
-  target_link_libraries(tadah PUBLIC tadah::compile_options tadah.mlip tadah.models tadah.core PRIVATE boost_iostream)
 
 if(TADAH_ENABLE_HPO)
-  target_link_libraries(tadah PUBLIC tadah.hpo)
-  target_link_libraries(tadah PUBLIC tadah.lammps)
+  target_link_libraries(tadah PUBLIC tadah::compile_options tadah.hpo PRIVATE boost_iostream)
+else()
+  target_link_libraries(tadah PUBLIC tadah::compile_options tadah.mlip PRIVATE boost_iostream)
 endif()
 
 

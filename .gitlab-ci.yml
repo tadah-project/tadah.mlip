@@ -4,6 +4,7 @@ stages:
 
 cache:
     key: "$CI_PIPELINE_ID"
+    policy: push
     paths:
     - ${BUILD_DIR}
   

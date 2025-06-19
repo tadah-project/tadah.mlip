@@ -3,7 +3,7 @@
 Trained MLIPs
 =============
 
-Here you can find interatomic potentials created by our group and gain insight into our current projects.
+This page lists the interatomic potentials developed by our group and discover what we’re currently working on.
 
 N2
 --

@@ -10,8 +10,10 @@ import subprocess
 def download_toml_file(repo_url, file_path, output_path):
     try:
         # Retrieve the branch name from the environment variable
-        branch = os.environ.get('READTHEDOCS_VERSION', 'main')
+        # branch = os.environ.get('READTHEDOCS_VERSION', 'main')    # TODO
+        branch = "develop"
 
+        print(f"Downloading {file_path} from {repo_url} on branch {branch}...")
         # Clone the repository into a temporary directory with the specific branch
         repo_name = "temp_repo"
         subprocess.run(
@@ -41,16 +43,15 @@ def download_toml_file(repo_url, file_path, output_path):
 
 download_toml_file(
     'https://git.ecdf.ed.ac.uk/tadah/core.git',
-    'config/config_keys.toml',
-    'config/config_keys.toml'
+    'blueprint/blueprint_tadah.toml',   # soruce
+    'config/blueprint_tadah.toml'       # destination
 )
+print ("Downloaded blueprint_tadah.toml to config/blueprint_tadah.toml")
 
 # Path to TOML dict
-# d = p.load("../src/configs/config_keys.toml",'r')
-d = p.load("config/config_keys.toml",'r')
+d = p.load("config/blueprint_tadah.toml",'r')
 
 # Path to rst outfile
-# f = open("source/config/config_keys.rst", "w")
 f = open("config/config_keys.rst", "w")
 
 header='''
@@ -135,53 +136,141 @@ This section contains all KEYS currently used by Tadah!.
 '''
 f.write(header)
 
-for key,val in d.items():
-    f.write(".. _%s:\n\n" % key)    # create reference
-    f.write("%s\n" % key)
-    f.write("%s\n" % (len(key)*"."))
-    if val['value_format']!='' and val['value_type']!='':
-        f.write("%s" % (key))
-        for vtype,vfmt in zip(val['value_type'],val['value_format']):
-            f.write(" [*%s*] %s" % (vtype,vfmt))
-        f.write("\n")
-    if len(val['value_N'])!=0:
-        f.write("   *Max number of values*:")
-        for valN in val['value_N']:
-            f.write("  %s" % abs(valN))
-        f.write("\n\n")
-    if len(val['default'])!=0:
-        f.write("   *Default*:")
-        for valN in val['default']:
-            f.write("  %s" % (str(valN).lower()
-                              if type(valN) is bool else valN))
-        f.write("\n\n")
-    if len(val['description'])!=0:
-        f.write("   *Description*:\n\n")
-        f.write("   %s\n\n" % val['description'])
-    if len(val['examples'])!=0:
-        for i,example in enumerate(val['examples']):
-            f.write("   *Example*: %d ::\n\n" % (i+1))
-            f.write("       %s\n\n" % example)
+# ---------------------------------------------------------------------------
+# Everything **above** this line must stay unchanged.
+# ---------------------------------------------------------------------------
+#
+# Everything **below** is new / rewritten.  It
+#  • iterates only over entries that live under [ALLOWED_KEYS]
+#  • resolves optional inheritance from TYPES.*
+#  • prints only the fields that are actually present
+#  • produces clean, uniform reST that Sphinx can pick-up
 
-    # Deal with suboptions
-    for key2,val2 in val.items():
-        if type(val2) is dict:
-            if val2['value_format']!='' and val2['value_type']!='':
-                f.write("%s" % (key))
-                for vtype,vfmt in zip(val2['value_type'],val2['value_format']):
-                    f.write(" [*%s*] %s" % (vtype,vfmt))
-                f.write("\n")
-            if len(val2['value_N'])!=0:
-                f.write("   *Max number of values*: ")
-                for valN in val2['value_N']:
-                    f.write("  %s" % abs(valN))
-                f.write("\n\n")
-            if len(val2['description'])!=0:
-                f.write("   *Description*:\n\n")
-                f.write("   %s\n\n" % val2['description'])
-            if len(val2['examples'])!=0:
-                for i,example in enumerate(val2['examples']):
-                    f.write("   *Example*: %d ::\n\n" % (i+1))
-                    f.write("       %s\n\n" % example)
+def _deepcopy(obj):
+    """Tiny helper because we cannot import copy in the RTD sandbox."""
+    if isinstance(obj, dict):
+        return {k: _deepcopy(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_deepcopy(v) for v in obj]
+    return obj
+
+
+def _merge_missing(base: dict, parent: dict) -> dict:
+    """
+    Return *base* with all keys that are missing in *base* but exist in *parent*.
+    base takes precedence.
+    """
+    merged = _deepcopy(parent)
+    merged.update(base)          # base wins
+    return merged
+
+
+def _resolve_inheritance(entry: dict, types_tbl: dict) -> dict:
+    """
+    If the entry contains
+        INHERIT = ["TYPES.SOMETHING", "TYPES.OTHER"]
+    merge those TYPE-blocks into *entry*, giving precedence to the fields
+    that *entry* already defines.
+    """
+    if not entry or 'INHERIT' not in entry:
+        return entry
+
+    merged = _deepcopy(entry)
+    for target in entry.get('INHERIT', []):
+        try:
+            scope, name = target.split('.', 1)
+        except ValueError:
+            # malformed entry – ignore
+            continue
+
+        if scope != 'TYPES':
+            continue
+        parent = types_tbl.get(name, {})
+        merged = _merge_missing(merged, parent)
+    return merged
+
+
+# ---------------------------------------------------------------------------
+# 1.  Extract the relevant sub-tables from the blueprint
+# ---------------------------------------------------------------------------
+allowed_keys = d.get('ALLOWED_KEYS', {})
+types_table  = d.get('TYPES',        {})
+
+# ---------------------------------------------------------------------------
+# 2.  Walk over all KEY definitions and emit documentation
+# ---------------------------------------------------------------------------
+for key_name, raw_entry in allowed_keys.items():
+
+    # Final field set after resolving possible inheritance
+    entry = _resolve_inheritance(raw_entry, types_table)
+
+    # ---------------------------------------------------------------------
+    # Start a new labelled section
+    # ---------------------------------------------------------------------
+    f.write(f".. _{key_name}:\n\n")
+    f.write(f"{key_name}\n")
+    f.write(f"{'-' * len(key_name)}\n")
+
+    # ---------------------------------------------------------------------
+    # VALUE TYPE + FORMAT
+    # ---------------------------------------------------------------------
+    value_types   = entry.get('value_type',   [])
+    value_formats = entry.get('value_format', [])
+
+    if value_types and value_formats:
+        joined = []
+        # zip-longest so that differing lengths are still handled
+        for idx in range(max(len(value_types), len(value_formats))):
+            vtype = value_types[idx]   if idx < len(value_types)   else ""
+            vfmt  = value_formats[idx] if idx < len(value_formats) else ""
+            joined.append(f"[*{vtype}*] {vfmt}".strip())
+        f.write(", ".join(joined) + "\n")
+
+    # ---------------------------------------------------------------------
+    # Maximum number of values
+    # ---------------------------------------------------------------------
+    if 'value_N' in entry and entry['value_N']:
+        vals = " / ".join(str(abs(v)) for v in entry['value_N'])
+        f.write(f"   *Max number of values*: {vals}\n")
+
+    # ---------------------------------------------------------------------
+    # Default value(s)
+    # ---------------------------------------------------------------------
+    if 'default_value' in entry and entry['default_value']:
+        defaults = []
+        for v in entry['default_value']:
+            if isinstance(v, bool):
+                defaults.append(str(v).lower())
+            else:
+                defaults.append(str(v))
+        f.write(f"   *Default*: {' / '.join(defaults)}\n")
+
+    # ---------------------------------------------------------------------
+    # Short description
+    # ---------------------------------------------------------------------
+    if entry.get('description', ""):
+        f.write("\n   *Description*:\n\n")
+        f.write(f"   {entry['description']}\n")
+
+    # ---------------------------------------------------------------------
+    # Long description (optional)
+    # ---------------------------------------------------------------------
+    if entry.get('long_description', ""):
+        # Preserve original indentation (strip first newline if present)
+        long_desc = entry['long_description'].lstrip("\n")
+        for line in long_desc.splitlines():
+            f.write(f"   {line}\n")
+        f.write("\n")
+
+    # ---------------------------------------------------------------------
+    # Examples
+    # ---------------------------------------------------------------------
+    examples = entry.get('examples', [])
+    for idx, example in enumerate(examples, start=1):
+        f.write(f"   *Example* {idx}::\n\n")
+        f.write(f"       {example}\n\n")
+
+    # Blank line between keys
+    f.write("\n")
 
 f.close()

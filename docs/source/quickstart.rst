@@ -1,7 +1,7 @@
 Quick Start
 ===========
 
-This section covers the fundamentals and command line interface (CLI) of Tadah!. The CLI provides necessary tools to train and test models. The trained model (interatomic potential) can be used to run molecular dynamics simulations with LAMMPS via the Tadah.LAMMPS plugin.
+This section covers the fundamentals and command line interface (CLI) of Tadah!MLIP. The CLI provides necessary tools to train and test models. The trained model (interatomic potential) can be used to run molecular dynamics simulations with LAMMPS via the Tadah!LAMMPS plugin.
 
 For installation instructions, see :ref:`installation`. For CLI examples, see :ref:`cli_examples`.
 
@@ -46,7 +46,7 @@ This will train a model using energies only. To also train on forces, add the ``
 
 *Note*: Command line flags take precedence over those defined in the config file.
 
-Here, ``config.train`` is a :ref:`config_file`. Training datasets, descriptors, cutoffs, model, and all parameters are specified in the config file. The output of this command is a trained model as a ``pot.tadah`` file.
+The ``config.train`` is type of a :ref:`config_file`. Training datasets, descriptors, cutoffs, model, and all parameters are specified in the config file. The output of this command is a trained model as a ``pot.tadah`` file.
 
 :download:`Here <quickstart/config.train>` is a minimal example of the ``config.train`` file:
 
@@ -155,7 +155,7 @@ Once trained, the ``pot.tadah`` file can be used with LAMMPS like any other pair
 
 Here is an example LAMMPS :download:`script file <quickstart/in.ml>` and :download:`pot.file <quickstart/pot.tadah>`.
 
-See :ref:`installation_lammps` for Tadah.LAMMPS interface installation instructions.
+See :ref:`installation_lammps` for Tadah!LAMMPS interface installation instructions.
 
 Support for Multi-species Systems
 ---------------------------------

@@ -3,8 +3,7 @@ stages:
   - build_release
 
 cache:
-    key: "$CI_PIPELINE_ID"
-    policy: push
+    key: "build-cache-$CI_COMMIT_REF_SLUG"
     paths:
     - ${BUILD_DIR}
   

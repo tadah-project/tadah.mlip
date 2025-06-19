@@ -1,4 +1,4 @@
-DBFILE     db.train           # Ti dataset
+DBFILE     db.train           # Ta dataset
 INIT2B     true               # Use two-body descriptor
 RCUT2B     6.5                # Cutoff distance
 TYPE2B     D2_LJ Ti Ti        # Lennard-Jones descriptor

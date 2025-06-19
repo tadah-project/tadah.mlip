@@ -22,7 +22,7 @@ function(tadah_message)
   string(REPLACE ";" " " _messageText "${_messageText}")
 
   # Print the message with "Tadah!: " prefix
-  message(${_mode} "${TADAH}: ${_messageText}")
+  message(${_mode} "${TADAH} ${_messageText}")
 endfunction()
 
 function(check_build_type)

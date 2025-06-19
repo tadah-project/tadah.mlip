@@ -52,7 +52,7 @@ The ``config.train`` is type of a :ref:`config_file`. Training datasets, descrip
 
 .. literalinclude:: quickstart/config.train
 
-Here, :ref:`DBFILE` specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory. :ref:`INIT2B` controls whether the two-body descriptor is used. :ref:`TYPE2B`, :ref:`RCUT2B`, and :ref:`RCTYPE2B` refer to the two-body type, cutoff distance, and cutoff type, respectively. Finally, the regression model is selected; in this case, it is Kernel Ridge Regression with a linear kernel for simplicity.
+The :ref:`DBFILE` key specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory. :ref:`INIT2B` controls whether the two-body descriptor is used. :ref:`TYPE2B`, :ref:`RCUT2B`, and :ref:`RCTYPE2B` refer to the two-body type, cutoff distance, and cutoff type, respectively. Finally, the regression model is selected; in this case, it is Kernel Ridge Regression with a linear kernel for simplicity.
 
 For a detailed explanation of KEYS and a general discussion about the configuration files, see :ref:`ConfigSection`.
 
@@ -76,12 +76,81 @@ To also predict forces, add the ``-F`` flag; for stresses, add the ``-S`` flag.
 
 The output of the ``predict`` subcommand includes three files:
 
-- ``energy.pred``: Two columns where the first column lists dataset energy/atom and the second column lists predicted energy/atom. The ordering follows the dataset order in the config file or with the ``-d`` flag.
+- ``energy.pred``: Three columns where the first column is an index, second is dataset energy/atom and the third column lists predicted energy/atom. The ordering follows the dataset order in the config file or with the ``-d`` flag.
 - ``forces.pred``: Similar idea as above, but now forces are listed. The first row is the force on the first atom in the x-direction from the first dataset, the second row is the force on the first atom in the y-direction, and so on.
 - ``stress.pred``: The first six rows list components of the stress tensor from the first configuration, followed by six components from the second configuration, and so on. The ordering is xx, xy, xz, yy, yz, zz.
 
+.. _task_file:
 
-.. _units:
+Task File
+---------
+
+A **task file** is a plain-text wrapper around Tadah!MLIP’s config syntax.  
+You can use it for a **single** command (as an alternative to a CLI invocation)
+*or* chain several ``TASK`` blocks in the same file to execute them
+sequentially.  All key–value pairs inside the file follow the normal config
+rules. The `CONFIG` can be used to nest config files, allowing for reuse of settings or
+to keep a full training or prediction setup in a dedicated config file.
+
+Basic rules
+^^^^^^^^^^^
+
+1. Each command starts with a line beginning with the keyword ``TASK`` followed
+   by the sub-command name exactly as you would type it on the CLI.
+
+2. The lines that follow are ordinary KEY/VALUE pairs.  
+   - Keys written **above** all ``TASK`` blocks act as defaults for every task.
+   - Keys appearing **inside** a task block override global keys written
+     **above** the first ``TASK`` line.  
+
+3. Boolean values are written in lowercase ``true`` / ``false``.
+
+4. There is a one-to-one mapping between CLI flags/options and configuration
+   keys:
+
+   ================  ================================
+   CLI (short/long)  Config-file key
+   ----------------  ------------------------------
+   ``-c``, ``--config``     ``CONFIG``
+   ``-d``, ``--dbfile``     ``DBFILE``
+   ``-p``, ``--potential``  ``POTENTIAL``
+   ``-v``, ``--verbose``    ``VERBOSE``
+   ``-A``, ``--analytics``  ``ANALYTICS``
+   ``-F``, ``--force``      ``FORCE``
+   ...                     ...
+   ================  ================================
+
+   In other words, *anything you can set on the command line can also be set
+   with an upper-case key in the task file*.
+
+Example
+^^^^^^^
+
+The small task file below trains a model and then immediately uses it for a
+prediction run:
+
+.. literalinclude:: quickstart/taskfile.txt
+
+You would execute it with
+
+.. code-block:: bash
+
+    tadah --task taskfile.txt
+
+and Tadah!MLIP will first run the training step, produce ``pot.tadah``, and
+then feed that potential into the subsequent prediction step-all in one go.
+
+Hints
+^^^^^
+
+* Use ``CONFIG other_file.txt`` inside a task block if you prefer to keep a
+  full training or prediction setup in a dedicated config file.
+
+* Indexing of positional items (e.g. ``--index 1`` -> ``INDEX 1``) starts
+  from **1**.
+
+* Comments start with ``#`` and run to the end of the line, just like in
+  ordinary config files.
 
 Units and Tadah!
 ----------------

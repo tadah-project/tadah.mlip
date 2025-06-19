@@ -54,17 +54,24 @@ d = p.load("config/blueprint_tadah.toml",'r')
 # Path to rst outfile
 f = open("config/config_keys.rst", "w")
 
-header='''
+header = '''
 .. _ConfigSection:
 
 Configuration File
 ==================
 
-This section describes the format of the configuration file used by Tadah!.
+.. warning:: This section is under construction and may not be complete or accurate. If you find any issues, please report them on the `Tadah!MLIP GitLab <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_.
 
-The configuration file controls the training process, specifying one or more datasets for use during the training stage. It defines cutoff functions and corresponding radii along with the regression model and descriptor choices.
+.. note:: This configuration file is NOT used by the HPO (Hyperparameter Optimization) module of Tadah!MLIP. The HPO module uses a different configuration file format, which is documented in the :ref:`hyperparameter_optimisation`.
 
-Tadah! supports two- and many-body descriptors, allowing for separate descriptors with their corresponding cutoff radii.
+This section describes the format of the configuration file used by Tadah!MLIP.
+
+For example, the configuration file can control the training process, specifying one or more datasets for use during the training stage. It defines cutoff functions and corresponding radii along with the regression model and descriptor choices.
+
+.. important::
+
+   Indexing of items that take *positional indices* (e.g., ``INDEX 1``, CLI flag
+   ``--index 1``) starts from **1**, not 0.
 
 Key/Value Pairs
 ---------------
@@ -74,7 +81,7 @@ The primary structure in a configuration file is the KEY/VALUE pair. Each KEY/VA
 Common Usage
 ------------
 
-Typically, only a subset of KEYS is needed to train a model. Tadah! will use default values for some keys. An error will occur if a required KEY with no default value is missing:
+Typically, only a subset of KEYS is needed to train a model. Tadah!MLIP will use default values for some keys. An error will occur if a required KEY with no default value is missing:
 
 .. code-block:: bash
 
@@ -88,15 +95,16 @@ This message indicates that the :ref:`DBFILE` KEY was not specified in the :file
 Key Specifics
 -------------
 
-The meaning of some KEYS may change based on the model or descriptor in use. Refer to :ref:`SupportedKEYS` for each model or descriptor to understand the required KEYS and their explanations.
+The meaning of some keys can vary with the chosen command. Check the documentation for that specific command, model or descriptor to see which keys are required and how they are interpreted. While we strive to keep key meanings consistent across Tadah!MLIP, occasional differences may still occur.
 
 Comments
 --------
 
-Use the `#` symbol to add comments in the configuration file.
+Use the ``#`` symbol to add comments in the configuration file. Both inline and full-line comments are supported.
 
-Multiple Values
----------------
+
+Key Values and Formats
+----------------------
 
 Some KEYS can have multiple values, specified in one of two ways:
 
@@ -126,25 +134,16 @@ If the number of values exceeds the maximum allowed, an error will occur. For ex
      what():  Repeated key RCTYPE2B Cut_Cos
    Aborted (core dumped)
 
-.. _SupportedKEYS
+.. _SupportedKEYS:
 
-Supported KEYS:
----------------
+Supported KEYS
+--------------
 
-This section contains all KEYS currently used by Tadah!.
-\n
+This section contains all KEYS currently used by Tadah!MLIP.
+
 '''
-f.write(header)
 
-# ---------------------------------------------------------------------------
-# Everything **above** this line must stay unchanged.
-# ---------------------------------------------------------------------------
-#
-# Everything **below** is new / rewritten.  It
-#  • iterates only over entries that live under [ALLOWED_KEYS]
-#  • resolves optional inheritance from TYPES.*
-#  • prints only the fields that are actually present
-#  • produces clean, uniform reST that Sphinx can pick-up
+f.write(header)
 
 def _deepcopy(obj):
     """Tiny helper because we cannot import copy in the RTD sandbox."""
@@ -209,7 +208,7 @@ for key_name, raw_entry in allowed_keys.items():
     # ---------------------------------------------------------------------
     f.write(f".. _{key_name}:\n\n")
     f.write(f"{key_name}\n")
-    f.write(f"{'-' * len(key_name)}\n")
+    f.write(f"{'^' * len(key_name)}\n")
 
     # ---------------------------------------------------------------------
     # VALUE TYPE + FORMAT

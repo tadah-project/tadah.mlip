@@ -89,39 +89,38 @@ A **task file** is a plain-text wrapper around Tadah!MLIP’s config syntax.
 You can use it for a **single** command (as an alternative to a CLI invocation)
 *or* chain several ``TASK`` blocks in the same file to execute them
 sequentially.  All key–value pairs inside the file follow the normal config
-rules. The `CONFIG` can be used to nest config files, allowing for reuse of settings or
+rules. The `CONFIG` key can be used to nest config files, allowing for reuse of settings or
 to keep a full training or prediction setup in a dedicated config file.
 
 Basic rules
 ^^^^^^^^^^^
 
-1. Each command starts with a line beginning with the keyword ``TASK`` followed
+#. Each command starts with a line beginning with the keyword ``TASK`` followed
    by the sub-command name exactly as you would type it on the CLI.
 
-2. The lines that follow are ordinary KEY/VALUE pairs.  
-   - Keys written **above** all ``TASK`` blocks act as defaults for every task.
-   - Keys appearing **inside** a task block override global keys written
-     **above** the first ``TASK`` line.  
+#. The lines that follow are ordinary KEY/VALUE pairs.  
+   * Keys written **above** all ``TASK`` blocks act as defaults for every task.
+   * Keys appearing **inside** a task block override global keys written **above** the first ``TASK`` line.  
 
-3. Boolean values are written in lowercase ``true`` / ``false``.
+#. Boolean values are written in lowercase ``true`` / ``false``.
 
-4. There is a one-to-one mapping between CLI flags/options and configuration
+#. There is a one-to-one mapping between CLI flags/options and configuration
    keys:
 
-   ================  ================================
-   CLI (short/long)  Config-file key
-   ----------------  ------------------------------
-   ``-c``, ``--config``     ``CONFIG``
-   ``-d``, ``--dbfile``     ``DBFILE``
-   ``-p``, ``--potential``  ``POTENTIAL``
-   ``-v``, ``--verbose``    ``VERBOSE``
-   ``-A``, ``--analytics``  ``ANALYTICS``
-   ``-F``, ``--force``      ``FORCE``
-   ...                     ...
-   ================  ================================
++--------------------+------------------------------+
+| CLI (short/long)   | Config-file key              |
++====================+==============================+
+| ``-c``, ``--config``    | ``CONFIG``              |
+| ``-d``, ``--dbfile``    | ``DBFILE``              |
+| ``-p``, ``--potential`` | ``POTENTIAL``           |
+| ``-v``, ``--verbose``   | ``VERBOSE``            |
+| ``-A``, ``--analytics`` | ``ANALYTICS``          |
+| ``-F``, ``--force``     | ``FORCE``              |
+| …                      | …                       |
++--------------------+------------------------------+
 
-   In other words, *anything you can set on the command line can also be set
-   with an upper-case key in the task file*.
+ In other words, *anything you can set on the command line can also be set
+ with an upper-case key in the task file*.
 
 Example
 ^^^^^^^
@@ -230,4 +229,3 @@ Support for Multi-species Systems
 ---------------------------------
 
 Tadah! can generate machine-learned potentials for both single-component and multi-component systems. The interatomic potential adapts based on the species present in the training dataset, allowing for accurate modeling of different material compositions.
-

@@ -1,7 +1,7 @@
-Example 1 - Basic Training and Prediction
------------------------------------------
+Example 1 - Basics of Training and Prediction
+---------------------------------------------
 
-This example demonstrates how to train a model using the Tadah! software. The ``config.train`` file defines
+This example demonstrates how to train a model using Tadah!MLIP. The ``config.train`` file defines
 the necessary parameters for the model.
 
 To use this example, ensure you have access to all required files available in the Git repository at:
@@ -21,19 +21,14 @@ To train the model, use the following command:
 Prediction
 ..........
 
-Once the model is trained, you can run predictions on the same dataset. 
-
-.. note::
-
-   This approach is generally not recommended but is used here to illustrate the functionality of the Tadah! software.
-
-Use the following command to predict:
+Once the model is trained, you can run predictions on any Tadah!MLIP dataset.
+Here we simply reuse the training dataset for demonstration purposes.
 
 .. code-block:: bash
 
    tadah predict -p pot.tadah -d tdata.db -v 2 -A
 
-- ``-A``: Generates useful statistics.
+- ``-A``: Generates useful analytics such as RMSE and R^2.
 - ``-v 2``: Enables verbosity for detailed output during prediction.
 
 Additional Notes
@@ -41,4 +36,3 @@ Additional Notes
 
 - The dataset contains over 10,000 structures, so the process may take a while when using the ``-F`` or 
   ``-S`` flags to train or predict with forces and stresses, respectively.
-

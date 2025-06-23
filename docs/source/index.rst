@@ -4,7 +4,22 @@ Welcome to the Tadah! Website
 .. image:: images/tadah_cli.png
    :align: center
 
-|
+.. admonition:: Heads-up – Tadah! 1.0.0 has landed 🎉
+   :class: warning
+
+   We have just tagged **the first official public release, v1.0.0**, and the
+   *main* branch has already been fast-forwarded to this version.  
+   The documentation you are reading is being updated in step, but you may still
+   encounter pages that lag behind the code, broken links, or typos while we
+   finish the polish.
+
+   New releases inevitably bring teething issues; if something looks off,
+   crashes, or is simply confusing, please let us know.  
+   A short issue or e-mail is far more helpful than silent frustration and we'll
+   gladly guide you through any rough edges.
+
+   Thank you for your patience, happy modelling, and welcome to Tadah! 1.0.0.
+
 
 This is the home of Tadah! software, used for developing and deploying machine learning interatomic potentials. This website provides documentation with examples to help users quickly get up to speed, along with an associated API for developers.
 

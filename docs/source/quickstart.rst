@@ -99,7 +99,9 @@ Basic rules
    by the sub-command name exactly as you would type it on the CLI.
 
 #. The lines that follow are ordinary KEY/VALUE pairs.  
+
    * Keys written **above** all ``TASK`` blocks act as defaults for every task.
+
    * Keys appearing **inside** a task block override global keys written **above** the first ``TASK`` line.  
 
 #. Boolean values are written in lowercase ``true`` / ``false``.
@@ -107,20 +109,21 @@ Basic rules
 #. There is a one-to-one mapping between CLI flags/options and configuration
    keys:
 
-+--------------------+------------------------------+
-| CLI (short/long)   | Config-file key              |
-+====================+==============================+
-| ``-c``, ``--config``    | ``CONFIG``              |
-| ``-d``, ``--dbfile``    | ``DBFILE``              |
-| ``-p``, ``--potential`` | ``POTENTIAL``           |
-| ``-v``, ``--verbose``   | ``VERBOSE``            |
-| ``-A``, ``--analytics`` | ``ANALYTICS``          |
-| ``-F``, ``--force``     | ``FORCE``              |
-| …                      | …                       |
-+--------------------+------------------------------+
+.. code-block:: bash
 
- In other words, *anything you can set on the command line can also be set
- with an upper-case key in the task file*.
+  +--------------------+------------------------------+
+  | CLI (short/long)   | Config-file key              |
+  +====================+==============================+
+  | ``-c``, ``--config``    | ``CONFIG``              |
+  | ``-d``, ``--dbfile``    | ``DBFILE``              |
+  | ``-p``, ``--potential`` | ``POTENTIAL``           |
+  | ``-v``, ``--verbose``   | ``VERBOSE``            |
+  | ``-A``, ``--analytics`` | ``ANALYTICS``          |
+  | ``-F``, ``--force``     | ``FORCE``              |
+  | …                      | …                       |
+  +--------------------+------------------------------+
+
+In other words, *anything you can set on the command line can also be set with an upper-case key in the task file*.
 
 Example
 ^^^^^^^
@@ -151,16 +154,43 @@ Hints
 * Comments start with ``#`` and run to the end of the line, just like in
   ordinary config files.
 
+.. _units:
+
 Units and Tadah!
 ----------------
 
-In principle, Tadah! will work with any units. The units used are determined by the units in the training datasets. So if your dataset has energy units of electronvolts and distance in Angstroms, then the created model will have the same units. The unit of force must be eV/Å in this case. The virial stress tensor should be in units of pressure (eV/Å^3).
+Tadah! is *numerically unit-agnostic* during **training**: whatever numbers
+appear in the dataset are learned as-is, so any *internally consistent* set of
+units (e.g. Hartree/Bohr, kJ mol⁻¹/nm, …) will yield a valid potential.  
+In day-to-day work, however, most companion tools assume the “standard
+materials-science” system of
 
-The units selected by LAMMPS must be consistent with the model units of energy and forces. In this case, they would correspond to *metal* units in LAMMPS.
+* energy in electron-volts (eV)  
+* length in Ångström (Å)  
+* force in eV Å⁻¹  
+* stress in eV Å⁻³.
 
-.. note::
+These are therefore the **units of choice**.
 
-    Tadah! has been tested with units of eV and Angstrom. Unless you have a good reason to use different units, these are the recommended ones.
+Practical rules
+~~~~~~~~~~~~~~~
+
+• Training on a dataset expressed in *any* units still works, provided *all*
+  quantities in *all* structures use the same unit system.
+
+• The generated model keeps those units.  When you couple it to LAMMPS you
+  must pick a compatible `units` style—e.g. ``metal`` for eV / Å, ``real`` for
+  kcal mol⁻¹ / Å, and so on.
+
+• Some post-processing and analysis helpers (notably the ``--analytics`` flag)
+  currently **assume eV / Å**.  Using a model trained in different units may
+  trigger an error or, worse, silently produce meaningless numbers.
+
+.. important::
+
+   Unless you have a compelling reason to deviate, **use eV for energy and Å
+   for length**.  That choice is tested across the entire Tadah! tool-chain and
+   matches the *metal* unit style in LAMMPS out of the box.
 
 .. _config_file:
 

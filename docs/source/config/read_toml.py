@@ -55,6 +55,8 @@ d = p.load("config/blueprint_tadah.toml",'r')
 f = open("config/config_keys.rst", "w")
 
 header = '''
+.. This file, including introduction, is auto-generated from the TOML blueprint file. Do not edit it directly.
+
 .. _ConfigSection:
 
 Configuration File
@@ -125,14 +127,12 @@ Some KEYS can have multiple values, specified in one of two ways:
 Value Limits
 ------------
 
-If the number of values exceeds the maximum allowed, an error will occur. For example, specifying :ref:`RCTYPE2B` twice when only one value is allowed will result in:
+Each keyword takes a fixed number of values.  Passing the wrong count can raise an error, but enforcement is not yet fully consistent.  While this is being improved, keep these points in mind:
 
-.. code-block:: bash
+* **Too many values** – Tadah!MLIP may reject the input with a clear message or quietly discard the extras; the latter can later surface as obscure run-time failures (even an occasional segmentation fault).
+* **Too few values** – usually triggers an error, although a crash remains possible in rare corner cases.
 
-   [user@host:~] $ tadah train -c config.train
-   terminate called after throwing an instance of 'std::runtime_error'
-     what():  Repeated key RCTYPE2B Cut_Cos
-   Aborted (core dumped)
+In short, give every keyword exactly the number of values it expects—no more, no less—to avoid unpleasant surprises.
 
 .. _SupportedKEYS:
 

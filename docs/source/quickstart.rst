@@ -5,7 +5,7 @@ This section covers the fundamentals and command line interface (CLI) of Tadah!M
 
 For installation instructions, see :ref:`installation`. For CLI examples, see :ref:`cli_examples`.
 
-If you are interested in using it as a C++ library, have a look at the :ref:`api_examples` and browse through the API documentation. This section might prove useful.
+If you plan to use Tadah! as a C++ library, we recommend completing this Quick-Start guide first; once you have the basics, head over to the :ref:`api_examples` and the full API reference.
 
 Overview
 --------

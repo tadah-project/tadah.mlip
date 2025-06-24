@@ -60,7 +60,7 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    regressors.rst
    descriptors.rst
    cutoffs.rst
-   nested_fitting.rst
+   hpo.rst
 
 ----
 

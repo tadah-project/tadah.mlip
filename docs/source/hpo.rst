@@ -91,7 +91,7 @@ The command to run the nested fitting is:
 
 ::
 
-  ``tadah hpo --config <FILE> --hpotarget <FILE> --validation <FILE>``
+  tadah hpo --config <FILE> --hpotarget <FILE> --validation <FILE>
 
 See :ref:`cli_example_2` for the simple example of nested fitting.
 
@@ -133,6 +133,11 @@ Loss functions
 The keyword ``LOSS`` is used to define the default loss function for the nested fitting procedure.
 Individual ``PC_LAMMPS`` simulations can override it.
 
+::
+
+   LOSS <Name> [<extra params>]
+
+
 The currently supported loss functions are:
 
 ================ =============== ==============================
@@ -154,16 +159,16 @@ The optimizer could be either global, local, or a hybrid of the two. The latter 
 
 Tadah!MLIP supports optimizers from the following libraries:
 
-* NLOPT [https://nlopt.readthedocs.io/](https://nlopt.readthedocs.io/)
-  * We aim to support all NLOPT algorithms which do not require analytical
-    derivatives, i.e. all algorithms which names begin with either ``GN_`` or ``LN_``.
-    See the `NLOPT documentation <https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/>`_
+* NLOPT https://nlopt.readthedocs.io
+  We aim to support all NLOPT algorithms which do not require analytical
+  derivatives, i.e. all algorithms which names begin with either ``GN_`` or ``LN_``.
+  See the `NLOPT documentation <https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/>`_
 
-* Dlib [http://dlib.net/](http://dlib.net/)
+* Dlib http://dlib.net
   * Local numerical optimizers (BFGS, LBFGS, CG, BOBYQA) [Work in progress...]
   * Global MaxLIPO+TR aka Global Function Search (GFS)
 
-* Tadah!MLIP also provide basic random search and grid search optimizers.
+* Tadah!MLIP provides basic random search and grid search optimizers.
 
 The optimizer is specified in the OPTIMIZER block of the :term:`nested fitting configuration` file.
 
@@ -174,29 +179,7 @@ The optimizer is specified in the OPTIMIZER block of the :term:`nested fitting c
      ...
    ENDOPTIMIZER
 
-List of optimizer block keys:
-=================   =========================================================
-``key``              ``value``
-=================   =========================================================
-``LIB``             name of the library, e.g. ``NLOPT``, ``DLIB``, ``TADAH``
-``ALGO``            name of the algorithm, e.g. ``GN_DIRECT``, ``LD_COBYLA``, ``GFS``
-``MAXEVAL``         maximum number of evaluations of the loss function
-``MAXTIME``         maximum time in seconds to run the optimizer
-``STOPVAL``         stop the optimization when the loss is below this value
-``FTOL_REL``        relative tolerance for the loss function
-``FTOL_ABS``        absolute tolerance for the loss function
-``XTOL_REL``        relative tolerance for the hyperparameters
-``XTOL_ABS``        absolute tolerance for the hyperparameters
-``POPULATION``      number of individuals in the population (for population-based optimizers)
-``STEP``            step size for the optimizer
-``SEED``            random seed for the optimizer (default: current time)
-``VECTOR_STORAGE``  required by some NLOPT algorithms
-``THREADS``         number of threads for the Dlip::MaxLIPO+TR optimizer (default: 1)
-``PARAM``           generic key for passing additional parameters to the optimizer
-``LOGSCALE_THRESHHOLD``  
-                   threshold for the log-scaling of the search space (experimental)
-
-If optimizer is a hybrid of global and local, the nested ``LOCAL`` block must be specified.
+If an optimizer is a hybrid of global and local, the nested ``LOCAL`` block must be specified.
 The local block follows the same syntax as the global block, 
 but it is used to configure the local optimizer that will be used for the local search.
 
@@ -210,6 +193,40 @@ but it is used to configure the local optimizer that will be used for the local 
        ...
      ENDLOCAL
    ENDOPTIMIZER
+
+
+Note that usually optimizers support only a subset of the keys listed below. 
+
++---------------------------+------------------------------------------------------------------------------+
+|  key             [type]   | description [available options]                                              |
++===========================+==============================================================================+
+| ``LIB``         [string]  | name of the optimization library [``DLIB``, ``NLOPT``, ``TADAH``]            |
+| ``ALGO``        [string]  | name of the algorithm from the selected library (see below)                  |
+| ``MAXEVAL``       [uint]  | maximum number of evaluations of the loss function                           |
+| ``MAXTIME``       [uint]  | maximum time in seconds to run the optimizer                                 |
+| ``STOPVAL``       [uint]  | stop the optimization when the loss is below this value                      |
+| ``FTOL_REL``     [float]  | relative tolerance for the loss function                                     |
+| ``FTOL_ABS``     [float]  | absolute tolerance for the loss function                                     |
+| ``XTOL_REL``     [float]  | relative tolerance for the hyperparameters                                   |
+| ``XTOL_ABS``     [float]  | absolute tolerance for the hyperparameters                                   |
+| ``POPULATION``    [uint]  | number of individuals in the population (for population-based optimizers)    |
+| ``STEP``          [uint]  | step size for the optimizer                                                  |
+| ``SEED``          [uint]  | random seed for the optimizer (default: current time)                        |
+| ``VECTOR_ARR``    [uint]  | storege required by some NLOPT algorithms                                    |
+| ``THREADS``       [uint]  | number of threads for the Dlip::MaxLIPO+TR optimizer (default: 1)            |
+| ``PARAM`` [string float]  | generic key value pair for passing additional parameters to the optimizer    |
+| ``LOG_HP``       [float]  | threshold for the log-scaling of the search space (experimental)             |
++---------------------------+------------------------------------------------------------------------------+
+
++-----------+----------------------------------------------------------------------------------------------+
+| LIB       |  ALGO (algorithms from the selected library)                                                 |
++-----------+----------------------------------------------------------------------------------------------+
+| ``TADAH`` | ``RANDOM``, ``GRID``                                                                         |
++-----------+----------------------------------------------------------------------------------------------+
+| ``NLOPT`` | ``GN_DIRECT_L``, ``GN_CRS2_LM``, ``G_MLSL_LDS``, ... and many more see NLOP docs             |
++-----------+----------------------------------------------------------------------------------------------+
+| ``DLIB``  | ``BFGS``, ``LBFGS``, ``CG``, ``BOBYQA``, ``GFS`` (MaxLIPO+TR)   [work in progress...]        |
++-----------+----------------------------------------------------------------------------------------------+
 
 .. _search_space_constraints:
 

@@ -4,7 +4,7 @@ Descriptors
 ===========
 
 This page lists every two-body (``D2_*``) and many-body (``DM_*``) descriptor
-compiled into Tadah!, together with their constructor arguments.  
+compiled into Tadah!MLIP, together with their constructor arguments.  
 Because the tables are generated directly from the header files, *the class
 name you see here is exactly the keyword you must write in your configuration
 file.*
@@ -12,8 +12,8 @@ file.*
 General workflow
 ----------------
 
-1.  Decide which descriptor families you need (two-body, many-body, or both).  
-2.  Switch the family **on** with the corresponding *INIT* flag::
+#.  Decide which descriptor families you need (two-body, many-body, or both).  
+#.  Switch the family **on** with the corresponding *INIT* flag::
 
         INIT2B  true      # activate two-body block
         INITMB  false     # skip many-body block
@@ -21,7 +21,7 @@ General workflow
     At least one of ``INIT2B`` / ``INITMB`` must be ``true``.  If both are
     ``true`` Tadah! will build one descriptor of each type **unless** you say
     otherwise with ``TYPE2B`` / ``TYPEMB``.  
-3.  Provide **exactly one** line per descriptor you want to build, using the
+#.  Provide **exactly one** line per descriptor you want to build, using the
     formats below.  If you need to concatenate several descriptors of the same
     family, use the meta classes ``D2_mJoin`` or ``DM_mJoin`` and list the
     components *in a block* right after the meta keyword.
@@ -140,7 +140,7 @@ Single Lennard-Jones descriptor
 
    # ----- many-body embedded density ----------------------------------
    INITMB  true
-   TYPEMB     DM_EAD 1 7 7 Kr Kr  # L=1, 7 centres, 7 widths
+   TYPEMB     DM_EAD 1 7 7 Kr Kr  # L 1, 7 centres, 7 widths
    RCTYPEMB   Cut_Poly2
    RCUTMB     6.5
    CGRIDMB    LIN 7 0.0 6.5
@@ -179,7 +179,7 @@ Each entry shows
 
 * the C++ signature,
 * a short description & equation,
-* **Required context keys**, i.e. the options you must specify in the
+* **Required config keys**, i.e. the options you must specify in the
   configuration file.
 
 Copy the class name into the ``TYPE2B`` / ``TYPEMB`` line, supply the required

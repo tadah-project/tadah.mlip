@@ -201,20 +201,35 @@ Note that usually optimizers support only a subset of the keys listed below.
 |  key             [type]   | description [available options]                                              |
 +===========================+==============================================================================+
 | ``LIB``         [string]  | name of the optimization library [``DLIB``, ``NLOPT``, ``TADAH``]            |
++---------------------------+------------------------------------------------------------------------------+
 | ``ALGO``        [string]  | name of the algorithm from the selected library (see below)                  |
++---------------------------+------------------------------------------------------------------------------+
 | ``MAXEVAL``       [uint]  | maximum number of evaluations of the loss function                           |
++---------------------------+------------------------------------------------------------------------------+
 | ``MAXTIME``       [uint]  | maximum time in seconds to run the optimizer                                 |
++---------------------------+------------------------------------------------------------------------------+
 | ``STOPVAL``       [uint]  | stop the optimization when the loss is below this value                      |
++---------------------------+------------------------------------------------------------------------------+
 | ``FTOL_REL``     [float]  | relative tolerance for the loss function                                     |
++---------------------------+------------------------------------------------------------------------------+
 | ``FTOL_ABS``     [float]  | absolute tolerance for the loss function                                     |
++---------------------------+------------------------------------------------------------------------------+
 | ``XTOL_REL``     [float]  | relative tolerance for the hyperparameters                                   |
++---------------------------+------------------------------------------------------------------------------+
 | ``XTOL_ABS``     [float]  | absolute tolerance for the hyperparameters                                   |
++---------------------------+------------------------------------------------------------------------------+
 | ``POPULATION``    [uint]  | number of individuals in the population (for population-based optimizers)    |
++---------------------------+------------------------------------------------------------------------------+
 | ``STEP``          [uint]  | step size for the optimizer                                                  |
++---------------------------+------------------------------------------------------------------------------+
 | ``SEED``          [uint]  | random seed for the optimizer (default: current time)                        |
++---------------------------+------------------------------------------------------------------------------+
 | ``VECTOR_ARR``    [uint]  | storege required by some NLOPT algorithms                                    |
++---------------------------+------------------------------------------------------------------------------+
 | ``THREADS``       [uint]  | number of threads for the Dlip::MaxLIPO+TR optimizer (default: 1)            |
++---------------------------+------------------------------------------------------------------------------+
 | ``PARAM`` [string float]  | generic key value pair for passing additional parameters to the optimizer    |
++---------------------------+------------------------------------------------------------------------------+
 | ``LOG_HP``       [float]  | threshold for the log-scaling of the search space (experimental)             |
 +---------------------------+------------------------------------------------------------------------------+
 

@@ -1,4 +1,4 @@
-Example 1 - Basics of Training and Prediction
+Example 1 - Basics: Training and Prediction
 ---------------------------------------------
 
 This example demonstrates how to train a model using Tadah!MLIP. The ``config.train`` file defines

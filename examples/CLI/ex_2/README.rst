@@ -19,16 +19,19 @@ Files provided
 
 * ``config.train`` – training-stage settings for the underlying potential.
 
-  .. literal_include:: config.train
+.. literal_include:: ../../examples/CLI/ex_2/config.train
+   :language: ini
 
 * ``config.val`` – list of configurations that form the validation data set.
 
-  .. literal_include:: config.val
+.. literal_include:: ../../examples/CLI/ex_2/config.val
+   :language: ini
 
 * ``config.hpo`` – instructions that tell Tadah!MLIP how to perform HPO
   (choice of optimiser, loss function, search space, logging policy, …).
 
-  .. literal_include:: config.hpo
+.. literal_include:: ../../examples/CLI/ex_2/config.hpo
+   :language: ini
 
 Running the example
 ...................

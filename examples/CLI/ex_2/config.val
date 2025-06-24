@@ -1,0 +1,8 @@
+# The validation datasets are used to obtain
+# MAE, RMSE and R^2 on energies or forces.
+
+# Specify one or more validation datasets with DBFILE keyword
+# Path can be either absolute or relative to the program current
+# working directory.
+
+DBFILE vdata.db

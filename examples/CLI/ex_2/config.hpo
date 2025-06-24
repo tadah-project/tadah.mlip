@@ -1,0 +1,28 @@
+# 1. Define the optimizer (see the documentation for the full list).
+#    Here we use dlib’s Global Search Function (also known as MaxLIPO+TR).
+OPTIMIZER 
+  LIB DLIB
+  ALGO GFS
+  MAXEVAL 2000    # maximum number of iterations
+  FTOL_ABS 1e-8   # numerical convergence threshold for local minima
+ENDOPTIMIZER
+
+# 2. Use the L2-norm loss function.
+LOSS L2
+
+# 3. Basic performance constraint: include the energy RMSE in the loss function with a target of 0 and a weight of 1.0.
+#    The RMSE is measured on the validation dataset defined in config.val.
+ERMSE 0 1.0
+
+# 4. Define search-space constraints.
+OPTIM CGRID2B (1-4) 0.0 5.5
+OPTIM SGRID2B (1-4) 0.1 1.0
+
+# 5. Output-control parameters. hpo always saves the current best model to `best_pot.tadah`.
+#    Log files are written as (best_)loss.tadah, (best_)params.tadah, and (best_)outvar.tadah.
+OUTPUT 10     # write to logs every 10th iteration, regardless of the loss value
+BOUTPUT 1     # always write to the best_ logs
+
+# 6. Directories and dump rate for archiving intermediate potentials.
+DUMP 100 newPotsDir    # dump pot.tadah_i every 100th potential, regardless of the loss
+BDUMP 1 newBestPotsDir # archive a potential whenever it improves on the previous best

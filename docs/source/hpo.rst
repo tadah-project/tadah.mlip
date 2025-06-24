@@ -15,7 +15,7 @@ Nested Fitting
 
    Workflow of the :term:`nested fitting procedure`: the outer optimizer proposes
    new :term:`hyperparameters<hyperparameter>`, the model is retrained, and each trial potential is
-   validated against :term:`performance constraint<performance constraint>` that feed back into the global
+   validated against :term:`performance constraints<performance constraint>` that feed back into the global
    loss.
 
 Nested fitting is Tadah!MLIP’s automated, two-level fitting workflow:
@@ -78,7 +78,7 @@ procedure is computationally expensive but also powerful: it can expose
 regions of hyperparameter space that yield stable, accurate, and fast
 potentials. However, it is not a silver bullet:
 **Success still depends on sensible choices of performance
-constraints and search-space limits**.
+constraints and search space limits**.
 
 .. _hpo_quick_start:
 
@@ -264,7 +264,7 @@ Performance constraints
 The simplest performance contrainst are MAE, RMSE, and R², which can be calculated for either energies, forces, or stresses.
 These constrains are evaluated on the validation set.
 
-The physics informed performance constraints are defined in the :term:`NFC` file using the ``PC_LAMMPS`` directive.
+The physics informed performance constraints are defined in the :term:`nested fitting configuration` file using the ``PC_LAMMPS`` directive.
 LAMMPS is the work-horse that progressivly turns a potential into
 numbers that matter.  Each ``PC_LAMMPS`` line in launches a separate simulation:
 

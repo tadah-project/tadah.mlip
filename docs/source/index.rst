@@ -44,6 +44,7 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    installation.rst
    mlips.rst
    contribute.rst
+   glossary.rst
    LICENSE.rst
 
 ----

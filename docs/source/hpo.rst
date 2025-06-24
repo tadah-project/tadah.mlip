@@ -14,17 +14,17 @@ Nested Fitting
    :align: center
 
    Workflow of the :term:`nested fitting procedure`: the outer optimizer proposes
-   new :term:`hyperparameters`, the model is retrained, and each trial potential is
-   validated against :term:`performance constraints` that feed back into the global
+   new :term:`hyperparameters<hyperparameter>`, the model is retrained, and each trial potential is
+   validated against :term:`performance constraint<performance constraint>` that feed back into the global
    loss.
 
 Nested fitting is Tadah!MLIP’s automated, two-level fitting workflow:
 
 * **inner loop** – ordinary regression that determines
-  the :term:`learned parameters` :math:`\mathbf w` for a fixed model definition;
+  the :term:`learned parameters<learned parameter>` :math:`\mathbf w` for a fixed model definition;
 * **outer loop** – a global optimizer that samples from
-  the :term:`search-space constraints` (cutoffs, Gaussian widths, grid positions, …),
-  retrains the model, and judges the result against user-defined :term:`performance constraints`.
+  the :term:`search space constraints<search space constraint>` (SSH),
+  retrains the model, and judges the result against user-defined :term:`performance constraints<performance constraint>` (PC).
 
 Letting a computer search the :term:`hyperparameter` space helps to
 
@@ -108,19 +108,19 @@ As well as some general information about the nested fitting procedure.
 
 In general the following steps are required to run the nested fitting procedure:
 
-  #. Define the initial model in the :term:`TC` file.
+  #. Define the initial model in the :term:`training configuration` file.
 
   #. List validation dataset(s) in the validation file using :ref:`DBFILE` keyword.
 
-  #. Define the :term:`NFC` file with the following blocks:
+  #. Define the :term:`nested fitting configuration` file with the following blocks:
 
      * ``LOSS`` to define the default loss function
 
      * ``OPTIMIZER`` block to define the outer optimizer
 
-     * ``OPTIM`` line(s) to define the :term:`search space constraints`
+     * ``OPTIM`` line(s) to define the :term:`SSH<search space constraint>`
 
-     * ``PC_<TYPE>`` line(s) to define the :term:`performance constraints`:
+     * ``PC_<TYPE>`` line(s) to define the :term:`PC<performance constraint>`:
 
        * ``PC_ERMSE`` for validation RMSE of energies (see :ref:`performance_constraints` for more)
 
@@ -149,7 +149,7 @@ Name             Extra params    Comment
 Choosing the optimizer
 .......................
 
-The optimizer for the outer loop is specified in the :term:`NFC` file.
+The optimizer for the outer loop is specified in the :term:`nested fitting configuration` file.
 The optimizer could be either global, local, or a hybrid of the two. The latter case is only supported by a handful of optimizers.
 
 Tadah!MLIP supports optimizers from the following libraries:
@@ -165,7 +165,7 @@ Tadah!MLIP supports optimizers from the following libraries:
 
 * Tadah!MLIP also provide basic random search and grid search optimizers.
 
-The optimizer is specified in the OPTIMIZER block of the :term:`NFC` file.
+The optimizer is specified in the OPTIMIZER block of the :term:`nested fitting configuration` file.
 
 .. code-block:: none
 
@@ -216,7 +216,7 @@ but it is used to configure the local optimizer that will be used for the local 
 Search space constraints
 ........................
 
-The search space constraints are defined in the :term:`NFC` file using the ``OPTIM`` directive.
+The search space constraints are defined in the :term:`nested fitting configuration` file using the ``OPTIM`` directive.
 The ``OPTIM`` lines specify the hyperparameters that the outer optimizer will
 explore.  Each ``OPTIM`` refers to a single KEY from a configuration file which defines the initial model,
 (*config.train*), which is then treated as an optimisation variable.

@@ -8,7 +8,7 @@ Nested Fitting
   This section is under construction.  The content is incomplete and may
   still contain errors.  We are working on it and will update it soon.
 
-.. figure:: images/nested_fitting.png
+.. figure:: images/nested_fitting.jpg
    :alt: Nested Fitting Procedure
    :width: 80%
    :align: center

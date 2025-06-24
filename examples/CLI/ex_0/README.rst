@@ -1,5 +1,5 @@
-Example 0 - Tadah! Basics
---------------------------
+Example 0 - Basics: Tadah!MLIP
+------------------------------
 
 ``tadah`` is a command-line tool designed to simplify training and evaluation of machine learning models. It provides a user-friendly interface for managing configurations, datasets, and training processes. ``tadah`` is the main entry point for subcommands that perform specific tasks within your machine learning workflow.
 

@@ -20,15 +20,18 @@ Nested Fitting
 
 Nested fitting is Tadah!MLIP’s automated, two-level fitting workflow:
 
-* **inner loop** – ordinary regression that determines the :term:`learned parameters` :math:`\mathbf w` for a fixed model definition;
-* **outer loop** – a global optimizer that samples from the :term:`search-space constraints` (cutoffs, Gaussian widths, grid positions, …), retrains the model, and judges the result against user-defined :term:`performance constraints`.
+* **inner loop** – ordinary regression that determines
+  the :term:`learned parameters` :math:`\mathbf w` for a fixed model definition;
+* **outer loop** – a global optimizer that samples from
+  the :term:`search-space constraints` (cutoffs, Gaussian widths, grid positions, …),
+  retrains the model, and judges the result against user-defined :term:`performance constraints`.
 
 Letting a computer search the :term:`hyperparameter` space helps to
 
 * escape the “good on the validation set, unstable in MD” trap;
 * trade accuracy for speed (or vice versa) in a reproducible way;
 * fold real-world performance constraints—elastic constants, phase
- stability, surface energies, …—directly into the loss function.
+  stability, surface energies, …—directly into the loss function.
 
 This page gives the necessary background and demonstrates how to set up
 Tadah!MLIP for nested fitting.

@@ -41,7 +41,7 @@ Kernel ridge regression with an RBF kernel:
    MODEL     M_KRR  Kern_RBF
    MPARAMS   0.5        # γ for RBF
 
-Bayesian linear regression with a quadratic basis:
+Bayesian linear regression with the second order polynomial basis function:
 
 .. code-block:: ini
 

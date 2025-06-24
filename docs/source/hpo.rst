@@ -17,8 +17,6 @@ To use Hyperparameter Optimisation (HPO), LAMMPS must be compiled with the Tadah
 
 HPO allows automatic model adjustments by running custom LAMMPS simulations, scoring them, and using these scores to guide the training process.
 
-For additional examples, please see the examples section in the left-hand sidebar.
-
 .. image:: images/hpo.png
    :alt: Hyperparameter Optimisation Cycle
    :align: center

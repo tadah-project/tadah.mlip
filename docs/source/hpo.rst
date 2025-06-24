@@ -20,12 +20,8 @@ Nested Fitting
 
 Nested fitting is Tadah!MLIP’s automated, two-level fitting workflow:
 
-* **inner loop** – ordinary regression that determines the :term:`learned
- parameters` :math:`\mathbf w` for a fixed model definition;
-* **outer loop** – a global optimizer that samples from the
- :term:`search-space constraints` (cutoffs, Gaussian widths, grid positions,
- …), retrains the model, and judges the result against user-defined
- :term:`performance constraints`.
+* **inner loop** – ordinary regression that determines the :term:`learned parameters` :math:`\mathbf w` for a fixed model definition;
+* **outer loop** – a global optimizer that samples from the :term:`search-space constraints` (cutoffs, Gaussian widths, grid positions, …), retrains the model, and judges the result against user-defined :term:`performance constraints`.
 
 Letting a computer search the :term:`hyperparameter` space helps to
 
@@ -260,7 +256,7 @@ Indices can be comma-separated lists, ranges ``a-b`` or strides ``a-b:s``
 .. _performance_constraints:
 
 Performance constraints
------------------------
+.......................
 
 The simplest performance contrainst are MAE, RMSE, and R², which can be calculated for either energies, forces, or stresses.
 These constrains are evaluated on the validation set.
@@ -301,7 +297,7 @@ contributing to the loss—handy for post-mortem plots.
 if LAMMPS crashes or loss exceeds this value the optimizer receives FAILSCORE
 
 Output files
-------------
+............
 
 All artefacts land in the current directory.
 
@@ -317,7 +313,7 @@ Use ``OUTPUT N`` to write *loss.dat* every N iterations
 (default 10), ``BOUTPUT N`` for the best-only stream.
 
 Performance & parallelism
--------------------------
+.........................
 
 The desktop version of Tadah!MLIP runs each LAMMPS simulation using a serial version of LAMMPS.
 This allwos to run multiple ``PC_LAMMPS`` scripts in parallel. Use the

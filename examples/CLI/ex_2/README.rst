@@ -19,19 +19,19 @@ Files provided
 
 * ``config.train`` – training-stage settings for the underlying potential.
 
-  .. literal_include:: ../../examples/CLI/ex_2/config.train
+  .. literal_include:: ../../../examples/CLI/ex_2/config.train
 
 * ``config.val`` – list of configurations that form the validation data set.
 
-  .. literal_include:: ../../examples/CLI/ex_2/config.val
+  .. literal_include:: ../../../examples/CLI/ex_2/config.val
 
 * ``config.hpo`` – instructions that tell Tadah!MLIP how to perform HPO
   (choice of optimiser, loss function, search space, logging policy, …).
 
-  .. literal_include:: ../../examples/CLI/ex_2/config.hpo
+  .. literal_include:: ../../../examples/CLI/ex_2/config.hpo
 
 Running the example
--------------------
+...................
 
 Invoke the nested fitting run with:
 
@@ -45,7 +45,7 @@ Whenever it finds a parameter set that improves upon the current best loss,
 it writes the corresponding potential to ``best_pot.tadah``.
 
 Output files
-------------
+............
 
 The optimiser produces three main log files that record *every* iteration
 

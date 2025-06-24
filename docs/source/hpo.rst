@@ -10,7 +10,7 @@ Nested Fitting
 
 .. figure:: images/nested_fitting.jpg
    :alt: Nested Fitting Procedure
-   :width: 80%
+   :width: 95%
    :align: center
 
    Workflow of the :term:`nested fitting procedure`: the outer optimizer proposes

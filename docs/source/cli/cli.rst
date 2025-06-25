@@ -89,4 +89,4 @@ Top-level command map
 Commands reference
 ------------------
 
-.. include:: cli_auto_gen.rst
+.. include:: cli/cli_auto_gen.rst

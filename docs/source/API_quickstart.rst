@@ -1,4 +1,7 @@
 API Quick Start
 ===============
 
-Work in progress...
+.. note::
+
+   This page is still under development.  
+   The API is subject to change, and the documentation may not be complete.

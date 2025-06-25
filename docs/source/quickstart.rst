@@ -109,19 +109,17 @@ Basic rules
 #. There is a one-to-one mapping between CLI flags/options and configuration
    keys:
 
-.. code-block:: bash
-
-  +--------------------+------------------------------+
-  | CLI (short/long)   | Config-file key              |
-  +====================+==============================+
-  | ``-c``, ``--config``    | ``CONFIG``              |
-  | ``-d``, ``--dbfile``    | ``DBFILE``              |
-  | ``-p``, ``--potential`` | ``POTENTIAL``           |
-  | ``-v``, ``--verbose``   | ``VERBOSE``            |
-  | ``-A``, ``--analytics`` | ``ANALYTICS``          |
-  | ``-F``, ``--force``     | ``FORCE``              |
-  | …                      | …                       |
-  +--------------------+------------------------------+
+  +-------------------------+--------------------+
+  | CLI (short/long)        |  Config-file key   |
+  +=========================+====================+
+  | ``-c``, ``--config``    | ``CONFIG``         |
+  | ``-d``, ``--dbfile``    | ``DBFILE``         |
+  | ``-p``, ``--potential`` | ``POTENTIAL``      |
+  | ``-v``, ``--verbose``   | ``VERBOSE``        |
+  | ``-A``, ``--analytics`` | ``ANALYTICS``      |
+  | ``-F``, ``--force``     | ``FORCE``          |
+  | …                       | …                  |
+  +-------------------------+--------------------+
 
 In other words, *anything you can set on the command line can also be set with an upper-case key in the task file*.
 

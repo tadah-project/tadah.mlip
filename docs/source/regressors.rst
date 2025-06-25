@@ -20,13 +20,13 @@ Quick syntax guide
 
 .. code-block:: ini
 
-   MODEL  <Regressor>  [<Kernel> | <Basis>]
+   MODEL  <Regressor>  [<Kernel> | <BasisF>]
 
 * ``<Regressor>`` – one of the names under **Regressors** below  
   (``M_KRR``, ``M_BLR`` …).
 * ``<Kernel>`` – required for kernel methods (choose from the *Kernels*
   subsection).  
-* ``<Basis>`` – required for linear / basis-function methods (choose from
+* ``<BasisF>`` – required for linear / basis-function methods (choose from
   the *Basis Functions* subsection).  
 * Follow-up keys such as ``MPARAMS``, ``SBASIS`` configure the
   model and are listed in each class’s table.

@@ -1,3 +1,4 @@
+ATOM     Ta
 BIAS     false
 DIMER     false     0     false
 EWEIGHT     1.0
@@ -9,8 +10,10 @@ MODEL     M_KRR     Kern_Linear     1
 NORM     false
 OALGO     1
 RCTYPE2B     Cut_Dummy
-RCUT2B     5.3
+RCUT2B     6.5
 SWEIGHT     1.0
-TYPE2B     D2_LJ     Ti     Ti
+TYPE2B     D2_LJ     Ta     Ta
 UNCERTAINTY     false
-WEIGHTS     1150.553313147994458632     229149.840144735615467653
+WATOM     73
+WEIGHTS     14.204213349318765225     2604.396965191186154698
+

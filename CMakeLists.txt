@@ -62,14 +62,14 @@ if(TADAH_ENABLE_HPO)
   FetchContent_Declare(
     Tadah.HPO
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
-    GIT_TAG origin/${GIT_BRANCH}
+    GIT_TAG ${GIT_BRANCH}
   )
   FetchContent_MakeAvailable(Tadah.HPO)
 
   # FetchContent_Declare(
   #   Tadah.LAMMPS
   #   GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git
-  #   GIT_TAG origin/${GIT_BRANCH}
+  #   GIT_TAG ${GIT_BRANCH}
   # )
   # FetchContent_MakeAvailable(Tadah.LAMMPS)
 else()
@@ -77,7 +77,7 @@ else()
   FetchContent_Declare(
     Tadah.MLIP
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
-    GIT_TAG origin/${GIT_BRANCH}
+    GIT_TAG ${GIT_BRANCH}
   )
   FetchContent_MakeAvailable(Tadah.MLIP)
 endif()

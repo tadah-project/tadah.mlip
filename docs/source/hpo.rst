@@ -126,6 +126,7 @@ In general the following steps are required to run the nested fitting procedure:
 
        * ``PC_LAMMPS`` line(s) to define the physics-informed performance constraints
 
+.. _loss_functions:
 
 Loss functions
 ..............
@@ -267,91 +268,230 @@ the same KEY in case you want to supply different low and high bounds for differ
 Indices can be comma-separated lists, ranges ``a-b`` or strides ``a-b:s``  
 (e.g. ``(1,4,7-10:2)``). Indices start from 1. ``<low`` and ``<high>`` are the floating point numbers for the lower and upper bounds.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 .. _performance_constraints:
 
 Performance constraints
-.......................
+-----------------------
 
-The simplest performance contrainst are MAE, RMSE, and R², which can be calculated for either energies, forces, or stresses.
-These constrains are evaluated on the validation set.
+The simplest performance constraints are the *mean absolute error* (MAE),
+*root-mean-squared error* (RMSE) and the coefficient of determination (*R²*).
+They can be computed for energies, forces or stresses and are evaluated on the
+validation set.  These constraints use the default :ref:`loss_functions`
+selected in the :term:`nested fitting configuration` file with the ``LOSS``
+keyword.
 
-The physics informed performance constraints are defined in the :term:`nested fitting configuration` file using the ``PC_LAMMPS`` directive.
-LAMMPS is the work-horse that progressivly turns a potential into
-numbers that matter.  Each ``PC_LAMMPS`` line in launches a separate simulation:
+Currently available built-ins are
+
+* **Energy**
+  * ``PC_ERMSE``
+  * ``PC_ErRMSE``
+  * ``PC_MAE``
+  * ``PC_ERSQ``
+* **Force**
+  * ``PC_FRMSE``
+* **Stress**
+  * ``PC_SRMSE``
+
+
+Physical constraints
+^^^^^^^^^^^^^^^^^^^^
+
+**Physics-informed performance constraints** are introduced with the
+``PC_LAMMPS`` directive in the :term:`nested fitting configuration` file.
+Tadah!MLIP uses LAMMPS as the work-horse that turns a trial potential into the
+macroscopic numbers we care about; each ``PC_LAMMPS`` launches a separate
+LAMMPS run.
+
+Example
+~~~~~~~
 
 .. code-block:: none
 
-   PC_LAMMPS --script in.elastic                 \
-          --varloss C11sC22 0 100 TUKEY 10    \
-          --varloss bulkmodulus 145 10 TUKEY 200 \
-          --failscore 1e5
+   PC_LAMMPS --script in.mysim \
+             --varloss myVar       0   100 \
+             --varloss myOtherVar 145  10
+
+``in.mysim`` is a regular LAMMPS input script that defines one or more
+*equal-style* variables.  
+``--varloss myVar 0 100`` tells Tadah! to include the variable *myVar* in the
+global loss with target 0 and weight 100.  
+If no loss type is given, the default ``LOSS`` from the configuration file is
+used; you can override it for an individual variable by appending the loss name
+and its parameters.
+
+A long ``PC_LAMMPS`` line may be split with a trailing back-slash (``\\``) for
+readability.
 
 Required options
 ^^^^^^^^^^^^^^^^
 
 ``--script <file>``  
-   LAMMPS input file.  Inside you must define *equal-style* variables whose
-   values will be grabbed at the end of the run.
+   LAMMPS input file containing the variable definitions.
 
-``--varloss <name> <target> <weight> [loss-type p₁ p₂…]``  
-   Declare one variable to be included in :math:`L_{\text{total}}`.
+``--varloss <name> <target> <weight> [loss-type p₁ p₂ …]``  
+   Add *name* to :math:`L_{\text{total}}`; optional extra tokens pick a specific
+   loss for that variable.
 
-Optional goodies
-^^^^^^^^^^^^^^^^
+Additional options
+^^^^^^^^^^^^^^^^^^
 
-``--invar <var> <value>`` injects a LAMMPS variable (like ``-var`` on the
-command line), allowing the same script to be reused for many structures or
-pressures.
+``--invar <name> <value>``  
+   Inject a variable (equivalent to LAMMPS’ ``-var``), allowing the same script
+   to be reused for several structures or pressures.
 
-``--outvar <var>`` records a variable in ``outvar.tadah`` *without*
-contributing to the loss—handy for post-mortem plots.
+``--outvar <name>``  
+   Record the variable in ``outvar.tadah`` without affecting the loss—useful
+   for diagnostic plots.
 
-``--failscore <val>`` overrides the global ``FAILSCORE``:
+``--failscore <value>``  
+   Override the global ``FAILSCORE``.  If LAMMPS crashes or the loss exceeds
+   this value, the optimiser receives *FAILSCORE* for that evaluation.
 
-if LAMMPS crashes or loss exceeds this value the optimizer receives FAILSCORE
+.. _output_files:
 
 Output files
-............
+------------
 
-All artefacts land in the current directory.
+Unless you change it with ``OUTDIR`` [work in progress...] every artefact produced by the outer
+optimiser is written to **the directory in which you started
+``tadah hpo``**.  Five groups of files are created:
 
-====================== =====================================================
-File / directory       Contents
-====================== =====================================================
-``loss.tadah``         
-``outvar.tadah``
-``params.tadah``
-====================== =====================================================
+Main log files
+~~~~~~~~~~~~~~
 
-Use ``OUTPUT N`` to write *loss.dat* every N iterations  
-(default 10), ``BOUTPUT N`` for the best-only stream.
+=====================  ==========================================================
+File                   Purpose and format
+=====================  ==========================================================
+``loss.tadah``         One line per iteration: step, wall-time, all individual
+                       loss terms follower by total loss. A header that
+                       starts with ``#`` describes the columns.
+``params.tadah``       The current hyper-parameter vector in the order defined
+                       by your ``OPTIM`` lines.  Header included.
+``outvar.tadah``       Additional variables requested with ``--outvar`` plus all
+                       variables used in ``--varloss`` (helpful for analysis).
+=====================  ==========================================================
+
+The rate of logging is controlled by
+
+``OUTPUT N``  
+   write a new line every *N* iterations (default: ``10``).
+
+Best-only snapshots
+~~~~~~~~~~~~~~~~~~~
+
+Whenever a new minimum of the global loss is found the
+corresponding rows are copied to companion files:
+
+* ``best_loss.tadah``  
+* ``best_params.tadah``  
+* ``best_outvar.tadah``  
+
+These contain **one single line**: the best result so far.  Use them to monitor
+progress in real time without parsing the full history.
+
+The rate of logging is controlled by
+
+``BOUTPUT N``  
+   write a new line every *N* iterations (default: ``1``).
+
+Potential archives
+~~~~~~~~~~~~~~~~~~
+
+The currest best potential is always saved to ``best_pot.tadah``.
+
+The trained potential itself can be archived automatically.
+
+``DUMP <N> <DIR>``  
+   Save **every** trial potential every *N* iterations to *DIR*.  
+   Files are named ``pot_<iter>.tadah``.  The directory is created if needed.
+   Set *N* = 0 to disable (default).
+
+``BDUMP <N> <DIR>``  
+   Same as ``DUMP`` but only for improvements of the best potential.  
+   Useful when you care only about the Pareto front.
+
+Practical tips
+~~~~~~~~~~~~~~
+
+* Large optimisation runs can generate thousands of potentials.  
+  Keep an eye on disk usage when enabling ``DUMP``.
+* The log files are plain text and append-only.  They can be tailed while the
+  optimisation is running:
+
+  .. code-block:: bash
+
+     tail -f loss.tadah
+
+* Each row in ``params.tadah`` matches the order of the ``OPTIM`` directives
+  exactly.  This makes it straightforward to resume a run or replay a specific
+  parameter set with ``tadah train``.
+
+.. _performance_parallelism:
 
 Performance & parallelism
-.........................
+-------------------------
 
-The desktop version of Tadah!MLIP runs each LAMMPS simulation using a serial version of LAMMPS.
-This allwos to run multiple ``PC_LAMMPS`` scripts in parallel. Use the
-``OMP_NUM_THREADS`` environment variable to set the number of OpenMP threads. In case where optimizer is also parallelised, the number of threads times the number of OMP threads must not exceed the number of available cores otherwise this will result in significant downgrade in performance.
+Tadah!MLIP comes in two flavours, and the parallel strategy you can exploit
+depends on which one you compiled.
 
-The MPI version of Tadah!MLIP runs each LAMMPS simulation using the MPI version of LAMMPS and allow to allocate specific number of cpu per LAMMPS simulation using ``--ncpu <value>`` option. **[work in progress...]**.
+Desktop build (OpenMP)
+~~~~~~~~~~~~~~~~~~~~~~
+
+* **Inner loop** – regression and descriptor evaluation are OpenMP
+  parallel.  
+  Set the number of threads in the usual way:
+
+  .. code-block:: bash
+
+     export OMP_NUM_THREADS=<n>
+
+* **Outer loop** – some optimisers can evaluate several hyper-parameter sets
+  concurrently.  Control this with the ``THREADS`` key in the
+  ``OPTIMIZER`` block (currently supported by Dlib MaxLIPO+TR).
+
+  Rule of thumb::
+
+     THREADS × OMP_NUM_THREADS  ≤  number of physical cores
+
+  Exceeding this limit will not crash the run, but the OS will oversubscribe
+  cores and overall performance will drop.
+
+* **LAMMPS runs** – every ``PC_LAMMPS`` script is executed with a *serial*
+  LAMMPS binary; Tadah!MLIP will attempt to run multiple of them in
+  parallel, each on a separate core (max OMP_NUM_THREADS).
+
+MPI build
+~~~~~~~~~
+
+The MPI variant parallelises the *inner* regression across **all** ranks
+(host–client pattern).  It must be linked against the MPI version of LAMMPS.
+Each LAMMPS calculation is spawned independently from the main communicator:
+
+``--ncpu <m>``  
+   on a ``PC_LAMMPS`` line requests that *m* ranks form a mini-MPI world and
+   execute the script.  Several ``PC_LAMMPS`` lines may run side-by-side, each
+   with its own ``--ncpu`` value.  The sum of all requested ranks must not
+   exceed *available ranks – 1* (one rank is reserved for the host).
+
+.. note::
+
+   The MPI launcher is functional but still experimental; improved error
+   handling and dynamic load balancing are in development.
+
+Example::
+
+   srun -n 64 tadah hpo …          # 64 MPI ranks available
+   …
+   PC_LAMMPS --script in.elastic --ncpu 8 …
+                                    # spawns mpirun -n 8 lammps …
+
+Practical advice
+~~~~~~~~~~~~~~~~
+
+* For inexpensive models you usually gain more by increasing ``THREADS`` than
+  by adding OpenMP threads—context-switch overhead is lower.
+* For very large training sets the regression dominates; in that case set
+  ``THREADS = 1`` and devote the cores to OpenMP (desktop build) or MPI.
+* Measure, do not guess: a few short test runs sweeping
+  ``OMP_NUM_THREADS`` and ``THREADS`` over {1, 2, 4, …} will quickly reveal the
+  sweet spot on your machine.

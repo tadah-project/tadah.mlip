@@ -1,6 +1,6 @@
 DBFILE     db.train           # Ta dataset
 INIT2B     true               # Use two-body descriptor
 RCUT2B     6.5                # Cutoff distance
-TYPE2B     D2_LJ Ti Ti        # Lennard-Jones descriptor
+TYPE2B     D2_LJ Ta Ta        # Lennard-Jones descriptor
 RCTYPE2B   Cut_Dummy          # No cutoff function
 MODEL      M_KRR Kern_Linear  # Kernel Ridge Regression with a linear kernel

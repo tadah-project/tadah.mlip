@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import sys
 import toml
 import os
 from copy import deepcopy
@@ -522,8 +521,8 @@ def generate_cli_rst(tasks_map, allowed_map, output_path):
     print(f"CLI reference successfully written to {output_path}")
 
 
-toml_path = sys.argv["config/blueprint_tadah.toml"]
-output_path = sys.argv["cli/cli.rst"]
+toml_path = "config/blueprint_tadah.toml"
+output_path = "cli/cli_auto_gen.rst"
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
 allowedMap, internalMap, tasksMap, blueprintTadah = parse_blueprint(toml_path)

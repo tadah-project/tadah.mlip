@@ -67,7 +67,7 @@ Configuration File
 
 .. warning:: This section is under construction and may not be complete or accurate. If you find any issues, please report them on the `Tadah!MLIP GitLab <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_.
 
-.. note:: This configuration file is NOT used by the HPO (Hyperparameter Optimization) module of Tadah!MLIP. The HPO module uses a different configuration file format, which is documented in the :ref:`hyperparameter_optimisation`.
+.. note:: This configuration file is NOT used by the HPO (Hyperparameter Optimization) module of Tadah!MLIP. The HPO module uses a different configuration file format, which is documented in the :ref:`nested_fitting`.
 
 This section describes the format of the configuration file used by Tadah!MLIP.
 

@@ -1,6 +1,9 @@
 '''
 This script generates documentation in rst format from
 the TOML dictionary.
+
+It will generate complete config/config_keys.rst file.
+
 '''
 import pytomlpp as p
 import os

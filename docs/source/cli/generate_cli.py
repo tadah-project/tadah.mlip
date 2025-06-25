@@ -522,19 +522,9 @@ def generate_cli_rst(tasks_map, allowed_map, output_path):
     print(f"CLI reference successfully written to {output_path}")
 
 
-def main():
-    if len(sys.argv) < 3:
-        print("Usage: python generate_cli.py blueprint_tadah.toml /path/to/cli.rst")
-        sys.exit(1)
+toml_path = sys.argv["config/blueprint_tadah.toml"]
+output_path = sys.argv["cli/cli.rst"]
+os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    toml_path = sys.argv[1]
-    output_path = sys.argv[2]
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-    allowedMap, internalMap, tasksMap, blueprintTadah = parse_blueprint(toml_path)
-    generate_cli_rst(tasksMap, allowedMap, output_path)
-
-
-if __name__ == "__main__":
-    main()
-
+allowedMap, internalMap, tasksMap, blueprintTadah = parse_blueprint(toml_path)
+generate_cli_rst(tasksMap, allowedMap, output_path)

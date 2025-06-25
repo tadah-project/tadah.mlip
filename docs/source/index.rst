@@ -54,7 +54,7 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    :caption: How to Use Tadah!
 
    quickstart.rst
-   cli.rst
+   cli/cli.rst
    tutorials.rst
    examples.rst
    config/config_keys.rst

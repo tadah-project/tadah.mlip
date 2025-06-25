@@ -271,26 +271,26 @@ Indices can be comma-separated lists, ranges ``a-b`` or strides ``a-b:s``
 .. _performance_constraints:
 
 Performance constraints
------------------------
+.......................
 
-The simplest performance constraints are the *mean absolute error* (MAE),
-*root-mean-squared error* (RMSE) and the coefficient of determination (*R²*).
-They can be computed for energies, forces or stresses and are evaluated on the
-validation set.  These constraints use the default :ref:`loss_functions`
+The simplest performance constraints are computed for energies, forces and stresses
+with the *mean absolute error* (MAE), *root-mean-squared error* (RMSE)
+and the coefficient of determination (*R²*). They  are evaluated on the validation set.
+These constraints use the default :ref:`loss_functions`
 selected in the :term:`nested fitting configuration` file with the ``LOSS``
 keyword.
 
 Currently available built-ins are
 
 * **Energy**
-  * ``PC_ERMSE``
-  * ``PC_ErRMSE``
-  * ``PC_MAE``
-  * ``PC_ERSQ``
+   ``PC_ERMSE``
+   ``PC_ErRMSE``
+   ``PC_MAE``
+   ``PC_ERSQ``
 * **Force**
-  * ``PC_FRMSE``
+   ``PC_FRMSE``
 * **Stress**
-  * ``PC_SRMSE``
+   ``PC_SRMSE``
 
 
 Physical constraints
@@ -319,7 +319,7 @@ If no loss type is given, the default ``LOSS`` from the configuration file is
 used; you can override it for an individual variable by appending the loss name
 and its parameters.
 
-A long ``PC_LAMMPS`` line may be split with a trailing back-slash (``\\``) for
+A long ``PC_LAMMPS`` line may be split with a trailing back-slash (``\``) for
 readability.
 
 Required options
@@ -350,7 +350,7 @@ Additional options
 .. _output_files:
 
 Output files
-------------
+............
 
 Unless you change it with ``OUTDIR`` [work in progress...] every artefact produced by the outer
 optimiser is written to **the directory in which you started
@@ -429,7 +429,7 @@ Practical tips
 .. _performance_parallelism:
 
 Performance & parallelism
--------------------------
+.........................
 
 Tadah!MLIP comes in two flavours, and the parallel strategy you can exploit
 depends on which one you compiled.

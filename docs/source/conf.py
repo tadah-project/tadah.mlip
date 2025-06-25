@@ -196,3 +196,4 @@ else:
 
 def setup(app):
     subprocess.run(['python', 'config/read_toml.py'])
+    subprocess.run(['python', 'cli/generate_cli.py'])   # requires blueprint.toml from read_config.py

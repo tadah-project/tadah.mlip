@@ -4,41 +4,41 @@ Kernels
 Kern_Linear
 ...........
 
-.. doxygenclass:: Kern_Linear
+.. doxygenclass:: tadah::models::Kern_Linear
     :members:
 
 Kern_Quadratic
 ..............
 
-.. doxygenclass:: Kern_Quadratic
+.. doxygenclass:: tadah::models::Kern_Quadratic
     :members:
 
 Kern_LQ
 .......
 
-.. doxygenclass:: Kern_LQ
+.. doxygenclass:: tadah::models::Kern_LQ
     :members:
 
 Kern_RBF
 ........
 
-.. doxygenclass:: Kern_RBF
+.. doxygenclass:: tadah::models::Kern_RBF
     :members:
 
 Kern_Polynomial
 ...............
 
-.. doxygenclass:: Kern_Polynomial
+.. doxygenclass:: tadah::models::Kern_Polynomial
     :members:
 
 Kern_Sigmoid
 ............
 
-.. doxygenclass:: Kern_Sigmoid
+.. doxygenclass:: tadah::models::Kern_Sigmoid
     :members:
 
 Kernel
 ......
 
-.. doxygenclass:: Kern_Base
+.. doxygenclass:: tadah::models::Kern_Base
     :members:

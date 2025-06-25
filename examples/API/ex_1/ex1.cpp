@@ -3,12 +3,17 @@
 #include <tadah/mlip/models/m_all.h>
 #include <tadah/mlip/design_matrix/functions/basis_functions/dm_bf_all.h>
 #include <tadah/models/functions/kernels/kern_all.h>
-#include <tadah/core/config.h>
+#include <tadah/core/context.h>
+#include <tadah/core/core_user_config_parser.h>
 #include <tadah/mlip/structure.h>
 #include <tadah/mlip/descriptors_calc.h>
 #include <tadah/mlip/nn_finder.h>
 #include <tadah/mlip/output/output.h>
 #include <fstream>
+
+using namespace tadah::core;
+using namespace tadah::models;
+using namespace tadah::mlip;
 
 /**  @file ex1.cpp
  * This example shows how to perform training and
@@ -17,14 +22,14 @@
  * To compile with `g++` and run:
  *
  * \code{.sh}
- *  $ g++ -std=c++17 -O3 ex1.cpp -o ex1.out -ltadah -llapack -fopenmp
+ *  $ g++ -std=c++17 -O3 ex1.cpp -o ex1.out -ltadah.mlip -ltadah.models -ltadah.core -llapack -lblas -fopenmp
  *  $ ./ex1.out
  * \endcode
  *
- * Ta-dah! models and descriptors are selected at compile time but all model
+ * Tadah! models and descriptors are selected at compile time but all model
  * parameters are provided in the config file.
  *
- * Here we use Blip2B two-body descriptor and train using both energies
+ * Here we use D2_Blip two-body descriptor and train using both energies
  * and virial stresses.
  *
  * Files:
@@ -47,13 +52,13 @@ int main() {
   std::cout << "TRAINING STAGE" << std::endl;
   // Config file configures almost all model parameters.
   // See below for a more detailed explanation of used key-value(s) pairs.
-  Config config("config");
+  Context context = CoreUserConfigParser().parse("config");
 
   // First we load all training data from a list
   // of training datasets into StrutureDB object.
   // Paths to datasets are specified with a key DBFILE in a config file.
   std::cout << "StructureDB loading data..." << std::flush;
-  StructureDB stdb(config);
+  StructureDB stdb(context);
   std::cout << "Done!" << std::endl;
 
   // Next we pass StructureDB object to the nearest neighbour calculator.
@@ -61,10 +66,10 @@ int main() {
   // in every structure. These lists will be stored by individual Structures
   // in a StructureDB object.
   // The lists are calculated up to the max cutoff from the config file:
-  // cutoff_max = max(RCUT2B, RCUT3B, RCUTMB).
+  // cutoff_max = max(RCUT2B, RCUTMB).
   std::cout << "Calculating nearest neighbours..." << std::flush;
-  NNFinder nnf(config);
-  nnf.calc(stdb);
+  NNFinder nnf;
+  nnf.calc(stdb,context);
   std::cout << "Done!" << std::endl;
 
   // STEP 1a: Select descriptors.
@@ -78,21 +83,17 @@ int main() {
   //using D2=D2_Dummy;
   //using D2=D2_EAM;
 
-  // D3 - THREE-BODY
-  using D3=D3_Dummy;
-
   // DM - MANY-BODY
   //using DM=DM_EAM;
   //using DM=DM_EAD;
   using DM=DM_Dummy;
 
-  // STEP 1b: Select cutoffs, C2 for D2, etc
+  // STEP 1b: Select cutoffs, C2 for D2, CM for DM
   using C2=Cut_Cos;
-  using C3=Cut_Dummy;
   using CM=Cut_Dummy;
 
   // STEP 1c: Prepare descriptor calculator
-  DescriptorsCalc<D2,D3,DM,C2,C3,CM> dc(config);
+  DescriptorsCalc<D2,DM,C2,CM> dc(context);
 
   // STEP 2a: Select Basis Function (BF) or Kernels (K).
   // BF is used for M_BLR - Bayesian Linear Regression
@@ -108,7 +109,7 @@ int main() {
   //using M=M_KRR<K>;
 
   //// STEP 2c: Instantiate a model
-  M model(config);
+  M model(context);
 
   //std::cout << "TRAINING STAGE..." << std::flush;
 
@@ -131,7 +132,7 @@ int main() {
   // Saved models can be used with LAMMPS or can be reloaded
   // to make predictions.
   std::cout << "Saving LAMMPS pot.tadah file..." << std::flush;
-  Config param_file = model.get_param_file();
+  Context param_file = model.get_param_file();
   std::ofstream outfile("pot.tadah");
   outfile << param_file << std::endl;
   outfile.close();
@@ -142,7 +143,8 @@ int main() {
   // DBFILE(s) from config_pred file.
   // In other words training datasets go to the config file
   // and validation datasets are in the config_pred
-  param_file.add("config_pred");
+  Context temp = CoreUserConfigParser().parse("config_pred");
+  param_file = Context::merge(param_file,temp);
 
   // STEP 2: Load DBFILE from config_pred
   std::cout << "StructureDB loading data..." << std::flush;
@@ -151,26 +153,28 @@ int main() {
 
   // STEP 3: Calculate nearest neighbours
   std::cout << "Calculating nearest neighbours..." << std::flush;
-  NNFinder nnf2(param_file);
-  nnf2.calc(stdb2);
+  NNFinder nnf2;
+  nnf2.calc(stdb2,param_file);
   std::cout << "Done!" << std::endl;
 
   // STEP 4: Prepare DescriptorCalc
-  DescriptorsCalc<D2,D3,DM,C2,C3,CM> dc2(param_file);
+  DescriptorsCalc<D2,DM,C2,CM> dc2(param_file);
 
   // STEP 5: Results are saved to new StructureDB object 
   // - it will only contain predicted values
   // so there are no atom positions, etc...
 
-  bool err_bool=false;       // predict error, requires LAMBDA -1
   t_type predicted_error;    // container for prediction error
+  param_file.add("OUTFILE","energy.pred");
+  param_file.add("OUTFILE","forces.pred");
+  param_file.add("OUTFILE","stress.pred");
   std::cout << "Predicting..." << std::flush;
   StructureDB stpred = model.predict(param_file,stdb2,dc2);
   //StructureDB stpred = model.predict(param_file,stdb2,dc2,predicted_error);
   std::cout << "Done!" << std::endl;
 
   std::cout << "Dumping results to disk..." << std::flush;
-  Output output(param_file,err_bool);
+  Output output(param_file);
   output.print_predict_all(stdb,stpred,predicted_error);
   std::cout << "Done!" << std::endl;
 

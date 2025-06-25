@@ -1,5 +1,5 @@
-Func_Base
-==========
+Function_Base
+=============
 
-.. doxygenstruct:: Function_Base
+.. doxygenstruct:: tadah::models::Function_Base
     :members:

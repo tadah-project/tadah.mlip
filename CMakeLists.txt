@@ -1,167 +1,63 @@
 cmake_minimum_required(VERSION 3.12)
 
-# There is usually no need to change anything here...
+include(${CMAKE_SOURCE_DIR}/cmake/functions.cmake)
+include(FetchContent)
 
 set(TADAH "Tadah!")
+project(${TADAH}, LANGUAGES CXX)
 
-# Here are the options... set them with -D,
-# for example:
-# cmake .. -DTADAH_BUILD_TESTS=ON
-option(TADAH_ENABLE_HPO "Enable Hyperparamter optimiser." OFF)
-option(TADAH_ENABLE_OPENMP "Enable shared-memory parallelisation via OpenMP" OFF)
-option(TADAH_BUILD_MPI "Build MPI version of ${TADAH}" OFF)
-option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
-option(TADAH_ENABLE_FAST_MATH "Enable fast math optimizations" OFF)
-option(TADAH_BUILD_TESTS "Build with tests" OFF)
-
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
-
-# Guard against in-source builds
+# 0. Guard against in-source builds
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
-  message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there. You may need to remove CMakeCache.txt and CMakeFiles dir. ")
+  message(FATAL_ERROR
+    "In-source builds are not allowed.\n"
+    "Create a separate build directory and run CMake from there.")
 endif()
 
+# 1. Global settings
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# default build type for single-config generators (Ninja/Make)
+if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "" FORCE)
+endif()
+
 if(BUILD_SHARED_LIBS)
-  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-endif()
-
-if (BUILD_SHARED_LIBS)
-  # Always full RPATH
-  # use, i.e. don't skip the full RPATH for the build tree
   set(CMAKE_SKIP_BUILD_RPATH FALSE)
-
-  # when building, don't use the install RPATH already
-  # (but later on when installing)
   set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-
-  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-
-  # add the automatically determined parts of the RPATH
-  # which point to directories outside the build tree to the install RPATH
   set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-  # the RPATH to be used when installing, but only if it's not a system directory
-  list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
-  if("${isSystemDir}" STREQUAL "-1")
-    set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-  endif("${isSystemDir}" STREQUAL "-1")
 endif()
 
-set(CMAKE_CXX_FLAGS_DEBUG
-  "-g -O2 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra"
-  CACHE STRING
-  "Debug build."
-  FORCE)
+option(TADAH_ENABLE_HPO "Enable Hyperparamter optimizer." OFF)
+option(TADAH_ENABLE_OPENMP "Enable shared-memory parallelisation via OpenMP" OFF)
+option(TADAH_BUILD_MPI "Build MPI version of ${PROJECT_NAME}" OFF)
+option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
+option(TADAH_ENABLE_FAST_MATH "Enable fast math optimizations" OFF)
+option(TADAH_BUILD_DOCS_ONLY "Skip checks for required libraries; only build docs" OFF)
+option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
-set(CMAKE_CXX_FLAGS_RELEASE
-  "-g -O3 -Wall"
-  CACHE STRING
-  "Release build."
-  FORCE)
-
-set(CMAKE_CXX_FLAGS_PROFILE
-  "-g -O3 -Wall -Wpedantic -Wextra -pg -fno-inline "
-  CACHE STRING
-  "Flags used by the C++ compiler during profile builds."
-  FORCE)
-
-set(CMAKE_CXX_FLAGS_DEVELOP
-  "-g -O3 -Wall -Wpedantic -Wextra"
-  CACHE STRING
-  "Develop build."
-  FORCE)
-
-# Set default build type
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif()
-
-string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
-if (CMAKE_BUILD_TYPE STREQUAL "DEVELOP")
-if(NOT DEFINED ENV{TADAH_PATH})
-  message(FATAL_ERROR "TADAH_PATH system variable is undefined for the ${CMAKE_BUILD_TYPE} build")
-endif()
-  function(find_directory_case_insensitive target_name search_dir result_var)
-    execute_process(
-        COMMAND find "${search_dir}" -maxdepth 1 -type d -iname "${target_name}"
-        OUTPUT_VARIABLE found_dir
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
-    if(found_dir)
-      set(${result_var} "${found_dir}" PARENT_SCOPE)
-      message("${TADAH} Develop build: Found directory: ${found_dir}")
-    else()
-      set(${result_var} "" PARENT_SCOPE)
-      message("${TADAH} Develop build: Directory not found.")
-    endif()
-  endfunction()
-
-  find_directory_case_insensitive("core" "$ENV{TADAH_PATH}" DEVELOP_CORE_DIR)
-  find_directory_case_insensitive("models" "$ENV{TADAH_PATH}" DEVELOP_MODELS_DIR)
-  find_directory_case_insensitive("mlip" "$ENV{TADAH_PATH}" DEVELOP_MLIP_DIR)
-  set(FETCHCONTENT_SOURCE_DIR_TADAH.CORE "${DEVELOP_CORE_DIR}")
-  set(FETCHCONTENT_SOURCE_DIR_TADAH.MODELS "${DEVELOP_MODELS_DIR}")
-  set(FETCHCONTENT_SOURCE_DIR_TADAH.MLIP "${DEVELOP_MLIP_DIR}")
-  if(TADAH_ENABLE_HPO)
-    find_directory_case_insensitive("hpo" "$ENV{TADAH_PATH}" DEVELOP_HPO_DIR)
-    find_directory_case_insensitive("tadah.lammps" "$ENV{TADAH_PATH}" DEVELOP_TADAH_LAMMPS_DIR)
-    set(FETCHCONTENT_SOURCE_DIR_TADAH.HPO "${DEVELOP_HPO_DIR}")
-    set(FETCHCONTENT_SOURCE_DIR_TADAH.LAMMPS "${DEVELOP_TADAH_LAMMPS_DIR}")
-  endif()
-endif()
-
-
-# Check is build supported
-string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
-if (CMAKE_BUILD_TYPE STREQUAL "DEBUG" 
-    OR
-    CMAKE_BUILD_TYPE STREQUAL "RELEASE"
-    OR
-    CMAKE_BUILD_TYPE STREQUAL "PROFILE"
-    OR
-    CMAKE_BUILD_TYPE STREQUAL "DEVELOP"
-)
-  message(STATUS "${TADAH} Build type:  ${CMAKE_BUILD_TYPE}.")
-else()
-  message(FATAL_ERROR "
-  Selected build type is not supported: ${CMAKE_BUILD_TYPE}.
-  Supported build types: Release, Debug, Profile Develop"
-  )
-endif()
-
-# Update the documentation string of CMAKE_BUILD_TYPE for GUIs
-set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
-  "Choose the type of build, options are: None Debug Release Profile."
-  FORCE)
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
+# 2. Bring in the shared compile/link options
 include(FetchContent)
-
-if(DEFINED ENV{CI_COMMIT_REF_NAME})
-  set(GIT_BRANCH "$ENV{CI_COMMIT_REF_NAME}")
-else()
-  execute_process(
-    COMMAND bash -c "git status | grep origin | sed -e 's/.*origin\\///' -e 's/[^a-zA-Z].*//'" 
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    OUTPUT_VARIABLE GIT_BRANCH
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
+if(NOT TARGET tadah::compile_options)
+  FetchContent_Declare (
+    tadah_cmake
+    GIT_REPOSITORY  https://git.ecdf.ed.ac.uk/tadah/cmake-tools.git
+    GIT_TAG         main)
+  FetchContent_MakeAvailable(tadah_cmake)   # defines tadah::compile_options
 endif()
-message(STATUS "${TADAH} Using GIT_BRANCH:  ${GIT_BRANCH}.")
 
-FetchContent_Declare(
-  Tadah.MLIP
-  GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
-  GIT_TAG origin/${GIT_BRANCH}
-)
-FetchContent_MakeAvailable(Tadah.MLIP)
+# (option) Developer builds -DTADAH_DEVELOP=ON
+tadah_use_local_module(Tadah.MLIP MLIP)  # FetchContent name + folder name
+
+# 3. Git branch information, for informational purposes 
+tadah_get_git_branch(GIT_BRANCH)
+tadah_message(STATUS "Using GIT_BRANCH:  ${GIT_BRANCH}")
+
 
 if(TADAH_ENABLE_HPO)
+  tadah_use_local_module(Tadah.HPO HPO)  # FetchContent name + folder name
+  # tadah_use_local_module(Tadah.LAMMPS Tadah.LAMMPS)  # FetchContent name + folder name
   add_compile_definitions(TADAH_ENABLE_HPO)
   FetchContent_Declare(
     Tadah.HPO
@@ -170,52 +66,42 @@ if(TADAH_ENABLE_HPO)
   )
   FetchContent_MakeAvailable(Tadah.HPO)
 
+  # FetchContent_Declare(
+  #   Tadah.LAMMPS
+  #   GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git
+  #   GIT_TAG origin/${GIT_BRANCH}
+  # )
+  # FetchContent_MakeAvailable(Tadah.LAMMPS)
+else()
+  tadah_message("Fetching ${PROJECT_NAME} modules...")
   FetchContent_Declare(
-    Tadah.LAMMPS
-    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git
+    Tadah.MLIP
+    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
     GIT_TAG origin/${GIT_BRANCH}
   )
-  FetchContent_MakeAvailable(Tadah.LAMMPS)
+  FetchContent_MakeAvailable(Tadah.MLIP)
 endif()
 
-file(READ "${tadah.mlip_SOURCE_DIR}/include/tadah/mlip/version.h" ver)
-string(REGEX MATCH "TADAH_WORLD_VERSION ([0-9]+)" _ "${ver}")
-set(ver_world ${CMAKE_MATCH_1})
-string(REGEX MATCH "TADAH_MAJOR_VERSION ([0-9]+)" _ "${ver}")
-set(ver_major ${CMAKE_MATCH_1})
-string(REGEX MATCH "TADAH_MINOR_VERSION ([0-9]+)" _ "${ver}")
-set(ver_minor ${CMAKE_MATCH_1})
+# Set the project name and version
+set_project_name()
 
-project(Tadah VERSION ${ver_world}.${ver_major}.${ver_minor})
-message(STATUS "${TADAH} VERSION: ${ver_world}.${ver_major}.${ver_minor}")
 
-add_executable (tadah bin/main.cpp bin/tadah_cli.cpp)
-
-file(GLOB BOOST_SRC_FILES external/boost/libs/iostreams/src/*.cpp)
-add_library(boost_iostream STATIC ${BOOST_SRC_FILES})
-target_include_directories(boost_iostream PRIVATE external/boost/include)
-target_include_directories(boost_iostream PRIVATE external/boost/libs/iostreams/src)
-
-include_directories(external/CLI11/include)
-include_directories(external/boost/include)
+file(GLOB TADAH_SRC_FILES src/*.cpp)
+add_executable (tadah ${TADAH_SRC_FILES})
+target_include_directories(tadah
+  PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+    PRIVATE ${PROJECT_SOURCE_DIR}/external/CLI11/include
+  )
 
 if(TADAH_ENABLE_HPO)
-  target_link_libraries(tadah PUBLIC tadah.hpo)
-  target_link_libraries(tadah PUBLIC tadah.lammps)
+  target_link_libraries(tadah PUBLIC tadah::compile_options tadah.hpo)
+else()
+  target_link_libraries(tadah PUBLIC tadah::compile_options tadah.mlip)
 endif()
 
-target_include_directories(tadah PRIVATE external/boost/include)
-target_include_directories(tadah PRIVATE ${Tadah.MLIP_SOURCE_DIR}/include)
-target_include_directories(tadah PRIVATE ${Tadah.MODELS_SOURCE_DIR}/include)
-target_include_directories(tadah PRIVATE ${Tadah.CORE_SOURCE_DIR}/include)
-target_include_directories(tadah PRIVATE ${Tadah.CORE_SOURCE_DIR}/external/toml11)
 
-#link_directories(<build_dir>/_deps/tadah-mlip-build/)
-target_link_libraries(tadah PRIVATE tadah.mlip tadah.models) # TODO
-
-if(TADAH_BUILD_MPI)
-  set_target_properties(tadah PROPERTIES OUTPUT_NAME "tadah_mpi")
-endif()
 
 #########################################################################
 if(TADAH_MARCH_NATIVE)
@@ -224,10 +110,10 @@ if(TADAH_MARCH_NATIVE)
   if(COMPILER_SUPPORTS_MARCH_NATIVE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
   else()
-    message(STATUS "${TADAH} ...but -march=native is not supported")
+    tadah_message(STATUS "...but -march=native is not supported")
   endif()
 endif()
-message(STATUS "${TADAH} Build with -march=native in ${TADAH_MARCH_NATIVE}")
+tadah_message(STATUS "Build with -march=native in ${TADAH_MARCH_NATIVE}")
 #########################################################################
 
 #########################################################################
@@ -242,7 +128,7 @@ else()
     add_compile_options(/fp:precise)
   endif()
 endif()
-message(STATUS "${TADAH}: Build with fast math optimisation is ${TADAH_ENABLE_FAST_MATH}")
+tadah_message(STATUS "Build with fast math optimisation is ${TADAH_ENABLE_FAST_MATH}")
 #########################################################################
 
 #########################################################################
@@ -254,12 +140,13 @@ if(TADAH_BUILD_MPI)
   endif()
   find_package(SCALAPACK REQUIRED)
   target_link_libraries(tadah PUBLIC scalapack)
+  set_target_properties(tadah PROPERTIES OUTPUT_NAME "tadah_mpi")
 endif()
-message(STATUS "${TADAH}: Build MPI version of ${TADAH} is ${TADAH_BUILD_MPI}")
+tadah_message(STATUS "Build MPI version of ${PROJECT_NAME} is ${TADAH_BUILD_MPI}")
 #########################################################################
 
 #########################################################################     
-message(STATUS "${TADAH}: Build with Hyperparameter optimiser is ${TADAH_ENABLE_HPO}")
+tadah_message(STATUS "Build with Hyperparameter optimizer is ${TADAH_ENABLE_HPO}")
 #########################################################################
 
 #########################################################################
@@ -270,23 +157,26 @@ if(TADAH_ENABLE_OPENMP)
     add_compile_definitions(TADAH_ENABLE_OPENMP)
   endif()
 endif()
-message(STATUS "${TADAH}: Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
+tadah_message(STATUS "Build with OpenMP is ${TADAH_ENABLE_OPENMP}")
 #########################################################################
 
 #########################################################################
 
-find_package(LAPACK)
-target_link_libraries (tadah PUBLIC ${LAPACK_LIBRARIES})
+if (NOT TADAH_BUILD_DOCS_ONLY)
+  find_package(LAPACK REQUIRED)
+  target_link_libraries (tadah PUBLIC ${LAPACK_LIBRARIES})
+endif()
 
 install(TARGETS tadah
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
 
+install(DIRECTORY include/ DESTINATION include)
 
-if(TADAH_BUILD_TESTS)
-  enable_testing()
-  include(CTest) 
+set(BUILD_TESTING OFF CACHE BOOL "Build tests")
+include(CTest)
+if(BUILD_TESTING)
   add_subdirectory(tests)
 endif()
 
@@ -302,12 +192,12 @@ add_custom_target(docs
 
 message(STATUS "===================================================================")
 message(STATUS "")
-message(STATUS "${TADAH} is now configured and ready for installation.")
+message(STATUS "${PROJECT_NAME} is now configured and ready for installation.")
 message(STATUS "")
 message(STATUS "--------------+----------------------------------------------------")
 message(STATUS " Command      | Description                                        ")
 message(STATUS "--------------+----------------------------------------------------")
-message(STATUS " make install | Install ${TADAH}.                                  ")
+message(STATUS " make install | Install ${PROJECT_NAME}.                                  ")
 message(STATUS "              |   • Binaries will go into:                         ")
 message(STATUS "              |       ${CMAKE_INSTALL_PREFIX}/bin                  ")
 message(STATUS "              |   • Headers will go into:                          ")
@@ -329,7 +219,7 @@ message(STATUS "")
 message(STATUS "  * Hyperparameter Optimizer (HPO):")
 message(STATUS "    TADAH_ENABLE_HPO = ${TADAH_ENABLE_HPO}")
 if(TADAH_ENABLE_HPO)
-  message(STATUS "    Requires LAMMPS compiled with the ${TADAH} interface.")
+  message(STATUS "    Requires LAMMPS compiled with the ${PROJECT_NAME} interface.")
   if(NOT TADAH_LAMMPS_DIR)
     message(STATUS "    Additional CMake variables:")
     message(STATUS "      REQUIRED: TADAH_LAMMPS_DIR")

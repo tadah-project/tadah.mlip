@@ -1,11 +1,11 @@
 Quick Start
 ===========
 
-This section covers the fundamentals and command line interface (CLI) of Tadah!. The CLI provides necessary tools to train and test models. The trained model (interatomic potential) can be used to run molecular dynamics simulations with LAMMPS via the Tadah.LAMMPS plugin.
+This section covers the fundamentals and command line interface (CLI) of Tadah!MLIP. The CLI provides necessary tools to train and test models. The trained model (interatomic potential) can be used to run molecular dynamics simulations with LAMMPS via the Tadah!LAMMPS plugin.
 
 For installation instructions, see :ref:`installation`. For CLI examples, see :ref:`cli_examples`.
 
-If you are interested in using it as a C++ library, have a look at the :ref:`api_examples` and browse through the API documentation. This section might prove useful.
+If you plan to use Tadah! as a C++ library, we recommend completing this Quick-Start guide first; once you have the basics, head over to the :ref:`api_examples` and the full API reference.
 
 Overview
 --------
@@ -38,21 +38,21 @@ To train a model, run the following command in a terminal:
 
 .. code-block:: bash
 
-    tadah train -c config.train -V
+    tadah train -c config.train -v 2
 
-- ``-V``: Enables verbosity, resulting in detailed output being printed to the screen during the training process.
+- ``-v 2``: Enables verbosity INFO level, resulting in detailed output being printed to the screen during the training process.
 
 This will train a model using energies only. To also train on forces, add the ``-F`` flag; for stresses, add the ``-S`` flag, or include ``FORCE true`` and ``STRESS true`` keys in the config file.
 
 *Note*: Command line flags take precedence over those defined in the config file.
 
-Here, ``config.train`` is a :ref:`config_file`. Training datasets, descriptors, cutoffs, model, and all parameters are specified in the config file. The output of this command is a trained model as a ``pot.tadah`` file.
+The ``config.train`` is type of a :ref:`config_file`. Training datasets, descriptors, cutoffs, model, and all parameters are specified in the config file. The output of this command is a trained model as a ``pot.tadah`` file.
 
 :download:`Here <quickstart/config.train>` is a minimal example of the ``config.train`` file:
 
 .. literalinclude:: quickstart/config.train
 
-Here, :ref:`DBFILE` specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory. :ref:`INIT2B` controls whether the two-body descriptor is used. :ref:`TYPE2B`, :ref:`RCUT2B`, and :ref:`RCTYPE2B` refer to the two-body type, cutoff distance, and cutoff type, respectively. Finally, the regression model is selected; in this case, it is Kernel Ridge Regression with a linear kernel for simplicity.
+The :ref:`DBFILE` key specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory. :ref:`INIT2B` controls whether the two-body descriptor is used. :ref:`TYPE2B`, :ref:`RCUT2B`, and :ref:`RCTYPE2B` refer to the two-body type, cutoff distance, and cutoff type, respectively. Finally, the regression model is selected; in this case, it is Kernel Ridge Regression with a linear kernel for simplicity.
 
 For a detailed explanation of KEYS and a general discussion about the configuration files, see :ref:`ConfigSection`.
 
@@ -63,48 +63,138 @@ An example dataset can be downloaded from :download:`here <quickstart/db.train>`
 Prediction
 ----------
 
-To predict energies using an existing ``pot.tadah`` model, run:
+To predict energies on :download:`prediction dataset <quickstart/db.predict>` using an existing ``pot.tadah`` model, run:
 
 .. code-block:: bash
 
-    tadah predict -p pot.tadah -d db.predict -V -a
+    tadah predict -p pot.tadah -d db.predict -v 2 -A
 
-- ``-V``: Enables verbosity, resulting in detailed output being printed to the screen.
-- ``-a``: Provides some basic analysis of the prediction, such as the RMSE (Root Mean Square Error) between true and predicted values.
+- ``-v 2``: Enables verbosity INFO level, resulting in detailed output being printed to the screen.
+- ``-A``: Provides some basic analysis of the prediction, such as the RMSE (Root Mean Square Error) between true and predicted values.
 
 To also predict forces, add the ``-F`` flag; for stresses, add the ``-S`` flag.
 
-Alternatively, a :download:`config file <quickstart/config.predict>` can be used to specify :download:`prediction datasets <quickstart/db.predict>` (:ref:`DBFILE`) and whether forces and stresses are meant to be calculated (:ref:`FORCE` and :ref:`STRESS` keys).
-
-``config.pred`` example:
-
-.. literalinclude:: quickstart/config.predict
-
-To predict using the ``pot.tadah`` model and ``config.predict``:
-
-.. code-block:: bash
-
-    tadah predict -p pot.tadah -c config.predict
-
 The output of the ``predict`` subcommand includes three files:
 
-- ``energy.pred``: Two columns where the first column lists dataset energy/atom and the second column lists predicted energy/atom. The ordering follows the dataset order in the config file or with the ``-d`` flag.
+- ``energy.pred``: Three columns where the first column is an index, second is dataset energy/atom and the third column lists predicted energy/atom. The ordering follows the dataset order in the config file or with the ``-d`` flag.
 - ``forces.pred``: Similar idea as above, but now forces are listed. The first row is the force on the first atom in the x-direction from the first dataset, the second row is the force on the first atom in the y-direction, and so on.
 - ``stress.pred``: The first six rows list components of the stress tensor from the first configuration, followed by six components from the second configuration, and so on. The ordering is xx, xy, xz, yy, yz, zz.
 
+.. _task_file:
+
+Task File
+---------
+
+A **task file** is a plain-text wrapper around Tadah!MLIP’s config syntax.  
+You can use it for a **single** command (as an alternative to a CLI invocation)
+*or* chain several ``TASK`` blocks in the same file to execute them
+sequentially.  All key–value pairs inside the file follow the normal config
+rules. The `CONFIG` key can be used to nest config files, allowing for reuse of settings or
+to keep a full training or prediction setup in a dedicated config file.
+
+Basic rules
+^^^^^^^^^^^
+
+#. Each command starts with a line beginning with the keyword ``TASK`` followed
+   by the sub-command name exactly as you would type it on the CLI.
+
+#. The lines that follow are ordinary KEY/VALUE pairs.  
+
+   * Keys written **above** all ``TASK`` blocks act as defaults for every task.
+
+   * Keys appearing **inside** a task block override global keys written **above** the first ``TASK`` line.  
+
+#. Boolean values are written in lowercase ``true`` / ``false``.
+
+#. There is a one-to-one mapping between CLI flags/options and configuration
+   keys:
+
+  +-------------------------+--------------------+
+  | CLI (short/long)        |  Config-file key   |
+  +=========================+====================+
+  | ``-c``, ``--config``    | ``CONFIG``         |
+  +-------------------------+--------------------+
+  | ``-d``, ``--dbfile``    | ``DBFILE``         |
+  +-------------------------+--------------------+
+  | ``-p``, ``--potential`` | ``POTENTIAL``      |
+  +-------------------------+--------------------+
+  | ``-v``, ``--verbose``   | ``VERBOSE``        |
+  +-------------------------+--------------------+
+  | ``-A``, ``--analytics`` | ``ANALYTICS``      |
+  +-------------------------+--------------------+
+  | ``-F``, ``--force``     | ``FORCE``          |
+  +-------------------------+--------------------+
+  | …                       | …                  |
+  +-------------------------+--------------------+
+
+In other words, *anything you can set on the command line can also be set with an upper-case key in the task file*.
+
+Example
+^^^^^^^
+
+The small task file below trains a model and then immediately uses it for a
+prediction run:
+
+.. literalinclude:: quickstart/taskfile.txt
+
+You would execute it with
+
+.. code-block:: bash
+
+    tadah --task taskfile.txt
+
+and Tadah!MLIP will first run the training step, produce ``pot.tadah``, and
+then feed that potential into the subsequent prediction step-all in one go.
+
+Hints
+^^^^^
+
+* Use ``CONFIG other_file.txt`` inside a task block if you prefer to keep a
+  full training or prediction setup in a dedicated config file.
+
+* Indexing of positional items (e.g. ``--index 1`` -> ``INDEX 1``) starts
+  from **1**.
+
+* Comments start with ``#`` and run to the end of the line, just like in
+  ordinary config files.
 
 .. _units:
 
 Units and Tadah!
 ----------------
 
-In principle, Tadah! will work with any units. The units used are determined by the units in the training datasets. So if your dataset has energy units of electronvolts and distance in Angstroms, then the created model will have the same units. The unit of force must be eV/Å in this case. The virial stress tensor should be in units of pressure (eV/Å^3).
+Tadah! is *numerically unit-agnostic* during **training**: whatever numbers
+appear in the dataset are learned as-is, so any *internally consistent* set of
+units (e.g. Hartree/Bohr, kJ mol⁻¹/nm, …) will yield a valid potential.  
+In day-to-day work, however, most companion tools assume the “standard
+materials-science” system of
 
-The units selected by LAMMPS must be consistent with the model units of energy and forces. In this case, they would correspond to *metal* units in LAMMPS.
+* energy in electron-volts (eV)  
+* length in Ångström (Å)  
+* force in eV Å⁻¹  
+* stress in eV Å⁻³.
 
-.. note::
+These are therefore the **units of choice**.
 
-    Tadah! has been tested with units of eV and Angstrom. Unless you have a good reason to use different units, these are the recommended ones.
+Practical rules
+~~~~~~~~~~~~~~~
+
+• Training on a dataset expressed in *any* units still works, provided *all*
+  quantities in *all* structures use the same unit system.
+
+• The generated model keeps those units.  When you couple it to LAMMPS you
+  must pick a compatible `units` style—e.g. ``metal`` for eV / Å, ``real`` for
+  kcal mol⁻¹ / Å, and so on.
+
+• Some post-processing and analysis helpers (notably the ``--analytics`` flag)
+  currently **assume eV / Å**.  Using a model trained in different units may
+  trigger an error or, worse, silently produce meaningless numbers.
+
+.. important::
+
+   Unless you have a compelling reason to deviate, **use eV for energy and Å
+   for length**.  That choice is tested across the entire Tadah! tool-chain and
+   matches the *metal* unit style in LAMMPS out of the box.
 
 .. _config_file:
 
@@ -167,10 +257,9 @@ Once trained, the ``pot.tadah`` file can be used with LAMMPS like any other pair
 
 Here is an example LAMMPS :download:`script file <quickstart/in.ml>` and :download:`pot.file <quickstart/pot.tadah>`.
 
-See :ref:`installation_lammps` for Tadah.LAMMPS interface installation instructions.
+See :ref:`installation_lammps` for Tadah!LAMMPS interface installation instructions.
 
 Support for Multi-species Systems
 ---------------------------------
 
 Tadah! can generate machine-learned potentials for both single-component and multi-component systems. The interatomic potential adapts based on the species present in the training dataset, allowing for accurate modeling of different material compositions.
-

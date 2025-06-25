@@ -10,43 +10,43 @@ List of all two-body descriptors supported by Tadah!
 D2_LJ
 .....
 
-.. doxygenclass:: D2_LJ
+.. doxygenclass:: tadah::models::D2_LJ
     :members:
 
 D2_BP
 .....
 
-.. doxygenclass:: D2_BP
+.. doxygenclass:: tadah::models::D2_BP
     :members:
 
 D2_Blip
 .......
 
-.. doxygenclass:: D2_Blip
+.. doxygenclass:: tadah::models::D2_Blip
     :members:
 
 D2_EAM
 ......
 
-.. doxygenclass:: D2_EAM
+.. doxygenclass:: tadah::models::D2_EAM
     :members:
 
 D2_Dummy
 ........
 
-.. doxygenclass:: D2_Dummy
+.. doxygenclass:: tadah::models::D2_Dummy
     :members:
 
 D2_Base
 .......
 
-.. doxygenclass:: D2_Base
+.. doxygenclass:: tadah::models::D2_Base
     :members:
 
 D2_mJoin
 ........
 
-.. doxygenclass:: D2_mJoin
+.. doxygenclass:: tadah::models::D2_mJoin
     :members:
 
 Three-Body
@@ -65,29 +65,29 @@ charge distributionis hence they overcome Embedded Atom Method limitations.
 DM_EAD
 ......
 
-.. doxygenclass:: DM_EAD
+.. doxygenclass:: tadah::models::DM_EAD
     :members:
 
 DM_EAM
 ......
 
-.. doxygenclass:: DM_EAM
+.. doxygenclass:: tadah::models::DM_EAM
     :members:
 
 DM_Dummy
 ........
 
-.. doxygenclass:: DM_Dummy
+.. doxygenclass:: tadah::models::DM_Dummy
     :members:
 
 DM_Base
 .......
 
-.. doxygenclass:: DM_Base
+.. doxygenclass:: tadah::models::DM_Base
     :members:
 
 DM_mJoin
 ........
 
-.. doxygenclass:: DM_mJoin
+.. doxygenclass:: tadah::models::DM_mJoin
     :members:

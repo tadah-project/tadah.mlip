@@ -4,9 +4,24 @@ Welcome to the Tadah! Website
 .. image:: images/tadah_cli.png
    :align: center
 
-|
+.. admonition:: Heads-up – Tadah! 1.0.0 has landed 🎉
+   :class: warning
 
-This is the home of Tadah! software, used for developing machine learning interatomic potentials. This website provides comprehensive documentation with examples to help users quickly get up to speed, along with an associated API for developers.
+   We have just tagged **the first official public release, v1.0.0**, and the
+   *main* branch has already been fast-forwarded to this version.  
+   The documentation you are reading is being updated in step, but you may still
+   encounter pages that lag behind the code, broken links, or typos while we
+   finish the polish.
+
+   New releases inevitably bring teething issues; if something looks off,
+   crashes, or is simply confusing, please let us know.  
+   A short issue or e-mail is far more helpful than silent frustration and we'll
+   gladly guide you through any rough edges.
+
+   Thank you for your patience, happy modelling, and welcome to Tadah! 1.0.0.
+
+
+This is the home of Tadah! software, used for developing and deploying machine learning interatomic potentials. This website provides documentation with examples to help users quickly get up to speed, along with an associated API for developers.
 
 Here we also publish selected interatomic potentials developed by |gja_link| using Tadah! software.
 
@@ -27,9 +42,10 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
 
    intro.rst
    installation.rst
-   contribute.rst
-   LICENSE.rst
    mlips.rst
+   contribute.rst
+   glossary.rst
+   LICENSE.rst
 
 ----
 
@@ -38,7 +54,7 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    :caption: How to Use Tadah!
 
    quickstart.rst
-   cli.rst
+   cli/cli.rst
    tutorials.rst
    examples.rst
    config/config_keys.rst
@@ -51,7 +67,16 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
 
 .. toctree::
    :maxdepth: 2
+   :caption: API
+   :hidden:
+
+   API_quickstart.rst
+   API_examples.rst
+
+.. toctree::
+   :maxdepth: 2
    :caption: API Reference
+   :hidden:
 
    API/atom.rst
    API/basisfunctions.rst
@@ -68,10 +93,3 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    API/structure_db.rst
    API/st_descriptors.rst
    API/st_descriptors_db.rst
-
-Indices and Tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

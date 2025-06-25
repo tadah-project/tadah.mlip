@@ -1,17 +1,17 @@
 Cutoffs
 =======
 
-.. doxygenclass:: Cut_Base
+.. doxygenclass:: tadah::models::Cut_Base
     :members:
 
-.. doxygenclass:: Cut_Dummy
+.. doxygenclass:: tadah::models::Cut_Dummy
     :members:
 
-.. doxygenclass:: Cut_Cos
+.. doxygenclass:: tadah::models::Cut_Cos
     :members:
 
-.. doxygenclass:: Cut_Tanh
+.. doxygenclass:: tadah::models::Cut_Tanh
     :members:
 
-.. doxygenclass:: Cut_Poly2
+.. doxygenclass:: tadah::models::Cut_Poly2
     :members:

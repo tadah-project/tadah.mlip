@@ -1,6 +1,9 @@
 '''
 This script generates documentation in rst format from
 the TOML dictionary.
+
+It will generate complete config/config_keys.rst file.
+
 '''
 import pytomlpp as p
 import os
@@ -9,9 +12,21 @@ import subprocess
 
 def download_toml_file(repo_url, file_path, output_path):
     try:
-        # Clone the repository into a temporary directory
+        # Retrieve the branch name from the environment variable
+        # branch = os.environ.get('READTHEDOCS_VERSION', 'main')    # TODO
+        branch = "develop"
+
+        print(f"Downloading {file_path} from {repo_url} on branch {branch}...")
+        # Clone the repository into a temporary directory with the specific branch
         repo_name = "temp_repo"
-        subprocess.run(['git', 'clone', '--depth', '1', repo_url, repo_name], check=True)
+        subprocess.run(
+            [
+                'git', 'clone', '--depth', '1',
+                '--branch', branch,
+                repo_url, repo_name
+            ],
+            check=True
+        )
 
         # Copy the desired file to the output path
         full_file_path = os.path.join(repo_name, file_path)
@@ -28,31 +43,40 @@ def download_toml_file(repo_url, file_path, output_path):
         if os.path.exists(repo_name):
             shutil.rmtree(repo_name)
 
+
 download_toml_file(
     'https://git.ecdf.ed.ac.uk/tadah/core.git',
-    'config/config_keys.toml',
-    'config/config_keys.toml'
+    'blueprint/blueprint_tadah.toml',   # soruce
+    'config/blueprint_tadah.toml'       # destination
 )
+print ("Downloaded blueprint_tadah.toml to config/blueprint_tadah.toml")
 
 # Path to TOML dict
-# d = p.load("../src/configs/config_keys.toml",'r')
-d = p.load("config/config_keys.toml",'r')
+d = p.load("config/blueprint_tadah.toml",'r')
 
 # Path to rst outfile
-# f = open("source/config/config_keys.rst", "w")
 f = open("config/config_keys.rst", "w")
 
-header='''
+header = '''
+.. This file, including introduction, is auto-generated from the TOML blueprint file. Do not edit it directly.
+
 .. _ConfigSection:
 
 Configuration File
 ==================
 
-This section describes the format of the configuration file used by Tadah!.
+.. warning:: This section is under construction and may not be complete or accurate. If you find any issues, please report them on the `Tadah!MLIP GitLab <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_.
 
-The configuration file controls the training process, specifying one or more datasets for use during the training stage. It defines cutoff functions and corresponding radii along with the regression model and descriptor choices.
+.. note:: This configuration file is NOT used by the HPO (Hyperparameter Optimization) module of Tadah!MLIP. The HPO module uses a different configuration file format, which is documented in the :ref:`nested_fitting`.
 
-Tadah! supports two- and many-body descriptors, allowing for separate descriptors with their corresponding cutoff radii.
+This section describes the format of the configuration file used by Tadah!MLIP.
+
+For example, the configuration file can control the training process, specifying one or more datasets for use during the training stage. It defines cutoff functions and corresponding radii along with the regression model and descriptor choices.
+
+.. important::
+
+   Indexing of items that take *positional indices* (e.g., ``INDEX 1``, CLI flag
+   ``--index 1``) starts from **1**, not 0.
 
 Key/Value Pairs
 ---------------
@@ -62,7 +86,7 @@ The primary structure in a configuration file is the KEY/VALUE pair. Each KEY/VA
 Common Usage
 ------------
 
-Typically, only a subset of KEYS is needed to train a model. Tadah! will use default values for some keys. An error will occur if a required KEY with no default value is missing:
+Typically, only a subset of KEYS is needed to train a model. Tadah!MLIP will use default values for some keys. An error will occur if a required KEY with no default value is missing:
 
 .. code-block:: bash
 
@@ -76,15 +100,16 @@ This message indicates that the :ref:`DBFILE` KEY was not specified in the :file
 Key Specifics
 -------------
 
-The meaning of some KEYS may change based on the model or descriptor in use. Refer to :ref:`SupportedKEYS` for each model or descriptor to understand the required KEYS and their explanations.
+The meaning of some keys can vary with the chosen command. Check the documentation for that specific command, model or descriptor to see which keys are required and how they are interpreted. While we strive to keep key meanings consistent across Tadah!MLIP, occasional differences may still occur.
 
 Comments
 --------
 
-Use the `#` symbol to add comments in the configuration file.
+Use the ``#`` symbol to add comments in the configuration file. Both inline and full-line comments are supported.
 
-Multiple Values
----------------
+
+Key Values and Formats
+----------------------
 
 Some KEYS can have multiple values, specified in one of two ways:
 
@@ -105,72 +130,149 @@ Some KEYS can have multiple values, specified in one of two ways:
 Value Limits
 ------------
 
-If the number of values exceeds the maximum allowed, an error will occur. For example, specifying :ref:`RCTYPE2B` twice when only one value is allowed will result in:
+Each keyword takes a fixed number of values.  Passing the wrong count can raise an error, but enforcement is not yet fully consistent.  While this is being improved, keep these points in mind:
 
-.. code-block:: bash
+* **Too many values** – Tadah!MLIP may reject the input with a clear message or quietly discard the extras; the latter can later surface as obscure run-time failures (even an occasional segmentation fault).
+* **Too few values** – usually triggers an error, although a crash remains possible in rare corner cases.
 
-   [user@host:~] $ tadah train -c config.train
-   terminate called after throwing an instance of 'std::runtime_error'
-     what():  Repeated key RCTYPE2B Cut_Cos
-   Aborted (core dumped)
+In short, give every keyword exactly the number of values it expects—no more, no less—to avoid unpleasant surprises.
 
-.. _SupportedKEYS
+.. _SupportedKEYS:
 
-Supported KEYS:
----------------
+Supported KEYS
+--------------
 
-This section contains all KEYS currently used by Tadah!.
-\n
+This section contains all KEYS currently used by Tadah!MLIP.
+
 '''
+
 f.write(header)
 
-for key,val in d.items():
-    f.write(".. _%s:\n\n" % key)    # create reference
-    f.write("%s\n" % key)
-    f.write("%s\n" % (len(key)*"."))
-    if val['value_format']!='' and val['value_type']!='':
-        f.write("%s" % (key))
-        for vtype,vfmt in zip(val['value_type'],val['value_format']):
-            f.write(" [*%s*] %s" % (vtype,vfmt))
-        f.write("\n")
-    if len(val['value_N'])!=0:
-        f.write("   *Max number of values*:")
-        for valN in val['value_N']:
-            f.write("  %s" % abs(valN))
-        f.write("\n\n")
-    if len(val['default'])!=0:
-        f.write("   *Default*:")
-        for valN in val['default']:
-            f.write("  %s" % (str(valN).lower()
-                              if type(valN) is bool else valN))
-        f.write("\n\n")
-    if len(val['description'])!=0:
-        f.write("   *Description*:\n\n")
-        f.write("   %s\n\n" % val['description'])
-    if len(val['examples'])!=0:
-        for i,example in enumerate(val['examples']):
-            f.write("   *Example*: %d ::\n\n" % (i+1))
-            f.write("       %s\n\n" % example)
+def _deepcopy(obj):
+    """Tiny helper because we cannot import copy in the RTD sandbox."""
+    if isinstance(obj, dict):
+        return {k: _deepcopy(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_deepcopy(v) for v in obj]
+    return obj
 
-    # Deal with suboptions
-    for key2,val2 in val.items():
-        if type(val2) is dict:
-            if val2['value_format']!='' and val2['value_type']!='':
-                f.write("%s" % (key))
-                for vtype,vfmt in zip(val2['value_type'],val2['value_format']):
-                    f.write(" [*%s*] %s" % (vtype,vfmt))
-                f.write("\n")
-            if len(val2['value_N'])!=0:
-                f.write("   *Max number of values*: ")
-                for valN in val2['value_N']:
-                    f.write("  %s" % abs(valN))
-                f.write("\n\n")
-            if len(val2['description'])!=0:
-                f.write("   *Description*:\n\n")
-                f.write("   %s\n\n" % val2['description'])
-            if len(val2['examples'])!=0:
-                for i,example in enumerate(val2['examples']):
-                    f.write("   *Example*: %d ::\n\n" % (i+1))
-                    f.write("       %s\n\n" % example)
+
+def _merge_missing(base: dict, parent: dict) -> dict:
+    """
+    Return *base* with all keys that are missing in *base* but exist in *parent*.
+    base takes precedence.
+    """
+    merged = _deepcopy(parent)
+    merged.update(base)          # base wins
+    return merged
+
+
+def _resolve_inheritance(entry: dict, types_tbl: dict) -> dict:
+    """
+    If the entry contains
+        INHERIT = ["TYPES.SOMETHING", "TYPES.OTHER"]
+    merge those TYPE-blocks into *entry*, giving precedence to the fields
+    that *entry* already defines.
+    """
+    if not entry or 'INHERIT' not in entry:
+        return entry
+
+    merged = _deepcopy(entry)
+    for target in entry.get('INHERIT', []):
+        try:
+            scope, name = target.split('.', 1)
+        except ValueError:
+            # malformed entry – ignore
+            continue
+
+        if scope != 'TYPES':
+            continue
+        parent = types_tbl.get(name, {})
+        merged = _merge_missing(merged, parent)
+    return merged
+
+
+# ---------------------------------------------------------------------------
+# 1.  Extract the relevant sub-tables from the blueprint
+# ---------------------------------------------------------------------------
+allowed_keys = d.get('ALLOWED_KEYS', {})
+types_table  = d.get('TYPES',        {})
+
+# ---------------------------------------------------------------------------
+# 2.  Walk over all KEY definitions and emit documentation
+# ---------------------------------------------------------------------------
+for key_name, raw_entry in allowed_keys.items():
+
+    # Final field set after resolving possible inheritance
+    entry = _resolve_inheritance(raw_entry, types_table)
+
+    # ---------------------------------------------------------------------
+    # Start a new labelled section
+    # ---------------------------------------------------------------------
+    f.write(f".. _{key_name}:\n\n")
+    f.write(f"{key_name}\n")
+    f.write(f"{'^' * len(key_name)}\n")
+
+    # ---------------------------------------------------------------------
+    # VALUE TYPE + FORMAT
+    # ---------------------------------------------------------------------
+    value_types   = entry.get('value_type',   [])
+    value_formats = entry.get('value_format', [])
+
+    if value_types and value_formats:
+        joined = []
+        # zip-longest so that differing lengths are still handled
+        for idx in range(max(len(value_types), len(value_formats))):
+            vtype = value_types[idx]   if idx < len(value_types)   else ""
+            vfmt  = value_formats[idx] if idx < len(value_formats) else ""
+            joined.append(f"[*{vtype}*] {vfmt}".strip())
+        f.write(", ".join(joined) + "\n")
+
+    # ---------------------------------------------------------------------
+    # Maximum number of values
+    # ---------------------------------------------------------------------
+    if 'value_N' in entry and entry['value_N']:
+        vals = " / ".join(str(abs(v)) for v in entry['value_N'])
+        f.write(f"   *Max number of values*: {vals}\n")
+
+    # ---------------------------------------------------------------------
+    # Default value(s)
+    # ---------------------------------------------------------------------
+    if 'default_value' in entry and entry['default_value']:
+        defaults = []
+        for v in entry['default_value']:
+            if isinstance(v, bool):
+                defaults.append(str(v).lower())
+            else:
+                defaults.append(str(v))
+        f.write(f"   *Default*: {' / '.join(defaults)}\n")
+
+    # ---------------------------------------------------------------------
+    # Short description
+    # ---------------------------------------------------------------------
+    if entry.get('description', ""):
+        f.write("\n   *Description*:\n\n")
+        f.write(f"   {entry['description']}\n")
+
+    # ---------------------------------------------------------------------
+    # Long description (optional)
+    # ---------------------------------------------------------------------
+    if entry.get('long_description', ""):
+        # Preserve original indentation (strip first newline if present)
+        long_desc = entry['long_description'].lstrip("\n")
+        for line in long_desc.splitlines():
+            f.write(f"   {line}\n")
+        f.write("\n")
+
+    # ---------------------------------------------------------------------
+    # Examples
+    # ---------------------------------------------------------------------
+    examples = entry.get('examples', [])
+    for idx, example in enumerate(examples, start=1):
+        f.write(f"   *Example* {idx}::\n\n")
+        f.write(f"       {example}\n\n")
+
+    # Blank line between keys
+    f.write("\n")
 
 f.close()

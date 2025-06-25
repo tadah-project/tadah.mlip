@@ -1,27 +1,22 @@
-ALPHA     1
-ATOMS     Ta
-BETA     1
+ATOM     Ta
 BIAS     true
-CGRID2B     -1     4     1.0     5.3
+CGRID2B     LIN     4     1.0     5.3
 DIMER     false     0     false
 EWEIGHT     1.0
-FWEIGHT     1
+FWEIGHT     1.0
 INIT2B     true
-INIT3B     false
 INITMB     false
-LAMBDA     0
-MBLOCK     64
+LAMBDA     1e-8
 MODEL     M_BLR     BF_Linear
-MPIWPCKG     50
-NBLOCK     64
 NORM     false
-OUTPREC     14
+NUMERIC     14
+OALGO     1
 RCTYPE2B     Cut_Cos
 RCUT2B     5.3
-SGRID2B     -2     4     0.1     1.0
-SWEIGHT     1
-TYPE2B     D2_Blip 4 4 Ta Ta
-VERBOSE     0
-WATOMS     73
-WEIGHTS     -4.4157415513006     0.42189535112317     -0.37507712884283     -0.063288121709893     -0.052300112640426
+SGRID2B     GEOM     4     0.1     1.0
+SWEIGHT     1.0
+TYPE2B     D2_Blip     4     4     Ta     Ta
+VERBOSE     2
+WATOM     73
+WEIGHTS     -5.318656330932407528     0.380609748134734693     -0.336665868854840844     -0.054088440523269311     -0.082908752531337310
 

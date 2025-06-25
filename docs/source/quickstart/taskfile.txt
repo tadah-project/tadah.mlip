@@ -1,0 +1,19 @@
+# --- GLOBAL DEFAULTS --------------------------------------------------
+DBFILE     db.train           # Shared unless overridden
+VERBOSE    2                  # Print INFO messages
+
+# --- FIRST TASK: TRAINING --------------------------------------------
+TASK       train
+  INIT2B     true               # Use two-body descriptor
+  RCUT2B     6.5                # Cut-off distance
+  TYPE2B     D2_LJ Ta Ta        # Lennard-Jones descriptor
+  RCTYPE2B   Cut_Dummy          # No cut-off function
+  MODEL      M_KRR Kern_Linear  # Kernel Ridge Regression (linear)
+  VERBOSE    0                  # Override global: silent training
+
+# --- SECOND TASK: PREDICTION -----------------------------------------
+TASK       predict
+  DBFILE     db.predict         # New dataset overrides the global one
+  POTENTIAL  pot.tadah          # Same as CLI -p/--potential
+  ANALYTICS  true               # Same as CLI -A
+  VERBOSE    1                  # Show warnings during prediction

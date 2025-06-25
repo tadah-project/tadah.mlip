@@ -3,7 +3,7 @@
 Installation
 ============
 
-This section provides step-by-step instructions for installation of Tadah!MLIP and Tadah!LAMMPS.
+This section provides step-by-step instructions for installation of Tadah!MLIP (MLIP training) and Tadah!LAMMPS (LAMMPS plugin).
 
 .. _requirements:
 
@@ -18,7 +18,7 @@ Other necessary libraries are either included in the codebase or downloaded duri
 The internet connection is required during the installation process.
 
 Installing Tadah!MLIP Software
---------------------------
+------------------------------
 
 Tadah!MLIP provides a command-line interface binary, ``tadah``, for developing machine learning interatomic potentials.
 
@@ -71,8 +71,6 @@ Customize the Tadah!MLIP build using CMake options:
 - ``TADAH_BUILD_MPI``: Build MPI version (default: OFF).
 - ``TADAH_MARCH_NATIVE``: Use native optimizations (default: OFF).
 - ``TADAH_ENABLE_FAST_MATH``: Enable fast math optimizations (default: OFF).
-- ``TADAH_BUILD_TESTS``: Include tests (default: OFF).
-- ``TADAH_BUILD_DOCUMENTATION``: Build documentation with Doxygen (default: OFF).
 - ``TADAH_ENABLE_HPO``: Enable Hyperparameter Optimizer (default: OFF), see :ref:`installation_hpo`.
 - ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_HPO``).
 - ``TADAH_LAMMPS_LIB``: Name of the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_HPO``).
@@ -81,15 +79,32 @@ Additional CMake options to consider:
 
 - ``CMAKE_INSTALL_PREFIX``: Set the install directory destination when ``make install`` is invoked. A common choice is ``-DCMAKE_INSTALL_PREFIX=~/.local``.
 - ``BUILD_SHARED_LIBS``: Whether to build shared or static Tadah!MLIP libraries (default: ON).
+- ``BUILD_TESTING``: Include tests (default: OFF).
+
+Append any of the flags above to the `cmake` command with the `-D` prefix and a value of `ON`, `OFF`, or a path, e.g.:
+
+.. code-block:: bash
+
+    cmake .. \
+        -DTADAH_ENABLE_OPENMP=ON \
+        -DTADAH_BUILD_MPI=ON \
+        -DCMAKE_INSTALL_PREFIX=~/.local
+
+You can string together as many `-D<option>=<value>` pairs as needed in a single call.
+
+.. code-block:: bash
+
+  make          # compile
+  make install  # install to the chosen prefix
+  make test     # run tests (requires -DBUILD_TESTING=ON)
+  make docs     # generate local API docs (requires Doxygen)
 
 .. _gofasterstripe:
 
 Go Faster Stripe - Desktop Version
 ..................................
 
-OpenMP is supported if available on your system. Compile Tadah!MLIP with OpenMP support.
-
-Set thread usage:
+OpenMP is supported if available on your system. Compile Tadah!MLIP with OpenMP support and set the number of threads to match your CPU cores for optimal performance.
 
 .. code-block:: bash
 
@@ -113,15 +128,16 @@ This will configure the executable as ``tadah_mpi``, optimized for parallel exec
 Installing LAMMPS Interface
 ---------------------------
 
-The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! potentials. Follow these steps:
+The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! potentials. It is also required for building Tadah!MLIP with the Hyperparameter Optimizer (HPO) module. 
+The compilation of Tadah! plugin follows typical LAMMPS compilation steps.
 
 1. Clone the LAMMPS stable version from the GitHub repository:
 
    .. code-block:: bash
 
-     git clone -b stable https://github.com/lammps/lammps.git /path/to/lammps
+     git clone -b stable --depth 1 https://github.com/lammps/lammps.git /path/to/lammps
 
-2. Build the interface:
+2. Example LAMMPS serial build with make typically looks like this:
 
    .. code-block:: bash
 
@@ -132,7 +148,7 @@ The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! p
      make yes-ml-tadah
      make serial
 
-.. important:: Compatible with LAMMPS from June 2022 onwards.
+.. important:: Tadah!LAMMPS is compatible with LAMMPS releases from June 2022 onward. Because the plugin is not yet included in the official LAMMPS distribution, it does not support the LAMMPS CMake build system.
 
 .. seealso:: For building LAMMPS with extra features, visit:
 
@@ -141,7 +157,7 @@ The Tadah!LAMMPS interface is essential for simulations with LAMMPS and Tadah! p
 
 .. _installation_hpo:
 
-Building Tadah!MLIP with Hyperparameter Optimiser
+Building Tadah!MLIP with Hyperparameter Optimizer
 -------------------------------------------------
 
 .. warning::
@@ -171,21 +187,61 @@ To build Tadah!MLIP with HPO, follow these steps:
 
    - ``-DTADAH_ENABLE_HPO=ON``
    - ``-DTADAH_LAMMPS_DIR=/path/to/lammps``: This should be the root directory of your LAMMPS installation, not ``lammps/src``.
-   - ``-DTADAH_LAMMPS_LIB=liblammps_name.ext``: Replace ``liblammps_name`` with the name of your compiled LAMMPS library (.so for shared builds, e.g., ``liblammps_serial.so`` for serial or ``liblammps_mpi.so`` for MPI; .a for static builds, e.g., ``liblammps_serial.a``).
+   - ``-DTADAH_LAMMPS_LIB=liblammps_name.ext``: Replace ``liblammps_name`` with the name of your compiled LAMMPS library and .ext with appropriate file extension (.so for shared builds, e.g., ``liblammps_serial.so`` for serial or ``liblammps_mpi.so`` for MPI; .a for static builds, e.g., ``liblammps_serial.a``).
 
 Libraries and C++ Headers
 -------------------------
 
 .. note::
-   This section is relevant only if you intend to use the Tadah! API. If you're using the command line interface (CLI), you can safely skip this section.
+   This section is relevant only if you intend to use the Tadah!API. If you're using the command line interface (CLI), you can safely skip this section.
 
-
-Headers and libraries are installed according to ``-DCMAKE_INSTALL_PREFIX`` or default locations. Set ``LD_LIBRARY_PATH`` and ``CPATH`` as needed.
+Tadah!API installs its headers to  
+``${CMAKE_INSTALL_PREFIX}/include`` and its libraries to  
+``${CMAKE_INSTALL_PREFIX}/lib`` (or ``lib64``).  If the prefix is a standard
+location such as ``/usr`` or ``/usr/local`` nothing extra is required:
 
 .. code-block:: bash
 
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/lib
-    export CPATH=$CPATH:/path/to/include
+    g++ my_code.cpp -ltadah.core -o my_code            # headers and libs found automatically
+
+Non-standard prefix (e.g. ``$HOME/.local``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+When Tadah! is installed in a private directory you must give the compiler and
+linker a hint.  The quickest way is to add the include and library paths on the
+command line:
+
+.. code-block:: bash
+
+    g++ my_code.cpp \
+        -I$HOME/.local/include \
+        -L$HOME/.local/lib \
+        -ltadah -o my_code
+
+Run-time resolution  
+``LD_LIBRARY_PATH`` tells the dynamic loader where to find the shared object
+after the executable has been built:
+
+.. code-block:: bash
+
+    export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
+    ./my_code
+
+Optional convenience variables
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+If you prefer not to repeat ``-I``/``-L`` flags, set the environment variables
+once for your shell (or in a module file):
+
+.. code-block:: bash
+
+    # compile-time
+    export CPATH=$HOME/.local/include:$CPATH        # headers
+    export LIBRARY_PATH=$HOME/.local/lib:$LIBRARY_PATH  # libraries
+
+    # run-time
+    export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
+
+Keep the scope of these variables as narrow as possible (script, shell session,
+or environment module) to avoid accidental conflicts with other software.
 
 Compiled Libraries
 ..................
@@ -226,7 +282,7 @@ If the library is outside the standard path:
 Troubleshooting
 ---------------
 
-#. **Permission Denied**
+#. **Permission Denied** when running ``make install``
    
    Run ``make install`` with ``sudo`` or change the installation path:
    
@@ -235,7 +291,7 @@ Troubleshooting
      cmake .. -DCMAKE_INSTALL_PREFIX=~/.local
      make install
 
-#. **Shared Object ImportError**
+#. **Shared Object ImportError** when running ``tadah``
 
    Update ``LD_LIBRARY_PATH``:
 
@@ -243,11 +299,10 @@ Troubleshooting
 
      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/your/path/
 
-#. **Compatibility Issues with LAMMPS**
+#. **Compatibility Issues with LAMMPS** 
 
    Ensure compatibility with the correct LAMMPS version. See :ref:`installation_lammps`.
 
 #. **New Issues**
 
    Contact support for any unlisted issues.
-

@@ -329,8 +329,11 @@ Required options
    LAMMPS input file containing the variable definitions.
 
 ``--varloss <name> <target> <weight> [loss-type p₁ p₂ …]``  
-   Add *name* to :math:`L_{\text{total}}`; optional extra tokens pick a specific
-   loss for that variable.
+   Evaluate loss for this variable and target and
+   add it to the total loss with the given weight.
+   Optional extra tokens pick a specific loss for that variable.
+   Variable varloss must be defined in the LAMMPS script.
+   The value is read from the LAMMPS at the end of the run.
 
 Additional options
 ^^^^^^^^^^^^^^^^^^
@@ -359,16 +362,17 @@ optimiser is written to **the directory in which you started
 Main log files
 ~~~~~~~~~~~~~~
 
+Each file begins with a header line that starts with ``#`` and describes the columns.
+One line per iteration. First column is always step number.
+
 =====================  ==========================================================
-File                   Purpose and format
+File                   Columns
 =====================  ==========================================================
-``loss.tadah``         One line per iteration: step, wall-time, all individual
-                       loss terms follower by total loss. A header that
-                       starts with ``#`` describes the columns.
-``params.tadah``       The current hyper-parameter vector in the order defined
-                       by your ``OPTIM`` lines.  Header included.
+``loss.tadah``         Wall-time, all individual loss terms followed by total loss.
+``params.tadah``       The current hyperparameter vector in the order defined
+                       by your ``OPTIM`` lines.
 ``outvar.tadah``       Additional variables requested with ``--outvar`` plus all
-                       variables used in ``--varloss`` (helpful for analysis).
+                       variables used in ``--varloss``.
 =====================  ==========================================================
 
 The rate of logging is controlled by
@@ -388,8 +392,6 @@ corresponding rows are copied to companion files:
 
 These contain **one single line**: the best result so far.  Use them to monitor
 progress in real time without parsing the full history.
-
-The rate of logging is controlled by
 
 ``BOUTPUT N``  
    write a new line every *N* iterations (default: ``1``).

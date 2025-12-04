@@ -40,7 +40,7 @@ Invoke the nested fitting run with:
 
 .. code-block:: bash
 
-   tadah hpo --config config.train --validation config.val --hpotargets config.hpo
+   tadah hpo --config config.train --validation config.val --hpotarget config.hpo
 
 The program iterates until it reaches the maximum number of evaluations set in
 ``config.hpo`` or until you stop it manually (e.g. with <Ctrl-C>).  

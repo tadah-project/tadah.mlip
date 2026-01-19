@@ -230,7 +230,7 @@ if(TADAH_ENABLE_HPO)
 
   if(NOT TADAH_LAMMPS_LIB)
     message(STATUS "      REQUIRED: TADAH_LAMMPS_LIB")
-    message(STATUS "      Example:  -DTADAH_LAMMPS_LIB=liblammps_serial.a")
+    message(STATUS "      Example:  -DTADAH_LAMMPS_LIB=/path/to/liblammps_serial.a")
   else()
     message(STATUS "      -DTADAH_LAMMPS_LIB=${TADAH_LAMMPS_LIB}")
   endif()

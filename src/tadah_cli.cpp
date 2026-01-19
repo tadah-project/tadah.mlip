@@ -55,6 +55,7 @@ TadahCLI::TadahCLI()
     app_.allow_extras(false);
     app_.validate_positionals(true);
     app_.usage(blueprintTadah.logo);
+    app_.set_version_flag("-v,--version", blueprintTadah.version, "Print version and exit");
     for (const auto &bpKey : blueprintTadah.blueprintKeys) {
       auto &dest = optionsStorage_["tadah"][bpKey.keyName];
       std::string spec = bpKey.cli_long_flag;
@@ -85,38 +86,62 @@ TadahCLI::TadahCLI()
 int TadahCLI::run(int argc, char** argv) {
   core::Logger::instance().setLogLevel(tadah::core::LogLevel::WARNING);
   Scheduler scheduler;
-  if (rank==0) {
+
+  bool exit_early = false;
+  int exit_code = 0;
+
+  if (rank == 0) {
     try {
       app_.parse(argc, argv);
-      if(app_.count_all()==1) {
+
+      if (app_.count_all() == 1) {
         std::cout << "Type: `tadah -h` for help" << std::endl;
-        return 0;
+        exit_early = true;
+        exit_code = 0;
       }
+
     } catch (const CLI::CallForHelp& e) {
-      if(!app_.remaining(false).empty()) {
-        // Throw an ExtrasError containing all leftover positional arguments
+      if (!app_.remaining(false).empty()) {
         throw CLI::ExtrasError(app_.remaining(false));
       }
-      // Otherwise, show the default CLI11 help output
       std::cout << app_.help() << std::endl;
-      return 0;
+      exit_early = true;
+      exit_code = 0;
+
+    } catch (const CLI::CallForVersion& e) {
+      // If you want exactly major.minor.patch:
+      std::cout << app_.version() << std::endl;
+
+      exit_early = true;
+      exit_code = 0;
+
     } catch (const CLI::ParseError &e) {
-      return app_.exit(e);
+      exit_early = true;
+      exit_code = app_.exit(e);
     }
 
-    TaskManager taskManager;
-    for (auto &cliTask : cliTasks_) {
-      auto tasks = TaskFactory().createTasksFromInput(cliTask);
-      taskManager.store(tasks);
+    if (!exit_early) {
+      TaskManager taskManager;
+      for (auto &cliTask : cliTasks_) {
+        auto tasks = TaskFactory().createTasksFromInput(cliTask);
+        taskManager.store(tasks);
+      }
+      std::vector<Task> tasks = taskManager.getTasks();
+      scheduler.addTasks(tasks);
     }
+  }
 
-    std::vector<Task> tasks = taskManager.getTasks();
-    scheduler.addTasks(tasks);
+#ifdef TADAH_BUILD_MPI
+  MPI_Bcast(&exit_early, 1, MPI_CXX_BOOL, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&exit_code,  1, MPI_INT,     0, MPI_COMM_WORLD);
+#endif
+
+  if (exit_early) {
+    return exit_code;
   }
 
   scheduler.distributeTasks();
   scheduler.execute();
-
   return 0;
 }
 

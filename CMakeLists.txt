@@ -265,7 +265,7 @@ message(STATUS "  * Fast Math:")
 message(STATUS "    TADAH_ENABLE_FAST_MATH = ${TADAH_ENABLE_FAST_MATH}")
 message(STATUS "")
 message(STATUS "  * Build with Tests:")
-message(STATUS "    TADAH_BUILD_TESTS = ${TADAH_BUILD_TESTS}")
+message(STATUS "    BUILD_TESTING = ${BUILD_TESTING}")
 message(STATUS "")
 
 message(STATUS "===================================================================")

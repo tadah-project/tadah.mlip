@@ -42,6 +42,35 @@ Tadah!MLIP uses CMake for configuration and Make for compilation.
 
 The executable ``tadah`` is installed in the ``bin`` directory by default (``${CMAKE_INSTALL_PREFIX}/bin``). If MPI is enabled, the executable is named ``tadah_mpi``.
 
+Using the provided CMake defaults preset (recommended)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Tadah!MLIP ships a CMake *initial cache* file with Linux end-user defaults at
+``cmake/presets/tadah-linux-defaults.cmake``. You can use it as-is, or edit it to
+match your preferences and reuse it for future builds.
+
+.. code-block:: bash
+
+    # Navigate to the project directory
+    cd tadah.mlip
+
+    # Configure a new build directory using the defaults preset
+    cmake -S . -B build -C cmake/presets/tadah-linux-defaults.cmake
+
+    # Compile and install (uses the configured build tool, e.g. Make)
+    cmake --build build --parallel
+    cmake --install build
+
+To override individual settings without editing the preset file, append ``-D`` options:
+
+.. code-block:: bash
+
+    cmake -S . -B build -C cmake/presets/tadah-linux-defaults.cmake \
+        -DTADAH_ENABLE_OPENMP=ON \
+        -DCMAKE_INSTALL_PREFIX=~/.local
+
+Alternatively, you can configure and build without the preset as follows:
+
 .. code-block:: bash
 
     # Navigate to the project directory
@@ -65,6 +94,14 @@ To change the installation location:
 Configuration Options
 ---------------------
 
+.. note::
+
+   If you configure with ``-C cmake/presets/tadah-linux-defaults.cmake``, the values in that
+   file become the initial defaults for the new build directory (e.g. it sets conservative
+   end-user defaults such as disabling optional features). You can customize these defaults
+   either by (1) appending ``-D<option>=<value>`` to the CMake command, or (2) editing the
+   preset file itself and reusing it for future builds.
+
 Customize the Tadah!MLIP build using CMake options:
 
 - ``TADAH_ENABLE_OPENMP``: Enable OpenMP for parallelization (default: OFF).
@@ -73,7 +110,7 @@ Customize the Tadah!MLIP build using CMake options:
 - ``TADAH_ENABLE_FAST_MATH``: Enable fast math optimizations (default: OFF).
 - ``TADAH_ENABLE_HPO``: Enable Hyperparameter Optimizer (default: OFF), see :ref:`installation_hpo`.
 - ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_HPO``).
-- ``TADAH_LAMMPS_LIB``: Name of the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_HPO``).
+- ``TADAH_LAMMPS_LIB``: Absolute path to the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_HPO``).
 
 Additional CMake options to consider:
 

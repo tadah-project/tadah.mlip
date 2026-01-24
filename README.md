@@ -8,7 +8,7 @@ Please refer to the online documentation for installation and usage instructions
 
 [https://tadah.readthedocs.io/](https://tadah.readthedocs.io/)
 
-## For Developers
+## For Developers Only
 
 For the `Develop` build, manual configuration is required to use local copies of `CORE`, `MLIP`, and other modules. This allows you to modify the code locally without needing to commit changes to the GitLab repository. For the `Release` build, all modules will be cloned automatically from the repository. Below configuration is not necessary in this case.
 

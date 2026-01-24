@@ -51,8 +51,8 @@ endif()
 tadah_use_local_module(Tadah.MLIP MLIP)  # FetchContent name + folder name
 
 # 3. Git branch information, for informational purposes 
-tadah_get_git_branch(GIT_BRANCH)
-tadah_message(STATUS "Using GIT_BRANCH:  ${GIT_BRANCH}")
+tadah_get_git_branch(TADAH_GIT_BRANCH)
+tadah_message(STATUS "Using TADAH_GIT_BRANCH:  ${TADAH_GIT_BRANCH}")
 
 
 if(TADAH_ENABLE_HPO)
@@ -62,14 +62,14 @@ if(TADAH_ENABLE_HPO)
   FetchContent_Declare(
     Tadah.HPO
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
-    GIT_TAG ${GIT_BRANCH}
+    GIT_TAG ${TADAH_GIT_BRANCH}
   )
   FetchContent_MakeAvailable(Tadah.HPO)
 
   # FetchContent_Declare(
   #   Tadah.LAMMPS
   #   GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git
-  #   GIT_TAG ${GIT_BRANCH}
+  #   GIT_TAG ${TADAH_GIT_BRANCH}
   # )
   # FetchContent_MakeAvailable(Tadah.LAMMPS)
 else()
@@ -77,7 +77,7 @@ else()
   FetchContent_Declare(
     Tadah.MLIP
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
-    GIT_TAG ${GIT_BRANCH}
+    GIT_TAG ${TADAH_GIT_BRANCH}
   )
   FetchContent_MakeAvailable(Tadah.MLIP)
 endif()

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.15)
 
 include(${CMAKE_SOURCE_DIR}/cmake/functions.cmake)
 include(FetchContent)
@@ -18,24 +18,41 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# default build type for single-config generators (Ninja/Make)
+# Default build type for single-config generators (Ninja/Unix Makefiles).
+set(TADAH_DEFAULT_BUILD_TYPE "RelWithDebInfo" CACHE STRING
+    "Default build type for single-config generators when CMAKE_BUILD_TYPE is not set.")
+
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "" FORCE)
+  message(STATUS "CMAKE_BUILD_TYPE not set; defaulting to ${TADAH_DEFAULT_BUILD_TYPE}")
+  set(CMAKE_BUILD_TYPE "${TADAH_DEFAULT_BUILD_TYPE}" CACHE STRING
+      "Choose the type of build (Debug, Release, RelWithDebInfo, MinSizeRel).")
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+      "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif()
 
-if(BUILD_SHARED_LIBS)
-  set(CMAKE_SKIP_BUILD_RPATH FALSE)
-  set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-endif()
-
+# Shared vs static libraries
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(TADAH_ENABLE_HPO "Enable Hyperparamter optimizer." OFF)
 option(TADAH_ENABLE_OPENMP "Enable shared-memory parallelisation via OpenMP" OFF)
 option(TADAH_BUILD_MPI "Build MPI version of ${PROJECT_NAME}" OFF)
 option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
 option(TADAH_ENABLE_FAST_MATH "Enable fast math optimizations" OFF)
 option(TADAH_BUILD_DOCS_ONLY "Skip checks for required libraries; only build docs" OFF)
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+
+set(TADAH_LAMMPS_LIB "" CACHE FILEPATH
+  "HPO: Full path to LAMMPS library (e.g. /path/to/liblammps_serial.a or liblammps.so)")
+
+set(TADAH_LAMMPS_DIR "" CACHE PATH
+  "HPO: Path to LAMMPS root directory (source or install prefix)")
+
+set(TADAH_LAMMPS_LIBS "" CACHE STRING
+  "HPO: Extra link libraries for static LAMMPS linking (CMake list, e.g. -lz;-lzstd)")
+
+if(BUILD_SHARED_LIBS)
+  set(CMAKE_SKIP_BUILD_RPATH FALSE)
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
 
 # 2. Bring in the shared compile/link options
 include(FetchContent)

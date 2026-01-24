@@ -21,7 +21,7 @@ Tadah!MLIP and the ML‑TADAH LAMMPS integration use **CMake** for configuration
 General requirements:
 
 - A **C++17**-capable compiler toolchain
-- **CMake** (version requirements depend on the component; see below)
+- **CMake** (3.15+)
 - **LAPACK** (and **ScaLAPACK** for Tadah!MLIP MPI builds)
 - Internet access during installation (some dependencies may be fetched at configure/build time)
 
@@ -114,6 +114,52 @@ Configuration Options
    either by (1) appending ``-D<option>=<value>`` to the CMake command, or (2) editing the
    preset file itself and reusing it for future builds.
 
+Choosing a build type
+^^^^^^^^^^^^^^^^^^^^^
+
+On Linux, CMake commonly uses a *single-config* generator (Ninja or Unix Makefiles). In this case the build type is selected at **configure time** using ``CMAKE_BUILD_TYPE``.
+
+Common values:
+
+- ``Release``: fastest (recommended for production runs)
+- ``Debug``: best for debugging
+- ``RelWithDebInfo``: optimised with debug info (default)
+- ``MinSizeRel``: smaller binaries
+
+Recommended workflow: one build directory per build type:
+
+.. code-block:: bash
+
+    cd tadah.mlip
+
+    # Release build
+    cmake -S . -B build-release -C cmake/presets/tadah-linux-defaults.cmake \
+        -DCMAKE_BUILD_TYPE=Release
+    cmake --build build-release --parallel
+    cmake --install build-release
+
+.. code-block:: bash
+
+    # Debug build
+    cmake -S . -B build-debug -C cmake/presets/tadah-linux-defaults.cmake \
+        -DCMAKE_BUILD_TYPE=Debug
+    cmake --build build-debug --parallel
+
+Alternative: set the build type in your own preset
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you prefer to keep your build type in a preset file, you can copy the provided preset and
+add a default build type:
+
+.. code-block:: cmake
+
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
+      "Build type (Debug, Release, RelWithDebInfo, MinSizeRel)")
+
+Customize the Tadah!MLIP build using CMake options:
+
+- ``TADAH_ENABLE_OPENMP``: Enable OpenMP for parallelization (default: OFF).
+
 Customize the Tadah!MLIP build using CMake options:
 
 - ``TADAH_ENABLE_OPENMP``: Enable OpenMP for parallelization (default: OFF).
@@ -127,7 +173,7 @@ Customize the Tadah!MLIP build using CMake options:
 Additional CMake options to consider:
 
 - ``CMAKE_INSTALL_PREFIX``: Set the install destination when ``make install`` is invoked. A common choice is ``-DCMAKE_INSTALL_PREFIX=~/.local``.
-- ``BUILD_SHARED_LIBS``: Whether to build shared or static Tadah!MLIP libraries (default: ON).
+- ``BUILD_SHARED_LIBS``: Whether to build shared or static Tadah!MLIP libraries (default: OFF).
 - ``BUILD_TESTING``: Include tests (default: OFF).
 
 Append flags to the ``cmake`` command with the ``-D`` prefix and a value of ``ON``, ``OFF``, or a path, e.g.:
@@ -330,7 +376,6 @@ To build Tadah!MLIP with HPO, follow these steps:
    - ``-DTADAH_ENABLE_HPO=ON``
    - ``-DTADAH_LAMMPS_DIR=/path/to/lammps`` (LAMMPS root directory)
    - ``-DTADAH_LAMMPS_LIB=/full/path/to/liblammps_name.ext`` (full path to the built LAMMPS library file)
-PATCH
 
 Libraries and C++ Headers
 -------------------------

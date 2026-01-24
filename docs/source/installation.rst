@@ -52,6 +52,7 @@ Tadah!MLIP uses CMake for configuration and a standard build tool for compilatio
 
 The executable ``tadah`` is installed in the ``bin`` directory by default (``${CMAKE_INSTALL_PREFIX}/bin``).
 If MPI is enabled, the executable is named ``tadah_mpi``.
+After a successful compilation (before installation), the ``tadah`` (or ``tadah_mpi``) binary should also be present inside your build directory (commonly as ``build/tadah`` or under a subdirectory like ``build/bin/``, depending on your platform and CMake generator).
 
 Using the provided CMake defaults preset (recommended)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -328,7 +329,8 @@ To build Tadah!MLIP with HPO, follow these steps:
 
    - ``-DTADAH_ENABLE_HPO=ON``
    - ``-DTADAH_LAMMPS_DIR=/path/to/lammps`` (LAMMPS root directory)
-   - ``-DTADAH_LAMMPS_LIB=liblammps_name.ext`` (the built LAMMPS library, e.g. ``liblammps_serial.so``)
+   - ``-DTADAH_LAMMPS_LIB=/full/path/to/liblammps_name.ext`` (full path to the built LAMMPS library file)
+PATCH
 
 Libraries and C++ Headers
 -------------------------

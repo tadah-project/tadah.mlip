@@ -8,7 +8,7 @@
 #include <tadah/mlip/engines/engine_factory.h>
 #include <tadah/mlip/engines/all_engines.h>
 
-#ifdef TADAH_ENABLE_HPO
+#ifdef TADAH_ENABLE_NFP
 #include <tadah/hpo/engines/all_engines.h>
 #endif
 
@@ -76,7 +76,7 @@ TadahCLI::TadahCLI()
   }
 
   mlip::engines::registerAllMLIPEngines();
-#ifdef TADAH_ENABLE_HPO
+#ifdef TADAH_ENABLE_NFP
   hpo::engines::registerAllHPOEngines();
 #endif
 

@@ -8,6 +8,12 @@ Nested Fitting
   This section is under construction.  The content is incomplete and may
   still contain errors.  We are working on it and will update it soon.
 
+  Update 26/1/2026: The section is now mostly complete. Some minor additions and corrections may still be needed.
+
+.. note::
+
+   We use :term:`NFP` (Nested Fitting Procedure) and :term:`HPO` (Hyperparameter Optimization) interchangeably to refer to this feature. The main :term:`CLI` entry point is currently ``tadah hpo``. The NFP term is preferred in documentation to emphasise the two-level fitting nature of the procedure which is specific to Tadah!MLIP.
+
 .. figure:: images/nested_fitting.jpg
    :alt: Nested Fitting Procedure
    :width: 95%
@@ -80,7 +86,7 @@ potentials. However, it is not a silver bullet:
 **Success still depends on sensible choices of performance
 constraints and search space limits**.
 
-.. _hpo_quick_start:
+.. _nfp_quick_start:
 
 Quick Start
 -----------
@@ -98,7 +104,7 @@ See :ref:`cli_example_2` for the simple example of nested fitting.
 More examples will be added in the future. In the meantime, you can
 contact us for help with setting up nested fitting for your specific use case.
 
-.. _hpo_manual:
+.. _nfp_manual:
 
 Manual
 ------

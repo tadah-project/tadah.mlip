@@ -10,7 +10,7 @@
 # target_include_directories(test_tadah PRIVATE ${Tadah.CORE_SOURCE_DIR}/external/toml11)
 # target_include_directories(test_tadah PRIVATE ${Tadah.MODELS_SOURCE_DIR}/include)
 # target_include_directories(test_tadah PRIVATE ${Tadah.MLIP_SOURCE_DIR}/include)
-# if(TADAH_ENABLE_HPO)
+# if(TADAH_ENABLE_NFP)
 #   target_link_libraries(test_tadah PUBLIC tadah.hpo)
 #   target_link_libraries(test_tadah PUBLIC tadah.lammps)
 # endif()
@@ -43,7 +43,7 @@ target_link_libraries(test_tadah
     tadah.mlip)
 target_include_directories(test_tadah PRIVATE ../include)
 
-if(TADAH_ENABLE_HPO)
+if(TADAH_ENABLE_NFP)
   target_link_libraries(test_tadah PRIVATE tadah.hpo tadah.lammps)
 endif()
 

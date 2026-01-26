@@ -71,13 +71,13 @@ set(BUILD_TESTING OFF CACHE BOOL
   "Build tests (enables CTest). Turn ON if you want `ctest` support.")
 
 # -----------------------------------------------------------------------------
-# HPO / LAMMPS integration (defaults: OFF)
+# NFP / LAMMPS integration (defaults: OFF)
 # -----------------------------------------------------------------------------
-set(TADAH_ENABLE_HPO OFF CACHE BOOL
-  "Enable HPO integration that links against LAMMPS")
+set(TADAH_ENABLE_NFP OFF CACHE BOOL
+  "Enable NFP integration that links against LAMMPS")
 
-# The following variables are only used if TADAH_ENABLE_HPO=ON.
-# Leave them empty by default and fill them in when enabling HPO.
+# The following variables are only used if TADAH_ENABLE_NFP=ON.
+# Leave them empty by default and fill them in when enabling NFP.
 #
 # Notes:
 #   - TADAH_LAMMPS_LIB: full path to the LAMMPS library to link against:
@@ -94,13 +94,13 @@ set(TADAH_ENABLE_HPO OFF CACHE BOOL
 #       then you likely need to add zlib explicitly (e.g. "-lz") to TADAH_LAMMPS_LIBS.
 #
 set(TADAH_LAMMPS_LIB "" CACHE FILEPATH
-  "HPO: Full path to LAMMPS library (e.g. /path/to/liblammps_serial.a or liblammps.so)")
+  "NFP: Full path to LAMMPS library (e.g. /path/to/liblammps_serial.a or liblammps.so)")
 
 set(TADAH_LAMMPS_DIR "" CACHE PATH
-  "HPO: Path to LAMMPS root directory (source or install prefix)")
+  "NFP: Path to LAMMPS root directory (source or install prefix)")
 
 set(TADAH_LAMMPS_LIBS "" CACHE STRING
-  "HPO: Extra link libraries for LAMMPS static linking (CMake list, e.g. -lz;-lzstd)")
+  "NFP: Extra link libraries for LAMMPS static linking (CMake list, e.g. -lz;-lzstd)")
 
 
 # -----------------------------------------------------------------------------

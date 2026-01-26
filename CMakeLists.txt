@@ -32,7 +32,7 @@ endif()
 
 # Shared vs static libraries
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
-option(TADAH_ENABLE_HPO "Enable Hyperparamter optimizer." OFF)
+option(TADAH_ENABLE_NFP "Enable Nested Fitting Procedure." OFF)
 option(TADAH_ENABLE_OPENMP "Enable shared-memory parallelisation via OpenMP" OFF)
 option(TADAH_BUILD_MPI "Build MPI version of ${PROJECT_NAME}" OFF)
 option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
@@ -40,13 +40,13 @@ option(TADAH_ENABLE_FAST_MATH "Enable fast math optimizations" OFF)
 option(TADAH_BUILD_DOCS_ONLY "Skip checks for required libraries; only build docs" OFF)
 
 set(TADAH_LAMMPS_LIB "" CACHE FILEPATH
-  "HPO: Full path to LAMMPS library (e.g. /path/to/liblammps_serial.a or liblammps.so)")
+  "NFP: Full path to LAMMPS library (e.g. /path/to/liblammps_serial.a or liblammps.so)")
 
 set(TADAH_LAMMPS_DIR "" CACHE PATH
-  "HPO: Path to LAMMPS root directory (source or install prefix)")
+  "NFP: Path to LAMMPS root directory (source or install prefix)")
 
 set(TADAH_LAMMPS_LIBS "" CACHE STRING
-  "HPO: Extra link libraries for static LAMMPS linking (CMake list, e.g. -lz;-lzstd)")
+  "NFP: Extra link libraries for static LAMMPS linking (CMake list, e.g. -lz;-lzstd)")
 
 if(BUILD_SHARED_LIBS)
   set(CMAKE_SKIP_BUILD_RPATH FALSE)
@@ -72,10 +72,10 @@ tadah_get_git_branch(TADAH_GIT_BRANCH)
 tadah_message(STATUS "Using TADAH_GIT_BRANCH:  ${TADAH_GIT_BRANCH}")
 
 
-if(TADAH_ENABLE_HPO)
+if(TADAH_ENABLE_NFP)
   tadah_use_local_module(Tadah.HPO HPO)  # FetchContent name + folder name
   # tadah_use_local_module(Tadah.LAMMPS Tadah.LAMMPS)  # FetchContent name + folder name
-  add_compile_definitions(TADAH_ENABLE_HPO)
+  add_compile_definitions(TADAH_ENABLE_NFP)
   FetchContent_Declare(
     Tadah.HPO
     GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
@@ -112,7 +112,7 @@ target_include_directories(tadah
     PRIVATE ${PROJECT_SOURCE_DIR}/external/CLI11/include
   )
 
-if(TADAH_ENABLE_HPO)
+if(TADAH_ENABLE_NFP)
   target_link_libraries(tadah PUBLIC tadah::compile_options tadah.hpo)
 else()
   target_link_libraries(tadah PUBLIC tadah::compile_options tadah.mlip)
@@ -163,7 +163,7 @@ tadah_message(STATUS "Build MPI version of ${PROJECT_NAME} is ${TADAH_BUILD_MPI}
 #########################################################################
 
 #########################################################################     
-tadah_message(STATUS "Build with Hyperparameter optimizer is ${TADAH_ENABLE_HPO}")
+tadah_message(STATUS "Build with Nested Fitting Procedure support is ${TADAH_ENABLE_NFP}")
 #########################################################################
 
 #########################################################################
@@ -233,9 +233,9 @@ message(STATUS "")
 message(STATUS "--------------------- OPTIONAL FEATURES ---------------------------")
 message(STATUS "")
 
-message(STATUS "  * Hyperparameter Optimizer (HPO):")
-message(STATUS "    TADAH_ENABLE_HPO = ${TADAH_ENABLE_HPO}")
-if(TADAH_ENABLE_HPO)
+message(STATUS "  * Nested Fitting Procedure (NFP):")
+message(STATUS "    TADAH_ENABLE_NFP = ${TADAH_ENABLE_NFP}")
+if(TADAH_ENABLE_NFP)
   message(STATUS "    Requires LAMMPS compiled with the ${PROJECT_NAME} interface.")
   if(NOT TADAH_LAMMPS_DIR)
     message(STATUS "    Additional CMake variables:")
@@ -261,11 +261,11 @@ if(TADAH_ENABLE_HPO)
     message(STATUS "      -DTADAH_LAMMPS_LIBS=${TADAH_LAMMPS_LIBS}")
   endif()
 
-  message(STATUS "    To disable HPO:")
-  message(STATUS "      cmake .. -DTADAH_ENABLE_HPO=OFF")
+  message(STATUS "    To disable NFP:")
+  message(STATUS "      cmake .. -DTADAH_ENABLE_NFP=OFF")
 else()
-  message(STATUS "    To enable HPO:")
-  message(STATUS "      cmake .. -DTADAH_ENABLE_HPO=ON")
+  message(STATUS "    To enable NFP:")
+  message(STATUS "      cmake .. -DTADAH_ENABLE_NFP=ON")
 endif()
 
 message(STATUS "")

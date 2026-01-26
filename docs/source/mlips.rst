@@ -23,7 +23,7 @@ Both potentials show very good agreement with experimental data for the equation
 
 Potentials are provided in both the native Tadah! format, which uses ``pair_style tadah``, and the LAMMPS tabulated format, used with ``pair_style table``.
 
-We have re-optimized both potentials using hyperparameter optimization (HPO) to make them compatible with the current version of Tadah!. The updated potentials have been enhanced by incorporating the classical ZBL potential for energies above 1 keV, smoothly joined to the existing CCSD(T)-based model. In other words, the Tadah! potentials are stiffer in the core electron region, where the ZBL screening function is often inadequate.
+We have re-optimized both potentials using nested fitting procedure (NFP) to make them compatible with the current version of Tadah!. The updated potentials have been enhanced by incorporating the classical ZBL potential for energies above 1 keV, smoothly joined to the existing CCSD(T)-based model. In other words, the Tadah! potentials are stiffer in the core electron region, where the ZBL screening function is often inadequate.
 
 - :download:`Tadah!Kr1 <mlips/Tadah.Kr1>`
 - :download:`Tadah!Kr2 <mlips/Tadah.Kr2>`

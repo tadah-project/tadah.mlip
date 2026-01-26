@@ -172,9 +172,9 @@ Customize the Tadah!MLIP build using CMake options:
 - ``TADAH_BUILD_MPI``: Build MPI version (default: OFF).
 - ``TADAH_MARCH_NATIVE``: Use native optimizations (default: OFF).
 - ``TADAH_ENABLE_FAST_MATH``: Enable fast math optimizations (default: OFF).
-- ``TADAH_ENABLE_HPO``: Enable Hyperparameter Optimizer (default: OFF), see :ref:`installation_hpo`.
-- ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_HPO``).
-- ``TADAH_LAMMPS_LIB``: Absolute path to the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_HPO``).
+- ``TADAH_ENABLE_NFP``: Enable Nested Fitting Procedure (default: OFF), see :ref:`installation_nfp`.
+- ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_NFP``).
+- ``TADAH_LAMMPS_LIB``: Absolute path to the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_NFP``).
 
 Additional CMake options to consider:
 
@@ -224,19 +224,19 @@ To enable the MPI version, configure the build with ``TADAH_BUILD_MPI``:
 
 This will configure the executable as ``tadah_mpi``.
 
-.. _installation_hpo:
+.. _installation_nfp:
 
-Building Tadah!MLIP with Nested Fitting support (HPO)
-.....................................................
+Building Tadah!MLIP with Nested Fitting Procedure support
+.........................................................
 
 .. warning::
 
-   The HPO module requires a LAMMPS build that includes ML‑TADAH and has LAMMPS exceptions enabled (``LAMMPS_EXCEPTIONS``).
-   On recent LAMMPS versions this is often enabled by default; on older versions it may need to be set explicitly in your LAMMPS build configuration.
+   The NFP module requires a LAMMPS build that includes ML‑TADAH and has LAMMPS exceptions enabled (``LAMMPS_EXCEPTIONS``).
+   On recent LAMMPS versions this is often enabled by default; on older versions it may need to be set explicitly in your LAMMPS build configuration. See `insatllation_lammps`_ for details on building LAMMPS with ML‑TADAH.
 
-Building Tadah!MLIP with HPO is more involved, and for this reason it is not built by default. Please read these notes carefully before proceeding.
+Building Tadah!MLIP with NFP is more involved, and for this reason it is not built by default. Please read these notes carefully before proceeding.
 
-To build Tadah!MLIP with HPO, follow these steps:
+To build Tadah!MLIP with NFP, follow these steps:
 
 1. **Compile LAMMPS with ML‑TADAH enabled** (:ref:`installation_lammps`).
 
@@ -254,7 +254,7 @@ To build Tadah!MLIP with HPO, follow these steps:
 
 2. **Configure Tadah!MLIP** (:ref:`building_tadah`) adding:
 
-   - ``-DTADAH_ENABLE_HPO=ON``
+   - ``-DTADAH_ENABLE_NFP=ON``
    - ``-DTADAH_LAMMPS_DIR=/path/to/lammps`` (LAMMPS root directory)
    - ``-DTADAH_LAMMPS_LIB=/full/path/to/liblammps_name.ext`` (full path to the built LAMMPS library file)
 
@@ -265,6 +265,7 @@ Installing ML‑TADAH for LAMMPS (Tadah.LAMMPS)
 ---------------------------------------------
 
 ML‑TADAH adds the **``pair_style tadah``** pair style to LAMMPS.
+I does not require Tadah!MLIP to be installed.
 
 .. important::
 
@@ -287,13 +288,13 @@ This method integrates ML‑TADAH into a normal LAMMPS CMake configure/build, by
 
 **Step 1 — Clone LAMMPS**
 
-Choose a LAMMPS version appropriate for your project (example: clone stable):
+Choose a LAMMPS version appropriate for your project (example: git clone stable branch):
 
 .. code-block:: bash
 
     git clone -b stable --depth 1 https://github.com/lammps/lammps.git /path/to/lammps
 
-**Step 2 — Clone Tadah.LAMMPS (required)**
+**Step 2 — Clone Tadah.LAMMPS**
 
 Clone Tadah.LAMMPS anywhere on your filesystem:
 
@@ -480,6 +481,26 @@ If the library is outside the standard path:
 
 Troubleshooting
 ---------------
+
+#. **CMake not found / version too old**
+
+   Ensure CMake is installed and up-to-date (3.15+). On Linux, you can often install or upgrade CMake via your package manager, or download a binary from the CMake website.
+
+#. **Compiler not found / version too old**
+
+   Ensure your C++ compiler supports C++17. Update your compiler if necessary (e.g., GCC 7+, Clang 5+, MSVC 2017+).
+
+#. **LAPACK not found**
+
+   Install LAPACK development files via your package manager (e.g., ``liblapack-dev`` on Debian/Ubuntu).
+
+#. **CMake configuration errors related to missing dependencies**
+
+   Review the CMake output for missing dependencies. Install any required libraries or development packages.
+
+#. **Build errors during compilation**
+
+   Check the compiler output for specific error messages. Ensure all dependencies are correctly installed and that your compiler supports the required C++ standard.
 
 #. **Permission denied** when running ``make install``
 

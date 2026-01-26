@@ -1,9 +1,12 @@
 .. _glossary:
 
-Glossary
-========
+Glossary and Abbreviations
+==========================
 
 .. glossary::
+
+   Command Line Interface
+      A way to interact with the program by typing commands into a terminal or console.
 
    Nested Fitting Procedure
    Hyperparameter Optimization
@@ -20,7 +23,7 @@ Glossary
       A file that defines the settings used for :term:`nested fitting procedure`.
 
    Hyperparameter
-      A model parameter chosen *before* regression (cutoff, number of Gaussians …).
+      A model parameter chosen *before* regression (cutoff, widths of Gaussians ...).
 
    Learned Parameter
       Coefficient found by regression (:math:`\mathbf w`).
@@ -31,3 +34,16 @@ Glossary
    Search Space Constraint
       A bound placed on a :term:`hyperparameter` via an ``OPTIM`` line.
 
+.. abbreviations::
+
+   API
+      Application Programming Interface
+
+   CLI
+      Command Line Interface
+
+   NFP
+      Nested Fitting Procedure
+
+   HPO
+      Hyperparameter Optimization

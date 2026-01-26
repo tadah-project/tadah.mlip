@@ -73,7 +73,7 @@ match your preferences and reuse it for future builds.
     cmake --build build --parallel
     cmake --install build
 
-To override individual settings without editing the preset file, append ``-D`` options:
+To override individual settings without editing the preset file, append ``-D`` options (see :ref:`configuration_options`), e.g.:
 
 .. code-block:: bash
 
@@ -97,14 +97,10 @@ Alternatively, you can configure and build without the preset as follows:
     # Compile and install
     make && make install
 
-To change the installation location:
-
-.. code-block:: bash
-
-    cmake .. -DCMAKE_INSTALL_PREFIX=/your/path
+.. _configuration_options:
 
 Configuration Options
----------------------
+.....................
 
 .. note::
 
@@ -113,6 +109,16 @@ Configuration Options
    end-user defaults such as disabling optional features). You can customize these defaults
    either by (1) appending ``-D<option>=<value>`` to the CMake command, or (2) editing the
    preset file itself and reusing it for future builds.
+
+Installation location
+^^^^^^^^^^^^^^^^^^^^^
+
+To change the installation location from the default (typically ``/usr/local`` on Linux), set
+``CMAKE_INSTALL_PREFIX`` during configuration:
+
+.. code-block:: bash
+
+    cmake .. -DCMAKE_INSTALL_PREFIX=/your/path
 
 Choosing a build type
 ^^^^^^^^^^^^^^^^^^^^^
@@ -217,6 +223,41 @@ To enable the MPI version, configure the build with ``TADAH_BUILD_MPI``:
     cmake .. -DTADAH_BUILD_MPI=ON
 
 This will configure the executable as ``tadah_mpi``.
+
+.. _installation_hpo:
+
+Building Tadah!MLIP with Nested Fitting support (HPO)
+.....................................................
+
+.. warning::
+
+   The HPO module requires a LAMMPS build that includes ML‑TADAH and has LAMMPS exceptions enabled (``LAMMPS_EXCEPTIONS``).
+   On recent LAMMPS versions this is often enabled by default; on older versions it may need to be set explicitly in your LAMMPS build configuration.
+
+Building Tadah!MLIP with HPO is more involved, and for this reason it is not built by default. Please read these notes carefully before proceeding.
+
+To build Tadah!MLIP with HPO, follow these steps:
+
+1. **Compile LAMMPS with ML‑TADAH enabled** (:ref:`installation_lammps`).
+
+   **Shared vs. Static builds**
+
+   It is often simplest to use a shared-library build of LAMMPS when linking against Tadah!MLIP.
+
+   **Serial vs. MPI**
+
+   - Use a serial LAMMPS build when linking to the desktop (non-MPI) Tadah!MLIP build
+   - Use an MPI-enabled LAMMPS build when linking to the MPI Tadah!MLIP build
+
+   For details on producing a LAMMPS library (shared/static) with your chosen build system, consult the LAMMPS build documentation:
+   https://docs.lammps.org/Build_cmake.html
+
+2. **Configure Tadah!MLIP** (:ref:`building_tadah`) adding:
+
+   - ``-DTADAH_ENABLE_HPO=ON``
+   - ``-DTADAH_LAMMPS_DIR=/path/to/lammps`` (LAMMPS root directory)
+   - ``-DTADAH_LAMMPS_LIB=/full/path/to/liblammps_name.ext`` (full path to the built LAMMPS library file)
+
 
 .. _installation_lammps:
 
@@ -342,40 +383,6 @@ Typical steps:
     make serial
 
 Replace ``serial`` with the appropriate target for your system (MPI/OpenMP, etc.).
-
-.. _installation_hpo:
-
-Building Tadah!MLIP with Hyperparameter Optimizer
--------------------------------------------------
-
-.. warning::
-
-   The HPO module requires a LAMMPS build that includes ML‑TADAH and has LAMMPS exceptions enabled (``LAMMPS_EXCEPTIONS``).
-   On recent LAMMPS versions this is often enabled by default; on older versions it may need to be set explicitly in your LAMMPS build configuration.
-
-Building Tadah!MLIP with HPO is more involved, and for this reason it is not built by default. Please read these notes carefully before proceeding.
-
-To build Tadah!MLIP with HPO, follow these steps:
-
-1. **Compile LAMMPS with ML‑TADAH enabled** (:ref:`installation_lammps`).
-
-   **Shared vs. Static builds**
-
-   It is often simplest to use a shared-library build of LAMMPS when linking against Tadah!MLIP.
-
-   **Serial vs. MPI**
-
-   - Use a serial LAMMPS build when linking to the desktop (non-MPI) Tadah!MLIP build
-   - Use an MPI-enabled LAMMPS build when linking to the MPI Tadah!MLIP build
-
-   For details on producing a LAMMPS library (shared/static) with your chosen build system, consult the LAMMPS build documentation:
-   https://docs.lammps.org/Build_cmake.html
-
-2. **Configure Tadah!MLIP** (:ref:`building_tadah`) adding:
-
-   - ``-DTADAH_ENABLE_HPO=ON``
-   - ``-DTADAH_LAMMPS_DIR=/path/to/lammps`` (LAMMPS root directory)
-   - ``-DTADAH_LAMMPS_LIB=/full/path/to/liblammps_name.ext`` (full path to the built LAMMPS library file)
 
 Libraries and C++ Headers
 -------------------------

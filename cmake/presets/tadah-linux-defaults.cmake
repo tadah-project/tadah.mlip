@@ -4,8 +4,9 @@
 # This file provides DEFAULTS for a new build directory (initial cache).
 #
 # HOW TO USE (Linux):
-#   First either edit this file to your liking or use it as-is. Then, when
+#   First either (copy and) edit this file to your liking or use it as-is. Then, when
 #   configuring a new build directory, pass it to CMake with -C. The -S option should point to Tadah.MLIP root directory while -B points to your desired build directory.
+#
 # EXAMPLE (generic):
 #   cmake -S /path/to/project -B /path/to/project/build -C /path/to/tadah.mlip/cmake/presets/tadah-linux-defaults.cmake
 #   cmake --build /path/to/project/build --parallel
@@ -32,7 +33,7 @@
 # Install prefix (Linux)
 # -----------------------------------------------------------------------------
 # Default CMake install prefix is typically /usr/local
-# (may require sudo for installation).
+# (default may require sudo for installation).
 #
 # For a per-user install, ~/.local is a common choice.
 # Leave commented to use the CMake default.

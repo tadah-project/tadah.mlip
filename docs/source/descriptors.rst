@@ -265,6 +265,8 @@ DM_mEAD functions
 
 .. doxygenclass:: tadah::models::F_SQRT
 
+.. doxygenclass:: tadah::models::F_Blip
+
 DM_Dummy
 ........
 

@@ -37,6 +37,7 @@ option(TADAH_ENABLE_OPENMP "Enable shared-memory parallelisation via OpenMP" OFF
 option(TADAH_BUILD_MPI "Build MPI version of ${PROJECT_NAME}" OFF)
 option(TADAH_MARCH_NATIVE "Build with -march=native" OFF)
 option(TADAH_ENABLE_FAST_MATH "Enable fast math optimizations" OFF)
+option(TADAH_ENABLE_ASAN "Enable AddressSanitizer (-fsanitize=address -fno-omit-frame-pointer)" OFF)
 option(TADAH_BUILD_DOCS_ONLY "Skip checks for required libraries; only build docs" OFF)
 
 set(TADAH_LAMMPS_LIB "" CACHE FILEPATH
@@ -118,7 +119,10 @@ else()
   target_link_libraries(tadah PUBLIC tadah::compile_options tadah.mlip)
 endif()
 
-
+if(TADAH_ENABLE_ASAN)
+  target_compile_options(tadah PUBLIC -fsanitize=address -fno-omit-frame-pointer -g)
+  target_link_libraries(tadah PUBLIC -fsanitize=address)
+endif()
 
 #########################################################################
 if(TADAH_MARCH_NATIVE)
@@ -280,6 +284,9 @@ message(STATUS "    TADAH_MARCH_NATIVE = ${TADAH_MARCH_NATIVE}")
 message(STATUS "")
 message(STATUS "  * Fast Math:")
 message(STATUS "    TADAH_ENABLE_FAST_MATH = ${TADAH_ENABLE_FAST_MATH}")
+message(STATUS "")
+message(STATUS "  * AddressSanitizer:")
+message(STATUS "    TADAH_ENABLE_ASAN = ${TADAH_ENABLE_ASAN}")
 message(STATUS "")
 message(STATUS "  * Build with Tests:")
 message(STATUS "    BUILD_TESTING = ${BUILD_TESTING}")

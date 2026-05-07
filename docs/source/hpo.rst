@@ -833,10 +833,43 @@ for sanity-checking the reference state.
 Validation-set sanitisation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Only ``LSCALE`` and the resolved ``ESHIFT`` are applied to the
-validation set; training-only knobs (filters, ``WDBFILE``,
-``EWEIGHT_TEMP``, ``ZERO_COM_FORCE``) deliberately do not touch
-validation references.
+The validation set is transformed with a *stripped* context that
+contains:
+
+* ``LSCALE`` from the training (master) configuration,
+* the **resolved** ``ESHIFT`` from the training run (so
+  ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` derivations propagate as
+  per-Z values; the raw ``*_ATOM`` / ``*_DBATOM`` keys are not
+  re-derived on validation),
+* ``EFILTER`` and ``FFILTER`` **only when they appear in the
+  --validation file itself**.
+
+Training-only knobs — ``EFILTER`` / ``FFILTER`` set in the master
+config, ``WDBFILE`` / ``WDBFILE_AUTO``, ``EWEIGHT_TEMP``,
+``ZERO_COM_FORCE`` — never reach the validation set: they would
+silently change what the validation metric is computed on without
+the user opting in, breaking apples-to-apples comparison across HPO
+trials.
+
+Per-validation outlier removal is therefore declared in the file you
+pass to ``--validation`` directly:
+
+.. code-block:: none
+
+   # validation.in
+   DBFILE   val_eos.tadahdb
+   EFILTER  -12.0  -2.0       # honoured for validation only
+   FFILTER   20.0
+
+The host emits a single ``INFO`` log line at start-up summarising
+the resulting validation set::
+
+   Validation set: 532 configs loaded; dropped 4 by EFILTER, 1 by FFILTER; 527 remain.
+
+The line is unconditional — when no filter is active the dropped
+counts are zero and the line still confirms the loaded size, so it
+is always clear which configs the validation metric is being
+computed on.
 
 MPI training caveat
 ~~~~~~~~~~~~~~~~~~~

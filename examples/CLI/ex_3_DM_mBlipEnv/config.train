@@ -1,0 +1,27 @@
+# Training config for the DM_mBlipEnv descriptor.
+#
+# DM_mBlipEnv is a many-body descriptor identical in structure to DM_mBlip
+# (Cartesian-orbital + F_Blip embedding), with the embedding values further
+# multiplied by an inverse cutoff envelope (Cut_SinInv) of width RCUTENV.
+# The envelope tames the embedding near rho=0, where the underlying
+# Gaussian basis is largest.
+
+DBFILE   tdata.db                          # 50-structure subset of the Ta dataset
+
+INITMB   true                              # use a many-body descriptor
+MODEL    M_BLR BF_Linear                   # linear Bayesian regression
+
+# TYPEMB params: L, size(cgrid), size(sgrid), size(cembfunc), size(sembfunc), elements
+TYPEMB   DM_mBlipEnv 1 1 1 5 5 Ta Ta
+RCTYPEMB Cut_Cos                           # outer cutoff applied to the radial basis
+RCUTMB   5.0                               # outer cutoff radius
+RCUTENV  1.2                               # envelope (Cut_SinInv) cutoff applied in rho-space
+
+CGRIDMB  0.0                               # single Gaussian centre  (size 1)
+SGRIDMB  -1.5                              # single Gaussian width   (size 1)
+CEMBFUNC 0.0 0.5 1.0 1.5 2.0               # blip centres in rho-space (5)
+SEMBFUNC 1.0 1.0 1.0 1.0 1.0               # blip widths  in rho-space (5)
+
+LAMBDA   1e-7                              # regulariser
+OALGO    3                                 # solver
+BIAS     true                              # append constant feature

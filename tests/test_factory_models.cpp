@@ -132,4 +132,3 @@ TEST_CASE( "Testing M_KRR", "[m_krr]" ) {
   CM cm(0.0);
 
 }
-

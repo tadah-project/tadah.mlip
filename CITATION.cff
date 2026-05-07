@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use Tadah! in academic work, please cite it as below."
+title: "Tadah!MLIP"
+abstract: >-
+  Tadah! is a multi-module C++/CMake framework for developing and
+  deploying machine-learning interatomic potentials, including a
+  LAMMPS plugin and a hyperparameter-optimisation driver.
+authors:
+  - family-names: Kirsz
+    given-names: Marcin
+    email: marcin.kirsz@ed.ac.uk
+    affiliation: "School of Physics and Astronomy, University of Edinburgh"
+type: software
+version: "1.2.0-beta"
+date-released: "2026-05-07"
+license: GPL-3.0-only
+repository-code: "https://git.ecdf.ed.ac.uk/tadah/tadah.mlip"
+url: "https://tadah.readthedocs.io/"
+keywords:
+  - machine-learning interatomic potentials
+  - molecular dynamics
+  - LAMMPS
+  - hyperparameter optimisation
+  - computational materials science
+identifiers:
+  - type: other
+    value: "TBD (Zenodo DOI to be minted on tagged release)"
+    description: "Placeholder for the Zenodo DOI assigned when the v1.2.0 tag is published."

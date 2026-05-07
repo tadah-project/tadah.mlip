@@ -49,42 +49,19 @@ set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
   FORCE)
 endfunction()
 
+# Deprecated: prefer cmake-tools `tadah_read_version_from_blueprint(VAR)` and
+# explicit `project(<name> VERSION ${VAR})` at the call site.
+# Kept as a thin shim for backwards compatibility.
 function(set_project_name)
-  set(TADAH_BLUEPRINT_FILE "${Tadah.CORE_SOURCE_DIR}/blueprint/blueprint_tadah.toml")
-  file(STRINGS "${TADAH_BLUEPRINT_FILE}" blueprintLines)
-  set(isTadahSection OFF)
-  set(tadahBlock "")
-  foreach(line IN LISTS blueprintLines)
-
-    # Start capturing lines if this line indicates the [TADAH] table.
-    if(line MATCHES "^\\[TADAH\\]")
-      set(isTadahSection ON)
-      continue()
-    endif()
-
-    # If we reach a new bracketed section, stop capturing TADAH lines.
-    if(isTadahSection AND (line MATCHES "^\\[.*\\]" ))
-      set(isTadahSection OFF)
-      break()
-    endif()
-
-    # Accumulate lines in TADAH block if we are in that section.
-    if(isTadahSection)
-      set(tadahBlock "${tadahBlock}\n${line}")
-    endif()
-
-  endforeach()
-  string(REGEX MATCH "version[ \t]*=[ \t]*\"([^\"]+)\"" match "${tadahBlock}")
-  if(NOT match)
-    tadah_message(FATAL_ERROR 
-      "Unable to find version in [TADAH] of ${TADAH_BLUEPRINT_FILE}. 
-      Check that 'version = \"...\"' exists.")
-    endif()
-    set(TADAH_VERSION "${CMAKE_MATCH_1}")
-
-    project(${TADAH} VERSION "${TADAH_VERSION}")
-    tadah_message(STATUS "VERSION: ${TADAH_VERSION}")
-  endfunction()
+  if(COMMAND tadah_read_version_from_blueprint)
+    tadah_read_version_from_blueprint(TADAH_VERSION REQUIRED)
+  else()
+    tadah_message(FATAL_ERROR
+      "set_project_name() requires cmake-tools' tadah_read_version_from_blueprint.")
+  endif()
+  project(${TADAH} VERSION "${TADAH_VERSION}")
+  tadah_message(STATUS "VERSION: ${TADAH_VERSION}")
+endfunction()
 
 function(find_directory_case_insensitive target_name search_dir result_var)
   execute_process(

@@ -1,6 +1,9 @@
 stages:
+  - lint
   - build_debug
   - build_release
+  - docs
+  - release
 
 cache:
     key: "build-cache-$CI_COMMIT_REF_SLUG"
@@ -97,3 +100,58 @@ build_release_static:
     - ./a.static
     - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
+
+# ---- Lint (codespell) ---------------------------------------------------
+lint_codespell:
+  stage: lint
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+  script:
+    - command -v codespell || pip install --user codespell
+    - export PATH=$HOME/.local/bin:$PATH
+    - codespell
+        --skip='./build*,./external,./_deps,./examples,./docs/source/cli,./docs/source/spelling_wordlist.txt'
+        || true
+  allow_failure: true
+
+# ---- Sphinx docs build (warnings = error) ------------------------------
+docs_sphinx:
+  stage: docs
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+  script:
+    - python3 -m pip install --user -r docs/requirements.txt
+    - export PATH=$HOME/.local/bin:$PATH
+    # Generate config_keys.rst + cli (the same step Sphinx setup() runs).
+    - (cd docs/source && python3 config/read_toml.py && python3 cli/generate_cli.py)
+    - sphinx-build -W -b html docs/source docs/build/html
+  artifacts:
+    when: on_failure
+    paths:
+      - docs/build/html
+    expire_in: 1 week
+  allow_failure: false
+
+# ---- Source-tarball release (tag-gated) --------------------------------
+release_tarball:
+  stage: release
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - export TARBALL="${CI_PROJECT_NAME}-${CI_COMMIT_TAG}.tar.gz"
+    - git archive --format=tar.gz
+        --prefix="${CI_PROJECT_NAME}-${CI_COMMIT_TAG}/"
+        -o "${TARBALL}" HEAD
+    - 'curl --fail --header "JOB-TOKEN: $CI_JOB_TOKEN"
+        --upload-file "${TARBALL}"
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${CI_COMMIT_TAG}/${TARBALL}"'
+  artifacts:
+    paths:
+      - "*.tar.gz"
+    expire_in: 1 week

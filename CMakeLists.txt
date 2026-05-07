@@ -4,7 +4,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/functions.cmake)
 include(FetchContent)
 
 set(TADAH "Tadah!")
-project(${TADAH}, LANGUAGES CXX)
+# Initial project() call; VERSION is set below once CORE is fetched.
+project(${TADAH} LANGUAGES CXX)
 
 # 0. Guard against in-source builds
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
@@ -100,8 +101,17 @@ else()
   FetchContent_MakeAvailable(Tadah.MLIP)
 endif()
 
-# Set the project name and version
-set_project_name()
+# Set the project version from the blueprint TOML (single source of truth).
+# CORE has been populated by the FetchContent step above, so its blueprint
+# is available at ${Tadah.CORE_SOURCE_DIR}/blueprint/blueprint_tadah.toml.
+if(COMMAND tadah_read_version_from_blueprint)
+  tadah_read_version_from_blueprint(TADAH_VERSION REQUIRED)
+else()
+  set(TADAH_VERSION "0.0.0")
+  message(WARNING "tadah_read_version_from_blueprint not available; defaulting VERSION to 0.0.0")
+endif()
+project(${TADAH} VERSION ${TADAH_VERSION} LANGUAGES CXX)
+tadah_message(STATUS "VERSION: ${TADAH_VERSION}")
 
 
 file(GLOB TADAH_SRC_FILES src/*.cpp)

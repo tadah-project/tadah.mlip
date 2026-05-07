@@ -62,6 +62,7 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    descriptors.rst
    cutoffs.rst
    hpo.rst
+   hpo_examples.rst
 
 ----
 

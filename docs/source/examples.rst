@@ -14,3 +14,7 @@ Examples
 .. _cli_example_2:
 
 .. include:: ../../examples/CLI/ex_2/README.rst
+
+.. _cli_example_3:
+
+.. include:: ../../examples/CLI/ex_3_DM_mBlipEnv/README.rst

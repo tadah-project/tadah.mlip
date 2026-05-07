@@ -252,7 +252,10 @@ for key_name, raw_entry in allowed_keys.items():
     # ---------------------------------------------------------------------
     if entry.get('description', ""):
         f.write("\n   *Description*:\n\n")
-        f.write(f"   {entry['description']}\n")
+        # Re-indent every line of the description so wrapped sentences
+        # don't break out of the literal block / definition body.
+        desc = entry['description'].replace('\n', '\n   ')
+        f.write(f"   {desc}\n")
 
     # ---------------------------------------------------------------------
     # Long description (optional)
@@ -270,7 +273,10 @@ for key_name, raw_entry in allowed_keys.items():
     examples = entry.get('examples', [])
     for idx, example in enumerate(examples, start=1):
         f.write(f"   *Example* {idx}::\n\n")
-        f.write(f"       {example}\n\n")
+        # Re-indent every line inside a multi-line example so the
+        # literal block stays consistently indented.
+        indented = example.replace('\n', '\n       ')
+        f.write(f"       {indented}\n\n")
 
     # Blank line between keys
     f.write("\n")

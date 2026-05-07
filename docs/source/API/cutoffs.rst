@@ -1,32 +1,9 @@
-Cutoffs
-=======
+Cutoff Base Class
+=================
 
-.. doxygenclass:: tadah::models::Cut_Cos
-    :members:
-
-.. doxygenclass:: tadah::models::Cut_CosS
-    :members:
-
-.. doxygenclass:: tadah::models::Cut_Dummy
-    :members:
-
-.. doxygenclass:: tadah::models::Cut_Poly
-    :members:
-
-.. doxygenclass:: tadah::models::Cut_PolyS
-    :members:
-
-.. doxygenclass:: tadah::models::Cut_PT
-    :members:
-
-.. doxygenclass:: tadah::models::Cut_SinInv
-    :members:
-
-.. doxygenclass:: tadah::models::Cut_Tanh
-    :members:
-
-Base class
-----------
+The user-facing :ref:`cutoffs` chapter documents the concrete cutoff
+classes (``Cut_Cos``, ``Cut_Poly``, ``Cut_Tanh``, …).  The base class
+below is the API hook for adding new cutoff functions.
 
 .. doxygenclass:: tadah::models::Cut_Base
     :members:

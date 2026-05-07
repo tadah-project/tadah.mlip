@@ -52,16 +52,16 @@ Output files
 
 The optimiser produces three main log files that record *every* iteration
 
-* ``loss.tadah``   – value of each individual loss term and the total loss.  
-* ``params.tadah`` – hyper-parameter vector for the current iteration.  
-* ``outvars.tadah`` – any additional output variables (by default each loss term).
+* ``loss.tadah``   – value of each individual loss term and the total loss.
+* ``params.tadah`` – hyper-parameter vector for the current iteration.
+* ``outvar.tadah`` – any additional output variables (by default each loss term).
 
 For convenience, each of these files has a *best* counterpart that is updated
 only when a new optimum is reached:
 
-* ``best_loss.tadah``  
-* ``best_params.tadah``  
-* ``best_outvars.tadah``  
+* ``best_loss.tadah``
+* ``best_params.tadah``
+* ``best_outvar.tadah``
 
 These “best\_” logs allow you to track the progress of the optimisation without
 having to parse the full history.

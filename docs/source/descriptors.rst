@@ -65,8 +65,9 @@ Remember to supply matching auxiliary keys:
 ``RCUT2B``     cutoff distance(s)
 ``CGRID2B``    centre grid(s) – if the descriptor uses them
 ``SGRID2B``    width  grid(s) – same length as the corresponding centres
-(and the analogous ``*MB`` variants for many-body descriptors)
 =============  =========================================================
+
+(and the analogous ``*MB`` variants for many-body descriptors).
 
 Ordering matters: we recommend writing the block
 
@@ -211,42 +212,42 @@ Two-Body
      - Concatenate multiple D2 descriptors into one vector
 
 D2_LJ
-.....
+~~~~~
 
 .. doxygenclass:: tadah::models::D2_LJ
 
 D2_BP
-.....
+~~~~~
 
 .. doxygenclass:: tadah::models::D2_BP
 
 D2_Blip
-.......
+~~~~~~~
 
 .. doxygenclass:: tadah::models::D2_Blip
 
 D2_EAM
-......
+~~~~~~
 
 .. doxygenclass:: tadah::models::D2_EAM
 
 D2_MIE
-......
+~~~~~~
 
 .. doxygenclass:: tadah::models::D2_MIE
 
 D2_ZBL
-......
+~~~~~~
 
 .. doxygenclass:: tadah::models::D2_ZBL
 
 D2_Dummy
-........
+~~~~~~~~
 
 .. doxygenclass:: tadah::models::D2_Dummy
 
 D2_mJoin
-........
+~~~~~~~~
 
 .. doxygenclass:: tadah::models::D2_mJoin
 
@@ -312,22 +313,22 @@ Many-Body
      - Concatenate multiple DM descriptors into one vector
 
 DM_Blip
-.......
+~~~~~~~
 
 .. doxygenclass:: tadah::models::DM_Blip
 
 DM_EAD
-......
+~~~~~~
 
 .. doxygenclass:: tadah::models::DM_EAD
 
 DM_EAM
-......
+~~~~~~
 
 .. doxygenclass:: tadah::models::DM_EAM
 
 DM_mEAD variants
-................
+~~~~~~~~~~~~~~~~
 
 These descriptors combine the mEAD density accumulation with a non-linear
 embedding function **F** applied before the quadratic sum.  Choose the label
@@ -369,7 +370,7 @@ Embedding functions
 .. doxygenclass:: tadah::models::F_mEnv
 
 DM_Poly variants
-................
+~~~~~~~~~~~~~~~~
 
 ``DM_Poly`` is a generalised many-body descriptor with three independent
 choices:
@@ -460,11 +461,11 @@ The 16 registered labels follow the pattern
 .. doxygenclass:: tadah::models::DM_Poly
 
 DM_Dummy
-........
+~~~~~~~~
 
 .. doxygenclass:: tadah::models::DM_Dummy
 
 DM_mJoin
-........
+~~~~~~~~
 
 .. doxygenclass:: tadah::models::DM_mJoin

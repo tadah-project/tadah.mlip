@@ -724,6 +724,22 @@ settles into a basin.
      - ``2.0``
      - Step-adjust gain — controls how fast ``V[i]`` reacts to
        accept-rate deviation from the ``[0.4, 0.6]`` deadband.
+   * - ``V_FLOOR_FRAC``
+     - ``1e-3``
+     - Lower clamp on ``V[i]`` as a fraction of
+       ``(high_i - low_i)``.  Vanilla Corana has no explicit floor;
+       on ``FAILSCORE``-cliff landscapes ``V[i]`` can collapse by
+       factor ``(1 + C)^NT`` per zero-accept rung, killing the chain.
+       Default ``1e-3`` keeps ``V[i]`` ≥ 0.1% of box width so the
+       chain stays mobile.
+   * - ``RESET_TO_BEST``
+     - ``0``
+     - Brommer (2003) modification: set to ``1`` to snap the chain
+       back to the best-so-far point after every cooling step.  Gives
+       the adaptive chain "basin memory" — high-T wanders no longer
+       cost progress because the next rung restarts from the deepest
+       known basin.  Strongly recommended on ``FAILSCORE``-cliff
+       landscapes or when the chain wanders during the high-T phase.
 
 The per-rung journal line gains a ``V=[V_min, V_max]`` field so
 users can watch the step vector adapt in real time.  The Corana

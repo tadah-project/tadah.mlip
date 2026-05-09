@@ -387,7 +387,8 @@ The driver-attribute keys below are accepted wherever an
    +-----------+------------------------------------------------------------------------------------------+
    | LIB       | ALGO (algorithms from the selected library)                                              |
    +-----------+------------------------------------------------------------------------------------------+
-   | ``TADAH`` | ``RANDOM`` (uniform random search), ``GRID``                                             |
+   | ``TADAH`` | ``RANDOM`` (uniform random search), ``GRID``, ``ANNEAL`` (classic Kirkpatrick/Metropolis |
+   |           | Simulated Annealing — see :ref:`tadah_anneal_block` below).                              |
    +-----------+------------------------------------------------------------------------------------------+
    | ``NLOPT`` | All gradient-free NLOpt globals (``GN_*``) and locals (``LN_*``) — see                   |
    |           | the `NLOpt algorithm catalogue                                                           |
@@ -485,6 +486,7 @@ Optimiser                        Seeds consumed
 ``DLIB:BFGS``                    First only (``optim_init.front()``).
 Any ``NLOPT`` algorithm          First only.
 ``TADAH:RANDOM``, ``TADAH:GRID`` First only — used as eval 0, then sweep.
+``TADAH:ANNEAL``                 First only — used as the SA chain's starting state after T0 calibration.
 ================================ ===================================================
 
 ``MULTISTART > 1`` runs the inner optimiser ``K`` times and consumes one
@@ -603,6 +605,121 @@ Key              Args          Effect
 The ``EXPLORE`` block accepts the full driver-attribute set
 (``LIB``/``ALGO``/``MAXEVAL`` / …); it inherits the outer bounds and
 log-transform automatically.
+
+.. _tadah_anneal_block:
+
+LIB TADAH ALGO ANNEAL — classic Simulated Annealing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The in-tree ``TADAH`` library exposes a classic Kirkpatrick/Metropolis
+Simulated Annealing driver as ``ALGO ANNEAL``.  It is a single-shot
+optimiser: select it from a ``STRATEGY { TYPE PLAIN }`` block, or wrap
+it in ``MULTISTART`` for multiple independent chains.
+
+References:
+
+1. Kirkpatrick, S., Gelatt, C. D., and Vecchi, M. P.  *Optimization by
+   simulated annealing.*  Science 220 (4598), 671–680, 1983.
+2. Metropolis, N., Rosenbluth, A., Rosenbluth, M., Teller, A., and
+   Teller, E.  *Equation of State Calculations by Fast Computing
+   Machines.*  J. Chem. Phys. 21, 1087–1092, 1953.
+
+The algorithm operates in transformed (post-``LOG_HP``) parameter
+space: every Metropolis trial draws ``x' = x + sigma * N(0, I)``,
+rejects out-of-bounds proposals, and applies the Metropolis
+acceptance ``Δf <= 0`` ``or`` ``rand < exp(-Δf / T)``.  Temperature
+cools geometrically: ``T <- T * RT``.  When ``PARAM T_INIT`` is not
+set, the driver auto-calibrates ``T0`` from a small uniform-bounds
+random walk: ``T0 = -mean|Δf| / ln(P)``, where ``P =
+PARAM T0_PACCEPT`` is the target early acceptance probability.
+
+Knobs are passed via the existing ``PARAM <key> <value>`` grammar
+inside the ``STRATEGY`` block.  Defaults are listed below.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 14 66
+
+   * - PARAM
+     - Default
+     - Effect
+   * - ``T_INIT``
+     - auto
+     - Initial temperature.  When set, T0 calibration is skipped (no
+       probes are spent).
+   * - ``T_MIN``
+     - ``1e-12``
+     - Cooling floor; the loop stops when ``T < T_MIN``.
+   * - ``RT``
+     - ``0.85``
+     - Geometric cooling factor in ``(0, 1)``.
+   * - ``L``
+     - ``50``
+     - Markov-chain length per temperature.
+   * - ``STEP_FRAC``
+     - ``0.10``
+     - Per-dim sigma as a fraction of ``(high_i - low_i)``.
+   * - ``T0_PROBES``
+     - ``20``
+     - Random uniform-bounds probes used to calibrate T0.
+   * - ``T0_PACCEPT``
+     - ``0.80``
+     - Target acceptance probability for T0.
+
+Top-level ``STEP <s>`` overrides ``PARAM STEP_FRAC`` with a uniform
+sigma applied to every dimension; the entry banner echoes which is in
+use.  ``SEED <int>`` seeds the RNG.
+
+Stops honoured: ``MAXEVAL`` (hard cap on host calls — **including** T0
+probes), ``MAXTIME``, ``STOPVAL``, and the ANNEAL-specific ``T_MIN``
+floor.  ``FTOL_REL`` and ``FTOL_ABS`` are **not** honoured by this
+driver (no NEPS history yet).
+
+When the T0 calibration probes all return the same value
+(``mean|dE| == 0`` — typically saturated ``FAILSCORE`` everywhere),
+HPO falls back to ``T0 = 1.0`` and emits a ``WARNING`` line.  Set
+``PARAM T_INIT`` or widen the bounds in that case.
+
+.. _tadah_anneal_journal:
+
+Journal output
+^^^^^^^^^^^^^^
+
+Per run, ``ALGO ANNEAL`` writes the following lines to ``hpo_run.log``
+(timestamps elided):
+
+.. code-block:: text
+
+   ANNEAL: seed=1234  L=20  RT=0.85  T_MIN=1e-12  STEP_FRAC=0.15
+   ANNEAL: T0=8.188e+00 from 20 probes,  mean|dE|=1.83e+00  loss range=[3.20e-02, 1.40e+01]  std=2.10e+00  target p_accept=8.000e-01
+   ANNEAL rung k=0  T=8.188e+00  proposed=20  accepted=14 (70.0%)  oob=2  (9.1%)  f_x=2.31e-01  best=1.84e-01
+   ANNEAL rung k=1  T=6.960e+00  proposed=20  accepted=11 (55.0%)  oob=0  (0.0%)  f_x=1.97e-01  best=1.84e-01
+   ...
+   ANNEAL summary: rungs=12  proposed=240  accepted=98 (40.8%)  oob=4 (1.6%)  T0=8.188e+00  T_final=2.46e-01  best=8.71e-02
+   ANNEAL accept-rate trajectory: min=20.0%  max=70.0%
+   ANNEAL stopped: MAXEVAL exhausted after 260 host eval(s) (12 rung(s) completed)
+
+Use these to diagnose typical SA mistuning:
+
+* **Accept rate stays at ≈ 100% across all rungs** — ``T_INIT`` /
+  ``T0_PACCEPT`` too high; the chain is doing a random walk.  Lower
+  ``PARAM T0_PACCEPT`` (e.g. to ``0.5``) or pick a smaller ``T_INIT``.
+* **Accept rate collapses in 2–3 rungs** — ``RT`` too aggressive.  Use
+  ``RT = 0.90`` or ``0.95``.
+* **High ``oob`` fraction (> 30 %)** — ``STEP_FRAC`` (or ``STEP``) too
+  large for the bounds; halve it.
+* **Best stagnates while accept rate is > 50 %** — chain is escaping
+  basins but not converging; raise ``L`` to give each temperature
+  more proposals.
+* **``ANNEAL stopped: MAXTIME exceeded`` after only a few rungs** —
+  the wall-clock cap killed SA before it could cool.  Either raise
+  ``MAXTIME`` (in the ``OPTIMIZER`` block or at root level), reduce
+  ``L``, or switch to ``LIB NLOPT ALGO LN_BOBYQA`` for a faster local
+  refinement.
+
+The standard ``BEST`` events from ``HPO_Host`` (printed by every
+optimiser) interleave with the rung lines, so the best-tracking story
+is identical to other drivers.
 
 TYPE BASINS — anytime "run and forget"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

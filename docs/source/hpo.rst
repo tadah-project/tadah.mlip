@@ -680,6 +680,58 @@ When the T0 calibration probes all return the same value
 HPO falls back to ``T0 = 1.0`` and emits a ``WARNING`` line.  Set
 ``PARAM T_INIT`` or widen the bounds in that case.
 
+Corana adaptive variant (opt-in)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Setting ``PARAM CORANA 1`` switches the inner loop from classic
+Kirkpatrick/Metropolis to the Corana adaptive scheme (refs:
+Corana, Marchesi, Martini, Ridella, *ACM Trans. Math. Soft.* 13:262,
+1987; Brommer, Univ. Stuttgart MSc, 2003).  The setup phase is
+identical (T0 calibration, seed evaluation, stop conditions); only
+the per-rung structure differs:
+
+* Perturbations are **one dim at a time** (uniform
+  ``U(-1, 1) · V[i]``), not whole-vector Gaussians.
+* The per-dim step vector ``V[i]`` (initialised from
+  ``STEP_FRAC · (high_i - low_i)``) is **adapted** every ``NS`` step
+  cycles based on the per-dim accept ratio: it grows when the rate
+  exceeds 0.6 and shrinks when it drops below 0.4.
+* T cools by ``RT`` after every ``NT`` step-adjust cycles, so a rung
+  consumes ``NT · NS · D`` host evaluations (``L`` is ignored).
+
+Use the Corana variant when the classic variant freezes at low T —
+fixed σ proposes broad-search jumps that the cold Metropolis gate
+rejects en masse, while ``V[i]`` shrinks naturally as the chain
+settles into a basin.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 14 68
+
+   * - PARAM
+     - Default
+     - Effect
+   * - ``CORANA``
+     - ``0``
+     - Set to ``1`` to enable the adaptive variant.
+   * - ``NS``
+     - ``5``
+     - Step cycles per step-adjust cycle.
+   * - ``NT``
+     - ``2``
+     - Step-adjust cycles per T (cooling triggers every ``NT``).
+   * - ``C``
+     - ``2.0``
+     - Step-adjust gain — controls how fast ``V[i]`` reacts to
+       accept-rate deviation from the ``[0.4, 0.6]`` deadband.
+
+The per-rung journal line gains a ``V=[V_min, V_max]`` field so
+users can watch the step vector adapt in real time.  The Corana
+paper recommends ``NS = 20``, ``NT = max(100, 5D)``, but those
+defaults assume cheap function evaluations — for LAMMPS-driven HPO
+with ``~600 ms`` per evaluation, the shipped defaults (``NS = 5``,
+``NT = 2``) cover a useful T schedule within practical wall budgets.
+
 .. _tadah_anneal_journal:
 
 Journal output

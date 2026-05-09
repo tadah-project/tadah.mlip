@@ -43,6 +43,13 @@ The first public beta of the Tadah! framework. Highlights: a new family of rotat
 - `[umbrella]` HPO examples page wired into the Sphinx toctree (link-only — content lives in `HPO/examples/`).
 - `[core]` Container-style `begin()` / `end()` iteration on `Config`.
 - `[core][mlip][models][md][hpo][lammps][umbrella]` `TADAH_ENABLE_ASAN` CMake option for AddressSanitizer builds.
+- `[core][mlip][hpo][umbrella]` **HPO bound-validation pipeline** — catches the BASINS class of silent training failures (descriptors that collapse to zero weights when a fixed parameter or HPO bound puts them outside the dataset's support).
+  - Blueprint: `AUDIT` (off / warn / error; default off so large training DBs don't pay the data-stats scan unless opted in), `AUDIT_SAMPLE` (NN-sweep cap, default 256 — `0` = full DB), `HEALTH_LOG` (per-iter monitor verbosity).
+  - New `tadah` analysis subcommands: `dataset_stats`, `suggest_bounds`, `check_bounds`.
+  - Internals (`MLIP/`): design-matrix `ColumnLayout`, `compute_data_stats` + `classify_dataset`, per-`ParamMeta` data-driven `bound_suggester`, `preflight_audit` with `AuditMode::{Off,Warn,Error}`.
+  - HPO wires the audit hook + per-iter health monitor; `EFILTER` / `FFILTER` are now also forwarded from `--validation` (symmetric LOAD-TRANSFORMS log; mean-share breakdown).
+  - User-facing reference: new `bound_validation.rst` page in the docs.
+- `[hpo][umbrella]` **`TADAH:ANNEAL` — classic Kirkpatrick/Metropolis Simulated Annealing driver**, dispatched from `run_inner()` alongside `TADAH:RANDOM` / `TADAH:GRID`. Operates in transformed (log/identity per-`OPTIM`) space; reflect-into-box on out-of-bound proposal components for high-dim robustness. Documented in `hpo.rst` (seed-consumption table + journal-trace section).
 
 ### Changed
 - `[models]` **`Cut_PT` normalised so f(0) = 1** — corrects a constant rescaling that previously contaminated descriptors using the polynomial cutoff. Energies / forces / stresses computed with `Cut_PT` against v1.1.x will differ. See **Migration** below.

@@ -349,7 +349,7 @@ The driver-attribute keys below are accepted wherever an
    * - Key (type)
      - Description
    * - ``LIB`` (string)
-     - Optimisation library: ``DLIB``, ``NLOPT``, ``TADAH``.
+     - Optimisation library: ``DLIB``, ``NLOPT``, ``TADAH``, ``CERES``.
    * - ``ALGO`` (string)
      - Algorithm (see table below).
    * - ``MAXEVAL`` (uint)
@@ -377,6 +377,20 @@ The driver-attribute keys below are accepted wherever an
      - Storage size required by some NLOpt algorithms.
    * - ``THREADS`` (uint)
      - Outer thread count for ``DLIB:GFS`` (default: 1).
+   * - ``GRAD_STRATEGY`` (string)
+     - Gradient backend used by gradient-based optimizers (``DLIB:BFGS``,
+       all ``CERES`` algorithms, future ``NLOPT:LD_*``).  One of:
+
+       * ``NUMERICAL`` (default) — Ceres ``DynamicNumericDiffCostFunction``
+         with central differences; step size from ``PARAM fd_step``.
+         As of this version ``DLIB:BFGS`` also routes its gradient
+         through this provider (replacing dlib's ``derivative()``);
+         ``PARAM fd_step`` semantics are preserved.
+       * ``AUTODIFF`` — reserved for a future phase that templates the
+         train/predict pipeline through ``Context``/MODELS plus an
+         implicit-function-theorem rule for the LAPACK solve.  The
+         provider currently throws a clear "not yet implemented"
+         diagnostic when the gradient is requested.
    * - ``PARAM`` (string float)
      - Generic key/value passed to the algorithm (e.g.
        ``PARAM fd_step 1e-3``).
@@ -400,6 +414,52 @@ The driver-attribute keys below are accepted wherever an
    | ``DLIB``  | ``BFGS``, ``LBFGS``, ``CG``, ``BOBYQA`` (local), ``GFS`` (the dlib                       |
    |           | MaxLIPO+TR global *Global Function Search*).                                             |
    +-----------+------------------------------------------------------------------------------------------+
+   | ``CERES`` | ``LBFGS`` (limited-memory BFGS, Wolfe line search), ``WOLFE`` (full BFGS,                |
+   |           | Wolfe line search), ``NLCG`` (nonlinear conjugate gradient), ``STEEPEST_DESCENT``        |
+   |           | (Armijo line search). All four use Ceres' ``GradientProblemSolver``; gradient is         |
+   |           | provided by the unified ``GRAD_STRATEGY`` seam (numerical via Ceres                      |
+   |           | ``DynamicNumericDiffCostFunction``).  The Ceres NLLS family                              |
+   |           | (``LEVENBERG_MARQUARDT``, ``DOGLEG``, ``SUBSPACE_DOGLEG``) is **deferred** —              |
+   |           | mathematically degenerate over a scalar HPO loss; will be enabled in a later             |
+   |           | phase together with residual-mode loss exposure and autodiff support. Ceres              |
+   |           | optimisers do **not** enforce box constraints; use ``DLIB:BFGS`` or                      |
+   |           | ``NLOPT:LD_LBFGS`` for bounds-enforced gradient optimisation.                            |
+   +-----------+------------------------------------------------------------------------------------------+
+
+CERES PARAM keys
+~~~~~~~~~~~~~~~~
+
+The four CERES algorithms accept these algorithm-specific ``PARAM``
+entries (all keys are optional unless noted):
+
+================== =================================================================================
+Key                Effect
+================== =================================================================================
+``fd_step``        Relative finite-difference step for the numerical gradient (default ``1e-6``).
+``diff_method``    Numeric-diff method: ``0`` = CENTRAL (default), ``1`` = FORWARD, ``2`` = RIDDERS.
+                   RIDDERS extrapolates assuming a smooth Taylor expansion; not recommended near
+                   ``FAIL_SCORE`` plateaus or for noisy LAMMPS-loss components.
+``tol_gradinf``    Gradient-infinity-norm convergence tolerance (Ceres ``gradient_tolerance``,
+                   default ``1e-10``).
+``max_iter``       Override on Ceres' ``max_num_iterations``.  By default the iteration cap is set
+                   to a large sentinel and ``MAXEVAL`` is enforced externally on host evaluations.
+``max_ls_iter``    Maximum line-search step-size iterations.
+``max_lbfgs_rank`` (LBFGS only) limited-memory rank, default ``20``.
+``nlcg_type``      (NLCG only) variant: ``0`` = FLETCHER_REEVES (default), ``1`` = POLAK_RIBIERE,
+                   ``2`` = HESTENES_STIEFEL.
+================== =================================================================================
+
+The ``MAXEVAL`` cap is enforced at the host-evaluation level by an
+external counter shared with the ``GradientProvider``.  Ceres'
+internal iteration counting is intentionally given a high sentinel so
+that one Ceres iteration's worth of finite-diff samples (2 × N under
+CENTRAL) is correctly accounted for against the user budget.
+
+The ``DLIB:BFGS`` path also routes its gradient through the same seam.
+``PARAM fd_step`` keeps its existing semantics; the chief observable
+change is that gradient evaluations now count toward ``MAXEVAL`` via
+the same shared counter (previously dlib's internal central-diff
+samples bypassed the cap by ``2 × N`` per iteration).
 
 INIT block — seeding strategies
 ...............................

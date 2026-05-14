@@ -160,8 +160,8 @@ in the order they normally appear:
      INIT       ... ENDINIT          # optional: seeding strategy chain
      NOISE      ... ENDNOISE         # optional: objective-noise calibration
      STRATEGY   ... ENDSTRATEGY      # required: TYPE + driver + decorators
-       EXPLORE  ... ENDEXPLORE       # required for TYPE BASINS / PRESTAGE
-       REFINE   ... ENDREFINE        # required for TYPE BASINS / PRESTAGE
+       EXPLORE  ... ENDEXPLORE       # required for TYPE PRESTAGE
+       REFINE   ... ENDREFINE        # required for TYPE PRESTAGE
        INNER    ... ENDINNER         # optional: NLopt MLSL/AUGLAG inner
        RESTART  ... ENDRESTART       # optional decorator
    ENDOPTIMIZER
@@ -173,7 +173,7 @@ A legacy form without a ``STRATEGY`` block — ``LIB``/``ALGO``/``MAXEVAL``
 written directly inside ``OPTIMIZER`` — is still accepted and behaves
 exactly like ``STRATEGY { TYPE PLAIN ... }``.  It is fine for short
 single-shot runs but cannot express ``MULTISTART``, ``PRESTAGE``,
-``BASINS``, init chains, or ``RESTART`` decorators; those features
+init chains, or ``RESTART`` decorators; those features
 require the explicit grammar.
 
 .. _loss_functions:
@@ -320,6 +320,38 @@ Additional options
    not change runtime; HPO logs a stderr warning when ``--ncpu > 1``
    is set in a non-MPI build.  See :ref:`performance_parallelism`.
 
+``--hotvar <name> <min> <max> [<initial>]``
+   Declare this ``PC_LAMMPS`` line as *hot*: a two-phase evaluator
+   for parameters that other scripts depend on.  Hot scripts run
+   alone in **phase A** of each iteration (in parallel with other
+   hot scripts), expose ``variable <name> equal …`` from the LAMMPS
+   script, and the returned value is validated against
+   ``[min, max]``.  Validated values are cached per
+   ``(script, name)`` and propagated as ``${<name>}`` strings into
+   every cold (no-``--hotvar``) ``PC_LAMMPS`` script in **phase B**.
+   Multiple ``--hotvar`` flags per line are allowed; phase A is
+   parallel so hot scripts cannot reference each other's variables.
+   If a hot value lands outside ``[min, max]`` HPO fail-scores the
+   iteration and skips phase B.
+
+Per-metric bad-pot pre-filter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``PC_<METRIC> --skip-above <cap>`` and ``PC_<METRIC> --skip-rel <ratio>``
+attach a per-metric pre-filter on the dataset error counters
+(``PC_EMAE``, ``PC_ERMSE``, ``PC_ErRMSE``, ``PC_ERSQ``, ``PC_FRMSE``,
+``PC_SRMSE``).  Both gates fire **before** any ``PC_LAMMPS`` work for
+the iteration:
+
+* ``--skip-above <cap>`` fail-scores the iteration when the metric
+  exceeds the absolute ``<cap>``.
+* ``--skip-rel <ratio>`` fail-scores when
+  ``metric > ratio × running_best`` for that same metric.
+
+Both filters can be applied to the same metric line.  They short-cut
+obviously bad potentials so wall-time is not spent on LAMMPS phases
+that would never compete.
+
 Result contract for user scripts
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -377,20 +409,6 @@ The driver-attribute keys below are accepted wherever an
      - Storage size required by some NLOpt algorithms.
    * - ``THREADS`` (uint)
      - Outer thread count for ``DLIB:GFS`` (default: 1).
-   * - ``GRAD_STRATEGY`` (string)
-     - Gradient backend used by gradient-based optimizers (``DLIB:BFGS``,
-       all ``CERES`` algorithms, future ``NLOPT:LD_*``).  One of:
-
-       * ``NUMERICAL`` (default) — Ceres ``DynamicNumericDiffCostFunction``
-         with central differences; step size from ``PARAM fd_step``.
-         As of this version ``DLIB:BFGS`` also routes its gradient
-         through this provider (replacing dlib's ``derivative()``);
-         ``PARAM fd_step`` semantics are preserved.
-       * ``AUTODIFF`` — reserved for a future phase that templates the
-         train/predict pipeline through ``Context``/MODELS plus an
-         implicit-function-theorem rule for the LAPACK solve.  The
-         provider currently throws a clear "not yet implemented"
-         diagnostic when the gradient is requested.
    * - ``PARAM`` (string float)
      - Generic key/value passed to the algorithm (e.g.
        ``PARAM fd_step 1e-3``).
@@ -416,14 +434,14 @@ The driver-attribute keys below are accepted wherever an
    +-----------+------------------------------------------------------------------------------------------+
    | ``CERES`` | ``LBFGS`` (limited-memory BFGS, Wolfe line search), ``WOLFE`` (full BFGS,                |
    |           | Wolfe line search), ``NLCG`` (nonlinear conjugate gradient), ``STEEPEST_DESCENT``        |
-   |           | (Armijo line search). All four use Ceres' ``GradientProblemSolver``; gradient is         |
-   |           | provided by the unified ``GRAD_STRATEGY`` seam (numerical via Ceres                      |
-   |           | ``DynamicNumericDiffCostFunction``).  The Ceres NLLS family                              |
+   |           | (Armijo line search). All four use Ceres' ``GradientProblemSolver``; gradient            |
+   |           | is computed numerically via Ceres' ``DynamicNumericDiffCostFunction`` (central           |
+   |           | differences; step size from ``PARAM fd_step``).  The Ceres NLLS family                  |
    |           | (``LEVENBERG_MARQUARDT``, ``DOGLEG``, ``SUBSPACE_DOGLEG``) is **deferred** —              |
    |           | mathematically degenerate over a scalar HPO loss; will be enabled in a later             |
-   |           | phase together with residual-mode loss exposure and autodiff support. Ceres              |
-   |           | optimisers do **not** enforce box constraints; use ``DLIB:BFGS`` or                      |
-   |           | ``NLOPT:LD_LBFGS`` for bounds-enforced gradient optimisation.                            |
+   |           | phase together with residual-mode loss exposure. Ceres optimisers do **not**             |
+   |           | enforce box constraints; use ``DLIB:BFGS`` or ``NLOPT:LD_LBFGS`` for                     |
+   |           | bounds-enforced gradient optimisation.                                                  |
    +-----------+------------------------------------------------------------------------------------------+
 
 CERES PARAM keys
@@ -583,9 +601,6 @@ The ``STRATEGY { ... } ENDSTRATEGY`` block is the run-policy hub.  Its
                    different seed in the chain.
 ``PRESTAGE``       Two-stage: an ``EXPLORE { ... }`` block runs first, the top-K
                    seeds are then refined by the outer driver.
-``BASINS``         Anytime/interruptible round-by-round basin exploration —
-                   alternates ``EXPLORE`` and ``REFINE`` stages over a persistent
-                   basin pool.
 ================== =================================================================
 
 TYPE PLAIN
@@ -849,100 +864,13 @@ The standard ``BEST`` events from ``HPO_Host`` (printed by every
 optimiser) interleave with the rung lines, so the best-tracking story
 is identical to other drivers.
 
-TYPE BASINS — anytime "run and forget"
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``BASINS`` is a self-contained top-level strategy designed for
-hour/day/week-long runs on workstations or SLURM clusters.  Round
-``k = 1, 2, …`` alternates an ``EXPLORE`` stage at
-``EXPLORE.FTOL_LADDER[k]`` (broad exploration; harvests basin
-candidates) with a ``REFINE`` stage that visits the cumulative
-``REFINE.FTOL_LADDER[1..k]`` and locally refines every basin in the
-persistent pool.  ``SIGINT`` (ctrl-C), ``SIGTERM``, and ``SIGUSR2``
-all trigger a clean checkpoint commit; re-running the same command
-resumes from ``checkpoint.tadah``.
-
-Default behaviour without any per-stage overrides:
-
-* ``EXPLORE`` = ``NLOPT GN_CRS2_LM``.
-* ``REFINE`` = ``NLOPT LN_BOBYQA``.
-* Default ladders auto-derived from ``NOISE.CALIBRATION``, with a
-  ``1e-9`` floor.
-* 32-basin pool, 5-round emergency stop, no checkpoint cadence
-  (stage-boundary commits only).
-
-The outer ``OPTIMIZER`` ``MAXEVAL`` and ``MAXTIME`` remain valid
-overall budgets.  ``BASINS`` ignores ``RESTART``, ``MULTISTART``, and
-``PRESTAGE`` (it drives global+local internally).
-
-.. table:: BASINS-wide knobs (inside the ``STRATEGY`` block, ``TYPE BASINS``)
-   :widths: 30 18 14 38
-
-   +----------------------------+-----------------+----------+----------------------------------------------------------+
-   | Key                        | Args            | Default  | Effect                                                   |
-   +============================+=================+==========+==========================================================+
-   | ``BASIN_POOL_MAX``         | int ≥ 1         | 32       | Capacity of the persistent basin pool (worst-loss        |
-   |                            |                 |          | eviction on overflow).                                   |
-   +----------------------------+-----------------+----------+----------------------------------------------------------+
-   | ``BASIN_DEDUP_DIST``       | float ≥ 0       | 0.05     | Relative L2 in normalised bbox: candidates closer than   |
-   |                            |                 |          | this merge with an existing basin.                       |
-   +----------------------------+-----------------+----------+----------------------------------------------------------+
-   | ``STOP_NO_IMPROVE_ROUNDS`` | int             | 5        | Emergency stop after this many consecutive rounds        |
-   |                            |                 |          | without a new global-best improvement.                   |
-   +----------------------------+-----------------+----------+----------------------------------------------------------+
-   | ``SEED_TOP_N``             | int ≥ 1         | 1        | Pre-evaluate top-N basins at the start of each round     |
-   |                            |                 |          | ``k > 1`` ``EXPLORE`` stage; seed the optimiser from the |
-   |                            |                 |          | lowest-loss of them.                                     |
-   +----------------------------+-----------------+----------+----------------------------------------------------------+
-   | ``CLAMP_TO_NOISE_FLOOR``   | bool            | ``false``| Strictly trim FTOL ladder rungs below the                |
-   |                            |                 |          | ``NOISE.CALIBRATION``-suggested noise floor.  Opt in     |
-   |                            |                 |          | only when the calibration is trustworthy (a converged    |
-   |                            |                 |          | WARM seed, not a fresh BAD_POT).                         |
-   +----------------------------+-----------------+----------+----------------------------------------------------------+
-   | ``CHECKPOINT_EVERY``       | ``Ns`` or ``N`` | 0 (off;  | Time- (``Ns``) or eval-based (``N``) checkpoint cadence. |
-   |                            |                 | stage-   | Either way, a checkpoint is also committed at every      |
-   |                            |                 | boundary | stage boundary.                                          |
-   |                            |                 | only)    |                                                          |
-   +----------------------------+-----------------+----------+----------------------------------------------------------+
-
-.. table:: Per-stage knobs (inside ``EXPLORE { ... }`` or ``REFINE { ... }``, ``TYPE BASINS``)
-   :widths: 30 18 14 38
-
-   +-----------------------------+----------+-----------+----------------------------------------------------------+
-   | Key                         | Args     | Default   | Effect                                                   |
-   +=============================+==========+===========+==========================================================+
-   | ``LIB``, ``ALGO``           | string   | see above | Stage driver.                                            |
-   +-----------------------------+----------+-----------+----------------------------------------------------------+
-   | ``FTOL_LADDER``             | list     | auto from | Per-round ``ftol_rel`` rungs.  Round k visits the first  |
-   |                             | of >0    | NOISE     | ``k`` rungs (``REFINE``) or rung ``k`` (``EXPLORE``).    |
-   |                             |          |           | Lengths past the list cap to the last rung.              |
-   +-----------------------------+----------+-----------+----------------------------------------------------------+
-   | ``BUDGET_MIN_EVALS``        | int      | 30        | Floor on per-stage evals before stuck-detection fires.   |
-   +-----------------------------+----------+-----------+----------------------------------------------------------+
-   | ``BUDGET_MAX_EVALS``        | int      | 5000      | Per-stage / per-basin safety cap for the inner driver.   |
-   +-----------------------------+----------+-----------+----------------------------------------------------------+
-   | ``BUDGET_RATE_FACTOR``      | float ≥0 | 0.5       | Per-stage stuck threshold: ``is_stuck`` requires         |
-   |                             |          |           | ``rate_per_eval < factor × tol``.                        |
-   +-----------------------------+----------+-----------+----------------------------------------------------------+
-
-For the rationale behind the LADDER / BUDGET defaults, the running-best
-diagnostics, and recommended tuning of ``BASIN_POOL_MAX`` for high-D
-problems, see
-`HPO/README.md
-<https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/README.md>`_
-and the worked example
-`15_basins_run_and_forget
-<https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/15_basins_run_and_forget>`_.
-
 .. _restart_decorator:
 
 RESTART decorator
 .................
 
 ``RESTART { ... } ENDRESTART`` decorates a ``TYPE PLAIN`` /
-``MULTISTART`` / ``PRESTAGE`` strategy with a stagnation watchdog.  It
-does *not* compose with ``TYPE BASINS`` (BASINS drives its own
-global+local cycle internally).
+``MULTISTART`` / ``PRESTAGE`` strategy with a stagnation watchdog.
 
 .. code-block:: none
 
@@ -1008,8 +936,7 @@ Key                Args          Effect
 ``CALIBRATION``    int (0 or ≥2) Repeat the seed evaluation ``N`` times to surface
                                  the objective's noise floor and emit a suggested
                                  ``FTOL_REL``.  ``0`` disables; ``1`` is rejected as
-                                 statistically meaningless.  The result is also fed into
-                                 ``CLAMP_TO_NOISE_FLOOR`` for ``BASINS``.
+                                 statistically meaningless.
 ================== ============= =================================================================
 
 INNER block — NLopt MLSL / AUGLAG sub-optimiser
@@ -1399,7 +1326,6 @@ Marker                                                                       Mea
 ``[HPO] RESTART i/M — fresh init from STRATEGY``                              Stagnation watchdog fired.
 ``[HPO] NOISE_AUTO: PARAM fd_step set to V (diag=…, dim=…)``                  ``NOISE.AUTO`` fired and shows the value used.
 ``[HPO] NOISE_CALIBRATION: running N evals at the seed point``                ``NOISE.CALIBRATION`` started.
-``[HPO] BASINS: resumed from checkpoint (n_eval=…, best_loss=…)``             Resume-from-checkpoint fired.
 ============================================================================ ============================================================
 
 Migration from legacy syntax
@@ -1427,14 +1353,6 @@ common renames:
      - ``STRATEGY { TYPE PRESTAGE EXPLORE { … } ENDEXPLORE … }``
    * - ``LOCAL ... ENDLOCAL``
      - ``INNER ... ENDINNER`` (NLopt MLSL/AUGLAG inner sub-optimiser)
-   * - ``GLOBAL_LIB`` / ``GLOBAL_ALGO``
-     - ``STRATEGY { TYPE BASINS EXPLORE { LIB ... ALGO ... } }``
-   * - ``LOCAL_LIB`` / ``LOCAL_ALGO``
-     - ``STRATEGY { TYPE BASINS REFINE { LIB ... ALGO ... } }``
-   * - ``TOL_GLO_LADDER`` / ``TOL_LOC_LADDER``
-     - ``EXPLORE { FTOL_LADDER ... }`` / ``REFINE { FTOL_LADDER ... }``
-   * - ``STAGE_*``
-     - ``EXPLORE { BUDGET_* }`` / ``REFINE { BUDGET_* }``
    * - ``RESTART_AFTER_STAGNATION N``
      - ``RESTART { AFTER_STAGNATION N }`` (inside ``STRATEGY``)
    * - ``RESTART_MAX N``

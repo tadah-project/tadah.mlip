@@ -129,17 +129,10 @@ See :ref:`cli_example_2` for a slightly bigger walkthrough, and
 Configuration file
 ------------------
 
-This section is the reference for the HPO configuration file.  Three
-in-tree notes go deeper than the user-facing documentation can afford
-to:
-
-* `HPO/README.md
-  <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/README.md>`_
-  — keyword reference, every flag and default, plus the
-  *OPTIM-able context keys* table.
-* `HPO/LOAD_TRANSFORMS.md
-  <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/LOAD_TRANSFORMS.md>`_
-  — load-time dataset transforms (LSCALE, ESHIFT, EFILTER, weighting…).
+This section is the reference for the HPO configuration file.  For an
+even terser keyword reference — every flag, every default, plus the
+*OPTIM-able context keys* table — see the in-tree `HPO/README.md
+<https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/README.md>`_.
 
 Block hierarchy
 ...............
@@ -957,19 +950,39 @@ Load-time data transforms
 .........................
 
 The transforms below reshape the training set *before* any neighbour
-finding, descriptor calculation, or training.  They are shared across
-``tadah train``, ``tadah predict``, and ``tadah hpo`` — for HPO they
-are written either at the *root* level of the HPO config or inside
-``--config`` (the training configuration).  Two of them (``LSCALE``,
-``ESHIFT``) are stamped into ``pot.tadah`` so prediction round-trips
-them automatically.
+finding, descriptor calculation, or training.  They run inside
+``apply_load_transforms()`` as soon as the datasets are loaded and are
+shared across ``tadah train``, ``tadah predict``, and ``tadah hpo``;
+for HPO they are written either at the *root* level of the HPO config
+or inside ``--config`` (the training configuration).
 
-For per-key reference (defaults, examples, the exact validation
-contract) see :ref:`ConfigSection` and ``tadah explain <key>`` (e.g.
-``tadah explain train.lscale``).  For the conceptual layer — order of
-application, derivation paths, MPI caveats, the worked Ta example —
-see `HPO/LOAD_TRANSFORMS.md
-<https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/LOAD_TRANSFORMS.md>`_.
+Two of them — ``LSCALE`` and the resolved ``ESHIFT`` — are stamped into
+``pot.tadah`` so ``tadah predict`` round-trips them automatically; the
+rest are training-time only.  For the per-key CLI form and defaults see
+:ref:`ConfigSection` and ``tadah explain <key>`` (e.g. ``tadah explain
+train.lscale``).
+
+Order of application
+~~~~~~~~~~~~~~~~~~~~
+
+The transforms run in a fixed order, and the order matters because
+several feed the next:
+
+#. **Outlier filter** (``EFILTER`` / ``FFILTER``) — runs first, so an
+   extreme outlier cannot poison the later least-squares and
+   reweighting steps.
+#. **Length rescale** (``LSCALE``).
+#. **ESHIFT** — determine the per-element shifts, then subtract them.
+#. **Boltzmann reweight** (``EWEIGHT_TEMP``) — after ESHIFT, so the
+   Boltzmann factor sees the shifted, user-meaningful energies.
+#. **COM-force zeroing** (``ZERO_COM_FORCE``).
+#. **Per-dataset weights** — ``WDBFILE`` composed multiplicatively with
+   ``WDBFILE_AUTO``.
+#. **Equilibrium-volume diagnostic** — logs the lowest post-transform
+   ``E/N`` configuration as a reference-state sanity check.
+
+Key summary
+~~~~~~~~~~~
 
 ============================ ===========================================================================
 Key                          One-line summary
@@ -986,9 +999,80 @@ Key                          One-line summary
 ``ZERO_COM_FORCE``           Subtract the mean force per configuration.
 ============================ ===========================================================================
 
-The training-set diagnostic emitted at host startup logs the lowest-
-energy configuration after every transform has been applied — useful
-for sanity-checking the reference state.
+LSCALE: uniform length rescale
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``LSCALE s`` multiplies every position and cell vector by ``s``.  To
+keep the total energy invariant under the change of length scale,
+forces are divided by ``s``; stresses are stored as a virial (energy
+units) and are left untouched.  ``s = 1`` (the default) is a no-op and
+``s <= 0`` is a configuration error.
+
+The intended use is matching a DFT lattice constant to experiment: set
+``LSCALE = a_exp / a_DFT`` so the trained model's equilibrium volume
+sits at the experimental scale.
+
+``LSCALE`` is stamped into ``pot.tadah``.  ``tadah predict`` re-applies
+it so a raw DFT dataset round-trips; pass ``--no-lscale`` to ignore the
+stored value when the dataset is already at the trained scale.  The
+LAMMPS ``pair_style tadah`` does **not** re-apply ``LSCALE`` — supply
+LAMMPS with positions already at the trained scale.
+
+ESHIFT: per-element energy shift
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For every configuration ESHIFT *subtracts* a per-element baseline::
+
+   E_after = E_before − Σ_Z N_Z · ESHIFT[Z]
+
+``ESHIFT[Z]`` is the per-atom reference energy of species ``Z`` to be
+removed — feeding the isolated-atom energy turns total energies into
+cohesive energies.  There are three mutually exclusive ways to obtain
+the values; if more than one is set the engine warns and applies the
+precedence **explicit > ATOM > DBATOM**:
+
+* **Explicit** — ``ESHIFT a b …``, one value per unique species,
+  ordered by ``Z``.
+* **ESHIFT_ATOM** — the mean energy of the single-atom
+  (``natoms == 1``) configurations of each species.  A species with no
+  isolated-atom config gets ``0`` and a warning; a spread above 1 meV
+  across same-species configs is logged.
+* **ESHIFT_DBATOM** — a least-squares atomic-energy fit over the
+  whole database (``min ‖y − Mβ‖²``, with ``M[i,k]`` the count of
+  species ``k`` in config ``i``).  Robust when the dataset has
+  compositional diversity but no isolated-atom configs.
+
+Whichever path is used, the *resolved* per-element values are stamped
+into ``pot.tadah`` (the ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles are
+not).  ``tadah predict`` re-applies them; ``--no-eshift`` ignores the
+stored values.
+
+Filtering and weighting
+~~~~~~~~~~~~~~~~~~~~~~~
+
+* ``EFILTER lo hi`` drops any configuration whose **per-atom** energy
+  ``E/N`` is outside ``[lo, hi]``; ``FFILTER thr`` drops any
+  configuration with a single-atom force magnitude above ``thr``.  Both
+  run first and are training-time only.
+* ``WDBFILE w_1 … w_n`` multiplies the ``eweight`` / ``fweight`` /
+  ``sweight`` of every config in dataset ``i`` by ``w_i`` — one value
+  per ``DBFILE``.
+* ``WDBFILE_AUTO α`` multiplies dataset ``i``'s per-config weight by
+  ``N_i^(−α)``, where ``N_i`` is its post-filter config count.
+  ``α = 0`` disables it, ``α = 0.5`` is a soft balance, ``α = 1`` makes
+  every dataset contribute equal aggregate loss.  It composes
+  multiplicatively with ``WDBFILE``; ``α`` outside ``[0, 1]`` is
+  rejected.
+* ``EWEIGHT_TEMP T`` multiplies each ``eweight`` by
+  ``exp(−(E/N − E_min)/(k_B·T))`` (``E_min`` the minimum per-atom
+  energy, ``T`` in Kelvin), biasing the loss toward low-energy configs.
+  Applied after ESHIFT; ``T <= 0`` is rejected.
+* ``ZERO_COM_FORCE`` subtracts the mean force of each configuration
+  so its net force is exactly zero — useful against residual
+  translational forces left by incomplete DFT relaxation.
+
+These transforms are training-time only: they are not stamped into
+``pot.tadah`` and not re-applied at predict time.
 
 Validation-set sanitisation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1034,11 +1118,11 @@ computed on.
 MPI training caveat
 ~~~~~~~~~~~~~~~~~~~
 
-``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` / ``EWEIGHT_TEMP`` /
-``WDBFILE_AUTO`` need a global-view pass over the whole database that
-is not yet wired through the MPI ``TrainerWorker``.  The engine fails
-fast if any of these are set under MPI; either run without MPI or
-provide explicit ``ESHIFT`` values.
+The load transforms need a global view of the dataset that is not yet
+wired through the MPI ``TrainerWorker``.  Under an MPI training build
+the engine fails fast if ``LSCALE``, ``ESHIFT`` (explicit or derived
+via ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM``), ``EWEIGHT_TEMP``, or
+``WDBFILE_AUTO`` is set — run the training without MPI to use them.
 
 .. _output_files:
 
@@ -1371,6 +1455,3 @@ See also
   <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/README.md>`_ —
   full keyword reference, defaults, and the *OPTIM-able context keys*
   reinit-safety table.
-* `HPO/LOAD_TRANSFORMS.md
-  <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/LOAD_TRANSFORMS.md>`_
-  — load-time dataset transforms in depth.

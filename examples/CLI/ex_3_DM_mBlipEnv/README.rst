@@ -72,10 +72,36 @@ density of this dataset has a median of ~3.24. The ``WATOM`` key applies
 a per-species weight to every neighbour's contribution to ``rho``;
 ``WATOM = 0.309`` (i.e. ``1/3.24``) rescales the density so it is ~1.
 After scaling the per-atom density lies in ``rho ~ [0.89, 1.10]`` with
-median ~1.00. The 5 blips (``CEMBFUNC 0.6 ... 1.4``) span ``[0.6, 1.4]``,
-bracketing that band with margin, and ``RCUTENV = 0.9`` places the
-envelope ramp just below the band so it enforces ``F(0)=0`` without
-reshaping the embedding where training data is present.
+median ~1.00.
+
+Choosing the blip basis (``CEMBFUNC`` / ``SEMBFUNC``)
+.....................................................
+
+The blips must give an embedding ``F(rho)`` that is **finite for every
+rho > 0** and goes to zero only *at* ``rho = 0``. Two facts drive the
+choice:
+
+* A blip contributes nothing outside its ``rho``-support
+  ``mu +/- 2/eta``. If no blip has support at a given ``rho``, the
+  embedding is identically zero there - a flat *dead zone*.
+* A linear fit can only constrain a blip whose support overlaps the
+  data band (``rho ~ 0.89-1.10``). A blip with no data overlap gets a
+  zero weight from the regulariser, so adding narrow low-``rho`` blips
+  does **not** remove the dead zone - they are simply zeroed.
+
+The fix is to make the blips **wide**: ``SEMBFUNC = 2.0`` gives each
+blip a support of width ``4/eta = 2.0``. Every blip in
+``CEMBFUNC = 0.5 0.75 1.0 1.25 1.5`` then overlaps the data band (so its
+weight is fit from data) *and* the lower blips reach all the way down to
+``rho = 0``. The fitted ``F(rho)`` is consequently finite and non-zero
+for all ``rho > 0``.
+
+These wide blips give a non-zero embedding at ``rho = 0`` itself, and
+``RCUTENV = 0.6`` is exactly what cancels it: the ``Cut_SinInv`` envelope
+ramps from 0 at ``rho = 0`` up to 1 at ``rho = RCUTENV``, smoothly
+pulling ``F -> 0`` as ``rho -> 0``. ``RCUTENV = 0.6`` lies below the data
+band, so the envelope is saturated to 1 across ``rho ~ 0.89-1.10`` and
+does not reshape the fit where training data is present.
 
 Training
 ........
@@ -105,15 +131,20 @@ The dataset is a near-uniform set of thermal bcc-Ta snapshots, so the
 total energy spread is tiny (standard deviation ~7.3 meV/atom). On this
 set the configuration above gives roughly:
 
-* Energy R^2 ~ 0.72
-* Energy RMSE ~ 3.9 meV/atom
+* Energy R^2 ~ 0.70
+* Energy RMSE ~ 4.0 meV/atom
 
 i.e. the descriptor captures most of the (small) energy variance. This
 is a genuine, working fit - the descriptor block is non-zero and
-informative. Because the snapshots are all dense bcc environments,
-``rho`` barely varies and the envelope is essentially saturated across
-the data; its role here is purely to enforce ``F(0)=0`` for
-transferability to low-density environments (surfaces, vacancies,
-dimers) rather than to reshape the fit. For high-accuracy fits on this
-dataset the two-body ``D2_Blip`` baseline in ``ex_1`` remains a strong
-choice.
+informative.
+
+A caveat on the embedding tails: this dataset only samples ``rho ~ 1``
+(dense bcc environments). The fitted ``F(rho)`` is finite and non-zero
+for all ``rho > 0`` - there is no dead zone - but its *shape* away from
+``rho ~ 1`` is set by the wide-blip basis and the regulariser, not by
+data. The values of ``F`` at low and high ``rho`` are therefore a smooth
+extrapolation, not a physically constrained embedding; pinning those
+regions would need training structures that actually sample low- and
+high-density environments (surfaces, vacancies, dimers, compression).
+For high-accuracy fits on this dataset the two-body ``D2_Blip`` baseline
+in ``ex_1`` remains a strong choice.

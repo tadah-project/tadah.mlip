@@ -51,17 +51,23 @@ SGRIDMB  8.0               # Gaussian inverse width eta (Angstrom^-2); eta > 0
 
 # --- blip embedding basis (defines the EMBEDDING F(rho)) ---------------
 # With the WATOM above, the per-atom density of this dataset lies in
-# rho ~ [0.89, 1.10] (median ~1.00). The 5 blips span [0.6, 1.4] so the
-# embedding basis brackets that band with margin on both sides.
-CEMBFUNC 0.6 0.8 1.0 1.2 1.4   # blip centres in rho-space (5)
-SEMBFUNC 6.0 6.0 6.0 6.0 6.0   # blip inverse widths in rho-space (5)
+# rho ~ [0.89, 1.10] (median ~1.00). The 5 blips are deliberately WIDE
+# (small SEMBFUNC): each has a rho-support of width 4/eta = 2.0, so every
+# blip overlaps the data band - its weight is constrained by the fit -
+# AND the lower blips reach all the way down to rho = 0. The fitted
+# embedding F(rho) is therefore finite and non-zero for every rho > 0;
+# there is no flat dead zone where the blip basis vanishes.
+CEMBFUNC 0.5 0.75 1.0 1.25 1.5   # blip centres in rho-space (5)
+SEMBFUNC 2.0 2.0 2.0 2.0 2.0     # blip inverse widths in rho-space (5)
 
-RCUTENV  0.9               # envelope width in rho-space (Cut_SinInv): F is
+RCUTENV  0.6               # envelope width in rho-space (Cut_SinInv): F is
                            # ramped 0 -> 1 over rho in [0, RCUTENV] and
-                           # saturated to 1 above. 0.9 sits at the bottom
-                           # of this dataset's rho band, so the envelope
-                           # enforces F(0)=0 without distorting the
-                           # embedding where training data is present.
+                           # saturated to 1 above. The wide blips give a
+                           # NON-zero embedding at rho = 0; the envelope is
+                           # what cancels it, smoothly pulling F -> 0 as
+                           # rho -> 0. It is already saturated to 1 across
+                           # this dataset's rho band (~0.9-1.1), so the fit
+                           # where training data is present is undistorted.
 
 LAMBDA   1e-7              # regulariser
 OALGO    1                 # solver

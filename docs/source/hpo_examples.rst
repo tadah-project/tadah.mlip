@@ -54,13 +54,13 @@ Index
    * - 01
      - `01_baseline_bfgs <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/01_baseline_bfgs>`_
      - Simplest HPO run: ``STRATEGY { TYPE PLAIN }`` with no ``INIT`` chain and
-       no decorators. Iter 0 is the implicit CONFIG point. Use as a baseline
-       when comparing more elaborate configurations.
+       no decorators. With no ``INIT`` block, iter 0 is the CONFIG point.
+       Use as a baseline when comparing more elaborate configurations.
      - ``TYPE PLAIN``, ``DLIB:BFGS``
    * - 02
      - `02_random_seeded <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/02_random_seeded>`_
      - Seeded random init chain into ``DLIB:BFGS``. Demonstrates
-       ``INIT { STRATEGY RANDOM, INCLUDE_CONFIG false, SEED }``.
+       ``INIT { STRATEGY RANDOM, SEED }``.
      - ``INIT.RANDOM``, ``SEED``
    * - 03
      - `03_lhs_multistart <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/03_lhs_multistart>`_
@@ -104,8 +104,8 @@ Index
      - ``NLOPT:LN_SBPLX``, ``STEP``
    * - 11
      - `11_chained_init_warm_lhs <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/11_chained_init_warm_lhs>`_
-     - Chained init combining WARM + LHS into ``DLIB:GFS``, with the WARM seed
-       reordered to the front of the chain.
+     - Chained init combining WARM + LHS into ``DLIB:GFS``, with ``WARM``
+       listed first so it seeds iter 0 (the chain runs in written order).
      - chained ``INIT``
    * - 12
      - `12_random_search <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/12_random_search>`_

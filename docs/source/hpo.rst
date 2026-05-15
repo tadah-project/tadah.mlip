@@ -519,7 +519,7 @@ Top-level keys inside the ``INIT`` block
      - Effect
    * - ``STRATEGY``
      - repeatable
-     - implicit ``CONFIG`` when chain is empty
+     - single ``CONFIG`` point when no ``STRATEGY`` line is given
      - Append a strategy entry to the chain (see table above).
    * - ``K_TOTAL``
      - uint
@@ -529,24 +529,23 @@ Top-level keys inside the ``INIT`` block
      - uint
      - random
      - Seed for stochastic strategies (RANDOM / LHS / SOBOL).
-   * - ``INCLUDE_CONFIG``
-     - bool
-     - ``true``
-     - When the chain is **empty**, include the implicit ``CONFIG``
-       seed.  *A non-empty chain suppresses the implicit CONFIG
-       regardless of this flag* — write ``STRATEGY CONFIG`` if you
-       want both.
    * - ``WARM_ON_MISMATCH``
      - ``warn`` / ``error`` / ``skip``
      - ``warn``
      - What to do when ``WARM`` cannot fill every ``OPTIM`` key.
 
+There is no ``INCLUDE_CONFIG`` keyword.  The in-config point is part of
+the chain only when ``STRATEGY CONFIG`` is listed explicitly; an
+``INIT`` block with no ``STRATEGY`` line (or no ``INIT`` block at all)
+resolves to a single ``CONFIG`` point.  The removed ``INCLUDE_CONFIG``
+and ``INIT_INCLUDE_CONFIG`` keywords are rejected with a message
+pointing at ``STRATEGY CONFIG``.
+
 Two implementation details affect reproducibility:
 
-* The first ``WARM`` entry is moved to the front of the chain regardless
-  of where the user wrote it; iter 0 then starts from the warm point.
-  HPO logs ``[HPO] InitStrategy: WARM moved to chain front`` when the
-  reorder actually changes the order.
+* The chain is resolved in the exact order it is written — no entry is
+  reordered.  To make the warm point iter 0, list ``STRATEGY WARM``
+  first in the ``INIT`` block.
 * When the writer that produced the ``WARM`` file dumped
   ``# HOT_A0 <script> <a0>`` lines, ``WARM`` reads them and primes the
   warm-start cache (see :ref:`warmstart_protocol`).
@@ -580,9 +579,8 @@ All internal arithmetic happens in transformed space; only the
 reported parameter values are exponentiated back.  Default is *no
 transform* — set ``LOG_HP <ratio>`` to opt in.
 
-For deeper guidance — including chain reorderings, the
-``[HPO] InitStrategy: explicit chain set, implicit CONFIG suppressed``
-diagnostic, and worked scenarios — see
+For deeper guidance — including chain ordering, the ``STRATEGY CONFIG``
+rule, and worked scenarios — see
 `HPO/INIT_STRATEGIES.md <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/INIT_STRATEGIES.md>`_.
 
 .. _strategy_block:
@@ -1309,8 +1307,6 @@ Marker                                                                       Mea
 ============================================================================ ============================================================
 ``[HPO] LIB:ALGO   dim=N``                                                    Active driver and search-space dimension.
 ``[HPO] InitStrategy NAME produced N starting points``                        After init resolution.
-``[HPO] InitStrategy: WARM moved to chain front``                             Reorder happened.
-``[HPO] InitStrategy: explicit chain set, implicit CONFIG suppressed.``       User wrote a chain; implicit CONFIG dropped.
 ``[HPO] PRIOR: N parameter(s) seeded from descriptor priors``                 ``PRIOR`` success.
 ``[HPO] PRIOR: N parameter(s) used bounds-midpoint fallback``                 Some descriptors had no prior.
 ``[HPO] WARM: loaded N parameter(s) from <file>``                             ``WARM`` read all keys.
@@ -1365,8 +1361,9 @@ common renames:
      - ``INIT { K_TOTAL ... }``
    * - ``INIT_SEED``
      - ``INIT { SEED ... }``
-   * - ``INIT_INCLUDE_CONFIG``
-     - ``INIT { INCLUDE_CONFIG ... }``
+   * - ``INIT_INCLUDE_CONFIG`` / ``INCLUDE_CONFIG``
+     - Removed.  List ``STRATEGY CONFIG`` inside the ``INIT`` block to
+       include the in-config point; omit it to leave it out.
    * - ``NOISE_AUTO``
      - ``NOISE { AUTO true|false } ENDNOISE``
    * - ``NOISE_CALIBRATION N``

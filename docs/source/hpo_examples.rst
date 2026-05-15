@@ -5,7 +5,7 @@ Nested Fitting — Worked Examples
 
 .. note::
 
-   The HPO module ships fifteen end-to-end examples that exercise every
+   The HPO module ships fourteen end-to-end examples that exercise every
    block in the ``STRATEGY``-rooted grammar — ``INIT``, ``NOISE``,
    ``RESTART``, ``EXPLORE``, ``REFINE``, ``INNER``. Each example is a
    self-contained directory with one ``config.hpo``, one ``README.md``,
@@ -36,7 +36,7 @@ How to run them all
    bash HPO/examples/run_all.sh
 
 The bundle is designed to complete in well under a minute on a modern
-workstation; example 15 (BASINS) is the only example that runs longer
+workstation; example 14 (BASINS) is the only example that runs longer
 than a second. See :ref:`hpo_examples_ci` below for the regression
 harness.
 
@@ -78,51 +78,46 @@ Index
        ``WARM_ON_MISMATCH`` controlling reuse. Ideal for incremental retunes.
      - ``INIT.WARM``, ``HOT_A0``
    * - 06
-     - `06_prior_seeded <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/06_prior_seeded>`_
-     - Seed the optimiser with the descriptor's ``suggested_value`` prior. Use
-       when a descriptor exposes a physically motivated starting point.
-     - ``INIT.PRIOR``
-   * - 07
      - `07_stage_global <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/07_stage_global>`_
      - PRESTAGE: a global EXPLORE stage harvests ``TOPK`` candidates that feed
        the local refinement engine. The classic explore-then-refine pattern.
      - ``TYPE PRESTAGE``, ``EXPLORE``, ``TOPK``
-   * - 08
+   * - 07
      - `08_restart_on_stagnation <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/08_restart_on_stagnation>`_
      - The RESTART decorator: relaunch the optimiser when no progress has been
        made for ``AFTER_STAGNATION`` evaluations, up to ``MAX`` times.
      - ``RESTART``, ``AFTER_STAGNATION``
-   * - 09
+   * - 08
      - `09_noise_auto_bfgs <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/09_noise_auto_bfgs>`_
      - ``NOISE { AUTO }`` (bareword form) auto-calibrates the finite-difference
        step before BFGS. Removes one manual knob from gradient runs.
      - ``NOISE.AUTO``
-   * - 10
+   * - 09
      - `10_derivative_free_local <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/10_derivative_free_local>`_
      - NLopt SBPLX local search — derivative-free, robust on noisy losses.
        Useful when the gradient is unreliable.
      - ``NLOPT:LN_SBPLX``, ``STEP``
-   * - 11
+   * - 10
      - `11_chained_init_warm_lhs <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/11_chained_init_warm_lhs>`_
      - Chained init combining WARM + LHS into ``DLIB:GFS``, with ``WARM``
        listed first so it seeds iter 0 (the chain runs in written order).
      - chained ``INIT``
-   * - 12
+   * - 11
      - `12_random_search <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/12_random_search>`_
      - Pure uniform random search via ``LIB TADAH, ALGO RANDOM``. The simplest
        baseline against any global optimiser.
      - ``TADAH:RANDOM``
-   * - 13
+   * - 12
      - `13_nlopt_crs_global <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/13_nlopt_crs_global>`_
      - NLopt CRS — controlled random search, pure stochastic global, no
        internal local refinement.
      - ``NLOPT:GN_CRS2_LM``
-   * - 14
+   * - 13
      - `14_nlopt_mlsl_lds <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/14_nlopt_mlsl_lds>`_
      - MLSL global + ``LN_BOBYQA`` local hybrid. Demonstrates how ``INNER {
        LIB NLOPT, ALGO ... }`` slots into a global driver.
      - ``NLOPT:G_MLSL_LDS``, ``INNER``
-   * - 15
+   * - 14
      - `15_basins_run_and_forget <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/15_basins_run_and_forget>`_
      - BASINS: the anytime/interruptible ``run and forget`` strategy. Alternates
        EXPLORE (broad sweep) and REFINE (per-basin local) at a tightening
@@ -149,12 +144,12 @@ The driver
 
    bash HPO/examples/run_reference_suite.sh --fast    # CI smoke (~5 s)
    bash HPO/examples/run_reference_suite.sh --full    # release validation (~50 s)
-   bash HPO/examples/run_reference_suite.sh --example=15
+   bash HPO/examples/run_reference_suite.sh --example=14
 
 runs the chosen subset, compares each output against its fingerprint
 within tolerance, and exits non-zero if any example regresses. Examples
 flagged ``"fast": true`` in the fingerprint are eligible for
-push-triggered CI; the slow subset (currently only example 15) is gated
+push-triggered CI; the slow subset (currently only example 14) is gated
 to release-time validation.
 
 Tolerance choices and rationale are kept beside the generator at

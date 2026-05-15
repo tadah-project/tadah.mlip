@@ -29,7 +29,7 @@ The first public beta of the Tadah! framework. Highlights: a new family of rotat
   - Power-spectrum / Gaussian radial: `DM_GPS_SQ`, `DM_GPS_SQRT`, `DM_GPS_RLR`, `DM_GPS_Blip`.
   - Orbital-wise aggregation: `DM_OW_*`, `DM_GOW_*`.
 - `[models]` New `F_Blip` embedding function and `DM_mBlip` / `DM_mBlipEnv` descriptors. `DM_mBlipEnv` wraps the embedding in a `Cut_SinInv` envelope controlled by the new `RCUTENV` blueprint key.
-- `[hpo]` Init strategies: `CONFIG`, `RANDOM`, `LHS`, `SOBOL`, `WARM`, `PRIOR`.
+- `[hpo]` Init strategies: `CONFIG`, `RANDOM`, `LHS`, `SOBOL`, `WARM`.
 - `[hpo]` Resume / restart of long sweeps from the structured `HPOLog` journal.
 - `[hpo]` Variance-of-loss acquisition (`--varloss` / `--outvar` over LAMMPS `equal`-style script variables, validated up-front).
 - `[hpo]` Standalone dlib BFGS local optimiser (alongside the existing nlopt path).

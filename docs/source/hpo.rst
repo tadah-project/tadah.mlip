@@ -503,7 +503,6 @@ Method           Args           Default K     Effect
 ``SOBOL K``      ``K`` (uint)   ``K``         Sobol low-discrepancy sequence.
 ``WARM <file>``  path           1             Read a previous ``pot.tadah`` and pull values for
                                               every ``OPTIM`` key.
-``PRIOR``        (none)         1             Per-descriptor ``suggested_value``; midpoint fallback.
 ================ ============== ============= ===========================================================
 
 Top-level keys inside the ``INIT`` block
@@ -1307,8 +1306,6 @@ Marker                                                                       Mea
 ============================================================================ ============================================================
 ``[HPO] LIB:ALGO   dim=N``                                                    Active driver and search-space dimension.
 ``[HPO] InitStrategy NAME produced N starting points``                        After init resolution.
-``[HPO] PRIOR: N parameter(s) seeded from descriptor priors``                 ``PRIOR`` success.
-``[HPO] PRIOR: N parameter(s) used bounds-midpoint fallback``                 Some descriptors had no prior.
 ``[HPO] WARM: loaded N parameter(s) from <file>``                             ``WARM`` read all keys.
 ``[HPO] WARM: primed warmstart cache with N HOT_A0 entry(ies)``               ``HOT_A0`` lines parsed from a ``WARM`` file.
 ``[HPO] WARM: clamped dim[d] from X to Y (bounds […])``                       Warm point fell outside narrowed bounds.

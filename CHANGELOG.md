@@ -66,6 +66,7 @@ The first public beta of the Tadah! framework. Highlights: a new family of rotat
 - `[hpo]` GitLab CI rewritten by hand (replaces the auto-generated Auto-DevOps pipeline).
 - `[lammps]` Per-species bias lookup precomputed at `initialize()` (small per-step speed-up).
 - `[core][mlip][models][md]` C++ standard upgraded from C++14 to **C++17** — a C++17 compiler is now required.
+- `[umbrella]` `ex_3_DM_mBlipEnv` worked example: blip embedding widened so `F(rho)` has no dead zone (example output is now non-trivial across the full density range encountered by typical inputs).
 
 ### Fixed — Critical correctness / crash fixes
 - `[models]` `Cut_PT` normalisation (see Changed).
@@ -97,6 +98,8 @@ The first public beta of the Tadah! framework. Highlights: a new family of rotat
 - `[umbrella]` Substantively rewritten umbrella README + 5 module READMEs (CORE / MODELS / MD / MLIP / Tadah.MLIP).
 - `[umbrella]` Refreshed cutoff and descriptor doc pages.
 - `[umbrella]` Sphinx `-W` clean — title-level adornments fixed (`installation`, `quickstart`, `regressors`, `descriptors`), unknown `.. abbreviations::` directive in `glossary.rst` resolved, broken cross-refs (`PC_MAE` → `PC_EMAE`), API/* page label collisions, malformed table in `descriptors.rst`, `outvars.tadah` → `outvar.tadah` typo in `ex_2`, multi-line description re-indent in `read_toml.py`, cwd-relative subprocess fix in `conf.py`.
+- `[umbrella]` Load-time data transforms section is now self-contained in `hpo.rst` (engineer-facing `HPO/LOAD_TRANSFORMS.md` and `HPO/INIT_STRATEGIES.md` notes removed; content folded into the user-facing docs).
+- `[umbrella]` Examples docs synced with the actual `HPO/examples/` bundle contents; two further malformed tables repaired; stale `PRIOR` init-strategy references removed.
 - `[hpo]` README updated: stale init / run-policy tables fixed, marker spellings unified.
 
 ### Internal (cross-cutting)
@@ -105,6 +108,10 @@ The first public beta of the Tadah! framework. Highlights: a new family of rotat
 - Privacy scrub: 0 `/home/marcin` paths in tracked source post-cleanup; tracked vim swap removed; `examples/` per-run output artefacts un-tracked.
 - CI/CD: lint stage (codespell), docs stage (`sphinx-build -W`, umbrella only), tag-gated release-tarball stage to GitLab package registry across all 7 module repos. HPO CI fully rewritten.
 - Build wiring: `tadah_use_local_module` consumes sibling Tadah.MD / Tadah.LAMMPS sources under `TADAH_DEVELOP=1` instead of fetching.
+- Build wiring: per-module test setup routed through `cmake-tools/cmake/TadahTesting.cmake` helpers (`tadah_declare_testing` / `tadah_add_tests` / `tadah_begin_external_deps` / `tadah_end_external_deps`). Replaces the hand-rolled `BUILD_TESTING` capture/restore that previously dropped the whole `tests/` subdir on a bare reconfigure (the capture ran before the cache entry existed and FORCE-restored an empty value).
+- `[hpo]` Pre-beta clean-up of the init-strategy surface: dropped `PRIOR` (parser path + tutorial), dropped `INIT { INCLUDE_CONFIG }` flag and the chain-reorder behaviour it triggered.
+- `[hpo]` In-tree engineer notes `HPO/LOAD_TRANSFORMS.md` and `HPO/INIT_STRATEGIES.md` removed (content folded into `hpo.rst`).
+- `[models]` Unused `suggested_value()` descriptor hook dropped from the descriptor interface (no external callers).
 
 ---
 

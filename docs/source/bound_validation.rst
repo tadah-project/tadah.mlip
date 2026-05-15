@@ -146,11 +146,15 @@ statistics (``max_abs``, ``median_abs``, non-zero fraction, NaN/Inf
 flag) on every evaluation. ``HEALTH_LOG`` controls the cadence of
 warnings:
 
-==========  ========================================================================
-``summary`` (default) at most one warning per (block, kind) per ~100 evals
-``full``    every offending iter produces a warning
-``off``     monitor inactive
-==========  ========================================================================
+.. list-table::
+   :widths: 12 80
+
+   * - ``summary``
+     - (default) at most one warning per (block, kind) per ~100 evals
+   * - ``full``
+     - every offending iter produces a warning
+   * - ``off``
+     - monitor inactive
 
 The cost per iter is ``O(P + K)`` (one linear scan over the weights,
 partitioned by the design matrix's column layout) — under 0.5% of a

@@ -401,36 +401,39 @@ The driver-attribute keys below are accepted wherever an
      - Generic key/value passed to the algorithm (e.g.
        ``PARAM fd_step 1e-3``).
 
-.. table:: Algorithms by library
-   :widths: auto
+.. list-table:: Algorithms by library
+   :header-rows: 1
+   :widths: 12 88
 
-   +-----------+------------------------------------------------------------------------------------------+
-   | LIB       | ALGO (algorithms from the selected library)                                              |
-   +-----------+------------------------------------------------------------------------------------------+
-   | ``TADAH`` | ``RANDOM`` (uniform random search), ``GRID``, ``ANNEAL`` (classic Kirkpatrick/Metropolis |
-   |           | Simulated Annealing — see :ref:`tadah_anneal_block` below).                              |
-   +-----------+------------------------------------------------------------------------------------------+
-   | ``NLOPT`` | All gradient-free NLOpt globals (``GN_*``) and locals (``LN_*``) — see                   |
-   |           | the `NLOpt algorithm catalogue                                                           |
-   |           | <https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/>`_ for the                     |
-   |           | full list.  Algorithms whose names begin with ``GD_``/``LD_``                            |
-   |           | (gradient-using) are *not* supported because Tadah!MLIP does not                         |
-   |           | expose analytic loss gradients.                                                          |
-   +-----------+------------------------------------------------------------------------------------------+
-   | ``DLIB``  | ``BFGS``, ``LBFGS``, ``CG``, ``BOBYQA`` (local), ``GFS`` (the dlib                       |
-   |           | MaxLIPO+TR global *Global Function Search*).                                             |
-   +-----------+------------------------------------------------------------------------------------------+
-   | ``CERES`` | ``LBFGS`` (limited-memory BFGS, Wolfe line search), ``WOLFE`` (full BFGS,                |
-   |           | Wolfe line search), ``NLCG`` (nonlinear conjugate gradient), ``STEEPEST_DESCENT``        |
-   |           | (Armijo line search). All four use Ceres' ``GradientProblemSolver``; gradient            |
-   |           | is computed numerically via Ceres' ``DynamicNumericDiffCostFunction`` (central           |
-   |           | differences; step size from ``PARAM fd_step``).  The Ceres NLLS family                  |
-   |           | (``LEVENBERG_MARQUARDT``, ``DOGLEG``, ``SUBSPACE_DOGLEG``) is **deferred** —              |
-   |           | mathematically degenerate over a scalar HPO loss; will be enabled in a later             |
-   |           | phase together with residual-mode loss exposure. Ceres optimisers do **not**             |
-   |           | enforce box constraints; use ``DLIB:BFGS`` or ``NLOPT:LD_LBFGS`` for                     |
-   |           | bounds-enforced gradient optimisation.                                                  |
-   +-----------+------------------------------------------------------------------------------------------+
+   * - LIB
+     - ALGO (algorithms from the selected library)
+   * - ``TADAH``
+     - ``RANDOM`` (uniform random search), ``GRID``, ``ANNEAL`` (classic
+       Kirkpatrick/Metropolis Simulated Annealing — see
+       :ref:`tadah_anneal_block` below).
+   * - ``NLOPT``
+     - All gradient-free NLOpt globals (``GN_*``) and locals (``LN_*``)
+       — see the `NLOpt algorithm catalogue
+       <https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/>`_ for
+       the full list.  Algorithms whose names begin with ``GD_`` /
+       ``LD_`` (gradient-using) are *not* supported because Tadah!MLIP
+       does not expose analytic loss gradients.
+   * - ``DLIB``
+     - ``BFGS``, ``LBFGS``, ``CG``, ``BOBYQA`` (local), ``GFS`` (the
+       dlib MaxLIPO+TR global *Global Function Search*).
+   * - ``CERES``
+     - ``LBFGS`` (limited-memory BFGS, Wolfe line search), ``WOLFE``
+       (full BFGS, Wolfe line search), ``NLCG`` (nonlinear conjugate
+       gradient), ``STEEPEST_DESCENT`` (Armijo line search). All four
+       use Ceres' ``GradientProblemSolver``; the gradient is computed
+       numerically via Ceres' ``DynamicNumericDiffCostFunction`` (central
+       differences; step size from ``PARAM fd_step``).  The Ceres NLLS
+       family (``LEVENBERG_MARQUARDT``, ``DOGLEG``, ``SUBSPACE_DOGLEG``)
+       is **deferred** — mathematically degenerate over a scalar HPO
+       loss; it will be enabled in a later phase together with
+       residual-mode loss exposure. Ceres optimisers do **not** enforce
+       box constraints; use ``DLIB:BFGS`` or ``NLOPT:LD_LBFGS`` for
+       bounds-enforced gradient optimisation.
 
 CERES PARAM keys
 ~~~~~~~~~~~~~~~~

@@ -122,8 +122,7 @@ A minimal ``config.hpo``:
    OPTIM RCUT2B (1) 4.0 6.0
 
 See :ref:`cli_example_2` for a slightly bigger walkthrough, and
-:ref:`hpo_examples` for a series of fifteen worked examples that exercise
-every feature on this page.
+:ref:`hpo_examples` for a graded series of fifteen worked examples.
 
 .. _nfp_manual:
 
@@ -138,10 +137,6 @@ to:
   <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/README.md>`_
   — keyword reference, every flag and default, plus the
   *OPTIM-able context keys* table.
-* `HPO/INIT_STRATEGIES.md
-  <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/INIT_STRATEGIES.md>`_
-  — tutorial for the ``INIT`` / ``STRATEGY`` / ``RESTART`` / ``NOISE``
-  blocks with worked scenarios.
 * `HPO/LOAD_TRANSFORMS.md
   <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/LOAD_TRANSFORMS.md>`_
   — load-time dataset transforms (LSCALE, ESHIFT, EFILTER, weighting…).
@@ -577,10 +572,6 @@ Search-space dimensions whose ``high/low`` ratio exceeds ``LOG_HP``
 All internal arithmetic happens in transformed space; only the
 reported parameter values are exponentiated back.  Default is *no
 transform* — set ``LOG_HP <ratio>`` to opt in.
-
-For deeper guidance — including chain ordering, the ``STRATEGY CONFIG``
-rule, and worked scenarios — see
-`HPO/INIT_STRATEGIES.md <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/INIT_STRATEGIES.md>`_.
 
 .. _strategy_block:
 
@@ -1372,17 +1363,14 @@ config will fail loud and informatively rather than silently.
 See also
 --------
 
-* :ref:`hpo_examples` — fifteen worked examples covering every block
-  in the new grammar.
+* :ref:`hpo_examples` — fifteen worked examples covering the optimiser
+  libraries and the ``INIT`` / ``STRATEGY`` / ``EXPLORE`` / ``RESTART`` /
+  ``INNER`` blocks.
 * :ref:`cli_example_2` — minimal single-loss-term walkthrough.
 * `HPO/README.md
   <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/README.md>`_ —
   full keyword reference, defaults, and the *OPTIM-able context keys*
   reinit-safety table.
-* `HPO/INIT_STRATEGIES.md
-  <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/INIT_STRATEGIES.md>`_
-  — tutorial for ``INIT`` / ``STRATEGY`` / ``RESTART`` / ``NOISE`` with
-  worked scenarios.
 * `HPO/LOAD_TRANSFORMS.md
   <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/LOAD_TRANSFORMS.md>`_
   — load-time dataset transforms in depth.

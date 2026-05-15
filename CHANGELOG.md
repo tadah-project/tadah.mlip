@@ -80,6 +80,7 @@ The first public beta of the Tadah! framework. Highlights: a new family of rotat
 - `[hpo]` `rcut` optimisation path corrected.
 - `[hpo]` MPI rank-handle leaks resolved (paired with the MLIP MPI fix).
 - `[hpo]` `LammpsRunner` API alignment (after a brief revert/redo cycle).
+- `[hpo]` `best_pot.tadah` headers no longer embed an absolute `DBFILE` path — the producer wrote it via `fs::absolute()`, leaking the author's filesystem layout into shipped potentials; the path is now recorded as written in `config.tadah` (relative).
 - `[lammps]` Pair indexing: `i` / `j` swap corrected.
 - `[core][models][md]` `Registry` static-initialisation order across translation units — descriptors / cutoffs / models registered in different `.cpp` files no longer race the factory map.
 

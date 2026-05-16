@@ -20,6 +20,7 @@ build_debug:
   stage: build_debug
   script:
     - cd ${DEBUG_DIR}
+    - rm -f CMakeCache.txt
     - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DBUILD_TESTING=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
     - make -j ${CPU_BUILD}
     - make test
@@ -35,6 +36,7 @@ build_release_shared:
     - export CPATH=${INSTALL_PATH}/include:$CPATH
     - export LD_LIBRARY_PATH=${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
     - export LIBRARY_PATH=${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - rm -f CMakeCache.txt
     - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
     - make -j ${CPU_BUILD}
     - make install
@@ -72,6 +74,7 @@ build_release_static:
     - export CPATH=${INSTALL_PATH}/include:$CPATH
     - export LD_LIBRARY_PATH=${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
     - export LIBRARY_PATH=${INSTALL_PATH}/lib:$LIBRARY_PATH
+    - rm -f CMakeCache.txt
     - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
     - make -j ${CPU_BUILD}
     - make install

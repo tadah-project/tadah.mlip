@@ -19,7 +19,7 @@ versioning follows [SemVer](https://semver.org/) at the umbrella level.
 
 Nothing yet.
 
-## [1.3.0-beta.1] — TBD
+## [1.3.0-beta.1] — 2026-05-20
 
 The first public beta of the Tadah! framework. Highlights: a new family of rotationally invariant power-spectrum descriptors (`DM_PS_*` / `DM_OW_*` / `DM_GPS_*`), a wholesale HPO restructure (init strategies, resume, varloss, `TADAH:ANNEAL` simulated annealing, `LIB CERES` gradient family, hot-variable two-phase eval), in-place HPO via `Trainer::reinit()`, load-time dataset transforms, an HPO regression-example suite, single-source-of-truth versioning (blueprint TOML → CMake → docs), and a corrected `Cut_PT` normalisation.
 

@@ -23,10 +23,78 @@ project = 'Tadah!'
 copyright = '2024, Marcin Kirsz'
 author = 'Marcin Kirsz'
 
-# The short X.Y version
-version = ''
-# The full version, including alpha/beta/rc tags
-release = ''
+
+# -- Version (single source of truth: CORE blueprint TOML) -------------------
+def _read_tadah_version():
+    """Read 'version' from the [TADAH] table of CORE's blueprint_tadah.toml.
+
+    Search order:
+      1. $TADAH_VERSION environment override (set by CMake doc build).
+      2. config/blueprint_tadah.toml (downloaded by read_toml.py on RTD).
+      3. ../../../CORE/blueprint/blueprint_tadah.toml (sibling worktree).
+      4. ../../../core/blueprint/blueprint_tadah.toml.
+      5. A shallow clone of CORE on RTD (last resort).
+    """
+    import os, re, subprocess, tempfile
+
+    env_version = os.environ.get('TADAH_VERSION')
+    if env_version:
+        return env_version
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(here, 'config', 'blueprint_tadah.toml'),
+        os.path.normpath(os.path.join(here, '..', '..', '..', 'CORE',
+                                      'blueprint', 'blueprint_tadah.toml')),
+        os.path.normpath(os.path.join(here, '..', '..', '..', 'core',
+                                      'blueprint', 'blueprint_tadah.toml')),
+    ]
+    blueprint = next((p for p in candidates if os.path.exists(p)), None)
+
+    if blueprint is None and os.environ.get('READTHEDOCS') == 'True':
+        try:
+            tmp = tempfile.mkdtemp(prefix='tadah_core_version_')
+            # Prefer READTHEDOCS_VERSION_NAME (verbose ref-matching form,
+            # e.g. "release/beta-prep") over READTHEDOCS_VERSION (URL slug
+            # "release-beta-prep") so branches with "/" resolve correctly.
+            _branch = (os.environ.get('READTHEDOCS_VERSION_NAME')
+                       or os.environ.get('READTHEDOCS_VERSION')
+                       or 'develop')
+            subprocess.run(
+                ['git', 'clone', '--depth', '1', '--branch', _branch,
+                 'https://git.ecdf.ed.ac.uk/tadah/core.git', tmp],
+                check=True, capture_output=True,
+            )
+            cand = os.path.join(tmp, 'blueprint', 'blueprint_tadah.toml')
+            if os.path.exists(cand):
+                blueprint = cand
+        except Exception:
+            blueprint = None
+        finally:
+            pass  # tmp dir is small; cleanup happens at exit
+
+    if blueprint is None:
+        return '0.0.0'
+
+    in_tadah = False
+    for line in open(blueprint, 'r', encoding='utf-8'):
+        if re.match(r'^\s*\[TADAH\]\s*$', line):
+            in_tadah = True
+            continue
+        if in_tadah and re.match(r'^\s*\[', line):
+            break
+        if in_tadah:
+            m = re.match(r'^\s*version\s*=\s*[\'"]([^\'"]+)[\'"]', line)
+            if m:
+                return m.group(1)
+    return '0.0.0'
+
+
+release = _read_tadah_version()
+# Short X.Y version (strip pre-release / build-metadata tail).
+import re as _re
+_short = _re.match(r'(\d+\.\d+)', release)
+version = _short.group(1) if _short else release
 
 
 # -- General configuration ---------------------------------------------------
@@ -195,5 +263,9 @@ else:
 
 
 def setup(app):
-    subprocess.run(['python', 'config/read_toml.py'])
-    subprocess.run(['python', 'cli/generate_cli.py'])   # requires blueprint.toml from read_config.py
+    # Run from the directory that contains conf.py so the helper scripts
+    # resolve their own relative paths regardless of where sphinx-build
+    # was invoked from.
+    confdir = os.path.dirname(os.path.abspath(__file__))
+    subprocess.run(['python', os.path.join('config', 'read_toml.py')], cwd=confdir, check=True)
+    subprocess.run(['python', os.path.join('cli', 'generate_cli.py')], cwd=confdir, check=True)   # requires blueprint.toml from read_toml.py

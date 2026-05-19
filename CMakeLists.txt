@@ -4,7 +4,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/functions.cmake)
 include(FetchContent)
 
 set(TADAH "Tadah!")
-project(${TADAH}, LANGUAGES CXX)
+# Initial project() call; VERSION is set below once CORE is fetched.
+project(${TADAH} LANGUAGES CXX)
 
 # 0. Guard against in-source builds
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
@@ -57,6 +58,24 @@ endif()
 
 # 2. Bring in the shared compile/link options
 include(FetchContent)
+# Developer build (-DTADAH_DEVELOP=ON): use a local cmake-tools checkout
+# rather than fetching it. Skipped when the source dir is already pinned
+# (e.g. -DFETCHCONTENT_SOURCE_DIR_TADAH_CMAKE=...).
+if(TADAH_DEVELOP AND NOT FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE
+   AND DEFINED ENV{TADAH_PATH})
+  foreach(_tadah_ct "$ENV{TADAH_PATH}/cmake-tools"
+                    "$ENV{TADAH_PATH}/../cmake-tools")
+    if(IS_DIRECTORY "${_tadah_ct}")
+      get_filename_component(FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE
+                             "${_tadah_ct}" ABSOLUTE)
+      message(STATUS
+        "TADAH_DEVELOP: cmake-tools taken from ${FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE}")
+      break()
+    endif()
+  endforeach()
+  unset(_tadah_ct)
+endif()
+
 if(NOT TARGET tadah::compile_options)
   FetchContent_Declare (
     tadah_cmake
@@ -64,6 +83,11 @@ if(NOT TARGET tadah::compile_options)
     GIT_TAG         main)
   FetchContent_MakeAvailable(tadah_cmake)   # defines tadah::compile_options
 endif()
+
+# Declare the BUILD_TESTING switch (default OFF) before any sub-module
+# is fetched, so this top-level value propagates to every consumed
+# Tadah module. See cmake-tools/TadahTesting.cmake.
+tadah_declare_testing()
 
 # (option) Developer builds -DTADAH_DEVELOP=ON
 tadah_use_local_module(Tadah.MLIP MLIP)  # FetchContent name + folder name
@@ -100,8 +124,17 @@ else()
   FetchContent_MakeAvailable(Tadah.MLIP)
 endif()
 
-# Set the project name and version
-set_project_name()
+# Set the project version from the blueprint TOML (single source of truth).
+# CORE has been populated by the FetchContent step above, so its blueprint
+# is available at ${Tadah.CORE_SOURCE_DIR}/blueprint/blueprint_tadah.toml.
+if(COMMAND tadah_read_version_from_blueprint)
+  tadah_read_version_from_blueprint(TADAH_VERSION REQUIRED)
+else()
+  set(TADAH_VERSION "0.0.0")
+  message(WARNING "tadah_read_version_from_blueprint not available; defaulting VERSION to 0.0.0")
+endif()
+project(${TADAH} VERSION ${TADAH_VERSION} LANGUAGES CXX)
+tadah_message(STATUS "VERSION: ${TADAH_VERSION}")
 
 
 file(GLOB TADAH_SRC_FILES src/*.cpp)
@@ -195,11 +228,7 @@ install(TARGETS tadah
 
 install(DIRECTORY include/ DESTINATION include)
 
-set(BUILD_TESTING OFF CACHE BOOL "Build tests")
-include(CTest)
-if(BUILD_TESTING)
-  add_subdirectory(tests)
-endif()
+tadah_add_tests()
 
 
 find_package(Doxygen)

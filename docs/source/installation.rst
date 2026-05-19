@@ -165,10 +165,6 @@ add a default build type:
 Customize the Tadah!MLIP build using CMake options:
 
 - ``TADAH_ENABLE_OPENMP``: Enable OpenMP for parallelization (default: OFF).
-
-Customize the Tadah!MLIP build using CMake options:
-
-- ``TADAH_ENABLE_OPENMP``: Enable OpenMP for parallelization (default: OFF).
 - ``TADAH_BUILD_MPI``: Build MPI version (default: OFF).
 - ``TADAH_MARCH_NATIVE``: Use native optimizations (default: OFF).
 - ``TADAH_ENABLE_FAST_MATH``: Enable fast math optimizations (default: OFF).
@@ -232,7 +228,7 @@ Building Tadah!MLIP with Nested Fitting Procedure support
 .. warning::
 
    The NFP module requires a LAMMPS build that includes ML‑TADAH and has LAMMPS exceptions enabled (``LAMMPS_EXCEPTIONS``).
-   On recent LAMMPS versions this is often enabled by default; on older versions it may need to be set explicitly in your LAMMPS build configuration. See `insatllation_lammps`_ for details on building LAMMPS with ML‑TADAH.
+   On recent LAMMPS versions this is often enabled by default; on older versions it may need to be set explicitly in your LAMMPS build configuration. See :ref:`installation_lammps` for details on building LAMMPS with ML‑TADAH.
 
 Building Tadah!MLIP with NFP is more involved, and for this reason it is not built by default. Please read these notes carefully before proceeding.
 
@@ -265,7 +261,7 @@ Installing ML‑TADAH for LAMMPS (Tadah.LAMMPS)
 ---------------------------------------------
 
 ML‑TADAH adds the **``pair_style tadah``** pair style to LAMMPS.
-I does not require Tadah!MLIP to be installed.
+It does not require Tadah!MLIP to be installed.
 
 .. important::
 
@@ -401,7 +397,7 @@ location such as ``/usr`` or ``/usr/local`` nothing extra is required:
     g++ my_code.cpp -ltadah.core -o my_code  # headers and libs found automatically
 
 Non-standard prefix (e.g. ``$HOME/.local``)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...........................................
 When Tadah! is installed in a private directory you must give the compiler and
 linker a hint. The quickest way is to add the include and library paths on the
 command line:
@@ -414,7 +410,7 @@ command line:
         -ltadah -o my_code
 
 Run-time resolution
-^^^^^^^^^^^^^^^^^^^
+...................
 ``LD_LIBRARY_PATH`` tells the dynamic loader where to find the shared object
 after the executable has been built:
 
@@ -424,7 +420,7 @@ after the executable has been built:
     ./my_code
 
 Optional convenience variables
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..............................
 If you prefer not to repeat ``-I``/``-L`` flags, set environment variables
 once for your shell (or in a module file):
 

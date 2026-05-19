@@ -32,7 +32,7 @@ Quick syntax guide
   model and are listed in each class’s table.
 
 Examples
-~~~~~~~~
+........
 
 Kernel ridge regression with an RBF kernel:
 

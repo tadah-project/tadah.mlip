@@ -1,3 +1,36 @@
 build
 *.swp
 .cache
+
+# --- Beta-prep additions (Session E) ---
+build_*/
+cmake-build-*/
+_build/
+out/
+install_manifest.txt
+*.swo
+*~
+.DS_Store
+.vscode/
+.idea/
+.cache/
+.claude/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.gcda
+*.gcno
+coverage*.info
+coverage_html/
+perf.data
+perf.data.old
+
+# Auto-generated docs artefacts (produced by docs/source/conf.py setup hook)
+docs/source/cli/cli_auto_gen.rst
+docs/source/config/blueprint_tadah.toml
+docs/source/config/config_keys.rst
+docs/build/
+
+# ctest scratch
+Testing/
+

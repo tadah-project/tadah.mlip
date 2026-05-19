@@ -1,20 +1,10 @@
-Basis Functions
-===============
+Basis Function Base Class
+=========================
 
-BF_Linear
-.........
-
-.. doxygenstruct:: tadah::models::BF_Linear
-    :members:
-
-BF_Polynomial2
-..............
-
-.. doxygenstruct:: tadah::models::BF_Polynomial2
-    :members:
-
-BF_Base
-.......
+The user-facing :ref:`regressors` chapter documents the concrete
+basis-function classes (``BF_Linear``, ``BF_Polynomial2``).
+The base class below is the API hook for adding new basis
+functions.
 
 .. doxygenstruct:: tadah::models::BF_Base
     :members:

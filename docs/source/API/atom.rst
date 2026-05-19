@@ -1,4 +1,4 @@
-.. _ATOM:
+.. _API_ATOM:
 
 Atom
 ====

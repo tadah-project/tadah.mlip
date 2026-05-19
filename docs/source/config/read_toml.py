@@ -12,9 +12,17 @@ import subprocess
 
 def download_toml_file(repo_url, file_path, output_path):
     try:
-        # Retrieve the branch name from the environment variable
-        # branch = os.environ.get('READTHEDOCS_VERSION', 'main')    # TODO
-        branch = "develop"
+        # Resolve the branch:
+        #   GitLab CI:   $CI_COMMIT_REF_NAME (e.g. "release/beta-prep")
+        #   RTD:         $READTHEDOCS_VERSION_NAME (verbose ref-matching form,
+        #                e.g. "release/beta-prep"); $READTHEDOCS_VERSION is the
+        #                URL slug ("release-beta-prep") and may not match a
+        #                real git ref when the branch contains a slash.
+        #   Local:       fall back to "develop".
+        branch = (os.environ.get('CI_COMMIT_REF_NAME')
+                  or os.environ.get('READTHEDOCS_VERSION_NAME')
+                  or os.environ.get('READTHEDOCS_VERSION')
+                  or 'develop')
 
         print(f"Downloading {file_path} from {repo_url} on branch {branch}...")
         # Clone the repository into a temporary directory with the specific branch
@@ -46,7 +54,7 @@ def download_toml_file(repo_url, file_path, output_path):
 
 download_toml_file(
     'https://git.ecdf.ed.ac.uk/tadah/core.git',
-    'blueprint/blueprint_tadah.toml',   # soruce
+    'blueprint/blueprint_tadah.toml',   # source
     'config/blueprint_tadah.toml'       # destination
 )
 print ("Downloaded blueprint_tadah.toml to config/blueprint_tadah.toml")
@@ -65,7 +73,7 @@ header = '''
 Configuration File
 ==================
 
-.. warning:: This section is under construction and may not be complete or accurate. If you find any issues, please report them on the `Tadah!MLIP GitLab <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_.
+.. note:: This page is auto-generated from the blueprint TOML on every docs build. If you spot a mismatch between this reference and runtime behaviour, please report it on the `Tadah!MLIP GitLab <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_.
 
 .. note:: This configuration file is NOT used by the HPO (Hyperparameter Optimization) module of Tadah!MLIP. The HPO module uses a different configuration file format, which is documented in the :ref:`nested_fitting`.
 
@@ -252,7 +260,10 @@ for key_name, raw_entry in allowed_keys.items():
     # ---------------------------------------------------------------------
     if entry.get('description', ""):
         f.write("\n   *Description*:\n\n")
-        f.write(f"   {entry['description']}\n")
+        # Re-indent every line of the description so wrapped sentences
+        # don't break out of the literal block / definition body.
+        desc = entry['description'].replace('\n', '\n   ')
+        f.write(f"   {desc}\n")
 
     # ---------------------------------------------------------------------
     # Long description (optional)
@@ -270,7 +281,10 @@ for key_name, raw_entry in allowed_keys.items():
     examples = entry.get('examples', [])
     for idx, example in enumerate(examples, start=1):
         f.write(f"   *Example* {idx}::\n\n")
-        f.write(f"       {example}\n\n")
+        # Re-indent every line inside a multi-line example so the
+        # literal block stays consistently indented.
+        indented = example.replace('\n', '\n       ')
+        f.write(f"       {indented}\n\n")
 
     # Blank line between keys
     f.write("\n")

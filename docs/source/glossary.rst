@@ -34,7 +34,10 @@ Glossary and Abbreviations
    Search Space Constraint
       A bound placed on a :term:`hyperparameter` via an ``OPTIM`` line.
 
-.. abbreviations::
+Abbreviations
+=============
+
+.. glossary::
 
    API
       Application Programming Interface

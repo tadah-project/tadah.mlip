@@ -1,0 +1,49 @@
+cff-version: 1.2.0
+message: >-
+  If you use Tadah! in academic work, please cite the companion paper
+  in Computer Physics Communications (see preferred-citation below).
+title: "Tadah!MLIP"
+abstract: >-
+  Tadah! is a multi-module C++/CMake framework for developing and
+  deploying machine-learning interatomic potentials, including a
+  LAMMPS plugin and a hyperparameter-optimisation driver.
+authors:
+  - family-names: Kirsz
+    given-names: Marcin
+    email: marcin.kirsz@ed.ac.uk
+    affiliation: "School of Physics and Astronomy, University of Edinburgh"
+type: software
+version: "1.3.0-beta.1"
+date-released: "TBD"
+license: GPL-3.0-only
+repository-code: "https://git.ecdf.ed.ac.uk/tadah/tadah.mlip"
+url: "https://tadah.readthedocs.io/"
+keywords:
+  - machine-learning interatomic potentials
+  - molecular dynamics
+  - LAMMPS
+  - hyperparameter optimisation
+  - computational materials science
+identifiers:
+  - type: doi
+    value: 10.1016/j.cpc.2025.109701
+    description: "Companion paper in Computer Physics Communications."
+preferred-citation:
+  type: article
+  title: "Tadah! a Swiss army knife for developing and deployment of machine learning interatomic potentials"
+  authors:
+    - family-names: Kirsz
+      given-names: Marcin
+    - family-names: Daramola
+      given-names: Ayobami
+    - family-names: Hermann
+      given-names: Andreas
+    - family-names: Zong
+      given-names: Hongxiang
+    - family-names: Ackland
+      given-names: "Graeme J."
+  journal: "Computer Physics Communications"
+  volume: 315
+  start: 109701
+  year: 2025
+  doi: 10.1016/j.cpc.2025.109701

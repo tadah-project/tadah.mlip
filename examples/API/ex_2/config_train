@@ -3,8 +3,8 @@
 
 DBFILE tdata.db
 
-ATOMS Ta
-WATOMS 73
+ATOM Ta
+WATOM 73
 
 INIT2B true
 TYPE2B D2_Blip 4 4 Ta Ta

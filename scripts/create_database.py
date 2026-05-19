@@ -25,7 +25,7 @@ for i,p in enumerate(tqdm(paths)):
     # convert from kbars*angstrom^3 to eV
     # conversion factor 6.241509744511500288*10^-4
     # volume = (6.241509744511500288*10.0**-4)*v.structures[0].lattice.volume
-    # stress convenction:
+    # stress convention:
     # VASP  negative sign below
     # LAMMPS positive sign below
     stress = -np.asarray(v.ionic_steps[0]["stress"])*6.241509744511500288*10.0**-4  # convert from kB -> eV/A^3

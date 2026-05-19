@@ -1,6 +1,9 @@
 stages:
+  - lint
   - build_debug
   - build_release
+  - docs
+  - release
 
 cache:
     key: "build-cache-$CI_COMMIT_REF_SLUG"
@@ -17,21 +20,24 @@ build_debug:
   stage: build_debug
   script:
     - cd ${DEBUG_DIR}
-    - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DBUILD_TESTING=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - find . -name CMakeCache.txt -delete
+    - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DBUILD_TESTING=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
     - make -j ${CPU_BUILD}
     - make test
-    - cd ..; gcovr -e '.*tests.*|.*lib.*|.*docs.*|.*example.*|.*scripts.*|.*LIBS.*|build' -r .
+    - cd ..; gcovr -e '.*tests.*|external|.*docs.*|.*examples.*|.*scripts.*|.*/_deps/(dlib|nlopt|Eigen|ceres|boost|catch2|tadah_cmake)[a-z0-9_-]*-src|build' -r .
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build_release_shared:
   stage: build_release
+  resource_group: build_release
   script:
     - cd ${RELEASE_SHARED_DIR}
     - export PATH=${INSTALL_PATH}/bin:$PATH
     - export CPATH=${INSTALL_PATH}/include:$CPATH
     - export LD_LIBRARY_PATH=${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
     - export LIBRARY_PATH=${INSTALL_PATH}/lib:$LIBRARY_PATH
-    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - find . -name CMakeCache.txt -delete
+    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
     - make -j ${CPU_BUILD}
     - make install
 # run basic cli commands    
@@ -61,13 +67,15 @@ build_release_shared:
 
 build_release_static:
   stage: build_release
+  resource_group: build_release
   script:
     - cd ${RELEASE_STATIC_DIR}
     - export PATH=${INSTALL_PATH}/bin:$PATH
     - export CPATH=${INSTALL_PATH}/include:$CPATH
     - export LD_LIBRARY_PATH=${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
     - export LIBRARY_PATH=${INSTALL_PATH}/lib:$LIBRARY_PATH
-    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+    - find . -name CMakeCache.txt -delete
+    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
     - make -j ${CPU_BUILD}
     - make install
 # run basic cli commands    
@@ -97,3 +105,77 @@ build_release_static:
     - ./a.static
     - bash EXPECTED_OUTPUT/compare.bash
     - if [ $? -ne 0 ]; then exit 1; fi
+
+# ---- Lint (codespell) ---------------------------------------------------
+lint_codespell:
+  stage: lint
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+  script:
+    - |
+      if ! command -v codespell; then
+        python3 -m ensurepip --user --upgrade >/dev/null 2>&1 || true
+        python3 -m pip install --user codespell >/dev/null 2>&1 || {
+          echo "[lint_codespell] codespell unavailable in this runner image; skipping"
+          exit 0
+        }
+      fi
+      export PATH="$HOME/.local/bin:$PATH"
+      codespell \
+        --skip='./build*,./external,./_deps,./examples,./docs/source/cli,./docs/source/spelling_wordlist.txt,./docs/source/config/blueprint_tadah.toml,./docs/source/config/config_keys.rst,./tests/catch2' \
+        --ignore-words-list='daed,Te,CONFING,Strat,strat,MAPE,mape,lamda,lamdas,fof,struc,smae,eCounter,ue,cNa,unparseable,re-use,re-uses,re-used,re-using,nd,SEH' \
+        || true
+  allow_failure: true
+
+# ---- Sphinx docs build (warnings = error) ------------------------------
+docs_sphinx:
+  stage: docs
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+  script:
+    - |
+      if ! command -v sphinx-build; then
+        python3 -m ensurepip --user --upgrade >/dev/null 2>&1 || true
+        python3 -m pip install --user -r docs/requirements.txt 2>&1 || {
+          echo "[docs_sphinx] pip module unavailable in this runner image; cannot install Sphinx requirements"
+          echo "Rebuild tadahmlip/gitlab-runner with python3-pip to enable docs builds"
+          exit 1
+        }
+      fi
+      export PATH="$HOME/.local/bin:$PATH"
+      # Generate doxygen XML for breathe (conf.py expects build/docs/xml/).
+      # TADAH_BUILD_DOCS_ONLY skips heavy library probes so configure is light.
+      cmake -S . -B build -DTADAH_BUILD_DOCS_ONLY=ON -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
+      cmake --build build --target docs
+      (cd docs/source && python3 config/read_toml.py && python3 cli/generate_cli.py)
+      sphinx-build -W -b html docs/source docs/build/html
+  artifacts:
+    when: on_failure
+    paths:
+      - docs/build/html
+    expire_in: 1 week
+  allow_failure: false
+
+# ---- Source-tarball release (tag-gated) --------------------------------
+release_tarball:
+  stage: release
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - export TARBALL="${CI_PROJECT_NAME}-${CI_COMMIT_TAG}.tar.gz"
+    - git archive --format=tar.gz
+        --prefix="${CI_PROJECT_NAME}-${CI_COMMIT_TAG}/"
+        -o "${TARBALL}" HEAD
+    - 'curl --fail --header "JOB-TOKEN: $CI_JOB_TOKEN"
+        --upload-file "${TARBALL}"
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${CI_COMMIT_TAG}/${TARBALL}"'
+  artifacts:
+    paths:
+      - "*.tar.gz"
+    expire_in: 1 week

@@ -177,7 +177,7 @@ materials-science” system of
 These are therefore the **units of choice**.
 
 Practical rules
-~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
 
 • Training on a dataset expressed in *any* units still works, provided *all*
   quantities in *all* structures use the same unit system.

@@ -17,7 +17,8 @@ build:
   jobs:
     pre_install:
       - echo $READTHEDOCS
-      - echo $READTHEDOCS_VERSION
+      - echo "READTHEDOCS_VERSION (slug)=$READTHEDOCS_VERSION"
+      - echo "READTHEDOCS_VERSION_NAME (ref)=$READTHEDOCS_VERSION_NAME"
       - git status
       - git status | grep origin | sed -e s/.*origin\\/// -e s/[^a-zA-Z\/_-].*// 
       - wget https://cmake.org/files/v3.22/cmake-3.22.0-linux-x86_64.sh

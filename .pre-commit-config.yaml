@@ -1,0 +1,30 @@
+---
+# Pre-commit config for Tadah! umbrella project.
+# Install: `pip install --user pre-commit && pre-commit install`
+# Run on the whole tree: `pre-commit run --all-files`
+#
+# Deliberately conservative: no clang-format here (the codebase has no
+# committed .clang-format and an auto-formatter would churn unrelated
+# lines on every MR).
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(external/|build.*/|.*/_deps/|tests/data/|.*\.diff$|.*\.patch$)
+      - id: end-of-file-fixer
+        exclude: ^(external/|build.*/|.*/_deps/|tests/data/)
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+        args:
+          - "--skip=external,build,build_*,_deps,tests/data,*.svg,*.po,*.bib"
+          - "--ignore-words-list=hist,nd,inout,ot,thi,brunch,fpr"

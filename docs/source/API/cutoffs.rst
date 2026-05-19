@@ -1,17 +1,9 @@
-Cutoffs
-=======
+Cutoff Base Class
+=================
+
+The user-facing :ref:`cutoffs` chapter documents the concrete cutoff
+classes (``Cut_Cos``, ``Cut_Poly``, ``Cut_Tanh``, …).  The base class
+below is the API hook for adding new cutoff functions.
 
 .. doxygenclass:: tadah::models::Cut_Base
-    :members:
-
-.. doxygenclass:: tadah::models::Cut_Dummy
-    :members:
-
-.. doxygenclass:: tadah::models::Cut_Cos
-    :members:
-
-.. doxygenclass:: tadah::models::Cut_Tanh
-    :members:
-
-.. doxygenclass:: tadah::models::Cut_Poly2
     :members:

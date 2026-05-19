@@ -4,21 +4,21 @@ Welcome to the Tadah! Website
 .. image:: images/tadah_cli.png
    :align: center
 
-.. admonition:: Heads-up – Tadah! 1.0.0 has landed 🎉
-   :class: warning
+.. admonition:: Tadah! 1.3.0-beta.1 — first public beta
+   :class: note
 
-   We have just tagged **the first official public release, v1.0.0**, and the
-   *main* branch has already been fast-forwarded to this version.  
-   The documentation you are reading is being updated in step, but you may still
-   encounter pages that lag behind the code, broken links, or typos while we
-   finish the polish.
+   This is the first public beta of the Tadah! framework. The CLI
+   surface (subcommand names, flags, configuration-file keys, and the
+   ``pot.tadah`` file format) is considered stable for the 1.x series;
+   the C++ API (``libtadah.*`` headers and class layouts) is **not yet
+   stable** and may change between minor versions until 2.0. See the
+   `changelog`_ for what shipped in this release, the
+   `migration notes`_ for upgrade caveats from 1.1.1, and please
+   `report any issues`_ you hit while exercising the beta.
 
-   New releases inevitably bring teething issues; if something looks off,
-   crashes, or is simply confusing, please let us know.  
-   A short issue or e-mail is far more helpful than silent frustration and we'll
-   gladly guide you through any rough edges.
-
-   Thank you for your patience, happy modelling, and welcome to Tadah! 1.0.0.
+   .. _changelog: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/develop/CHANGELOG.md
+   .. _migration notes: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/develop/CHANGELOG.md#migrating-from-111-to-130-beta1
+   .. _report any issues: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues
 
 
 This is the home of Tadah! software, used for developing and deploying machine learning interatomic potentials. This website provides documentation with examples to help users quickly get up to speed, along with an associated API for developers.
@@ -28,8 +28,7 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
 .. |gja_link| raw:: html
 
    <a href="https://www.ph.ed.ac.uk/people/graeme-ackland" target="_blank" style="text-decoration:none;">
-       <span style="vertical-align:middle;">Prof. Ackland’s group</span> 
-       <span style="font-size:small; vertical-align:middle;">↗️</span>
+       <span style="vertical-align:middle;">Prof. Ackland's group</span>
    </a>
 
 
@@ -62,6 +61,8 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    descriptors.rst
    cutoffs.rst
    hpo.rst
+   hpo_examples.rst
+   bound_validation.rst
 
 ----
 

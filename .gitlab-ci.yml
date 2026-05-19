@@ -160,7 +160,7 @@ docs_sphinx:
     paths:
       - docs/build/html
     expire_in: 1 week
-  allow_failure: true
+  allow_failure: false
 
 # ---- Source-tarball release (tag-gated) --------------------------------
 release_tarball:

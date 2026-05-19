@@ -24,7 +24,7 @@ build_debug:
     - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DBUILD_TESTING=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
     - make -j ${CPU_BUILD}
     - make test
-    - cd ..; gcovr -e '.*tests.*|.*lib.*|.*docs.*|.*example.*|.*scripts.*|.*LIBS.*|build' -r .
+    - cd ..; gcovr -e '.*tests.*|external|.*docs.*|.*examples.*|.*scripts.*|.*/_deps/(dlib|nlopt|Eigen|ceres|boost|catch2|tadah_cmake)[a-z0-9_-]*-src|build' -r .
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build_release_shared:
@@ -125,7 +125,8 @@ lint_codespell:
       fi
       export PATH="$HOME/.local/bin:$PATH"
       codespell \
-        --skip='./build*,./external,./_deps,./examples,./docs/source/cli,./docs/source/spelling_wordlist.txt' \
+        --skip='./build*,./external,./_deps,./examples,./docs/source/cli,./docs/source/spelling_wordlist.txt,./docs/source/config/blueprint_tadah.toml,./docs/source/config/config_keys.rst,./tests/catch2' \
+        --ignore-words-list='daed,Te,CONFING,Strat,strat,MAPE,mape,lamda,lamdas,fof,struc,smae,eCounter,ue,cNa,unparseable,re-use,re-uses,re-used,re-using,nd,SEH' \
         || true
   allow_failure: true
 

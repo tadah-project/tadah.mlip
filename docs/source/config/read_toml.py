@@ -46,7 +46,7 @@ def download_toml_file(repo_url, file_path, output_path):
 
 download_toml_file(
     'https://git.ecdf.ed.ac.uk/tadah/core.git',
-    'blueprint/blueprint_tadah.toml',   # soruce
+    'blueprint/blueprint_tadah.toml',   # source
     'config/blueprint_tadah.toml'       # destination
 )
 print ("Downloaded blueprint_tadah.toml to config/blueprint_tadah.toml")
@@ -65,7 +65,7 @@ header = '''
 Configuration File
 ==================
 
-.. warning:: This section is under construction and may not be complete or accurate. If you find any issues, please report them on the `Tadah!MLIP GitLab <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_.
+.. note:: This page is auto-generated from the blueprint TOML on every docs build. If you spot a mismatch between this reference and runtime behaviour, please report it on the `Tadah!MLIP GitLab <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_.
 
 .. note:: This configuration file is NOT used by the HPO (Hyperparameter Optimization) module of Tadah!MLIP. The HPO module uses a different configuration file format, which is documented in the :ref:`nested_fitting`.
 

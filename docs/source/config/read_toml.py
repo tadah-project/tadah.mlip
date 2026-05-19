@@ -12,9 +12,17 @@ import subprocess
 
 def download_toml_file(repo_url, file_path, output_path):
     try:
-        # Retrieve the branch name from the environment variable
-        # branch = os.environ.get('READTHEDOCS_VERSION', 'main')    # TODO
-        branch = "develop"
+        # Resolve the branch:
+        #   GitLab CI:   $CI_COMMIT_REF_NAME (e.g. "release/beta-prep")
+        #   RTD:         $READTHEDOCS_VERSION_NAME (verbose ref-matching form,
+        #                e.g. "release/beta-prep"); $READTHEDOCS_VERSION is the
+        #                URL slug ("release-beta-prep") and may not match a
+        #                real git ref when the branch contains a slash.
+        #   Local:       fall back to "develop".
+        branch = (os.environ.get('CI_COMMIT_REF_NAME')
+                  or os.environ.get('READTHEDOCS_VERSION_NAME')
+                  or os.environ.get('READTHEDOCS_VERSION')
+                  or 'develop')
 
         print(f"Downloading {file_path} from {repo_url} on branch {branch}...")
         # Clone the repository into a temporary directory with the specific branch

@@ -54,9 +54,14 @@ def _read_tadah_version():
     if blueprint is None and os.environ.get('READTHEDOCS') == 'True':
         try:
             tmp = tempfile.mkdtemp(prefix='tadah_core_version_')
+            # Prefer READTHEDOCS_VERSION_NAME (verbose ref-matching form,
+            # e.g. "release/beta-prep") over READTHEDOCS_VERSION (URL slug
+            # "release-beta-prep") so branches with "/" resolve correctly.
+            _branch = (os.environ.get('READTHEDOCS_VERSION_NAME')
+                       or os.environ.get('READTHEDOCS_VERSION')
+                       or 'develop')
             subprocess.run(
-                ['git', 'clone', '--depth', '1', '--branch',
-                 os.environ.get('READTHEDOCS_VERSION', 'develop'),
+                ['git', 'clone', '--depth', '1', '--branch', _branch,
                  'https://git.ecdf.ed.ac.uk/tadah/core.git', tmp],
                 check=True, capture_output=True,
             )

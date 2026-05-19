@@ -39,9 +39,6 @@ How to run them all
    bash HPO/examples/run_all.sh
 
 prints a one-line summary per example (best loss, eval count, status).
-The whole bundle is designed to complete in well under a minute on a
-modern workstation. See :ref:`hpo_examples_ci` below for the regression
-harness.
 
 Index
 -----
@@ -74,7 +71,7 @@ Index
      - `04_skip_bad_pots <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/04_skip_bad_pots>`_
      - ``PC_ERMSE --skip-above`` / ``--skip-rel`` early-reject filter:
        fail-score obviously-broken potentials before LAMMPS is invoked.
-     - ``PC_ERMSE``, ``--skip-above``
+     - ``PC_ERMSE``, ``--skip-above``, ``--skip-rel``
    * - 05
      - `05_extra_observables <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/05_extra_observables>`_
      - ``PC_LAMMPS --invar`` injects LAMMPS variables; ``--outvar``
@@ -130,43 +127,3 @@ Index
      - Classic Kirkpatrick/Metropolis simulated annealing (``LIB TADAH,
        ALGO ANNEAL``) with an auto-calibrated initial temperature.
      - ``TADAH:ANNEAL``, ``PARAM``
-
-.. _hpo_examples_ci:
-
-Reference suite (regression harness)
--------------------------------------
-
-Each example carries a ``reference_fingerprint.json`` next to its
-``README.md``. The fingerprint records the example's converged loss,
-per-component contributions (``L(ERMSE)``, ``L(Ecoh)``, …), final
-hyperparameter vector, evaluation count, and an accepted-status list,
-each tagged with absolute and relative tolerances chosen to absorb
-cross-machine BLAS/LAPACK reorder while still flagging a material
-regression in the optimiser path.
-
-The driver
-
-::
-
-   bash HPO/examples/run_reference_suite.sh --fast      # examples flagged "fast"
-   bash HPO/examples/run_reference_suite.sh --full      # every numbered example
-   bash HPO/examples/run_reference_suite.sh --example=12
-
-runs the chosen subset, compares each output against its fingerprint
-within tolerance, and exits non-zero if any example regresses. Every
-example in the current bundle is flagged ``"fast": true`` in its
-fingerprint, so ``--fast`` and ``--full`` cover the same set; the flag
-exists so a slower example added later can be gated to release-time
-validation.
-
-Tolerance choices and rationale are kept beside the generator at
-`tools/tolerance_overrides.json
-<https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/examples/tools/tolerance_overrides.json>`_.
-
-Anonymised data
----------------
-
-The ``data/*.tadahdb`` files in ``common/`` are slimmed copies of public
-DFT data. Filesystem paths in those bundles have been rewritten to
-``examples/data/...`` so no private absolute path leaks. Element identity
-(Ta) is retained — it is a public chemical symbol.

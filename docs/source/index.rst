@@ -4,11 +4,11 @@ Welcome to the Tadah! Website
 .. image:: images/tadah_cli.png
    :align: center
 
-.. admonition:: Tadah! 1.3.0-beta.1 — first public beta
+.. admonition:: Tadah! 1.3.0-beta.1 — beta release
    :class: note
 
-   This is the first public beta of the Tadah! framework. The CLI
-   surface (subcommand names, flags, configuration-file keys, and the
+   This is a beta release of the Tadah! framework. The CLI surface
+   (subcommand names, flags, configuration-file keys, and the
    ``pot.tadah`` file format) is considered stable for the 1.x series;
    the C++ API (``libtadah.*`` headers and class layouts) is **not yet
    stable** and may change between minor versions until 2.0. See the
@@ -16,8 +16,8 @@ Welcome to the Tadah! Website
    `migration notes`_ for upgrade caveats from 1.1.1, and please
    `report any issues`_ you hit while exercising the beta.
 
-   .. _changelog: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/develop/CHANGELOG.md
-   .. _migration notes: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/develop/CHANGELOG.md#migrating-from-111-to-130-beta1
+   .. _changelog: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/v1.3.0-beta.1/CHANGELOG.md
+   .. _migration notes: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/v1.3.0-beta.1/CHANGELOG.md#migrating-from-111-to-130-beta1
    .. _report any issues: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues
 
 
@@ -57,12 +57,12 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    tutorials.rst
    examples.rst
    config/config_keys.rst
+   training.rst
    regressors.rst
    descriptors.rst
    cutoffs.rst
    hpo.rst
    hpo_examples.rst
-   bound_validation.rst
 
 ----
 

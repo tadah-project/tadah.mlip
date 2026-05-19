@@ -6,7 +6,7 @@ Installation
 This page provides step-by-step installation instructions for:
 
 - **Tadah!MLIP** (ML potential training; provides the ``tadah`` CLI)
-- **ML‑TADAH for LAMMPS** (Tadah.LAMMPS; adds the ``pair_style tadah`` pair style to LAMMPS)
+- **ML‑TADAH for LAMMPS** (Tadah!LAMMPS; adds the ``pair_style tadah`` pair style to LAMMPS)
 
 For more detailed and up-to-date guidance (including platform-specific notes), see:
 https://tadah.readthedocs.io/
@@ -22,8 +22,14 @@ General requirements:
 
 - A **C++17**-capable compiler toolchain
 - **CMake** (3.15+)
-- **LAPACK** (and **ScaLAPACK** for Tadah!MLIP MPI builds)
+- **LAPACK**
 - Internet access during installation (some dependencies may be fetched at configure/build time)
+
+.. warning::
+
+   The MPI build (``-DTADAH_BUILD_MPI=ON``) is **broken in this beta
+   release** and should not be used. Build the desktop / OpenMP variant
+   instead. The MPI flag is documented for forward reference only.
 
 LAMMPS-specific notes:
 
@@ -189,12 +195,14 @@ Append flags to the ``cmake`` command with the ``-D`` prefix and a value of ``ON
 
 You can provide multiple ``-D<option>=<value>`` pairs in a single call.
 
+Build, install, test, and docs from an out-of-tree ``build`` directory:
+
 .. code-block:: bash
 
-    make          # compile
-    make install  # install to the chosen prefix
-    make test     # run tests (requires -DBUILD_TESTING=ON)
-    make docs     # generate local API docs (requires Doxygen)
+    cmake --build build --parallel        # compile
+    cmake --install build                 # install to the chosen prefix
+    ctest --test-dir build                # run tests (requires -DBUILD_TESTING=ON)
+    cmake --build build --target docs     # generate local API docs (requires Doxygen)
 
 .. _gofasterstripe:
 
@@ -211,6 +219,13 @@ Massively Parallel Version
 ..........................
 
 The Tadah!MLIP MPI version is designed for HPC architectures and large datasets.
+
+.. warning::
+
+   The MPI build is **broken in this beta release**. The
+   ``TADAH_BUILD_MPI`` option, ``tadah_mpi`` executable, and
+   ``libtadah.mpi.hpo`` library described below are documented for
+   forward reference only — do not use them in 1.3.0-beta.1.
 
 To enable the MPI version, configure the build with ``TADAH_BUILD_MPI``:
 
@@ -257,7 +272,7 @@ To build Tadah!MLIP with NFP, follow these steps:
 
 .. _installation_lammps:
 
-Installing ML‑TADAH for LAMMPS (Tadah.LAMMPS)
+Installing ML‑TADAH for LAMMPS (Tadah!LAMMPS)
 ---------------------------------------------
 
 ML‑TADAH adds the **``pair_style tadah``** pair style to LAMMPS.
@@ -265,8 +280,8 @@ It does not require Tadah!MLIP to be installed.
 
 .. important::
 
-   ML‑TADAH / Tadah.LAMMPS is **not part of the official LAMMPS distribution**.
-   You must clone Tadah.LAMMPS yourself and enable it during the LAMMPS build.
+   ML‑TADAH / Tadah!LAMMPS is **not part of the official LAMMPS distribution**.
+   You must clone Tadah!LAMMPS yourself and enable it during the LAMMPS build.
 
 For general LAMMPS build instructions and prerequisites, see the official LAMMPS documentation:
 
@@ -290,23 +305,21 @@ Choose a LAMMPS version appropriate for your project (example: git clone stable 
 
     git clone -b stable --depth 1 https://github.com/lammps/lammps.git /path/to/lammps
 
-**Step 2 — Clone Tadah.LAMMPS**
+**Step 2 — Clone Tadah!LAMMPS**
 
-Clone Tadah.LAMMPS anywhere on your filesystem:
+Clone Tadah!LAMMPS anywhere on your filesystem:
 
 .. code-block:: bash
 
-    git clone https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git /path/to/Tadah.LAMMPS
+    git clone https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git /path/to/tadah.lammps
 
 **Step 3 — Configure LAMMPS and enable ML‑TADAH**
 
-From the **LAMMPS root directory** (``/path/to/lammps``), run your usual LAMMPS CMake configure command and **add** the ML‑TADAH integration options:
+From the **LAMMPS root directory** (``/path/to/lammps``), run your usual LAMMPS CMake configure command and **add** these three options:
 
-.. code-block:: bash
-
-    -DPKG_ML-TADAH=ON \
-    -DCMAKE_PROJECT_INCLUDE=/path/to/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake \
-    -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS
+* ``-DPKG_ML-TADAH=ON``
+* ``-DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake``
+* ``-DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps``
 
 Minimal example:
 
@@ -315,10 +328,13 @@ Minimal example:
     cd /path/to/lammps
     cmake -S cmake -B build \
       -DPKG_ML-TADAH=ON \
-      -DCMAKE_PROJECT_INCLUDE=/path/to/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake \
-      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS
+      -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
+      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps
 
-Optional: select the Tadah.LAMMPS branch (default is ``main``):
+Optional: select the branch/tag used to fetch the Tadah! modules
+that Tadah!LAMMPS pulls transitively (``Tadah.MD`` and friends; the
+branch of Tadah!LAMMPS *itself* is whatever you have checked out at
+``TADAH_LAMMPS_SOURCE_DIR``). Default is ``main``:
 
 .. code-block:: bash
 
@@ -332,8 +348,8 @@ Example using the LAMMPS GCC preset and building a serial binary:
     cd /path/to/lammps
     cmake -C cmake/presets/gcc.cmake -S cmake -B build \
       -DPKG_ML-TADAH=ON \
-      -DCMAKE_PROJECT_INCLUDE=/path/to/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake \
-      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS \
+      -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
+      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps \
       -DTADAH_GIT_BRANCH=develop \
       -DLAMMPS_MACHINE=serial
 
@@ -355,31 +371,13 @@ After building, the produced LAMMPS executable from this build directory include
 
 The CMake integration also supports additional options (e.g. verbosity controls and custom style registration lists). These are documented here:
 
-- ``tadah.lammps/integration/README.md`` (in your Tadah.LAMMPS checkout)
+- ``tadah.lammps/integration/README.md`` (in your Tadah!LAMMPS checkout)
 
-Traditional make-based build (deprecated)
-.........................................
+Traditional make-based build
+............................
 
-Some environments still use the classic LAMMPS ``make`` workflow. ML‑TADAH can be built this way as well.
-
-For background on the LAMMPS make-based build and “extras”, see:
-
-- https://docs.lammps.org/Build_extras.html
-
-Typical steps:
-
-.. code-block:: bash
-
-    # From your LAMMPS source tree
-    cd /path/to/lammps/lib
-    git clone https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git tadah.lammps
-
-    cd /path/to/lammps/src
-    make lib-tadah.lammps
-    make yes-ml-tadah
-    make serial
-
-Replace ``serial`` with the appropriate target for your system (MPI/OpenMP, etc.).
+The classic LAMMPS ``make`` workflow is **not supported** for
+Tadah!LAMMPS in this release. Use the CMake build documented above.
 
 Libraries and C++ Headers
 -------------------------
@@ -407,7 +405,7 @@ command line:
     g++ my_code.cpp \
         -I$HOME/.local/include \
         -L$HOME/.local/lib \
-        -ltadah -o my_code
+        -ltadah.mlip -o my_code
 
 Run-time resolution
 ...................
@@ -439,13 +437,15 @@ or environment module) to avoid accidental conflicts with other software.
 Compiled Libraries
 ..................
 
-The following libraries can be compiled, depending on the build settings:
+The following libraries are produced, depending on the build settings:
 
-- ``libtadah.core``
-- ``libtadah.models``
-- ``libtadah.mlip``
-- ``libtadah.md``
-- ``libtadah.hpo`` (MPI version: ``libtadah.mpi.hpo``)
+- ``libtadah.core`` — always built.
+- ``libtadah.models`` — always built.
+- ``libtadah.md`` — always built.
+- ``libtadah.mlip`` — always built.
+- ``libtadah.hpo`` — built only when ``-DTADAH_ENABLE_NFP=ON``.
+  (MPI version: ``libtadah.mpi.hpo``; broken in this beta release, see
+  warning above.)
 
 .. _compiling_and_linking:
 
@@ -454,7 +454,7 @@ Compiling and Linking with Library
 
 For C++ library use, compile with C++17 or higher. Include library headers using the prefix ``tadah/`` and link relevant libraries. For ``libtadah.mlip`` it is often the case that both ``libtadah.models`` and ``libtadah.core`` must be linked as well.
 
-.. code-block:: c
+.. code-block:: c++
 
     #include <tadah/mlip/atom.h>
 

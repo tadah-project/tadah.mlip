@@ -18,20 +18,20 @@ Nested Fitting
    :align: center
 
    Workflow of the :term:`nested fitting procedure`: the outer optimiser
-   proposes new :term:`hyperparameters<hyperparameter>`, the model is
+   proposes new :term:`hyperparameters<Hyperparameter>`, the model is
    retrained, and each trial potential is validated against
-   :term:`performance constraints<performance constraint>` that feed back
+   :term:`performance constraints<Performance constraint>` that feed back
    into the global loss.
 
 Nested fitting is Tadah!MLIP’s automated, two-level fitting workflow:
 
 * **inner loop** — ordinary regression that determines the
-  :term:`learned parameters<learned parameter>` :math:`\mathbf w` for a
+  :term:`learned parameters<Learned Parameter>` :math:`\mathbf w` for a
   fixed model definition;
 * **outer loop** — a global optimiser that samples from the
-  :term:`search space constraints<search space constraint>` (SSH),
+  :term:`search space constraints<Search Space Constraint>` (SSC),
   retrains the model, and judges the result against user-defined
-  :term:`performance constraints<performance constraint>` (PC).
+  :term:`performance constraints<Performance constraint>` (PC).
 
 Letting a computer search the :term:`hyperparameter` space helps to
 
@@ -310,17 +310,18 @@ Additional options
 
 ``--hotvar <name> <min> <max> [<initial>]``
    Declare this ``PC_LAMMPS`` line as *hot*: a two-phase evaluator
-   for parameters that other scripts depend on.  Hot scripts run
+   for parameters that other scripts depend on. Hot scripts run
    alone in **phase A** of each iteration (in parallel with other
-   hot scripts), expose ``variable <name> equal …`` from the LAMMPS
-   script, and the returned value is validated against
-   ``[min, max]``.  Validated values are cached per
+   hot scripts), expose ``variable <name> string …`` from the
+   LAMMPS script (see :ref:`warmstart_protocol` for the required
+   ``string``-style readback), and the returned value is validated
+   against ``[min, max]``. Validated values are cached per
    ``(script, name)`` and propagated as ``${<name>}`` strings into
    every cold (no-``--hotvar``) ``PC_LAMMPS`` script in **phase B**.
-   Multiple ``--hotvar`` flags per line are allowed; phase A is
-   parallel so hot scripts cannot reference each other's variables.
-   If a hot value lands outside ``[min, max]`` HPO fail-scores the
-   iteration and skips phase B.
+   ``<initial>`` is optional; when omitted the midpoint of
+   ``[<min>, <max>]`` seeds the first iteration. If a hot value
+   lands outside ``[min, max]`` HPO fail-scores the iteration and
+   skips phase B.
 
 Per-metric bad-pot pre-filter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -415,9 +416,18 @@ The driver-attribute keys below are accepted wherever an
      - All gradient-free NLOpt globals (``GN_*``) and locals (``LN_*``)
        — see the `NLOpt algorithm catalogue
        <https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/>`_ for
-       the full list.  Algorithms whose names begin with ``GD_`` /
-       ``LD_`` (gradient-using) are *not* supported because Tadah!MLIP
-       does not expose analytic loss gradients.
+       the full list. Gradient-using algorithms (``GD_*`` / ``LD_*``)
+       route through the shared finite-difference gradient seam used by
+       ``DLIB:BFGS`` and the Ceres drivers; ``LD_LBFGS`` is the only
+       member exercised by the bundled examples.
+
+       .. note::
+
+          **Analytical loss gradients are work in progress** and are
+          not enabled in this beta release. Every gradient-using
+          algorithm (``LD_*``, ``GD_*``, ``DLIB:BFGS``, all CERES
+          drivers) currently obtains its gradient through numerical
+          finite differences (see ``PARAM fd_step`` below).
    * - ``DLIB``
      - ``BFGS``, ``LBFGS``, ``CG``, ``BOBYQA`` (local), ``GFS`` (the
        dlib MaxLIPO+TR global *Global Function Search*).
@@ -626,8 +636,9 @@ best-tracker keeps the global minimum across all runs.
 
 ``MULTISTART`` with ``N_STARTS > 1`` is rejected at validate-time for
 ``NLOPT:GN_*`` algorithms (those globals consume only one starting
-point).  Pick ``LD_*`` / ``LN_*`` or ``DLIB:GFS`` / ``DLIB:BFGS``
-instead.
+point). Local optimisers — ``NLOPT:LN_*`` (gradient-free) and
+``NLOPT:LD_*`` (gradient via the shared finite-difference seam) — and
+``DLIB:GFS`` / ``DLIB:BFGS`` all accept multistart.
 
 TYPE PRESTAGE — staged global → local
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -947,135 +958,16 @@ Only the driver-attribute keys (``LIB`` / ``ALGO`` / ``MAXEVAL`` /
 ``FTOL_*`` / ``STEP`` / ``SEED`` / ``PARAM`` / ``POPULATION`` /
 ``THREADS`` / ``VECTOR_ARR``) are valid inside ``INNER``.
 
-.. _load_transforms:
+.. _hpo_load_transforms:
 
 Load-time data transforms
 .........................
 
-The transforms below reshape the training set *before* any neighbour
-finding, descriptor calculation, or training.  They run inside
-``apply_load_transforms()`` as soon as the datasets are loaded and are
-shared across ``tadah train``, ``tadah predict``, and ``tadah hpo``;
-for HPO they are written either at the *root* level of the HPO config
-or inside ``--config`` (the training configuration).
-
-Two of them — ``LSCALE`` and the resolved ``ESHIFT`` — are stamped into
-``pot.tadah`` so ``tadah predict`` round-trips them automatically; the
-rest are training-time only.  For the per-key CLI form and defaults see
-:ref:`ConfigSection` and ``tadah explain <key>`` (e.g. ``tadah explain
-train.lscale``).
-
-Order of application
-~~~~~~~~~~~~~~~~~~~~
-
-The transforms run in a fixed order, and the order matters because
-several feed the next:
-
-#. **Outlier filter** (``EFILTER`` / ``FFILTER``) — runs first, so an
-   extreme outlier cannot poison the later least-squares and
-   reweighting steps.
-#. **Length rescale** (``LSCALE``).
-#. **ESHIFT** — determine the per-element shifts, then subtract them.
-#. **Boltzmann reweight** (``EWEIGHT_TEMP``) — after ESHIFT, so the
-   Boltzmann factor sees the shifted, user-meaningful energies.
-#. **COM-force zeroing** (``ZERO_COM_FORCE``).
-#. **Per-dataset weights** — ``WDBFILE`` composed multiplicatively with
-   ``WDBFILE_AUTO``.
-#. **Equilibrium-volume diagnostic** — logs the lowest post-transform
-   ``E/N`` configuration as a reference-state sanity check.
-
-Key summary
-~~~~~~~~~~~
-
-============================ ===========================================================================
-Key                          One-line summary
-============================ ===========================================================================
-``LSCALE``                   Uniform length rescale (DFT → experimental scale).  Persisted to pot.tadah.
-``ESHIFT``                   Explicit per-element energy shift; one value per element ordered by Z.
-``ESHIFT_ATOM``              Derive ESHIFT from isolated-atom configurations in the dataset.
-``ESHIFT_DBATOM``            Derive ESHIFT by least-squares atomic-energy fit over the database.
-``EFILTER  <lo> <hi>``       Drop configurations whose per-atom energy is outside ``[lo, hi]``.
-``FFILTER  <thr>``           Drop configurations with any single force component above ``thr``.
-``WDBFILE  <w_1> ... <w_n>`` Per-dataset weight multipliers; one per ``DBFILE``.
-``WDBFILE_AUTO  <α>``        Automatic size balancing: per-config weight × ``1 / N_i^α``, ``α ∈ [0,1]``.
-``EWEIGHT_TEMP  <T>``        Boltzmann reweighting at temperature ``T`` (Kelvin).
-``ZERO_COM_FORCE``           Subtract the mean force per configuration.
-============================ ===========================================================================
-
-LSCALE: uniform length rescale
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``LSCALE s`` multiplies every position and cell vector by ``s``.  To
-keep the total energy invariant under the change of length scale,
-forces are divided by ``s``; stresses are stored as a virial (energy
-units) and are left untouched.  ``s = 1`` (the default) is a no-op and
-``s <= 0`` is a configuration error.
-
-The intended use is matching a DFT lattice constant to experiment: set
-``LSCALE = a_exp / a_DFT`` so the trained model's equilibrium volume
-sits at the experimental scale.
-
-``LSCALE`` is stamped into ``pot.tadah``.  ``tadah predict`` re-applies
-it so a raw DFT dataset round-trips; pass ``--no-lscale`` to ignore the
-stored value when the dataset is already at the trained scale.  The
-LAMMPS ``pair_style tadah`` does **not** re-apply ``LSCALE`` — supply
-LAMMPS with positions already at the trained scale.
-
-ESHIFT: per-element energy shift
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-For every configuration ESHIFT *subtracts* a per-element baseline::
-
-   E_after = E_before − Σ_Z N_Z · ESHIFT[Z]
-
-``ESHIFT[Z]`` is the per-atom reference energy of species ``Z`` to be
-removed — feeding the isolated-atom energy turns total energies into
-cohesive energies.  There are three mutually exclusive ways to obtain
-the values; if more than one is set the engine warns and applies the
-precedence **explicit > ATOM > DBATOM**:
-
-* **Explicit** — ``ESHIFT a b …``, one value per unique species,
-  ordered by ``Z``.
-* **ESHIFT_ATOM** — the mean energy of the single-atom
-  (``natoms == 1``) configurations of each species.  A species with no
-  isolated-atom config gets ``0`` and a warning; a spread above 1 meV
-  across same-species configs is logged.
-* **ESHIFT_DBATOM** — a least-squares atomic-energy fit over the
-  whole database (``min ‖y − Mβ‖²``, with ``M[i,k]`` the count of
-  species ``k`` in config ``i``).  Robust when the dataset has
-  compositional diversity but no isolated-atom configs.
-
-Whichever path is used, the *resolved* per-element values are stamped
-into ``pot.tadah`` (the ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles are
-not).  ``tadah predict`` re-applies them; ``--no-eshift`` ignores the
-stored values.
-
-Filtering and weighting
-~~~~~~~~~~~~~~~~~~~~~~~
-
-* ``EFILTER lo hi`` drops any configuration whose **per-atom** energy
-  ``E/N`` is outside ``[lo, hi]``; ``FFILTER thr`` drops any
-  configuration with a single-atom force magnitude above ``thr``.  Both
-  run first and are training-time only.
-* ``WDBFILE w_1 … w_n`` multiplies the ``eweight`` / ``fweight`` /
-  ``sweight`` of every config in dataset ``i`` by ``w_i`` — one value
-  per ``DBFILE``.
-* ``WDBFILE_AUTO α`` multiplies dataset ``i``'s per-config weight by
-  ``N_i^(−α)``, where ``N_i`` is its post-filter config count.
-  ``α = 0`` disables it, ``α = 0.5`` is a soft balance, ``α = 1`` makes
-  every dataset contribute equal aggregate loss.  It composes
-  multiplicatively with ``WDBFILE``; ``α`` outside ``[0, 1]`` is
-  rejected.
-* ``EWEIGHT_TEMP T`` multiplies each ``eweight`` by
-  ``exp(−(E/N − E_min)/(k_B·T))`` (``E_min`` the minimum per-atom
-  energy, ``T`` in Kelvin), biasing the loss toward low-energy configs.
-  Applied after ESHIFT; ``T <= 0`` is rejected.
-* ``ZERO_COM_FORCE`` subtracts the mean force of each configuration
-  so its net force is exactly zero — useful against residual
-  translational forces left by incomplete DFT relaxation.
-
-These transforms are training-time only: they are not stamped into
-``pot.tadah`` and not re-applied at predict time.
+The training-side load transforms (``LSCALE``, ``ESHIFT*``,
+``EFILTER`` / ``FFILTER``, ``EWEIGHT_TEMP``, ``WDBFILE`` /
+``WDBFILE_AUTO``, ``ZERO_COM_FORCE``) are documented under
+:ref:`load_transforms`; place them in ``--config`` (the training
+configuration). HPO applies them on every inner training run.
 
 Validation-set sanitisation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1117,15 +1009,6 @@ The line is unconditional — when no filter is active the dropped
 counts are zero and the line still confirms the loaded size, so it
 is always clear which configs the validation metric is being
 computed on.
-
-MPI training caveat
-~~~~~~~~~~~~~~~~~~~
-
-The load transforms need a global view of the dataset that is not yet
-wired through the MPI ``TrainerWorker``.  Under an MPI training build
-the engine fails fast if ``LSCALE``, ``ESHIFT`` (explicit or derived
-via ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM``), ``EWEIGHT_TEMP``, or
-``WDBFILE_AUTO`` is set — run the training without MPI to use them.
 
 .. _output_files:
 
@@ -1232,68 +1115,70 @@ Practical tips
 Warm-start protocol and bad-potential early-exit
 ................................................
 
-Warm-start: ``${hot_a0}``
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Warm-start: ``${hot_a0}`` (or any ``--hotvar``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For LAMMPS scripts that start with a ``box/relax`` from a hard-coded
 lattice guess (typical for elastic constants, surface energies, …), HPO
 can short-circuit the expensive minimisation:
 
-#. Replace the hard-coded ``lattice bcc 3.2`` with
+#. Declare the producing ``PC_LAMMPS`` line as hot:
+
+   .. code-block:: none
+
+      PC_LAMMPS --script in.a0_relax \
+                --hotvar hot_a0 2.5 4.5 3.302 \
+                --varloss ...
+
+   ``<min> <max>`` bound the physical range; ``<initial>`` is optional
+   (midpoint of ``[min, max]`` when omitted).
+
+#. Replace the hard-coded ``lattice bcc 3.2`` in that script with
    ``lattice bcc ${hot_a0}``.
-#. Add ``variable a0 equal lx/<divisor>`` (whatever divisor matches
-   the box size) right after the equilibrium minimisation.
+
+#. End the script with a ``string``-style readback (**not** ``equal``):
+
+   .. code-block:: none
+
+      variable hot_a0 string $(lx/<divisor>)
+
+   where ``<divisor>`` matches the conventional cell size (e.g.
+   ``4.0`` for a 4-atom BCC conventional cell). Equal-style readback
+   does not currently round-trip across iterations inside the cached
+   LAMMPS instance — use string-style until that is lifted.
 
 HPO injects ``${hot_a0}`` as a string-style variable on every call
-(default 3.2 Å on the first call), captures the script's ``${a0}``
-after each successful run, and reuses the cached value on the next
-evaluation.  When ``WARM`` reads a ``pot.tadah`` whose writer dumped
-``# HOT_A0 <script> <a0>`` lines, the cache is primed automatically;
-``[HPO] WARM: primed warmstart cache with N HOT_A0 entry(ies)``
-confirms how many lines were absorbed.
+(``<initial>`` from ``--hotvar`` on the first call, the cached value
+thereafter), captures the script's ``${hot_a0}`` after each successful
+run, and reuses it on the next evaluation. The variable is then
+propagated as ``${hot_a0}`` into every cold (no-``--hotvar``)
+``PC_LAMMPS`` script in phase B. When ``WARM`` reads a ``pot.tadah``
+whose writer dumped ``# HOT_A0 <script> <a0>`` lines, the cache is
+primed automatically; ``[HPO] WARM: primed warmstart cache with N
+HOT_A0 entry(ies)`` confirms how many lines were absorbed.
 
-Tuning environment variables:
-
-================================== =================================================================
-Variable                           Effect
-================================== =================================================================
-``TADAH_HPO_HOT_A0_DEFAULT``       Initial guess used when the cache is empty (default ``3.2``).
-``TADAH_HPO_A0_MIN``               Physical lower bound (default ``1.0``).  A relaxed value below
-                                   this is treated as unphysical: outputs are clamped to the
-                                   script's ``--failscore`` and the cache is not updated.
-``TADAH_HPO_A0_MAX``               Physical upper bound (default ``10.0``).  Same handling as
-                                   ``A0_MIN``.  System-specific tightening (e.g. ``2.5`` /
-                                   ``4.5`` for Ta) is an effective extra filter against runaway
-                                   exploration.
-================================== =================================================================
+Multiple ``--hotvar`` flags may be repeated on the same ``PC_LAMMPS``
+line; ``hot_a0`` is just a conventional name (any identifier works).
+Per-line legacy environment variables (``TADAH_HPO_HOT_A0_DEFAULT``,
+``TADAH_HPO_A0_MIN``, ``TADAH_HPO_A0_MAX``) were removed in this
+release; the per-line ``--hotvar`` flag replaces all three.
 
 Bad-potential early-exit
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Two cheap pre/post checks let HPO skip the expensive LAMMPS stage when
-training has produced an unphysical potential:
+Two cheap checks let HPO skip the expensive LAMMPS stage when training
+has produced an unphysical potential:
 
-================================== =================================================================
-Variable                           Effect
-================================== =================================================================
-``TADAH_HPO_BAD_POT_ERMSE_MEV``    Absolute validation-ERMSE cap in meV/atom (default ``200``).
-                                   When the validation ERMSE exceeds this, LAMMPS is skipped
-                                   and the eval reports ``FAIL_SCORE``.
-``TADAH_HPO_BAD_POT_ERMSE_REL``    Multiplier vs the running-best ERMSE; eval is skipped when
-                                   ``current > REL × best`` (default ``0`` = disabled).
-================================== =================================================================
+* the per-metric ``PC_<METRIC> --skip-above`` / ``--skip-rel`` filters
+  documented at :ref:`performance_constraints` (Per-metric bad-pot
+  pre-filter), and
+* the post-LAMMPS ``--hotvar`` range filter described above (a relaxed
+  value outside ``[min, max]`` fail-scores the iteration and does not
+  update the cache).
 
-The post-LAMMPS ``a0``-range filter described above is the second
-cheap check.
-
-Profiling harness
-~~~~~~~~~~~~~~~~~
-
-Setting ``TADAH_HPO_BENCH=1`` writes ``hpo_phase_times.csv`` and
-``hpo_script_times.csv`` next to the run, with per-phase wall times
-(train / predict / lammps / sims_loss / submit) and per-script
-create / run timing.  Useful with ``perf record`` or
-``valgrind --tool=callgrind`` to verify where time is being spent.
+The legacy ``TADAH_HPO_BAD_POT_ERMSE_MEV`` / ``_REL`` environment
+variables were removed in this release; use
+``PC_ERMSE … --skip-above <cap>`` / ``--skip-rel <ratio>`` instead.
 
 .. _performance_parallelism:
 
@@ -1398,54 +1283,6 @@ Marker                                                                       Mea
 ``[HPO] NOISE_AUTO: PARAM fd_step set to V (diag=…, dim=…)``                  ``NOISE.AUTO`` fired and shows the value used.
 ``[HPO] NOISE_CALIBRATION: running N evals at the seed point``                ``NOISE.CALIBRATION`` started.
 ============================================================================ ============================================================
-
-Migration from legacy syntax
-............................
-
-The pre-block grammar (``MULTISTART <int>``, ``STAGE_GLOBAL true``,
-``LOCAL ... ENDLOCAL`` for MLSL, ``INIT_STRATEGY <method>``,
-``NOISE_AUTO``, …) has been removed.  The parser explicitly rejects each
-of these keywords with a one-line "renamed to X" message.  The most
-common renames:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 40 60
-
-   * - Old keyword
-     - New form
-   * - ``MULTISTART N``
-     - ``STRATEGY { TYPE MULTISTART N_STARTS N }``
-   * - ``MULTISTART_PARALLEL N``
-     - ``STRATEGY { TYPE MULTISTART PARALLEL N }``
-   * - ``MULTISTART_BUDGET_PER_START``
-     - ``STRATEGY { TYPE MULTISTART BUDGET_PER_START N }``
-   * - ``STAGE_GLOBAL true``
-     - ``STRATEGY { TYPE PRESTAGE EXPLORE { … } ENDEXPLORE … }``
-   * - ``LOCAL ... ENDLOCAL``
-     - ``INNER ... ENDINNER`` (NLopt MLSL/AUGLAG inner sub-optimiser)
-   * - ``RESTART_AFTER_STAGNATION N``
-     - ``RESTART { AFTER_STAGNATION N }`` (inside ``STRATEGY``)
-   * - ``RESTART_MAX N``
-     - ``RESTART { MAX N }``
-   * - ``RESTART_INIT_STRATEGY``
-     - ``RESTART { STRATEGY <method> ... }``
-   * - ``INIT_STRATEGY <method>``
-     - ``INIT { STRATEGY <method> ... } ENDINIT``
-   * - ``INIT_K``
-     - ``INIT { K_TOTAL ... }``
-   * - ``INIT_SEED``
-     - ``INIT { SEED ... }``
-   * - ``INIT_INCLUDE_CONFIG`` / ``INCLUDE_CONFIG``
-     - Removed.  List ``STRATEGY CONFIG`` inside the ``INIT`` block to
-       include the in-config point; omit it to leave it out.
-   * - ``NOISE_AUTO``
-     - ``NOISE { AUTO true|false } ENDNOISE``
-   * - ``NOISE_CALIBRATION N``
-     - ``NOISE { CALIBRATION N } ENDNOISE``
-
-The rejection messages always quote the new spelling, so a stale
-config will fail loud and informatively rather than silently.
 
 See also
 --------

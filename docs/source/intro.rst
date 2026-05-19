@@ -3,44 +3,68 @@
 Introduction
 ============
 
-Tadah! is a fast and modular machine learning **software** and C++ **library** specifically for interatomic potential development. It’s built in modern C++ to provide an easy-to-use, modular, and extensible toolkit.
+Tadah! is a modular C++17 framework for developing and deploying machine
+learning interatomic potentials (MLIPs). It ships:
 
-Tadah! offers a LAMMPS interface compatible with all descriptors and models. It can be used as command-line software for training models or using machine learning potentials for prediction, or as an advanced C++ library.
+- a command-line driver, ``tadah``, for training, prediction, dataset
+  manipulation, and hyperparameter optimisation (``tadah hpo``); and
+- a LAMMPS pair style, ``pair_style tadah``, that runs trained
+  potentials in MD without a Python or Tadah! runtime dependency.
 
-Key Features
+The two pieces correspond to two repositories — Tadah!MLIP (training
+side) and Tadah!LAMMPS (deployment side) — that share a common ``pot.tadah``
+file format.
+
+Key features
 ------------
 
-- **LAMMPS Integration**: Fully interfaced.
-- **Community-Driven**: Open to new ideas and implementations.
-- **Speed**: Fast model development cycles reduce wait times.
-- **Regular Updates**: Frequent new features and optimizations.
-- **Open-Source**: Publicly accessible and modifiable.
-- **Modular Design**: Mix and match descriptors for flexible testing.
-- **Extensible**: Easy addition of new descriptors.
-- **Desktop and MPI Versions**: Suitable for various computational needs.
+- **Pluggable descriptors and regressors** — mix descriptor families
+  (2-body, many-body, EAM-style) with linear or kernel regressors.
+- **Nested fitting (HPO)** — drive the training loop from an outer
+  optimiser that scores trial potentials against physics-informed
+  constraints (elastic constants, equilibrium volume, surface energies,
+  …). See :ref:`nested_fitting`.
+- **LAMMPS interface** — every descriptor and model exposed through
+  ``pair_style tadah``; ``LSCALE`` and ``ESHIFT`` round-trip through the
+  potential file.
+- **OpenMP build** — desktop parallelism via ``OMP_NUM_THREADS``.
+  An MPI build target exists but is **not functional in the 1.3.0-beta.1
+  release** (see :ref:`installation`).
+- **C++ API** — link against ``libtadah.mlip`` / ``libtadah.core`` for
+  embedded use; see :ref:`compiling_and_linking`.
 
-Available Tools
----------------
+CLI surface
+-----------
 
-- **Training**: Train models using configuration files to generate interatomic potentials.
-- **Prediction**: Use trained models to predict energies and optionally forces and stresses.
-- **Nested Fitting**: Optimize model architecture and hyperparameters.
-- **Database Conversion**: Process computational datasets into Tadah! database format.
-- **Database Management**: Identify duplicates, join, split, and sample datasets.
-- **Structure Readers**: Access online datasets and read local files.
-- **Structure Writers**: Save structures in CASTEP, VASP or LAMMPS format.
-- **Descriptor Calculation**: Calculate descriptors for datasets using a potential file.
-- **Analysis Toolkit**: Visualize basis functions and cutoffs.
-- **Properties Toolkit**: Calculate pairwise energy between two atoms.
+The ``tadah`` driver exposes the following top-level commands (each
+documented in :doc:`cli/cli`):
+
+- ``tadah train`` / ``tadah predict`` — fit and apply potentials.
+- ``tadah hpo`` — nested fitting (hyperparameter optimisation).
+- ``tadah data`` — convert, ``balance``, ``dedup``, ``merge``,
+  ``sample``, ``split``, ``print``, ``write`` datasets and structures
+  (CIF, VASP, CASTEP, LAMMPS; online sources MP/COD/NOMAD via
+  ``--structure``).
+- ``tadah analysis`` — plot basis functions, cutoffs, descriptors.
+- ``tadah properties pairwise`` — pairwise energy between two atoms.
+- ``tadah explain <key>`` — print the help text for any configuration
+  key.
 
 .. _obtaining_tadah:
 
 Obtaining Tadah!
 ----------------
 
-The Tadah! codebase is divided into several interacting modules. There are two user-facing modules: Tadah!MLIP, which provides a set of tools for the development of MLIPs, and Tadah!LAMMPS, which allows deployment of trained models using molecular dynamics with LAMMPS.
-
-The code repository is available at:
+Tadah!MLIP and Tadah!LAMMPS are hosted at:
 
     https://git.ecdf.ed.ac.uk/tadah
 
+For build instructions see :ref:`installation`. Selected published
+potentials produced with Tadah! by |gja_link| are listed in
+:ref:`mlips`.
+
+.. |gja_link| raw:: html
+
+   <a href="https://www.ph.ed.ac.uk/people/graeme-ackland" target="_blank" style="text-decoration:none;">
+       <span style="vertical-align:middle;">Prof. Ackland's group</span>
+   </a>

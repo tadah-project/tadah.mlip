@@ -81,6 +81,22 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
+If your local checkouts do **not** follow the `$TADAH_PATH` sibling
+convention, point CMake at each module explicitly with the
+`FETCHCONTENT_SOURCE_DIR_TADAH.<MODULE>` overrides — `FetchContent`
+then short-circuits the GitLab clone and uses your tree:
+
+```bash
+cmake -S . -B build \
+    -DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=/abs/path/CORE \
+    -DFETCHCONTENT_SOURCE_DIR_TADAH.MODELS=/abs/path/MODELS \
+    -DFETCHCONTENT_SOURCE_DIR_TADAH.MLIP=/abs/path/MLIP \
+    -DFETCHCONTENT_SOURCE_DIR_TADAH.HPO=/abs/path/HPO
+```
+
+Local edits in any of those repos are picked up on the next
+`cmake --build`.
+
 LAMMPS integration: see `Tadah.LAMMPS/README.md` and the docs page on
 LAMMPS.
 

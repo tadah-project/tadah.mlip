@@ -20,10 +20,10 @@ University of Edinburgh.
 ## Quick links
 
 - [Documentation](https://tadah.readthedocs.io/)
-- [Examples](HPO/examples/)  ← deferred to Session C for content
-- [Changelog](CHANGELOG.md)  ← deferred to Session A
-- [Contributing](CONTRIBUTING.md)  ← deferred to Session E
-- [Citation](CITATION.cff)  ← deferred to Session E
+- [HPO examples][HPO/examples/]
+- [Changelog](CHANGELOG.md)
+- [Contributing](CONTRIBUTING.md)
+- [Citation](CITATION.cff)
 
 ## Quickstart
 
@@ -87,40 +87,12 @@ evolve as we collect more workloads.
 A short reproducer (config files plus the failing command line) is
 worth a thousand words.
 
-## Developer build (multi-repo workflow)
+## Contributing
 
-The user-facing `tadah.mlip` repository pulls every dependency
-(``CORE``, ``MODELS``, ``MLIP``, ``HPO``, ``MD``, ``Tadah.LAMMPS``,
-``cmake-tools``) via `FetchContent`. For day-to-day development, you
-can short-circuit the fetch and point CMake at local checkouts:
-
-1. Lay the repos out side by side under one root:
-
-   ```text
-   $TADAH_PATH/
-       Tadah.MLIP/
-       CORE/
-       MODELS/
-       MLIP/
-       HPO/
-       MD/
-       Tadah.LAMMPS/
-   ```
-
-2. Either set `-DCMAKE_BUILD_TYPE=Develop` (which auto-resolves the
-   sibling layout via `$TADAH_PATH`), or pass each module's source
-   directory explicitly:
-
-   ```bash
-   cmake -S . -B build \
-       -DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=$TADAH_PATH/CORE \
-       -DFETCHCONTENT_SOURCE_DIR_TADAH.MODELS=$TADAH_PATH/MODELS \
-       -DFETCHCONTENT_SOURCE_DIR_TADAH.MLIP=$TADAH_PATH/MLIP \
-       -DFETCHCONTENT_SOURCE_DIR_TADAH.HPO=$TADAH_PATH/HPO
-   ```
-
-   Local edits in any of those repos are picked up on the next
-   `cmake --build`.
+Bug reports, feature requests and merge requests are welcome. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the developer build (multi-repo
+sibling layout, `TADAH_PATH`, FetchContent overrides), test workflow,
+and merge-request checklist.
 
 ## License
 

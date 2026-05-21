@@ -73,12 +73,6 @@ with a deprecation window. The C++ API (the `libtadah.*` libraries and
 their headers) is **not yet stable**: function signatures and class
 layouts may change between minor versions until 2.0.
 
-The `tadah hpo` engine is feature-complete and exercised by the
-fifteen reference examples in [HPO/examples/]; behavioural defaults
-(``BASINS`` ladders, ``LN_BOBYQA`` refinement, basin-pool sizes) are
-the result of empirical tuning on real fits and may continue to
-evolve as we collect more workloads.
-
 ## Reporting issues & getting help
 
 - File an issue: <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>
@@ -100,4 +94,3 @@ GPL-3.0; see [LICENSE](LICENSE).
 
 [lammps]: https://git.ecdf.ed.ac.uk/tadah/tadah.lammps
 [group]:  https://www.ph.ed.ac.uk/people/graeme-ackland
-[HPO/examples/]: https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples

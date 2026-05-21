@@ -1,6 +1,6 @@
 [![pipeline](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/badges/develop/pipeline.svg)](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/commits/develop)
 [![coverage](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/badges/develop/coverage.svg)](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/commits/develop)
-[![docs](https://readthedocs.org/projects/tadah/badge/?version=latest)](https://tadah.readthedocs.io/en/latest/)
+[![docs](https://readthedocs.org/projects/tadah/badge/?version=develop)](https://tadah.readthedocs.io/develop/)
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![version](https://img.shields.io/badge/version-1.3.0--beta.1-blue.svg)](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/tags)
 
@@ -19,8 +19,8 @@ University of Edinburgh.
 
 ## Quick links
 
-- [Documentation](https://tadah.readthedocs.io/)
-- [HPO examples][HPO/examples/]
+- [Documentation](https://tadah.readthedocs.io/develop/)
+- [HPO examples](https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples)
 - [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 - [Citation](CITATION.cff)
@@ -53,7 +53,7 @@ tadah predict -p pot.tadah -d db.predict -A
 Optional features (OpenMP, MPI, the `tadah hpo` Nested Fitting
 Procedure) and the full configuration matrix (Develop vs. Release
 builds, troubleshooting) are covered in the
-[installation guide](https://tadah.readthedocs.io/en/latest/installation.html).
+[installation guide](https://tadah.readthedocs.io/develop/installation.html).
 
 ## Status & API stability
 

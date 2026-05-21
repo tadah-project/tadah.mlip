@@ -50,16 +50,9 @@ tadah train -c config.train -v 2
 tadah predict -p pot.tadah -d db.predict -A
 ```
 
-Optional features can be enabled with `-D` flags at configure time:
-
-| Flag | Effect |
-|---|---|
-| `-DTADAH_ENABLE_OPENMP=ON` | OpenMP parallelism for descriptor / regression hot paths. |
-| `-DTADAH_BUILD_MPI=ON`     | Build the MPI variant `tadah_mpi`. |
-| `-DTADAH_ENABLE_NFP=ON`    | Enable the Nested Fitting Procedure (`tadah hpo`). Requires LAMMPS built with [Tadah!LAMMPS][lammps]; see [the installation guide](https://tadah.readthedocs.io/en/latest/installation.html#installation-nfp). |
-
-For the full configuration matrix (Develop vs. Release builds, MPI
-considerations, troubleshooting), see the
+Optional features (OpenMP, MPI, the `tadah hpo` Nested Fitting
+Procedure) and the full configuration matrix (Develop vs. Release
+builds, troubleshooting) are covered in the
 [installation guide](https://tadah.readthedocs.io/en/latest/installation.html).
 
 ## Status & API stability

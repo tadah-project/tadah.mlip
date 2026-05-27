@@ -2,7 +2,7 @@ ALPHA     1
 ATOMS     Kr
 BETA     1
 BIAS     false
-CGRID2B     2.401738514     2.398876568     2.508824545     0
+CGRID2B     1.308673621     4.619281275     1.373961445     1.38488363     4.196574165
 DIMER     false     0     false
 EWEIGHT     1
 FORCE     false
@@ -16,13 +16,14 @@ MODEL     M_BLR     BF_Linear
 MPIWPCKG     50
 NBLOCK     64
 NORM     false
+OALGO     1     -1
 OUTPREC     10
-RCTYPE2B     Cut_Cos     Cut_Cos
-RCUT2B     8     12
-SGRID2B     4.060773612     0.5261287589     1.514197592     0.0655362491
+RCTYPE2B     Cut_Poly     Cut_Cos
+RCUT2B     6.674971509     11.22580031
+SGRID2B     2.883359721     0.094982335     0.2534286099     1.393700019     2.171521196
 STRESS     false
 SWEIGHT     1
-TYPE2B     D2_mJoin     D2_ZBL     -1     -1     -1     -1     Kr     Kr     D2_BP     4     4     Kr     Kr
+TYPE2B     D2_mJoin     D2_ZBL     -1     -1     -1     -1     Kr     Kr     D2_BP     5     5     Kr     Kr
 VERBOSE     0
 WATOMS     36
-WEIGHTS     0.6748524931     -0.002255392033     -0.006041142354     -0.005761406296     -0.001369936303
+WEIGHTS     0.4012804689     0.1682209104     -0.0001248731371     -0.007209822841     0.1027320096     6.834783402e-05

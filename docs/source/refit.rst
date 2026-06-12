@@ -209,13 +209,16 @@ silent substitution).
 .. important::
 
    For the knot families (``Knot3`` / ``Knot5`` / ``KnotMix``) the
-   ``SGRID*`` width entries in the resulting potential are a **pure
-   gauge**: the transformation
+   width parameter :math:`\eta` is a **pure gauge**: the transformation
    :math:`(c, \eta) \to (c\,s^{k},\, \eta/s)` leaves the function
-   invariant, and the fitter pins the widths at 1.0.  Do **not** enable
-   ``OPTIM`` blocks on ``SGRID2B`` / ``SGRIDFMB`` for these families —
-   that searches a degenerate direction.  The generated HPO target file
-   carries the same warning inline.
+   invariant.  Knot potentials therefore carry **no width keys at all**
+   (no ``SGRID2B`` / ``SGRIDMB`` / ``SEMBFUNC`` entries — supplying one
+   is an error); the knot positions ``CGRID2B`` / ``CGRIDMB`` /
+   ``CEMBFUNC`` define the basis alone.  The per-atom degree lists
+   ``KDEG2B`` / ``KDEGMB`` / ``KDEGEMB`` (3 = cubic atom, 5 = quintic;
+   written by ``Knot3``/``KnotMix``) are *data*, not parameters: the
+   mJoin meta-descriptors split them, but they are not optimisable —
+   values outside ``{3, 5}`` are rejected when the potential is read.
 
 .. _refit_config_keys:
 
@@ -550,17 +553,21 @@ What the file contains:
   fitted value.  By default only the **linear coefficients**
   (``OPTIM FIXWEIGHT``; the pot carries the ``FIXINDEX`` /
   ``FIXWEIGHT`` seed) are active.  Every descriptor-shape block
-  (``RCUT2B``, ``CGRID*``, ``SGRID*``, ``AGRIDMB``, …) is emitted
-  *commented*, with its parameter count: uncomment exactly the subset
-  you want to tune.  Enabling everything yields a ~1000-dimensional
-  derivative-free search that no practical evaluation budget can move.
+  (``RCUT2B``, ``CGRID*``, ``SGRID*``, ``AMPGRIDMB``, ``CEMBFUNC`` /
+  ``SEMBFUNC``, …) is emitted *commented*, with its parameter count:
+  uncomment exactly the subset you want to tune.  Enabling everything
+  yields a ~1000-dimensional derivative-free search that no practical
+  evaluation budget can move.  The density amplitudes ``AMPGRIDMB`` are
+  a fully legitimate target: they are excluded from the *linear* weight
+  solve by the EAM bilinearity, but ``OPTIM AMPGRIDMB`` searches them
+  like any other shape parameter.
 
-.. warning::
+.. note::
 
-   For the knot families the file repeats the gauge warning from
-   :ref:`refit_basis_families`: ``SGRID2B`` / ``SGRIDFMB`` widths are a
-   pure gauge (pinned 1.0) — leave their ``OPTIM`` blocks commented and
-   tune the ``CGRID*`` knot positions and ``FIXWEIGHT`` instead.
+   For the knot families no width ``OPTIM`` blocks exist at all (the
+   potential carries no width keys — :math:`\eta` is a pure gauge);
+   tune the ``CGRID*`` knot positions, ``AMPGRIDMB`` and
+   ``FIXWEIGHT``.
 
 Iteration-1 seed equality
 .........................

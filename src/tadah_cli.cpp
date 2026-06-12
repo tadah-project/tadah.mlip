@@ -553,16 +553,19 @@ void TadahCLI::processBlueprintTasks(
       }
     }
 
-    // Process top-level options
+    // Process top-level options. Keys with an empty cli_long_flag are
+    // config-file-only (no CLI option was created for them) — skip.
     for (auto& bpKey : bpTask.blueprintKeys) {
+      if (bpKey.cli_long_flag.empty()) continue;
       CLI::Option* currentOpt = cmd->get_option(bpKey.cli_long_flag);
       topLevelHandler(cmd, currentOpt, bpKey);
     }
 
-    // Process group-level options
+    // Process group-level options (same skip for config-file-only keys)
     for (auto& group : bpTask.groups) {
       CLI::App* grp = cmd->get_option_group(group.groupName);
       for (auto& bpKey : group.blueprintKeys) {
+        if (bpKey.cli_long_flag.empty()) continue;
         CLI::Option* groupOpt = grp->get_option(bpKey.cli_long_flag);
         groupHandler(cmd, grp, groupOpt, bpKey);
       }

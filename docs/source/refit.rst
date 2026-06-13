@@ -92,7 +92,7 @@ Fitting modes
 ``compact`` (default)
    Basis-function centres and widths are *optimised*, not placed on a
    fixed grid.  Each function is grown by a per-function **ladder**:
-   a global seed at the smallest basis size, then one basis function
+   a global search at the smallest basis size, then one basis function
    inserted per rung at an energy-aware location, with a
    derivative-free explore stage and a high-precision analytic-gradient
    polish (Ceres Levenberg–Marquardt).  A final **joint refinement**
@@ -260,7 +260,7 @@ Input and output
    * - ``REFIT_LOG`` (file)
      - ``refit_opt.log``
      - Live optimisation-log file: one timestamped, immediately-flushed
-       line per ladder event (seed, rung, coalescence merge, final
+       line per ladder event (global, rung, coalescence merge, final
        optimisation), plus the joint-refinement summary and crystal
        self-test — inspectable *during* the fit.
 
@@ -399,52 +399,73 @@ These keys apply only when ``REFIT_MODE compact`` is active.
      - Fraction of the ``REFIT_TOL_*`` budget each function must reach
        alone during its ladder (the joint refinement then handles
        cross-function coupling).
-   * - ``REFIT_COMPACT_BUDGET`` (uint)
-     - ``20000``
-     - SBPLX evaluation budget per ladder candidate.
    * - ``REFIT_COMPACT_SEED`` (uint)
      - ``12345``
      - RNG seed for the jittered ladder restarts (deterministic
        reruns).
 
-Compact-mode algorithm selection
-................................
+.. _refit_optimizer_block:
 
-Each stage of the compact pipeline can be re-pointed at a different
-optimiser.  The defaults are the measured-best combination; change them
-only when diagnosing a problematic fit.
+Compact-mode optimiser block
+............................
 
-.. list-table::
-   :header-rows: 1
-   :widths: 30 16 54
+The compact fit runs in four stages — **global** (global structure
+search at the smallest basis), **explore** (per-rung derivative-free
+search of the basis centres/widths), **polish** (high-precision local
+refinement) and **joint** (a final all-function refinement against the
+curve *and* the multi-lattice E–V residuals).  Each stage's optimiser
+and its stopping criteria are set by an optional inline ``OPTIMIZER``
+block in the config file.  **The block is optional** — omit it and the
+measured-best defaults are used; add only the subblocks/attributes you
+want to change.
 
-   * - Key
-     - Default
-     - Choices
-   * - ``REFIT_COMPACT_SEED_ALGO``
-     - ``MLSL``
-     - Global seed at the smallest basis count: ``MLSL`` (NLopt
-       MLSL_LDS multistart + SBPLX) | ``DIRECT`` (NLopt DIRECT-L) |
-       ``CRS2`` (NLopt controlled random search) | ``DLIB_GLOBAL``
-       (dlib MaxLIPO+TR model-based search) | ``UNIFORM`` (no global
-       step).
-   * - ``REFIT_COMPACT_EXPLORE_ALGO``
-     - ``SBPLX``
-     - Per-rung explore stage over centres/widths (inner coefficients
-       closed-form): ``SBPLX`` | ``NELDERMEAD`` | ``BOBYQA`` |
-       ``PRAXIS`` (NLopt derivative-free) | ``NLOPT_LBFGS`` |
-       ``DLIB_LBFGS`` (exact VARPRO reduced gradient) | ``NONE``.
-   * - ``REFIT_COMPACT_POLISH_ALGO``
-     - ``CERES_LM``
-     - High-precision polish stage: ``CERES_LM`` (joint
-       :math:`(c, \mu, \eta)` analytic-Jacobian Levenberg–Marquardt) |
-       ``CERES_DOGLEG`` | ``NLOPT_LBFGS`` | ``DLIB_LBFGS`` (VARPRO
-       reduced gradient) | ``NONE``.
-   * - ``REFIT_COMPACT_JOINT_ALGO``
-     - ``CERES_DOGLEG``
-     - Joint all-function refinement against curve + multi-lattice
-       E–V residuals: ``CERES_DOGLEG`` (measured most reliable across
-       the reference EAMs) | ``CERES_LM`` | ``NONE`` (skip).
+.. code-block:: none
+
+   OPTIMIZER
+     GLOBAL                     # global structure search at the smallest basis
+       ALGO     MLSL            # MLSL | DIRECT | CRS2 | DLIB_GLOBAL | UNIFORM
+       MAXEVAL  60000           # global evaluation budget
+     ENDGLOBAL
+     EXPLORE                    # per-rung centres/widths search
+       ALGO     SBPLX           # SBPLX | NELDERMEAD | BOBYQA | PRAXIS
+                                #   | NLOPT_LBFGS | DLIB_LBFGS | NONE
+       MAXEVAL  20000           # evaluation budget per candidate
+       FTOL_REL 1e-13           # NLopt relative function tolerance
+       XTOL_REL 1e-11           # NLopt relative parameter tolerance
+     ENDEXPLORE
+     POLISH                     # high-precision local refinement
+       ALGO     CERES_LM        # CERES_LM | CERES_DOGLEG | NLOPT_LBFGS
+                                #   | DLIB_LBFGS | NONE
+       MAXITER  1000            # Ceres max iterations
+       FTOL     1e-15           # Ceres function_tolerance
+       GTOL     1e-14           # Ceres gradient_tolerance
+     ENDPOLISH
+     JOINT                      # final all-function refinement
+       ALGO     CERES_DOGLEG    # CERES_DOGLEG | CERES_LM | NONE
+       MAXITER  2000
+       FTOL     1e-15
+     ENDJOINT
+   ENDOPTIMIZER
+
+The values above are the defaults.  Notes:
+
+* Every subblock and every attribute is optional.  ``GLOBAL`` and
+  ``EXPLORE`` take NLopt-style ``MAXEVAL`` / ``FTOL_REL`` / ``XTOL_REL``;
+  the Ceres-based ``POLISH`` and ``JOINT`` take ``MAXITER`` / ``FTOL``
+  (function tolerance) / ``GTOL`` (``POLISH`` only).
+* The ``GLOBAL`` stage's inner local refinement (when ``ALGO MLSL``)
+  reuses the ``EXPLORE`` tolerances.
+* ``ALGO NONE`` skips a stage (a closed-form linear solve replaces
+  explore/polish; ``JOINT NONE`` skips the joint Ceres step).
+* The RNG seed (``REFIT_COMPACT_SEED``) and the ladder schedule keys in
+  the table above stay flat — they govern the *ladder*, not a single
+  optimiser.
+
+How each stage actually terminates (converged on a tolerance, or hit its
+budget) is reported in the optimisation log — see
+:ref:`refit_reading_log`.  If a stage always shows ``MAXEVAL_REACHED`` /
+``NO_CONVERGENCE`` you are budget-bound (raise ``MAXEVAL`` / ``MAXITER``
+or loosen the tolerance); if it converges immediately you can tighten it.
 
 .. _refit_outputs:
 
@@ -503,11 +524,90 @@ Live optimisation log (``REFIT_LOG``)
 
 The log (default ``refit_opt.log``) is flushed line-by-line, so you can
 ``tail -f`` it while a long compact fit runs.  It records the per-rung
-ladder events (seed, insertions, coalescence merges, final
+ladder events (global, insertions, coalescence merges, final
 optimisation), the joint-refinement summary
 (``max |dE|/tol`` and final parameter counts), the crystal self-test
 results, and the list of output files.  In dense mode it records the
 escalation loop and per-attempt goodness-of-fit instead.
+
+.. _refit_reading_log:
+
+Reading a compact-ladder line
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: none
+
+   [..] [phi] global(MLSL): n=2 metric=1.1e+04 ...  term=MLSL:FTOL_REACHED polish=CONVERGENCE(21it)
+   [..] [phi] rung 3 (opt): n=5 metric=172.8 curve_rmse=0.0009 d2_rmse=0.39  KEPT  (0.76s)  explore={FTOL_REACHED:3} polish={CONVERGENCE(28it):3}
+   [..] joint: max |dE|/tol = 0.21  params n2b/nrho/nF = 5/5/4  term=CONVERGENCE(143it, cost 2.1e-09)
+
+* ``[phi]`` / ``[rho]`` / ``[F]`` — which of the three functions this
+  ladder is fitting.  The functions are fitted **one at a time**, each
+  with the other two held at their original tabulated shape; the final
+  joint refinement couples them.
+* ``rung 3`` — the ladder step.  Each rung **inserts one new basis
+  function** at an energy-aware location (the best of
+  ``REFIT_COMPACT_INSERT_TOPK`` candidate residual peaks), then
+  re-optimises **all** basis-function positions/widths of the current
+  expansion — not just the new one.  The linear coefficients are
+  re-solved in closed form (variable projection) at every evaluation.
+* ``(opt)`` vs ``(grow)`` — ``(opt)`` rungs run the full explore +
+  polish.  ``(grow)`` rungs (only when ``REFIT_COMPACT_OPT_EVERY`` > 1)
+  just insert + linear-solve, ~300× cheaper; a single full optimisation
+  then runs once at the end.  With the default ``OPT_EVERY 1`` every
+  rung is ``(opt)``.
+* ``n=5`` — basis functions in the current expansion.  The ladder stops
+  when ``n`` reaches ``REFIT_COMPACT_NMAX`` (default 40).
+* ``metric`` — the **energy** selection metric: the worst per-atom
+  energy error across a multi-lattice E–V scan, divided by
+  ``REFIT_COMPACT_SHARE`` × the ``REFIT_TOL_*`` tolerance.  ``metric ≤
+  1`` means the function alone is within its share of the budget; the
+  ladder stops on success when it reaches this.  This is the quantity
+  that decides whether a rung is **kept** and when the ladder stops —
+  *not* the curve RMSE (curve-optimal is not energy-optimal).
+* ``curve_rmse`` — RMSE of the fitted curve against the tabulated EAM
+  samples.  ``d2_rmse`` — RMSE of the fit's second derivative against a
+  finite-difference second derivative of the table (a curvature-artefact
+  detector).  Both are **diagnostics**; neither drives rung selection.
+* ``KEPT`` vs ``stall=k/S`` — a rung is ``KEPT`` when its ``metric``
+  strictly improves on the best so far (the stall counter resets).
+  Otherwise ``stall=k/S`` shows ``k`` consecutive non-improving rungs
+  against the limit ``S`` = ``REFIT_COMPACT_STALL`` (default 12 for the
+  knot families, 6 for blips); the ladder stops when ``k`` reaches
+  ``S``.  ``(0.76s)`` is the rung's wall time.
+* ``term`` / ``explore={...}`` / ``polish={...}`` — **which convergence
+  criterion each optimiser stage hit**, the key signal for tuning the
+  :ref:`OPTIMIZER block <refit_optimizer_block>`.  The ``global`` and
+  ``joint`` lines carry a single ``term=`` (e.g. ``FTOL_REACHED`` or
+  ``MAXEVAL_REACHED`` for NLopt; ``CONVERGENCE`` / ``NO_CONVERGENCE`` +
+  iteration count for Ceres).  Each ``(opt)`` rung runs explore + polish
+  once per candidate, so those are shown as a tally over the rung's
+  candidates, e.g. ``explore={FTOL_REACHED:3}`` (all three converged on
+  the tolerance) or ``polish={NO_CONVERGENCE(501it):3}`` (all three hit
+  the iteration cap).  Read it directly: a stage that repeatedly shows
+  ``MAXEVAL_REACHED`` / ``NO_CONVERGENCE`` is **budget-bound** — raise
+  that stage's ``MAXEVAL`` / ``MAXITER`` (or loosen its tolerance) in the
+  OPTIMIZER block; a stage that always converges quickly can be
+  tightened.
+
+What gets optimised, and by which optimiser, is staged: a **global**
+structure search at the smallest basis size, a per-rung derivative-free
+**explore** of the basis centres/widths, a high-precision **polish**,
+and a final all-function **joint refinement**.  Each stage's optimiser
+and stopping criteria come from the
+:ref:`OPTIMIZER block <refit_optimizer_block>` (or its defaults).  The
+within-rung objective the explore/polish minimise is the curve fit (with
+an anti-coalescence guard for the knot families); the energy ``metric``
+above is computed separately and used only to select and stop.
+
+.. note::
+
+   **Two different OPTIMIZER blocks.**  The block in the *refit config*
+   (:ref:`above <refit_optimizer_block>`) tunes the four stages of this
+   ladder.  The separate ``OPTIMIZER`` block written into the generated
+   ``HPOTARGET`` file tunes the later ``tadah hpo`` search over the
+   fitted potential's parameters — a different optimiser entirely.  Both
+   share the same ``ALGO`` / ``MAXEVAL`` / ``FTOL_REL`` grammar style.
 
 Ladder trace (``refit_ladder_trace.dat``)
 .........................................
@@ -538,9 +638,11 @@ complete, runnable starter configuration for :ref:`nested fitting
    tadah hpo -c <pot+DBFILE> --hpotarget refit.hpotarget --validation <val>
 
 where ``<pot+DBFILE>`` is a copy of the refit ``pot.tadah`` with a
-``DBFILE <dataset>`` line appended (or a config that includes both).
-Before running, **edit the loss section**: point the ``PC_*`` terms at
-your reference data and adjust targets/weights.
+``DBFILE <dataset>`` line appended (or a config that includes both),
+and ``<val>`` is a file with ``DBFILE`` line(s) naming the validation
+data.  Before running, **review the loss section**: ``PC_ERMSE``
+measures the energy RMSE on the validation data; ``PC_LAMMPS`` lines
+can score LAMMPS-computed observables instead.
 
 What the file contains:
 
@@ -555,9 +657,13 @@ What the file contains:
   ``FIXWEIGHT`` seed) are active.  Every descriptor-shape block
   (``RCUT2B``, ``CGRID*``, ``SGRID*``, ``AMPGRIDMB``, ``CEMBFUNC`` /
   ``SEMBFUNC``, …) is emitted *commented*, with its parameter count:
-  uncomment exactly the subset you want to tune.  Enabling everything
-  yields a ~1000-dimensional derivative-free search that no practical
-  evaluation budget can move.  The density amplitudes ``AMPGRIDMB`` are
+  uncomment exactly the subset you want to tune.  Every uncommented
+  line adds one dimension to a derivative-free search — BOBYQA alone
+  needs ``2n+1`` evaluations to build its initial model, so raise
+  ``MAXEVAL`` accordingly (enabling *everything* yields roughly
+  75–150 dimensions for the compact default, material-dependent, and
+  many hundreds for dense mode — beyond any practical evaluation
+  budget).  The density amplitudes ``AMPGRIDMB`` are
   a fully legitimate target: they are excluded from the *linear* weight
   solve by the EAM bilinearity, but ``OPTIM AMPGRIDMB`` searches them
   like any other shape parameter.

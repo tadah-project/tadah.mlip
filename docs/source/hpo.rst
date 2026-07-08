@@ -88,15 +88,25 @@ sensible choices of performance constraints and search space limits.**
 Quick Start
 -----------
 
-Nested fitting needs three input files:
+Nested fitting needs up to three input files:
 
 #. A :term:`training configuration` — the same configuration file you
    would use for ``tadah train``.  See :ref:`ConfigSection` for the
    full key list.
 #. A *validation* file — a list of validation datasets passed via the
-   ``DBFILE`` keyword.
+   ``DBFILE`` keyword.  *Optional*: only required when the loss uses
+   validation-set metrics (``PC_ERMSE``, ``PC_FRMSE``, …); a run whose
+   loss comes entirely from ``PC_OBSERVABLE`` / ``PC_LAMMPS`` lines can
+   omit ``--validation``.
 #. An :term:`HPO configuration` — the file documented on this page.
    Conventionally named ``config.hpo``.
+
+The training configuration's ``DBFILE`` is itself *optional* when every
+model weight is pinned via ``FIXINDEX``/``FIXWEIGHT`` (see
+:ref:`hpo_fixweight`) — with no free weights there is nothing for the
+least-squares stage to fit.  In that mode the element set must be
+declared explicitly with the ``ATOM`` key, at least one loss source must
+remain, and the run is serial-only (MPI builds reject it).
 
 The driving command line is
 
@@ -226,6 +236,89 @@ optimiser may vary, and over what bounds:
   strictly greater than ``low``.
 
 ``OPTIM`` lines may be repeated for the same key with different indices.
+
+Two weight-related special cases:
+
+* ``OPTIM FIXWEIGHT`` — the ``(indices)`` name **model weights** (the
+  weights ``FIXINDEX`` pins), *not* positions in the ``FIXWEIGHT`` value
+  list.  ``OPTIM FIXWEIGHT (5) -1 1`` searches model weight 5 and it is
+  an error if 5 is not listed in ``FIXINDEX``.  See :ref:`hpo_fixweight`.
+* ``OPTIM WEIGHTS`` — **rejected**.  The linear ``WEIGHTS`` are re-fitted
+  by least squares on every evaluation, so optimising them directly
+  would be a silent no-op; pin them with ``FIXINDEX``/``FIXWEIGHT``
+  instead.
+
+.. _hpo_fixweight:
+
+Pinning and searching linear coefficients
+.........................................
+
+By default the model's linear ``WEIGHTS`` are re-fitted by least squares
+inside **every** objective evaluation, while ``OPTIM`` searches the
+nonlinear hyperparameters.  ``FIXINDEX``/``FIXWEIGHT`` in the *training
+configuration* carve weights out of that LS fit: pinned columns are
+removed from the design matrix, their contribution is subtracted from
+the target, and the remaining weights are fitted against the residual.
+The i-th ``FIXWEIGHT`` value pins the weight named by the i-th
+``FIXINDEX`` entry; a lone key is an error, and ``NORM true`` is
+incompatible with pinning (the values would live in normalized feature
+space).
+
+**Mixed mode** — LS-fit most weights, hold one, search another.  With a
+5-weight model: weights 1–3 LS-fitted, weight 4 held at 0.75, weight 5
+searched by the optimiser:
+
+.. code-block:: none
+
+   # training configuration (config.train)
+   DBFILE    train.tadahdb
+   FIXINDEX  4 5
+   FIXWEIGHT 0.75 1.20        # 0.75 pins w4; 1.20 seeds w5
+
+   # config.hpo
+   OPTIM FIXWEIGHT (5) -2.0 2.0    # (5) = model weight 5
+
+**All-fixed polish** — the ``tadah refit`` workload.  ``FIXINDEX`` covers
+every weight, so the LS solve is vacuous and skipped (including the
+per-evaluation design-matrix build); the optimiser searches the
+coefficients directly:
+
+.. code-block:: none
+
+   FIXINDEX  1-28
+   FIXWEIGHT <28 fitted values>
+   # config.hpo: one OPTIM FIXWEIGHT (i) line per coefficient
+   # (this is exactly what `tadah refit` emits as refit.hpotarget)
+
+**No training data** — with every weight pinned, the training ``DBFILE``
+may be omitted entirely.  Declare the element set with ``ATOM`` and keep
+at least one loss source (``--validation`` metrics, ``PC_OBSERVABLE``,
+or ``PC_LAMMPS``):
+
+.. code-block:: none
+
+   # config.train: a fitted potential, no DBFILE line
+   ATOM      Ta
+   FIXINDEX  1-28
+   FIXWEIGHT <28 values>
+
+   # config.hpo
+   PC_LAMMPS --script Ecoh.in --hotvar hot_a0 2.5 4.5 3.302 --varloss Ecoh 8.10 800
+   OPTIM FIXWEIGHT (1-28) ...
+
+   # command line: --validation may be omitted
+   tadah hpo -c config.train --hpotarget config.hpo
+
+This mode is serial-only (MPI builds reject it — there is no design
+matrix to distribute).  Misconfigurations (lone keys, size mismatches,
+out-of-range indices, missing loss sources, incomplete pin coverage
+without a ``DBFILE``) are rejected at startup with actionable messages.
+
+With ``FIXINDEX`` present, analytical/HYBRID gradient strategies fall
+back to finite differences for all parameters: the analytical chain
+assumes the unconstrained LS solution map, which pinning invalidates.
+Derivative-free algorithms (e.g. ``NLOPT LN_BOBYQA``) are a natural
+choice for coefficient searches.
 
 .. _performance_constraints:
 

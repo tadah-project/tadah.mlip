@@ -248,6 +248,40 @@ Two weight-related special cases:
   would be a silent no-op; pin them with ``FIXINDEX``/``FIXWEIGHT``
   instead.
 
+.. _hpo_knot_rcut:
+
+Cutoffs of knot-family refit potentials
+.......................................
+
+For potentials written by ``tadah refit`` with the knot basis families
+(``D2_Knot5`` two-body, ``DM_REAM`` knot density), the effective cutoff
+**is the largest knot position**: each knot function :math:`(t-r)_+^k`
+vanishes smoothly at its own knot, so ``RCUT2B``/``RCUTMB`` are *derived*
+quantities (see :ref:`refit_rcut_contract`).  ``tadah hpo`` enforces this
+automatically:
+
+* at startup, a stated ``RCUT`` that differs from the largest knot is
+  corrected (with a warning) before anything is built;
+* on **every evaluation**, the ``RCUT`` keys are re-derived from the
+  current (possibly ``OPTIM``'d) knot positions, so searching
+  ``OPTIM CGRID2B`` / ``CGRIDMB`` moves the effective cutoff with the
+  knots;
+* the neighbour list is sized **once** for the largest cutoff the search
+  can reach — including the upper bounds of any ``OPTIM`` block on the
+  knot grids — so no evaluation can silently outrun it.
+
+Consequently ``OPTIM RCUT2B`` / ``OPTIM RCUTMB`` on a knot-family
+potential is a *wasted search dimension* (the value is overridden each
+evaluation; a startup warning says so).  To search the effective cutoff,
+put an ``OPTIM`` block on the knot positions instead — e.g. uncomment the
+``OPTIM CGRID2B`` line of the outermost knot in the refit-generated
+hpotarget and widen its upper bound.
+
+Blip-family potentials are unaffected: their hard truncation at the
+stated ``RCUT`` is part of the fitted model, so the key remains
+authoritative (warnings fire if ``OPTIM`` bounds let a blip's support
+cross it).
+
 .. _hpo_fixweight:
 
 Pinning and searching linear coefficients

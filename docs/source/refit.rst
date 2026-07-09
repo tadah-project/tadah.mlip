@@ -375,3 +375,121 @@ when the refit will be tuned further.
      - Pin :math:`F(0)` to the table value.
 
 Dense ``REFIT_BASIS`` families are ``Blip`` | ``Blip5`` | ``Gaussian``.
+
+.. _refit_edit:
+
+Editing a refitted potential (``--edit``)
+-----------------------------------------
+
+``tadah refit --edit`` adds or removes ONE basis function of one curve of an
+existing refit potential — no EAM input, no new fit::
+
+   # insert a pair-function basis function at r = 2.75 A
+   tadah refit --edit pot.tadah --func phi --add 2.75
+
+   # remove the embedding basis function nearest rho = 0.9
+   tadah refit --edit pot.tadah --func F --remove 0.9
+
+``--func`` selects the curve: ``phi`` (pair, ``CGRID2B``), ``rho`` (density,
+``CGRIDMB`` / ``AMPGRIDMB``) or ``F`` (embedding, ``CEMBFUNC``). Exactly one
+of ``--add <centre>`` / ``--remove <centre>`` is required. Both knot
+(``Knot5`` / ``Knot3``) and blip (``Blip`` / ``Blip5``) family potentials are
+supported; ``D2_mJoin`` and Gaussian potentials are not.
+
+**Adding** inserts the function with coefficient 0, so the edited potential
+predicts **bit-identically** to the input — value, every derivative, and the
+extrapolation region. The new coefficient only adds capacity: it appears as
+an extra ``OPTIM FIXWEIGHT`` line in the regenerated hpotarget, ready for a
+``tadah hpo`` search. Knot families take an optional ``--deg 3|5`` (default
+quintic; 3 materialises the per-knot ``KDEG*`` degree arrays) and reject
+``--eta`` (the knot width is a pure gauge). Blip families take an optional
+``--eta`` (default: the mean width of the two nearest neighbours); a blip
+whose support lies entirely beyond ``RCUT`` is rejected.
+
+**Removing** deletes the basis function whose centre is nearest the given
+value (the choice is reported). Unless its coefficient is exactly 0, the two
+remaining nearest-in-centre coefficients are least-squares adjusted against
+the removed contribution's value, first and second derivative over the region
+it controlled (per-derivative-order normalisation keeps the orders balanced).
+Removal is inherently lossy — the log reports the residual before and after
+compensation; expect observables to change and re-validate the potential.
+Removing the outermost radial knot also shrinks the effective cutoff and the
+uncovered tail cannot be compensated (warned).
+
+Outputs default to ``pot_edited.tadah`` and ``refit_edited.hpotarget`` — the
+input file is never overwritten silently (an explicit ``-o`` /
+``--hpofileout`` wins; writing onto the input is refused). All bookkeeping
+(``TYPE2B`` / ``TYPEMB`` count tokens, ``WEIGHTS``, ``FIXINDEX``/
+``FIXWEIGHT``, ``KDEG*``, ``RCUT2B``/``RCUTMB``) is regenerated consistently.
+
+.. _refit_retarget:
+
+Rewriting HPO search bounds (``--retarget``)
+--------------------------------------------
+
+The hpotarget written by ``refit`` uses ±\ ``OPTIM_PCT`` (default 5 %)
+bounds. ``--retarget`` rewrites them without re-running anything::
+
+   # widen every bound to +-10%, coefficients to +-2%
+   tadah refit --retarget refit.hpotarget --pct 10 FIXWEIGHT=2
+
+   # absolute bounds for one parameter, edit the file in place
+   tadah refit --retarget refit.hpotarget --set 'CGRID2B(3)=2.1,2.4' --in-place
+
+Every ``OPTIM`` line is rewritten — **active and commented alike, preserving
+the comment state** — around the parameter values recovered from the existing
+bounds; everything else in the file is preserved byte-for-byte. ``--pct``
+takes a bare number (the global percentage) and/or ``KEY=N`` per-key
+overrides; ``--set 'KEY(i)=lo,hi'`` (repeatable) is applied last. Output goes
+to ``<input>_edited.hpotarget`` by default, ``-o <name>``, or back into the
+input with ``--in-place``.
+
+Retargeting a freshly-emitted file at the same percentage reproduces it
+byte-for-byte, and any retargeted file is a fixed point of further
+retargeting at the same settings. Bound recovery is exact at the printed
+precision (8 significant digits); a hand-pruned group (deleted lines) shifts
+the group's scale floor relative to a fresh emission (warned).
+
+.. _refit_rcut_contract:
+
+Cutoffs: knot channels are derived, blip channels are fixed
+-----------------------------------------------------------
+
+The two basis families treat ``RCUT2B`` / ``RCUTMB`` differently:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 41 41
+
+   * - Family
+     - Effective cutoff
+     - RCUT keys
+   * - Knot (``Knot5``/``Knot3``)
+     - The **largest knot position** — each knot function
+       :math:`(t - r)_+^k` vanishes :math:`C^4`-smoothly at its own knot, so
+       nothing exists beyond the largest one.
+     - **Derived.** Every consumer (``refit``, ``--edit``, ``--retarget``,
+       ``train``, ``predict``, ``hpo``) recomputes them from the largest
+       knot; a differing stated value is corrected with a warning. Moving
+       ``RCUT`` anywhere at or beyond the largest knot is prediction-exact.
+   * - Blip (``Blip``/``Blip5``)
+     - The stated ``RCUT`` — blips near the cutoff overhang it and are
+       hard-truncated there **by design** (the truncation was present during
+       the fit).
+     - **Authoritative.** Never auto-changed; warnings only (a centre beyond
+       ``RCUT``, or OPTIM bounds that let a blip's support cross it).
+
+Practical consequences for knot potentials:
+
+* To change the effective cutoff, move the ``CGRID2B`` / ``CGRIDMB`` knot
+  positions (``OPTIM CGRID2B`` in the hpotarget, or ``--edit --add`` beyond
+  the current largest knot). Do **not** search ``OPTIM RCUT2B`` /
+  ``RCUTMB`` — the keys are re-derived on every HPO evaluation, so that
+  dimension is wasted (warned at startup).
+* During ``tadah hpo`` the neighbour list is sized once for the largest
+  cutoff the search can reach (including the upper bounds of OPTIM'd knot
+  positions), and the RCUT keys follow the moving knots automatically; the
+  written ``best_pot.tadah`` is always self-consistent.
+* Hand-editing knot positions in a ``pot.tadah`` is safe: the stale RCUT is
+  detected and corrected (with a warning) by whichever command reads the
+  file next.

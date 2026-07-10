@@ -393,8 +393,20 @@ existing refit potential — no EAM input, no new fit::
 ``--func`` selects the curve: ``phi`` (pair, ``CGRID2B``), ``rho`` (density,
 ``CGRIDMB`` / ``AMPGRIDMB``) or ``F`` (embedding, ``CEMBFUNC``). Exactly one
 of ``--add <centre>`` / ``--remove <centre>`` is required. Both knot
-(``Knot5`` / ``Knot3``) and blip (``Blip`` / ``Blip5``) family potentials are
-supported; ``D2_mJoin`` and Gaussian potentials are not.
+(``Knot5`` / ``Knot3``) and blip (``Blip`` / ``Blip5``) family pair
+descriptors are supported; ``D2_mJoin`` and Gaussian potentials are not,
+and ``BIAS`` / ``NORM`` must be false (their columns are WEIGHTS-aligned
+and cannot survive an edit).
+
+The many-body term is **optional**:
+
+* *pure two-body potentials* (``TYPE2B`` only — e.g. hand-built knot pair
+  potentials) are fully supported through ``--func phi``;
+* *DM_REAM potentials* (as written by ``tadah refit``) expose all three
+  curves;
+* *any other many-body descriptor* restricts editing to ``--func phi`` —
+  the many-body keys and their WEIGHTS block ride along untouched (the
+  pair block is always the WEIGHTS prefix).
 
 **Adding** inserts the function with coefficient 0, so the edited potential
 predicts **bit-identically** to the input — value, every derivative, and the

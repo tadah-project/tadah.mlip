@@ -538,7 +538,9 @@ The driver-attribute keys below are accepted wherever an
    * - ``TADAH``
      - ``RANDOM`` (uniform random search), ``GRID``, ``ANNEAL`` (classic
        Kirkpatrick/Metropolis Simulated Annealing — see
-       :ref:`tadah_anneal_block` below).
+       :ref:`tadah_anneal_block` below), ``ANNEAL_PT`` (parallel
+       tempering, :ref:`tadah_anneal_pt_block`), ``ANNEAL_PA``
+       (population annealing, :ref:`tadah_anneal_pa_block`).
    * - ``NLOPT``
      - All gradient-free NLOpt globals (``GN_*``) and locals (``LN_*``)
        — see the `NLOpt algorithm catalogue
@@ -691,6 +693,7 @@ Optimiser                        Seeds consumed
 Any ``NLOPT`` algorithm          First only.
 ``TADAH:RANDOM``, ``TADAH:GRID`` First only — used as eval 0, then sweep.
 ``TADAH:ANNEAL``                 First only — used as the SA chain's starting state after T0 calibration.
+``TADAH:ANNEAL_PT``/``_PA``      First only — the seed replica/walker starts there; the rest jitter around it (``INIT_MODE 0``).
 ================================ ===================================================
 
 ``MULTISTART > 1`` runs the inner optimiser ``K`` times and consumes one
@@ -823,12 +826,27 @@ References:
 
 The algorithm operates in transformed (post-``LOG_HP``) parameter
 space: every Metropolis trial draws ``x' = x + sigma * N(0, I)``,
-rejects out-of-bounds proposals, and applies the Metropolis
-acceptance ``Δf <= 0`` ``or`` ``rand < exp(-Δf / T)``.  Temperature
-cools geometrically: ``T <- T * RT``.  When ``PARAM T_INIT`` is not
-set, the driver auto-calibrates ``T0`` from a small uniform-bounds
-random walk: ``T0 = -mean|Δf| / ln(P)``, where ``P =
+mirror-reflects out-of-bounds components back into the box, and
+applies the Metropolis acceptance ``Δf <= 0`` ``or``
+``rand < exp(-Δf / T)``.  Temperature cools geometrically:
+``T <- T * RT``.
+
+When ``PARAM T_HOT`` is not set, the driver auto-calibrates ``T0``
+from the seed point's neighbourhood: the seed is evaluated first,
+then ``T0_PROBES`` sigma-scaled Gaussian perturbations of it are
+probed (drawn from a dedicated RNG stream, so probing never shifts
+the proposal sequence), and
+``T0 = median(uphill finite Δf) / ln(1/P)``, where ``P =
 PARAM T0_PACCEPT`` is the target early acceptance probability.
+Probes that score ``FAILSCORE`` are excluded from the statistics —
+on realistic cliff landscapes a naive whole-box estimator either
+never sees the basin (``T0`` arbitrarily cold) or mixes the cliffs
+in (``T0 ~ FAILSCORE``, a never-cooling random walk).  If the seed
+itself scores ``FAILSCORE``, one batch of uniform box probes is
+spent to re-anchor the chain on the best finite point found; if
+nothing finite turns up the run aborts with a hard error listing the
+remedies (set ``PARAM T_HOT``, provide a viable starting point, or
+shrink the ``OPTIM`` boxes).
 
 Knobs are passed via the existing ``PARAM <key> <value>`` grammar
 inside the ``STRATEGY`` block.  Defaults are listed below.
@@ -840,42 +858,79 @@ inside the ``STRATEGY`` block.  Defaults are listed below.
    * - PARAM
      - Default
      - Effect
-   * - ``T_INIT``
+   * - ``T_HOT``
      - auto
-     - Initial temperature.  When set, T0 calibration is skipped (no
-       probes are spent).
+     - Starting/hottest temperature (renamed from ``T_INIT``; the old
+       key is a hard error naming the replacement).  When set, T0
+       calibration is skipped (no probes are spent).
    * - ``T_MIN``
-     - ``1e-12``
-     - Cooling floor; the loop stops when ``T < T_MIN``.
+     - auto
+     - Cooling floor; the schedule ends when ``T < T_MIN``.  Auto
+       default is ``T0 * 1e-6`` (~85 rungs at ``RT 0.85``), so
+       budget-limited runs actually reach it instead of dying on
+       ``MAXEVAL``.
    * - ``RT``
-     - ``0.85``
+     - ``0.90``
      - Geometric cooling factor in ``(0, 1)``.
    * - ``L``
      - ``50``
-     - Markov-chain length per temperature.
+     - Markov-chain length per temperature (CLASSIC only; ignored and
+       unvalidated under ``CORANA 1``).
    * - ``STEP_FRAC``
      - ``0.10``
      - Per-dim sigma as a fraction of ``(high_i - low_i)``.
    * - ``T0_PROBES``
      - ``20``
-     - Random uniform-bounds probes used to calibrate T0.
+     - Local probes around the seed used to calibrate T0.
    * - ``T0_PACCEPT``
-     - ``0.80``
-     - Target acceptance probability for T0.
+     - ``0.05``
+     - Target acceptance probability for T0.  Deliberately LOW: on
+       FAILSCORE-cliff landscapes the uphill-dE distribution is
+       heavy-tailed, and classic targets (0.8) yield a T0 so hot the
+       schedule never cools within realistic budgets.  Benchmarked on
+       a 42-D EAM workload: 0.05 beat 0.10/0.20/0.80 and a hand-tuned
+       ``T_HOT`` at every tested NS/NT.
+   * - ``NEPS``
+     - ``4``
+     - Plateau window in rungs for the ``FTOL`` stop (see below);
+       read only when ``FTOL_REL``/``FTOL_ABS`` is set.
+   * - ``REANNEAL``
+     - ``1``
+     - When a schedule cools out (``T < T_MIN``) with budget left,
+       snap the chain to the best-so-far and re-anneal from
+       ``REANNEAL_SCALE^n * T0``.  Repeats until budget, time,
+       ``STOPVAL``, or the plateau stop fires.
+   * - ``REANNEAL_SCALE``
+     - ``0.25``
+     - Start-temperature factor for each successive re-anneal, in
+       ``(0, 1)``.
 
 Top-level ``STEP <s>`` overrides ``PARAM STEP_FRAC`` with a uniform
 sigma applied to every dimension; the entry banner echoes which is in
 use.  ``SEED <int>`` seeds the RNG.
 
 Stops honoured: ``MAXEVAL`` (hard cap on host calls — **including** T0
-probes), ``MAXTIME``, ``STOPVAL``, and the ANNEAL-specific ``T_MIN``
-floor.  ``FTOL_REL`` and ``FTOL_ABS`` are **not** honoured by this
-driver (no NEPS history yet).
+probes), ``MAXTIME``, ``STOPVAL``, the ``T_MIN`` floor (subject to
+``REANNEAL``), and — when ``FTOL_REL`` and/or ``FTOL_ABS`` is set —
+the Corana sec.-4 eps-``NEPS`` plateau rule: the run stops once the
+end-of-rung *current* value stays within
+``eps = max(FTOL_ABS, FTOL_REL * |f|)`` of the previous ``NEPS``
+end-of-rung values **and** within ``eps`` of the running best.  (The
+rule deliberately does not watch the monotone best-so-far: a chain
+still exploring at high T must not be stopped just because the best
+stalled.)
 
-When the T0 calibration probes all return the same value
-(``mean|dE| == 0`` — typically saturated ``FAILSCORE`` everywhere),
-HPO falls back to ``T0 = 1.0`` and emits a ``WARNING`` line.  Set
-``PARAM T_INIT`` or widen the bounds in that case.
+When the finite T0 probes show zero loss variation (a constant
+landscape at probe scale), or every local probe around a finite seed
+hits ``FAILSCORE``, HPO falls back to ``T0 = 1.0`` and emits a
+``WARNING`` line; set ``PARAM T_HOT`` or adjust ``STEP_FRAC`` in that
+case.
+
+Knobs that are dead for this driver are **hard errors**, not silent
+no-ops: ``XTOL_REL``/``XTOL_ABS``, ``VECTOR_ARR``, ``GRAD_STRATEGY``,
+unknown ``PARAM`` keys (typo guard), and ``THREADS``/``POPULATION``
+(which belong to the parallel drivers ``TADAH:ANNEAL_PT`` /
+``TADAH:ANNEAL_PA``).
 
 Corana adaptive variant (opt-in)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -915,7 +970,7 @@ settles into a basin.
      - ``5``
      - Step cycles per step-adjust cycle.
    * - ``NT``
-     - ``2``
+     - ``5``
      - Step-adjust cycles per T (cooling triggers every ``NT``).
    * - ``C``
      - ``2.0``
@@ -930,20 +985,26 @@ settles into a basin.
        Default ``1e-3`` keeps ``V[i]`` ≥ 0.1% of box width so the
        chain stays mobile.
    * - ``RESET_TO_BEST``
-     - ``0``
-     - Brommer (2003) modification: set to ``1`` to snap the chain
-       back to the best-so-far point after every cooling step.  Gives
-       the adaptive chain "basin memory" — high-T wanders no longer
-       cost progress because the next rung restarts from the deepest
-       known basin.  Strongly recommended on ``FAILSCORE``-cliff
-       landscapes or when the chain wanders during the high-T phase.
+     - ``1`` under ``CORANA``
+     - Brommer (2003) modification: snap the chain back to the
+       best-so-far point after every cooling step.  Gives the
+       adaptive chain "basin memory" — high-T wanders no longer cost
+       progress because the next rung restarts from the deepest known
+       basin.  Defaults **on** under ``CORANA 1`` (recommended on
+       ``FAILSCORE``-cliff landscapes); pass
+       ``PARAM RESET_TO_BEST 0`` to disable.
 
 The per-rung journal line gains a ``V=[V_min, V_max]`` field so
 users can watch the step vector adapt in real time.  The Corana
 paper recommends ``NS = 20``, ``NT = max(100, 5D)``, but those
-defaults assume cheap function evaluations — for LAMMPS-driven HPO
-with ``~600 ms`` per evaluation, the shipped defaults (``NS = 5``,
-``NT = 2``) cover a useful T schedule within practical wall budgets.
+values assume cheap function evaluations — a rung costs
+``NS * NT * D`` host calls, which is unaffordable for LAMMPS-driven
+HPO.  The shipped defaults (``NS = 5``, ``NT = 5``) were picked
+empirically at fixed eval budgets on a 42-D EAM workload
+(2026-07-13): ``NT = 5`` keeps part of the paper's
+V-equilibration-before-cooling intent and beat ``NT = 2`` by two
+orders of magnitude in median best-at-budget; ``NS = 20`` starves
+the schedule of rungs and loses despite matching the paper.
 
 .. _tadah_anneal_journal:
 
@@ -955,20 +1016,22 @@ Per run, ``ALGO ANNEAL`` writes the following lines to ``hpo_run.log``
 
 .. code-block:: text
 
-   ANNEAL: seed=1234  L=20  RT=0.85  T_MIN=1e-12  STEP_FRAC=0.15
-   ANNEAL: T0=8.188e+00 from 20 probes,  mean|dE|=1.83e+00  loss range=[3.20e-02, 1.40e+01]  std=2.10e+00  target p_accept=8.000e-01
+   ANNEAL[CLASSIC]: seed=1234  RT=0.85  T_MIN=auto(T0*1e-6)  L=20  STEP_FRAC=0.15  REANNEAL=1
+   ANNEAL: T0=8.188e+00 from 20 probes,  median|dE|=1.83e+00  loss range=[3.20e-02, 1.40e+01]  std=2.10e+00  target p_accept=8.000e-01  anchor=seed
    ANNEAL rung k=0  T=8.188e+00  proposed=20  accepted=14 (70.0%)  oob=2  (9.1%)  f_x=2.31e-01  best=1.84e-01
    ANNEAL rung k=1  T=6.960e+00  proposed=20  accepted=11 (55.0%)  oob=0  (0.0%)  f_x=1.97e-01  best=1.84e-01
    ...
-   ANNEAL summary: rungs=12  proposed=240  accepted=98 (40.8%)  oob=4 (1.6%)  T0=8.188e+00  T_final=2.46e-01  best=8.71e-02
+   ANNEAL re-anneal #1: T_start=2.047e+00  from best=8.71e-02
+   ...
+   ANNEAL summary: rungs=12  proposed=240  accepted=98 (40.8%)  oob=4 (1.6%)  T0=8.188e+00  T_final=2.46e-01  reanneals=1  best=8.71e-02
    ANNEAL accept-rate trajectory: min=20.0%  max=70.0%
-   ANNEAL stopped: MAXEVAL exhausted after 260 host eval(s) (12 rung(s) completed)
+   ANNEAL stopped: MAXEVAL exhausted after 260 host eval(s) (12 rung(s) completed, 1 re-anneal(s))
 
 Use these to diagnose typical SA mistuning:
 
-* **Accept rate stays at ≈ 100% across all rungs** — ``T_INIT`` /
+* **Accept rate stays at ≈ 100% across all rungs** — ``T_HOT`` /
   ``T0_PACCEPT`` too high; the chain is doing a random walk.  Lower
-  ``PARAM T0_PACCEPT`` (e.g. to ``0.5``) or pick a smaller ``T_INIT``.
+  ``PARAM T0_PACCEPT`` (e.g. to ``0.5``) or pick a smaller ``T_HOT``.
 * **Accept rate collapses in 2–3 rungs** — ``RT`` too aggressive.  Use
   ``RT = 0.90`` or ``0.95``.
 * **High ``oob`` fraction (> 30 %)** — ``STEP_FRAC`` (or ``STEP``) too
@@ -985,6 +1048,172 @@ Use these to diagnose typical SA mistuning:
 The standard ``BEST`` events from ``HPO_Host`` (printed by every
 optimiser) interleave with the rung lines, so the best-tracking story
 is identical to other drivers.
+
+.. _tadah_anneal_pt_block:
+
+LIB TADAH ALGO ANNEAL_PT — parallel tempering
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Parallel tempering (replica exchange) over the same annealing stepper
+(classic by default, ``PARAM CORANA 1`` for the adaptive variant).
+``REPLICAS`` chains run concurrently at a FIXED geometric temperature
+ladder ``T_COLD .. T_HOT`` (slot 0 coldest); every ``SWAP_EVERY``
+epochs adjacent pairs attempt a Metropolis state swap
+(``p = min(1, exp((b_i - b_j)(f_i - f_j)))``), so better states migrate
+cold-ward while hot replicas keep crossing barriers a single cooling
+chain gets stuck behind.  Swaps move states ``(x, f)``, not
+temperatures: the Corana step vector ``V`` is calibrated to its slot's
+temperature and stays there.
+
+Execution: a persistent worker-thread pool (``THREADS``) evaluates
+replicas concurrently over the one thread-safe host; this ships in
+EVERY build (no OpenMP requirement; intra-evaluation OpenMP still
+applies underneath — keep ``THREADS * OMP_NUM_THREADS <= cores``).
+**Same SEED ⇒ identical results for any THREADS** (and any MPI rank
+count): every replica draws from its own RNG stream, swap coins come
+from per-pair streams, and the eval budget is sliced deterministically
+per epoch.
+
+Knobs (plus every ANNEAL stepper PARAM):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 18 60
+
+   * - Knob
+     - Default
+     - Effect
+   * - ``THREADS``
+     - ``1``
+     - Worker threads evaluating replicas concurrently.
+   * - ``PARAM REPLICAS``
+     - ``max(THREADS, 2)``
+     - Ladder size K (slot 0 coldest).
+   * - ``PARAM T_HOT``
+     - auto
+     - Hottest slot; auto-calibrated exactly as ANNEAL's T0.
+   * - ``PARAM T_COLD``
+     - ``T_HOT / LADDER_SPAN``
+     - Coldest slot.
+   * - ``PARAM LADDER_SPAN``
+     - ``1e3``
+     - ``T_HOT/T_COLD`` when ``T_COLD`` is unset.
+   * - ``PARAM SWAP_EVERY``
+     - ``1``
+     - Epochs between exchange attempts (an epoch = one rung per
+       replica).
+   * - ``PARAM RT``
+     - ``1.0``
+     - Ladder cooling per epoch, ``(0,1]``.  1.0 = static ladder (pure
+       PT); < 1 turns the run into a PT→SA hybrid ending at ``T_MIN``.
+   * - ``PARAM INIT_MODE``
+     - ``0``
+     - 0: chain 0 starts at the seed, the rest sigma-jittered around
+       it; 1: chains > 0 drawn uniformly in the box.
+   * - ``PARAM RESET_TO_BEST``
+     - ``0``
+     - When 1, snaps ONLY the coldest slot to the global best each
+       epoch (hot replicas exist to explore).
+
+``FTOL_REL``/``FTOL_ABS`` arm the Corana sec.-4 plateau on the coldest
+slot's end-of-epoch value + the global best.  The journal carries one
+line per epoch and a final per-pair swap-acceptance table — tune
+``LADDER_SPAN``/``REPLICAS`` for 20–40% acceptance per pair.
+
+.. _tadah_anneal_pa_block:
+
+LIB TADAH ALGO ANNEAL_PA — population annealing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Population annealing over the same stepper.  ``POPULATION`` walkers
+anneal together from ``T_HOT`` down to ``T_MIN``; each temperature
+step (i) reweights every walker by ``exp(-dbeta * f_i)``,
+(ii) resamples the population (systematic resampling — low-loss
+walkers multiply, ``FAILSCORE`` walkers die out: the natural cliff
+handling), and (iii) runs ``SWEEPS`` rungs of the stepper per walker
+at the new temperature.  Walker state ``(x, f, V)`` is copied on
+resample — children inherit the parent's step calibration — while
+each SLOT keeps its own RNG stream, so results are identical for any
+``THREADS`` / rank count.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 18 60
+
+   * - Knob
+     - Default
+     - Effect
+   * - ``THREADS``
+     - ``1``
+     - Worker threads evaluating walkers concurrently.
+   * - ``POPULATION``
+     - ``4*THREADS`` (min 16)
+     - Population size R.
+   * - ``PARAM SWEEPS``
+     - ``1``
+     - Rungs per walker per temperature step.
+   * - ``PARAM ESS_TARGET``
+     - ``0.5``
+     - Adaptive schedule: pick the largest ``dbeta`` keeping the
+       effective sample size at ``target * N_finite`` (no extra
+       evals); ``RT`` caps the per-step cooling.  ``0`` = pure
+       geometric ``T *= RT``.
+   * - ``PARAM INIT_MODE``
+     - ``0``
+     - As in ANNEAL_PT.
+   * - ``PARAM T_HOT`` / ``T_MIN`` / ``RT``
+     - auto / auto / ``0.90``
+     - As in ANNEAL.
+
+Per-step journal line: ``T``, ``ESS``, unique parents, culled count,
+finite fraction, population best.  ``FTOL_REL``/``FTOL_ABS`` arm the
+plateau on the population best.
+
+.. _tadah_anneal_mpi:
+
+Multi-node runs (TADAH_HPO_MPI) and ARCHER2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Both parallel drivers scale past one node through the opt-in
+``-DTADAH_HPO_MPI=ON`` CMake option: replicas/walkers distribute over
+MPI ranks in contiguous slot blocks, every rank trains locally and
+runs its LAMMPS instances on ``MPI_COMM_SELF``, and only tiny control
+messages travel (swap decisions, resampling plans, best-broadcasts).
+The SAME config file runs serially, threaded, or under ``srun`` /
+``mpirun`` unchanged; ``REPLICAS``/``POPULATION`` are global counts.
+Requirements and behaviour:
+
+* an MPI-flavoured LAMMPS library (the serial archive carries MPI stub
+  symbols that collide with a real MPI at link time — configure-time
+  check);
+* ``MPI_THREAD_MULTIPLE`` (evaluation threads run LAMMPS concurrently);
+  on Cray MPICH: ``export MPICH_MAX_THREAD_SAFETY=multiple``;
+* fixed-name outputs gain a ``.r<rank>`` suffix on ranks > 0; rank 0
+  re-evaluates the global best once at the end so ITS ``best_*.tadah``
+  files always carry the global winner;
+* ``MAXEVAL`` is enforced globally (allreduced accounting);
+* mutually exclusive with the legacy ``TADAH_BUILD_MPI``
+  (ScaLAPACK-distributed training) build.
+
+ARCHER2 sketch (128 cores/node, 2x AMD EPYC 7742; inter-node
+communication requires MPI; OpenMP cannot span nodes):
+
+.. code-block:: bash
+
+   #!/bin/bash
+   #SBATCH --nodes=2
+   #SBATCH --ntasks-per-node=8        # MPI ranks (replica blocks)
+   #SBATCH --cpus-per-task=16         # eval threads per rank
+   #SBATCH --time=01:00:00
+   export OMP_NUM_THREADS=4           # intra-eval LAMMPS fan-out
+   export MPICH_MAX_THREAD_SAFETY=multiple
+   # THREADS 4 in the STRATEGY block: 4 workers x OMP 4 = 16 cores/rank
+   srun --distribution=block:block --hint=nomultithread \
+        tadah hpo --hpotarget config.hpo -c config.train
+
+Size the run as ``ranks * THREADS * OMP_NUM_THREADS <= total cores``,
+with ``REPLICAS`` (PT) a multiple of the rank count and roughly
+``THREADS`` replicas per rank.
 
 .. _restart_decorator:
 

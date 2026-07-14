@@ -17,6 +17,8 @@ versioning follows [SemVer](https://semver.org/) at the umbrella level.
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-07-14
+
 Nothing yet.
 
 ## [1.3.0-beta.1] — 2026-05-20

@@ -4,20 +4,19 @@ Welcome to the Tadah! Website
 .. image:: images/tadah_cli.png
    :align: center
 
-.. admonition:: Tadah! 1.3.0-beta.1 — beta release
+.. admonition:: Tadah! 1.4.0
    :class: note
 
-   This is a beta release of the Tadah! framework. The CLI surface
-   (subcommand names, flags, configuration-file keys, and the
-   ``pot.tadah`` file format) is considered stable for the 1.x series;
-   the C++ API (``libtadah.*`` headers and class layouts) is **not yet
-   stable** and may change between minor versions until 2.0. See the
-   `changelog`_ for what shipped in this release, the
-   `migration notes`_ for upgrade caveats from 1.1.1, and please
-   `report any issues`_ you hit while exercising the beta.
+   The CLI surface (subcommand names, flags, configuration-file keys,
+   and the ``pot.tadah`` file format) is considered stable for the 1.x
+   series; the C++ API (``libtadah.*`` headers and class layouts) is
+   **not yet stable** and may change between minor versions until 2.0.
+   See the `changelog`_ for what shipped in this release, the
+   `migration notes`_ for upgrade caveats from earlier releases, and
+   please `report any issues`_ you hit.
 
-   .. _changelog: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/v1.3.0-beta.1/CHANGELOG.md
-   .. _migration notes: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/v1.3.0-beta.1/CHANGELOG.md#migrating-from-111-to-130-beta1
+   .. _changelog: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/main/CHANGELOG.md
+   .. _migration notes: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/main/CHANGELOG.md#migrating-from-v120-to-130-beta1
    .. _report any issues: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues
 
 

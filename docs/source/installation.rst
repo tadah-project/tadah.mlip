@@ -222,10 +222,15 @@ The Tadah!MLIP MPI version is designed for HPC architectures and large datasets.
 
 .. warning::
 
-   The MPI build is **broken in this beta release**. The
-   ``TADAH_BUILD_MPI`` option, ``tadah_mpi`` executable, and
-   ``libtadah.mpi.hpo`` library described below are documented for
-   forward reference only — do not use them in 1.3.0-beta.1.
+   The legacy MPI-distributed-training build is **broken and not
+   actively developed**. The ``TADAH_BUILD_MPI`` option, ``tadah_mpi``
+   executable, and ``libtadah.mpi.hpo`` library described below are
+   documented for forward reference only — do not use them.
+
+   For multi-node HPO, use the ``TADAH_HPO_MPI`` build instead: it
+   distributes the ``TADAH:ANNEAL_PT`` / ``TADAH:ANNEAL_PA`` parallel
+   annealing drivers over MPI ranks (see :ref:`tadah_anneal_mpi` in the
+   HPO chapter).
 
 To enable the MPI version, configure the build with ``TADAH_BUILD_MPI``:
 

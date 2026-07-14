@@ -1018,8 +1018,8 @@ Per run, ``ALGO ANNEAL`` writes the following lines to ``hpo_run.log``
 
    ANNEAL[CLASSIC]: seed=1234  RT=0.85  T_MIN=auto(T0*1e-6)  L=20  STEP_FRAC=0.15  REANNEAL=1
    ANNEAL: T0=8.188e+00 from 20 probes,  median|dE|=1.83e+00  loss range=[3.20e-02, 1.40e+01]  std=2.10e+00  target p_accept=8.000e-01  anchor=seed
-   ANNEAL rung k=0  T=8.188e+00  proposed=20  accepted=14 (70.0%)  oob=2  (9.1%)  f_x=2.31e-01  best=1.84e-01
-   ANNEAL rung k=1  T=6.960e+00  proposed=20  accepted=11 (55.0%)  oob=0  (0.0%)  f_x=1.97e-01  best=1.84e-01
+   ANNEAL rung=1/12  T=8.188e+00  proposed=20  accepted=14 (70.0%)  oob=2  (9.1%)  f_x=2.31e-01  best=1.84e-01
+   ANNEAL rung=2/12  T=6.960e+00  proposed=20  accepted=11 (55.0%)  oob=0  (0.0%)  f_x=1.97e-01  best=1.84e-01
    ...
    ANNEAL re-anneal #1: T_start=2.047e+00  from best=8.71e-02
    ...

@@ -138,6 +138,9 @@ tadah_message(STATUS "VERSION: ${TADAH_VERSION}")
 
 
 file(GLOB TADAH_SRC_FILES src/*.cpp)
+# mallinfo_shim.cpp is built separately (LTO off) for the --wrap interpose set up
+# further below; keep it out of the main (LTO'd) source list.
+list(REMOVE_ITEM TADAH_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/mallinfo_shim.cpp")
 add_executable (tadah ${TADAH_SRC_FILES})
 target_include_directories(tadah
   PUBLIC
@@ -156,6 +159,32 @@ if(TADAH_ENABLE_ASAN)
   target_compile_options(tadah PUBLIC -fsanitize=address -fno-omit-frame-pointer -g)
   target_link_libraries(tadah PUBLIC -fsanitize=address)
 endif()
+
+#########################################################################
+# Neutralise LAMMPS' per-run mallinfo2() memory-report heap-walk.
+#
+# LAMMPS Output::memory_usage() calls mallinfo2() at every run/minimize setup
+# to build a memory report that pc_lammps discards (LAMMPS is created with
+# -screen none -log none). mallinfo2() is an O(heap) walk under the global
+# malloc lock; under the shared worker-pool fan-out (many LAMMPS instances in
+# one large process heap) it dominates wall-clock and serialises the pool.
+#
+# We interpose it at link time with the linker's --wrap mechanism -- the wrapper
+# in src/mallinfo_shim.cpp returns a zeroed struct. This keeps the stock LAMMPS
+# source unpatched (no fork to maintain), needs nothing installed on deployment
+# machines, and travels inside the binary. Linux/glibc only (the only place
+# LAMMPS calls mallinfo2). See src/mallinfo_shim.cpp for the full rationale.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # Build the wrapper in its own object library with IPO/LTO explicitly OFF: the
+  # main build enables -flto, which emits slim objects with no real symbol table,
+  # so the linker's --wrap cannot bind __wrap_mallinfo2. An IPO-off object library
+  # yields a genuine ELF symbol and its objects are always linked into `tadah`.
+  add_library(tadah_mallinfo_shim OBJECT src/mallinfo_shim.cpp)
+  set_target_properties(tadah_mallinfo_shim PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
+  target_link_libraries(tadah PRIVATE tadah_mallinfo_shim)
+  target_link_options(tadah PRIVATE "-Wl,--wrap=mallinfo2")
+endif()
+#########################################################################
 
 #########################################################################
 if(TADAH_MARCH_NATIVE)

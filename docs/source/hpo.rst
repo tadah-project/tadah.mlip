@@ -448,7 +448,25 @@ Additional options
    ``<initial>`` is optional; when omitted the midpoint of
    ``[<min>, <max>]`` seeds the first iteration. If a hot value
    lands outside ``[min, max]`` HPO fail-scores the iteration and
-   skips phase B.
+   skips phase B (a *graded* failure when ``FAILSCORE_GRADING ON``
+   — see :ref:`failscore_grading`).
+
+``--failvar <name> [<scale>]``
+   Declare a *violation variable*: a nonnegative LAMMPS ``equal``-style
+   variable that is ``0`` when the simulation vouches for itself and
+   ``> 0`` when it failed, with the magnitude measuring *how badly*
+   (natural units; ``<scale>`` converts to the dimensionless failure
+   measure, default 1). When it reads ``> 0`` the sim is treated as
+   failed, its outvars are excluded from the fit, and — with
+   ``FAILSCORE_GRADING ON`` — ``scale × value`` grades the failure
+   loss so the optimiser is pulled toward feasibility instead of
+   hitting a constant. Define it **early** in the script (right after
+   the risky command), so it is still readable when a later section
+   times out. Like ``--varloss``/``--outvar`` names, the variable must
+   be defined in the script as an ``equal``-style variable — a typo'd
+   name is a startup error, not a silently-disabled check. Replaces
+   the old “sentinel value” idiom (returning ``-1000`` as fake data).
+   See :ref:`failscore_grading`.
 
 Per-metric bad-pot pre-filter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -481,6 +499,321 @@ If ``-log <file>`` or ``-screen <file>`` is supplied explicitly inside
 a ``PC_LAMMPS`` entry, HPO appends ``.t<thread_id>`` per OpenMP thread
 (so e.g. ``-log run.log`` becomes ``run.log.t0``, ``run.log.t1``, …).
 ``-log none`` and ``-screen none`` are left untouched.
+
+.. _failscore_grading:
+
+Failure handling — graded FAILSCORE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+What problem this solves
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+When a candidate potential makes a simulation fail — a relaxation that
+does not converge, a hot value outside its window, a hung run that had
+to be killed — the iteration traditionally returns the constant
+``FAILSCORE``.  A constant is a *flat* landscape: inside a failing
+region every proposal looks equally bad, so annealers random-walk or
+freeze (their step-size adaptation has two absorbing states on a flat
+or cliff-edged landscape), parallel-tempering ladders die on the
+plateau, and gradient methods see exactly zero slope.  The optimiser
+receives no hint of *which way is out*.
+
+``FAILSCORE_GRADING ON`` replaces the constant with a **graded** value:
+every failed iteration returns a loss inside the reserved band
+``[0.999 × FAILSCORE, FAILSCORE)`` that *decreases as the candidate
+gets closer to working*.  Feasible results always win (they are orders
+of magnitude below the band), every internal failure filter still
+recognises the value as a failure, and within the failing region the
+optimiser can finally descend toward feasibility.
+
+The knobs, most important first
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``FAILSCORE <value>`` (root)
+   The failure ceiling, as before — but with grading ON it **must be a
+   finite positive number** (e.g. ``1e9``); the legacy ``DBL_MAX``
+   default is rejected at startup.  Choose it a few orders of magnitude
+   above your worst plausible *real* loss.
+
+``FAILSCORE_GRADING ON|OFF`` (root, default ``OFF``)
+   The master switch.  ``OFF`` is byte-identical to the legacy
+   behaviour.  Everything below only matters when this is ``ON``.
+   Environment override: ``TADAH_FAILSCORE_GRADING=ON|OFF``.
+
+``--failvar <name> [<scale>]`` (per ``PC_LAMMPS`` line)
+   The per-script violation channel (see the option reference above and
+   the examples below).  Costs one ``variable`` line per script and
+   upgrades that script's failures from “counted” to “measured”.
+
+``PC_FAILPROBE --script <f> --outvar <S> [--gate <T>] [--s0 <v0>]`` (root)
+   A tiny, minimiser-free *sanity probe* executed at the front of every
+   iteration's parallel batch.  Its first ``--outvar`` is a single
+   nonnegative scalar ``S`` measuring how unphysical the candidate is
+   (0 = sane).  ``S`` becomes the failure measure for the failure modes
+   that cannot measure themselves — hung runs that were killed, crashed
+   potential builds — and, optionally, a **gate**: when ``S > <T>`` the
+   iteration is short-circuited before wasting the full simulation
+   budget.  ``<v0>`` sets the saturation scale of the grading curve for
+   ``S`` (default 1; a good choice is the seed potential's ``S`` times
+   a small factor).  At most one probe line is allowed; ``--varloss``
+   on it is rejected (the probe grades failures — it must not shape the
+   feasible objective).
+
+``--gate <T>`` (on ``PC_FAILPROBE``)
+   **The only knob that needs real care.**  If the gate can fire on a
+   candidate that would actually have succeeded, you have changed the
+   objective, not just saved time.  Calibrate it from a short run:
+   journal the ``S`` statistics of accepted iterations, then set ``T``
+   far above anything a feasible candidate produces (same philosophy as
+   the ``--skip-above`` caps).  Gate firings are journaled and
+   rate-limited; watch the counter.
+
+``PC_WORKER_TIMEOUT`` / per-sim ``--maxtime`` (existing)
+   Unchanged, but they *interact*: a killed hung run is graded by ``S``
+   (band C below), so with a probe defined even timeouts become
+   directional instead of flat.
+
+Order of firing within one iteration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+::
+
+   train/validate  →  [skip caps?  → graded band D, stop]
+   dispatch batch:  FAILPROBE first (cheapest → returns first),
+                    hot scripts + independent cold scripts alongside
+     ├─ probe returns S
+     │    ├─ S ≤ gate (or no gate): S is stored for later grading
+     │    └─ S > gate: iteration short-circuited → band D graded by S;
+     │       queued sims are cancelled; in PROCESS mode this
+     │       iteration's in-flight sims are killed (other concurrent
+     │       iterations on the shared pool are never touched)
+     ├─ each sim finishes → failvars read (0 ⇒ OK; >0 ⇒ band B, graded)
+     │    hot values validated → out of window ⇒ band A, graded by the
+     │    normalized distance to [min, max]
+     ├─ a sim times out in-script (timer timeout) → instance still
+     │    alive → failvars still readable → band B
+     └─ a sim hangs → parent deadline kill (PROCESS mode) → nothing
+          readable → band C, graded by S
+   dependent cold wave → loss assembly:
+     no failure  → normal loss (identical to grading OFF)
+     any failure → L_fail in [0.999·FS, FS), see the band table
+
+The severity bands (worst on top) encode the natural *repair path* —
+make the potential sane, then runs complete, then outputs valid, then
+windows satisfied, then feasible:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 8 46 46
+
+   * - Band
+     - Failure modes
+     - Graded by
+   * - D
+     - probe gate fired; potential build crashed; skip caps
+     - ``S`` (probe) / metric excess (caps)
+   * - C
+     - run hung and was killed; worker died
+     - ``S`` (probe)
+   * - B
+     - run completed but failed: in-script timeout, ``--failvar > 0``,
+       unreadable/NaN outputs
+     - failvar sum + failed fraction
+   * - A
+     - hot value outside its window
+     - normalized distance to the window
+
+Cross-band ordering is fixed (every ``A`` value beats every ``B``
+value, etc.), within a band less violation is strictly better, and one
+iteration gets exactly one band (the worst one that occurred).
+Failures that are *not the potential's fault* — a LAMMPS instance that
+could not be created, worker crash-loops — are deliberately **not**
+graded (a directionless constant), so the optimiser never chases
+infrastructure noise.
+
+Designing ``failprobe.in``
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Four rules make a good probe:
+
+1. **It must not be able to fail or hang.**  Single-point evaluations
+   only: fixed cells, ``run 0`` — no ``minimize``, no ``box/relax``,
+   no dynamics.
+2. **It must be smooth in the potential parameters.**  Build ``S`` from
+   hinge/softplus penalties of energies, forces and stresses — these
+   are smooth functions of the parameters, so ``S`` gives a descent
+   direction.
+3. **It must be cheap** — a few small single-point cells cost
+   milliseconds and disappear into the parallel batch.
+4. **No ``label``/``jump`` loops.**  Scripts are executed
+   command-by-command through the LAMMPS library interface, where the
+   file-rewind machinery behind ``jump`` does not work reliably (it
+   can half-work in ways that depend on leftover loop variables from
+   the *previous* evaluation in the cached instance).  Unroll the few
+   cells you probe — it is also easier to read.
+
+Good ingredients (all already proven in the ``pen_*`` observables):
+equation-of-state sanity (energy at a handful of fixed volumes around
+equilibrium: hinge on non-monotonic compression branches), near-zero
+forces on the ideal lattice, finite and positive stress response.  A
+ready-to-adapt example:
+
+.. code-block:: bash
+
+   # failprobe.in — minimiser-free sanity scalar S for bcc metal.
+   # Contract: NEVER minimize/box-relax/run>0; define S even on the
+   # weirdest potential; keep it O(ms); no label/jump loops (rule 4) —
+   # the three volumes are unrolled. `variable X equal $( ... )`
+   # captures the value IMMEDIATELY, and equal-style redefinition
+   # replaces the old value, so the captures stay fresh in the cached
+   # instance on every evaluation.
+
+   # -- E(V) monotonicity: 2-atom bcc cells at 0.90/1.00/1.10 a0 -----
+   # (a0 = 3.30 reference lattice constant, baked into the lattice
+   #  commands below)
+   clear                    # scripts run in a CACHED LAMMPS instance:
+                            # always start with clear (variables survive)
+   units metal
+   dimension 3
+   boundary p p p
+   atom_style atomic
+   atom_modify map array
+   lattice bcc $(3.30*0.90)
+   region box block 0 1 0 1 0 1
+   create_box 1 box
+   create_atoms 1 region box
+   mass 1 180.95
+   pair_style tadah
+   pair_coeff * * EXTERN Ta
+   run 0 post no
+   variable e_m10 equal $(pe/atoms)     # captured now (immediate $)
+
+   clear
+   units metal
+   boundary p p p
+   atom_style atomic
+   atom_modify map array
+   lattice bcc 3.30
+   region box block 0 1 0 1 0 1
+   create_box 1 box
+   create_atoms 1 region box
+   mass 1 180.95
+   pair_style tadah
+   pair_coeff * * EXTERN Ta
+   run 0 post no
+   variable e_0 equal $(pe/atoms)
+
+   clear
+   units metal
+   boundary p p p
+   atom_style atomic
+   atom_modify map array
+   lattice bcc $(3.30*1.10)
+   region box block 0 1 0 1 0 1
+   create_box 1 box
+   create_atoms 1 region box
+   mass 1 180.95
+   pair_style tadah
+   pair_coeff * * EXTERN Ta
+   run 0 post no
+   variable e_p10 equal $(pe/atoms)
+
+   # compressed branch must rise toward small volume; expanded branch
+   # must rise toward large volume (bound state). Hinge each violation.
+   variable h_comp equal $(ternary(v_e_m10<v_e_0, v_e_0-v_e_m10, 0.0))
+   variable h_exp  equal $(ternary(v_e_p10<v_e_0, v_e_0-v_e_p10, 0.0))
+
+   # -- force sanity: rattle a cell DETERMINISTICALLY (fixed seed) and
+   # hinge on absurd forces. Do NOT probe fmax on the ideal lattice --
+   # there it is zero by symmetry for ANY potential, sick or sane.
+   clear
+   units metal
+   boundary p p p
+   atom_style atomic
+   atom_modify map array
+   lattice bcc 3.30
+   region box block 0 2 0 2 0 2
+   create_box 1 box
+   create_atoms 1 region box
+   mass 1 180.95
+   pair_style tadah
+   pair_coeff * * EXTERN Ta
+   displace_atoms all random 0.05 0.05 0.05 12345 units box
+   run 0 post no
+   variable h_frc equal $(ternary(fmax>20.0, fmax-20.0, 0.0))
+
+   # -- compose S: bounded, nonnegative, 0 for a sane potential ------
+   variable S equal $(v_h_comp + v_h_exp + v_h_frc)
+
+with the configuration line
+
+.. code-block:: none
+
+   FAILSCORE_GRADING ON
+   PC_FAILPROBE --script pc_lammps/failprobe.in --outvar S --s0 0.5
+   # add "--gate 50" ONLY after calibrating S statistics on your seed
+
+(Adapt the element, ``a0``, volumes and thresholds to your system; add
+Born-stability hinges via finite-difference stress probes on fixed
+strained cells if shear stability matters for your fits — the
+``pen_born`` machinery in the examples shows the pattern.)
+
+``--failvar`` recipes for typical scripts
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Pressure-target relaxation** (``box/relax`` at pressure ``P``): the
+convergence check already computes the violation — export it:
+
+.. code-block:: bash
+
+   fix relax all box/relax iso ${P_bar} vmax 0.003
+   minimize 1e-10 1e-10 2000 20000
+   unfix relax
+   variable Pres equal $(press)*1.0e-4
+   # 0 when converged within 1 GPa; the residual (GPa) otherwise:
+   variable fail_press equal $(ternary(abs(v_Pres-v_P_GPa)<1.0, 0.0, abs(v_Pres-v_P_GPa)))
+   # ... only now compute the real observables ...
+
+.. code-block:: none
+
+   PC_LAMMPS --script pc_lammps/elastic_P_single.in --invar P 300 \
+       --varloss Cp_P300 232.8 7.6 --varloss C44_P300 332.9 3.9 \
+       --failvar fail_press 0.01
+
+**Minimisation that must actually converge** (vacancy, surface,
+stacking-fault energies): grade by the residual force instead of
+returning a sentinel:
+
+.. code-block:: bash
+
+   minimize 1e-10 1e-10 2000 20000
+   # 0 when converged; the residual max force (eV/Å) otherwise:
+   variable fail_fmax equal $(ternary(fmax<1.0e-8, 0.0, fmax))
+
+.. code-block:: none
+
+   PC_LAMMPS --script pc_lammps/vac_bcc_P_fast.in ... --failvar fail_fmax 10
+
+Both patterns follow the same contract: **define the failvar
+immediately after the risky command** (it survives a later in-script
+timeout), keep it ``0`` on success, and make its magnitude the natural
+physical distance from success.  Where your scripts currently return
+sentinel values (``-1000``) as fake observables, move that logic into a
+``--failvar`` — the sentinel stops polluting the fitted region and its
+information starts steering the optimiser instead.
+
+Setup effort, honestly
+^^^^^^^^^^^^^^^^^^^^^^
+
+Level 0 (just ``FAILSCORE_GRADING ON``): hot-window rejections and
+partial failures become graded automatically — no script changes, and
+the worst optimiser pathologies (plateau death, step-size collapse)
+disappear.  Level 1 (one ``--failvar`` line per script that has a
+convergence check): minutes per script.  Level 2 (the probe): one
+script, once, assembled from the same hinge idioms as the ``pen_*``
+observables.  The only knob that can *change your objective* if set
+carelessly is the probe ``--gate`` — leave it off until you have
+calibrated ``S``.
 
 OPTIMIZER block — common attributes
 ...................................

@@ -1382,6 +1382,33 @@ The standard ``BEST`` events from ``HPO_Host`` (printed by every
 optimiser) interleave with the rung lines, so the best-tracking story
 is identical to other drivers.
 
+**Pinned-dim audit (CORANA only).**  After every rung (epoch under
+``ANNEAL_PT``, T-step under ``ANNEAL_PA``) the driver checks each
+``OPTIM`` dimension: if the chain sits within one floor-step
+(``V_FLOOR_FRAC * width``) of a bound *and* ``V[i]`` is already
+clamped at that floor, the walk has no finer step left that could
+pull it off the bound — the dim is marked *pinned*.  While ``V[i]``
+can still shrink the dim is not marked; a chain that moves off its
+bound is unmarked.  Each milestone ``SUMMARY`` then carries a single
+``WARNING`` table of every pinned ``(dim, side)``:
+
+.. code-block:: text
+
+   SUMMARY  ---  46080 evals done   wall=5 ms/eval ...
+   WARNING  * 2 OPTIM dim(s) pinned at a bound with step at the V floor -- the walk cannot leave the bound; it is load-bearing:
+   WARNING      dim                       side  bound        gap        v_floor    slots   pinned for
+   WARNING      AMPGRIDMB[7]              HI    1.250e+00    3.1e-06    2.4e-05    11/64   38 epochs
+   WARNING      CGRID2B[3]                LO    2.100e+00    0          1.9e-05    7/64    12 epochs
+   HINT     pinned dims: the fit is pushing past these OPTIM boxes -- ...
+
+Values are in optimiser-internal space (log-scaled dims are tagged
+``(ln)``); ``slots`` counts how many chains hold the mark (parallel
+drivers only) and ``pinned for`` how long the oldest mark has been
+held.  A persistently pinned dim means the fit wants to go past the
+box: widen or re-centre it — unless the bound is physical, in which
+case the clamp is working as intended.  (Under MPI the parallel
+drivers skip the audit, like the other per-epoch reports.)
+
 .. _tadah_anneal_pt_block:
 
 LIB TADAH ALGO ANNEAL_PT — parallel tempering

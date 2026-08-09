@@ -1617,8 +1617,8 @@ Corana).  ``REANNEAL`` and ``REANNEAL_SCALE`` are serial-only:
        dimensions continue to at most twice this count.
    * - ``PARAM STEP_ADAPT_EVERY``
      - ``0``
-     - Production diagonal-RAM update cadence in proposals per temperature
-       slot.  ``0`` freezes the calibrated kernel; ``L`` is the
+     - Production scalar-plus-diagonal RAM update cadence in proposals per
+       temperature slot.  ``0`` freezes the calibrated kernel; ``L`` is the
        recommended cadence for continued adaptation.
    * - ``PARAM INIT_MODE``
      - ``0``
@@ -1642,38 +1642,59 @@ coordinate-scale guess; ``OPTIM`` remains the hard support rather than
 the final metric.
 
 At each slot temperature the warm-up shuffles one-coordinate Gaussian
-proposals and adapts each scale toward acceptance probability 0.44.  An
-unusable proposal, or one with Metropolis probability below 0.01, backs its
-coordinate scale off by a factor of ten.  Other proposals use a diminishing
-``m^-0.6`` log-scale update, limited to a factor of two per attempt.
-Every dimension receives at least ``STEP_AUTO_SWEEPS`` attempts;
-unconverged dimensions receive up to twice that number.  Scales that reach
-floating-point resolution or the support width are retained and explicitly
-flagged.
+proposals in fixed-scale batches of four (or the available smaller batch when
+``STEP_AUTO_SWEEPS < 4``).  Decisions use the batch mean
+Metropolis probability (actual accept/reject counts are reported separately)
+and target 0.44.  An ordinary miss brackets the scale by a factor of two;
+an unusable batch or a gross miss (mean probability below 0.01 or above 0.9)
+uses a factor of ten.  Once both sides are known, the next scale is their
+geometric midpoint.  A coordinate is validated only after two consecutive
+fixed-scale batches have mean probability in ``[0.29, 0.59]`` and it has
+received at least ``STEP_AUTO_SWEEPS`` attempts.  A single ordinary miss
+after a valid batch is retried at the same scale, rather than allowing one
+noisy four-sample batch to move the bracket.
+
+Unconverged dimensions receive up to twice ``STEP_AUTO_SWEEPS`` attempts.
+At that limit the best already tested scale is retained (never merely the
+last scale) and the dimension is marked ``unconverged``.  Floating-point
+resolution and support-width limits are terminal, explained
+``numerical-floor`` and ``support-capped`` statuses rather than unexplained
+misses.  Calibration warns but continues with best-tested scales when the
+hard attempt limit is reached.
 
 The learned coordinate scales are divided by ``sqrt(D)`` to form a
-whole-vector diagonal Gaussian.  Each slot then runs 100 pilot proposals
-while adapting one common multiplier toward the high-dimensional 0.234
-acceptance heuristic.  Calibration evaluations, accepted states, and new
-best points are retained, but production epoch, swap, and ladder-flow
+whole-vector diagonal Gaussian.  Each slot then tests one common multiplier
+in fixed windows of 20 proposals.  It runs at least 100 and at most 200 pilot
+proposals, requiring two consecutive windows with mean Metropolis probability
+in ``[0.15, 0.35]``.  Multiplier brackets move by factors of two only.  At the
+limit an unresolved slot uses the tested multiplier closest to 0.234, is
+clearly warned, and continues.  Calibration evaluations, accepted states,
+and new best points are retained, but production epoch, swap, and ladder-flow
 statistics start from zero after warm-up.
 
 By default the resulting kernel is frozen.  With
 ``STEP_ADAPT_EVERY N`` greater than zero, every production proposal
-contributes to a diagonal robust-adaptive-Metropolis accumulator:
+contributes both a slot-wide scale term and a centred diagonal
+robust-adaptive-Metropolis shape term.  ``z_eff`` is the actual standardised
+post-boundary displacement (after reflection/redraw), not the discarded raw
+Gaussian draw:
 
 .. code-block:: text
 
-   delta[i] += log(1 + eta_j * (alpha_j - 0.234)
-                         * z_j[i]^2 / ||z_j||^2)
    eta_j = min(1, j^(-0.6))
+   scalar += eta_j * (alpha_j - 0.234)
+   shape[i] += log(1 + eta_j * (alpha_j - 0.234)
+                         * z_eff_j[i]^2 / ||z_eff_j||^2)
 
-After each ``N`` proposals in that slot, the accumulated variance update
-is applied with a factor-of-two clamp and the accumulator is cleared.  Thus
-``N`` controls how often the kernel changes; it does not discard
-intermediate proposals.  Scales and accumulators stay with temperature
-slots across replica swaps.  The 0.44/0.234 targets and diminishing updates
-follow the scaling principles in
+After each ``N`` proposals in that slot, ``mean(shape)`` is subtracted and
+each log-sigma changes by
+``clamp(scalar + 0.5*(shape[i]-mean(shape)), -log(2), log(2))``.  Both
+accumulators are then cleared.  The scalar term repairs a common scale error
+without the previous ``1/D`` slowdown; centring leaves the diagonal term to
+change proposal shape.  Thus ``N`` controls how often the kernel changes; it
+does not discard intermediate proposals.  Scales and accumulators stay with
+temperature slots across replica swaps.  The 0.44/0.234 targets and
+diminishing updates follow the scaling principles in
 `Roberts, Gelman & Gilks (1997) <https://doi.org/10.1214/aoap/1034625254>`_,
 `Garthwaite, Fan & Sisson (2010) <https://arxiv.org/abs/1006.3690>`_, and
 `Vihola (2012) <https://arxiv.org/abs/1011.4381>`_.
@@ -1681,33 +1702,49 @@ follow the scaling principles in
 Warm-up counts against both ``MAXEVAL`` and ``MAXTIME``.  A complete
 warm-up costs approximately
 ``REPLICAS * (D * STEP_AUTO_SWEEPS + 100)`` host evaluations at minimum
-and ``REPLICAS * (2 * D * STEP_AUTO_SWEEPS + 100)`` in the worst case,
+and ``REPLICAS * (2 * D * STEP_AUTO_SWEEPS + 200)`` in the worst case,
 in addition to seed/T0 work.  For the 174-dimensional, 32-replica run21
-layout this is about 70,000 to 137,000 evaluations.  If a limit interrupts
-calibration, the run stops cleanly without exceeding the budget.
+layout at the historical 12-sweep setting this is about 70,000 to 140,000
+evaluations.  At the run22 24-sweep setting it is about 137,000 to 274,000.
+Unused per-slot fair shares are redistributed in both coordinate and pilot
+phases.  If a limit interrupts calibration, the run stops cleanly without
+exceeding the budget.
 
 The journal labels the active mode as ``CLASSIC[AUTO-FROZEN]``,
 ``CLASSIC[FIXED]``, or ``CLASSIC[ADAPTIVE-DIAG]`` and reports each
-slot's coordinate acceptance, pilot acceptance, backoff count, and learned
-sigma range.  Rank 0 also writes ``hpo_step_scales.tsv`` with columns
-``slot``, ``temperature``, ``parameter``, ``sigma``,
-``sigma/width``, ``acceptance``, and ``status``.  Status values
-identify ``numerical-floor``, ``support-capped``, ``unconverged``,
-and ``interrupted`` dimensions.
+slot's coordinate acceptance/mean probability/attempts/backoffs, pilot
+acceptance/mean probability/attempts/backoffs/multiplier/status, and learned
+sigma range.  With continued adaptation, every ``SWAP_WINDOW`` epochs the
+journal also reports each slot's minimum/geometric-mean/maximum
+``sigma/OPTIM_width`` and warns after two consecutive windows outside 5--50%
+production acceptance.
 
-Recommended frozen-kernel run22 settings are:
+Rank 0 also writes the **calibration-only** ``hpo_step_scales.tsv``.  Its
+first seven columns remain
+``slot``, ``temperature``, ``parameter``, ``sigma``,
+``sigma/width``, ``acceptance``, and ``status``; ``acceptance`` is the actual
+accept rate in the selected fixed-scale coordinate window.  Appended columns
+are ``mean_alpha``, ``attempts``, ``backoffs``, ``unusable``,
+``pilot_multiplier``, ``pilot_acceptance``, ``pilot_mean_alpha``,
+``pilot_attempts``, ``pilot_backoffs``, ``pilot_unusable``, and
+``pilot_status``.  Status values identify ``numerical-floor``,
+``support-capped``, ``unconverged``, and ``interrupted`` dimensions.  The TSV
+is not rewritten during production; use the windowed journal lines for live
+adaptive scales.
+
+Recommended run22 settings based on the updated 174-dimensional run are:
 
 .. code-block:: text
 
    PARAM CORANA 0
    PARAM L 20
    PARAM STEP_AUTO 1
-   PARAM STEP_AUTO_SWEEPS 12
-   PARAM STEP_ADAPT_EVERY 0
-   PARAM STEP_FRAC 1e-8
+   PARAM STEP_AUTO_SWEEPS 24
+   PARAM STEP_ADAPT_EVERY 20
+   PARAM STEP_FRAC 1e-6
    PARAM BOUNDARY_MODE 0
 
-For continued adaptation, change only ``PARAM STEP_ADAPT_EVERY 20``.
+For a frozen production kernel, change only ``PARAM STEP_ADAPT_EVERY 0``.
 An explicit top-level ``STEP`` disables automatic calibration; specifying
 automatic-only sweep/adaptation controls alongside it is an error.
 

@@ -1535,7 +1535,9 @@ LIB TADAH ALGO ANNEAL_PT — parallel tempering
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Parallel tempering (replica exchange) over the same annealing stepper
-(classic by default, ``PARAM CORANA 1`` for the adaptive variant).
+(CLASSIC by default, ``PARAM CORANA 1`` for the Corana variant).
+CLASSIC automatically calibrates a diagonal Gaussian proposal by default;
+``PARAM STEP_AUTO 0`` restores the legacy fixed-``STEP_FRAC`` kernel.
 ``REPLICAS`` chains run concurrently on a geometric temperature ladder
 ``T_COLD .. T_HOT`` (slot 0 coldest).  It is static by default; ``RT < 1``
 cools the whole ladder each epoch.  Every ``SWAP_EVERY`` epochs, adjacent
@@ -1604,15 +1606,110 @@ Corana).  ``REANNEAL`` and ``REANNEAL_SCALE`` are serial-only:
      - ``1.0``
      - Ladder cooling per epoch, ``(0,1]``.  1.0 = static ladder (pure
        PT); < 1 turns the run into a PT→SA hybrid ending at ``T_MIN``.
+   * - ``PARAM STEP_AUTO``
+     - ``1``
+     - CLASSIC-only automatic diagonal proposal calibration.  ``0``
+       selects the legacy fixed-``STEP_FRAC`` kernel.  An explicit
+       top-level ``STEP`` also disables calibration.
+   * - ``PARAM STEP_AUTO_SWEEPS``
+     - ``12``
+     - Minimum shuffled coordinate attempts per dimension.  Unconverged
+       dimensions continue to at most twice this count.
+   * - ``PARAM STEP_ADAPT_EVERY``
+     - ``0``
+     - Production diagonal-RAM update cadence in proposals per temperature
+       slot.  ``0`` freezes the calibrated kernel; ``L`` is the
+       recommended cadence for continued adaptation.
    * - ``PARAM INIT_MODE``
      - ``0``
-     - 0: chain 0 starts at the seed; the rest use Gaussian jitter.
-       Its sigma is the CLASSIC proposal scale or the numeric initial Corana
-       ``V[i]``.  1: chains > 0 are drawn uniformly in the box.
+     - 0: automatic CLASSIC starts every replica at the same valid warm
+       seed.  Fixed CLASSIC and Corana start chain 0 at the seed and jitter
+       higher slots.  1: chains > 0 are drawn uniformly in the box.
    * - ``PARAM RESET_TO_BEST``
      - ``0``
      - When 1, snaps ONLY the coldest slot to the global best each
        epoch (hot replicas exist to explore).
+
+Automatic CLASSIC proposal calibration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Automatic calibration applies only to CLASSIC ``ANNEAL_PT``; serial
+``ANNEAL``, ``ANNEAL_PA``, and Corana are unchanged.  Under
+``INIT_MODE 0`` every temperature slot begins at the already validated
+warm seed, avoiding bound-derived initialization jitter before a proposal
+metric exists.  ``STEP_FRAC * OPTIM_width[i]`` is only the initial
+coordinate-scale guess; ``OPTIM`` remains the hard support rather than
+the final metric.
+
+At each slot temperature the warm-up shuffles one-coordinate Gaussian
+proposals and adapts each scale toward acceptance probability 0.44.  An
+unusable proposal, or one with Metropolis probability below 0.01, backs its
+coordinate scale off by a factor of ten.  Other proposals use a diminishing
+``m^-0.6`` log-scale update, limited to a factor of two per attempt.
+Every dimension receives at least ``STEP_AUTO_SWEEPS`` attempts;
+unconverged dimensions receive up to twice that number.  Scales that reach
+floating-point resolution or the support width are retained and explicitly
+flagged.
+
+The learned coordinate scales are divided by ``sqrt(D)`` to form a
+whole-vector diagonal Gaussian.  Each slot then runs 100 pilot proposals
+while adapting one common multiplier toward the high-dimensional 0.234
+acceptance heuristic.  Calibration evaluations, accepted states, and new
+best points are retained, but production epoch, swap, and ladder-flow
+statistics start from zero after warm-up.
+
+By default the resulting kernel is frozen.  With
+``STEP_ADAPT_EVERY N`` greater than zero, every production proposal
+contributes to a diagonal robust-adaptive-Metropolis accumulator:
+
+.. code-block:: text
+
+   delta[i] += log(1 + eta_j * (alpha_j - 0.234)
+                         * z_j[i]^2 / ||z_j||^2)
+   eta_j = min(1, j^(-0.6))
+
+After each ``N`` proposals in that slot, the accumulated variance update
+is applied with a factor-of-two clamp and the accumulator is cleared.  Thus
+``N`` controls how often the kernel changes; it does not discard
+intermediate proposals.  Scales and accumulators stay with temperature
+slots across replica swaps.  The 0.44/0.234 targets and diminishing updates
+follow the scaling principles in
+`Roberts, Gelman & Gilks (1997) <https://doi.org/10.1214/aoap/1034625254>`_,
+`Garthwaite, Fan & Sisson (2010) <https://arxiv.org/abs/1006.3690>`_, and
+`Vihola (2012) <https://arxiv.org/abs/1011.4381>`_.
+
+Warm-up counts against both ``MAXEVAL`` and ``MAXTIME``.  A complete
+warm-up costs approximately
+``REPLICAS * (D * STEP_AUTO_SWEEPS + 100)`` host evaluations at minimum
+and ``REPLICAS * (2 * D * STEP_AUTO_SWEEPS + 100)`` in the worst case,
+in addition to seed/T0 work.  For the 174-dimensional, 32-replica run21
+layout this is about 70,000 to 137,000 evaluations.  If a limit interrupts
+calibration, the run stops cleanly without exceeding the budget.
+
+The journal labels the active mode as ``CLASSIC[AUTO-FROZEN]``,
+``CLASSIC[FIXED]``, or ``CLASSIC[ADAPTIVE-DIAG]`` and reports each
+slot's coordinate acceptance, pilot acceptance, backoff count, and learned
+sigma range.  Rank 0 also writes ``hpo_step_scales.tsv`` with columns
+``slot``, ``temperature``, ``parameter``, ``sigma``,
+``sigma/width``, ``acceptance``, and ``status``.  Status values
+identify ``numerical-floor``, ``support-capped``, ``unconverged``,
+and ``interrupted`` dimensions.
+
+Recommended frozen-kernel run22 settings are:
+
+.. code-block:: text
+
+   PARAM CORANA 0
+   PARAM L 20
+   PARAM STEP_AUTO 1
+   PARAM STEP_AUTO_SWEEPS 12
+   PARAM STEP_ADAPT_EVERY 0
+   PARAM STEP_FRAC 1e-8
+   PARAM BOUNDARY_MODE 0
+
+For continued adaptation, change only ``PARAM STEP_ADAPT_EVERY 20``.
+An explicit top-level ``STEP`` disables automatic calibration; specifying
+automatic-only sweep/adaptation controls alongside it is an error.
 
 ``FTOL_REL``/``FTOL_ABS`` arm the Corana sec.-4 plateau on the coldest
 slot's end-of-epoch value plus the global best.  An epoch costs

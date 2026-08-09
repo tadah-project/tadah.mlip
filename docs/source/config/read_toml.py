@@ -271,8 +271,25 @@ for key_name, raw_entry in allowed_keys.items():
     if entry.get('long_description', ""):
         # Preserve original indentation (strip first newline if present)
         long_desc = entry['long_description'].lstrip("\n")
+        in_top_level_list = False
+        previous_blank = True
         for line in long_desc.splitlines():
+            # A blueprint description is plain text shared with CLI help, so
+            # authors reasonably write ``Heading:\n- item``.  RST requires a
+            # blank line before that top-level list (and after it if the source
+            # omitted one); add only those structural blanks while preserving
+            # all author-supplied wrapping and nested indentation.
+            if line.startswith(("- ", "* ", "+ ")):
+                if not in_top_level_list and not previous_blank:
+                    f.write("   \n")
+                in_top_level_list = True
+            elif not line.strip():
+                in_top_level_list = False
+            elif in_top_level_list and not line[0].isspace():
+                f.write("   \n")
+                in_top_level_list = False
             f.write(f"   {line}\n")
+            previous_blank = not line.strip()
         f.write("\n")
 
     # ---------------------------------------------------------------------

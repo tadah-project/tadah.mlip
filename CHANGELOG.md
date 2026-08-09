@@ -17,6 +17,31 @@ versioning follows [SemVer](https://semver.org/) at the umbrella level.
 
 ## [Unreleased]
 
+### Added
+- `[hpo][umbrella]` `PARAM SWAP_WINDOW` controls `ANNEAL_PT` windowed per-pair swap-acceptance reporting (default `20`; `0` keeps cumulative reporting only).
+- `[hpo][umbrella]` Annealing boundary policy: `PARAM BOUNDARY_MODE 0` keeps exact mirror reflection as the default; `1` uses Corana-compatible per-coordinate redraw without spending host-evaluation budget on discarded draws.
+- `[hpo][umbrella]` Live MPI-safe global-best checkpoint: canonical `best_pot.tadah` uses deterministic `(loss, rank, slot, eval)` ordering and atomically installs only a winning complete potential, while every rank keeps an explicit `best_pot.tadah.r<rank>` local view. Fresh runs discard unrelated incumbents; explicit checkpoint resumes retain and validate the canonical winner. A pre-rename SIGKILL may leave an ignored hidden temporary file but never a torn canonical potential.
+
+### Changed
+- `[umbrella]` The HPO output reference now places per-evaluation wall time in `outvar.tadah`, records the `OUTPUT 1` default, describes `best_*` files as append histories, and documents `BOUTPUT` as a zero/positive toggle rather than a cadence.
+- `[hpo][umbrella]` The historical defaults report now separates matched comparisons from unequal-seed cells and removes unsupported NS20 and monotone-PACCEPT rankings while preserving the raw result table.
+- `[hpo][umbrella]` Annealing documentation now qualifies reproducibility by fixed replica/population counts, a deterministic objective, and non-timing stops; distinguishes CLASSIC `L` from Corana `NS`/`NT` epoch costs; and documents conditional PA FAILSCORE weighting and all-failed behavior.
+- `[hpo][umbrella]` ANNEAL-family numeric and variant validation is strict. `STEP_FRAC` is `(0,1]`; `V_FLOOR_FRAC` is `[0,1]` with zero disabling the floor; integer knobs may not be fractional; transformed bounds and INIT seeds must be finite, dimensionally exact, and in-range; explicit `T_MIN` may not exceed resolved `T_HOT`/T0; and variant no-ops are rejected (including `RESET_TO_BEST` under PA). Explicit controls that would be overridden are errors too: `STEP` + `STEP_FRAC`, `T_HOT` + T0 calibration knobs, `REANNEAL=0` + `REANNEAL_SCALE`, PT `T_COLD` + `LADDER_SPAN`, and static PT `RT=1` + `T_MIN`.
+- `[hpo][umbrella]` `THREADS` is the total shared worker-pool width per rank and no longer multiplies `OMP_NUM_THREADS`; PA reports `culled = POPULATION - unique parents`.
+
+### Fixed
+- `[hpo][umbrella]` MPI annealing rejects vector counts and cumulative gather/scatter displacements that exceed the MPI C `int` interface; PT and PA also reject an unrepresentable `D+2` calibration payload before dimension-sized driver allocation, host evaluation, or collectives, and PA rejects an unrepresentable population-state payload in that prologue.
+- `[hpo][umbrella]` Annealing `STEP`/`STEP_FRAC` semantics are explicit and consistent: Gaussian sigma for CLASSIC, uniform half-width `V` for Corana. PT/PA `INIT_MODE 0` remains Gaussian in both variants and is now documented precisely: its standard deviation is the CLASSIC sigma or the numeric initial Corana `V`.
+- `[hpo][umbrella]` Annealing now ranks finite graded failures in `[0.999*FAILSCORE, FAILSCORE)` for Metropolis decisions and chain/walker personal-best updates, restoring the intended downhill path toward feasibility in classic ANNEAL, Corana, PT, and PA. T0 calibration and PA feasibility weighting/resampling continue to classify the reserved band as failed.
+- `[hpo][umbrella]` Annealing success and scale criteria now require feasible losses: non-finite, graded-band, and at-or-above-ceiling values cannot satisfy `STOPVAL`, fill the Corana `FTOL` plateau, or enter T0 calibration statistics.
+- `[hpo][umbrella]` Graded-FAILSCORE arithmetic is overflow-safe near the finite-double limit; startup requires a finite positive, representably banded `FAILSCORE < 1e300`, and `PC_FAILPROBE --s0` requires a finite positive scale.
+- `[hpo][umbrella]` PA now uses a scale-aware ESS beta solve, realizes a representable temperature decrease and recomputes the actual `dbeta` used by weights/ESS, progresses through subnormal geometric temperatures, and excludes trailing zero-weight parents during systematic resampling.
+- `[hpo][umbrella]` PT replica exchange resolves equal-temperature/equal-loss, zero-temperature, and normalized infinite-loss limits before arithmetic and uses a log-domain comparison for ordinary finite exchanges.
+- `[hpo][umbrella]` Non-finite-loss diagnostics now state observed counts/rates without assigning a cause, including an explicit unavailable rate for zero-evaluation runs.
+- `[hpo][umbrella]` Simulated-annealing audit fixes cover Corana initial/adjusted step bounds, incomplete adjustment cycles, exact large-excursion reflection, bounded redraw failure, fail-closed handling of non-finite and at-or-above-ceiling proposals, OOB percentages, T0 probe failures, hard PT/PA global `MAXEVAL`, PA MPI totals, STOPVAL propagation, and removal of the final budget-overshooting rank-0 evaluation.
+- `[hpo][umbrella]` Multi-rank HPO is explicitly restricted to plain `TADAH:ANNEAL_PT` and `TADAH:ANNEAL_PA`; unsupported checkpointed/decorated strategies fail before policy setup.
+- `[umbrella]` HPO documentation now uses the default `RT=0.90` rung count, attributes reset-to-best to the original Corana algorithm, and describes the shared-pool, MPI-output, and global-budget contracts accurately.
+
 ## [1.4.0] — 2026-07-14
 
 Nothing yet.

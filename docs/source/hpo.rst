@@ -1538,10 +1538,13 @@ Parallel tempering (replica exchange) over the same annealing stepper
 (CLASSIC by default, ``PARAM CORANA 1`` for the Corana variant).
 CLASSIC automatically calibrates a diagonal Gaussian proposal by default;
 ``PARAM STEP_AUTO 0`` restores the legacy fixed-``STEP_FRAC`` kernel.
-``REPLICAS`` chains run concurrently on a geometric temperature ladder
-``T_COLD .. T_HOT`` (slot 0 coldest).  It is static by default; ``RT < 1``
-cools the whole ladder each epoch.  Every ``SWAP_EVERY`` epochs, adjacent
-pairs attempt a Metropolis state swap
+``REPLICAS`` chains run concurrently on a power-shaped log-temperature
+ladder ``T_COLD .. T_HOT`` (slot 0 coldest); ``LADDER_POWER 1`` is the
+legacy geometric ladder.  The interior temperatures are static by default.
+``LADDER_ADAPT 1`` redistributes them during production to equalize adjacent
+swap rates without moving either endpoint, while ``RT < 1`` cools the whole
+instantaneous ladder each epoch.  Every ``SWAP_EVERY`` epochs, adjacent pairs
+attempt a Metropolis state swap
 (``p = min(1, exp((b_i - b_j)(f_i - f_j)))``).  A lower-loss state on
 the hot side moves cold-ward with probability one, while reverse exchanges
 remain possible.  Swaps move states ``(x, f)``, not temperatures: the
@@ -1594,6 +1597,26 @@ Corana).  ``REANNEAL`` and ``REANNEAL_SCALE`` are serial-only:
    * - ``PARAM LADDER_SPAN``
      - ``1e3``
      - ``T_HOT/T_COLD`` when ``T_COLD`` is unset.
+   * - ``PARAM LADDER_POWER``
+     - ``1.0``
+     - Initial normalized log-ladder power.  Values below 1 place slots
+       toward ``T_HOT``; values above 1 place them toward ``T_COLD``.
+   * - ``PARAM LADDER_ADAPT``
+     - ``0``
+     - Enable endpoint-preserving production temperature adaptation.
+   * - ``PARAM LADDER_ADAPT_EVERY``
+     - ``20``
+     - Adjacent swap attempts required at every pair before one update.
+       Valid only when ``LADDER_ADAPT=1``.
+   * - ``PARAM LADDER_ADAPT_GAIN``
+     - ``1.0``
+     - Initial adaptation gain in ``(0,1]``.
+   * - ``PARAM LADDER_ADAPT_DECAY``
+     - ``0.6``
+     - Diminishing-gain exponent in ``(0.5,1]``.
+   * - ``PARAM LADDER_ADAPT_UPDATES``
+     - ``0``
+     - Maximum update count; 0 keeps diminishing adaptation active.
    * - ``PARAM SWAP_EVERY``
      - ``1``
      - Epochs between exchange attempts (an epoch = one rung per
@@ -1629,6 +1652,65 @@ Corana).  ``REANNEAL`` and ``REANNEAL_SCALE`` are serial-only:
      - ``0``
      - When 1, snaps ONLY the coldest slot to the global best each
        epoch (hot replicas exist to explore).
+
+Adaptive temperature ladder
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The initial normalized positions and temperatures are
+
+.. math::
+
+   u_k = \left(\frac{k}{K-1}\right)^{\mathtt{LADDER\_POWER}},\qquad
+   \log T_k = \log T_{\rm cold} + u_k\log\frac{T_{\rm hot}}{T_{\rm cold}}.
+
+``LADDER_POWER`` is independently useful when adaptation is off.  All other
+``LADDER_ADAPT_*`` controls are rejected unless ``LADDER_ADAPT=1``, and
+adaptation requires at least three replicas.
+
+Adaptation has counters separate from cumulative and ``SWAP_WINDOW``
+diagnostics.  Once every adjacent pair has accumulated
+``LADDER_ADAPT_EVERY`` attempts, rank-aggregated pair rates :math:`a_p` update
+the positive log-temperature gaps :math:`d_p=\log T_{p+1}-\log T_p`:
+
+.. code-block:: text
+
+   eta_m = LADDER_ADAPT_GAIN * m^(-LADDER_ADAPT_DECAY)
+   log(d_p) += clamp(eta_m * (a_p - mean(a)), -log(2), log(2))
+
+The gaps are then renormalized to the fixed total log span.  Representable
+``nextafter`` floors keep the reconstructed ladder strictly increasing, and
+``T_COLD``/``T_HOT`` are assigned exactly.  With ``RT < 1`` these are the
+current cooled endpoints: adaptation changes only normalized interior
+positions, so the endpoint cooling trajectory is unchanged.  A finite
+``LADDER_ADAPT_UPDATES`` freezes the ladder after that many updates; zero
+continues with diminishing gain.  Adaptation consumes no objective calls and
+does not move states, proposal scales, RAM accumulators, slot bests, swap
+history, or walker identities between slots.
+
+There is deliberately no target-acceptance knob.  Fixed endpoints and
+``REPLICAS`` determine the absolute acceptance level; adaptation can equalize
+adjacent rates but cannot force all of them to a chosen value.  If rates are
+uniformly too low, narrow ``T_COLD..T_HOT`` or add replicas.  The journal
+reports each update's acceptance range, gain, old/new gap ranges, and complete
+temperature table, plus the final ladder and update count.  Rank 0 writes
+``hpo_temperature_ladder.tsv`` with update, epoch, pair counters/rates,
+old/new pair temperatures, and old/new log gaps.  For CLASSIC continued
+proposal adaptation, ``STEP_ADAPT_EVERY=L`` is recommended while temperatures
+also adapt, but is not required.
+
+The update follows `adaptive parallel tempering
+<https://arxiv.org/abs/1205.1076>`_ and `dynamic temperature selection
+<https://arxiv.org/abs/1501.05823>`_.  A run22 starting candidate (not a new
+global default) is:
+
+.. code-block:: text
+
+   PARAM LADDER_ADAPT 1
+   PARAM LADDER_POWER 0.5
+   PARAM LADDER_ADAPT_EVERY 20
+   PARAM LADDER_ADAPT_GAIN 1.0
+   PARAM LADDER_ADAPT_DECAY 0.6
+   PARAM LADDER_ADAPT_UPDATES 0
 
 Automatic CLASSIC proposal calibration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

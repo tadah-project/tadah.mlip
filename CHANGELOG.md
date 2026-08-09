@@ -18,6 +18,7 @@ versioning follows [SemVer](https://semver.org/) at the umbrella level.
 ## [Unreleased]
 
 ### Added
+- `[hpo][umbrella]` `ANNEAL_PT` supports opt-in endpoint-preserving temperature adaptation (`LADDER_ADAPT`) from a configurable power-shaped log ladder (`LADDER_POWER`), with diminishing gain, finite-freeze controls, MPI-identical updates, per-update journal tables, and `hpo_temperature_ladder.tsv`; legacy runs remain geometric and unchanged unless a new ladder knob is supplied.
 - `[hpo][umbrella]` `PARAM SWAP_WINDOW` controls `ANNEAL_PT` windowed per-pair swap-acceptance reporting (default `20`; `0` keeps cumulative reporting only).
 - `[hpo][umbrella]` Annealing boundary policy: `PARAM BOUNDARY_MODE 0` keeps exact mirror reflection as the default; `1` uses Corana-compatible per-coordinate redraw without spending host-evaluation budget on discarded draws.
 - `[hpo][umbrella]` Live MPI-safe global-best checkpoint: canonical `best_pot.tadah` uses deterministic `(loss, rank, slot, eval)` ordering and atomically installs only a winning complete potential, while every rank keeps an explicit `best_pot.tadah.r<rank>` local view. Fresh runs discard unrelated incumbents; explicit checkpoint resumes retain and validate the canonical winner. A pre-rename SIGKILL may leave an ignored hidden temporary file but never a torn canonical potential.

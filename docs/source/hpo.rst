@@ -132,7 +132,7 @@ A minimal ``config.hpo``:
    OPTIM RCUT2B (1) 4.0 6.0
 
 See :ref:`cli_example_2` for a slightly bigger walkthrough, and
-:ref:`hpo_examples` for a graded series of fifteen worked examples.
+:ref:`hpo_examples` for a graded series of worked examples.
 
 .. _nfp_manual:
 
@@ -2469,7 +2469,7 @@ See also
 * :ref:`asa_optimizer` — the vendored Adaptive Simulated Annealing
   optimiser (``LIB ASA / ALGO ASA``): algorithm background, full option
   tables, tuning guide.
-* :ref:`hpo_examples` — fifteen worked examples covering the optimiser
+* :ref:`hpo_examples` — worked examples covering the optimiser
   libraries and the ``INIT`` / ``STRATEGY`` / ``EXPLORE`` / ``RESTART`` /
   ``INNER`` blocks.
 * :ref:`cli_example_2` — minimal single-loss-term walkthrough.

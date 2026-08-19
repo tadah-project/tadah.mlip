@@ -5,7 +5,7 @@ Nested Fitting — Worked Examples
 
 .. note::
 
-   The HPO module ships fifteen end-to-end examples that build up
+   The HPO module ships twenty-one end-to-end examples that build up
    gradually: ``01`` is the smallest viable config, each subsequent one
    introduces one or two new features. Between them they exercise the
    optimiser libraries and the ``INIT``, ``STRATEGY``, ``EXPLORE``,
@@ -127,6 +127,34 @@ Index
      - Classic Kirkpatrick/Metropolis simulated annealing (``LIB TADAH,
        ALGO ANNEAL``) with an auto-calibrated initial temperature.
      - ``TADAH:ANNEAL``, ``PARAM``
+   * - 16
+     - `16_fixweight_mixed <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/16_fixweight_mixed>`_
+     - ``FIXINDEX``/``FIXWEIGHT`` pinning combined with ``OPTIM
+       FIXWEIGHT`` — mixed least-squares / pinned / searched model
+       weights (ships its own local ``config.tadah``).
+     - ``FIXWEIGHT``, ``OPTIM FIXWEIGHT``
+   * - 17
+     - `17_no_training_db <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/17_no_training_db>`_
+     - No training ``DBFILE`` and no ``--validation``: every
+       coefficient pinned, the loss is ``PC_LAMMPS``-only (refit-style
+       polish of an existing potential).
+     - no-``DBFILE`` mode, ``PC_LAMMPS``
+   * - 18
+     - `18_anneal_pt <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/18_anneal_pt>`_
+     - Parallel tempering (``LIB TADAH, ALGO ANNEAL_PT``): a replica
+       ladder with exchange moves and cumulative/windowed swap-flow
+       diagnostics.
+     - ``TADAH:ANNEAL_PT``, ``REPLICAS``, ``THREADS``
+   * - 19
+     - `19_anneal_pa <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/19_anneal_pa>`_
+     - Population annealing (``LIB TADAH, ALGO ANNEAL_PA``) with
+       ESS-controlled resampling and explicit all-failed handling.
+     - ``TADAH:ANNEAL_PA``, ``POPULATION``, ``ESS_TARGET``
+   * - 20
+     - `20_anneal_corana <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/20_anneal_corana>`_
+     - The Corana adaptive variant of ``LIB TADAH, ALGO ANNEAL``:
+       per-coordinate step adaptation with boundary-policy diagnostics.
+     - ``PARAM CORANA 1``, ``NS``/``NT``
    * - 21
      - `21_asa <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/21_asa>`_
      - Adaptive Simulated Annealing (``LIB ASA, ALGO ASA``, vendored

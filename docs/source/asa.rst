@@ -360,7 +360,8 @@ Journal output
 
    [12:05:10]  INFO  ASA[Ingber ASA-30.53]: seed=1234 dim=2  Limit_Acceptances=10000  ...
    [12:05:10]  INFO  ASA: upstream journal -> asa_out (asa() truncates it per run)
-   [12:05:12]  INFO  ASA gen=36 acc=20 best=6.622e-02 last=7.235e-02
+   [12:05:12]  INFO  ASA gen=36 acc=20 best=6.622e-02 last=7.235e-02 Tcost=3.1e-01
+   [12:05:14]  BEST  * eval=   173  loss=5.1035e-02  (52 ms)  [slot 2/4 Tcost=8.755e-02]
    [12:05:15]  INFO  ASA summary: generated=173 accepted=61 host_evals=200 best=4.621547e-02 exit=IMMEDIATE_EXIT  (at-best: generated=151 accepted=54)
    [12:05:15]  INFO  ASA stopped: MAXEVAL reached after 200 host eval(s) (asa exit: IMMEDIATE_EXIT)
 
@@ -370,6 +371,14 @@ to their values at the moment the best state was found (it reads
 ``0/0`` when the best never left the seed). A ``P_TEMP_TOO_SMALL``
 stop line names the dimension whose temperature underflowed, e.g.
 ``... (often acceptable convergence) [dim 42: CGRID2B[10]] ...``.
+``Tcost`` is ASA's live COST (acceptance) temperature — the single most
+useful schedule-health number: it should start on the scale of the
+initial loss spread and anneal downward; pinned near the ``FAILSCORE``
+band means the calibration was poisoned by failures, and frozen high
+means ``Reanneal_Cost`` keeps re-inflating it. (The per-dimension
+parameter temperatures are internal to ASA and not reported; the
+``[slot i/N]`` part names the ``Gener_Block`` lane that produced the
+best, and both tags appear only in block-parallel mode.)
 
 The ``ASA gen= acc=`` lines follow the ``Acceptance_Frequency_Modulus``
 cadence.  ASA additionally writes its own upstream journal (options

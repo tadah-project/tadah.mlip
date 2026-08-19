@@ -889,6 +889,12 @@ The driver-attribute keys below are accepted wherever an
        :ref:`tadah_anneal_block` below), ``ANNEAL_PT`` (parallel
        tempering, :ref:`tadah_anneal_pt_block`), ``ANNEAL_PA``
        (population annealing, :ref:`tadah_anneal_pa_block`).
+   * - ``ASA``
+     - ``ASA`` — Lester Ingber's Adaptive Simulated Annealing
+       (ASA-30.53, vendored, BSD-3-Clause). Fat-tailed per-dimension
+       generating distribution, sensitivity-driven reannealing,
+       optional quenching and block-parallel evaluation. Documented on
+       its own page: :ref:`asa_optimizer`.
    * - ``NLOPT``
      - All gradient-free NLOpt globals (``GN_*``) and locals (``LN_*``)
        — see the `NLOpt algorithm catalogue
@@ -1044,6 +1050,10 @@ Any ``NLOPT`` algorithm          First only.
 ``TADAH:ANNEAL_PT``/``_PA``      First only — seed starts there; remaining starts
                                  use Gaussian jitter under ``INIT_MODE 0``
                                  (sigma = CLASSIC scale or initial Corana V).
+``ASA:ASA``                      First only — becomes ASA's
+                                 ``parameter_initial_final`` and auto-sets
+                                 ``User_Initial_Parameters 1``
+                                 (:ref:`asa_optimizer`).
 ================================ ===================================================
 
 ``MULTISTART > 1`` runs the inner optimiser ``K`` times and consumes one
@@ -2449,11 +2459,16 @@ Marker                                                                       Mea
 ``[HPO] RESTART i/M — fresh init from STRATEGY``                              Stagnation watchdog fired.
 ``[HPO] NOISE_AUTO: PARAM fd_step set to V (diag=…, dim=…)``                  ``NOISE.AUTO`` fired and shows the value used.
 ``[HPO] NOISE_CALIBRATION: running N evals at the seed point``                ``NOISE.CALIBRATION`` started.
+``[HPO] ASA[Ingber ASA-30.53]: seed=… dim=…``                                 ``ASA:ASA`` entry banner with resolved options.
+``[HPO] ASA stopped: <reason> after N host eval(s) (asa exit: …)``            ``ASA:ASA`` stop reason + upstream exit code.
 ============================================================================ ============================================================
 
 See also
 --------
 
+* :ref:`asa_optimizer` — the vendored Adaptive Simulated Annealing
+  optimiser (``LIB ASA / ALGO ASA``): algorithm background, full option
+  tables, tuning guide.
 * :ref:`hpo_examples` — fifteen worked examples covering the optimiser
   libraries and the ``INIT`` / ``STRATEGY`` / ``EXPLORE`` / ``RESTART`` /
   ``INNER`` blocks.

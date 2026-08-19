@@ -127,3 +127,9 @@ Index
      - Classic Kirkpatrick/Metropolis simulated annealing (``LIB TADAH,
        ALGO ANNEAL``) with an auto-calibrated initial temperature.
      - ``TADAH:ANNEAL``, ``PARAM``
+   * - 21
+     - `21_asa <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/21_asa>`_
+     - Adaptive Simulated Annealing (``LIB ASA, ALGO ASA``, vendored
+       Ingber ASA-30.53) with the original ASA option spellings — see
+       :ref:`asa_optimizer`.
+     - ``ASA:ASA``, ``PARAM Temperature_Ratio_Scale``

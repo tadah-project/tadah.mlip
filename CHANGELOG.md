@@ -18,6 +18,7 @@ versioning follows [SemVer](https://semver.org/) at the umbrella level.
 ## [Unreleased]
 
 ### Added
+- `[hpo][umbrella]` New optimiser `LIB ASA / ALGO ASA`: Lester Ingber's Adaptive Simulated Annealing (vendored ASA-30.53, BSD-3-Clause) with the original ASA option spellings as `PARAM` keys, per-dimension indexed forms, THREADS-invariant block-parallel evaluation (`PARAM Gener_Block`), and a golden unit test proving default-option trajectories bit-identical to unmodified upstream ASA. Documented on a dedicated docs page (`asa.rst`) with option tables, deviations from upstream defaults, and Ingber's tuning guidance; example `21_asa` added.
 - `[hpo][umbrella]` `ANNEAL_PT` supports opt-in endpoint-preserving temperature adaptation (`LADDER_ADAPT`) from a configurable power-shaped log ladder (`LADDER_POWER`), with diminishing gain, finite-freeze controls, MPI-identical updates, per-update journal tables, and `hpo_temperature_ladder.tsv`; legacy runs remain geometric and unchanged unless a new ladder knob is supplied.
 - `[hpo][umbrella]` `PARAM SWAP_WINDOW` controls `ANNEAL_PT` windowed per-pair swap-acceptance reporting (default `20`; `0` keeps cumulative reporting only).
 - `[hpo][umbrella]` Annealing boundary policy: `PARAM BOUNDARY_MODE 0` keeps exact mirror reflection as the default; `1` uses Corana-compatible per-coordinate redraw without spending host-evaluation budget on discarded draws.

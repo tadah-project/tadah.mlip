@@ -361,8 +361,15 @@ Journal output
    [12:05:10]  INFO  ASA[Ingber ASA-30.53]: seed=1234 dim=2  Limit_Acceptances=10000  ...
    [12:05:10]  INFO  ASA: upstream journal -> asa_out (asa() truncates it per run)
    [12:05:12]  INFO  ASA gen=36 acc=20 best=6.622e-02 last=7.235e-02
-   [12:05:15]  INFO  ASA summary: generated=200 accepted=64 host_evals=200 best=4.621547e-02 exit=IMMEDIATE_EXIT
+   [12:05:15]  INFO  ASA summary: generated=173 accepted=61 host_evals=200 best=4.621547e-02 exit=IMMEDIATE_EXIT  (at-best: generated=151 accepted=54)
    [12:05:15]  INFO  ASA stopped: MAXEVAL reached after 200 host eval(s) (asa exit: IMMEDIATE_EXIT)
+
+The ``generated``/``accepted`` figures are live totals; the ``at-best``
+pair repeats upstream ASA's exit convention of restoring its counters
+to their values at the moment the best state was found (it reads
+``0/0`` when the best never left the seed). A ``P_TEMP_TOO_SMALL``
+stop line names the dimension whose temperature underflowed, e.g.
+``... (often acceptable convergence) [dim 42: CGRID2B[10]] ...``.
 
 The ``ASA gen= acc=`` lines follow the ``Acceptance_Frequency_Modulus``
 cadence.  ASA additionally writes its own upstream journal (options
@@ -389,9 +396,14 @@ Ingber's recommended tuning order (ASA-README / ASA-NOTES):
    remembering that parameter quenching voids the sampling proof.
 
 * Exit ``P_TEMP_TOO_SMALL`` after convergence is normal — a parameter
-  temperature annealed below resolution.  If it fires too early, raise
+  temperature annealed below resolution (the stop line names the
+  dimension).  If it fires too early, raise
   ``Temperature_Ratio_Scale`` (e.g. 1e-4 … 0.5) or set per-dimension
-  ``User_Temperature_Ratio``.
+  ``User_Temperature_Ratio``.  Mind that quenching multiplies into the
+  same exponent: ``User_Quench_Param_Scale`` Q with the default
+  ``Temperature_Ratio_Scale 1e-5`` anneals to zero within a few
+  thousand states — choose TRS and Q together
+  (:math:`c = -\log(\mathrm{TRS})\exp(-\log(\mathrm{TAS})\,Q/D)`).
 * Large D: set ``Curvature_0 1`` (default here), consider
   ``Reanneal_Parameters 0`` (saves D+1 evaluations per reanneal cycle),
   raise ``Temperature_Ratio_Scale`` and ``Cost_Parameter_Scale_Ratio``.

@@ -108,7 +108,15 @@ version = _short.group(1) if _short else release
 # ones.
 extensions = ['breathe',
               'myst_parser',
-              'sphinx_exec_code']
+              'sphinx_exec_code',
+              'matplotlib.sphinxext.plot_directive']
+
+# plot_directive: deterministic inline figures (temperature ladders,
+# acceptance curves, ...). No source links; PNG only, keeps builds fast.
+plot_html_show_source_link = False
+plot_html_show_formats = False
+plot_formats = [('png', 150)]
+plot_include_source = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -269,3 +277,5 @@ def setup(app):
     confdir = os.path.dirname(os.path.abspath(__file__))
     subprocess.run(['python', os.path.join('config', 'read_toml.py')], cwd=confdir, check=True)
     subprocess.run(['python', os.path.join('cli', 'generate_cli.py')], cwd=confdir, check=True)   # requires blueprint.toml from read_toml.py
+    # ANNEAL-family key tables from HPO's registry (single source of truth)
+    subprocess.run(['python', os.path.join('config', 'read_anneal_keys.py')], cwd=confdir, check=True)

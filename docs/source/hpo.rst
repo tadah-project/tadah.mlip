@@ -139,10 +139,10 @@ See :ref:`cli_example_2` for a slightly bigger walkthrough, and
 Configuration file
 ------------------
 
-This section is the reference for the HPO configuration file.  For an
-even terser keyword reference — every flag, every default, plus the
-*OPTIM-able context keys* table — see the in-tree `HPO/README.md
-<https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/README.md>`_.
+This section is the reference for the HPO configuration file.  The
+annealing-family key tables live on the :doc:`optimizer` pages
+(generated from the validation registry); ``tadah hpo`` prints the same
+information per algorithm.
 
 Block hierarchy
 ...............
@@ -167,7 +167,7 @@ in the order they normally appear:
 Block keywords are case-sensitive.  Comments start with ``#``; long
 lines may be continued with a trailing ``\``.
 
-A legacy form without a ``STRATEGY`` block — ``LIB``/``ALGO``/``MAXEVAL``
+A short form without a ``STRATEGY`` block — ``LIB``/``ALGO``/``MAXEVAL``
 written directly inside ``OPTIMIZER`` — is still accepted and behaves
 exactly like ``STRATEGY { TYPE PLAIN ... }``.  It is fine for short
 single-shot runs but cannot express ``MULTISTART``, ``PRESTAGE``,
@@ -222,12 +222,10 @@ optimiser may vary, and over what bounds:
 
    OPTIM <KEY> (indices) <low> <high>
 
-* ``<KEY>`` — any optimisable key from the training configuration.  For
-  the full list of OPTIM-safe keys (and the tightly enumerated set of
-  *unsafe* ones, e.g. ``RCUT2B`` with ``D2_EAM``), see the
-  *OPTIM-able context keys: reinit-safety reference* table in
-  `HPO/README.md
-  <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/README.md>`_.
+* ``<KEY>`` — any optimisable key from the training configuration.
+  Whether a key can be re-initialised safely is validated at startup:
+  an unsafe combination (e.g. ``RCUT2B`` with ``D2_EAM``) is a hard
+  error naming the offending key.
 * ``(indices)`` — selects a subset of the values bound to ``<KEY>``.
   Indices follow the order in the training configuration and start
   from **1**.  Comma-separated lists, ranges ``a-b``, and strides
@@ -540,13 +538,13 @@ The knobs, most important first
 ``FAILSCORE <value>`` (root)
    The failure ceiling, as before — but with grading ON it **must** be a
    finite positive number below ``1e300`` (e.g. ``1e9``), large enough
-   that all four grading bands are strictly representable; the legacy
+   that all four grading bands are strictly representable; the plain
    ``DBL_MAX`` default and unrepresentable tiny values are rejected at
    startup.  Choose it a few orders of magnitude above your worst
    plausible *real* loss.
 
 ``FAILSCORE_GRADING ON|OFF`` (root, default ``OFF``)
-   The master switch.  ``OFF`` is byte-identical to the legacy
+   The master switch.  ``OFF`` reproduces the ungraded
    behaviour.  Everything below only matters when this is ``ON``.
    Environment override: ``TADAH_FAILSCORE_GRADING=ON|OFF``.
 
@@ -848,7 +846,7 @@ The driver-attribute keys below are accepted wherever an
      - Maximum number of evaluations.
    * - ``MAXTIME`` (uint)
      - Whole-optimiser wall-time in seconds for this active driver.  This is
-       distinct from root-level ``PC_SCRIPT_TIMEOUT`` (whose legacy alias is
+       distinct from root-level ``PC_SCRIPT_TIMEOUT`` (whose alias is
        root-level ``MAXTIME``).
    * - ``STOPVAL`` (float)
      - Stop when the loss falls below this value.
@@ -1166,771 +1164,22 @@ The ``EXPLORE`` block accepts the full driver-attribute set
 (``LIB``/``ALGO``/``MAXEVAL`` / …); it inherits the outer bounds and
 log-transform automatically.
 
-.. _tadah_anneal_block:
-
-LIB TADAH ALGO ANNEAL — classic Simulated Annealing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The in-tree ``TADAH`` library exposes a classic Kirkpatrick/Metropolis
-Simulated Annealing driver as ``ALGO ANNEAL``.  It is a single-shot
-optimiser: select it from a ``STRATEGY { TYPE PLAIN }`` block, or wrap
-it in ``MULTISTART`` for multiple independent chains.
-
-References:
-
-1. Kirkpatrick, S., Gelatt, C. D., and Vecchi, M. P.  *Optimization by
-   simulated annealing.*  Science 220 (4598), 671–680, 1983.
-2. Metropolis, N., Rosenbluth, A., Rosenbluth, M., Teller, A., and
-   Teller, E.  *Equation of State Calculations by Fast Computing
-   Machines.*  J. Chem. Phys. 21, 1087–1092, 1953.
-
-The algorithm operates in transformed (post-``LOG_HP``) parameter
-space.  CLASSIC draws each whole-vector trial as
-``x' = x + sigma * N(0, I)``.  Corana instead selects one coordinate and
-draws its offset from ``U(-V[i], V[i])``.  Both then apply the configured
-boundary rule and the Metropolis acceptance ``Δf <= 0`` ``or``
-``rand < exp(-Δf / T)``.
-``PARAM BOUNDARY_MODE 0`` (the default) mirror-reflects each offending
-component exactly, including excursions spanning many box widths.
-``PARAM BOUNDARY_MODE 1`` instead redraws each offending component from
-the same proposal kernel until it lies inside the box, matching the
-boundary treatment in the original Corana algorithm.  Redraws do not
-call the objective and therefore consume no ``MAXEVAL`` budget.  A
-redraw is bounded to 4096 attempts; exhausting that guard is a hard
-proposal-kernel error rather than an infinite loop.  With ``INIT_MODE 0``,
-``ANNEAL_PT``/``ANNEAL_PA`` use that same boundary rule and Gaussian
-non-seed jitter in both variants.  The standard
-deviation is the CLASSIC sigma or, under Corana, the same numeric initial
-``V[i]`` that serves as the rung's uniform half-width.
-Temperature cools geometrically: ``T <- T * RT``.
-
-Loss handling is fail-closed at the ceiling.  A NaN, infinity, or value at
-or above the configured ``FAILSCORE`` is rejected without replacing a
-healthy chain state; conversely, the next finite value below ``FAILSCORE``
-repairs a chain whose current loss is unusable.  With
-``FAILSCORE_GRADING ON``, this rankable range includes the reserved
-``[0.999*FAILSCORE, FAILSCORE)`` band: Metropolis decisions and
-chain/walker personal-best updates can therefore descend within a failing
-region.  T0 calibration and PA population weighting/resampling still treat
-the reserved band as failed.  Extreme but finite loss differences are
-compared without overflowing the Metropolis calculation.
-
-When ``PARAM T_HOT`` is not set, the driver auto-calibrates ``T0``
-from the seed point's neighbourhood: the seed is evaluated first, then
-``T0_PROBES`` local moves are drawn from a dedicated RNG stream, so probing
-never shifts the proposal sequence.  CLASSIC probes use the same full-vector
-Gaussian shape as CLASSIC proposals; Corana probes select one dimension and
-draw ``U(-1,1) * V[i]``, matching its coordinate proposal.  If a feasible
-uphill probe exists, let ``d`` be the median uphill ``Δf``.  If feasible probes
-exist but none is uphill (a pure-descent neighbourhood), ``d`` instead is
-the median absolute feasible delta.  Then ``T0 = d / ln(1/P)``, where ``P`` is the ``PARAM T0_PACCEPT``
-value.  This assigns that acceptance probability to the calibration delta;
-it does not guarantee the overall chain acceptance rate.
-Non-finite probes and every value at or above the failure-band threshold
-``0.999*FAILSCORE`` are excluded from the statistics —
-on realistic cliff landscapes a naive whole-box estimator either
-never sees the basin (``T0`` arbitrarily cold) or mixes the cliffs
-in (``T0 ~ FAILSCORE``, a never-cooling random walk).  If the seed
-itself is non-finite or lies in the failure band, one batch of
-uniform box probes is spent to re-anchor the chain on the best feasible
-point found; if nothing feasible turns up, the run aborts with a hard
-error listing the remedies (set ``PARAM T_HOT``, provide a viable starting point, or
-shrink the ``OPTIM`` boxes).
-
-Knobs are passed via the existing ``PARAM <key> <value>`` grammar
-inside the ``STRATEGY`` block.  Defaults are listed below.
-
-.. list-table::
-   :header-rows: 1
-   :widths: 20 14 66
-
-   * - PARAM
-     - Default
-     - Effect
-   * - ``T_HOT``
-     - auto
-     - Starting/hottest temperature (renamed from ``T_INIT``; the old
-       key is a hard error naming the replacement).  When set, T0
-       calibration is skipped (no probes are spent).
-   * - ``T_MIN``
-     - auto
-     - Cooling floor; the schedule ends when ``T < T_MIN``.  Auto
-       default is ``T0 * 1e-6`` (~132 cooling updates at the default
-       ``RT 0.90``).  Reaching it still requires enough budget: classic
-       with ``L=50`` needs roughly 6,600 proposals plus seed/T0 probes;
-       smaller runs stop at ``MAXEVAL``.  An explicit ``T_MIN`` must not
-       exceed the resolved ``T_HOT``/T0, including when T0 is auto-calibrated.
-   * - ``RT``
-     - ``0.90``
-     - Geometric cooling factor in ``(0, 1)``.
-   * - ``L``
-     - ``50``
-     - Markov-chain length per temperature (CLASSIC only; specifying it
-       under ``CORANA 1`` is a hard error).
-   * - ``STEP_FRAC``
-     - ``0.10``
-     - Per-dimension proposal scale as a fraction of
-       ``(high_i - low_i)``: Gaussian sigma for CLASSIC, initial uniform
-       half-width ``V[i]`` for Corana; must be finite and in ``(0, 1]``.
-   * - ``BOUNDARY_MODE``
-     - ``0``
-     - Boundary rule for proposals, local T0 probes, and PT/PA
-       ``INIT_MODE 0`` Gaussian seed jitter: ``0`` = exact mirror
-       reflection; ``1`` =
-       redraw each offending coordinate until it is in bounds.
-   * - ``T0_PROBES``
-     - ``20``
-     - Local probes around the seed used to calibrate T0.
-   * - ``T0_PACCEPT``
-     - ``0.05``
-     - Acceptance probability assigned to the calibration delta.  On one
-       42-D EAM workload, the six-seed ``NS=5,NT=5`` median best losses
-       were 0.0082 at 0.05, 0.42 at 0.10, and 0.33 at 0.20, so that
-       comparison was not monotone.  The 0.80 cell used ``NS=5,NT=2``
-       and three seeds; against the matched three-seed 0.05 cell, its
-       median was 5.45 versus 1.41.  These are workload-specific
-       fixed-budget observations, not a universal acceptance ranking.
-   * - ``NEPS``
-     - ``4``
-     - Plateau window in rungs for the ``FTOL`` stop (see below);
-       read only when ``FTOL_REL``/``FTOL_ABS`` is set.
-   * - ``REANNEAL``
-     - ``1``
-     - When a schedule cools out (``T < T_MIN``) with budget left,
-       snap the chain to the best-so-far and re-anneal from
-       ``REANNEAL_SCALE^n * T0``.  A new cycle starts only while that
-       temperature is at least ``T_MIN / RT``, allowing two rungs at or
-       above the floor; budget, time, ``STOPVAL``, or plateau can stop earlier.
-   * - ``REANNEAL_SCALE``
-     - ``0.25``
-     - Start-temperature factor for each successive re-anneal, in
-       ``(0, 1)``.
-
-Top-level ``STEP <s>`` selects one finite, positive scale for every
-dimension instead of width-derived ``PARAM STEP_FRAC``.  It is the Gaussian
-sigma under CLASSIC and the requested initial uniform half-width ``V[i]``
-under Corana; Corana then applies its per-dimension floor and box-width cap.
-For PT/PA ``INIT_MODE 0`` only, the resulting per-dimension scale is reused
-as the standard deviation of Gaussian non-seed jitter in both variants.
-Specifying ``STEP`` and ``STEP_FRAC`` explicitly is a hard error.
-Under ``BOUNDARY_MODE 1``
-``STEP`` must not exceed any dimension's box width.  The entry banner
-echoes which is in use.  ``SEED <int>`` seeds the RNG.
-
-Stops honoured: ``MAXEVAL`` (hard cap on host calls — **including** T0
-probes), ``MAXTIME``, ``STOPVAL``, the ``T_MIN`` floor (subject to
-``REANNEAL``), and — when ``FTOL_REL`` and/or ``FTOL_ABS`` is set —
-the Corana sec.-4 eps-``NEPS`` plateau rule: the run stops once the
-end-of-rung *current* value stays within
-``eps = max(FTOL_ABS, FTOL_REL * |f|)`` of the previous ``NEPS``
-end-of-rung values **and** within ``eps`` of the running best.  (The
-rule deliberately does not watch the monotone best-so-far: a chain
-still exploring at high T must not be stopped just because the best
-stalled.)
-
-Only a feasible loss can satisfy ``STOPVAL`` or participate in this
-plateau test.  With ``FAILSCORE`` configured, feasibility means
-``f < 0.999*FAILSCORE``: a non-finite, graded-band, or
-at-or-above-ceiling value cannot report convergence, and a failure encountered by the plateau
-tracker clears its current history window.
-
-When the feasible T0 probes show zero loss variation (a constant
-landscape at probe scale), or every local probe around a feasible seed is
-non-finite or lies in the failure band, HPO falls back to ``T0 = 1.0`` and
-emits a ``WARNING`` line; set ``PARAM T_HOT`` or adjust ``STEP_FRAC`` in that
-case.
-
-Knobs that are dead for this driver are **hard errors**, not silent
-no-ops: ``XTOL_REL``/``XTOL_ABS``, ``VECTOR_ARR``, ``GRAD_STRATEGY``,
-unknown ``PARAM`` keys (typo guard), and ``POPULATION`` (which belongs
-to ``TADAH:ANNEAL_PA``).  ``THREADS`` is active: it sets the total
-shared worker-pool width used by the chain's objective evaluations,
-not a number of independent serial chains.  Variant-only ``PARAM``
-keys are also strict: ``L`` is CLASSIC-only, while ``NS``, ``NT``,
-``C``, and ``V_FLOOR_FRAC`` require ``CORANA 1``.  ``RESET_TO_BEST``
-is active for serial/PT classic or Corana stepping, but is invalid for
-PA.
-All numeric values must be finite; count-valued parameters must be
-non-negative integers rather than fractional values that would be
-silently truncated.
-
-Explicit controls that would otherwise be overridden or unused are
-also hard errors: ``STEP`` with ``PARAM STEP_FRAC``; ``PARAM T_HOT``
-with an explicit ``T0_PROBES`` or ``T0_PACCEPT``; ``REANNEAL 0`` with
-``REANNEAL_SCALE``; PT ``T_COLD`` with ``LADDER_SPAN``; and static PT
-(``RT 1``) with ``T_MIN``.  Remove the inactive setting rather than
-relying on precedence.
-
-The annealing family validates its complete transformed search box and
-starting point before evaluation.  Every ``OPTIM`` interval must have
-finite ``low < high`` and a finite width.  The first point selected by
-``INIT`` (or the implicit ``CONFIG`` seed) must contain exactly one
-value per optimisable dimension; values must be finite (and positive
-before transforming a log-scaled value), and the transformed point must
-lie inside every transformed ``OPTIM`` interval.  Invalid seeds are
-rejected rather than clamped or partly reflected; with no seed, the box
-midpoint is used.  With ``LOG_HP`` unset, an absent/empty log-scale mask
-is valid and means that every dimension remains linear.  On an
-exceptionally narrow subnormal interval, ``STEP_FRAC * width`` can
-underflow to zero; use an explicit positive ``STEP`` in that case.
-
-Corana adaptive variant (opt-in)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Setting ``PARAM CORANA 1`` switches the inner loop from classic
-Kirkpatrick/Metropolis to the Corana adaptive scheme (refs:
-Corana, Marchesi, Martini, Ridella, *ACM Trans. Math. Soft.* 13:262,
-1987; Brommer, Univ. Stuttgart MSc, 2003).  The setup phase is
-identical (T0 calibration, seed evaluation, stop conditions); only
-the per-rung structure differs:
-
-* Perturbations are **one dim at a time** (uniform
-  ``U(-1, 1) · V[i]``), not whole-vector Gaussians.
-* The per-dim uniform half-width ``V[i]`` (initialised from explicit
-  ``STEP`` or from ``STEP_FRAC · (high_i - low_i)``, then immediately
-  clamped to its configured interval) is **adapted** after every complete ``NS`` step
-  cycle based on the per-dim accept ratio: it grows when the rate
-  exceeds 0.6 and shrinks when it drops below 0.4.  An incomplete cycle
-  at a stop or budget boundary is never treated as a zero-accept cycle.
-* T cools by ``RT`` after every ``NT`` step-adjust cycles, so a rung
-  consumes ``NT · NS · D`` host evaluations (``L`` does not apply).
-
-CLASSIC keeps its Gaussian sigma fixed throughout the run.  Corana instead
-updates each uniform half-width ``V[i]`` from that coordinate's measured
-acceptance ratio.  Compare the variants at equal evaluation budgets on the
-target workload.
-
-.. list-table::
-   :header-rows: 1
-   :widths: 18 14 68
-
-   * - PARAM
-     - Default
-     - Effect
-   * - ``CORANA``
-     - ``0``
-     - Set to ``1`` to enable the adaptive variant.
-   * - ``NS``
-     - ``5``
-     - Step cycles per step-adjust cycle.
-   * - ``NT``
-     - ``5``
-     - Step-adjust cycles per T (cooling triggers every ``NT``).
-   * - ``C``
-     - ``2.0``
-     - Step-adjust gain — controls how fast ``V[i]`` reacts to
-       accept-rate deviation from the ``[0.4, 0.6]`` deadband.
-   * - ``V_FLOOR_FRAC``
-     - ``1e-3``
-     - Lower clamp on ``V[i]`` as a fraction of
-       ``(high_i - low_i)``.  Vanilla Corana has no explicit floor;
-       on ``FAILSCORE``-cliff landscapes ``V[i]`` can collapse by
-       factor ``(1 + C)^NT`` per zero-accept rung, killing the chain.
-       Default ``1e-3`` prevents ``V[i]`` from falling below
-       0.1% of box width; it does not guarantee accepted moves or
-       mixing.  The accepted range is ``[0, 1]``; ``0``
-       explicitly disables the lower floor.  The upper clamp is always
-       one full box width.
-   * - ``RESET_TO_BEST``
-     - ``1`` under ``CORANA``
-     - Snap the chain back to the best-so-far point after every cooling
-       step (step 7 of Corana et al.'s original algorithm, also used by
-       Brommer).  This resets coordinates to the best-known point before the next
-       rung.  Evaluations already spent and Corana step adaptation are
-       not undone.  Defaults **on** under ``CORANA 1``
-       (recommended on ``FAILSCORE``-cliff landscapes); pass
-       ``PARAM RESET_TO_BEST 0`` to disable.
-
-Serial Corana rung lines report ``V=[V_min, V_max]`` plus
-``V_floor=n/D`` and ``V_cap=n/D``; its final summary reports the two
-saturation counts without a range.  ANNEAL_PT epoch and final-summary lines
-also report saturation only, while single-process PT additionally emits
-normalised per-slot V geo-mean/min/max grids each epoch.  ANNEAL_PA step
-and final-summary lines report saturation only.
-
-The Corana paper recommends ``NS = 20`` and ``NT = max(100, 5D)``; one
-rung at those settings costs ``NS * NT * D`` host calls.  The fixed-MAXEVAL
-default-selection grid on one 42-D Kr EAM workload retained the previous
-``NS = 5`` and changed ``NT`` from 2 to 5, ``RT`` from 0.85 to 0.90, and
-``T0_PACCEPT`` from 0.80 to 0.05.  On matched seeds 201-203, the measured
-median best losses were 3.35e-3 for NS5/NT5/P0.05, 1.41 for
-NS5/NT2/P0.05, and 5.45 for NS5/NT2/P0.80.  At the only matched NS
-comparison (NT2/P0.05), NS20 measured 0.59 versus 1.41 for NS5; no
-NS20/NT5 42-D cell was run.  These fixed-budget measurements are
-workload-specific, not a general ranking of settings.
-
-.. _tadah_anneal_journal:
-
-Journal output
-^^^^^^^^^^^^^^
-
-Per run, ``ALGO ANNEAL`` writes the following lines to ``hpo_run.log``
-(timestamps elided).  This is a schematic run with explicit, non-default
-controls; it illustrates the fields rather than the shipped defaults:
-
-.. code-block:: text
-
-   ANNEAL[CLASSIC]: seed=1234  RT=0.85  T_MIN=auto(T0*1e-6)  L=20  STEP_FRAC=0.15 (CLASSIC Gaussian sigma/width)  BOUNDARY_MODE=0(REFLECT)  REANNEAL=1
-   ANNEAL: T0=8.188e+00 from 20 probes,  median|dE|=1.83e+00  loss range=[3.20e-02, 1.40e+01]  std=2.10e+00  target p_accept=8.000e-01  anchor=seed
-   ANNEAL rung=1/12  T=8.188e+00  proposed=20  accepted=14 (70.0%)  oob=2  (10.0%)  f_x=2.31e-01  best=1.84e-01
-   ANNEAL rung=2/12  T=6.960e+00  proposed=20  accepted=11 (55.0%)  oob=0  (0.0%)  f_x=1.97e-01  best=1.84e-01
-   ...
-   ANNEAL summary: rungs=12  proposed=240  accepted=98 (40.8%)  oob=4 (1.7%)  T0=8.188e+00  T_final=1.370e+00  reanneals=0  best=8.71e-02
-   ANNEAL accept-rate trajectory: min=20.0%  max=70.0%
-   ANNEAL stopped: MAXEVAL exhausted after 261 host eval(s) (12 rung(s) completed, 0 re-anneal(s))
-
-The OOB percentage is ``oob / proposed``: a boundary-corrected trial is
-still one of the evaluated proposals, not an extra proposal in the
-denominator.  Use these fields to diagnose typical SA mistuning:
-
-* **Accept rate stays at ≈ 100% across all rungs** — may indicate that
-  ``T_HOT`` / ``T0_PACCEPT`` or the proposal scale is large relative to
-  observed loss differences.  A mostly downhill, flat, or easy region can
-  produce the same symptom.  Inspect loss changes and progress before lowering
-  ``T0_PACCEPT``, ``T_HOT``, or the step.
-* **Accept rate collapses in 2–3 rungs** — may indicate aggressive cooling,
-  but a proposal-scale mismatch, a failure cliff, or a floor-clamped step can
-  also reduce acceptance.  Inspect OOB/FAILSCORE and ``V`` saturation fields;
-  if cooling is isolated, try ``RT = 0.90`` or ``0.95``.
-* **High ``oob`` fraction (> 30 %)** — may indicate a step large relative to
-  the box or a chain spending time near a tight boundary.  Check whether the
-  bounds are physically intentional before changing ``STEP_FRAC`` / ``STEP``
-  or the box.
-* **Best stagnates while accept rate is > 50 %** — high acceptance alone does
-  not prove basin escape.  It can accompany high temperature, a large step, a
-  flat/noisy objective, or unproductive mixing.  Compare loss changes and
-  prefix progress before changing ``L``, temperature, or step scale.
-* **``ANNEAL stopped: MAXTIME exceeded`` after only a few rungs** —
-  the optimiser wall-clock cap ended the run before many temperature
-  updates.  Raise ``MAXTIME`` on the active ``STRATEGY`` if appropriate;
-  to shorten a rung, reduce ``L`` for CLASSIC or ``NS``/``NT`` for Corana.
-  These changes alter schedule granularity, so compare them at an equal
-  evaluation budget.  Root-level ``MAXTIME`` is the legacy alias for the
-  per-script ``PC_SCRIPT_TIMEOUT``, not this optimiser stop.
-
-The standard ``BEST`` events from ``HPO_Host`` (printed by every
-optimiser) interleave with the rung lines, so the best-tracking story
-is identical to other drivers.
-
-**Near-bound floor-step audit (CORANA only).**  After every rung (epoch under
-``ANNEAL_PT``, T-step under ``ANNEAL_PA``) the driver checks each
-``OPTIM`` dimension.  It marks a chain for diagnostics when the chain is
-within one floor-step (``V_FLOOR_FRAC * width``) of a bound and ``V[i]``
-is already clamped at that floor.  This means adaptive step shrinkage is
-exhausted at the observed scale; it does **not** prevent inward proposals
-or prove that the optimum lies outside the box.  A chain that moves farther
-than one floor-step from the bound is unmarked.  Each milestone ``SUMMARY``
-then carries one ``WARNING`` table of the marked ``(dim, side)`` pairs:
-
-.. code-block:: text
-
-   SUMMARY  ---  46080 evals done   wall=5 ms/eval ...
-   WARNING  * 2 OPTIM dim(s) near a bound with step at the V floor -- no further adaptive step shrinkage is available:
-   WARNING      dim                       side  bound        gap        v_floor    slots   observed for
-   WARNING      AMPGRIDMB[7]              HI    1.250e+00    3.1e-06    2.4e-05    11/64   38 epochs
-   WARNING      CGRID2B[3]                LO    2.100e+00    0          1.9e-05    7/64    12 epochs
-   HINT     persistent near-bound occupancy at the V floor may indicate OPTIM bound pressure -- ...
-
-Values are in optimiser-internal space (log-scaled dims are tagged
-``(ln)``); ``slots`` counts how many chains hold the mark (parallel
-drivers only) and ``observed for`` reports how long the oldest mark has
-been held.  Persistent occupancy may indicate bound pressure, but it can
-also be transient.  Inspect the trace and widen or re-centre only when the
-admissible physical domain permits it.  Under MPI the parallel drivers skip
-the audit because no global pin-state union is implemented.
-
-.. _tadah_anneal_pt_block:
-
-LIB TADAH ALGO ANNEAL_PT — parallel tempering
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Parallel tempering (replica exchange) over the same annealing stepper
-(CLASSIC by default, ``PARAM CORANA 1`` for the Corana variant).
-CLASSIC automatically calibrates a diagonal Gaussian proposal by default;
-``PARAM STEP_AUTO 0`` restores the legacy fixed-``STEP_FRAC`` kernel.
-``REPLICAS`` chains run concurrently on a power-shaped log-temperature
-ladder ``T_COLD .. T_HOT`` (slot 0 coldest); ``LADDER_POWER 1`` is the
-legacy geometric ladder.  The interior temperatures are static by default.
-``LADDER_ADAPT 1`` redistributes them during production to equalize adjacent
-swap rates without moving either endpoint, while ``RT < 1`` cools the whole
-instantaneous ladder each epoch.  Every ``SWAP_EVERY`` epochs, adjacent pairs
-attempt a Metropolis state swap
-(``p = min(1, exp((b_i - b_j)(f_i - f_j)))``).  A lower-loss state on
-the hot side moves cold-ward with probability one, while reverse exchanges
-remain possible.  Swaps move states ``(x, f)``, not temperatures: the
-Corana step vector ``V`` is calibrated to its slot's temperature and stays
-there.
-
-Exchange arithmetic also has defined endpoints.  Equal-temperature or
-equal-loss pairs are accepted directly.  At a zero cold endpoint, a
-lower/equal hot-side loss is accepted cold-ward and a higher loss is
-rejected, without forming an infinite inverse temperature.  Other finite,
-positive-temperature exchanges compare the probability in the log domain.
-
-Execution: ``THREADS`` is the total width of one persistent shared
-worker pool per rank.  The same workers execute replica evaluations,
-``PC_LAMMPS`` fan-out, and MLIP train/predict work; this ships in every
-build and does not require OpenMP.  ``OMP_NUM_THREADS`` controls only
-residual OpenMP kernels such as neighbour-list construction and data
-statistics: it does **not** multiply ``THREADS``.
-With ``REPLICAS`` fixed, a deterministic objective, no timing-dependent
-stop, and an MPI rank count no greater than ``REPLICAS``, the same ``SEED``
-gives the same evaluated set for any ``THREADS`` or rank count.  Replica
-RNG, swap-coin, and budget streams are keyed independently.  The default
-``REPLICAS=max(THREADS,2)`` changes when ``THREADS`` changes, so set it
-explicitly for such comparisons.
-
-Knobs below, plus the shared ANNEAL controls applicable to the selected
-stepper (``L`` for CLASSIC; ``NS``/``NT``/``C``/``V_FLOOR_FRAC`` for
-Corana).  ``REANNEAL`` and ``REANNEAL_SCALE`` are serial-only:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 22 18 60
-
-   * - Knob
-     - Default
-     - Effect
-   * - ``THREADS``
-     - ``1``
-     - Total per-rank shared worker-pool width (the CPU-core budget),
-       not an additional multiplier on ``OMP_NUM_THREADS``.
-   * - ``PARAM REPLICAS``
-     - ``max(THREADS, 2)``
-     - Ladder size K (slot 0 coldest).
-   * - ``PARAM T_HOT``
-     - auto
-     - Hottest slot; auto-calibrated exactly as ANNEAL's T0.
-   * - ``PARAM T_COLD``
-     - ``T_HOT / LADDER_SPAN``
-     - Coldest slot.
-   * - ``PARAM LADDER_SPAN``
-     - ``1e3``
-     - ``T_HOT/T_COLD`` when ``T_COLD`` is unset.
-   * - ``PARAM LADDER_POWER``
-     - ``1.0``
-     - Initial normalized log-ladder power.  Values below 1 place slots
-       toward ``T_HOT``; values above 1 place them toward ``T_COLD``.
-   * - ``PARAM LADDER_ADAPT``
-     - ``0``
-     - Enable endpoint-preserving production temperature adaptation.
-   * - ``PARAM LADDER_ADAPT_EVERY``
-     - ``20``
-     - Adjacent swap attempts required at every pair before one update.
-       Valid only when ``LADDER_ADAPT=1``.
-   * - ``PARAM LADDER_ADAPT_GAIN``
-     - ``1.0``
-     - Initial adaptation gain in ``(0,1]``.
-   * - ``PARAM LADDER_ADAPT_DECAY``
-     - ``0.6``
-     - Diminishing-gain exponent in ``(0.5,1]``.
-   * - ``PARAM LADDER_ADAPT_UPDATES``
-     - ``0``
-     - Maximum update count; 0 keeps diminishing adaptation active.
-   * - ``PARAM SWAP_EVERY``
-     - ``1``
-     - Epochs between exchange attempts (an epoch = one rung per
-       replica).
-   * - ``PARAM SWAP_WINDOW``
-     - ``20``
-     - Epochs per windowed per-pair swap-acceptance table; ``0`` disables
-       windowed tables and retains cumulative reporting only.
-   * - ``PARAM RT``
-     - ``1.0``
-     - Ladder cooling per epoch, ``(0,1]``.  1.0 = static ladder (pure
-       PT); < 1 turns the run into a PT→SA hybrid ending at ``T_MIN``.
-   * - ``PARAM STEP_AUTO``
-     - ``1``
-     - CLASSIC-only automatic diagonal proposal calibration.  ``0``
-       selects the legacy fixed-``STEP_FRAC`` kernel.  An explicit
-       top-level ``STEP`` also disables calibration.
-   * - ``PARAM STEP_AUTO_SWEEPS``
-     - ``12``
-     - Minimum shuffled coordinate attempts per dimension.  Unconverged
-       dimensions continue to at most twice this count.
-   * - ``PARAM STEP_ADAPT_EVERY``
-     - ``0``
-     - Production scalar-plus-diagonal RAM update cadence in proposals per
-       temperature slot.  ``0`` freezes the calibrated kernel; ``L`` is the
-       recommended cadence for continued adaptation.
-   * - ``PARAM INIT_MODE``
-     - ``0``
-     - 0: automatic CLASSIC starts every replica at the same valid warm
-       seed.  Fixed CLASSIC and Corana start chain 0 at the seed and jitter
-       higher slots.  1: chains > 0 are drawn uniformly in the box.
-   * - ``PARAM RESET_TO_BEST``
-     - ``0``
-     - When 1, snaps ONLY the coldest slot to the global best each
-       epoch (hot replicas exist to explore).
-
-Adaptive temperature ladder
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The initial normalized positions and temperatures are
-
-.. math::
-
-   u_k = \left(\frac{k}{K-1}\right)^{\mathtt{LADDER\_POWER}},\qquad
-   \log T_k = \log T_{\rm cold} + u_k\log\frac{T_{\rm hot}}{T_{\rm cold}}.
-
-``LADDER_POWER`` is independently useful when adaptation is off.  All other
-``LADDER_ADAPT_*`` controls are rejected unless ``LADDER_ADAPT=1``, and
-adaptation requires at least three replicas.
-
-Adaptation has counters separate from cumulative and ``SWAP_WINDOW``
-diagnostics.  Once every adjacent pair has accumulated
-``LADDER_ADAPT_EVERY`` attempts, rank-aggregated pair rates :math:`a_p` update
-the positive log-temperature gaps :math:`d_p=\log T_{p+1}-\log T_p`:
-
-.. code-block:: text
-
-   eta_m = LADDER_ADAPT_GAIN * m^(-LADDER_ADAPT_DECAY)
-   log(d_p) += clamp(eta_m * (a_p - mean(a)), -log(2), log(2))
-
-The gaps are then renormalized to the fixed total log span.  Representable
-``nextafter`` floors keep the reconstructed ladder strictly increasing, and
-``T_COLD``/``T_HOT`` are assigned exactly.  With ``RT < 1`` these are the
-current cooled endpoints: adaptation changes only normalized interior
-positions, so the endpoint cooling trajectory is unchanged.  A finite
-``LADDER_ADAPT_UPDATES`` freezes the ladder after that many updates; zero
-continues with diminishing gain.  Adaptation consumes no objective calls and
-does not move states, proposal scales, RAM accumulators, slot bests, swap
-history, or walker identities between slots.
-
-There is deliberately no target-acceptance knob.  Fixed endpoints and
-``REPLICAS`` determine the absolute acceptance level; adaptation can equalize
-adjacent rates but cannot force all of them to a chosen value.  If rates are
-uniformly too low, narrow ``T_COLD..T_HOT`` or add replicas.  The journal
-reports each update's acceptance range, gain, old/new gap ranges, and complete
-temperature table, plus the final ladder and update count.  Rank 0 writes
-``hpo_temperature_ladder.tsv`` with update, epoch, pair counters/rates,
-old/new pair temperatures, and old/new log gaps.  For CLASSIC continued
-proposal adaptation, ``STEP_ADAPT_EVERY=L`` is recommended while temperatures
-also adapt, but is not required.
-
-The update follows `adaptive parallel tempering
-<https://arxiv.org/abs/1205.1076>`_ and `dynamic temperature selection
-<https://arxiv.org/abs/1501.05823>`_.  A run22 starting candidate (not a new
-global default) is:
-
-.. code-block:: text
-
-   PARAM LADDER_ADAPT 1
-   PARAM LADDER_POWER 0.5
-   PARAM LADDER_ADAPT_EVERY 20
-   PARAM LADDER_ADAPT_GAIN 1.0
-   PARAM LADDER_ADAPT_DECAY 0.6
-   PARAM LADDER_ADAPT_UPDATES 0
-
-Automatic CLASSIC proposal calibration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Automatic calibration applies only to CLASSIC ``ANNEAL_PT``; serial
-``ANNEAL``, ``ANNEAL_PA``, and Corana are unchanged.  Under
-``INIT_MODE 0`` every temperature slot begins at the already validated
-warm seed, avoiding bound-derived initialization jitter before a proposal
-metric exists.  ``STEP_FRAC * OPTIM_width[i]`` is only the initial
-coordinate-scale guess; ``OPTIM`` remains the hard support rather than
-the final metric.
-
-At each slot temperature the warm-up shuffles one-coordinate Gaussian
-proposals in fixed-scale batches of four (or the available smaller batch when
-``STEP_AUTO_SWEEPS < 4``).  Decisions use the batch mean
-Metropolis probability (actual accept/reject counts are reported separately)
-and target 0.44.  An ordinary miss brackets the scale by a factor of two;
-an unusable batch or a gross miss (mean probability below 0.01 or above 0.9)
-uses a factor of ten.  Once both sides are known, the next scale is their
-geometric midpoint.  A coordinate is validated only after two consecutive
-fixed-scale batches have mean probability in ``[0.29, 0.59]`` and it has
-received at least ``STEP_AUTO_SWEEPS`` attempts.  A single ordinary miss
-after a valid batch is retried at the same scale, rather than allowing one
-noisy four-sample batch to move the bracket.
-
-Unconverged dimensions receive up to twice ``STEP_AUTO_SWEEPS`` attempts.
-At that limit the best already tested scale is retained (never merely the
-last scale) and the dimension is marked ``unconverged``.  Floating-point
-resolution and support-width limits are terminal, explained
-``numerical-floor`` and ``support-capped`` statuses rather than unexplained
-misses.  Calibration warns but continues with best-tested scales when the
-hard attempt limit is reached.
-
-The learned coordinate scales are divided by ``sqrt(D)`` to form a
-whole-vector diagonal Gaussian.  Each slot then tests one common multiplier
-in fixed windows of 20 proposals.  It runs at least 100 and at most 200 pilot
-proposals, requiring two consecutive windows with mean Metropolis probability
-in ``[0.15, 0.35]``.  Multiplier brackets move by factors of two only.  At the
-limit an unresolved slot uses the tested multiplier closest to 0.234, is
-clearly warned, and continues.  Calibration evaluations, accepted states,
-and new best points are retained, but production epoch, swap, and ladder-flow
-statistics start from zero after warm-up.
-
-By default the resulting kernel is frozen.  With
-``STEP_ADAPT_EVERY N`` greater than zero, every production proposal
-contributes both a slot-wide scale term and a centred diagonal
-robust-adaptive-Metropolis shape term.  ``z_eff`` is the actual standardised
-post-boundary displacement (after reflection/redraw), not the discarded raw
-Gaussian draw:
-
-.. code-block:: text
-
-   eta_j = min(1, j^(-0.6))
-   scalar += eta_j * (alpha_j - 0.234)
-   shape[i] += log(1 + eta_j * (alpha_j - 0.234)
-                         * z_eff_j[i]^2 / ||z_eff_j||^2)
-
-After each ``N`` proposals in that slot, ``mean(shape)`` is subtracted and
-each log-sigma changes by
-``clamp(scalar + 0.5*(shape[i]-mean(shape)), -log(2), log(2))``.  Both
-accumulators are then cleared.  The scalar term repairs a common scale error
-without the previous ``1/D`` slowdown; centring leaves the diagonal term to
-change proposal shape.  Thus ``N`` controls how often the kernel changes; it
-does not discard intermediate proposals.  Scales and accumulators stay with
-temperature slots across replica swaps.  The 0.44/0.234 targets and
-diminishing updates follow the scaling principles in
-`Roberts, Gelman & Gilks (1997) <https://doi.org/10.1214/aoap/1034625254>`_,
-`Garthwaite, Fan & Sisson (2010) <https://arxiv.org/abs/1006.3690>`_, and
-`Vihola (2012) <https://arxiv.org/abs/1011.4381>`_.
-
-Warm-up counts against both ``MAXEVAL`` and ``MAXTIME``.  A complete
-warm-up costs approximately
-``REPLICAS * (D * STEP_AUTO_SWEEPS + 100)`` host evaluations at minimum
-and ``REPLICAS * (2 * D * STEP_AUTO_SWEEPS + 200)`` in the worst case,
-in addition to seed/T0 work.  For the 174-dimensional, 32-replica run21
-layout at the historical 12-sweep setting this is about 70,000 to 140,000
-evaluations.  At the run22 24-sweep setting it is about 137,000 to 274,000.
-Unused per-slot fair shares are redistributed in both coordinate and pilot
-phases.  If a limit interrupts calibration, the run stops cleanly without
-exceeding the budget.
-
-The journal labels the active mode as ``CLASSIC[AUTO-FROZEN]``,
-``CLASSIC[FIXED]``, or ``CLASSIC[ADAPTIVE-DIAG]`` and reports each
-slot's coordinate acceptance/mean probability/attempts/backoffs, pilot
-acceptance/mean probability/attempts/backoffs/multiplier/status, and learned
-sigma range.  With continued adaptation, every ``SWAP_WINDOW`` epochs the
-journal also reports each slot's minimum/geometric-mean/maximum
-``sigma/OPTIM_width`` and warns after two consecutive windows outside 5--50%
-production acceptance.
-
-Rank 0 also writes the **calibration-only** ``hpo_step_scales.tsv``.  Its
-first seven columns remain
-``slot``, ``temperature``, ``parameter``, ``sigma``,
-``sigma/width``, ``acceptance``, and ``status``; ``acceptance`` is the actual
-accept rate in the selected fixed-scale coordinate window.  Appended columns
-are ``mean_alpha``, ``attempts``, ``backoffs``, ``unusable``,
-``pilot_multiplier``, ``pilot_acceptance``, ``pilot_mean_alpha``,
-``pilot_attempts``, ``pilot_backoffs``, ``pilot_unusable``, and
-``pilot_status``.  Status values identify ``numerical-floor``,
-``support-capped``, ``unconverged``, and ``interrupted`` dimensions.  The TSV
-is not rewritten during production; use the windowed journal lines for live
-adaptive scales.
-
-Recommended run22 settings based on the updated 174-dimensional run are:
-
-.. code-block:: text
-
-   PARAM CORANA 0
-   PARAM L 20
-   PARAM STEP_AUTO 1
-   PARAM STEP_AUTO_SWEEPS 24
-   PARAM STEP_ADAPT_EVERY 20
-   PARAM STEP_FRAC 1e-6
-   PARAM BOUNDARY_MODE 0
-
-For a frozen production kernel, change only ``PARAM STEP_ADAPT_EVERY 0``.
-An explicit top-level ``STEP`` disables automatic calibration; specifying
-automatic-only sweep/adaptation controls alongside it is an error.
-
-``FTOL_REL``/``FTOL_ABS`` arm the Corana sec.-4 plateau on the coldest
-slot's end-of-epoch value plus the global best.  An epoch costs
-``REPLICAS * L`` evaluations under CLASSIC or
-``REPLICAS * NT * NS * D`` under Corana.  If ``MAXTIME`` permits too few
-exchange epochs, reduce ``L`` for CLASSIC or ``NS``/``NT`` for Corana.
-The journal reports cumulative per-pair acceptance on exchange epochs and
-a windowed table every ``SWAP_WINDOW`` epochs.  The often cited 20–40%
-range is a literature-derived starting heuristic; measured end-to-end
-ladder-flow counts are the outcome diagnostic.
-``T_COLD`` and ``LADDER_SPAN`` are alternative ways to set the cold end
-of the ladder and may not both be explicit.  A static ladder (``RT 1``)
-does not consume ``T_MIN``; omit it, or set ``RT < 1`` for the cooling
-PT→SA hybrid.
-
-.. _tadah_anneal_pa_block:
-
-LIB TADAH ALGO ANNEAL_PA — population annealing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Population annealing over the same stepper.  ``POPULATION`` walkers
-anneal together from ``T_HOT`` down to ``T_MIN``; each temperature
-step (i) reweights every walker by ``exp(-dbeta * f_i)``, (ii)
-systematically resamples the population, and (iii) runs ``SWEEPS`` rungs
-of the stepper per walker at the new temperature.  A non-finite or
-failure-band walker (including a finite graded failure) receives zero
-resampling weight only when at least one feasible walker exists.  If every
-walker fails, resampling is skipped and geometric cooling continues for
-that step.  Local Metropolis moves still rank finite graded losses,
-allowing a walker to move downhill toward feasibility between resampling
-decisions.
-The journal field named ``finite`` uses the stricter feasibility
-classification: a finite graded-band walker is counted as failed there.
-
-The adaptive ESS solve brackets ``dbeta`` multiplicatively, so a small
-positive solution is resolved relative to its own scale rather than the
-``RT`` cap.  If the requested temperature rounds back to the current
-double, PA advances by one representable downward step and recomputes
-``dbeta`` from the actual endpoint; reweighting and ESS use that same
-increment.  Pure geometric PA likewise advances one representable step
-when ``T*RT`` rounds to ``T`` in the subnormal range.  Systematic resampling
-accumulates unnormalised mass in extended precision and never assigns an
-offspring to a leading or trailing zero-weight parent.
-
-Walker state ``(x, f, V)`` is copied on resample, so children
-inherit the parent's step calibration.  With ``POPULATION`` fixed, a
-deterministic objective, no timing-dependent stop, and a rank count no
-greater than ``POPULATION``, the same ``SEED`` gives the same evaluated set
-for any ``THREADS`` or rank count.  The default population depends on
-``THREADS``; set it explicitly for such comparisons.
-
-.. list-table::
-   :header-rows: 1
-   :widths: 22 18 60
-
-   * - Knob
-     - Default
-     - Effect
-   * - ``THREADS``
-     - ``1``
-     - Total per-rank shared worker-pool width (the CPU-core budget),
-       not an additional multiplier on ``OMP_NUM_THREADS``.
-   * - ``POPULATION``
-     - ``4*THREADS`` (min 16)
-     - Population size R.
-   * - ``PARAM SWEEPS``
-     - ``1``
-     - Rungs per walker per temperature step.
-   * - ``PARAM ESS_TARGET``
-     - ``0.5``
-     - Adaptive schedule: pick the largest ``dbeta`` keeping the
-       effective sample size at ``target * N_feasible`` (no extra
-       evals); ``RT`` caps the per-step cooling.  ``0`` = pure
-       geometric ``T *= RT``.
-   * - ``PARAM INIT_MODE``
-     - ``0``
-     - Walker 0 starts at the seed; the rest use Gaussian jitter.  Its
-       sigma is the CLASSIC proposal scale or the numeric initial Corana
-       ``V[i]``.  Set 1 for uniform-box starts.
-   * - ``PARAM T_HOT`` / ``T_MIN`` / ``RT``
-     - auto / auto / ``0.90``
-     - As in ANNEAL.
-
-Per-step journal line: ``T``, ``ESS``, unique parents, culled count, the
-legacy-named ``finite`` field (feasible fraction), and population best.
-``culled`` means
-``POPULATION - unique_parents``: the number of parent lineages removed,
-not the number of children whose destination slot differs from their
-parent's slot.  ``FTOL_REL``/``FTOL_ABS`` arm the plateau on the
-population best.  ``PARAM RESET_TO_BEST`` is a hard error for PA: a
-resampled population has no single current chain to reset, and
-resampling is PA's population-memory mechanism.
+LIB TADAH — the annealing family
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Monte-Carlo optimizers developed in-tree have their own reference
+pages under :doc:`optimizer`:
+
+* :ref:`tadah_anneal_block` — serial simulated annealing, classical and
+  Corana-adaptive, with automatic temperature and chain-length
+  calibration;
+* :ref:`tadah_anneal_pt_block` — parallel tempering (replica exchange),
+  with a reference manual and a step-by-step setup guide;
+* :ref:`tadah_anneal_pa_block` — population annealing;
+* :ref:`asa_optimizer` — Ingber's Adaptive Simulated Annealing.
+
+The :ref:`shared vocabulary <anneal_vocabulary>` used by those pages
+and by ``hpo_run.log`` is defined once on the optimizer page.
 
 .. _tadah_anneal_mpi:
 
@@ -1976,7 +1225,7 @@ Requirements and behaviour:
 * ``MAXEVAL`` is a hard global cap across seed/probe evaluation,
   population initialisation, annealing, and finalisation.  No rank-0
   re-evaluation is performed after the budget is exhausted;
-* mutually exclusive with the legacy ``TADAH_BUILD_MPI``
+* mutually exclusive with the ``TADAH_BUILD_MPI``
   (ScaLAPACK-distributed training) build.
 
 ARCHER2 sketch (128 cores/node, 2x AMD EPYC 7742; inter-node
@@ -2265,17 +1514,28 @@ Key                          Default        Effect
 Run log
 ~~~~~~~
 
-``hpo_run.log`` records a single structured snapshot of the resolved
-configuration at run start, including:
+``hpo_run.log`` (rank-suffixed under MPI, like the other per-rank
+outputs) is the run's structured journal. It opens with a banner
+(version, working directory, PID, timestamp) followed by nine sections::
 
-* ``Init strategy:`` block — the resolved init chain.
-* ``Run policy:`` block — the active run policy.
-* ``LOAD TRANSFORMS`` section — every applied load-time transform plus
-  the equilibrium-volume diagnostic.
+   -- FILES         --   config / output files
+   -- OPTIMISER     --   algorithm, stop criteria, parameters
+   -- SEARCH SPACE  --   per-dimension bounds (optimiser-internal space)
+   -- POTENTIAL     --   2B/MB terms, cutoffs, element list
+   -- LOSS FUNCTION --   targets, weights, FAILSCORE
+   -- PROGRESS      --   timestamped events: bests, warnings, milestones
+   -- DIAGNOSTICS   --   NaN rate, bound-proximity analysis
+   -- PERFORMANCE   --   timing statistics
+   -- RESULT        --   final status, best loss, best metrics
 
-Either ``hpo_run.log`` or the stdout markers in
-:ref:`diagnostic_markers` is the canonical record of which features
-fired during a run.
+The optimizer journals documented on the algorithm pages (banners,
+per-rung and per-window reports, audits, the final ``stopped:`` line)
+land in PROGRESS, tagged ``INFO``/``WARNING``/``HINT``/``SUMMARY``:
+``WARNING`` states something provable about this run, ``HINT`` an
+empirical caution, and multi-line messages carry a ``*`` on the head
+line. ``hpo_run.log`` is the canonical record of which features fired
+during a run; the stdout markers in :ref:`diagnostic_markers` are the
+quick-look subset.
 
 Practical tips
 ~~~~~~~~~~~~~~
@@ -2340,7 +1600,7 @@ HOT_A0 entry(ies)`` confirms how many lines were absorbed.
 
 Multiple ``--hotvar`` flags may be repeated on the same ``PC_LAMMPS``
 line; ``hot_a0`` is just a conventional name (any identifier works).
-Per-line legacy environment variables (``TADAH_HPO_HOT_A0_DEFAULT``,
+Per-line environment variables (``TADAH_HPO_HOT_A0_DEFAULT``,
 ``TADAH_HPO_A0_MIN``, ``TADAH_HPO_A0_MAX``) were removed in this
 release; the per-line ``--hotvar`` flag replaces all three.
 
@@ -2357,7 +1617,7 @@ has produced an unphysical potential:
   value outside ``[min, max]`` fail-scores the iteration and does not
   update the cache).
 
-The legacy ``TADAH_HPO_BAD_POT_ERMSE_MEV`` / ``_REL`` environment
+The ``TADAH_HPO_BAD_POT_ERMSE_MEV`` / ``_REL`` environment
 variables were removed in this release; use
 ``PC_ERMSE … --skip-above <cap>`` / ``--skip-rel <ratio>`` instead.
 
@@ -2429,7 +1689,7 @@ Practical advice
 * Size ``THREADS`` first: it is the main fan-out and train/predict CPU
   budget, including for a serial annealing chain.
 * Increase ``OMP_NUM_THREADS`` only when profiling shows the residual
-  OpenMP kernels matter; it no longer widens ``PC_LAMMPS`` fan-out.
+  OpenMP kernels matter; it does not widen ``PC_LAMMPS`` fan-out.
 * Measure, do not guess: a few short test runs sweeping ``THREADS`` and
   then the residual OpenMP width will reveal the sweet spot.
 
@@ -2473,7 +1733,3 @@ See also
   libraries and the ``INIT`` / ``STRATEGY`` / ``EXPLORE`` / ``RESTART`` /
   ``INNER`` blocks.
 * :ref:`cli_example_2` — minimal single-loss-term walkthrough.
-* `HPO/README.md
-  <https://git.ecdf.ed.ac.uk/tadah/hpo/-/blob/develop/README.md>`_ —
-  full keyword reference, defaults, and the *OPTIM-able context keys*
-  reinit-safety table.

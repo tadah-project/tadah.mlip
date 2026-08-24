@@ -60,10 +60,17 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    regressors.rst
    descriptors.rst
    cutoffs.rst
-   hpo.rst
-   asa.rst
-   hpo_examples.rst
    refit.rst
+
+----
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Nested Fitting
+
+   hpo.rst
+   optimizer.rst
+   hpo_examples.rst
 
 ----
 

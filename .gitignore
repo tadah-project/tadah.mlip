@@ -29,6 +29,9 @@ perf.data.old
 docs/source/cli/cli_auto_gen.rst
 docs/source/config/blueprint_tadah.toml
 docs/source/config/config_keys.rst
+docs/source/config/anneal_keys_serial.rst
+docs/source/config/anneal_keys_pt.rst
+docs/source/config/anneal_keys_pa.rst
 docs/build/
 
 # ctest scratch

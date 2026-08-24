@@ -205,7 +205,10 @@ The Corana variant
 ``PARAM CORANA 1`` replaces the whole-vector Gaussian kernel with the
 adaptive single-coordinate kernel of Corana *et al.* (1987). Everything
 else — temperature calibration, cooling, re-annealing, stops — is the
-classical machinery above.
+classical machinery above. The implementation is validated against the
+paper's own published experiments: the test suite re-runs the paper's
+multiminima protocol (its Table II) and reproduces the reported final
+losses and evaluation counts to within a few percent.
 
 One coordinate at a time
 ------------------------

@@ -255,7 +255,10 @@ seed size the box:
   where ``max|x0|`` runs over the indices of that ``OPTIM`` line; the
   default otherwise (``p = 0.5``).  ``FLOOR``/``GROUP_FLOOR`` keep a
   zero or tiny seed searchable (``FIXWEIGHT`` coefficients that vanish
-  at long range).
+  at long range).  ``FRAC 0`` with ``FLOOR a`` gives every index the
+  same absolute half-width ``a`` -- the natural box for grid centres
+  (``CGRID*``, ``CEMBFUNC``), whose unit is the grid spacing rather
+  than the value.
 * cutoff keys (``RCUT*``) cannot be ``AUTO`` — the neighbour list is
   sized from an explicit high bound.
 

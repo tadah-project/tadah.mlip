@@ -229,7 +229,10 @@ optimiser may vary, and over what bounds:
 * ``(indices)`` — selects a subset of the values bound to ``<KEY>``.
   Indices follow the order in the training configuration and start
   from **1**.  Comma-separated lists, ranges ``a-b``, and strides
-  ``a-b:s`` are all accepted (e.g. ``(1,4,7-10:2)``).
+  ``a-b:s`` are all accepted (e.g. ``(1,4,7-10:2)``).  The same index
+  is the one every label the run prints carries -- ``KEY[n]`` in
+  ``hpo_run.log``, ``params.tadah``, ``hpo_step_scales.tsv`` and the
+  search-space sidecars (single-value keys carry no index).
 * ``<low>``, ``<high>`` — floating-point bounds.  ``high`` must be
   strictly greater than ``low``.
 * an optional shape tag ``LIN`` (default), ``LOG`` (requires
@@ -264,8 +267,11 @@ seed size the box:
 
 The resolved boxes are written to ``hpo_optim_resolved.hpo`` (a
 paste-ready explicit ``OPTIM`` block) and every run writes
-``hpo_search_space.tsv`` (one row per dimension: label, key, index,
-real bounds, origin, seed, scale, internal bounds).  For data-driven
+``hpo_search_space.tsv`` (one row per dimension: label, real bounds,
+origin, seed, scale, optimiser-side bounds and the search-space version;
+a comment header explains every column, and the columns are space-padded
+to equal width and tab-separated, so the file reads aligned in an editor
+and still parses as TSV once whitespace is stripped).  For data-driven
 ranges of descriptor shape keys use ``tadah analysis suggest_bounds``.
 
 Bound pressure.  The run never changes ``OPTIM`` bounds by itself; it

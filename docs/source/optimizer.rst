@@ -131,3 +131,74 @@ Population annealing shares the stepper, calibration, and journal
 conventions of :doc:`anneal`; its key set follows.
 
 .. include:: config/anneal_keys_pa.rst
+
+
+Scaling, steps and tolerances by backend
+----------------------------------------
+
+Every backend iterates in the search space's internal coordinates
+(:ref:`search_space_scaling`); what differs is whether the algorithm's
+own controls are invariant under a per-dimension affine rescale of the
+box and how it consumes an initial step.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 16 30 32
+
+   * - Backend
+     - ``STEP``
+     - Scale-invariant?
+     - Notes
+   * - ``NLOPT:LN_SBPLX`` / ``LN_NELDERMEAD``
+     - per-dim vector (first simplex edges)
+     - no (subspace partition and the single step-scale factor act in
+       internal units)
+     - the unit box (``OPTIM_SCALE AUTO``) is what makes them commensurate;
+       ``XTOL_REL`` is relative to each coordinate's magnitude — set
+       ``XTOL_ABS`` too
+   * - ``NLOPT:LN_BOBYQA`` / ``LN_COBYLA``
+     - per-dim vector → coordinate rescaling
+     - yes once the step vector is per-dim
+     - ``rhoend = XTOL_REL * rhobeg``; BOBYQA needs ``width >= 2*step``
+       (``STEP 0.5`` is capped just below)
+   * - ``NLOPT:LN_NEWUOA(_BOUND)`` / ``LN_PRAXIS``
+     - collapsed to ``min|step|``
+     - no in raw units; uniform in the unit box
+     - ``LN_NEWUOA`` ignores the box entirely (startup WARNING)
+   * - ``NLOPT:LD_MMA`` / ``LD_CCSAQ``
+     - per-dim trust half-width (default ``0.5*width``)
+     - default yes; an explicit ``STEP`` makes it a fraction of width
+     -
+   * - ``NLOPT:G_MLSL*`` / ``AUGLAG*``
+     - forwarded to ``INNER`` (outer wins)
+     - clustering radius is isotropic in internal units
+     -
+   * - ``NLOPT:GN_CRS2_LM`` / ``ISRES`` / ``ESCH`` / ``DIRECT*``
+     - rejected (never read)
+     - yes (box-relative by construction)
+     - ``DIRECT_*_NOSCAL`` and ``STOGO`` split the longest raw side
+   * - ``NLOPT:LD_LBFGS`` / ``VAR*`` / ``TNEWTON*`` / ``SLSQP``
+     - rejected
+     - no (raw-unit line search, absolute ``tolg``)
+     -
+   * - ``TADAH:ANNEAL*``
+     - rejected → ``PARAM STEP_FRAC``
+     - yes (``STEP_FRAC * width`` per dim)
+     - ``hpo_step_scales.tsv`` reports sigma and sigma/width
+   * - ``TADAH:GRID`` / ``RANDOM``
+     - ``PARAM GRID_POINTS`` / none
+     - yes
+     -
+   * - ``ASA:ASA``
+     - rejected (per-dim temperatures)
+     - generation yes; reannealing no (raw-unit tangents)
+     -
+   * - ``DLIB:GFS``
+     - rejected
+     - sampling yes; trust region no (Euclidean in internal units)
+     - dlib's own hidden ln transform fires only under ``OPTIM_SCALE NONE``
+   * - ``DLIB:BFGS`` / ``CERES:*``
+     - rejected
+     - no (H0 = I, ``|x|``-relative tolerances)
+     - ``PARAM fd_step`` = fraction of width under ``AUTO`` (in-house
+       kernel); Ceres kernel under ``NONE``; CERES is unbounded

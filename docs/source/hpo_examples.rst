@@ -106,7 +106,7 @@ Index
      - `11_grid_sweep <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/11_grid_sweep>`_
      - Exhaustive Cartesian grid sweep (``LIB TADAH, ALGO GRID``) — a
        deterministic survey of a low-dimensional search box.
-     - ``TADAH:GRID``, ``STEP``
+     - ``TADAH:GRID``, ``PARAM GRID_POINTS``
    * - 12
      - `12_prestage <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/12_prestage>`_
      - ``TYPE PRESTAGE``: a global ``EXPLORE`` stage harvests the

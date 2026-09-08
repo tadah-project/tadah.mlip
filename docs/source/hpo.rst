@@ -232,8 +232,47 @@ optimiser may vary, and over what bounds:
   ``a-b:s`` are all accepted (e.g. ``(1,4,7-10:2)``).
 * ``<low>``, ``<high>`` — floating-point bounds.  ``high`` must be
   strictly greater than ``low``.
+* an optional shape tag ``LIN`` (default), ``LOG`` (requires
+  ``low > 0``; the optimiser works in ``ln x``) or ``ASINH <c>``
+  (``asinh(x/c)``: linear with slope ``1/c`` near zero, logarithmic
+  beyond ``|x| ~ c``; the tool for sign-crossing ranges that span
+  several decades).  See :ref:`search_space_scaling`.  Any other trailing
+  token is an error (stray tokens used to be silently ignored).
 
 ``OPTIM`` lines may be repeated for the same key with different indices.
+
+Seed-relative boxes.  When the right range is unknown, let the CONFIG
+seed size the box:
+
+.. code-block:: none
+
+   OPTIM <KEY> (indices) AUTO [RATIO <f> | FRAC <p>] [FLOOR <a>] [GROUP_FLOOR <r>] [LIN | LOG | ASINH <c>]
+
+* ``RATIO f`` — geometric box ``[x0/f, x0*f]`` (mirrored for a negative
+  seed); the default for positive-only keys (``SGRID2B``, ``SGRIDMB``,
+  ``SEMBFUNC``; ``f = 2``).  A zero seed is an error under ``RATIO``.
+* ``FRAC p`` — linear box ``x0 ± max(p·|x0|, FLOOR, GROUP_FLOOR·max|x0|)``
+  where ``max|x0|`` runs over the indices of that ``OPTIM`` line; the
+  default otherwise (``p = 0.5``).  ``FLOOR``/``GROUP_FLOOR`` keep a
+  zero or tiny seed searchable (``FIXWEIGHT`` coefficients that vanish
+  at long range).
+* cutoff keys (``RCUT*``) cannot be ``AUTO`` — the neighbour list is
+  sized from an explicit high bound.
+
+The resolved boxes are written to ``hpo_optim_resolved.hpo`` (a
+paste-ready explicit ``OPTIM`` block) and every run writes
+``hpo_search_space.tsv`` (one row per dimension: label, key, index,
+real bounds, origin, seed, scale, internal bounds).  For data-driven
+ranges of descriptor shape keys use ``tadah analysis suggest_bounds``.
+
+Bound pressure.  The run never changes ``OPTIM`` bounds by itself; it
+tells you when the running best rides one: every milestone ``SUMMARY``
+lists the dimensions whose best sits within 2 % of a limit (in internal
+units, so a ``LOG`` dimension is judged in ``ln``), with the value, the
+bound, the gap as a fraction of the width and the evaluation since which
+the mark has persisted, and the ``DIAGNOSTICS`` section repeats it for
+the final best.  A best that keeps riding a bound suggests widening that
+side (where the physics permits) and rerunning with ``INIT METHOD WARM``.
 
 Two weight-related special cases:
 
@@ -844,7 +883,7 @@ The driver-attribute keys below are accepted wherever an
      - Algorithm (see table below).
    * - ``MAXEVAL`` (uint)
      - Maximum number of evaluations.
-   * - ``MAXTIME`` (uint)
+   * - ``MAXTIME`` (float)
      - Whole-optimiser wall-time in seconds for this active driver.  This is
        distinct from root-level ``PC_SCRIPT_TIMEOUT`` (whose alias is
        root-level ``MAXTIME``).
@@ -861,16 +900,33 @@ The driver-attribute keys below are accepted wherever an
    * - ``POPULATION`` (uint)
      - Population size for population-based algorithms.
    * - ``STEP`` (float)
-     - Algorithm-specific initial step.  For annealing this is the CLASSIC
-       Gaussian sigma or the requested Corana uniform half-width ``V``
-       (before its floor/cap clamp).
+     - Initial step for the NLopt derivative-free algorithms, as a
+       **fraction of each OPTIM dimension's (transformed) width**,
+       ``0 < STEP <= 0.5`` (the same meaning as the annealers'
+       ``PARAM STEP_FRAC``).  NLopt receives one step per dimension:
+       SBPLX/NELDERMEAD use them as the first simplex's edges,
+       BOBYQA/COBYLA as their per-dimension coordinate rescaling,
+       NEWUOA/PRAXIS collapse them to one radius, MLSL/AUGLAG forward
+       them to ``INNER`` (an outer ``STEP`` overrides an ``INNER`` one).
+       Per-key/per-index overrides: ``STEP <KEY>[(indices)] <fraction>``
+       (repeatable).  Near a bound the step is adjusted per dimension
+       (BOBYQA: shrunk to 0.75 of the slack so the warm start is not
+       relocated; SBPLX: pointed inward).  Unset: NLopt's own
+       per-dimension default (25 % of the width, or 75 % of the distance
+       to a nearer bound).  Every other backend rejects ``STEP`` at
+       startup with a hint (annealing: ``PARAM STEP_FRAC``; GRID:
+       ``PARAM GRID_POINTS``; GFS/RANDOM/BFGS/CERES/ASA have no initial
+       step).  The effective per-dimension step and the algorithm's
+       consumption mode are printed in ``hpo_run.log``.
    * - ``SEED`` (uint)
      - Random seed (default: current time).  Inside an ``INIT`` block
        the same key seeds the stochastic init strategies instead.
    * - ``VECTOR_ARR`` (uint)
      - Storage size required by some NLOpt algorithms.
    * - ``THREADS`` (uint)
-     - Outer thread count for ``DLIB:GFS`` (default: 1).
+     - Width of the shared per-rank worker pool that runs the
+       ``PC_LAMMPS`` fan-out and MLIP train/predict for every backend
+       (``ANNEAL_PT``/``ANNEAL_PA`` also cap concurrent replicas by it).
    * - ``PARAM`` (string float)
      - Generic key/value passed to the algorithm (e.g.
        ``PARAM fd_step 1e-3``).
@@ -1058,14 +1114,50 @@ Any ``NLOPT`` algorithm          First only.
 seed per start.  ``DLIB:GFS`` collapses to a single inner call because
 GFS already takes ``K`` seeds natively.
 
-Bound transforms
-~~~~~~~~~~~~~~~~
+.. _search_space_scaling:
 
-Search-space dimensions whose ``high/low`` ratio exceeds ``LOG_HP``
-(declared inside ``STRATEGY`` or ``OPTIMIZER``) are log-transformed.
-All internal arithmetic happens in transformed space; only the
-reported parameter values are exponentiated back.  Default is *no
-transform* — set ``LOG_HP <ratio>`` to opt in.
+Search-space scaling
+~~~~~~~~~~~~~~~~~~~~
+
+Every ``OPTIM`` dimension has a *real* box ``[lo, hi]`` (what the
+configuration and the model see) and an *internal* coordinate ``u`` that
+the optimiser iterates on.  One object, the search space, owns the map:
+
+.. code-block:: none
+
+   t = T(x)                                   per-dimension shape: LIN  t = x
+                                                                   LOG  t = ln x
+                                                                   ASINH c  t = asinh(x / c)
+   u = (t - T(lo)) / (T(hi) - T(lo))          OPTIM_SCALE AUTO  (unit box [0,1])
+   u = t                                      OPTIM_SCALE NONE  (raw units; ln for LOG dims)
+
+``OPTIM_SCALE AUTO | NONE`` is a root-level key (next to the ``OPTIM``
+lines).  Under ``AUTO`` every dimension spans ``[0, 1]``, so the
+optimiser-level controls ``STEP``, ``XTOL_ABS`` and ``PARAM fd_step``
+mean the same fraction of every box regardless of the keys' units --
+the point of the transform: real searches mix box widths across five to
+nine decades (knot positions in Angstrom next to amplitude coefficients
+of order ``1e-3`` and pinned linear weights of order ``1e4``), and every
+derivative-free algorithm assumes its variables are commensurate.
+Under ``NONE`` the internal coordinates are exactly the pre-1.5 ones
+(raw units, ``ln`` for ``LOG`` dims), reproducing every earlier run
+byte-identically -- the escape hatch for A/B checks, also reachable
+through the environment override ``TADAH_OPTIM_SCALE=NONE``.  The
+default is ``AUTO``.
+
+``LOG_HP <ratio>`` (a finite ratio ``>= 1``, declared once at the
+``OPTIMIZER`` or ``STRATEGY`` level; rejected inside
+``EXPLORE``/``REFINE``/``INNER``/``INIT`` blocks) tags every untagged
+dimension with ``low > 0`` and ``high/low >= ratio`` as ``LOG``; an
+explicit tag on the ``OPTIM`` line always wins.  Default: no
+auto-tagging.
+
+All internal arithmetic happens in ``u``; the model is always evaluated
+at the real point; ``best_*.tadah``, ``params.tadah`` and the WARM seed
+files are real-space.  The ``SEARCH SPACE`` section of ``hpo_run.log``
+prints the policy, the real width ratio across dimensions, and one row
+per dimension with its scale, box origin, real and internal bounds and
+the starting point in both spaces.
 
 .. _strategy_block:
 
@@ -1347,8 +1439,11 @@ local optimiser.  Configure the inner via:
    ENDSTRATEGY
 
 Only the driver-attribute keys (``LIB`` / ``ALGO`` / ``MAXEVAL`` /
-``FTOL_*`` / ``STEP`` / ``SEED`` / ``PARAM`` / ``POPULATION`` /
-``THREADS`` / ``VECTOR_ARR``) are valid inside ``INNER``.
+``MAXTIME`` / ``STOPVAL`` / ``FTOL_*`` / ``XTOL_*`` / ``POPULATION`` /
+``STEP`` / ``SEED`` / ``VECTOR_ARR`` / ``THREADS`` / ``GRAD_STRATEGY`` /
+``PARAM``) are valid inside ``INNER``.  With MLSL/AUGLAG an outer
+``STEP`` overrides an ``INNER`` ``STEP`` (NLopt forwards the outer
+initial step to the local optimiser); a startup warning says so.
 
 .. _hpo_load_transforms:
 
@@ -1519,8 +1614,18 @@ outputs) is the run's structured journal. It opens with a banner
 (version, working directory, PID, timestamp) followed by nine sections::
 
    -- FILES         --   config / output files
-   -- OPTIMISER     --   algorithm, stop criteria, parameters
-   -- SEARCH SPACE  --   per-dimension bounds (optimiser-internal space)
+   -- OPTIMISER     --   algorithm, stop criteria, parameters, the config-level
+                         ``Initial step`` and ``Step consumption`` lines
+   -- SEARCH SPACE  --   scaling policy (``OPTIM_SCALE``, ``LOG_HP``), real width
+                         ratio, one row per dimension: scale, box origin, real
+                         and internal bounds, start point in both spaces
+   (PROGRESS)        --   NLopt runs add an ``Initial step`` INFO block: provenance,
+                         consumption mode, and per dimension the step in internal
+                         units, as a fraction of the width, in real units at the
+                         start, with near-bound / inward / capped notes (WARNINGs)
+   (SUMMARY)         --   ``best point (eval N) sits within 2% of an OPTIM limit on
+                         K dim(s)`` table + one HINT (bound-occupancy audit)
+   -- DIAGNOSTICS   --   also ``Bound occupancy of the final best`` (or ``[ok]``)
    -- POTENTIAL     --   2B/MB terms, cutoffs, element list
    -- LOSS FUNCTION --   targets, weights, FAILSCORE
    -- PROGRESS      --   timestamped events: bests, warnings, milestones
@@ -1718,6 +1823,11 @@ Marker                                                                       Mea
 ``[HPO] REFINEMENT: refining top-K seed(s) via LIB:ALGO``                     Outer (refinement) phase starts.
 ``[HPO] RESTART i/M — fresh init from STRATEGY``                              Stagnation watchdog fired.
 ``[HPO] NOISE_AUTO: PARAM fd_step set to V (diag=…, dim=…)``                  ``NOISE.AUTO`` fired and shows the value used.
+``[HPO] Initial step (LIB:ALGO): …``                                         NLopt run started; the effective per-dimension step is in the journal.
+``[HPO] OPTIM_SCALE X taken from the TADAH_OPTIM_SCALE …``                    Env override of the scaling policy is active.
+``[HPO] search space: N dim(s); OPTIM width min … max …``                     Startup width audit; a WARNING names near-pinned dims.
+``[HPO] LIB:ALGO (…) does not use STEP; …``                                    Startup rejection of a ``STEP`` the backend would ignore.
+``[HPO] DLIB:GFS: dlib applies its own ln transform to …``                     dlib's hidden log transform fires (``OPTIM_SCALE NONE`` only).
 ``[HPO] NOISE_CALIBRATION: running N evals at the seed point``                ``NOISE.CALIBRATION`` started.
 ``[HPO] ASA[Ingber ASA-30.53]: seed=… dim=…``                                 ``ASA:ASA`` entry banner with resolved options.
 ``[HPO] ASA stopped: <reason> after N host eval(s) (asa exit: …)``            ``ASA:ASA`` stop reason + upstream exit code.

@@ -74,9 +74,27 @@ Quick start
 
 ``PARAM`` keys use the ORIGINAL ASA option spellings, case-sensitively
 (``PARAM Limit_Acceptances 10000``, not ``LIMIT_ACCEPTANCES``).
-Per-dimension options additionally accept a 0-based indexed form:
+Per-dimension options additionally accept a 1-based indexed form
+(marked ``[/i]`` in the tables below):
 ``PARAM User_Quench_Param_Scale 0.9`` fills every dimension,
 ``PARAM User_Quench_Param_Scale[3] 0.7`` overrides dimension 3.
+The index is the dimension number the run itself prints — the ``dim``
+column of ``hpo_search_space.tsv`` and the ``#`` column of the
+``SEARCH SPACE`` table in ``hpo_run.log``, both of which start at 1.
+
+.. warning::
+
+   The indexed form was **0-based** in Tadah 1.4 and earlier: ``[k]``
+   meant the dimension printed as ``k+1``.  Add one to every index in
+   an existing ASA config to keep addressing the same dimension
+   (``[0]`` becomes ``[1]``).  Left unchanged, ``[k]`` now addresses
+   the dimension one *earlier* than it used to — with ``D = 3``,
+   ``PARAM User_Quench_Param_Scale[1] 0.7`` used to set the dimension
+   printed as ``2`` and now sets the one printed as ``1``.  ``[0]`` is
+   a hard error naming the change, but ``[1]``\ …\ ``[D-1]`` still
+   parse, so check such configs against ``hpo_search_space.tsv``
+   before rerunning.
+
 Unknown keys are hard errors; option names belonging to features that
 are compiled out get a tailored message naming the reason.
 

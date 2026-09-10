@@ -1110,9 +1110,15 @@ Optimiser                        Seeds consumed
 Any ``NLOPT`` algorithm          First only.
 ``TADAH:RANDOM``, ``TADAH:GRID`` First only — used as eval 0, then sweep.
 ``TADAH:ANNEAL``                 First only — used as the SA chain's starting state after T0 calibration.
-``TADAH:ANNEAL_PT``/``_PA``      First only — seed starts there; remaining starts
-                                 use Gaussian jitter under ``INIT_MODE 0``
-                                 (sigma = CLASSIC scale or initial Corana V).
+``TADAH:ANNEAL_PT``/``_PA``      First only — the coldest slot starts there and the
+                                 rest are displaced around it under
+                                 ``INIT_MODE JITTER`` (default; sigma from
+                                 ``STEP_FRAC``, an explicit fraction, or measured
+                                 per dimension by ``JITTER AUTO <p>``). ANNEAL_PT
+                                 additionally scales the displacement along the
+                                 ladder — see
+                                 :ref:`ladder-scaled initial jitter
+                                 <anneal_pt_init_jitter_ladder>`.
 ``ASA:ASA``                      First only — becomes ASA's
                                  ``parameter_initial_final`` and auto-sets
                                  ``User_Initial_Parameters 1``

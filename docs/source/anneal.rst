@@ -52,9 +52,9 @@ where the per-dimension scale is set by :ref:`STEP_FRAC <anneal_keys>`:
    \sigma_i \;=\; \texttt{STEP\_FRAC} \cdot w_i .
 
 A coordinate that lands outside its interval is folded back by exact
-mirror reflection (``BOUNDARY_MODE 0``, the default), which is an
+mirror reflection (``BOUNDARY_MODE REFLECT``, the default), which is an
 involution and therefore keeps the proposal symmetric.
-``BOUNDARY_MODE 1`` instead redraws the offending coordinate until it
+``BOUNDARY_MODE REDRAW`` instead redraws the offending coordinate until it
 lands inside; that is *not* a symmetric proposal and no
 Metropolis–Hastings correction is applied, so sampling near a bound is
 slightly biased away from the edge — the reported optimum is
@@ -202,7 +202,7 @@ final ``ANNEAL stopped:`` journal line always names the reason.
 The Corana variant
 ==================
 
-``PARAM CORANA 1`` replaces the whole-vector Gaussian kernel with the
+``PARAM CORANA ON`` replaces the whole-vector Gaussian kernel with the
 adaptive single-coordinate kernel of Corana *et al.* (1987). Everything
 else — temperature calibration, cooling, re-annealing, stops — is the
 classical machinery above. The implementation is validated against the
@@ -317,7 +317,7 @@ section. All lines use the :ref:`shared vocabulary
 
 Banner and layout::
 
-   ANNEAL[CLASSIC]: seed=1234  RT=0.85  BOUNDARY_MODE=0(REFLECT)  T_MIN=auto(T0*1e-6)  CHAIN_LENGTH=auto  STEP_FRAC=0.1 (CLASSIC Gaussian sigma/width)  REANNEAL=1
+   ANNEAL[CLASSIC]: seed=1234  RT=0.85  BOUNDARY_MODE=REFLECT  T_MIN=auto(T0*1e-6)  CHAIN_LENGTH=auto  STEP_FRAC=0.1 (CLASSIC Gaussian sigma/width)  REANNEAL=ON
    ANNEAL: T0=2.412e+00 from 20 probes,  median|dE|=7.230e+00  loss range=[1.020e+00, 4.410e+01]  std=9.870e+00  target p_accept=5.000e-02  anchor=seed
    ANNEAL auto CHAIN_LENGTH: remaining budget 179 over 86 scheduled rung(s) (T0 -> T_MIN at RT=0.85) -> CHAIN_LENGTH=2
    ANNEAL layout: rung = CHAIN_LENGTH = 2 evals;  MAXEVAL=200 -> <= 100 rung(s) by budget (T_MIN schedule / plateau may end earlier, REANNEAL restarts extend rung count)

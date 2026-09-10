@@ -154,7 +154,7 @@ Index
      - `20_anneal_corana <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/20_anneal_corana>`_
      - The Corana adaptive variant of ``LIB TADAH, ALGO ANNEAL``:
        per-coordinate step adaptation with boundary-policy diagnostics.
-     - ``PARAM CORANA 1``, ``NS``/``NT``
+     - ``PARAM CORANA ON``, ``NS``/``NT``
    * - 21
      - `21_asa <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/21_asa>`_
      - Adaptive Simulated Annealing (``LIB ASA, ALGO ASA``, vendored

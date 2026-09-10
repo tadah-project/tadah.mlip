@@ -80,9 +80,9 @@ separately and the ladder adaptation ignores them (see
    hist = np.array(hist)
    fig, ax = plt.subplots(figsize=(5.6, 3.2))
    for w in range(K):
-       ax.plot(hist[:, w], lw=1)
+       ax.plot(hist[:, w] + 1, lw=1)          # slots are 1-based for readers
    ax.set_xlabel("exchange round")
-   ax.set_ylabel("slot occupied by walker   (0 = coldest)")
+   ax.set_ylabel("slot occupied by walker   (1 = coldest)")
    ax.set_title("DEO walker trajectories: persistent, ladder-crossing motion",
                 fontsize=9)
    fig.tight_layout()
@@ -114,8 +114,8 @@ cold end.
    fig, ax = plt.subplots(figsize=(5.6, 3.2))
    for p in (0.5, 1.0, 2.0):
        T = 1e-3 * span ** ((k / (K - 1)) ** p)
-       ax.semilogy(k, T, "o-", label=f"LADDER_POWER = {p}")
-   ax.set_xlabel("slot  k   (0 = coldest)")
+       ax.semilogy(k + 1, T, "o-", label=f"LADDER_POWER = {p}")
+   ax.set_xlabel("slot  k   (1 = coldest)")
    ax.set_ylabel(r"$T_k$")
    ax.legend(frameon=False)
    fig.tight_layout()
@@ -167,7 +167,7 @@ than predicting them.
 Ladder adaptation
 -----------------
 
-With ``LADDER_ADAPT 1`` the *interior* temperatures adapt toward equal
+With ``LADDER_ADAPT ON`` the *interior* temperatures adapt toward equal
 pair swap acceptance while both endpoints stay fixed. After every pair
 has accumulated ``LADDER_ADAPT_EVERY`` (non-degenerate) attempts, each
 interior log-gap is reweighted by its measured acceptance
@@ -227,9 +227,9 @@ steps than a cold one):
    confined to a trust region of factor ``STEP_TRUST_FACTOR`` around
    the calibrated baseline so they can track a moving ladder without
    drifting without bound. Choose this together with
-   ``LADDER_ADAPT 1``.
+   ``LADDER_ADAPT ON``.
 
-Under ``CORANA 1`` the per-slot step vector adapts by the Corana rule
+Under ``CORANA ON`` the per-slot step vector adapts by the Corana rule
 instead (every ``NS`` completed sweeps, on that slot's own acceptance
 counts); the ``STEP_MODE`` machinery does not apply and is rejected.
 
@@ -250,11 +250,95 @@ production kernel.
 Replica initialisation
 ----------------------
 
-Slot 0 always starts exactly at the seed point. With
-``INIT_MODE JITTER`` (default) the other replicas start Gaussian-spread
-around it at the initial proposal scale; with ``UNIFORM`` they draw
-uniformly from the ``OPTIM`` box — prefer it when the seed may sit in a
-narrow, unrepresentative basin. Each non-seed start costs one eval.
+Slot 1 always starts exactly at the seed point. With ``INIT_MODE
+UNIFORM`` the other replicas draw uniformly from the ``OPTIM`` box —
+prefer it when the seed may sit in a narrow, unrepresentative basin.
+With ``INIT_MODE JITTER`` (default) they are displaced around the seed,
+and two knobs decide by how much: the **magnitude** of the displacement
+and its **shape along the ladder**. Each non-seed start costs one eval.
+
+**Magnitude** — three forms, in increasing order of how much they know
+about your problem:
+
+``JITTER``
+   sigma = ``STEP_FRAC`` × width, drawn from a Gaussian. The 1.4.x
+   behaviour, kept as the default spelling.
+
+``JITTER <fraction>``
+   sigma = ``fraction`` × width, drawn uniformly on ±sigma. Use this
+   when you want large production steps on a narrow ladder without
+   scattering the initial population: the two were previously the same
+   number, and on a wide box a "jittered" replica could be most of the
+   way to a full randomisation from the seed.
+
+``JITTER AUTO <p>``
+   sigma is **measured** per dimension: the largest displacement
+   :math:`\sigma_d` for which
+   :math:`|L(\sigma_d) - L_0| \le p\,|L_0|`, found with a two-sign
+   screen at the per-side cap followed by a log-bisection against your
+   own ``--hpotarget`` objective, then drawn uniformly on ±sigma. The
+   result is a per-dimension bound in the units the loss actually
+   responds to, rather than a single fraction applied to boxes of very
+   different sensitivity.
+
+``FIXED`` and ``AUTO`` draw uniformly rather than from a Gaussian
+because their sigma is a *bound*, and a Gaussian would place about 32 %
+of coordinates outside the bound it was given.
+
+The ``AUTO`` calibration does **not** consume ``MAXEVAL``, and its
+probes are invisible to the stagnation counter, the restart policy and
+``best_pot.tadah`` publication. It is bounded instead by
+``INIT_JITTER_MAXEVAL`` (``AUTO`` = the protocol's own worst case,
+dimensions × ``INIT_JITTER_PROBES``) and by ``INIT_JITTER_MAXTIME_FRAC``
+(0.25 of ``MAXTIME``). On a large search space, ``INIT_JITTER_SAMPLE
+<n>`` measures only *n* dimensions — chosen round-robin across
+parameter families — and lets the rest inherit their family's median
+sigma/width; on an 816-dimension space that turns 2 888 probes into
+256. ``INIT_JITTER_AUDIT <n>`` re-probes sampled dimensions at
+sigma/2, because sigma is a certificate about the points that were
+tested, not a proof that the loss is monotone in displacement. Every
+measured sigma, its status and the per-rung initial loss are journaled,
+and the full table goes to ``hpo_init_jitter.tsv``.
+
+.. _anneal_pt_init_jitter_ladder:
+
+**Shape along the ladder** — ``INIT_JITTER_LADDER`` (``AUTO`` by
+default) scales slot *k*'s displacement by
+
+.. math::
+
+   \sigma_k = \sigma_d \left(\frac{T_k}{T_\mathrm{HOT}}\right)^{\gamma}
+
+so the cold slots start near the seed and the hot ones explore. Without
+it every non-seed slot is displaced by the *same* sigma, and the
+replica whose job is to refine the seed starts as far from it as the
+hottest explorer — a warm start that survives only at slot 1.
+
+``AUTO`` resolves to :math:`\gamma = 0.5`. That is equipartition, not a
+tuned constant: in a locally quadratic basin the equilibrium coordinate
+spread goes as :math:`\sqrt{T}`. It is deliberately **not** a function
+of ``LADDER_SPAN`` — the span already enters through
+:math:`T_k/T_\mathrm{HOT}`, so making gamma depend on it as well would
+count the same quantity twice. Scaled sigmas are floored at the
+resolvable coordinate scale, so a very wide ladder cannot quietly
+collapse the coldest slots onto the seed; the clamped count is reported
+with a warning naming the remedy.
+
+.. warning::
+
+   This is on by default from 1.5.0 and **changes the starting
+   population of every existing ANNEAL_PT run at a fixed ``SEED``**.
+   ``PARAM INIT_JITTER_LADDER OFF`` reproduces the 1.4.x placement
+   exactly; a number sets gamma directly.
+
+Whether it helps depends on the seed. Measured on a warm start
+(``ellipsoid6``, ``LADDER_SPAN 1e6``, seed at 2 % of the default start)
+the default is 4× better on median best and wins 38 of 40 paired seeds
+— that is the Tadah workflow, where ``OPTIM_INIT`` is a fitted
+potential and the best point anyone knows. From a *mediocre* seed on a
+curved landscape it can lose: ``rosenbrock6`` under the same ladder is
+1.22× worse on 40 of 40 seeds, because that is exactly the case where
+you want the cold slots to spread out and hunt. Use ``OFF`` there.
 
 Stopping
 --------
@@ -303,21 +387,31 @@ Reading hpo_run.log
 
 Startup (banner, layout, diagnostics contract, ladder)::
 
-   ANNEAL_PT[CLASSIC[FROZEN]]: seed=1234  REPLICAS=8  THREADS=8  SWAP_EVERY=1  LADDER_SPAN=1000  STEP_WARMUP_SWEEPS=12  STEP_FRAC=0.1 (CLASSIC Gaussian sigma/width)  BOUNDARY_MODE=0(REFLECT)  INIT_MODE=JITTER (slot 0 = seed; others Gaussian around it)
+   ANNEAL_PT[CLASSIC[FROZEN]]: seed=1234  REPLICAS=8  THREADS=8  SWAP_EVERY=1  LADDER_SPAN=1000  STEP_WARMUP_SWEEPS=12  STEP_FRAC=0.1 (CLASSIC Gaussian sigma/width)  BOUNDARY_MODE=REFLECT  INIT_MODE=JITTER (slot 1 = seed; others Gaussian, sigma=STEP_FRAC*width=0.1) x (T_k/T_hot)^0.5 [INIT_JITTER_LADDER AUTO]
    ANNEAL_PT layout: sweep = 1 proposal eval(s)/replica;  epoch = REPLICAS*sweep = 8*1 = 8 evals;  exchange attempt every 1 epoch(s);  reports every 20 epoch(s)
    ANNEAL_PT diagnostics: step-health acceptance band [5%, 50%] per SWAP_WINDOW, warning after 2 consecutive windows;  transport window = 100*(REPLICAS-1) exchange rounds;  ladder-freeze evidence >= 100 pooled attempts/pair;  degenerate (equal-loss) exchanges are reported separately and excluded from ladder adaptation
    ANNEAL_PT ladder: T_HOT=2.412e+00  T_COLD=2.412e-03 (T_HOT/LADDER_SPAN)  geometric over 8 slots, ratio=2.683 per rung  [static ladder]
-   ANNEAL_PT ladder T per slot (0=coldest .. 7=hottest): ...
+   ANNEAL_PT ladder T per slot (1=coldest .. 8=hottest): ...
 
 The diagnostics line states every fixed threshold that can later fire
 a WARNING, so each warning can be read against its rule.
+
+Initial placement (``INIT_MODE JITTER``)::
+
+   ANNEAL_PT initial-jitter ladder scaling: sigma_k = sigma_d * (T_k/T_hot)^gamma with gamma=0.500 (AUTO: equipartition, spread ~ sqrt(T)).  Slot 1 is the seed exactly; slot 2 draws 21.54% of sigma_d and slot 8 100%.
+   ANNEAL_PT initial-jitter factor per slot (% of sigma_d; the coldest slot is the seed itself and draws none):
+   [1-8]       seed     21.544     46.416 ...
+
+A WARNING here naming ``(slot, dimension)`` pairs clamped to the
+resolvable coordinate scale means the ladder is wider than the search
+space can express: reduce ``LADDER_SPAN``, or lower gamma.
 
 Calibration::
 
    ANNEAL_PT step calibration slot=3 T=4.6e-02  coordinate_acc=41.2% ...  pilot_multiplier=0.62 (moved)  pilot_status=ok  sigma=[3.1e-04, 2.2e-02]
    ANNEAL_PT step calibration summary: dimensions=12 ok=11 ... unconverged=1 (insensitive=1 ...)
    ANNEAL_PT calibration pass 2: T_HOT=9.115e-02 from the calibrated production kernel (pass 1 used the generic STEP_FRAC kernel; pass2/pass1 ratio=0.04); ladder rebuilt
-   ANNEAL_PT ladder T per slot after calibration pass 2 (0=coldest .. 7=hottest): ...
+   ANNEAL_PT ladder T per slot after calibration pass 2 (1=coldest .. 8=hottest): ...
 
 A large pass-2 ratio is *normal* — it is the point of the second pass:
 the generic kernel and the calibrated kernel probe very different loss
@@ -333,6 +427,12 @@ epoch)::
    ANNEAL_PT f per slot (pre-swap): ...
    ANNEAL_PT walker per slot (post-swap = next epoch's lineup; ^=up walker (last touched cold end), v=down walker (last touched hot end), .=no extreme yet): ...
    ANNEAL_PT ladder flow: traversals cold->hot=6  hot->cold=5  (~5 round trip(s) so far)
+
+Under ``CORANA ON`` the same cadence also reports what the per-dimension
+stepper is doing::
+
+   ANNEAL_PT Corana median per-dim acceptance % per slot (epochs 121-140; per-slot, not per-walker): ...
+   ANNEAL_PT Corana dims with ZERO accepted moves per slot (of 12; epochs 121-140): ...
 
 How to act on these:
 
@@ -350,15 +450,43 @@ How to act on these:
 * **Step health** WARNINGs (production acceptance outside the band for
   consecutive windows under ``ADAPTIVE``) point at a slot whose kernel
   lost track — usually a moving ladder with too tight a trust region.
+* **Corana frozen dimensions** growing at the *hot* end is the signal
+  to act on. At the cold end a coordinate that accepts nothing is
+  ordinary; a coordinate frozen at every temperature never moved
+  anywhere, and the end-of-run HINT names those explicitly.
 
 Final summary: the cumulative and last-window pair tables, new-best
 counts per slot, total ladder flow, the final ladder (with the number
-of adaptation updates and whether it froze), and exactly one
+of adaptation updates and whether it froze), the whole-run Corana
+acceptance census under ``CORANA ON``, and exactly one
 ``ANNEAL_PT stopped: <reason> after N host eval(s) (E epoch(s), R
-exchange round(s))`` line. Two sidecar files hold the full histories:
-``hpo_temperature_ladder.tsv`` (every ladder update) and
+exchange round(s))`` line.
+
+The Corana census is a per-slot distribution, because 816 dimensions ×
+16 slots cannot go in a journal::
+
+    slot          T    dims  visited  frozen   satur    min%    p10%    p25%    p50%    p75%    p90%    max%
+       1  1.000e-03       2        2       0       0    40.6    40.6    40.6    40.6    53.1    53.1    53.1
+       4  1.000e-01       2        2       0       0    93.8    93.8    93.8    93.8    93.8    93.8    93.8
+
+Rows are per **slot** (temperature), *not* per walker: an exchange moves
+``x``/``f`` between slots and leaves the step vector and these counters
+behind, so a row aggregates every walker that visited that temperature.
+
+Sidecar files hold the full histories:
+``hpo_temperature_ladder.tsv`` (every ladder update),
 ``hpo_step_scales.tsv`` (calibrated scales and diagnoses per slot and
-dimension).
+dimension), ``hpo_init_jitter.tsv`` (measured jitter sigma per
+dimension under ``JITTER AUTO``), and ``hpo_corana_acceptance.tsv``
+(per-``(slot, dimension)`` acceptance and adapted sigma under
+``CORANA ON``).
+
+.. note::
+
+   Every slot, pair and walker index printed by the run — in the
+   journal, in the sidecar TSVs and in ``best_pot.tadah``'s
+   ``# HPO_SOURCE_SLOT`` header — is **1-based** from 1.5.0. Scripts
+   written against 1.4.x output must subtract one.
 
 .. _anneal_pt_guide:
 
@@ -380,10 +508,10 @@ Part B — Setting up a run
 4. **Step policy.** Keep ``STEP_MODE FROZEN``. Switch to ``ADAPTIVE``
    when you enable ``LADDER_ADAPT`` (moving temperatures want moving
    steps); use ``FIXED`` only for controlled experiments. Use
-   ``CORANA 1`` when dimensions differ wildly in sensitivity and you
+   ``CORANA ON`` when dimensions differ wildly in sensitivity and you
    can afford :math:`n` evals per replica per epoch.
 5. **Ladder adaptation.** After a first run, if the per-pair table
-   shows very uneven acceptance, set ``LADDER_ADAPT 1`` (and
+   shows very uneven acceptance, set ``LADDER_ADAPT ON`` (and
    ``STEP_MODE ADAPTIVE``); the defaults for the gain schedule and the
    freeze need no tuning.
 6. **Stops.** Add ``STOPVAL`` when you know a good-enough loss;

@@ -96,8 +96,8 @@ AUTO_DEFAULT_TEXT = {
     ("T_MIN", "serial"): "auto (T0 * 1e-6)",
     ("T_MIN", "pa"): "auto (T0 * 1e-6)",
     ("T_COLD", "pt"): "auto (T_HOT / LADDER_SPAN)",
-    ("RESET_TO_BEST", "serial"): "0 (1 with ``CORANA``)",
-    ("RESET_TO_BEST", "pt"): "0",
+    ("RESET_TO_BEST", "serial"): "``OFF`` (``ON`` with ``CORANA``)",
+    ("RESET_TO_BEST", "pt"): "``OFF``",
     ("REPLICAS", "pt"): "max(THREADS, 2)",
 }
 
@@ -108,31 +108,53 @@ def default_for(key: dict, kind: str) -> str:
         return special
     raw = key.get(f"default_{kind}", key.get("default"))
     if raw is None:
-        return "auto"
+        return "``AUTO``" if key.get("accepts_auto") is not None else "auto"
+    if key["type"] == "bool":
+        return "``ON``" if str(raw).strip() in ("1", "1.0", "true", "True") else "``OFF``"
+    # 1.5.0: these keys carry their AUTO/OFF sentinel AS the numeric default,
+    # so printing the raw value advertises a number the parser then rejects
+    # (INIT_JITTER_LADDER would read "default -1"). Print the token the user
+    # actually types.
+    for field, token in (("accepts_auto", "``AUTO``"), ("accepts_off", "``OFF``")):
+        sentinel = key.get(field)
+        if sentinel is not None and float(raw) == float(sentinel):
+            return token
     if key["type"] == "float":
         return _num(raw)
     return str(raw)
+
+
+def _token_suffix(key: dict) -> str:
+    """The 1.5.0 AUTO/OFF tokens a numeric key also accepts."""
+    toks = [t for t, f in (("``AUTO``", "accepts_auto"), ("``OFF``", "accepts_off"))
+            if key.get(f) is not None]
+    return (" | " + " | ".join(toks)) if toks else ""
 
 
 def range_for(key: dict) -> str:
     if key["type"] == "enum":
         return " | ".join(f"``{v}``" for v in key["values"])
     if key["type"] == "bool":
-        return "0 | 1"
+        return "``ON`` | ``OFF``"
+    if key.get("custom_range"):
+        # No table range: the check is hand-written in anneal::Knobs::parse.
+        base = "integer >= 1" if key["type"] == "count" else "float"
+        return base + _token_suffix(key)
     has_min, has_max = "min" in key, "max" in key
+    suffix = _token_suffix(key)
     if not has_min and not has_max:
-        return "integer >= 0" if key["type"] == "count" else "float"
+        return ("integer >= 0" if key["type"] == "count" else "float") + suffix
     lo = "(" if key.get("min_open") else "["
     hi = ")" if key.get("max_open") else "]"
     lo_v = _num(key["min"]) if has_min else "-inf"
     hi_v = _num(key["max"]) if has_max else "inf"
     if has_min and not has_max:
         op = ">" if key.get("min_open") else ">="
-        return f"{op} {lo_v}"
+        return f"{op} {lo_v}" + suffix
     if has_max and not has_min:
         op = "<" if key.get("max_open") else "<="
-        return f"{op} {hi_v}"
-    return f"{lo}{lo_v}, {hi_v}{hi}"
+        return f"{op} {hi_v}" + suffix
+    return f"{lo}{lo_v}, {hi_v}{hi}" + suffix
 
 
 def _num(v) -> str:
@@ -150,13 +172,13 @@ def constraint_sentences(name: str, rules: list, kind_keys: set) -> list[str]:
             continue   # rule references a key of a different family member
         kind = rule["type"]
         if kind == "requires_flag":
-            out.append(f"Requires ``{rule['flag']} 1``.")
+            out.append(f"Requires ``{rule['flag']} ON``.")
         elif kind == "conflicts_flag":
-            out.append(f"Invalid with ``{rule['flag']} 1``.")
+            out.append(f"Invalid with ``{rule['flag']} ON``.")
         elif kind == "unused_when_set":
             out.append(f"Unused when ``{rule['other']}`` is set.")
         elif kind == "unused_when_flag_off":
-            out.append(f"Unused when ``{rule['flag']}`` is 0.")
+            out.append(f"Unused when ``{rule['flag']}`` is ``OFF``.")
         elif kind == "requires_enum":
             out.append(
                 f"Only with ``{rule['enum_key']} {rule['value']}``.")

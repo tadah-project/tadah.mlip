@@ -485,11 +485,11 @@ Additional options
    Declare this ``PC_LAMMPS`` line as *hot*: a two-phase evaluator
    for parameters that other scripts depend on. Hot scripts run
    alone in **phase A** of each iteration (in parallel with other
-   hot scripts), expose ``variable <name> string …`` from the
-   LAMMPS script (see :ref:`warmstart_protocol` for the required
-   ``string``-style readback), and the returned value is validated
+   hot scripts), redefine ``variable <name> equal …`` at the end of
+   the LAMMPS script (see :ref:`warmstart_protocol` for the
+   ``equal``-style readback), and the returned value is validated
    against ``[min, max]``. Validated values are cached per
-   ``(script, name)`` and propagated as ``${<name>}`` strings into
+   ``(script, name)`` and propagated as ``${<name>}`` into
    every cold (no-``--hotvar``) ``PC_LAMMPS`` script in **phase B**.
    ``<initial>`` is optional; when omitted the midpoint of
    ``[<min>, <max>]`` seeds the first iteration. If a hot value
@@ -1697,18 +1697,22 @@ can short-circuit the expensive minimisation:
 #. Replace the hard-coded ``lattice bcc 3.2`` in that script with
    ``lattice bcc ${hot_a0}``.
 
-#. End the script with a ``string``-style readback (**not** ``equal``):
+#. End the script by redefining ``hot_a0`` as an ``equal``-style
+   variable (**not** ``string``):
 
    .. code-block:: none
 
-      variable hot_a0 string $(lx/<divisor>)
+      variable hot_a0 equal lx/<divisor>
 
    where ``<divisor>`` matches the conventional cell size (e.g.
-   ``4.0`` for a 4-atom BCC conventional cell). Equal-style readback
-   does not currently round-trip across iterations inside the cached
-   LAMMPS instance — use string-style until that is lifted.
+   ``4.0`` for a 4-atom BCC conventional cell). HPO injects
+   ``hot_a0`` as an ``equal``-style variable, so this is a same-style
+   overwrite that LAMMPS accepts without a prior ``variable delete``.
+   A ``string``-style readback clashes with the injected variable on
+   the next iteration ("variable already exists with a different
+   style") and the injected value is then silently ignored.
 
-HPO injects ``${hot_a0}`` as a string-style variable on every call
+HPO injects ``${hot_a0}`` as an ``equal``-style variable on every call
 (``<initial>`` from ``--hotvar`` on the first call, the cached value
 thereafter), captures the script's ``${hot_a0}`` after each successful
 run, and reuses it on the next evaluation. The variable is then

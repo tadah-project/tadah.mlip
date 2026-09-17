@@ -141,8 +141,7 @@ int TadahCLI::run(int argc, char** argv) {
   }
 
   scheduler.distributeTasks();
-  scheduler.execute();
-  return 0;
+  return scheduler.execute();
 }
 
 void TadahCLI::registerModules() {

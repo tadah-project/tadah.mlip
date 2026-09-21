@@ -233,6 +233,8 @@ optimiser may vary, and over what bounds:
   is the one every label the run prints carries -- ``KEY[n]`` in
   ``hpo_run.log``, ``params.tadah``, ``hpo_step_scales.tsv`` and the
   search-space sidecars (single-value keys carry no index).
+  Empty or malformed selectors, duplicate indices within a selector,
+  descending ranges, and zero strides are errors.
 * ``<low>``, ``<high>`` — floating-point bounds.  ``high`` must be
   strictly greater than ``low``.
 * an optional shape tag ``LIN`` (default), ``LOG`` (requires
@@ -409,7 +411,8 @@ Energy / force / stress validation metrics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Validation-set metrics are evaluated on every ``DBFILE`` listed in the
-``--validation`` file.  Each line takes a target value and a weight:
+``--validation`` file.  The global form takes one target and weight and
+applies the loss to the arithmetic average of that metric across datasets:
 
 .. code-block:: none
 
@@ -427,6 +430,76 @@ Key                Quantity
 ================== =================================================================
 
 These constraints use the global ``LOSS`` selected above.
+
+Individual validation targets and weights
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``PC_ERMSE`` and ``PC_FRMSE`` also accept indexed declarations:
+
+.. code-block:: none
+
+   PC_ERMSE (indices) <target> <weight> [--skip-above <cap>] [--skip-rel <ratio>]
+   PC_FRMSE (indices) <target> <weight> [--skip-above <cap>] [--skip-rel <ratio>]
+
+Indices start from **1** and refer to ``DBFILE`` order in the validation
+configuration, not the training configuration. Selectors use the same syntax
+as ``OPTIM``: lists ``(1,2,3)``, inclusive ranges ``(1-3)``, strides
+``(1-5:2)``, and combinations with whitespace ``(1, 3-7:2)``.
+Malformed selectors, zero indices or strides, descending ranges, duplicate
+indices, and indices beyond the validation list are errors.
+
+For example, with three validation datasets:
+
+.. code-block:: none
+
+   # config.val
+   DBFILE bulk.db
+   DBFILE surfaces.db
+   DBFILE liquid.db
+
+   # config.hpo
+   LOSS L2
+   PC_ERMSE (1,2) 5.0  1.0
+   PC_ERMSE (3)   10.0 0.5
+   PC_FRMSE (1)   0.05 2.0
+   PC_FRMSE (2-3) 0.10 1.0
+
+ERMSE targets are in **meV/atom**; FRMSE targets are in **eV/Å**. Targets
+must be finite, and weights must be finite and nonnegative. An explicit
+zero weight satisfies coverage and contributes zero loss; its dataset still
+counts in the average. Weights are not normalized by their sum.
+
+For each enabled metric, choose either one global line or disjoint indexed
+lines covering **every** validation dataset. Mixing forms for the same
+metric, repeated global lines, overlapping selections, and missing targets
+or weights are errors. ERMSE and FRMSE may choose different forms, and either
+metric may be omitted entirely. Empty validation datasets, including those
+emptied by validation filters, are rejected without renumbering later files.
+Indexed declarations are not supported for the other validation metrics.
+
+For measured dataset metrics :math:`x_i` and :math:`N` validation datasets,
+the metric contribution is:
+
+.. math::
+
+   C_{\mathrm{global}} = \operatorname{LOSS}\!\left(
+      \frac{1}{N}\sum_i x_i,\ t,\ w\right),
+   \qquad
+   C_{\mathrm{indexed}} = \frac{1}{N}\sum_i
+      \operatorname{LOSS}(x_i,\ t_i,\ w_i).
+
+Each metric contributes **one term** to the existing total-loss average,
+alongside the other enabled constraints. Dataset sizes do not change this
+averaging. Even identical indexed targets and weights can differ from the
+global form for nonlinear losses such as L2: averaging losses differs from
+taking the loss of an average. The forms agree for a single dataset.
+
+The run journal and potential header identify the form and the resolved
+indexed assignments. In ``loss.tadah`` and ``best_loss.tadah``, indexed
+``L(ERMSE)[avg]`` / ``L(FRMSE)[avg]`` columns are the mean of the corresponding
+dataset losses. For the global form they retain the loss of the average
+metric. Raw metric averages in ``stats.tadah`` and ``outvar.tadah`` are
+unchanged.
 
 Physics-informed constraints (PC_LAMMPS)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -531,6 +604,15 @@ the iteration:
 Both filters can be applied to the same metric line.  They short-cut
 obviously bad potentials so wall-time is not spent on LAMMPS phases
 that would never compete.
+
+On indexed ``PC_ERMSE`` / ``PC_FRMSE`` lines, the flags apply independently
+to each selected dataset; any triggered dataset skips downstream observable
+and LAMMPS work. ``--skip-rel`` compares against that dataset's own best
+observed value for the metric. A zero loss weight does not disable a filter.
+On global lines the filters continue to act on the average metric. Histories
+are shared between evaluation threads within a run, start empty for a new
+run or process restart, and are not restored from checkpoints. Diagnostics
+name the triggering metric, dataset index, and filename.
 
 Result contract for user scripts
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1526,6 +1608,10 @@ Main log files
 Each file begins with a ``#`` header describing its columns.  Eligible rows
 follow the ``OUTPUT`` cadence, and the first column is always the iteration
 number.
+
+When embedding successive HPO runs in one process, flush each host before
+starting the next. Result batches use the current run's output files,
+including when the working directory changes between runs.
 
 =====================  =====================================================================
 File                   Columns

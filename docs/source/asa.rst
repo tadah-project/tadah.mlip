@@ -367,8 +367,8 @@ trajectory-neutral default), ``USER_INITIAL_COST_TEMP`` (replaces the
 ``USER_REANNEAL_*``, ``USER_ACCEPTANCE_TEST`` — the last does not even
 compile upstream), the acceptance-law variants
 (``USER_ACCEPT_ASYMP_EXP``/``THRESHOLD``), ``ASA_FUZZY``/``FITLOC``
-(live in ASA's un-vendored user module), ``ASA_SAVE*`` (HPO has its own
-checkpointing), ``SELF_OPTIMIZE``, ``ASA_SAMPLE``, ``ASA_PIPE*``.
+(live in ASA's un-vendored user module), ``ASA_SAVE*`` (HPO runs are not
+resumable), ``SELF_OPTIMIZE``, ``ASA_SAMPLE``, ``ASA_PIPE*``.
 Every feature that IS compiled in is proven trajectory-neutral at its
 default value by a golden unit test that compares the vendored build
 bitwise against a pristine all-gates-off build.

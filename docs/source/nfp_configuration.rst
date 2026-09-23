@@ -568,9 +568,9 @@ to each selected dataset; any triggered dataset skips downstream observable
 and LAMMPS work. ``--skip-rel`` compares against that dataset's own best
 observed value for the metric. A zero loss weight does not disable a filter.
 On global lines the filters continue to act on the average metric. Histories
-are shared between evaluation threads within a run, start empty for a new
-run or process restart, and are not restored from checkpoints. Diagnostics
-name the triggering metric, dataset index, and filename.
+are shared between evaluation threads within a run and start empty for every
+run (HPO runs are not resumable; see :ref:`hpo_potential_archives`).
+Diagnostics name the triggering metric, dataset index, and filename.
 
 .. _pc_lammps_result_contract:
 
@@ -1565,9 +1565,9 @@ count is at least the chosen rank count.
 Requirements and behaviour:
 
 * a multi-rank launch accepts only a plain ``TADAH:ANNEAL_PT`` or
-  ``TADAH:ANNEAL_PA`` strategy.  Unsupported serial, checkpointed, or
-  decorated strategies fail before policy setup; an MPI launch of size one
-  keeps the normal serial behaviour;
+  ``TADAH:ANNEAL_PA`` strategy.  Other drivers and ``STRATEGY TYPE
+  MULTISTART`` / ``PRESTAGE`` fail before policy setup; an MPI launch of
+  size one keeps the normal serial behaviour;
 * an MPI-flavoured LAMMPS library (the serial archive carries MPI stub
   symbols that collide with a real MPI at link time — configure-time
   check);
@@ -1585,7 +1585,7 @@ Requirements and behaviour:
 * rank-local fixed-name outputs carry an explicit ``.r<rank>`` suffix
   on **every** rank, including rank 0;
 * the unsuffixed ``best_pot.tadah`` is a separate canonical global-best
-  checkpoint, updated live by every rank under a cross-process lock.  A
+  file, updated live by every rank under a cross-process lock.  A
   complete potential replaces it for a lower loss, or for an exactly equal
   loss and a lexicographically smaller ``(rank, slot, evaluation)`` key;
 * ``MAXEVAL`` is a hard global cap across seed/probe evaluation,
@@ -1855,12 +1855,15 @@ recorded in ``hpo_run.log`` and in the header of ``best_pot.tadah``).
        ``0`` is rejected.  ``best_pot.tadah`` is updated on every
        improvement regardless.
 
+.. _hpo_potential_archives:
+
 Potential archives
 ..................
 
 The current global best potential is saved live to the canonical
 ``best_pot.tadah``.  Every process-local improvement synchronously
-competes for this checkpoint under a cross-process lock.  Candidates are
+competes for this file under a cross-process lock, before the evaluation
+that produced it returns to the optimiser.  Candidates are
 ordered by ``(loss, source rank, source slot, source evaluation)``: lower
 loss wins, with the remaining fields providing an exact-loss tie-break.
 The complete winning potential is
@@ -1868,18 +1871,31 @@ written to a unique temporary file, flushed, and atomically renamed, so
 an abrupt ``SIGKILL`` leaves either the preceding complete winner or the
 new complete winner, never a torn file.  Its header records the loss,
 source rank/slot/evaluation, and candidate-local hot-variable values.
-A canonical checkpoint write or durability failure is fatal rather than
-silently allowing an uncheckpointed optimisation to continue.  A
-rank-local diagnostic-mirror failure is reported but cannot invalidate an
-already-durable canonical winner.
+A write or durability failure of the canonical file is fatal rather than
+silently allowing the optimisation to continue without a durable
+incumbent.  A rank-local diagnostic-mirror failure is reported but cannot
+invalidate an already-durable canonical winner.
 
-After checkpoint detection, a confirmed **fresh run** removes canonical and
-rank-local incumbents left by an unrelated objective before evaluating its
-first candidate.  An explicit checkpoint **resume** instead retains the
-canonical file and validates its compound key against checkpoint state.  A
-``WARM`` seed is parsed before this decision, so starting a fresh run from an
-old potential remains supported without letting that old loss suppress the
-new run's output.
+``best_pot.tadah`` therefore holds the incumbent at all times, including
+when a run is stopped early (Ctrl-C, ``SIGTERM``, a scheduler limit) or
+killed; it carries the complete configuration, and its header names the
+evaluation that produced it.  It is the authoritative record of the
+result.  ``best_params.tadah`` and the other history files are appended
+by the result writer thread in ``QFLUSH`` batches, so while the run is
+going they trail ``best_pot.tadah`` by the rows still queued.  When the
+optimiser finishes or is interrupted by Ctrl-C or ``SIGTERM``, the
+queue is drained before the run exits.  A run that ends without that
+drain (killed with ``SIGKILL``, or interrupted during
+``NOISE_CALIBRATION``) loses the queued rows for good: its history files
+can lack the last rows, including the incumbent's.
+
+HPO runs are **not resumable**: there is no checkpoint to continue from,
+and every run starts fresh.  Before evaluating its first candidate, a run
+removes the canonical and rank-local incumbents a previous run left in the
+working directory, so an earlier objective's loss cannot suppress the new
+run's output (copy ``best_pot.tadah`` elsewhere first to keep it).  A
+``WARM`` seed is parsed before this step, so starting a new run from an old
+potential remains supported.
 
 If ``SIGKILL`` lands after the temporary file is flushed but before its
 rename, a hidden ``.best_pot.tadah.tmp.<pid>.<counter>`` file can remain.

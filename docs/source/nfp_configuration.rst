@@ -602,7 +602,9 @@ Four root keys control how ``PC_LAMMPS`` scripts are executed:
    child process, so concurrent instances never share LAMMPS' process
    globals; model training and prediction stay in the main process.
    ``THREAD`` runs the instances in-process; it is a deprecated fallback
-   and logs a warning.  MPI builds (``TADAH_BUILD_MPI`` /
+   and logs a warning.  The worker processes ignore ``SIGINT``,
+   ``SIGTERM`` and ``SIGUSR2``: ``tadah`` stops the run and ends them
+   (:ref:`hpo_stopping`).  MPI builds (``TADAH_BUILD_MPI`` /
    ``TADAH_HPO_MPI``) cannot use worker processes: there the default
    silently becomes ``THREAD``, and an explicit ``PC_ISOLATION PROCESS``
    is an error.  Environment override: ``TADAH_PC_ISOLATION``.
@@ -1018,7 +1020,8 @@ OPTIMIZER block — common attributes
 The driver-attribute keys below are accepted wherever an optimiser is
 being configured: directly inside ``OPTIMIZER`` (short form), at the top
 level of ``STRATEGY`` (for ``TYPE PRESTAGE`` this is the refinement
-optimiser), and inside ``EXPLORE``, ``REFINE`` and ``INNER`` sub-blocks.
+optimiser), and inside ``EXPLORE``, ``REFINE`` and ``INNER`` sub-blocks
+(``INNER`` takes every key but ``SEED``, :ref:`hpo_inner_block`).
 Each backend rejects the attributes it cannot honour at startup, naming
 the key.
 
@@ -1074,9 +1077,16 @@ the key.
      - Random seed of stochastic optimisers (default: drawn from
        ``std::random_device``, so a run without ``SEED`` is not
        reproducible).  ``DLIB:BFGS`` rejects it; ``DLIB:GFS`` is
-       deterministic and ignores it with a warning.  Inside an ``INIT``
-       block the same key seeds the stochastic init methods instead —
-       it does not seed the optimiser.
+       deterministic and ignores it with a warning.  ``MULTISTART`` and
+       the ``PRESTAGE`` refinement run start *i* with ``SEED + i``, and
+       each ``RESTART`` round runs with a seed derived from it
+       (:ref:`restart_decorator`).  Inside an ``INIT`` block the same key
+       seeds the stochastic init methods instead; of the optimisers, only
+       NLopt reads it, and only when its block has no ``SEED`` of its
+       own.  An ``INNER`` block takes no ``SEED`` (startup error): NLopt
+       has one random stream per run, seeded by the enclosing block, and
+       MLSL/AUGLAG draw their ``INNER`` search from it
+       (:ref:`hpo_inner_block`).
    * - ``VECTOR_ARR`` (uint)
      - Storage size required by some NLOpt algorithms.
    * - ``THREADS`` (uint)
@@ -1289,9 +1299,12 @@ Top-level keys inside the ``INIT`` block
    * - ``SEED``
      - uint
      - ``std::random_device``
-     - Seed for the stochastic methods (RANDOM / LHS / SOBOL).  It does
-       not seed the optimiser — set ``SEED`` at the ``STRATEGY`` level
-       for that.
+     - Seed for the stochastic methods (RANDOM / LHS / SOBOL).  An NLopt
+       optimiser without a ``SEED`` of its own also takes its random seed
+       from it, and so does the search of its ``INNER`` block; its own
+       ``SEED`` takes precedence.  Every other optimiser is seeded only by
+       the ``SEED`` of its own block (``OPTIMIZER`` in the short form,
+       ``STRATEGY``, ``EXPLORE``, ``REFINE``).
    * - ``WARM_ON_MISMATCH``
      - ``warn`` / ``error`` / ``skip``
      - ``warn``
@@ -1475,7 +1488,18 @@ The number of starts is ``min(N_STARTS, number of INIT points)``; when the
 ``INIT`` chain yields fewer points than ``N_STARTS`` a warning says so,
 so pair ``MULTISTART`` with an ``INIT`` chain of at least ``N_STARTS``
 points (e.g. ``METHOD LHS 8``).  With ``SEED`` set, start ``i`` uses
-``SEED + i`` so stochastic optimisers do not repeat one another.
+``SEED + i`` so stochastic optimisers do not repeat one another; after
+restart *r* of a ``RESTART``, ``SEED + r·N_STARTS + i``
+(:ref:`restart_decorator`).  An NLopt start draws from that seed even
+when the ``INIT`` block has a ``SEED``, which draws the start points, and
+so does the ``INNER`` search of an AUGLAG start (:ref:`hpo_inner_block`).
+
+A start that fails with an error is logged as a ``WARNING`` and the next
+start runs.  Three stops end the whole ``MULTISTART`` instead, because
+they concern the run rather than the start: a signal
+(:ref:`hpo_stopping`), the ``RESTART`` stagnation stop (the restart runs
+the ``MULTISTART`` again from the fresh points, :ref:`restart_decorator`),
+and a failure to save ``best_pot.tadah`` (:ref:`hpo_potential_archives`).
 
 ``MULTISTART`` rejects — for any ``N_STARTS``, including ``1`` — every
 *global* backend that consumes a single starting point: every NLopt
@@ -1518,8 +1542,9 @@ Key              Args          Effect
                  (default 1)   forwards to refinement.  With one candidate the refinement
                                runs once from it; with more it is a multistart over the
                                candidates, so the refinement optimiser must be one
-                               ``MULTISTART`` accepts, and per-start ``MAXEVAL`` is split
-                               from the STRATEGY-level ``MAXEVAL`` by the same rule.
+                               ``MULTISTART`` accepts, per-start ``MAXEVAL`` is split
+                               from the STRATEGY-level ``MAXEVAL`` by the same rule, and
+                               candidate ``i`` runs with ``SEED + i``.
 ================ ============= =============================================================
 
 The ``EXPLORE`` block accepts the full driver-attribute set
@@ -1529,6 +1554,15 @@ block, starts from the OPTIMIZER-level ``INIT`` points.  Candidates are
 deduplicated so the ``TOPK`` seeds are distinct.  If the exploration
 yields no candidate, the refinement runs from the OPTIMIZER-level
 ``INIT`` points instead.
+
+With ``RESTART``, stagnation during the exploration ends it early and
+hands its top-K to the refinement, which starts with a stagnation window
+of its own; stagnation during the refinement restarts the whole
+``PRESTAGE``, exploration first.  The restarted exploration starts from
+the restart's fresh points, unless the ``EXPLORE`` block has an ``INIT``
+block of its own.  In restart *r* a seeded exploration draws from
+``SEED + r`` and the refinement's candidate ``i`` from ``SEED + r·TOPK + i``
+of the STRATEGY-level ``SEED`` (:ref:`restart_decorator`).
 
 LIB TADAH — the annealing family
 ................................
@@ -1568,6 +1602,13 @@ Requirements and behaviour:
   ``TADAH:ANNEAL_PA`` strategy.  Other drivers and ``STRATEGY TYPE
   MULTISTART`` / ``PRESTAGE`` fail before policy setup; an MPI launch of
   size one keeps the normal serial behaviour;
+* a multi-rank launch rejects ``RESTART`` (:ref:`restart_decorator`):
+  each rank tracks stagnation over its own evaluations, so the ranks
+  would restart at different times and the run would hang in the
+  driver's next collective.  With ``AFTER_STAGNATION`` and ``MAX`` both
+  positive it fails before any evaluation, with ``multi-rank HPO does not
+  support RESTART (…): stagnation is tracked per rank; run on one rank or
+  remove RESTART``;
 * an MPI-flavoured LAMMPS library (the serial archive carries MPI stub
   symbols that collide with a real MPI at link time — configure-time
   check);
@@ -1664,9 +1705,67 @@ RESTART decorator
 The decorator is active only when **both** ``AFTER_STAGNATION`` and
 ``MAX`` are positive; with either at its default ``0`` the ``RESTART``
 block has no effect.  A ``SEED`` inside ``RESTART`` is ignored: each
-restart draws its seed from ``std::random_device``, so restarts are not
-reproducible.  Each restart gets its own stagnation window — the windows
-do not bleed into each other.
+restart draws the seed of its ``METHOD`` chain from
+``std::random_device``, so the fresh points are not reproducible.  Each
+restart gets its own stagnation window — the windows do not bleed into
+each other.  ``RESTART`` runs on one MPI rank only: a launch on more
+than one rank rejects it at startup (:ref:`tadah_anneal_mpi`).
+
+A restart re-runs the whole strategy from the *K* fresh points the
+``METHOD`` chain draws (``K_TOTAL``, or the chain's default):
+
+* ``PLAIN``: the optimiser starts again from the first of them (a
+  multi-seed optimiser such as ``DLIB:GFS`` takes all *K*).
+* ``MULTISTART``: runs again from its first start, with ``min(N_STARTS,
+  K)`` starts, one per fresh point — use a ``METHOD`` with *K* ≥
+  ``N_STARTS`` (e.g. ``METHOD LHS 8``) to re-run every start.  Without a
+  ``METHOD`` line, a restart runs a single start, from ``CONFIG``.
+* ``PRESTAGE``: only stagnation in the refinement restarts (a stagnating
+  exploration hands over to the refinement early).  The exploration
+  starts again from the fresh points, or from its own points again when
+  the ``EXPLORE`` block has an ``INIT`` block of its own; the refinement
+  then refines the new top-K.
+
+Restart *r* (``1`` … ``MAX``) also gives every optimiser that has a
+``SEED`` a seed of its own, so a seeded stochastic optimiser or
+exploration draws new random numbers instead of repeating round 0's from
+the new point:
+
+* the ``STRATEGY``-level optimiser runs with ``SEED + r·S``, where *S*
+  is the number of starts the strategy runs from its ``SEED``:
+  ``N_STARTS`` under ``MULTISTART``, ``TOPK`` under ``PRESTAGE`` (the
+  refinement's candidates) and ``1`` under ``PLAIN``.  Start *i* of the
+  round, which uses the round's seed ``+ i``, gets ``SEED + r·S + i`` — a
+  seed no other start of the run uses.  With ``SEED 7``, ``TOPK 3`` and
+  ``MAX 2``, the refinement's candidates run with seeds 7, 8, 9, then 10,
+  11, 12, then 13, 14, 15;
+* an ``EXPLORE`` optimiser runs with its ``SEED + r``.
+
+An ``INNER`` block has no ``SEED`` of its own: its search draws from the
+random stream of the enclosing optimiser's run, seeded with that
+optimiser's derived seed (:ref:`hpo_inner_block`).
+
+The first round keeps every ``SEED``, so up to its first restart a run
+draws the same random numbers as without ``RESTART``.  Under
+``PRESTAGE`` the first round can still take another course: a stagnating
+exploration hands over to the refinement early (above), where without
+``RESTART`` it runs to its own stop criteria.  The journal's
+``RESTART r/MAX`` line lists the round's seeds, for example ``RESTART
+1/3 -- fresh init from SOBOL; SEED 43, EXPLORE SEED 1718``.  An
+optimiser without ``SEED``
+is unaffected.  NLopt draws from the derived seeds too, even when an
+``INIT`` block also has a ``SEED``.  Only an NLopt optimiser without a
+``SEED`` of its own takes its random seed from its ``INIT`` block's
+``SEED``, which is not derived, so it repeats its random sequence in every
+round.
+
+``RESTART`` fires with every backend, including NLopt (also
+inside the ``INNER`` local search of MLSL/AUGLAG), ``DLIB:GFS`` with any
+``THREADS``, Ceres, ASA and the ``TADAH`` annealers.  Once the ``MAX``
+restarts are used up, the next stagnation ends the run normally (exit
+status ``0``): the journal records ``RESTART: stagnation reached, max
+restarts (MAX) used; stopping``, and its trailer reads ``STOPPED --
+stagnation, max restarts (MAX) used``.
 
 NOISE block
 -----------
@@ -1698,6 +1797,8 @@ Key                Args          Effect
                                  statistically meaningless.
 ================== ============= =================================================================
 
+.. _hpo_inner_block:
+
 INNER block — NLopt MLSL / AUGLAG sub-optimiser
 -----------------------------------------------
 
@@ -1720,10 +1821,60 @@ local optimiser.  Configure the inner via:
 
 Only the driver-attribute keys (``LIB`` / ``ALGO`` / ``MAXEVAL`` /
 ``MAXTIME`` / ``STOPVAL`` / ``FTOL_*`` / ``XTOL_*`` / ``POPULATION`` /
-``STEP`` / ``SEED`` / ``VECTOR_ARR`` / ``THREADS`` / ``GRAD_STRATEGY`` /
-``PARAM``) are valid inside ``INNER``.  With MLSL/AUGLAG an outer
-``STEP`` overrides an ``INNER`` ``STEP`` (NLopt forwards the outer
-initial step to the local optimiser); a startup warning says so.
+``STEP`` / ``VECTOR_ARR`` / ``THREADS`` / ``GRAD_STRATEGY`` / ``PARAM``)
+are valid inside ``INNER``.  With MLSL/AUGLAG an outer ``STEP``
+overrides an ``INNER`` ``STEP`` (NLopt forwards the outer initial step
+to the local optimiser); a startup warning says so.
+
+``SEED`` is not valid inside ``INNER``.  MLSL and AUGLAG run the
+``INNER`` search inside the enclosing block's NLopt run, and NLopt has
+one random stream per run.  The enclosing block's ``SEED`` seeds it (or,
+without one, the enclosing block's ``INIT``-block ``SEED``), and every
+random number of the run comes from it: G_MLSL's sample points and the
+draws of the ``INNER`` optimiser, such as a ``GN_CRS2_LM`` population
+under AUGLAG.  An ``INNER`` ``SEED`` could only reseed that stream in
+place of the enclosing block's seed, so the startup check rejects it and
+names the line.  This configuration:
+
+.. code-block:: none
+
+   OPTIMIZER
+     INIT
+       METHOD LHS 3
+     ENDINIT
+     STRATEGY
+       TYPE MULTISTART
+       LIB NLOPT
+       ALGO AUGLAG
+       N_STARTS 3
+       MAXEVAL 300
+       SEED 10
+       INNER
+         LIB NLOPT
+         ALGO GN_CRS2_LM
+         SEED 20
+       ENDINNER
+     ENDSTRATEGY
+   ENDOPTIMIZER
+
+stops at startup: ``tadah hpo`` prints this error on stderr and exits
+with status ``1``:
+
+.. code-block:: none
+
+   HPOEngine error: Error on line 15: SEED is not accepted inside an INNER block: NLopt draws the INNER search from the enclosing run's random stream; set SEED on the enclosing STRATEGY block
+   Line:       SEED 20
+
+The message names ``EXPLORE`` or ``REFINE`` when the ``INNER`` block is
+there.  Set ``SEED`` on that block instead.  Here, deleting ``SEED 20``
+leaves ``SEED 10``: the three starts run with seeds 10, 11 and 12, each
+with a ``MAXEVAL`` of 100 (``MAXEVAL 300`` split over ``N_STARTS``), and
+each start's ``GN_CRS2_LM`` search draws a population of its own from
+its seed.  In the same way the ``PRESTAGE`` refinement runs candidate
+*i* with ``SEED + i``, and each ``RESTART`` round runs with a derived seed
+(:ref:`restart_decorator`) that its ``INNER`` search draws from too.  An
+``INIT`` block is not valid inside ``INNER`` either; MLSL picks its local
+starting points itself.
 
 .. _hpo_load_transforms:
 
@@ -1818,7 +1969,8 @@ Key          Default   Effect
                        ``N ≥ 1`` (``0`` is rejected — use a large value to write little).
 ``DIGITS d`` ``6``     Decimal digits in scientific-notation columns; ``1 ≤ d ≤ 15``.
 ``QFLUSH N`` ``10``    Queued completed results that trigger a writer-thread drain;
-                       shutdown or an explicit flush drains the remainder.
+                       the end of the run drains the remainder
+                       (:ref:`hpo_stopping`).
 ============ ========= =================================================================
 
 Best-improvement histories
@@ -1876,18 +2028,25 @@ silently allowing the optimisation to continue without a durable
 incumbent.  A rank-local diagnostic-mirror failure is reported but cannot
 invalidate an already-durable canonical winner.
 
-``best_pot.tadah`` therefore holds the incumbent at all times, including
-when a run is stopped early (Ctrl-C, ``SIGTERM``, a scheduler limit) or
-killed; it carries the complete configuration, and its header names the
-evaluation that produced it.  It is the authoritative record of the
-result.  ``best_params.tadah`` and the other history files are appended
-by the result writer thread in ``QFLUSH`` batches, so while the run is
-going they trail ``best_pot.tadah`` by the rows still queued.  When the
-optimiser finishes or is interrupted by Ctrl-C or ``SIGTERM``, the
-queue is drained before the run exits.  A run that ends without that
-drain (killed with ``SIGKILL``, or interrupted during
-``NOISE_CALIBRATION``) loses the queued rows for good: its history files
-can lack the last rows, including the incumbent's.
+``best_pot.tadah`` therefore holds the incumbent — the lowest-loss
+evaluation that completed — at all times, however the run ends: stop
+criteria, a signal, an error or ``SIGKILL`` (:ref:`hpo_stopping`).  The
+one exception is the error that ends a run when ``best_pot.tadah``
+cannot be saved: the evaluation whose potential could not be saved has
+its ``loss.tadah`` row, but ``best_pot.tadah`` and ``best_params.tadah``
+keep the previous incumbent.  ``best_pot.tadah`` carries the complete
+configuration, its header names the evaluation that produced it, and it
+is the authoritative record of the result.
+``best_params.tadah`` and the other history files are appended by the
+result writer in ``QFLUSH`` batches, so while the run is going they
+trail ``best_pot.tadah`` by the rows still queued.  Every ending except
+``SIGKILL`` (or a crash) writes the queued rows before the process exits,
+so the history files then have one row per completed evaluation, and the
+``best_params.tadah`` row with the highest improvement ordinal is the
+incumbent's.  That is the last row unless evaluations ran concurrently:
+the rows are written in evaluation order, so a later improvement can
+come before an earlier one.  After ``SIGKILL`` the files can lack the
+rows still queued, including the incumbent's.
 
 HPO runs are **not resumable**: there is no checkpoint to continue from,
 and every run starts fresh.  Before evaluating its first candidate, a run
@@ -1972,6 +2131,118 @@ Practical tips
   the columns by their ``KEY[n]`` labels.  To reproduce a candidate,
   use the potential itself (``best_pot.tadah`` or a ``DUMP``/``BDUMP``
   archive), which carries the full configuration.
+
+.. _hpo_stopping:
+
+Stopping a run
+--------------
+
+A run ends when the optimiser meets its stop criteria (``MAXEVAL``,
+``STOPVAL``, a tolerance, ``MAXTIME``, the ``RESTART`` budget, …), when
+a signal stops it, or when an error stops it.  ``best_pot.tadah`` holds
+the incumbent in every case (:ref:`hpo_potential_archives`).
+
+**Signals.** ``tadah hpo`` handles ``SIGINT`` (Ctrl-C), ``SIGTERM``
+(``kill``, ``scancel``) and ``SIGUSR2`` (an advance warning before a
+batch job's time limit, below).  The first one stops the run: no new
+evaluation starts, the evaluations already running finish and are
+recorded, and the optimiser and strategy stop with them — later
+``MULTISTART`` starts, ``RESTART`` rounds and the ``PRESTAGE``
+refinement do not run, and a signal during ``NOISE_CALIBRATION`` ends the
+calibration.  The queued rows are then written to the history files and
+the journal is closed.  A second signal does not interrupt that
+shutdown; ``kill -9`` (``SIGKILL``) ends the process at once.  The
+``PC_ISOLATION PROCESS`` worker processes ignore all three signals, so a
+signal sent to the whole process group or job step (Ctrl-C in a
+terminal, ``kill -<signal> -<pgid>``, a signal SLURM sends to a job step)
+does not kill the evaluations they are running.
+
+**Batch jobs.** SLURM's ``--signal=[B:]USR2@<seconds>`` sends ``SIGUSR2``
+that many seconds before the time limit.  With ``B:`` it signals only
+the batch shell, which ``SIGUSR2`` kills without passing it on: make
+``tadah`` the batch shell by starting it with ``exec`` as the script's
+last command.  Without ``B:``, SLURM signals the job steps: start
+``tadah`` with ``srun``.
+
+.. code-block:: bash
+
+   #!/bin/bash
+   #SBATCH --time=24:00:00
+   #SBATCH --signal=B:USR2@600     # SIGUSR2 to the batch shell 10 min early
+   exec tadah hpo -c config.tadah --hpotarget config.hpo --validation config.val
+
+   # or, with  #SBATCH --signal=USR2@600  (every job step is signalled):
+   # srun tadah hpo -c config.tadah --hpotarget config.hpo --validation config.val
+
+A plain ``tadah hpo …`` line under ``--signal=B:USR2@…`` never receives
+``SIGUSR2``: the signal kills the batch shell instead, and ``tadah`` gets
+no advance warning.
+
+.. list-table:: How a run ends
+   :header-rows: 1
+   :widths: 22 20 32 26
+
+   * - Ending
+     - Exit status of ``tadah``
+     - ``Optimiser status`` in the journal's ``RESULT`` section
+     - History files
+   * - Stop criteria met
+     - ``0``
+     - The reason of the optimiser run that ended the run (under
+       ``MULTISTART`` the last start, under ``PRESTAGE`` the refinement)
+       where it gives one (NLopt, e.g. ``MAXEVAL_REACHED -- …``;
+       ``ASA: …``), otherwise ``COMPLETED``.  When the ``RESTART``
+       budget ends the run: ``STOPPED -- stagnation, max restarts (MAX)
+       used``.
+     - Complete.
+   * - ``SIGINT``, ``SIGTERM``, ``SIGUSR2``
+     - ``128`` + the signal number: ``130``, ``143``, ``140`` (Linux)
+     - ``SHUTDOWN (SIGINT)``, ``SHUTDOWN (SIGTERM)``,
+       ``SHUTDOWN (SIGUSR2)``
+     - Complete.
+   * - An error during the run (including a failure to save
+       ``best_pot.tadah``)
+     - ``1``
+     - ``STOPPED with error: <message>`` (``STOPPED with unknown error``
+       for an error that is not a C++ standard exception)
+     - Complete.
+   * - ``SIGKILL``, a crash, a node failure
+     - Killed (a shell reports ``137`` for ``SIGKILL``)
+     - None: the journal has no ``RESULT`` section.
+     - Can lack the rows still queued: up to ``QFLUSH − 1``, more when
+       evaluations run concurrently and a slow one holds later rows back.
+
+"Complete" means one row per completed evaluation (subject to the
+``OUTPUT`` / ``BOUTPUT`` cadences), with the ``best_params.tadah`` row of
+the highest improvement ordinal belonging to the incumbent — except
+after a failure to save ``best_pot.tadah``, whose evaluation has its
+``loss.tadah`` row but is not the incumbent
+(:ref:`hpo_potential_archives`).  If an evaluation
+never delivered its result, the rows after it are written anyway at the
+end of the run and the journal warns ``… stranded behind missing
+iteration N``.
+
+An error found while the run is set up, before the optimiser starts (a
+configuration or data error), ends ``tadah`` with status ``1`` and a
+message on stderr; there are no history rows, and the journal, if it was
+opened, has no ``RESULT`` section.  An error the optimiser raises before
+its first evaluation (for example an unknown ``PARAM`` of ``TADAH:GRID``)
+also leaves no history rows, but the journal has a ``RESULT`` section
+with ``STOPPED with error: <message>`` and zero evaluations.
+
+In a multi-rank ``ANNEAL_PT`` / ``ANNEAL_PA`` run
+(:ref:`tadah_anneal_mpi`), each rank stops on the signal it receives
+itself.  A rank that has not seen it when another rank stops ends with an
+error instead, status ``1`` and ``STOPPED with error: … worker failed on
+another MPI rank …`` (or ``… rank 0 aborted during … calibration`` when
+the signal arrives during the calibration); only the ranks that saw the
+signal report ``SHUTDOWN`` and ``128`` + the signal number.  Every rank
+still writes its queued rows, and ``best_pot.tadah`` holds the global
+incumbent.
+
+The run's exit status is also ``tadah``'s: a job script can tell a
+completed run (``0``) from a stopped one (``130``, ``143``, ``140``) and
+a failed one (``1``).
 
 .. _warmstart_protocol:
 
@@ -2195,11 +2466,11 @@ Marker                                                                       Mea
 ``[HPO] DLIB:GFS seeding with N starting points``                             Multi-seed forwarding.
 ``[HPO] MULTISTART: running K starts (parallel=N)``                           MULTISTART fires.
 ``[HPO] MULTISTART per-start MAXEVAL = N``                                    Either from ``BUDGET_PER_START`` or split.
-``[HPO] MULTISTART start i/K — running inner optimiser``                      Per-start.
+``[HPO] MULTISTART start i/K -- running inner optimiser (seed=…)``            Per-start; ``(seed=…)`` only when ``SEED`` is set.
 ``[HPO] PRESTAGE: exploration phase LIB:ALGO (MAXEVAL=…)``                    PRESTAGE phase starts.
 ``[HPO] PRESTAGE: top-K losses: …``                                           Snapshot quality after PRESTAGE finishes.
 ``[HPO] REFINEMENT: refining top-K seed(s) via LIB:ALGO``                     Outer (refinement) phase starts.
-``[HPO] RESTART i/M — fresh init from STRATEGY``                              Stagnation watchdog fired.
+``[HPO] RESTART i/M -- fresh init from STRATEGY; SEED …``                     Stagnation watchdog fired; lists the round's derived seeds.
 ``[HPO] NOISE_AUTO: PARAM fd_step set to V (diag=…, dim=…)``                  ``NOISE.AUTO`` fired and shows the value used.
 ``[HPO] Initial step (LIB:ALGO): …``                                         NLopt run started; the effective per-dimension step is in the journal.
 ``[HPO] OPTIM_SCALE X taken from the TADAH_OPTIM_SCALE …``                    Env override of the scaling policy is active.

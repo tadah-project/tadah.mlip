@@ -16,7 +16,7 @@ Glossary and Abbreviations
 
    Training Configuration
       A file that defines the initial model and training parameters for either training or the
-      :term:`nested fitting procedure`. It completely specifies the initialise model.
+      :term:`nested fitting procedure`. It completely specifies the initial model.
 
    Nested Fitting Configuration
    HPO Configuration
@@ -30,6 +30,12 @@ Glossary and Abbreviations
 
    Performance constraint
       A measurable (physical) property used as part of the loss.
+
+   Loss term
+      One contribution to the nested-fitting loss: an enabled validation
+      metric, a ``PC_LAMMPS --varloss`` variable or a ``PC_OBSERVABLE``
+      line.  The loss of an evaluation is the mean of its weighted terms,
+      clipped to ``FAILSCORE`` (see :ref:`nested_fitting`).
 
    Search Space Constraint
       A bound placed on a :term:`hyperparameter` via an ``OPTIM`` line.

@@ -27,7 +27,7 @@ General requirements:
 
 .. warning::
 
-   The MPI build (``-DTADAH_BUILD_MPI=ON``) is **broken in this beta
+   The MPI build (``-DTADAH_BUILD_MPI=ON``) is **not functional in this
    release** and should not be used. Build the desktop / OpenMP variant
    instead. The MPI flag is documented for forward reference only.
 
@@ -177,6 +177,8 @@ Customize the Tadah!MLIP build using CMake options:
 - ``TADAH_ENABLE_NFP``: Enable Nested Fitting Procedure (default: OFF), see :ref:`installation_nfp`.
 - ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIB``: Absolute path to the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_NFP``).
+- ``TADAH_LAMMPS_LIBS``: Extra link items for the LAMMPS library, as a CMake list (e.g. ``"-lz;-lzstd"``); needed mainly for a static LAMMPS library, whose own dependencies are not propagated (optional, used by ``TADAH_ENABLE_NFP``).
+- ``TADAH_ENABLE_CERES``: Build the Ceres Solver optimiser family of ``tadah hpo`` (``LIB CERES``) and the ``PARAM fd_kernel ceres`` finite-difference kernel (default: ON; only relevant with ``TADAH_ENABLE_NFP``).
 
 Additional CMake options to consider:
 
@@ -273,6 +275,10 @@ To build Tadah!MLIP with NFP, follow these steps:
    - ``-DTADAH_ENABLE_NFP=ON``
    - ``-DTADAH_LAMMPS_DIR=/path/to/lammps`` (LAMMPS root directory)
    - ``-DTADAH_LAMMPS_LIB=/full/path/to/liblammps_name.ext`` (full path to the built LAMMPS library file)
+   - optionally ``-DTADAH_LAMMPS_LIBS="-lz;-lzstd"`` when linking a static LAMMPS library fails with
+     undefined references to its dependencies (e.g. ``gzflush`` needs ``-lz``)
+   - optionally ``-DTADAH_ENABLE_CERES=OFF`` to build without the Ceres Solver (``LIB CERES`` is then
+     unavailable)
 
 
 .. _installation_lammps:

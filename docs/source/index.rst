@@ -4,19 +4,36 @@ Welcome to the Tadah! Website
 .. image:: images/tadah_cli.png
    :align: center
 
-.. admonition:: Tadah! 1.4.0
+.. admonition:: Tadah! |release| — work in progress, ready to use
    :class: note
 
-   The CLI surface (subcommand names, flags, configuration-file keys,
-   and the ``pot.tadah`` file format) is considered stable for the 1.x
-   series; the C++ API (``libtadah.*`` headers and class layouts) is
-   **not yet stable** and may change between minor versions until 2.0.
-   See the `changelog`_ for what shipped in this release, the
-   `migration notes`_ for upgrade caveats from earlier releases, and
-   please `report any issues`_ you hit.
+   This release is a **usable work in progress**: it is the version we fit
+   and run potentials with, and we want your feedback on it. The CLI
+   (subcommands, flags, configuration keys) and the ``pot.tadah`` format
+   are stable across 1.x; the C++ API is **not** yet stable and may change
+   before 2.0. Highlights since the 1.3 beta:
 
-   .. _changelog: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/main/CHANGELOG.md
-   .. _migration notes: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/main/CHANGELOG.md#migrating-from-v120-to-130-beta1
+   * **Nested fitting** (``tadah hpo``) — new optimisers: simulated
+     annealing (``TADAH:ANNEAL`` with Corana steps), parallel tempering
+     (``ANNEAL_PT``) and population annealing (``ANNEAL_PA``), Ingber's
+     Adaptive Simulated Annealing (``LIB ASA``) and Ceres gradient solvers;
+     a unit-cube search-space scaling layer (``OPTIM_SCALE AUTO``,
+     ``OPTIM ... AUTO`` boxes); per-dataset validation targets and weights;
+     graded ``FAILSCORE`` and process-isolated ``PC_LAMMPS`` scripts.
+   * **Refit** (``tadah refit``) — convert tabulated EAM potentials into
+     native Tadah! potentials, with a fast EAM-collapse path in LAMMPS.
+   * **Descriptors** — rotationally invariant power-spectrum family
+     (``DM_PS_*``, ``DM_GPS_*``, ``DM_OW_*``) and bump-support checks for
+     blip channels.
+   * **Data** — load-time dataset transforms (``LSCALE``, ``ESHIFT``,
+     ``EFILTER``/``FFILTER``, ``WDBFILE``, …) applied consistently to
+     training, prediction and nested fitting.
+
+   Upgrading from 1.4 or earlier? Read the breaking changes in the
+   :doc:`changelog` first — notably the ``ON``/``OFF``/``AUTO`` vocabulary
+   for optimiser ``PARAM`` keys and 1-based indices in HPO output. Please
+   `report any issues`_ you hit.
+
    .. _report any issues: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues
 
 
@@ -43,6 +60,7 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    mlips.rst
    contribute.rst
    glossary.rst
+   changelog.md
    LICENSE.rst
 
 ----
@@ -68,7 +86,9 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    :maxdepth: 2
    :caption: Nested Fitting
 
-   hpo.rst
+   nfp_background.rst
+   nfp_quickstart.rst
+   nfp_configuration.rst
    optimizer.rst
    hpo_examples.rst
 

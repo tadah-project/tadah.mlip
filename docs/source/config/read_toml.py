@@ -5,59 +5,19 @@ the TOML dictionary.
 It will generate complete config/config_keys.rst file.
 
 '''
-import pytomlpp as p
 import os
 import shutil
-import subprocess
+import sys
 
-def download_toml_file(repo_url, file_path, output_path):
-    try:
-        # Resolve the branch:
-        #   GitLab CI:   $CI_COMMIT_REF_NAME (e.g. "release/beta-prep")
-        #   RTD:         $READTHEDOCS_VERSION_NAME (verbose ref-matching form,
-        #                e.g. "release/beta-prep"); $READTHEDOCS_VERSION is the
-        #                URL slug ("release-beta-prep") and may not match a
-        #                real git ref when the branch contains a slash.
-        #   Local:       fall back to "develop".
-        branch = (os.environ.get('CI_COMMIT_REF_NAME')
-                  or os.environ.get('READTHEDOCS_VERSION_NAME')
-                  or os.environ.get('READTHEDOCS_VERSION')
-                  or 'develop')
+import pytomlpp as p
 
-        print(f"Downloading {file_path} from {repo_url} on branch {branch}...")
-        # Clone the repository into a temporary directory with the specific branch
-        repo_name = "temp_repo"
-        subprocess.run(
-            [
-                'git', 'clone', '--depth', '1',
-                '--branch', branch,
-                repo_url, repo_name
-            ],
-            check=True
-        )
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from blueprint_source import locate_blueprint
 
-        # Copy the desired file to the output path
-        full_file_path = os.path.join(repo_name, file_path)
-        if os.path.exists(full_file_path):
-            shutil.copy(full_file_path, output_path)
-            print(f"Successfully downloaded {file_path} to {output_path}")
-        else:
-            print(f"File {file_path} not found in the repository.")
-
-    except subprocess.CalledProcessError as e:
-        print(f"Error handling the repository: {e}")
-    finally:
-        # Clean up
-        if os.path.exists(repo_name):
-            shutil.rmtree(repo_name)
-
-
-download_toml_file(
-    'https://git.ecdf.ed.ac.uk/tadah/core.git',
-    'blueprint/blueprint_tadah.toml',   # source
-    'config/blueprint_tadah.toml'       # destination
-)
-print ("Downloaded blueprint_tadah.toml to config/blueprint_tadah.toml")
+# Copy CORE's blueprint next to the generated pages (generate_cli.py reads it).
+_src = locate_blueprint()
+shutil.copy(_src, "config/blueprint_tadah.toml")
+print(f"Using blueprint {_src}")
 
 # Path to TOML dict
 d = p.load("config/blueprint_tadah.toml",'r')

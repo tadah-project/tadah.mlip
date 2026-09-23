@@ -25,72 +25,14 @@ author = 'Marcin Kirsz'
 
 
 # -- Version (single source of truth: CORE blueprint TOML) -------------------
-def _read_tadah_version():
-    """Read 'version' from the [TADAH] table of CORE's blueprint_tadah.toml.
+# config/blueprint_source.py locates CORE's blueprint (sibling checkout, or a
+# clone of the built branch on CI/RTD) and fails loudly when it is missing.
+import os
+import sys as _sys
+_sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config'))
+import blueprint_source as _bps
 
-    Search order:
-      1. $TADAH_VERSION environment override (set by CMake doc build).
-      2. config/blueprint_tadah.toml (downloaded by read_toml.py on RTD).
-      3. ../../../CORE/blueprint/blueprint_tadah.toml (sibling worktree).
-      4. ../../../core/blueprint/blueprint_tadah.toml.
-      5. A shallow clone of CORE on RTD (last resort).
-    """
-    import os, re, subprocess, tempfile
-
-    env_version = os.environ.get('TADAH_VERSION')
-    if env_version:
-        return env_version
-
-    here = os.path.dirname(os.path.abspath(__file__))
-    candidates = [
-        os.path.join(here, 'config', 'blueprint_tadah.toml'),
-        os.path.normpath(os.path.join(here, '..', '..', '..', 'CORE',
-                                      'blueprint', 'blueprint_tadah.toml')),
-        os.path.normpath(os.path.join(here, '..', '..', '..', 'core',
-                                      'blueprint', 'blueprint_tadah.toml')),
-    ]
-    blueprint = next((p for p in candidates if os.path.exists(p)), None)
-
-    if blueprint is None and os.environ.get('READTHEDOCS') == 'True':
-        try:
-            tmp = tempfile.mkdtemp(prefix='tadah_core_version_')
-            # Prefer READTHEDOCS_VERSION_NAME (verbose ref-matching form,
-            # e.g. "release/beta-prep") over READTHEDOCS_VERSION (URL slug
-            # "release-beta-prep") so branches with "/" resolve correctly.
-            _branch = (os.environ.get('READTHEDOCS_VERSION_NAME')
-                       or os.environ.get('READTHEDOCS_VERSION')
-                       or 'develop')
-            subprocess.run(
-                ['git', 'clone', '--depth', '1', '--branch', _branch,
-                 'https://git.ecdf.ed.ac.uk/tadah/core.git', tmp],
-                check=True, capture_output=True,
-            )
-            cand = os.path.join(tmp, 'blueprint', 'blueprint_tadah.toml')
-            if os.path.exists(cand):
-                blueprint = cand
-        except Exception:
-            blueprint = None
-        finally:
-            pass  # tmp dir is small; cleanup happens at exit
-
-    if blueprint is None:
-        return '0.0.0'
-
-    in_tadah = False
-    for line in open(blueprint, 'r', encoding='utf-8'):
-        if re.match(r'^\s*\[TADAH\]\s*$', line):
-            in_tadah = True
-            continue
-        if in_tadah and re.match(r'^\s*\[', line):
-            break
-        if in_tadah:
-            m = re.match(r'^\s*version\s*=\s*[\'"]([^\'"]+)[\'"]', line)
-            if m:
-                return m.group(1)
-    return '0.0.0'
-
-
-release = _read_tadah_version()
+release = _bps.read_version(_bps.locate_blueprint())
 # Short X.Y version (strip pre-release / build-metadata tail).
 import re as _re
 _short = _re.match(r'(\d+\.\d+)', release)
@@ -125,7 +67,9 @@ templates_path = ['_templates']
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = {'.rst': 'restructuredtext', '.md': 'markdown'}
+# Anchors for the included CHANGELOG.md headings.
+myst_heading_anchors = 3
 
 # The master toctree document.
 master_doc = 'index'
@@ -256,7 +200,6 @@ import subprocess, os
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
 if read_the_docs_build:
-    extensions = ['breathe', 'myst_parser', 'sphinx_exec_code']
     breathe_default_project = "Tadah!"
     #subprocess.call('cd ../build/docs ; doxygen', shell=True)
     breathe_projects = { "Tadah!": "../../build/docs/xml" }

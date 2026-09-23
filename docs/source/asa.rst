@@ -321,8 +321,10 @@ efficiency for wall-clock speed — the upstream README discusses this
 trade-off.
 
 Concurrency contract: ``asa()`` is not re-entrant (upstream statics),
-so one ASA run executes per process at a time; ``MULTISTART``/BASINS
-wrappers run their starts sequentially and work unchanged.  Under MPI,
+so one ASA run executes per process at a time; the ``RESTART`` decorator
+re-runs it sequentially and works unchanged.  ``STRATEGY TYPE
+MULTISTART`` (and a ``PRESTAGE`` refinement over ``TOPK > 1`` seeds)
+rejects ASA, a single-seed global optimiser.  Under MPI,
 ``ASA:ASA`` runs single-rank only (the multi-rank dispatch is reserved
 for ``TADAH:ANNEAL_PT``/``_PA``).
 

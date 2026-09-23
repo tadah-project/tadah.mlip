@@ -46,8 +46,9 @@ in order:
    ``EFILTER`` / ``FFILTER``, ``EWEIGHT_TEMP``, ``WDBFILE`` /
    ``WDBFILE_AUTO``, ``ZERO_COM_FORCE``) — see :ref:`load_transforms`.
 #. **Build the neighbour list** out to ``RCUTMAX``.
-#. **Run the pre-flight audit** (``AUDIT warn`` by default, ``error``
-   to refuse-to-launch on findings) which checks dataset statistics and
+#. **Run the pre-flight audit** when enabled (``AUDIT`` is ``off`` by
+   default; ``warn`` reports findings, ``error`` refuses to launch on a
+   FAIL-level finding), which checks dataset statistics and
    per-descriptor metadata for ρ-collapse and out-of-range parameter
    combinations.
 #. **Fit the regression model** declared by ``MODEL``.
@@ -193,7 +194,7 @@ via ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM``), ``EWEIGHT_TEMP``, or
 
 .. note::
 
-   The MPI training build is **broken in the 1.3.0-beta.1 release**
+   The MPI training build is **not functional in this release**
    (see :ref:`installation`); this caveat is documented for forward
    reference only.
 

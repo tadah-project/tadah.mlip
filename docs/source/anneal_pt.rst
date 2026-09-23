@@ -123,7 +123,7 @@ cold end.
 ``T_HOT`` is calibrated like the serial :math:`T_0` unless set
 explicitly; ``T_COLD`` defaults to ``T_HOT / LADDER_SPAN``. The hot end
 should accept typical uphill moves freely; the cold end sets the
-resolution to which the best basin is refined.
+resolution to which the best minimum is refined.
 
 How close neighbouring temperatures must be is a trade-off the ladder
 geometry makes explicit: with :math:`K` replicas the :math:`K-1` rungs
@@ -252,7 +252,7 @@ Replica initialisation
 
 Slot 1 always starts exactly at the seed point. With ``INIT_MODE
 UNIFORM`` the other replicas draw uniformly from the ``OPTIM`` box —
-prefer it when the seed may sit in a narrow, unrepresentative basin.
+prefer it when the seed may sit in a narrow, unrepresentative well.
 With ``INIT_MODE JITTER`` (default) they are displaced around the seed,
 and two knobs decide by how much: the **magnitude** of the displacement
 and its **shape along the ladder**. Each non-seed start costs one eval.
@@ -315,7 +315,7 @@ replica whose job is to refine the seed starts as far from it as the
 hottest explorer — a warm start that survives only at slot 1.
 
 ``AUTO`` resolves to :math:`\gamma = 0.5`. That is equipartition, not a
-tuned constant: in a locally quadratic basin the equilibrium coordinate
+tuned constant: about a locally quadratic minimum the equilibrium coordinate
 spread goes as :math:`\sqrt{T}`. It is deliberately **not** a function
 of ``LADDER_SPAN`` — the span already enters through
 :math:`T_k/T_\mathrm{HOT}`, so making gamma depend on it as well would

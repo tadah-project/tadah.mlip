@@ -28,8 +28,7 @@ Key features
   ``pair_style tadah``; ``LSCALE`` and ``ESHIFT`` round-trip through the
   potential file.
 - **OpenMP build** — desktop parallelism via ``OMP_NUM_THREADS``.
-  An MPI build target exists but is **not functional in the 1.3.0-beta.1
-  release** (see :ref:`installation`).
+  An MPI build target exists but is **not functional in this release** (see :ref:`installation`).
 - **C++ API** — link against ``libtadah.mlip`` / ``libtadah.core`` for
   embedded use; see :ref:`compiling_and_linking`.
 

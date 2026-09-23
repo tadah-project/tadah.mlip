@@ -50,18 +50,33 @@ it writes the corresponding potential to ``best_pot.tadah``.
 Output files
 ............
 
-The optimiser produces three main log files that record *every* iteration
+The optimiser produces four main log files with one row per logged
+iteration (``OUTPUT 10`` in this example: every 10th iteration).  Each row
+starts with the iteration number and the slot:
 
-* ``loss.tadah``   – value of each individual loss term and the total loss.
-* ``params.tadah`` – hyper-parameter vector for the current iteration.
-* ``outvar.tadah`` – any additional output variables (by default each loss term).
+* ``loss.tadah``   – value of each individual loss term and the total loss
+  (the mean of the terms).
+* ``params.tadah`` – the optimised hyperparameters, one column per
+  dimension, labelled ``KEY[n]`` and ordered by key, then index
+  (here ``CGRID2B[1..4]`` before ``SGRID2B[1..4]``).
+* ``outvar.tadah`` – the evaluation wall time and the raw values behind the
+  loss (here the validation energy RMSE).
+* ``stats.tadah``  – each enabled validation metric per validation dataset
+  and their average.
 
-For convenience, each of these files has a *best* counterpart that is updated
-only when a new optimum is reached:
+For convenience, each of these files has a *best* counterpart that gets a
+row only when a new optimum is reached (``BOUTPUT 1``: every new best).
+Its first column is the improvement ordinal ``k`` (1 for the first best,
+2 for the second, …) instead of the iteration number:
 
 * ``best_loss.tadah``
 * ``best_params.tadah``
 * ``best_outvar.tadah``
+* ``best_stats.tadah``
 
 These “best\_” logs allow you to track the progress of the optimisation without
 having to parse the full history.
+
+The ``DUMP``/``BDUMP`` lines additionally archive potentials:
+``newPotsDir/pot_<iter>.tadah`` for every 100th iteration and
+``newBestPotsDir/best_pot_<k>.tadah`` for every new best.

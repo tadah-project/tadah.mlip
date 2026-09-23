@@ -30,16 +30,25 @@ mature third-party optimizers behind the same interface.
      - :ref:`Adaptive Simulated Annealing <asa_optimizer>`
      - Ingber's ASA with per-parameter temperatures and reannealing.
    * - ``NLOPT``
-     - global (``G_MLSL_LDS``, ``DIRECT``, ...) and local
-       (``LN_BOBYQA``, ...) algorithms
+     - global (``G_MLSL_LDS``, ``GN_DIRECT``, ...) and local
+       (``LN_BOBYQA``, ``LD_LBFGS``, ...) algorithms
      - Broad third-party collection; see the OPTIMIZER-block table in
-       :ref:`nested_fitting`.
+       :ref:`nfp_manual`.
    * - ``DLIB``
      - ``GFS``, ``BFGS``
-     - Global function search and quasi-Newton refinement.
+     - Global function search (consumes every ``INIT`` point) and
+       box-constrained quasi-Newton refinement.
    * - ``CERES``
      - ``LBFGS``, ``WOLFE``, ``NLCG``, ``STEEPEST_DESCENT``
-     - Gradient-based refinement (analytical gradients where available).
+     - Gradient-based local refinement with finite-difference gradients;
+       no box constraints.
+
+Any of these backends can be the outer optimiser, local or global; the
+``STRATEGY`` block wraps it (``PLAIN``, ``MULTISTART``, ``PRESTAGE``,
+optionally ``RESTART``; :ref:`strategy_block`).  Gradient-based backends
+(``NLOPT`` ``LD_*``/``GD_*``, ``CERES``) obtain their gradient by finite
+differences and are rejected when the configuration has ``PC_LAMMPS``
+lines; ``DLIB:BFGS`` is the one gradient-based optimiser accepted there.
 
 .. toctree::
    :maxdepth: 2

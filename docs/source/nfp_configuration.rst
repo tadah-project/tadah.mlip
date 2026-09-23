@@ -1,143 +1,8 @@
-.. _nested_fitting:
-
-Nested Fitting
-==============
-
-.. note::
-
-   We use :term:`NFP` (Nested Fitting Procedure) and :term:`HPO`
-   (Hyperparameter Optimization) interchangeably to refer to this feature.
-   The main :term:`CLI` entry point is ``tadah hpo``.  *NFP* is preferred in
-   prose to emphasise the two-level fitting structure that is specific to
-   Tadah!MLIP; *HPO* is the spelling used by every keyword and source-file
-   identifier.
-
-.. figure:: images/nested_fitting.jpg
-   :alt: Nested Fitting Procedure
-   :width: 95%
-   :align: center
-
-   Workflow of the :term:`nested fitting procedure`: the outer optimiser
-   proposes new :term:`hyperparameters<Hyperparameter>`, the model is
-   retrained, and each trial potential is validated against
-   :term:`performance constraints<Performance constraint>` that feed back
-   into the global loss.
-
-Nested fitting is Tadah!MLIP’s automated, two-level fitting workflow:
-
-* **inner loop** — ordinary regression that determines the
-  :term:`learned parameters<Learned Parameter>` :math:`\mathbf w` for a
-  fixed model definition;
-* **outer loop** — a global optimiser that samples from the
-  :term:`search space constraints<Search Space Constraint>` (SSC),
-  retrains the model, and judges the result against user-defined
-  :term:`performance constraints<Performance constraint>` (PC).
-
-Letting a computer search the :term:`hyperparameter` space helps to
-
-* escape the “good on the validation set, unstable in MD” trap;
-* trade accuracy for speed (or vice versa) in a reproducible way;
-* fold real-world performance constraints — elastic constants, phase
-  stability, surface energies, … — directly into the loss function.
-
-Background
-----------
-
-A traditional MLIP workflow stops once regression converges on a
-training/validation split.  Unfortunately, a potential that interpolates
-perfectly may still
-
-* disintegrate during an MD run,
-* produce an incorrect equation of state,
-* predict the wrong ground-state crystal,
-* extrapolate poorly beyond the training set.
-
-Manual hyperparameter tuning or simply enlarging the training set are
-both tedious and not guaranteed to succeed.
-
-Nested fitting tackles the problem by *measuring* emergent properties
-during the fit.  Each trial potential is dropped into a short LAMMPS
-run; the resulting quantities are compared to their targets and the
-discrepancy contributes to a **global loss**
-
-.. math::
-
-  L_{\text{total}} = \sum_{i} w_i\;
-                     \mathcal L_i\!\bigl(|y_i-\hat y_i|\bigr),
-
-where :math:`w_i` is the user-supplied weight, :math:`y_i` the target,
-:math:`\hat y_i` the prediction, and :math:`\mathcal L_i` one of the
-built-in loss functions (L1, L2, Huber, Tukey, …).
-
-The outer optimiser explores the hyperparameter space :math:`\Theta`
-declared with the ``OPTIM`` directive:
-
-.. math::
-
-  \theta^\star
-  = \operatorname*{arg\,min}_{\theta\in\Theta} L_{\text{total}}(\theta).
-
-Because the model is retrained for every candidate :math:`\theta`, the
-procedure is computationally expensive but also powerful: it can expose
-regions of hyperparameter space that yield stable, accurate, and fast
-potentials.  It is not a silver bullet — **success still depends on
-sensible choices of performance constraints and search space limits.**
-
-.. _nfp_quick_start:
-
-Quick Start
------------
-
-Nested fitting needs up to three input files:
-
-#. A :term:`training configuration` — the same configuration file you
-   would use for ``tadah train``.  See :ref:`ConfigSection` for the
-   full key list.
-#. A *validation* file — a list of validation datasets passed via the
-   ``DBFILE`` keyword.  *Optional*: only required when the loss uses
-   validation-set metrics (``PC_ERMSE``, ``PC_FRMSE``, …); a run whose
-   loss comes entirely from ``PC_OBSERVABLE`` / ``PC_LAMMPS`` lines can
-   omit ``--validation``.
-#. An :term:`HPO configuration` — the file documented on this page.
-   Conventionally named ``config.hpo``.
-
-The training configuration's ``DBFILE`` is itself *optional* when every
-model weight is pinned via ``FIXINDEX``/``FIXWEIGHT`` (see
-:ref:`hpo_fixweight`) — with no free weights there is nothing for the
-least-squares stage to fit.  In that mode the element set must be
-declared explicitly with the ``ATOM`` key, at least one loss source must
-remain, and the run is serial-only (MPI builds reject it).
-
-The driving command line is
-
-::
-
-   tadah hpo --config <config.train> --hpotarget <config.hpo> --validation <config.val>
-
-A minimal ``config.hpo``:
-
-.. code-block:: none
-
-   OPTIMIZER
-     STRATEGY
-       TYPE PLAIN
-       LIB DLIB
-       ALGO BFGS
-       MAXEVAL 50
-     ENDSTRATEGY
-   ENDOPTIMIZER
-
-   LOSS L2
-   PC_ERMSE 0 1.0
-   OPTIM RCUT2B (1) 4.0 6.0
-
-See :ref:`cli_example_2` for a slightly bigger walkthrough, and
-:ref:`hpo_examples` for a graded series of worked examples.
-
 .. _nfp_manual:
 
-Configuration file
-------------------
+Configuration File
+==================
+
 
 This section is the reference for the HPO configuration file.  The
 annealing-family key tables live on the :doc:`optimizer` pages
@@ -145,7 +10,7 @@ annealing-family key tables live on the :doc:`optimizer` pages
 information per algorithm.
 
 Block hierarchy
-...............
+---------------
 
 The HPO configuration is a sequence of *root-level* keywords (``LOSS``,
 ``OPTIM``, ``PC_*``, ``OUTPUT``, …) plus a single ``OPTIMIZER``
@@ -159,43 +24,68 @@ in the order they normally appear:
      NOISE      ... ENDNOISE         # optional: objective-noise calibration
      STRATEGY   ... ENDSTRATEGY      # required: TYPE + driver + decorators
        EXPLORE  ... ENDEXPLORE       # required for TYPE PRESTAGE
-       REFINE   ... ENDREFINE        # required for TYPE PRESTAGE
+       REFINE   ... ENDREFINE        # optional for TYPE PRESTAGE
        INNER    ... ENDINNER         # optional: NLopt MLSL/AUGLAG inner
        RESTART  ... ENDRESTART       # optional decorator
    ENDOPTIMIZER
 
 Block keywords are case-sensitive.  Comments start with ``#``; long
-lines may be continued with a trailing ``\``.
+lines may be continued with a trailing ``\``.  An unknown key is an
+error naming the line, and so is a stray value after an optimiser
+attribute (``LIB``, ``MAXEVAL``, ``PARAM`` …).
+
+Root-level keys are read top to bottom, and **order matters** for three
+of them: every ``PC_LAMMPS`` and ``PC_FAILPROBE`` line captures the
+``LOSS``, ``FAILSCORE`` and ``PC_SCRIPT_TIMEOUT`` values in force *when
+the line is read*.  Put those three keys before the first ``PC_LAMMPS``
+line; a ``LOSS`` written after it does not apply to it.
 
 A short form without a ``STRATEGY`` block — ``LIB``/``ALGO``/``MAXEVAL``
 written directly inside ``OPTIMIZER`` — is still accepted and behaves
 exactly like ``STRATEGY { TYPE PLAIN ... }``.  It is fine for short
-single-shot runs but cannot express ``MULTISTART``, ``PRESTAGE``,
-init chains, or ``RESTART`` decorators; those features
-require the explicit grammar.
+single-shot runs (an ``INIT`` block may still precede it) but cannot
+express ``MULTISTART``, ``PRESTAGE`` or the ``RESTART`` decorator; those
+features require the explicit grammar.
 
 .. _loss_functions:
 
 LOSS — global loss function
-...........................
+---------------------------
 
 ::
 
-   LOSS <Name> [<extra params>]
+   LOSS <Name> [<param>]
 
-The default loss applied to every metric that does not override it.
-``PC_LAMMPS`` per-variable lines may pick a different loss locally.
+The default loss applied to every loss term that does not override it
+(default ``L2``).  A ``PC_LAMMPS --varloss`` variable may pick a
+different loss locally, and a ``PC_OBSERVABLE`` line takes its own
+``--loss``.  Every term is the loss of the measured value :math:`y`
+against its target :math:`t` (residual :math:`r = y - t`), multiplied by
+the term's weight; the loss of an evaluation is the mean of its terms
+(:ref:`nested_fitting`).
 
-================ =============== ==============================
-Name             Extra params    Comment
-================ =============== ==============================
-``L1``           —               :math:`|x|`
-``L2``           —               :math:`x^2`
-``HUBER``        ``δ``           quadratically near zero, linear beyond δ
-``TUKEY``        ``c``           redescending, zero influence for ``|x| > c``
-``LOG_COSH``     —               smooth alternative to L1
-``RMSLE``        —               log-scaled L2 (non-negative targets)
-================ =============== ==============================
+================ ================= ==========================================================
+Name             Parameter         Term (before the weight)
+================ ================= ==========================================================
+``L1``           —                 :math:`|r|`
+``L2``           —                 :math:`r^2`
+``HUBER``        ``δ`` (default    :math:`r^2/2` for :math:`|r| \le δ`, else
+                 ``50``)           :math:`δ\,(|r| - δ/2)` — quadratic near zero, linear beyond
+``TUKEY``        ``c`` (default    :math:`1 - (1 - (r/c)^2)^3` for :math:`|r| \le c`, else ``1``
+                 ``4.685``)        — redescending, zero influence beyond ``c``
+``LOG_COSH``     —                 :math:`\log\cosh r` — smooth alternative to L1
+``MAPE``         —                 :math:`|r| / |y|` — relative to the *measured* value
+``RMSLE``        —                 :math:`(\ln y - \ln t)^2` — log-scaled L2 (positive values)
+================ ================= ==========================================================
+
+``HUBER`` and ``TUKEY`` take at most one parameter; when it is omitted
+the default above is used.  An explicit parameter must be a finite
+number greater than zero.  The other losses take no parameter, and a
+value after them is an error.  The ``--varloss`` override uses the same
+defaults and validation.
+
+``LOSS`` must precede the ``PC_LAMMPS`` lines it is meant for: each
+``PC_LAMMPS`` line captures the ``LOSS`` in force when it is read.
 
 Root-level loss control:
 
@@ -206,14 +96,22 @@ Root-level loss control:
    * - Key (type)
      - Description
    * - ``FAILSCORE`` (float)
-     - Cap on total loss; values above are clipped (default: max
-       double).  May be overridden per-script with ``--failscore`` on
-       a ``PC_LAMMPS`` line.
+     - Ceiling of the evaluation loss: a total above it, or a non-finite
+       total, is clipped to ``FAILSCORE`` (default: the largest double).
+       It is also the value a failed ``PC_OBSERVABLE`` term or an
+       unreadable ``--varloss`` variable contributes, and the reference
+       for graded failures (:ref:`failscore_grading`).  ``PC_LAMMPS``
+       lines capture the value in force when they are read; a line's
+       own ``--failscore`` changes only the value substituted for that
+       line's variables when its simulation fails.
+   * - ``FAILSCORE_GRADING`` (``ON``/``OFF``)
+     - Graded failure losses instead of the constant ``FAILSCORE``
+       (default ``OFF``); see :ref:`failscore_grading`.
 
 .. _search_space_constraints:
 
 OPTIM — search space constraints
-................................
+--------------------------------
 
 The ``OPTIM`` directive declares which configuration keys the outer
 optimiser may vary, and over what bounds:
@@ -245,6 +143,16 @@ optimiser may vary, and over what bounds:
   token is an error (stray tokens used to be silently ignored).
 
 ``OPTIM`` lines may be repeated for the same key with different indices.
+
+Dimension order.  The optimiser's parameter vector is ordered by key —
+alphabetically, byte-wise, so ``CGRID2B`` comes before ``RCUT2B`` and
+``SGRID2B`` — and then by index within the key, whatever the order of
+the ``OPTIM`` lines.  That order defines the columns of
+``params.tadah`` / ``best_params.tadah``, the rows of
+``hpo_search_space.tsv`` and the ``dim`` numbers in ``hpo_run.log``.
+For example ``OPTIM SGRID2B (2) …`` followed by ``OPTIM CGRID2B (2) …``
+and ``OPTIM CGRID2B (1) …`` gives the order ``CGRID2B[1]``,
+``CGRID2B[2]``, ``SGRID2B[2]``.
 
 Seed-relative boxes.  When the right range is unknown, let the CONFIG
 seed size the box:
@@ -283,7 +191,8 @@ units, so a ``LOG`` dimension is judged in ``ln``), with the value, the
 bound, the gap as a fraction of the width and the evaluation since which
 the mark has persisted, and the ``DIAGNOSTICS`` section repeats it for
 the final best.  A best that keeps riding a bound suggests widening that
-side (where the physics permits) and rerunning with ``INIT METHOD WARM``.
+side (where the physics permits) and rerunning from the best potential
+with ``METHOD WARM best_pot.tadah`` in the ``INIT`` block.
 
 Two weight-related special cases:
 
@@ -299,7 +208,7 @@ Two weight-related special cases:
 .. _hpo_knot_rcut:
 
 Cutoffs of knot-family refit potentials
-.......................................
+---------------------------------------
 
 For potentials written by ``tadah refit`` with the knot basis families
 (``D2_Knot5`` two-body, ``DM_REAM`` knot density), the effective cutoff
@@ -327,13 +236,34 @@ hpotarget and widen its upper bound.
 
 Blip-family potentials are unaffected: their hard truncation at the
 stated ``RCUT`` is part of the fitted model, so the key remains
-authoritative (warnings fire if ``OPTIM`` bounds let a blip's support
-cross it).
+authoritative.
+
+Bump support on hard cutoffs (``BUMPGATE``).  On a hard-cutoff
+(``Cut_Dummy``) channel every compact bump must end inside the cutoff,
+``c + w/η ≤ RCUT``; otherwise the truncated overhang is an energy and
+force step at the cutoff.  The root key ``BUMPGATE`` chooses how this is
+enforced over the ``OPTIM`` boxes of the bump centres and widths:
+
+``BUMPGATE CANDIDATE`` (default)
+   Startup fails only when a bump's box contains *no* feasible point.
+   Otherwise the full boxes are searched and every candidate is tested
+   before any training work; a violating candidate returns a failure
+   loss (``FAILSCORE``, or a graded band-D value with
+   ``FAILSCORE_GRADING ON``, :ref:`failscore_grading`) and can never
+   become the best.  The journal says which bumps the gate is armed for.
+``BUMPGATE STRICT``
+   The legacy startup check: the worst box corner (largest centre,
+   smallest width) must already be feasible, so no candidate is ever
+   rejected at run time (useful for strict ``MAXEVAL`` budgeting or
+   reproducing old runs).
+
+The seed potential's own bumps must fit in both modes.  Environment
+override: ``TADAH_BUMPGATE=CANDIDATE|STRICT``.
 
 .. _hpo_fixweight:
 
 Pinning and searching linear coefficients
-.........................................
+-----------------------------------------
 
 By default the model's linear ``WEIGHTS`` are re-fitted by least squares
 inside **every** objective evaluation, while ``OPTIM`` searches the
@@ -405,10 +335,10 @@ choice for coefficient searches.
 .. _performance_constraints:
 
 PC_* — performance constraints
-..............................
+------------------------------
 
 Energy / force / stress validation metrics
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+..........................................
 
 Validation-set metrics are evaluated on every ``DBFILE`` listed in the
 ``--validation`` file.  The global form takes one target and weight and
@@ -432,7 +362,7 @@ Key                Quantity
 These constraints use the global ``LOSS`` selected above.
 
 Individual validation targets and weights
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``PC_ERMSE`` and ``PC_FRMSE`` also accept indexed declarations:
 
@@ -502,7 +432,7 @@ metric. Raw metric averages in ``stats.tadah`` and ``outvar.tadah`` are
 unchanged.
 
 Physics-informed constraints (PC_LAMMPS)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+........................................
 
 ``PC_LAMMPS`` runs a regular LAMMPS script against each trial potential
 and feeds one or more LAMMPS *equal-style* variables back into the
@@ -515,25 +445,38 @@ loss:
              --varloss myOtherVar 145    10
 
 A long ``PC_LAMMPS`` line may be split with a trailing back-slash
-(``\``).  Tadah!MLIP creates an isolated ``LAMMPS_NS::LAMMPS`` instance
-per script per worker thread; instances are reused across iterations
-(the script's own ``clear`` directive resets simulation state between
-runs, so existing scripts work unmodified).
+(``\``).  Tadah!MLIP creates one ``LAMMPS_NS::LAMMPS`` instance per
+script per worker slot — inside a persistent worker process under the
+default ``PC_ISOLATION PROCESS`` — and reuses it across iterations (the
+script's own ``clear`` directive resets simulation state between runs,
+so existing scripts work unmodified).  Each ``--varloss`` variable is one
+term of the loss (:ref:`nested_fitting`).
+
+``PC_LAMMPS`` and ``PC_OBSERVABLE`` are mutually exclusive: an HPO
+configuration may use one or the other, not both.  ``PC_LAMMPS`` also
+rejects every gradient-based optimiser except ``DLIB:BFGS``
+(:ref:`strategy_block`), and any ``GRAD_STRATEGY`` line.
+
+Each line captures the root ``LOSS``, ``FAILSCORE`` and
+``PC_SCRIPT_TIMEOUT`` in force when it is read, so declare those keys
+first.
 
 Required options
-^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~
 
 ``--script <file>``
    LAMMPS input file containing the variable definitions.
 
-``--varloss <name> <target> <weight> [loss-type p₁ p₂ …]``
+``--varloss <name> <target> <weight> [<loss> [<param>]]``
    The variable ``<name>`` (defined inside the LAMMPS script) is read
    at the end of the run and combined with ``<target>`` and
-   ``<weight>`` via the global ``LOSS`` (or the per-line override).
-   Optional trailing tokens override the loss for this variable only.
+   ``<weight>`` via the root ``LOSS``.  An optional loss name (and, for
+   ``HUBER``/``TUKEY``, an optional parameter) overrides the loss for
+   this variable only, with the same defaults and validation as the
+   root ``LOSS`` (:ref:`loss_functions`).
 
 Additional options
-^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~
 
 ``--invar <name> <value>``
    Inject a variable (equivalent to LAMMPS' ``-var`` flag), letting the
@@ -544,26 +487,41 @@ Additional options
    loss.  Useful for diagnostic plots.
 
 ``--failscore <value>``
-   Override the global ``FAILSCORE`` for this script.  If LAMMPS
-   crashes or the loss exceeds this value the optimiser receives
-   ``FAILSCORE`` for the whole iteration.
+   The value substituted for each of this script's ``--varloss`` /
+   ``--outvar`` variables when the simulation fails (crash, timeout,
+   out-of-window hot value, …); the substituted value then passes
+   through the loss against the target like a measured one.  Default:
+   the root ``FAILSCORE`` in force when the line is read.  The ceiling
+   that clips the *whole* evaluation is always the root ``FAILSCORE``.
+
+``--maxtime <seconds>|off``
+   Per-script override of the root ``PC_SCRIPT_TIMEOUT`` (see
+   :ref:`pc_lammps_execution`).
 
 ``--ncpu <m>``
-   Request *m* MPI ranks for this script in MPI builds.  In the
-   default serial build the option is parsed and accepted but does
-   not change runtime; HPO logs a stderr warning when ``--ncpu > 1``
-   is set in a non-MPI build.  See :ref:`performance_parallelism`.
+   In the MPI build (``TADAH_BUILD_MPI``) the script runs on a
+   sub-communicator of *m* ranks carved out of ``MPI_COMM_WORLD``
+   (``MPI_Comm_create_group``); nothing is spawned.  In the default
+   serial build the option is accepted but has no effect (a warning is
+   logged for ``--ncpu > 1``); script-level parallelism comes from
+   ``THREADS``.  See :ref:`performance_parallelism`.
+
+Any other token on the line is passed to LAMMPS as a command-line
+argument — for example ``-log run.log`` or ``-screen none`` (see
+:ref:`pc_lammps_result_contract` for how HPO renames ``-log`` /
+``-screen`` files per worker).
 
 ``--hotvar <name> <min> <max> [<initial>]``
    Declare this ``PC_LAMMPS`` line as *hot*: a two-phase evaluator
-   for parameters that other scripts depend on. Hot scripts run
-   alone in **phase A** of each iteration (in parallel with other
-   hot scripts), redefine ``variable <name> equal …`` at the end of
+   for parameters that other scripts depend on. Hot scripts run in
+   **phase A** of each iteration (in parallel with other hot scripts
+   and with the cold scripts that use no hot value), redefine ``variable <name> equal …`` at the end of
    the LAMMPS script (see :ref:`warmstart_protocol` for the
    ``equal``-style readback), and the returned value is validated
    against ``[min, max]``. Validated values are cached per
    ``(script, name)`` and propagated as ``${<name>}`` into
-   every cold (no-``--hotvar``) ``PC_LAMMPS`` script in **phase B**.
+   the cold (no-``--hotvar``) ``PC_LAMMPS`` scripts that use it, which
+   run in **phase B**.
    ``<initial>`` is optional; when omitted the midpoint of
    ``[<min>, <max>]`` seeds the first iteration. If a hot value
    lands outside ``[min, max]`` HPO fail-scores the iteration and
@@ -588,7 +546,7 @@ Additional options
    See :ref:`failscore_grading`.
 
 Per-metric bad-pot pre-filter
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``PC_<METRIC> --skip-above <cap>`` and ``PC_<METRIC> --skip-rel <ratio>``
 attach a per-metric pre-filter on the dataset error counters
@@ -614,8 +572,10 @@ are shared between evaluation threads within a run, start empty for a new
 run or process restart, and are not restored from checkpoints. Diagnostics
 name the triggering metric, dataset index, and filename.
 
+.. _pc_lammps_result_contract:
+
 Result contract for user scripts
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 LAMMPS scripts driven by HPO must communicate their results back
 *only* through ``--varloss`` / ``--outvar`` (LAMMPS ``equal``-style
@@ -630,13 +590,111 @@ slot (and the MPI rank suffix when applicable), so for example
 ``-log run.log`` becomes ``run.log.t0``, ``run.log.t1``, … on one rank.
 ``-log none`` and ``-screen none`` are left untouched.
 
+.. _pc_lammps_execution:
+
+Execution, isolation and timeouts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Four root keys control how ``PC_LAMMPS`` scripts are executed:
+
+``PC_ISOLATION THREAD|PROCESS`` (default ``PROCESS``)
+   ``PROCESS`` runs each worker slot's LAMMPS instances in a persistent
+   child process, so concurrent instances never share LAMMPS' process
+   globals; model training and prediction stay in the main process.
+   ``THREAD`` runs the instances in-process; it is a deprecated fallback
+   and logs a warning.  MPI builds (``TADAH_BUILD_MPI`` /
+   ``TADAH_HPO_MPI``) cannot use worker processes: there the default
+   silently becomes ``THREAD``, and an explicit ``PC_ISOLATION PROCESS``
+   is an error.  Environment override: ``TADAH_PC_ISOLATION``.
+
+``PC_SCRIPT_TIMEOUT <seconds>|off`` (default ``off``; legacy alias: root ``MAXTIME``)
+   A soft wall-clock limit per script, injected as LAMMPS
+   ``timer timeout`` after every ``clear`` (a script that issues its
+   own ``timer`` command is left alone).  A timed-out script counts as
+   failed.  Like ``LOSS``, the value is captured by each ``PC_LAMMPS``
+   line when it is read; ``--maxtime`` overrides it for one line.  If
+   both spellings are given the later line wins and a warning is
+   logged.  Do not confuse it with ``MAXTIME`` *inside* the
+   ``OPTIMIZER`` block, which limits the whole optimiser run.
+
+``PC_WORKER_TIMEOUT <seconds>`` (default ``0``; ``PROCESS`` mode only)
+   The hard deadline after which a worker process running one script is
+   killed.  ``0`` derives it from the script's own timeout
+   ``t`` as :math:`\max(3t,\ t + 120\,\mathrm{s})`, and applies no
+   deadline to scripts whose timeout is ``off``; a positive value is
+   used for every script.  Must be a finite number ``≥ 0``.
+   Environment override: ``TADAH_PC_WORKER_TIMEOUT``.
+
+``BUMPGATE CANDIDATE|STRICT``
+   Not a ``PC_LAMMPS`` setting as such, but it decides whether a
+   candidate reaches the simulations at all; see :ref:`hpo_knot_rcut`.
+
+The startup journal prints the effective soft and hard limits.
+
+.. _pc_observable:
+
+Typed observables (PC_OBSERVABLE)
+.................................
+
+``PC_OBSERVABLE`` evaluates a physical property *in process*, without
+LAMMPS, with a closed-form derivative with respect to the model
+weights.  Each line is one loss term.  It cannot be combined with
+``PC_LAMMPS`` in the same configuration, and ``GRAD_STRATEGY NUMERICAL``
+is rejected with it.  The only kind at present is ``cohesive_energy``:
+
+.. code-block:: none
+
+   PC_OBSERVABLE cohesive_energy --species Ta --target 8.10 --weight 100 \
+                 --hotvar a0 2.8 3.8 3.30
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 66
+
+   * - Flag
+     - Meaning
+   * - ``--species <X>`` (required)
+     - Element of the bcc crystal.
+   * - ``--target <E>`` (required)
+     - Target cohesive energy in eV/atom, positive for a bound crystal
+       (:math:`E_\mathrm{coh} = E_\mathrm{isolated} - E_\mathrm{bulk}/N`).
+   * - ``--weight <w>`` (required)
+     - Weight of the term.
+   * - ``--hotvar a0 <lo> <hi> [<init>]`` (required)
+     - Lattice-constant window of the relaxation, and its optional
+       starting value (default: the midpoint).  Only ``a0`` is supported.
+   * - ``--lattice bcc``
+     - Crystal structure; only ``bcc`` is supported (default).
+   * - ``--supercell <nx> <ny> <nz>``
+     - Supercell size (default ``4 4 4``).
+   * - ``--loss <name>``
+     - Loss of this term (default ``L2``; ``HUBER``/``TUKEY`` use their
+       default parameter).
+   * - ``--maxiter <n>``
+     - Relaxation iteration cap (default ``5000``).
+   * - ``--maxeval <n>``
+     - Cap on energy/force evaluations of the relaxation (default ``5000``).
+   * - ``--etol <x>``
+     - Energy convergence tolerance (default ``0``: force-only convergence).
+   * - ``--max-wall-time <s>``
+     - Wall-clock cap per relaxation in seconds (default ``0``: none).
+   * - ``--fmax-converged <f>``
+     - Largest residual force (eV/Å) accepted as converged (default ``0.1``).
+   * - ``--unconverged const <V>`` / ``--unconverged force-scaled <slope>``
+     - Value reported when the relaxation does not converge: the constant
+       ``V`` (default ``const 100``), or ``target + slope × fmax`` which
+       keeps a slope toward convergence.
+
+A term whose evaluation fails (divergent relaxation, non-finite value)
+contributes ``FAILSCORE``.
+
 .. _failscore_grading:
 
 Failure handling — graded FAILSCORE
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...................................
 
 What problem this solves
-^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 When a candidate potential makes a simulation fail — a relaxation that
 does not converge, a hot value outside its window, a hung run that had
@@ -663,7 +721,7 @@ resampling weight whenever a feasible walker exists, while an all-failed
 population skips resampling and continues cooling.
 
 The knobs, most important first
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``FAILSCORE <value>`` (root)
    The failure ceiling, as before — but with grading ON it **must** be a
@@ -707,13 +765,13 @@ The knobs, most important first
    the ``--skip-above`` caps).  Gate firings are journaled and
    rate-limited; watch the counter.
 
-``PC_WORKER_TIMEOUT`` / per-sim ``--maxtime`` (existing)
-   Unchanged, but they *interact*: a killed hung run is graded by ``S``
-   (band C below), so with a probe defined even timeouts become
-   directional instead of flat.
+``PC_WORKER_TIMEOUT`` / ``PC_SCRIPT_TIMEOUT`` / per-sim ``--maxtime``
+   Unchanged (:ref:`pc_lammps_execution`), but they *interact*: a killed
+   hung run is graded by ``S`` (band C below), so with a probe defined
+   even timeouts become directional instead of flat.
 
 Order of firing within one iteration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
 
@@ -771,7 +829,7 @@ graded (a directionless constant), so the optimiser never chases
 infrastructure noise.
 
 Designing ``failprobe.in``
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Four rules make a good probe:
 
@@ -898,7 +956,7 @@ strained cells if shear stability matters for your fits — the
 ``pen_born`` machinery in the examples shows the pattern.)
 
 ``--failvar`` recipes for typical scripts
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Pressure-target relaxation** (``box/relax`` at pressure ``P``): the
 convergence check already computes the violation — export it:
@@ -942,7 +1000,7 @@ sentinel values (``-1000``) as fake observables, move that logic into a
 information starts steering the optimiser instead.
 
 Setup effort, honestly
-^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~
 
 Level 0 (just ``FAILSCORE_GRADING ON``): hot-window rejections and
 partial failures become graded automatically — no script changes, and
@@ -955,12 +1013,14 @@ carelessly is the probe ``--gate`` — leave it off until you have
 calibrated ``S``.
 
 OPTIMIZER block — common attributes
-...................................
+-----------------------------------
 
-The driver-attribute keys below are accepted wherever an
-``OptimizerSpec`` is the active receiver: at the top level of
-``STRATEGY`` (when ``TYPE`` is ``PLAIN`` or ``MULTISTART``) and inside
-``EXPLORE``, ``REFINE``, and ``INNER`` sub-blocks.
+The driver-attribute keys below are accepted wherever an optimiser is
+being configured: directly inside ``OPTIMIZER`` (short form), at the top
+level of ``STRATEGY`` (for ``TYPE PRESTAGE`` this is the refinement
+optimiser), and inside ``EXPLORE``, ``REFINE`` and ``INNER`` sub-blocks.
+Each backend rejects the attributes it cannot honour at startup, naming
+the key.
 
 .. list-table::
    :header-rows: 1
@@ -969,7 +1029,8 @@ The driver-attribute keys below are accepted wherever an
    * - Key (type)
      - Description
    * - ``LIB`` (string)
-     - Optimisation library: ``DLIB``, ``NLOPT``, ``TADAH``, ``CERES``.
+     - Optimisation library: ``TADAH``, ``ASA``, ``NLOPT``, ``DLIB``,
+       ``CERES``.
    * - ``ALGO`` (string)
      - Algorithm (see table below).
    * - ``MAXEVAL`` (uint)
@@ -1010,17 +1071,38 @@ The driver-attribute keys below are accepted wherever an
        step).  The effective per-dimension step and the algorithm's
        consumption mode are printed in ``hpo_run.log``.
    * - ``SEED`` (uint)
-     - Random seed (default: current time).  Inside an ``INIT`` block
-       the same key seeds the stochastic init strategies instead.
+     - Random seed of stochastic optimisers (default: drawn from
+       ``std::random_device``, so a run without ``SEED`` is not
+       reproducible).  ``DLIB:BFGS`` rejects it; ``DLIB:GFS`` is
+       deterministic and ignores it with a warning.  Inside an ``INIT``
+       block the same key seeds the stochastic init methods instead —
+       it does not seed the optimiser.
    * - ``VECTOR_ARR`` (uint)
      - Storage size required by some NLOpt algorithms.
    * - ``THREADS`` (uint)
      - Width of the shared per-rank worker pool that runs the
        ``PC_LAMMPS`` fan-out and MLIP train/predict for every backend
-       (``ANNEAL_PT``/``ANNEAL_PA`` also cap concurrent replicas by it).
-   * - ``PARAM`` (string float)
-     - Generic key/value passed to the algorithm (e.g.
-       ``PARAM fd_step 1e-3``).
+       (default ``1``; ``ANNEAL_PT``/``ANNEAL_PA`` also cap concurrent
+       replicas by it).  Only the value at the ``OPTIMIZER`` /
+       ``STRATEGY`` level sizes the pool; ``THREADS`` inside ``EXPLORE``,
+       ``REFINE`` or ``INNER`` does not resize it.
+   * - ``GRAD_STRATEGY`` (string)
+     - How gradient-based backends obtain gradients: ``NUMERICAL``
+       (default; finite differences, see ``PARAM fd_step`` /
+       ``fd_kernel``), ``ANALYTICAL`` or ``HYBRID`` (analytical where a
+       derivative is registered, finite differences elsewhere).  The
+       analytical modes are experimental.  Rejected when the
+       configuration has ``PC_LAMMPS`` lines; ``NUMERICAL`` is rejected
+       with ``PC_OBSERVABLE``.
+   * - ``PARAM`` (string value)
+     - Algorithm-specific key/value (e.g. ``PARAM fd_step 1e-3``).  Keys
+       understood by the finite-difference gradient of every
+       gradient-based backend: ``fd_step`` (step as a fraction of the
+       internal coordinate, default ``1e-6``) and ``fd_kernel``
+       (``inhouse`` — central differences in the internal coordinates,
+       the default under ``OPTIM_SCALE AUTO`` — or ``ceres`` — Ceres'
+       numeric differentiation, the default under ``OPTIM_SCALE NONE``;
+       needs a build with ``TADAH_ENABLE_CERES``).
 
 .. list-table:: Algorithms by library
    :header-rows: 1
@@ -1041,31 +1123,37 @@ The driver-attribute keys below are accepted wherever an
        optional quenching and block-parallel evaluation. Documented on
        its own page: :ref:`asa_optimizer`.
    * - ``NLOPT``
-     - All gradient-free NLOpt globals (``GN_*``) and locals (``LN_*``)
-       — see the `NLOpt algorithm catalogue
+     - The NLopt catalogue — globals (``GN_*``, ``G_MLSL*``, …) and
+       locals (``LN_*``, ``LD_*``); see the `NLOpt algorithm catalogue
        <https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/>`_ for
-       the full list. Gradient-using algorithms (``GD_*`` / ``LD_*``)
-       route through the shared finite-difference gradient seam used by
-       ``DLIB:BFGS`` and the Ceres drivers; ``LD_LBFGS`` is the only
-       member exercised by the bundled examples.
+       the full list.  Gradient-using algorithms (``GD_*`` / ``LD_*``)
+       obtain their gradient from the shared finite-difference seam also
+       used by ``DLIB:BFGS`` and the Ceres drivers; like every
+       gradient-based backend except ``DLIB:BFGS`` they are rejected
+       when the configuration has ``PC_LAMMPS`` lines.
 
        .. note::
 
-          **Analytical loss gradients are work in progress** and are
-          not enabled in this beta release. Every gradient-using
-          algorithm (``LD_*``, ``GD_*``, ``DLIB:BFGS``, all CERES
-          drivers) currently obtains its gradient through numerical
-          finite differences (see ``PARAM fd_step`` below).
+          With the default ``GRAD_STRATEGY NUMERICAL`` every
+          gradient-using algorithm (``LD_*``, ``GD_*``, ``DLIB:BFGS``,
+          all CERES drivers) obtains its gradient by finite differences
+          (``PARAM fd_step``); for ``DLIB:BFGS`` and the CERES drivers
+          every difference evaluation counts toward ``MAXEVAL``.  Analytical gradients (``GRAD_STRATEGY
+          ANALYTICAL``/``HYBRID``) are experimental.
    * - ``DLIB``
-     - ``BFGS``, ``LBFGS``, ``CG``, ``BOBYQA`` (local), ``GFS`` (the
-       dlib MaxLIPO+TR global *Global Function Search*).
+     - ``BFGS`` — local, box-constrained quasi-Newton with a
+       finite-difference gradient; the only gradient-based optimiser
+       accepted with ``PC_LAMMPS``.  ``GFS`` — the dlib MaxLIPO+TR
+       global *Global Function Search*; consumes every ``INIT`` point.
+       See :ref:`dlib_param_keys`.
    * - ``CERES``
      - ``LBFGS`` (limited-memory BFGS, Wolfe line search), ``WOLFE``
        (full BFGS, Wolfe line search), ``NLCG`` (nonlinear conjugate
        gradient), ``STEEPEST_DESCENT`` (Armijo line search). All four
-       use Ceres' ``GradientProblemSolver``; the gradient is computed
-       numerically via Ceres' ``DynamicNumericDiffCostFunction`` (central
-       differences; step size from ``PARAM fd_step``).  The Ceres NLLS
+       use Ceres' ``GradientProblemSolver`` with a finite-difference
+       gradient (``PARAM fd_step``; the kernel follows ``PARAM
+       fd_kernel``).  They need a build with ``TADAH_ENABLE_CERES``
+       (the default) and are rejected with ``PC_LAMMPS``.  The Ceres NLLS
        family (``LEVENBERG_MARQUARDT``, ``DOGLEG``, ``SUBSPACE_DOGLEG``)
        is **deferred** — mathematically degenerate over a scalar HPO
        loss; it will be enabled in a later phase together with
@@ -1074,7 +1162,7 @@ The driver-attribute keys below are accepted wherever an
        bounds-enforced gradient optimisation.
 
 CERES PARAM keys
-~~~~~~~~~~~~~~~~
+................
 
 The four CERES algorithms accept these algorithm-specific ``PARAM``
 entries (all keys are optional unless noted):
@@ -1082,10 +1170,14 @@ entries (all keys are optional unless noted):
 ================== =================================================================================
 Key                Effect
 ================== =================================================================================
-``fd_step``        Relative finite-difference step for the numerical gradient (default ``1e-6``).
-``diff_method``    Numeric-diff method: ``0`` = CENTRAL (default), ``1`` = FORWARD, ``2`` = RIDDERS.
+``fd_step``        Finite-difference step (default ``1e-6``).  In-house kernel: central difference
+                   with step ``fd_step * max(|u|, 1)`` in internal coordinates ``u`` — a fraction of
+                   the box width under ``OPTIM_SCALE AUTO``.  Ceres kernel: relative step.
+``fd_kernel``      ``inhouse`` (default under ``OPTIM_SCALE AUTO``) or ``ceres`` (default under
+                   ``OPTIM_SCALE NONE``); see the ``PARAM`` row of the attribute table.
+``diff_method``    Ceres kernel only: ``0`` = CENTRAL (default), ``1`` = FORWARD, ``2`` = RIDDERS.
                    RIDDERS extrapolates assuming a smooth Taylor expansion; not recommended near
-                   ``FAIL_SCORE`` plateaus or for noisy LAMMPS-loss components.
+                   ``FAILSCORE`` plateaus or for noisy loss components.
 ``tol_gradinf``    Gradient-infinity-norm convergence tolerance (Ceres ``gradient_tolerance``,
                    default ``1e-10``).
 ``max_iter``       Override on Ceres' ``max_num_iterations``.  By default the iteration cap is set
@@ -1102,14 +1194,39 @@ internal iteration counting is intentionally given a high sentinel so
 that one Ceres iteration's worth of finite-diff samples (2 × N under
 CENTRAL) is correctly accounted for against the user budget.
 
-The ``DLIB:BFGS`` path also routes its gradient through the same seam.
-``PARAM fd_step`` keeps its existing semantics; the chief observable
-change is that gradient evaluations now count toward ``MAXEVAL`` via
-the same shared counter (previously dlib's internal central-diff
-samples bypassed the cap by ``2 × N`` per iteration).
+Any other ``PARAM`` key is rejected.  CERES also rejects ``STEP``,
+``MAXTIME``, ``STOPVAL``, ``FTOL_ABS``/``XTOL_ABS`` (use ``FTOL_REL`` →
+``function_tolerance`` and ``XTOL_REL`` → ``parameter_tolerance``),
+``POPULATION``, ``VECTOR_ARR``, ``THREADS``, integer dimensions and
+``INNER`` blocks.
+
+.. _dlib_param_keys:
+
+DLIB:BFGS PARAM keys
+....................
+
+``DLIB:BFGS`` runs dlib's box-constrained BFGS with the same
+finite-difference gradient seam as the CERES drivers; gradient
+evaluations count toward ``MAXEVAL`` through a shared counter.
+
+================== =================================================================================
+Key                Effect
+================== =================================================================================
+``fd_step``        Finite-difference step (default ``1e-6``), as for CERES above.
+``tol_gradinf``    Stop when the gradient's infinity norm falls below this value (> 0).  Mutually
+                   exclusive with ``FTOL_ABS``; without either the run stops when the loss decrease
+                   per iteration falls below ``FTOL_ABS = 1e-7``.
+================== =================================================================================
+
+Any other ``PARAM`` key is rejected, and so are ``FTOL_REL``, ``XTOL_REL``,
+``XTOL_ABS``, ``SEED``, ``VECTOR_ARR``, ``STEP``, ``MAXTIME``,
+``STOPVAL``, ``POPULATION``, integer dimensions and ``INNER`` blocks.
+``MAXEVAL`` is enforced by HPO (dlib's own stop rules count iterations).
+``DLIB:GFS`` takes ``MAXEVAL`` and ``FTOL_ABS`` (its solver epsilon,
+default ``1e-3``); it is deterministic, so ``SEED`` has no effect.
 
 INIT block — seeding strategies
-...............................
+-------------------------------
 
 Outside an ``INIT { ... } ENDINIT`` block the optimiser starts at the
 single point taken from the values next to your ``OPTIM`` lines (the
@@ -1117,11 +1234,27 @@ implicit ``CONFIG`` seed).  Inside an ``INIT`` block you may declare a
 *chain* of strategies that produces multiple starting points.
 
 Chain entries
-~~~~~~~~~~~~~
+.............
 
-Each ``STRATEGY <method>`` line appends one entry to the chain.
-The chain is resolved into a flat list of starting points before the
-optimiser runs.
+Each ``METHOD <method> [args]`` line appends one entry to the chain.
+``STRATEGY <method>`` is accepted as an alias (older configurations use
+it), but ``METHOD`` is the canonical spelling: at the ``OPTIMIZER``
+level ``STRATEGY`` opens a block, so reusing it inside ``INIT`` reads
+ambiguously.  The chain is resolved into a flat list of starting points
+before the optimiser runs.
+
+.. code-block:: none
+
+   OPTIMIZER
+     INIT
+       METHOD CONFIG
+       METHOD LHS 8
+       SEED 42
+     ENDINIT
+     STRATEGY
+       ...
+     ENDSTRATEGY
+   ENDOPTIMIZER
 
 ================ ============== ============= ===========================================================
 Method           Args           Default K     Effect
@@ -1135,7 +1268,7 @@ Method           Args           Default K     Effect
 ================ ============== ============= ===========================================================
 
 Top-level keys inside the ``INIT`` block
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+........................................
 
 .. list-table::
    :header-rows: 1
@@ -1145,44 +1278,46 @@ Top-level keys inside the ``INIT`` block
      - Type
      - Default
      - Effect
-   * - ``STRATEGY``
+   * - ``METHOD`` (alias ``STRATEGY``)
      - repeatable
-     - single ``CONFIG`` point when no ``STRATEGY`` line is given
-     - Append a strategy entry to the chain (see table above).
+     - single ``CONFIG`` point when no ``METHOD`` line is given
+     - Append an entry to the chain (see table above).
    * - ``K_TOTAL``
      - uint
      - sum of strategies' default K
      - Cap on total starting points produced.
    * - ``SEED``
      - uint
-     - random
-     - Seed for stochastic strategies (RANDOM / LHS / SOBOL).
+     - ``std::random_device``
+     - Seed for the stochastic methods (RANDOM / LHS / SOBOL).  It does
+       not seed the optimiser — set ``SEED`` at the ``STRATEGY`` level
+       for that.
    * - ``WARM_ON_MISMATCH``
      - ``warn`` / ``error`` / ``skip``
      - ``warn``
      - What to do when ``WARM`` cannot fill every ``OPTIM`` key.
 
 There is no ``INCLUDE_CONFIG`` keyword.  The in-config point is part of
-the chain only when ``STRATEGY CONFIG`` is listed explicitly; an
-``INIT`` block with no ``STRATEGY`` line (or no ``INIT`` block at all)
+the chain only when ``METHOD CONFIG`` is listed explicitly; an
+``INIT`` block with no ``METHOD`` line (or no ``INIT`` block at all)
 resolves to a single ``CONFIG`` point.  The removed ``INCLUDE_CONFIG``
 and ``INIT_INCLUDE_CONFIG`` keywords are rejected with a message
-pointing at ``STRATEGY CONFIG``.
+pointing at ``METHOD CONFIG``.
 
 Two implementation details affect reproducibility:
 
 * The chain is resolved in the exact order it is written — no entry is
-  reordered.  To make the warm point iter 0, list ``STRATEGY WARM``
+  reordered.  To make the warm point iter 0, list ``METHOD WARM``
   first in the ``INIT`` block.
 * When the writer that produced the ``WARM`` file dumped
   ``# HOT_A0 <script> <a0>`` lines, ``WARM`` reads them and primes the
   warm-start cache (see :ref:`warmstart_protocol`).
 
 How many seeds does the optimiser actually consume?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...................................................
 
 A chain that produces more starting points than the optimiser can use
-emits a stderr warning at config time and silently discards the rest.
+emits a warning at config time naming how many are discarded.
 
 ================================ ===================================================
 Optimiser                        Seeds consumed
@@ -1207,14 +1342,16 @@ Any ``NLOPT`` algorithm          First only.
                                  (:ref:`asa_optimizer`).
 ================================ ===================================================
 
-``MULTISTART > 1`` runs the inner optimiser ``K`` times and consumes one
-seed per start.  ``DLIB:GFS`` collapses to a single inner call because
-GFS already takes ``K`` seeds natively.
+``STRATEGY TYPE MULTISTART`` runs the optimiser once per starting point,
+``min(N_STARTS, number of points)`` times.  ``DLIB:GFS`` collapses to a
+single call because GFS already takes every seed natively; ``TYPE
+PRESTAGE`` feeds its ``TOPK`` candidates to the refinement the same
+way.
 
 .. _search_space_scaling:
 
 Search-space scaling
-~~~~~~~~~~~~~~~~~~~~
+....................
 
 Every ``OPTIM`` dimension has a *real* box ``[lo, hi]`` (what the
 configuration and the model see) and an *internal* coordinate ``u`` that
@@ -1259,7 +1396,7 @@ the starting point in both spaces.
 .. _strategy_block:
 
 STRATEGY block
-..............
+--------------
 
 The ``STRATEGY { ... } ENDSTRATEGY`` block is the run-policy hub.  Its
 ``TYPE`` selects the dispatch shape:
@@ -1269,13 +1406,36 @@ The ``STRATEGY { ... } ENDSTRATEGY`` block is the run-policy hub.  Its
 ================== =================================================================
 ``PLAIN``          Single-shot run of the driver named by ``LIB``/``ALGO``.
 ``MULTISTART``     Run the driver ``N_STARTS`` independent times, each from a
-                   different seed in the chain.
+                   different point of the ``INIT`` chain.
 ``PRESTAGE``       Two-stage: an ``EXPLORE { ... }`` block runs first, the top-K
-                   seeds are then refined by the outer driver.
+                   candidates are then refined by the STRATEGY-level driver
+                   (optionally written as a ``REFINE { ... }`` block).
 ================== =================================================================
 
+Any ``TYPE`` can be decorated with ``RESTART`` (:ref:`restart_decorator`).
+The optimiser named by ``LIB``/``ALGO`` may be local or global; the
+``TYPE`` only decides how often, and from which points, it runs.
+
+.. list-table:: STRATEGY-level keys besides the driver attributes
+   :header-rows: 1
+   :widths: 22 78
+
+   * - Key
+     - Effect
+   * - ``TYPE``
+     - ``PLAIN`` (default), ``MULTISTART`` or ``PRESTAGE``.
+   * - ``LOG_HP <ratio>``
+     - Automatic ``LOG`` tagging of wide positive dimensions
+       (:ref:`search_space_scaling`).
+   * - ``N_STARTS``, ``PARALLEL``, ``BUDGET_PER_START``
+     - ``MULTISTART`` knobs (below).
+   * - ``TOPK``
+     - ``PRESTAGE`` knob (below).
+   * - ``EXPLORE``, ``REFINE``, ``INNER``, ``RESTART``
+     - Nested blocks (below).
+
 TYPE PLAIN
-~~~~~~~~~~
+..........
 
 The simplest dispatch: a single run of ``LIB``/``ALGO``.  The driver
 attribute table above lists every accepted key.  No nested blocks
@@ -1283,7 +1443,7 @@ other than ``RESTART`` and ``INNER`` (for NLopt MLSL/AUGLAG) are
 relevant.
 
 TYPE MULTISTART
-~~~~~~~~~~~~~~~
+...............
 
 Runs the inner driver ``N_STARTS`` independent times.  The host's
 best-tracker keeps the global minimum across all runs.
@@ -1311,19 +1471,30 @@ best-tracker keeps the global minimum across all runs.
      - Per-start ``MAXEVAL`` override.  When unset HPO splits the
        outer ``MAXEVAL`` equally across ``N_STARTS`` (ceil division).
 
-``MULTISTART`` with ``N_STARTS > 1`` is rejected at validate-time for
-``NLOPT:GN_*`` algorithms (those globals consume only one starting
-point). Local optimisers — ``NLOPT:LN_*`` (gradient-free) and
-``NLOPT:LD_*`` (gradient via the shared finite-difference seam) — and
-``DLIB:GFS`` / ``DLIB:BFGS`` all accept multistart.
+The number of starts is ``min(N_STARTS, number of INIT points)``; when the
+``INIT`` chain yields fewer points than ``N_STARTS`` a warning says so,
+so pair ``MULTISTART`` with an ``INIT`` chain of at least ``N_STARTS``
+points (e.g. ``METHOD LHS 8``).  With ``SEED`` set, start ``i`` uses
+``SEED + i`` so stochastic optimisers do not repeat one another.
+
+``MULTISTART`` rejects — for any ``N_STARTS``, including ``1`` — every
+*global* backend that consumes a single starting point: every NLopt
+algorithm whose name starts with ``G`` (``GN_*``, ``GD_*``,
+``G_MLSL*``), ``TADAH:RANDOM``, ``TADAH:GRID``, the ``TADAH:ANNEAL``
+family and ``ASA:ASA``.  Local optimisers (``NLOPT:LN_*``/``LD_*``,
+``DLIB:BFGS``, CERES) and the multi-seed global ``DLIB:GFS`` are
+accepted; ``DLIB:GFS`` consumes all points in one run.  Use ``TYPE
+PLAIN`` to run a single-seed global once.
 
 TYPE PRESTAGE — staged global → local
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.....................................
 
 A self-contained ``EXPLORE { ... } ENDEXPLORE`` sub-block describes the
-*first* (exploration) phase; the outer ``LIB``/``ALGO`` drives the
-*second* (refinement) phase over the top-K candidates harvested by the
-EXPLORE pass.
+*first* (exploration) phase; the STRATEGY-level ``LIB``/``ALGO`` drives
+the *second* (refinement) phase over the top-K candidates harvested by
+the EXPLORE pass.  The refinement optimiser may equally be written as a
+``REFINE { ... } ENDREFINE`` block — it is optional and configures the
+same STRATEGY-level optimiser.
 
 .. code-block:: none
 
@@ -1344,17 +1515,23 @@ EXPLORE pass.
 Key              Args          Effect
 ================ ============= =============================================================
 ``TOPK``         int ≥ 1       Number of best (loss, params) pairs the EXPLORE phase
-                               forwards to refinement.  ``TOPK > 1`` triggers an automatic
-                               multistart over the K seeds; per-start ``MAXEVAL`` is split
-                               from the outer ``MAXEVAL`` by the same rule MULTISTART uses.
+                 (default 1)   forwards to refinement.  With one candidate the refinement
+                               runs once from it; with more it is a multistart over the
+                               candidates, so the refinement optimiser must be one
+                               ``MULTISTART`` accepts, and per-start ``MAXEVAL`` is split
+                               from the STRATEGY-level ``MAXEVAL`` by the same rule.
 ================ ============= =============================================================
 
 The ``EXPLORE`` block accepts the full driver-attribute set
-(``LIB``/``ALGO``/``MAXEVAL`` / …); it inherits the outer bounds and
-log-transform automatically.
+(``LIB``/``ALGO``/``MAXEVAL`` / …) and an optional ``INIT`` block; it
+inherits the search space automatically and, without its own ``INIT``
+block, starts from the OPTIMIZER-level ``INIT`` points.  Candidates are
+deduplicated so the ``TOPK`` seeds are distinct.  If the exploration
+yields no candidate, the refinement runs from the OPTIMIZER-level
+``INIT`` points instead.
 
 LIB TADAH — the annealing family
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+................................
 
 The Monte-Carlo optimizers developed in-tree have their own reference
 pages under :doc:`optimizer`:
@@ -1373,7 +1550,7 @@ and by ``hpo_run.log`` is defined once on the optimizer page.
 .. _tadah_anneal_mpi:
 
 Multi-node runs (TADAH_HPO_MPI) and ARCHER2
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...........................................
 
 Both parallel drivers scale past one node through the opt-in
 ``-DTADAH_HPO_MPI=ON`` CMake option: replicas/walkers distribute over
@@ -1443,7 +1620,7 @@ slots evenly but are not required.
 .. _restart_decorator:
 
 RESTART decorator
-.................
+-----------------
 
 ``RESTART { ... } ENDRESTART`` decorates a ``TYPE PLAIN`` /
 ``MULTISTART`` / ``PRESTAGE`` strategy with a stagnation watchdog.
@@ -1458,7 +1635,7 @@ RESTART decorator
      RESTART
        AFTER_STAGNATION 80
        MAX 5
-       STRATEGY SOBOL 1
+       METHOD SOBOL 1
      ENDRESTART
    ENDSTRATEGY
 
@@ -1470,25 +1647,29 @@ RESTART decorator
      - Args / range
      - Effect
    * - ``AFTER_STAGNATION``
-     - int ≥ 0
-     - After this many consecutive evals without a new global-best,
-       abort the inner run and restart from a fresh seed.  ``0``
-       disables.
+     - int ≥ 0 (default ``0``)
+     - After this many consecutive evals without a new global best,
+       abort the inner run and restart from a fresh point.
    * - ``MAX``
-     - int ≥ 0
-     - Cap on restart count.
-   * - ``STRATEGY``
+     - int ≥ 0 (default ``0``)
+     - Cap on the number of restarts.
+   * - ``METHOD`` (alias ``STRATEGY``)
      - repeatable
-     - Init chain used to draw the fresh point on each restart
-       (re-uses the ``INIT``-block grammar).  Implicit ``CONFIG`` is
-       *not* auto-prepended here: a stagnated run already has CONFIG
-       in its history.
+     - Init chain used to draw the fresh point(s) on each restart
+       (the ``INIT``-block grammar, including ``K_TOTAL``).  Implicit
+       ``CONFIG`` is *not* auto-prepended here: a stagnated run already
+       has CONFIG in its history.  Without a ``METHOD`` line a restart
+       uses the single ``CONFIG`` point.
 
-Each restart gets its own stagnation window — the windows do not bleed
-into each other.
+The decorator is active only when **both** ``AFTER_STAGNATION`` and
+``MAX`` are positive; with either at its default ``0`` the ``RESTART``
+block has no effect.  A ``SEED`` inside ``RESTART`` is ignored: each
+restart draws its seed from ``std::random_device``, so restarts are not
+reproducible.  Each restart gets its own stagnation window — the windows
+do not bleed into each other.
 
 NOISE block
-...........
+-----------
 
 ``NOISE { ... } ENDNOISE`` controls how HPO handles objective noise.
 
@@ -1506,9 +1687,11 @@ Key                Args          Effect
                                  from the search-space geometry:
                                  ``fd_step = max(1e-3 × diag / sqrt(dim), 1e-6)``,
                                  where ``diag`` is the L2 norm of ``high − low`` in
-                                 transformed space.  **DLIB:BFGS only**, and only when
-                                 ``PARAM fd_step`` is not already set explicitly.  Bareword
-                                 ``AUTO`` parses as ``true``.
+                                 internal coordinates.  Applies to any gradient-based
+                                 backend configured at the STRATEGY level (ignored with a
+                                 message otherwise), and only when ``PARAM fd_step`` is
+                                 not set explicitly.  Bareword ``AUTO`` parses as
+                                 ``true``; default off.
 ``CALIBRATION``    int (0 or ≥2) Repeat the seed evaluation ``N`` times to surface
                                  the objective's noise floor and emit a suggested
                                  ``FTOL_REL``.  ``0`` disables; ``1`` is rejected as
@@ -1516,7 +1699,7 @@ Key                Args          Effect
 ================== ============= =================================================================
 
 INNER block — NLopt MLSL / AUGLAG sub-optimiser
-...............................................
+-----------------------------------------------
 
 NLopt's MLSL / G_MLSL_LDS / AUGLAG drivers delegate inner work to a
 local optimiser.  Configure the inner via:
@@ -1545,7 +1728,7 @@ initial step to the local optimiser); a startup warning says so.
 .. _hpo_load_transforms:
 
 Load-time data transforms
-.........................
+-------------------------
 
 The training-side load transforms (``LSCALE``, ``ESHIFT*``,
 ``EFILTER`` / ``FFILTER``, ``EWEIGHT_TEMP``, ``WDBFILE`` /
@@ -1554,7 +1737,7 @@ The training-side load transforms (``LSCALE``, ``ESHIFT*``,
 configuration). HPO applies them on every inner training run.
 
 Validation-set sanitisation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...........................
 
 The validation set is transformed with a *stripped* context that
 contains:
@@ -1597,17 +1780,18 @@ computed on.
 .. _output_files:
 
 Output files
-............
+------------
 
 Unless you change them, every artefact produced by the outer optimiser
 is written to **the directory in which you started** ``tadah hpo``.
 
 Main log files
-~~~~~~~~~~~~~~
+..............
 
 Each file begins with a ``#`` header describing its columns.  Eligible rows
-follow the ``OUTPUT`` cadence, and the first column is always the iteration
-number.
+follow the ``OUTPUT`` cadence.  The first two columns are always the
+evaluation (iteration) number and the slot (``1`` for serial drivers; the
+replica or walker for ``ANNEAL_PT``/``ANNEAL_PA``).
 
 When embedding successive HPO runs in one process, flush each host before
 starting the next. Result batches use the current run's output files,
@@ -1616,8 +1800,10 @@ including when the working directory changes between runs.
 =====================  =====================================================================
 File                   Columns
 =====================  =====================================================================
-``loss.tadah``         All enabled individual loss terms, then the averaged total loss.
-``params.tadah``       The current hyperparameter vector in the order defined by ``OPTIM``.
+``loss.tadah``         All enabled individual loss terms, then the total loss (their mean).
+``params.tadah``       One column per optimised dimension, labelled ``KEY[n]``, in the
+                       optimiser order: by key, then by index (see ``OPTIM``) — not the
+                       order of the ``OPTIM`` lines.  Values are in real units.
 ``outvar.tadah``       Per-evaluation wall time in milliseconds, enabled validation metrics,
                        LAMMPS ``--outvar``/``--varloss`` values, and typed-observable values.
 ``stats.tadah``        Per-validation-dataset values and their average for each enabled metric.
@@ -1628,19 +1814,21 @@ Cadence and formatting:
 ============ ========= =================================================================
 Key          Default   Effect
 ============ ========= =================================================================
-``OUTPUT N`` ``1``     Write a main-file row when the iteration is divisible by ``N``.
+``OUTPUT N`` ``1``     Write a main-file row when the iteration is divisible by ``N``;
+                       ``N ≥ 1`` (``0`` is rejected — use a large value to write little).
 ``DIGITS d`` ``6``     Decimal digits in scientific-notation columns; ``1 ≤ d ≤ 15``.
 ``QFLUSH N`` ``10``    Queued completed results that trigger a writer-thread drain;
                        shutdown or an explicit flush drains the remainder.
 ============ ========= =================================================================
 
 Best-improvement histories
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+..........................
 
-On one process, every new minimum contributes a row to the companion
-history files when ``BOUTPUT`` is enabled.  Under multi-rank PT/PA, the
-suffixed files record that rank's improvements; the unsuffixed
-``best_pot.tadah`` is the canonical cross-rank winner:
+Every new minimum is numbered by an improvement ordinal ``k = 1, 2, …``
+and, following the ``BOUTPUT`` cadence, contributes a row to the
+companion history files.  Under multi-rank PT/PA, the suffixed files
+record that rank's improvements; the unsuffixed ``best_pot.tadah`` is
+the canonical cross-rank winner:
 
 * ``best_loss.tadah``
 * ``best_params.tadah``
@@ -1648,7 +1836,10 @@ suffixed files record that rank's improvements; the unsuffixed
 * ``best_stats.tadah``
 
 These files append one row per qualifying improvement; they are histories,
-not single-row snapshots.
+not single-row snapshots.  They have the same columns as their main
+counterparts except that the **first column is the improvement ordinal**
+``k``, not the evaluation number (the evaluation that produced a best is
+recorded in ``hpo_run.log`` and in the header of ``best_pot.tadah``).
 
 .. list-table::
    :header-rows: 1
@@ -1657,13 +1848,15 @@ not single-row snapshots.
    * - Key
      - Default
      - Effect
-   * - ``BOUTPUT flag``
+   * - ``BOUTPUT N``
      - ``1``
-     - ``0`` disables tabular ``best_*`` history rows; any positive value
-       enables a row for every new best.  The magnitude is not a cadence.
+     - A cadence over new bests: write the ``best_*`` history row of
+       every ``N``-th improvement (``k`` divisible by ``N``).  ``N ≥ 1``;
+       ``0`` is rejected.  ``best_pot.tadah`` is updated on every
+       improvement regardless.
 
 Potential archives
-~~~~~~~~~~~~~~~~~~
+..................
 
 The current global best potential is saved live to the canonical
 ``best_pot.tadah``.  Every process-local improvement synchronously
@@ -1702,13 +1895,17 @@ live warm start without waiting for normal program termination.
 ============================ ============== =================================================================
 Key                          Default        Effect
 ============================ ============== =================================================================
-``DUMP <N> <DIR>``           ``0`` (off)    Save **every** trial potential every ``N`` iterations to
-                                            ``DIR`` as ``pot_<iter>.tadah``.  Directory is created if needed.
-``BDUMP <N> <DIR>``          ``0`` (off)    As ``DUMP`` but only for new global bests.
+``DUMP <N> <DIR>``           off            Save the trial potential of every ``N``-th evaluation as
+                                            ``<DIR>/pot_<iter>.tadah``.  ``N ≥ 1`` and ``<DIR>`` are both
+                                            required (``0`` is rejected); the directory is created if
+                                            needed.
+``BDUMP <N> <DIR>``          off            Save every ``N``-th new best as
+                                            ``<DIR>/best_pot_<k>.tadah``, ``k`` being the improvement
+                                            ordinal.  Same rules as ``DUMP``.
 ============================ ============== =================================================================
 
 Run log
-~~~~~~~
+.......
 
 ``hpo_run.log`` (rank-suffixed under MPI, like the other per-rank
 outputs) is the run's structured journal. It opens with a banner
@@ -1744,7 +1941,7 @@ during a run; the stdout markers in :ref:`diagnostic_markers` are the
 quick-look subset.
 
 Practical tips
-~~~~~~~~~~~~~~
+..............
 
 * Large optimisations can produce thousands of potentials; watch disk
   usage when ``DUMP`` is enabled.
@@ -1754,16 +1951,19 @@ Practical tips
 
      tail -f loss.tadah
 
-* Each row in ``params.tadah`` matches the order of ``OPTIM`` directives
-  exactly, so a row may be replayed verbatim with ``tadah train``.
+* ``params.tadah`` columns follow the optimiser order (by key, then
+  index), which need not match the order of your ``OPTIM`` lines; read
+  the columns by their ``KEY[n]`` labels.  To reproduce a candidate,
+  use the potential itself (``best_pot.tadah`` or a ``DUMP``/``BDUMP``
+  archive), which carries the full configuration.
 
 .. _warmstart_protocol:
 
 Warm-start protocol and bad-potential early-exit
-................................................
+------------------------------------------------
 
 Warm-start: ``${hot_a0}`` (or any ``--hotvar``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...............................................
 
 For LAMMPS scripts that start with a ``box/relax`` from a hard-coded
 lattice guess (typical for elastic constants, surface energies, …), HPO
@@ -1815,7 +2015,7 @@ Per-line environment variables (``TADAH_HPO_HOT_A0_DEFAULT``,
 release; the per-line ``--hotvar`` flag replaces all three.
 
 Bad-potential early-exit
-~~~~~~~~~~~~~~~~~~~~~~~~
+........................
 
 Two cheap checks let HPO skip the expensive LAMMPS stage when training
 has produced an unphysical potential:
@@ -1834,13 +2034,13 @@ variables were removed in this release; use
 .. _performance_parallelism:
 
 Performance & parallelism
-.........................
+-------------------------
 
 Tadah!MLIP comes in two flavours; the parallel strategy you can exploit
 depends on which one you compiled.
 
 Desktop build (OpenMP)
-~~~~~~~~~~~~~~~~~~~~~~
+......................
 
 * **Shared worker pool** — ``THREADS`` in the ``STRATEGY`` block is the
   total pool width for ``PC_LAMMPS`` fan-out and MLIP train/predict work.
@@ -1867,34 +2067,34 @@ Desktop build (OpenMP)
   parallelism is driven *around* LAMMPS, not inside it.
 
 MPI build
-~~~~~~~~~
+.........
 
-The MPI variant parallelises the *inner* regression across **all**
-ranks (host–client pattern).  It must be linked against the MPI version
-of LAMMPS.  Each LAMMPS calculation is spawned independently from the
-main communicator:
+The MPI variant (``TADAH_BUILD_MPI``; see the warning in
+:ref:`installation` — it is not functional in this release) parallelises
+the *inner* regression across **all** ranks (host–client pattern) and
+must be linked against an MPI build of LAMMPS.  Nothing is spawned:
+each LAMMPS calculation runs on a sub-communicator of existing ranks.
 
 ``--ncpu <m>``
-   On a ``PC_LAMMPS`` line, requests that *m* ranks form a mini-MPI
-   world and execute the script.  Several ``PC_LAMMPS`` lines may run
-   side by side, each with its own ``--ncpu`` value.  The sum of all
-   requested ranks must not exceed *available ranks − 1* (one rank is
-   reserved for the host).
-
-.. note::
-
-   The MPI launcher is functional but still experimental; improved
-   error handling and dynamic load balancing are in development.
+   On a ``PC_LAMMPS`` line, the host assigns *m* worker ranks to the
+   script, which build a communicator from them
+   (``MPI_Comm_create_group`` on ``MPI_COMM_WORLD``) and run it there.
+   Several ``PC_LAMMPS`` lines may run side by side, each with its own
+   ``--ncpu`` value.  The sum of all requested ranks must not exceed
+   *available ranks − 1* (one rank is reserved for the host).
 
 Example::
 
    srun -n 64 tadah hpo …             # 64 MPI ranks available
    ...
    PC_LAMMPS --script in.elastic --ncpu 8 …
-                                       # spawns mpirun -n 8 lammps …
+                                       # runs on 8 of the 63 worker ranks
+
+Multi-node *annealing* runs use the separate ``TADAH_HPO_MPI`` build
+instead (:ref:`tadah_anneal_mpi`).
 
 Practical advice
-~~~~~~~~~~~~~~~~
+................
 
 * Size ``THREADS`` first: it is the main fan-out and train/predict CPU
   budget, including for a serial annealing chain.
@@ -1903,10 +2103,67 @@ Practical advice
 * Measure, do not guess: a few short test runs sweeping ``THREADS`` and
   then the residual OpenMP width will reveal the sweet spot.
 
+.. _hpo_runtime_checks:
+
+Audits and health monitoring
+----------------------------
+
+Three keys of the *training configuration* (``--config``) control
+diagnostics that ``tadah hpo`` runs around the optimisation.
+``AUDIT`` and ``HEALTH_LOG`` are stripped from every potential file HPO
+writes.
+
+``AUDIT off|warn|error`` (default ``off``)
+   Before the optimiser starts, run the pre-flight audit on the training
+   data: per-descriptor health checks (e.g. a fixed, off-shell ``CGRIDMB``
+   that collapses the density) plus a check for *critical* descriptor
+   parameters that have no ``OPTIM`` line.  ``warn`` logs the findings
+   and continues; ``error`` aborts on any FAIL-level finding.  Skipped
+   when there is no training ``DBFILE``.
+``AUDIT_SAMPLE <n>`` (default ``256``)
+   Number of training structures (deterministic sample) the audit's
+   dataset scan uses; ``0`` scans all of them.
+``HEALTH_LOG off|summary|full`` (default ``summary``)
+   Per-evaluation health monitor of the fitted weights (non-finite
+   values, collapsed or exploding blocks).  ``summary`` rate-limits its
+   warnings, ``full`` reports every offending evaluation, ``off``
+   disables it.
+
+.. _hpo_env_overrides:
+
+Environment overrides
+---------------------
+
+These environment variables override the corresponding configuration
+keys without editing the files (intended for A/B comparisons and test
+harnesses).  An invalid value is an error, not a silent fallback.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 66
+
+   * - Variable
+     - Effect
+   * - ``TADAH_OPTIM_SCALE=AUTO|NONE``
+     - Replaces ``OPTIM_SCALE`` (:ref:`search_space_scaling`).
+   * - ``TADAH_PC_ISOLATION=THREAD|PROCESS``
+     - Replaces ``PC_ISOLATION`` (:ref:`pc_lammps_execution`); counts as
+       an explicit request, so ``PROCESS`` is an error in MPI builds.
+   * - ``TADAH_PC_WORKER_TIMEOUT=<seconds>``
+     - Replaces ``PC_WORKER_TIMEOUT``; same validation.
+   * - ``TADAH_FAILSCORE_GRADING=ON|OFF``
+     - Replaces ``FAILSCORE_GRADING`` (:ref:`failscore_grading`).
+   * - ``TADAH_BUMPGATE=CANDIDATE|STRICT``
+     - Replaces ``BUMPGATE`` (:ref:`hpo_knot_rcut`).
+   * - ``TADAH_HPO_FORCE_REBUILD`` (any value)
+     - Rebuild the per-thread trainer from scratch on every evaluation
+       instead of re-initialising the cached one (serial builds) — slower;
+       a reference for checking that re-initialisation is exact.
+
 .. _diagnostic_markers:
 
 Diagnostic stdout markers
-.........................
+-------------------------
 
 HPO emits a one-line stdout (or stderr) marker each time a notable
 event fires.  They are stable and intended to be grep-friendly.
@@ -1937,14 +2194,3 @@ Marker                                                                       Mea
 ``[HPO] ASA[Ingber ASA-30.53]: seed=… dim=…``                                 ``ASA:ASA`` entry banner with resolved options.
 ``[HPO] ASA stopped: <reason> after N host eval(s) (asa exit: …)``            ``ASA:ASA`` stop reason + upstream exit code.
 ============================================================================ ============================================================
-
-See also
---------
-
-* :ref:`asa_optimizer` — the vendored Adaptive Simulated Annealing
-  optimiser (``LIB ASA / ALGO ASA``): algorithm background, full option
-  tables, tuning guide.
-* :ref:`hpo_examples` — worked examples covering the optimiser
-  libraries and the ``INIT`` / ``STRATEGY`` / ``EXPLORE`` / ``RESTART`` /
-  ``INNER`` blocks.
-* :ref:`cli_example_2` — minimal single-loss-term walkthrough.

@@ -19,10 +19,11 @@ OPTIM CGRID2B (1-4) 0.0 5.5
 OPTIM SGRID2B (1-4) 0.1 1.0
 
 # 5. Output-control parameters. hpo always saves the current best model to `best_pot.tadah`.
-#    Log files are written as (best_)loss.tadah, (best_)params.tadah, and (best_)outvar.tadah.
-OUTPUT 10     # write to logs every 10th iteration, regardless of the loss value
-BOUTPUT 1     # always write to the best_ logs
+#    Log files are written as (best_)loss.tadah, (best_)params.tadah, (best_)outvar.tadah
+#    and (best_)stats.tadah.
+OUTPUT 10     # write to the main logs every 10th iteration, regardless of the loss value
+BOUTPUT 1     # write a best_ log row for every new best (N: every Nth new best)
 
 # 6. Directories and dump rate for archiving intermediate potentials.
-DUMP 100 newPotsDir    # dump pot.tadah_i every 100th potential, regardless of the loss
-BDUMP 1 newBestPotsDir # archive a potential whenever it improves on the previous best
+DUMP 100 newPotsDir    # every 100th potential -> newPotsDir/pot_<iter>.tadah, regardless of the loss
+BDUMP 1 newBestPotsDir # every new best -> newBestPotsDir/best_pot_<k>.tadah (k = k-th improvement)

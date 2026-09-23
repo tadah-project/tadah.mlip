@@ -1,7 +1,7 @@
 .. _hpo_examples:
 
-Nested Fitting — Worked Examples
-================================
+Worked Examples
+===============
 
 .. note::
 
@@ -80,12 +80,13 @@ Index
    * - 06
      - `06_init_random <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/06_init_random>`_
      - Introduces the ``INIT`` block: an explicit, reproducible random
-       starting point (``STRATEGY RANDOM`` + ``SEED``).
+       starting point (``METHOD RANDOM`` + ``SEED``; the shipped config
+       uses the ``STRATEGY`` alias).
      - ``INIT.RANDOM``, ``SEED``
    * - 07
      - `07_init_lhs_multistart <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/07_init_lhs_multistart>`_
-     - Latin-hypercube ``INIT`` seeds combined with the ``MULTISTART``
-       policy — one local optimiser run per seed.
+     - Latin-hypercube ``INIT`` seeds combined with ``STRATEGY TYPE
+       MULTISTART`` — one local optimiser run per seed.
      - ``INIT.LHS``, ``MULTISTART``
    * - 08
      - `08_init_sobol_gfs <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/08_init_sobol_gfs>`_
@@ -94,7 +95,7 @@ Index
      - ``INIT.SOBOL``, ``DLIB:GFS``
    * - 09
      - `09_init_warm <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/09_init_warm>`_
-     - Warm restart: ``STRATEGY WARM`` reloads a previous best plus its
+     - Warm restart: ``METHOD WARM`` reloads a previous best plus its
        hot-variable warmstart cache. Ideal for incremental retunes.
      - ``INIT.WARM``, ``WARM_ON_MISMATCH``
    * - 10

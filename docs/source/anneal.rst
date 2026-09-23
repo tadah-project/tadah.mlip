@@ -174,7 +174,7 @@ If the schedule reaches ``T_MIN`` with budget left, ``REANNEAL``
 (default on) snaps the chain to the best point found and restarts the
 schedule at a reduced starting temperature
 :math:`T_0 \cdot \texttt{REANNEAL\_SCALE}^m` for re-anneal :math:`m`,
-so leftover budget refines the best basin instead of expiring in a
+so leftover budget refines the region around the best point instead of expiring in a
 frozen chain. Re-annealing stops when the next start temperature could
 not complete two rungs above ``T_MIN``.
 

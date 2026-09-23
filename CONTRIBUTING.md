@@ -137,7 +137,8 @@ Do not vendor `catch.hpp` or the Catch CMake scripts in a module. A hidden
 tag (`[.statistical]`) runs through an explicit entry, which also needs the
 flag: `add_test(NAME x COMMAND test_foo "[.tag]" --warn NoTests)`.
 `ctest -R tadah_catch` runs the regression tests for the discovery itself
-(`tests/catch_discovery`).
+(`tests/catch_discovery`). `ctest -L docs` runs the unit tests of the
+documentation build tools (see *Building the documentation*).
 
 **Pitfall:** MLIP redefines `add_test()` globally (to skip Gemmi's own
 test) and forwards its arguments unquoted. In every `add_test()` that runs
@@ -191,6 +192,14 @@ python3 -m unittest discover -s Tadah.MLIP/docs/tools/tests -v
 The unit tests cover the input lookup (`docs/source/config/source_locator.py`)
 and the `hpo.html` redirect check. The GitLab `docs_sphinx` job runs them
 and the same build, with all three variables set explicitly.
+
+The same unit tests are the CTest entry `tadah_docs_tools` (label `docs`,
+so `ctest -L docs` runs them) in every build configured with
+`-DBUILD_TESTING=ON`, which therefore needs a Python 3 interpreter. The
+cases that need `node`, `sphinx-build` or the Python modules `sphinx`,
+`sphinx_rtd_theme` or `yaml` (PyYAML) skip themselves when one is
+missing. CTest then reports the entry as *Skipped*, not *Passed*, and its
+output names the skipped cases, so a pass means every case ran.
 
 `hpo.html`, the Nested Fitting page before 1.5.1, is now a redirect
 (`docs/source/_extra/hpo.html`) to the pages it was split into. After

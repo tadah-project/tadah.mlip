@@ -149,6 +149,17 @@ class ShippedPageTest(unittest.TestCase):
                                ('nfp-quick-start', 'nfp_quickstart.html')):
             self.assertEqual(routes[anchor], target)
 
+    def test_routes_of_the_tagged_releases(self):
+        # hpo.html of the tagged releases v1.0.0 and v1.1.1 (what Read the
+        # Docs 'stable' serves) had ids the split pages do not carry.
+        _, table = shipped_routes()
+        routes = table['routes']
+        self.assertEqual(routes['hpo-quick-start'],
+                         'nfp_quickstart.html#nfp-quick-start')
+        for anchor in ('hpo-manual', 'manual'):
+            self.assertEqual(routes[anchor],
+                             'nfp_configuration.html#nfp-manual')
+
     def test_every_legacy_anchor_is_listed_once(self):
         anchors = check_redirect.read_anchors(check_redirect.DEFAULT_ANCHORS)
         self.assertEqual(len(anchors), len(set(anchors)))

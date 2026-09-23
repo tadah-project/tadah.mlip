@@ -3,8 +3,9 @@
 # a page that has the section (see that script for the rules).
 #
 # Source: every id in the article body of hpo.html built with Sphinx 7.4.7
-# from docs/source/hpo.rst at origin/develop (451cd7c), v1.3.0-beta.1 and
-# 259caca^ (the last text on v1-dev before the split), merged and sorted.
+# from docs/source/hpo.rst at the tagged releases v1.0.0 and v1.1.1, at
+# origin/develop (451cd7c), v1.3.0-beta.1 and 259caca^ (the last text on
+# v1-dev before the split), merged and sorted.
 # Sphinx's numbered ids (id1, id2, ...) are left out: they are generated
 # for duplicate targets and name different things in every build.
 additional-options
@@ -16,6 +17,7 @@ block-hierarchy
 bound-transforms
 ceres-param-keys
 chain-entries
+choosing-the-optimizer
 configuration-file
 corana-adaptive-variant-opt-in
 cutoffs-of-knot-family-refit-potentials
@@ -24,6 +26,7 @@ desktop-build-openmp
 diagnostic-markers
 diagnostic-stdout-markers
 energy-force-stress-validation-metrics
+example
 failscore-grading
 failure-handling-graded-failscore
 failvar-recipes-for-typical-scripts
@@ -31,6 +34,8 @@ how-many-seeds-does-the-optimiser-actually-consume
 hpo-fixweight
 hpo-knot-rcut
 hpo-load-transforms
+hpo-manual
+hpo-quick-start
 individual-validation-targets-and-weights
 init-block-seeding-strategies
 inner-block-nlopt-mlsl-auglag-sub-optimiser
@@ -40,7 +45,9 @@ lib-tadah-the-annealing-family
 load-time-data-transforms
 loss-functions
 loss-global-loss-function
+loss-options
 main-log-files
+manual
 mpi-build
 multi-node-runs-tadah-hpo-mpi-and-archer2
 nested-fitting
@@ -55,6 +62,7 @@ pc-performance-constraints
 performance-constraints
 performance-parallelism
 per-metric-bad-pot-pre-filter
+physical-constraints
 physics-informed-constraints-pc-lammps
 pinning-and-searching-linear-coefficients
 potential-archives

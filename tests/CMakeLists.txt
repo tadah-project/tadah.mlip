@@ -69,3 +69,31 @@ tadah_version_reader_test(tadah_version_reader_no_core no_core
 # 3. Catch test discovery (cmake-tools), used by every Tadah module
 # ------------------------------------------------------------------
 add_subdirectory(catch_discovery)
+
+
+# ------------------------------------------------------------------
+# 4. Documentation build tools (docs/tools/tests)
+# ------------------------------------------------------------------
+# Unit tests of the docs input lookup (docs/source/config/source_locator.py)
+# and of the hpo.html redirect check (docs/tools/check_redirect.py). They
+# never use the network.
+#
+# Some cases need node, sphinx-build or the Python modules sphinx,
+# sphinx_rtd_theme or yaml, and skip themselves when one is missing.
+# unittest still exits 0 then, ending with "OK (skipped=N)";
+# that run is reported as Skipped, not Passed, so a pass means every case
+# ran. A failing run ends with "FAILED (...)" and stays a failure. "Ran 0
+# tests" is a failure too (before Python 3.12 unittest exits 0 on it).
+# No bytecode is written: the tests import modules from the source tree.
+# NB: add_test() arguments must not contain ';' or be empty (MLIP's
+# add_test() override; see catch_discovery/CMakeLists.txt).
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(NAME tadah_docs_tools
+  COMMAND ${Python3_EXECUTABLE} -m unittest discover
+    -s ${PROJECT_SOURCE_DIR}/docs/tools/tests -v)
+set_tests_properties(tadah_docs_tools PROPERTIES
+  LABELS docs
+  TIMEOUT 120
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1
+  SKIP_REGULAR_EXPRESSION "\nOK \\(skipped=[0-9]+"
+  FAIL_REGULAR_EXPRESSION "\nRan 0 tests ")

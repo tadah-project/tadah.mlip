@@ -97,3 +97,24 @@ set_tests_properties(tadah_docs_tools PROPERTIES
   ENVIRONMENT PYTHONDONTWRITEBYTECODE=1
   SKIP_REGULAR_EXPRESSION "\nOK \\(skipped=[0-9]+"
   FAIL_REGULAR_EXPRESSION "\nRan 0 tests ")
+
+
+# ------------------------------------------------------------------
+# 5. `tadah hpo` stopped by a signal exits with 128 + the signal number
+# ------------------------------------------------------------------
+# cli_signal/check_hpo_signal.py runs `tadah hpo` on a tiny problem (no
+# LAMMPS, no network), signals it once evaluations are on disk, and checks
+# the exit status (130 SIGINT, 143 SIGTERM, 140 SIGUSR2), the journal
+# trailer, best_pot.tadah and loss.tadah.
+if(TADAH_ENABLE_NFP)
+  foreach(_sig SIGINT SIGTERM SIGUSR2)
+    add_test(NAME tadah_hpo_exit_status_${_sig}
+      COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/cli_signal/check_hpo_signal.py
+        --tadah $<TARGET_FILE:tadah> --signal ${_sig})
+    set_tests_properties(tadah_hpo_exit_status_${_sig} PROPERTIES
+      LABELS "hpo;shutdown"
+      TIMEOUT 300
+      ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+  endforeach()
+endif()

@@ -149,12 +149,23 @@ docs_sphinx:
         }
       fi
       export PATH="$HOME/.local/bin:$PATH"
-      # Generate doxygen XML for breathe (conf.py expects build/docs/xml/).
-      # TADAH_BUILD_DOCS_ONLY skips heavy library probes so configure is light.
+      # Doxygen XML for breathe. TADAH_BUILD_DOCS_ONLY skips heavy library
+      # probes so configure is light.
       cmake -S . -B build -DTADAH_BUILD_DOCS_ONLY=ON -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
       cmake --build build --target docs
-      (cd docs/source && python3 config/read_toml.py && python3 cli/generate_cli.py)
-      sphinx-build -W -b html docs/source docs/build/html
+      export TADAH_DOXYGEN_XML_DIR="$CI_PROJECT_DIR/build/docs/xml"
+      # The generated pages read CORE's blueprint and HPO's key registry
+      # (docs/source/config/source_locator.py). Name both explicitly -- fresh
+      # shallow clones of the branch being built, the ref CMake fetched the
+      # modules at -- so a checkout left next to this one on the runner is
+      # never picked up.
+      docs_src="$(mktemp -d)"
+      git clone --depth 1 --branch "$CI_COMMIT_REF_NAME" https://git.ecdf.ed.ac.uk/tadah/core.git "$docs_src/CORE"
+      git clone --depth 1 --branch "$CI_COMMIT_REF_NAME" https://git.ecdf.ed.ac.uk/tadah/hpo.git "$docs_src/HPO"
+      export TADAH_CORE_SOURCE_DIR="$docs_src/CORE" TADAH_HPO_SOURCE_DIR="$docs_src/HPO"
+      # Input-lookup tests, then the build (conf.py runs the page generators).
+      python3 -m unittest discover -s docs/tools/tests -v
+      sphinx-build -W --keep-going -b html docs/source docs/build/html
   artifacts:
     when: on_failure
     paths:

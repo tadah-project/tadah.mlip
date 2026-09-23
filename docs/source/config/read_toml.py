@@ -13,9 +13,13 @@ import pytomlpp as p
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from blueprint_source import locate_blueprint
+from source_locator import SourceNotFound
 
 # Copy CORE's blueprint next to the generated pages (generate_cli.py reads it).
-_src = locate_blueprint()
+try:
+    _src = locate_blueprint()
+except SourceNotFound as err:
+    sys.exit(f"read_toml.py: {err}")
 shutil.copy(_src, "config/blueprint_tadah.toml")
 print(f"Using blueprint {_src}")
 

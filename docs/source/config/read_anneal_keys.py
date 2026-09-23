@@ -14,17 +14,17 @@ Keys are grouped by function and ordered by importance (the registry's
 `group` and `rank` fields); cross-key rules render as constraint sentences
 in the description column, so documentation cannot drift from validation.
 
-Search order for the TOML (mirrors read_toml.py):
-  1. ../../../../HPO/blueprint/anneal_keys.toml   (sibling worktree)
-  2. ../../../../hpo/blueprint/anneal_keys.toml
-  3. On Read the Docs: a shallow clone of hpo.git at the matching branch.
+The HPO checkout is found by source_locator.py: $TADAH_HPO_SOURCE_DIR, then
+the HPO checkout next to this repository, then $TADAH_PATH/HPO, then (on
+GitLab CI / Read the Docs only) a shallow clone of the branch being built.
+There is no fallback branch: a missing registry fails the docs build with
+the list of locations tried.
 """
 
 from __future__ import annotations
 
 import os
-import subprocess
-import tempfile
+import sys
 
 try:
     import tomllib
@@ -39,6 +39,10 @@ except ImportError:  # pragma: no cover - pre-3.11 fallback
         return toml.load(path)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import source_locator  # noqa: E402
+
+ANNEAL_KEYS_REL = os.path.join("blueprint", "anneal_keys.toml")
 KINDS = {
     "serial": ("anneal_keys_serial.rst", "TADAH:ANNEAL"),
     "pt": ("anneal_keys_pt.rst", "TADAH:ANNEAL_PT"),
@@ -58,31 +62,7 @@ GROUP_TITLES = {
 
 
 def locate_toml() -> str:
-    candidates = [
-        os.path.normpath(os.path.join(HERE, "..", "..", "..", "..", "HPO",
-                                      "blueprint", "anneal_keys.toml")),
-        os.path.normpath(os.path.join(HERE, "..", "..", "..", "..", "hpo",
-                                      "blueprint", "anneal_keys.toml")),
-    ]
-    for path in candidates:
-        if os.path.exists(path):
-            return path
-    if os.environ.get("READTHEDOCS") == "True":
-        branch = (os.environ.get("READTHEDOCS_VERSION_NAME")
-                  or os.environ.get("READTHEDOCS_VERSION") or "develop")
-        tmp = tempfile.mkdtemp(prefix="tadah_hpo_keys_")
-        for ref in (branch, "develop"):
-            try:
-                subprocess.run(
-                    ["git", "clone", "--depth", "1", "--branch", ref,
-                     "https://git.ecdf.ed.ac.uk/tadah/hpo.git", tmp],
-                    check=True, capture_output=True)
-                path = os.path.join(tmp, "blueprint", "anneal_keys.toml")
-                if os.path.exists(path):
-                    return path
-            except subprocess.CalledProcessError:
-                continue
-    raise SystemExit("read_anneal_keys.py: cannot locate anneal_keys.toml")
+    return source_locator.locate_file("HPO", ANNEAL_KEYS_REL)
 
 
 #: Presence-tested or run-time-derived defaults, described rather than
@@ -236,4 +216,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except source_locator.SourceNotFound as err:
+        sys.exit(f"read_anneal_keys.py: {err}")

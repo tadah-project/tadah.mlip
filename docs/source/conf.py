@@ -24,15 +24,35 @@ copyright = '2024, Marcin Kirsz'
 author = 'Marcin Kirsz'
 
 
-# -- Version (single source of truth: CORE blueprint TOML) -------------------
-# config/blueprint_source.py locates CORE's blueprint (sibling checkout, or a
-# clone of the built branch on CI/RTD) and fails loudly when it is missing.
+# -- Build inputs -------------------------------------------------------------
+# config/source_locator.py resolves every external input explicitly and fails
+# with the list of locations it tried; nothing falls back to a default branch.
+#   CORE sources:  $TADAH_CORE_SOURCE_DIR, sibling CORE, $TADAH_PATH/CORE,
+#                  or (GitLab CI / Read the Docs only) a clone of the built branch
+#   HPO sources:   the same order with $TADAH_HPO_SOURCE_DIR and HPO
+#   Doxygen XML:   $TADAH_DOXYGEN_XML_DIR, else ../../build/docs/xml
+#                  (what `cmake --build build --target docs` writes)
 import os
 import sys as _sys
-_sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config'))
+from sphinx.errors import ConfigError as _ConfigError
+
+_CONFDIR = os.path.dirname(os.path.abspath(__file__))
+_sys.path.insert(0, os.path.join(_CONFDIR, 'config'))
+import source_locator as _loc
 import blueprint_source as _bps
 
-release = _bps.read_version(_bps.locate_blueprint())
+try:
+    _CORE_SOURCE_DIR = _loc.locate('CORE')
+    _HPO_SOURCE_DIR = _loc.locate('HPO')
+    _DOXYGEN_XML_DIR = _loc.doxygen_xml_dir()
+except _loc.SourceNotFound as _err:
+    raise _ConfigError(str(_err)) from None
+print(f"Tadah docs inputs: CORE {_CORE_SOURCE_DIR}; HPO {_HPO_SOURCE_DIR}; "
+      f"Doxygen XML {_DOXYGEN_XML_DIR}")
+
+
+# -- Version (single source of truth: CORE blueprint TOML) -------------------
+release = _bps.read_version(os.path.join(_CORE_SOURCE_DIR, _bps.BLUEPRINT_REL))
 # Short X.Y version (strip pre-release / build-metadata tail).
 import re as _re
 _short = _re.match(r'(\d+\.\d+)', release)
@@ -196,29 +216,31 @@ epub_exclude_files = ['search.html']
 
 
 # ---- BREATHE ---
-import subprocess, os
+import subprocess
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
+# Doxygen XML located (and checked for index.xml) above.
+breathe_default_project = "Tadah!"
+breathe_projects = { "Tadah!": _DOXYGEN_XML_DIR }
+
 if read_the_docs_build:
-    breathe_default_project = "Tadah!"
-    #subprocess.call('cd ../build/docs ; doxygen', shell=True)
-    breathe_projects = { "Tadah!": "../../build/docs/xml" }
     html_js_files = [
         ('https://www.googletagmanager.com/gtag/js?id=G-M4X1BWV25W', {'async': 'async'}),
             'js/ganalytics.js',
     ]
-else:
-    #subprocess.call('cd ../build/docs ; doxygen', shell=True)
-    breathe_default_project = "Tadah!"
-    breathe_projects = { "Tadah!": "../../build/docs/xml" }
 
 
 def setup(app):
-    # Run from the directory that contains conf.py so the helper scripts
-    # resolve their own relative paths regardless of where sphinx-build
-    # was invoked from.
-    confdir = os.path.dirname(os.path.abspath(__file__))
-    subprocess.run(['python', os.path.join('config', 'read_toml.py')], cwd=confdir, check=True)
-    subprocess.run(['python', os.path.join('cli', 'generate_cli.py')], cwd=confdir, check=True)   # requires blueprint.toml from read_toml.py
+    # Run the generators with this interpreter, from the directory that
+    # contains conf.py (they resolve their paths relative to it), and pin
+    # them to the CORE/HPO checkouts resolved above.
+    env = dict(os.environ,
+               TADAH_CORE_SOURCE_DIR=_CORE_SOURCE_DIR,
+               TADAH_HPO_SOURCE_DIR=_HPO_SOURCE_DIR)
+    def run(*script):
+        subprocess.run([_sys.executable, os.path.join(*script)],
+                       cwd=_CONFDIR, env=env, check=True)
+    run('config', 'read_toml.py')
+    run('cli', 'generate_cli.py')   # requires blueprint.toml from read_toml.py
     # ANNEAL-family key tables from HPO's registry (single source of truth)
-    subprocess.run(['python', os.path.join('config', 'read_anneal_keys.py')], cwd=confdir, check=True)
+    run('config', 'read_anneal_keys.py')

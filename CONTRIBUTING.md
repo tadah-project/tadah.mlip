@@ -102,16 +102,48 @@ LAMMPS.
 
 ## Running tests
 
-Each repo ships a `ctest` suite that runs out of its own `build/`
-directory. The umbrella build aggregates all of them:
+Each repo ships a Catch2 suite, built when the project is configured
+with `-DBUILD_TESTING=ON`. The umbrella build aggregates the suites of
+every module it builds:
 
 ```bash
 cd Tadah.MLIP/build
 ctest --output-on-failure
 ```
 
-The aggregated suite currently contains 500 tests; it should run
-clean on `develop` and on `release/beta-prep`.
+Every non-hidden Catch2 test case is its own CTest entry (`ctest -N`
+lists them). Hidden test cases (tags `[.]`, `[.tag]` or `[!benchmark]`)
+are not discovered; they run under CTest only through an explicit entry
+(see below), where one exists. The suite should run clean on `v1-dev`.
+
+Test discovery comes from cmake-tools: each module's `tests/CMakeLists.txt`
+calls `tadah_setup_tests()`, `include(Catch)` and `catch_discover_tests()`
+(see the cmake-tools README). It guarantees that:
+
+- each non-hidden test case is registered exactly once, under its exact
+  name, and its entry selects exactly that case, whatever characters the
+  name contains (`;`, `[`, `,`, `\`, a leading `#`, `~`, `-` or tab, ...);
+- every entry passes `--warn NoTests`, so an entry that matches no test
+  case fails instead of passing silently. Catch accepts `--warn` only
+  once, so `EXTRA_ARGS` of `catch_discover_tests()` containing `--warn` or
+  `-w` stop the build;
+- a name Catch cannot select on its own stops the build with a message
+  naming the test: a leading or trailing `*` (always a wildcard), a blank
+  name, or a name that differs from another test case's name, hidden ones
+  included, only in letter case or surrounding whitespace. Rename the test
+  case.
+
+Do not vendor `catch.hpp` or the Catch CMake scripts in a module. A hidden
+tag (`[.statistical]`) runs through an explicit entry, which also needs the
+flag: `add_test(NAME x COMMAND test_foo "[.tag]" --warn NoTests)`.
+`ctest -R tadah_catch` runs the regression tests for the discovery itself
+(`tests/catch_discovery`).
+
+**Pitfall:** MLIP redefines `add_test()` globally (to skip Gemmi's own
+test) and forwards its arguments unquoted. In every `add_test()` that runs
+after MLIP is configured (in the umbrella build: MLIP, MD, HPO, Tadah.LAMMPS
+and the umbrella itself), an argument containing `;` is split in two and an
+empty argument is dropped. Discovered entries are not affected.
 
 For the HPO worked-example regression suite (added during the beta
 prep — fast subset runs in ~5 s):

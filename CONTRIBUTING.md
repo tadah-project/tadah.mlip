@@ -188,9 +188,22 @@ TADAH_DOXYGEN_XML_DIR="$TMPDIR/doxy/docs/xml" \
 python3 -m unittest discover -s Tadah.MLIP/docs/tools/tests -v
 ```
 
-The unit tests cover the input lookup (`docs/source/config/source_locator.py`).
-The GitLab `docs_sphinx` job runs them and the same build, with all
-three variables set explicitly.
+The unit tests cover the input lookup (`docs/source/config/source_locator.py`)
+and the `hpo.html` redirect check. The GitLab `docs_sphinx` job runs them
+and the same build, with all three variables set explicitly.
+
+`hpo.html`, the Nested Fitting page before 1.5.1, is now a redirect
+(`docs/source/_extra/hpo.html`) to the pages it was split into. After
+every build with the `html` builder, the `check_redirect` Sphinx
+extension (`docs/tools/check_redirect.py`, listed in `conf.py`) checks
+that each anchor of the old page (`docs/tools/hpo_legacy_anchors.txt`)
+still reaches a page that has it, and any miss is a build warning. If you
+rename or move a section of the Nested Fitting pages, add a route for its
+old anchor to the routes table in `hpo.html`. The page links to the flat
+page names of the `html` builder; other HTML builders (`dirhtml`,
+`singlehtml`, `epub`) copy it too, and the build then warns that the
+redirect is not checked. `.readthedocs.yaml` keeps it out of the Read the
+Docs search index.
 
 ## Coding style
 

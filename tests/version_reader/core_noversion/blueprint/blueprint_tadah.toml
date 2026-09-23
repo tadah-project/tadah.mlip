@@ -1,0 +1,6 @@
+# Fixture: [TADAH] without a version line.
+[OTHER]
+version = "0.0.1"
+
+[TADAH]
+name = "fixture"

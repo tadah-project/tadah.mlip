@@ -2,7 +2,7 @@
 [![coverage](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/badges/develop/coverage.svg)](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/commits/develop)
 [![docs](https://readthedocs.org/projects/tadah/badge/?version=develop)](https://tadah.readthedocs.io/develop/)
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
-[![version](https://img.shields.io/badge/version-1.3.0--beta.1-blue.svg)](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/tags)
+[![version](https://img.shields.io/badge/version-1.5.1-blue.svg)](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/tags)
 
 # Tadah!MLIP
 

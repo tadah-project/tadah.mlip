@@ -30,6 +30,19 @@ Pre-release suffixes (`-beta.1`, `-rc.1`, etc.) are allowed in the
 TOML; CMake's `project(VERSION)` call sees only the numeric M.m.p
 portion (handled by `tadah_read_version_from_blueprint`).
 
+Each module reads the version *after* its Tadah dependencies have been
+made available, so CORE's blueprint is found in both the sibling
+(developer) and the FetchContent layout; a missing blueprint or version
+line is a configure error, never a `0.0.0` default. The blueprint is a
+configure dependency, so a bump re-runs CMake on the next build. The
+Sphinx docs read the same file (`docs/source/config/blueprint_source.py`:
+the sibling CORE checkout, or a clone of the built branch on CI/RTD), and
+`ctest -R tadah_version` checks that `tadah --version` matches it.
+
+Not derived from the blueprint, update them by hand with each release:
+the version badge in every repo's `README.md`, `CITATION.cff`
+(`version`, `date-released`) and the `CHANGELOG.md` files.
+
 ## Process for a beta / RC / final release
 
 1. **Open a release branch on `core`**: `release/v<X.Y.Z>` off

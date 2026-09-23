@@ -1,0 +1,10 @@
+# Fixture: a version outside [TADAH] must be ignored.
+[OTHER]
+version = "0.0.1"
+
+[TADAH]
+name = "fixture"
+version = "9.8.7-rc.1"
+
+[AFTER]
+version = "0.0.2"

@@ -127,12 +127,10 @@ endif()
 # Set the project version from the blueprint TOML (single source of truth).
 # CORE has been populated by the FetchContent step above, so its blueprint
 # is available at ${Tadah.CORE_SOURCE_DIR}/blueprint/blueprint_tadah.toml.
-if(COMMAND tadah_read_version_from_blueprint)
-  tadah_read_version_from_blueprint(TADAH_VERSION REQUIRED)
-else()
-  set(TADAH_VERSION "0.0.0")
-  message(WARNING "tadah_read_version_from_blueprint not available; defaulting VERSION to 0.0.0")
+if(NOT COMMAND tadah_read_version_from_blueprint)
+  message(FATAL_ERROR "cmake-tools is too old: tadah_read_version_from_blueprint() is missing")
 endif()
+tadah_read_version_from_blueprint(TADAH_VERSION REQUIRED)
 project(${TADAH} VERSION ${TADAH_VERSION} LANGUAGES CXX)
 tadah_message(STATUS "VERSION: ${TADAH_VERSION}")
 

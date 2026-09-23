@@ -50,3 +50,34 @@ endif()
 include(Catch.cmake)                  # helper from Catch2
 catch_discover_tests(test_tadah)
 
+
+# ------------------------------------------------------------------
+# 2. Version single source of truth (CORE blueprint TOML)
+# ------------------------------------------------------------------
+# The binary reports the blueprint version it was built from.
+string(REPLACE "." "\\." _tadah_version_re "${TADAH_VERSION_FULL}")
+add_test(NAME tadah_version_matches_blueprint COMMAND tadah --version)
+set_tests_properties(tadah_version_matches_blueprint PROPERTIES
+  PASS_REGULAR_EXPRESSION "^${_tadah_version_re}[\r\n]*$")
+
+# cmake-tools' reader: found through FetchContent'd CORE, [TADAH]-scoped,
+# registered as a configure dependency; a missing blueprint or version
+# line is a configure error (no 0.0.0 default).
+FetchContent_GetProperties(tadah_cmake)
+set(_vr ${CMAKE_CURRENT_SOURCE_DIR}/version_reader)
+function(tadah_version_reader_test name case core regex)
+  add_test(NAME ${name}
+    COMMAND ${CMAKE_COMMAND} --fresh
+      -S ${_vr}/project -B ${CMAKE_CURRENT_BINARY_DIR}/version_reader/${name}
+      -DCASE=${case}
+      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+      -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+      "-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${core}")
+  set_tests_properties(${name} PROPERTIES PASS_REGULAR_EXPRESSION "${regex}")
+endfunction()
+tadah_version_reader_test(tadah_version_reader_fetchcontent fetchcontent
+  ${_vr}/core_ok "RESULT=9\\.8\\.7\\|9\\.8\\.7-rc\\.1\n.*DEPENDS=[^\n]*core_ok/blueprint/blueprint_tadah\\.toml")
+tadah_version_reader_test(tadah_version_reader_no_version fetchcontent
+  ${_vr}/core_noversion "not found in \\[TADAH\\][ \n]+of[ \n]+[^\n]*core_noversion")
+tadah_version_reader_test(tadah_version_reader_no_core no_core
+  "" "could not find blueprint_tadah\\.toml\\.[ \n]+Tadah\\.CORE has not been made available")

@@ -206,6 +206,12 @@ Build, install, test, and docs from an out-of-tree ``build`` directory:
     ctest --test-dir build                # run tests (requires -DBUILD_TESTING=ON)
     cmake --build build --target docs     # generate local API docs (requires Doxygen)
 
+The ``docs`` target writes the Doxygen XML to ``build/docs/xml``, where the
+Sphinx build of this site looks for it by default. ``CONTRIBUTING.md``
+(*Building the documentation*) lists every input the Sphinx build reads and
+the variables that name them explicitly (``TADAH_DOXYGEN_XML_DIR``,
+``TADAH_CORE_SOURCE_DIR``, ``TADAH_HPO_SOURCE_DIR``).
+
 .. _gofasterstripe:
 
 Go Faster Stripe - Desktop Version

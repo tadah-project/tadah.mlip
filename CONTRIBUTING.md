@@ -158,6 +158,40 @@ The driver compares the example outputs against
 `HPO/examples/<NN>/reference_fingerprint.json`. Per-example tolerance
 overrides live in `HPO/examples/tools/tolerance_overrides.json`.
 
+## Building the documentation
+
+The Sphinx sources live in `docs/source` (Python requirements in
+`docs/requirements.txt`). The build reads three inputs from outside
+this repository. It never falls back to another branch: when an input
+is missing it stops and lists every location it tried.
+
+| Input | Where the build looks, in order |
+|-------|---------------------------------|
+| CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the `CORE` checkout next to `Tadah.MLIP`; `$TADAH_PATH/CORE`; on GitLab CI and Read the Docs only, a shallow clone of the branch being built |
+| HPO sources (ANNEAL key tables) | the same, with `$TADAH_HPO_SOURCE_DIR` and `HPO` |
+| Doxygen XML (API pages) | `$TADAH_DOXYGEN_XML_DIR`; otherwise `build/docs/xml`, which `cmake --build build --target docs` writes |
+
+A variable that is set must be valid. A source override has to name a
+checkout that contains the file the build reads, and the XML override
+has to contain `index.xml`; neither is a hint to be skipped.
+
+An offline build from a workspace, keeping the Doxygen output out of
+the source tree (`build_dir` is any configured `Tadah.MLIP` build; its
+`docs/Doxyfile` writes `docs/xml` relative to where Doxygen runs, and
+Doxygen does not create the `docs` directory itself):
+
+```bash
+mkdir -p "$TMPDIR/doxy/docs"
+(cd "$TMPDIR/doxy" && doxygen "$build_dir/docs/Doxyfile")
+TADAH_DOXYGEN_XML_DIR="$TMPDIR/doxy/docs/xml" \
+  sphinx-build -W --keep-going -b html Tadah.MLIP/docs/source "$TMPDIR/docs_html"
+python3 -m unittest discover -s Tadah.MLIP/docs/tools/tests -v
+```
+
+The unit tests cover the input lookup (`docs/source/config/source_locator.py`).
+The GitLab `docs_sphinx` job runs them and the same build, with all
+three variables set explicitly.
+
 ## Coding style
 
 There is no committed `.clang-format`. Match the surrounding code:

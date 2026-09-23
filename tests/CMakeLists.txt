@@ -81,3 +81,9 @@ tadah_version_reader_test(tadah_version_reader_no_version fetchcontent
   ${_vr}/core_noversion "not found in \\[TADAH\\][ \n]+of[ \n]+[^\n]*core_noversion")
 tadah_version_reader_test(tadah_version_reader_no_core no_core
   "" "could not find blueprint_tadah\\.toml\\.[ \n]+Tadah\\.CORE has not been made available")
+
+
+# ------------------------------------------------------------------
+# 3. Catch test discovery (cmake-tools), used by every Tadah module
+# ------------------------------------------------------------------
+add_subdirectory(catch_discovery)

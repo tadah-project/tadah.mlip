@@ -125,7 +125,7 @@ lint_codespell:
       fi
       export PATH="$HOME/.local/bin:$PATH"
       codespell \
-        --skip='./build*,./external,./_deps,./examples,./docs/source/cli,./docs/source/spelling_wordlist.txt,./docs/source/config/blueprint_tadah.toml,./docs/source/config/config_keys.rst,./tests/catch2' \
+        --skip='./build*,./external,./_deps,./examples,./docs/source/cli,./docs/source/spelling_wordlist.txt,./docs/source/config/blueprint_tadah.toml,./docs/source/config/config_keys.rst' \
         --ignore-words-list='daed,Te,CONFING,Strat,strat,MAPE,mape,lamda,lamdas,fof,struc,smae,eCounter,ue,cNa,unparseable,re-use,re-uses,re-used,re-using,nd,SEH' \
         || true
   allow_failure: true

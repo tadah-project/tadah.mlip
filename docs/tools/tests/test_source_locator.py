@@ -1,0 +1,273 @@
+"""Tests for docs/source/config/source_locator.py and its use in conf.py.
+
+Run: python3 -m unittest discover -s docs/tools/tests -v
+"""
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import types
+import unittest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+DOCS = os.path.normpath(os.path.join(HERE, '..', '..'))
+sys.path.insert(0, os.path.join(DOCS, 'source', 'config'))
+import source_locator as loc  # noqa: E402
+
+CORE_MARKER = os.path.join('blueprint', 'blueprint_tadah.toml')
+HPO_MARKER = os.path.join('blueprint', 'anneal_keys.toml')
+
+
+def make_checkout(root, marker):
+    os.makedirs(os.path.join(root, os.path.dirname(marker)), exist_ok=True)
+    with open(os.path.join(root, marker), 'w') as fh:
+        fh.write('# test\n')
+    return root
+
+
+class FakeGit:
+    '''Stands in for subprocess.run; records every command.'''
+
+    def __init__(self, marker=None, returncode=0, stderr=''):
+        self.marker, self.returncode, self.stderr = marker, returncode, stderr
+        self.calls = []
+
+    def __call__(self, cmd):
+        self.calls.append(cmd)
+        if self.returncode == 0 and self.marker:
+            make_checkout(cmd[-1], self.marker)
+        return types.SimpleNamespace(returncode=self.returncode,
+                                     stderr=self.stderr)
+
+
+class LocateTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix='tadah_locator_test_')
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.workspace = os.path.join(self.tmp, 'workspace')
+        self.tadah_path = os.path.join(self.tmp, 'tadah_path')
+        self.clones = os.path.join(self.tmp, 'clones')
+        for d in (self.workspace, self.tadah_path, self.clones):
+            os.makedirs(d)
+
+    def locate(self, repo, environ, runner=None):
+        return loc.locate(repo, environ=environ, workspace=self.workspace,
+                          runner=runner or FakeGit(), clone_root=self.clones)
+
+    # -- 1. explicit override ------------------------------------------------
+    def test_explicit_override_wins_over_every_other_location(self):
+        explicit = make_checkout(os.path.join(self.tmp, 'mine'), HPO_MARKER)
+        make_checkout(os.path.join(self.workspace, 'HPO'), HPO_MARKER)
+        make_checkout(os.path.join(self.tadah_path, 'HPO'), HPO_MARKER)
+        env = {'TADAH_HPO_SOURCE_DIR': explicit, 'TADAH_PATH': self.tadah_path}
+        self.assertEqual(self.locate('HPO', env), explicit)
+
+    def test_explicit_override_without_marker_is_an_error_not_a_fallback(self):
+        make_checkout(os.path.join(self.workspace, 'CORE'), CORE_MARKER)
+        bad = os.path.join(self.tmp, 'not_core')
+        os.makedirs(bad)
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            self.locate('CORE', {'TADAH_CORE_SOURCE_DIR': bad})
+        msg = str(cm.exception)
+        self.assertIn(f'TADAH_CORE_SOURCE_DIR={bad}', msg)
+        self.assertIn(CORE_MARKER, msg)
+
+    def test_explicit_override_nonexistent_directory(self):
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            self.locate('HPO', {'TADAH_HPO_SOURCE_DIR': '/nonexistent/hpo'})
+        self.assertIn('TADAH_HPO_SOURCE_DIR=/nonexistent/hpo', str(cm.exception))
+
+    def test_explicit_override_set_but_empty_is_an_error(self):
+        make_checkout(os.path.join(self.workspace, 'HPO'), HPO_MARKER)
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            self.locate('HPO', {'TADAH_HPO_SOURCE_DIR': ''})
+        self.assertIn('set but empty', str(cm.exception))
+
+    # -- 2. sibling, 3. $TADAH_PATH -------------------------------------------
+    def test_sibling_checkout_before_tadah_path(self):
+        sibling = make_checkout(os.path.join(self.workspace, 'CORE'), CORE_MARKER)
+        make_checkout(os.path.join(self.tadah_path, 'CORE'), CORE_MARKER)
+        self.assertEqual(self.locate('CORE', {'TADAH_PATH': self.tadah_path}),
+                         sibling)
+
+    def test_lowercase_sibling_checkout(self):
+        sibling = make_checkout(os.path.join(self.workspace, 'hpo'), HPO_MARKER)
+        self.assertEqual(self.locate('HPO', {}), sibling)
+
+    def test_tadah_path_when_no_sibling(self):
+        root = make_checkout(os.path.join(self.tadah_path, 'HPO'), HPO_MARKER)
+        self.assertEqual(self.locate('HPO', {'TADAH_PATH': self.tadah_path}), root)
+
+    def test_directory_without_marker_is_not_a_checkout(self):
+        os.makedirs(os.path.join(self.workspace, 'HPO'))
+        root = make_checkout(os.path.join(self.tadah_path, 'HPO'), HPO_MARKER)
+        self.assertEqual(self.locate('HPO', {'TADAH_PATH': self.tadah_path}), root)
+
+    # -- 4. clone, CI/RTD only --------------------------------------------------
+    def test_no_clone_outside_ci_and_error_lists_every_location(self):
+        git = FakeGit(marker=HPO_MARKER)
+        env = {'TADAH_PATH': self.tadah_path,
+               'CI_COMMIT_REF_NAME': 'v1-dev'}   # a branch alone is not CI
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            self.locate('HPO', env, runner=git)
+        self.assertEqual(git.calls, [])
+        msg = str(cm.exception)
+        for expected in ('$TADAH_HPO_SOURCE_DIR: not set',
+                         os.path.join(self.workspace, 'HPO', HPO_MARKER),
+                         os.path.join(self.workspace, 'hpo', HPO_MARKER),
+                         os.path.join(self.tadah_path, 'HPO', HPO_MARKER),
+                         os.path.join(self.tadah_path, 'hpo', HPO_MARKER),
+                         'skipped (not on GitLab CI or Read the Docs)',
+                         'Set TADAH_HPO_SOURCE_DIR'):
+            self.assertIn(expected, msg)
+        self.assertNotIn('develop', msg)
+
+    def test_error_says_when_tadah_path_is_unset(self):
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            self.locate('CORE', {})
+        self.assertIn('$TADAH_PATH: not set', str(cm.exception))
+
+    def test_gitlab_ci_clones_the_built_branch(self):
+        git = FakeGit(marker=HPO_MARKER)
+        env = {'GITLAB_CI': 'true', 'CI_COMMIT_REF_NAME': 'followups/x'}
+        root = self.locate('HPO', env, runner=git)
+        self.assertEqual(git.calls, [[
+            'git', 'clone', '--depth', '1', '--branch', 'followups/x',
+            'https://git.ecdf.ed.ac.uk/tadah/hpo.git',
+            os.path.join(self.clones, 'HPO')]])
+        self.assertEqual(root, os.path.join(self.clones, 'HPO'))
+
+    def test_rtd_branch_order_matches_tadah_get_git_branch(self):
+        git = FakeGit(marker=CORE_MARKER)
+        env = {'READTHEDOCS': 'True', 'READTHEDOCS_VERSION': 'release-x',
+               'READTHEDOCS_VERSION_NAME': 'release/x'}
+        self.locate('CORE', env, runner=git)
+        self.assertEqual(git.calls[0][5], 'release/x')
+        git = FakeGit(marker=CORE_MARKER)
+        self.locate('CORE', {'READTHEDOCS': 'True',
+                             'READTHEDOCS_VERSION': 'release-x'}, runner=git)
+        self.assertEqual(git.calls[0][5], 'release-x')
+
+    def test_failed_clone_has_no_second_attempt_and_is_reported(self):
+        git = FakeGit(returncode=128,
+                      stderr='Cloning...\nfatal: Remote branch feat not found')
+        env = {'GITLAB_CI': 'true', 'CI_COMMIT_REF_NAME': 'feat'}
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            self.locate('HPO', env, runner=git)
+        self.assertEqual(len(git.calls), 1)
+        msg = str(cm.exception)
+        self.assertIn('hpo.git at feat ($CI_COMMIT_REF_NAME): git clone exited '
+                      'with 128: fatal: Remote branch feat not found', msg)
+        self.assertNotIn('develop', msg)
+
+    def test_clone_without_marker_is_reported(self):
+        git = FakeGit(marker=None)
+        env = {'GITLAB_CI': 'true', 'CI_COMMIT_REF_NAME': 'v1-dev'}
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            self.locate('CORE', env, runner=git)
+        self.assertIn(f'{CORE_MARKER} not in the clone', str(cm.exception))
+
+    def test_ci_without_branch_variable_is_reported(self):
+        git = FakeGit(marker=HPO_MARKER)
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            self.locate('HPO', {'READTHEDOCS': 'True'}, runner=git)
+        self.assertEqual(git.calls, [])
+        self.assertIn('on Read the Docs, but none of CI_COMMIT_REF_NAME',
+                      str(cm.exception))
+
+    def test_locate_file_and_unknown_repo(self):
+        root = make_checkout(os.path.join(self.workspace, 'CORE'), CORE_MARKER)
+        self.assertEqual(
+            loc.locate_file('CORE', CORE_MARKER, environ={},
+                            workspace=self.workspace),
+            os.path.join(root, CORE_MARKER))
+        with self.assertRaises(loc.SourceNotFound):
+            loc.locate_file('CORE', 'no/such/file', environ={},
+                            workspace=self.workspace)
+        with self.assertRaises(ValueError):
+            loc.locate('MODELS', environ={})
+
+
+class DoxygenXmlTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix='tadah_xml_test_')
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.good = os.path.join(self.tmp, 'xml')
+        os.makedirs(self.good)
+        open(os.path.join(self.good, 'index.xml'), 'w').close()
+        self.missing = os.path.join(self.tmp, 'build', 'docs', 'xml')
+
+    def test_explicit_directory(self):
+        self.assertEqual(loc.doxygen_xml_dir(
+            {'TADAH_DOXYGEN_XML_DIR': self.good}, default=self.missing), self.good)
+
+    def test_explicit_directory_without_index_is_an_error(self):
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            loc.doxygen_xml_dir({'TADAH_DOXYGEN_XML_DIR': self.tmp},
+                                default=self.good)
+        self.assertIn(f'TADAH_DOXYGEN_XML_DIR={self.tmp} does not contain '
+                      'index.xml', str(cm.exception))
+
+    def test_explicit_empty_is_an_error(self):
+        with self.assertRaises(loc.SourceNotFound):
+            loc.doxygen_xml_dir({'TADAH_DOXYGEN_XML_DIR': ''}, default=self.good)
+
+    def test_default_directory(self):
+        self.assertEqual(loc.doxygen_xml_dir({}, default=self.good), self.good)
+
+    def test_missing_default_explains_both_remedies(self):
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            loc.doxygen_xml_dir({}, default=self.missing)
+        msg = str(cm.exception)
+        self.assertIn(os.path.join(self.missing, 'index.xml'), msg)
+        self.assertIn('--target docs', msg)
+        self.assertIn('TADAH_DOXYGEN_XML_DIR', msg)
+
+    def test_default_is_the_cmake_docs_target_output(self):
+        checkout = os.path.normpath(os.path.join(DOCS, '..'))
+        self.assertEqual(loc.DEFAULT_DOXYGEN_XML_DIR,
+                         os.path.join(checkout, 'build', 'docs', 'xml'))
+
+
+@unittest.skipIf(shutil.which('sphinx-build') is None,
+                 'sphinx-build is not installed')
+class ConfPyTest(unittest.TestCase):
+    '''conf.py stops the build with the locator's message (no traceback).'''
+
+    def setUp(self):
+        # conf.py resolves CORE, then HPO, then the XML, and stops at the
+        # first failure: fake checkouts make the earlier lookups succeed
+        # without depending on this machine's layout (and never clone).
+        self.tmp = tempfile.mkdtemp(prefix='tadah_conf_test_')
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.core = make_checkout(os.path.join(self.tmp, 'CORE'), CORE_MARKER)
+        self.hpo = make_checkout(os.path.join(self.tmp, 'HPO'), HPO_MARKER)
+
+    def sphinx(self, **overrides):
+        env = dict(os.environ, **overrides)
+        return subprocess.run(
+            ['sphinx-build', '-W', '-b', 'html', os.path.join(DOCS, 'source'),
+             os.path.join(self.tmp, 'html')],
+            env=env, capture_output=True, text=True, timeout=300)
+
+    def test_bad_hpo_override_stops_the_build(self):
+        proc = self.sphinx(TADAH_CORE_SOURCE_DIR=self.core,
+                           TADAH_HPO_SOURCE_DIR='/nonexistent/hpo')
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn('TADAH_HPO_SOURCE_DIR=/nonexistent/hpo does not contain',
+                      proc.stderr)
+        self.assertNotIn('Traceback', proc.stderr)
+
+    def test_bad_doxygen_override_stops_the_build(self):
+        proc = self.sphinx(TADAH_CORE_SOURCE_DIR=self.core,
+                           TADAH_HPO_SOURCE_DIR=self.hpo,
+                           TADAH_DOXYGEN_XML_DIR='/nonexistent/xml')
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn('TADAH_DOXYGEN_XML_DIR=/nonexistent/xml does not contain '
+                      'index.xml', proc.stderr)
+        self.assertNotIn('Traceback', proc.stderr)
+
+
+if __name__ == '__main__':
+    unittest.main()

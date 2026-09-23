@@ -163,7 +163,9 @@ docs_sphinx:
       git clone --depth 1 --branch "$CI_COMMIT_REF_NAME" https://git.ecdf.ed.ac.uk/tadah/core.git "$docs_src/CORE"
       git clone --depth 1 --branch "$CI_COMMIT_REF_NAME" https://git.ecdf.ed.ac.uk/tadah/hpo.git "$docs_src/HPO"
       export TADAH_CORE_SOURCE_DIR="$docs_src/CORE" TADAH_HPO_SOURCE_DIR="$docs_src/HPO"
-      # Input-lookup tests, then the build (conf.py runs the page generators).
+      # Locator and hpo.html redirect checks, then the build (conf.py runs
+      # the page generators; its check_redirect extension checks hpo.html
+      # against the built site).
       python3 -m unittest discover -s docs/tools/tests -v
       sphinx-build -W --keep-going -b html docs/source docs/build/html
   artifacts:

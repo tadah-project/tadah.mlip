@@ -38,6 +38,8 @@ from sphinx.errors import ConfigError as _ConfigError
 
 _CONFDIR = os.path.dirname(os.path.abspath(__file__))
 _sys.path.insert(0, os.path.join(_CONFDIR, 'config'))
+# docs/tools holds the check_redirect extension (see html_extra_path).
+_sys.path.insert(0, os.path.join(_CONFDIR, '..', 'tools'))
 import source_locator as _loc
 import blueprint_source as _bps
 
@@ -71,7 +73,8 @@ version = _short.group(1) if _short else release
 extensions = ['breathe',
               'myst_parser',
               'sphinx_exec_code',
-              'matplotlib.sphinxext.plot_directive']
+              'matplotlib.sphinxext.plot_directive',
+              'check_redirect']
 
 # plot_directive: deterministic inline figures (temperature ladders,
 # acceptance curves, ...). No source links; PNG only, keeps builds fast.
@@ -128,6 +131,13 @@ html_theme = "sphinx_rtd_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# Files copied verbatim to the output root.  _extra/hpo.html redirects the
+# pre-1.5.1 Nested Fitting page (hpo.html) to the pages it was split into;
+# the check_redirect extension (docs/tools/check_redirect.py) verifies its
+# targets after every 'html' build and warns that it is unchecked when
+# another builder copies it.
+html_extra_path = ['_extra']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

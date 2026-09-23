@@ -1,0 +1,85 @@
+# Anchors of the pre-1.5.1 Nested Fitting page (hpo.html), one per line.
+# docs/tools/check_redirect.py checks that _extra/hpo.html sends each one to
+# a page that has the section (see that script for the rules).
+#
+# Source: every id in the article body of hpo.html built with Sphinx 7.4.7
+# from docs/source/hpo.rst at origin/develop (451cd7c), v1.3.0-beta.1 and
+# 259caca^ (the last text on v1-dev before the split), merged and sorted.
+# Sphinx's numbered ids (id1, id2, ...) are left out: they are generated
+# for duplicate targets and name different things in every build.
+additional-options
+background
+bad-potential-early-exit
+best-improvement-histories
+best-only-snapshots
+block-hierarchy
+bound-transforms
+ceres-param-keys
+chain-entries
+configuration-file
+corana-adaptive-variant-opt-in
+cutoffs-of-knot-family-refit-potentials
+designing-failprobe-in
+desktop-build-openmp
+diagnostic-markers
+diagnostic-stdout-markers
+energy-force-stress-validation-metrics
+failscore-grading
+failure-handling-graded-failscore
+failvar-recipes-for-typical-scripts
+how-many-seeds-does-the-optimiser-actually-consume
+hpo-fixweight
+hpo-knot-rcut
+hpo-load-transforms
+individual-validation-targets-and-weights
+init-block-seeding-strategies
+inner-block-nlopt-mlsl-auglag-sub-optimiser
+journal-output
+lib-tadah-algo-anneal-classic-simulated-annealing
+lib-tadah-the-annealing-family
+load-time-data-transforms
+loss-functions
+loss-global-loss-function
+main-log-files
+mpi-build
+multi-node-runs-tadah-hpo-mpi-and-archer2
+nested-fitting
+nfp-manual
+nfp-quick-start
+noise-block
+optimizer-block-common-attributes
+optim-search-space-constraints
+order-of-firing-within-one-iteration
+output-files
+pc-performance-constraints
+performance-constraints
+performance-parallelism
+per-metric-bad-pot-pre-filter
+physics-informed-constraints-pc-lammps
+pinning-and-searching-linear-coefficients
+potential-archives
+practical-advice
+practical-tips
+quick-start
+required-options
+restart-decorator
+result-contract-for-user-scripts
+run-log
+search-space-constraints
+search-space-scaling
+see-also
+setup-effort-honestly
+strategy-block
+tadah-anneal-block
+tadah-anneal-journal
+tadah-anneal-mpi
+the-knobs-most-important-first
+top-level-keys-inside-the-init-block
+type-multistart
+type-plain
+type-prestage-staged-global-local
+validation-set-sanitisation
+warm-start-hot-a0-or-any-hotvar
+warmstart-protocol
+warm-start-protocol-and-bad-potential-early-exit
+what-problem-this-solves

@@ -42,3 +42,13 @@ python:
    install:
    - requirements: docs/requirements.txt
 
+# Server-side search: hpo.html is only a redirect (docs/source/_extra), so it
+# is not indexed.  Setting 'ignore' replaces Read the Docs' default list, so
+# the defaults are repeated.
+search:
+   ignore:
+   - hpo.html
+   - search.html
+   - search/index.html
+   - 404.html
+   - 404/index.html

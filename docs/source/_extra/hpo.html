@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<!--
+  Redirect for the Nested Fitting page that was hpo.html until Tadah! 1.5.1,
+  when it was split into nfp_background, nfp_quickstart and nfp_configuration.
+  Copied verbatim to the output root by html_extra_path (conf.py).
+
+  The script keeps deep links working.  A fragment named in the routes table
+  goes to that target verbatim; every other fragment is carried over to the
+  default page, because nfp_configuration kept the old section ids.  Routes:
+    - the opening sections, now pages of their own: #nested-fitting and
+      #background -> nfp_background, #quick-start and #nfp-quick-start ->
+      nfp_quickstart;
+    - v1.3.0-beta.1 sections that moved to the ANNEAL page or were renamed;
+    - #see-also: that list of links was dropped in the split, so it opens
+      the top of the configuration reference.
+  Without JavaScript the meta refresh opens the configuration reference.
+  docs/tools/check_redirect.py reads the routes table after every HTML build
+  and checks each target page and anchor, and every anchor of the old page
+  (docs/tools/hpo_legacy_anchors.txt).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nested Fitting has moved &mdash; Tadah! documentation</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="nfp_configuration.html">
+<script type="application/json" id="redirect-routes">
+{
+  "default": "nfp_configuration.html",
+  "routes": {
+    "nested-fitting": "nfp_background.html",
+    "background": "nfp_background.html",
+    "quick-start": "nfp_quickstart.html",
+    "nfp-quick-start": "nfp_quickstart.html",
+    "tadah-anneal-block": "anneal.html#tadah-anneal-block",
+    "lib-tadah-algo-anneal-classic-simulated-annealing": "anneal.html#tadah-anneal-block",
+    "corana-adaptive-variant-opt-in": "anneal.html#tadah-anneal-corana",
+    "tadah-anneal-journal": "anneal.html#tadah-anneal-journal",
+    "journal-output": "anneal.html#tadah-anneal-journal",
+    "best-only-snapshots": "nfp_configuration.html#best-improvement-histories",
+    "bound-transforms": "nfp_configuration.html#search-space-scaling",
+    "see-also": "nfp_configuration.html#nfp-manual"
+  }
+}
+</script>
+<script>
+(function () {
+  var table = JSON.parse(document.getElementById("redirect-routes").textContent);
+  var hash = window.location.hash;
+  var id = hash.slice(1);
+  var target = Object.prototype.hasOwnProperty.call(table.routes, id)
+      ? table.routes[id] : table["default"] + hash;
+  window.location.replace(target);
+})();
+</script>
+<noscript><meta http-equiv="refresh" content="0; url=nfp_configuration.html"></noscript>
+</head>
+<body>
+<h1>Nested Fitting has moved</h1>
+<p>The Nested Fitting page (<code>hpo.html</code>) was split in Tadah! 1.5.1
+into <a href="nfp_background.html">Background</a>,
+<a href="nfp_quickstart.html">Quick Start</a> and
+<a href="nfp_configuration.html">Configuration File</a>.</p>
+<p>Continue to the <a href="nfp_configuration.html">Configuration File</a>
+reference. Links to sections of the old page are sent to the same section
+on the new pages.</p>
+</body>
+</html>

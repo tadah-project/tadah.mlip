@@ -1228,7 +1228,9 @@ one a finite number (``MAXTIME`` a positive one).
        (:ref:`restart_decorator`).  Inside an ``INIT`` block the same key
        seeds the stochastic init methods instead; of the optimisers, only
        NLopt reads it, and only when its block has no ``SEED`` of its
-       own.  An ``INNER`` block takes no ``SEED`` (startup error): NLopt
+       own.  Inside a ``RESTART`` block it seeds the ``METHOD`` chain
+       that draws each restart's points (restart *r* with ``SEED + r``).
+       An ``INNER`` block takes no ``SEED`` (startup error): NLopt
        has one random stream per run, seeded by the enclosing block, and
        MLSL/AUGLAG draw their ``INNER`` search from it
        (:ref:`hpo_inner_block`).
@@ -1894,14 +1896,27 @@ RESTART decorator
        ``CONFIG`` is *not* auto-prepended here: a stagnated run already
        has CONFIG in its history.  Without a ``METHOD`` line a restart
        uses the single ``CONFIG`` point.
+   * - ``SEED``
+     - int ≥ 0 (default: none)
+     - Seed of the ``METHOD`` chain: restart *r* (``1`` … ``MAX``) draws
+       its fresh points with ``SEED + r``, so the restart points of a run
+       are reproducible.  Without ``SEED`` each restart draws from
+       ``std::random_device``.
 
 The decorator is active only when **both** ``AFTER_STAGNATION`` and
 ``MAX`` are positive; with either at its default ``0`` the ``RESTART``
-block has no effect.  A ``SEED`` inside ``RESTART`` is ignored: each
-restart draws the seed of its ``METHOD`` chain from
-``std::random_device``, so the fresh points are not reproducible.  Each
-restart gets its own stagnation window — the windows do not bleed into
-each other.  ``RESTART`` runs on one MPI rank only: a launch on more
+block has no effect.  A ``SEED`` inside ``RESTART`` seeds its ``METHOD``
+chain: restart *r* draws its fresh points with ``SEED + r`` (with
+``SEED 42``, restart 1 draws with 43 and restart 2 with 44).  The first
+round does not use the ``RESTART`` chain, so ``SEED`` leaves it
+unchanged.  Without a ``SEED`` each restart draws from
+``std::random_device``, so its fresh points are not reproducible.  Like
+an ``INIT`` block's ``SEED``, it needs a ``RANDOM``, ``LHS`` or
+``SOBOL`` method to draw from: with only ``CONFIG`` or ``WARM`` (or no
+``METHOD`` line) a startup warning says the seed does not affect the
+restart points.  (Before 1.5.1 the ``SEED`` was accepted and ignored.)
+Each restart gets its own stagnation window — the windows do not bleed
+into each other.  ``RESTART`` runs on one MPI rank only: a launch on more
 than one rank rejects it at startup (:ref:`tadah_anneal_mpi`).
 
 A restart re-runs the whole strategy from the *K* fresh points the
@@ -1943,10 +1958,21 @@ draws the same random numbers as without ``RESTART``.  Under
 ``PRESTAGE`` the first round can still take another course: a stagnating
 exploration hands over to the refinement early (above), where without
 ``RESTART`` it runs to its own stop criteria.  The journal's
-``RESTART r/MAX`` line lists the round's seeds, for example ``RESTART
-1/3 -- fresh init from SOBOL; SEED 43, EXPLORE SEED 1718``.  An
-optimiser without ``SEED``
-is unaffected.  NLopt draws from the derived seeds too, even when an
+``RESTART r/MAX`` line lists the round's seeds: the seed its fresh
+points were drawn with, when the ``RESTART`` block has a ``SEED``, then
+the optimisers' derived seeds.  A ``PRESTAGE`` with ``TOPK 1``,
+``SEED 42`` on its refinement, ``SEED 1717`` on its ``EXPLORE`` block
+and ``SEED 11`` in its ``RESTART`` block logs, at the first restart,
+``RESTART 1/3 -- fresh init from SOBOL; RESTART SEED 12, SEED 43,
+EXPLORE SEED 1718``.  The seeds are separate settings: the ``RESTART``
+block's ``SEED`` draws the points, and each optimiser's own ``SEED`` its
+random numbers.  Give them different values.  The ``RANDOM`` method and
+``TADAH:RANDOM`` draw from the same generator, so with equal seeds a
+restart's fresh ``RANDOM`` point is the optimiser's first draw of the
+round, evaluated twice (with ``SEED 5`` in both blocks under ``PLAIN``,
+round *r* seeds both with ``5 + r``).  The same can happen in the first
+round when an ``INIT`` block's ``SEED`` equals the optimiser's.  An
+optimiser without ``SEED`` is unaffected.  NLopt draws from the derived seeds too, even when an
 ``INIT`` block also has a ``SEED``.  Only an NLopt optimiser without a
 ``SEED`` of its own takes its random seed from its ``INIT`` block's
 ``SEED``, which is not derived, so it repeats its random sequence in every
@@ -2689,8 +2715,9 @@ Marker                                                                       Mea
 ``[HPO] REFINEMENT: refining top-K seed(s) via LIB:ALGO``                     Outer (refinement) phase starts.
 ``[HPO] RESTART i/M -- fresh init from METHOD; SEED …``                       Stagnation watchdog fired.  ``METHOD`` is the ``RESTART`` block's
                                                                               init method (``CHAIN`` for several ``METHOD`` lines, ``CONFIG``
-                                                                              without one); ``; SEED …`` lists the round's derived seeds when a
-                                                                              phase has a ``SEED``.
+                                                                              without one); ``; …`` lists the round's seeds: ``RESTART SEED``
+                                                                              (the fresh points', ``SEED + i``) when the ``RESTART`` block has a
+                                                                              ``SEED``, then the derived seeds of the phases that have one.
 ``[HPO] NOISE_AUTO: PARAM fd_step set to V (diag=…, dim=…)``                  ``NOISE.AUTO`` fired and shows the value used.
 ``[HPO] Initial step (LIB:ALGO): …``                                         NLopt run started; the effective per-dimension step is in the journal.
 ``[HPO] OPTIM_SCALE X taken from the TADAH_OPTIM_SCALE …``                    Env override of the scaling policy is active.

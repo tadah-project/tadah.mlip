@@ -160,6 +160,19 @@ class ShippedPageTest(unittest.TestCase):
             self.assertEqual(routes[anchor],
                              'nfp_configuration.html#nfp-manual')
 
+    def test_routes_of_the_renamed_parallelism_sections(self):
+        # 1.5.1 removed the legacy MPI build: the "Desktop build (OpenMP)"
+        # and "MPI build" subsections of Performance & parallelism became
+        # "Within one process ..." and "Across MPI ranks (TADAH_HPO_MPI)".
+        _, table = shipped_routes()
+        routes = table['routes']
+        self.assertEqual(
+            routes['desktop-build-openmp'],
+            'nfp_configuration.html#within-one-process-openmp-and-the-worker-pool')
+        self.assertEqual(
+            routes['mpi-build'],
+            'nfp_configuration.html#across-mpi-ranks-tadah-hpo-mpi')
+
     def test_every_legacy_anchor_is_listed_once(self):
         anchors = check_redirect.read_anchors(check_redirect.DEFAULT_ANCHORS)
         self.assertEqual(len(anchors), len(set(anchors)))

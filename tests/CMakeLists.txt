@@ -66,13 +66,37 @@ tadah_version_reader_test(tadah_version_reader_no_core no_core
 
 
 # ------------------------------------------------------------------
-# 3. Catch test discovery (cmake-tools), used by every Tadah module
+# 3. Removed build options (cmake-tools)
+# ------------------------------------------------------------------
+# cmake-tools stops the configure step when a removed option is ON
+# (TADAH_BUILD_MPI, the legacy MPI training build removed in 1.5.1), and
+# accepts OFF, as set by older presets, and an unset option. Each case
+# configures removed_options/project, which fetches this build's cmake-tools
+# like every Tadah module does.
+foreach(_case on preset_on off preset_off unset)
+  add_test(NAME tadah_removed_option_build_mpi_${_case}
+    COMMAND ${CMAKE_COMMAND}
+      -DCASE=${_case}
+      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/removed_options/${_case}
+      "-DGENERATOR=${CMAKE_GENERATOR}"
+      -DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+      -DCXX=${CMAKE_CXX_COMPILER}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/removed_options/check_removed_option.cmake)
+  set_tests_properties(tadah_removed_option_build_mpi_${_case} PROPERTIES
+    LABELS cmake
+    TIMEOUT 120)
+endforeach()
+
+
+# ------------------------------------------------------------------
+# 4. Catch test discovery (cmake-tools), used by every Tadah module
 # ------------------------------------------------------------------
 add_subdirectory(catch_discovery)
 
 
 # ------------------------------------------------------------------
-# 4. Documentation build tools (docs/tools/tests)
+# 5. Documentation build tools (docs/tools/tests)
 # ------------------------------------------------------------------
 # Unit tests of the docs input lookup (docs/source/config/source_locator.py)
 # and of the hpo.html redirect check (docs/tools/check_redirect.py). They
@@ -100,7 +124,7 @@ set_tests_properties(tadah_docs_tools PROPERTIES
 
 
 # ------------------------------------------------------------------
-# 5. `tadah hpo` stopped by a signal exits with 128 + the signal number
+# 6. `tadah hpo` stopped by a signal exits with 128 + the signal number
 # ------------------------------------------------------------------
 # cli_signal/check_hpo_signal.py runs `tadah hpo` on a tiny problem (no
 # LAMMPS, no network), signals it once evaluations are on disk, and checks

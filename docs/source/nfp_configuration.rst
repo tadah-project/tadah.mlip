@@ -1134,8 +1134,16 @@ being configured: directly inside ``OPTIMIZER`` (short form), at the top
 level of ``STRATEGY`` (for ``TYPE PRESTAGE`` this is the refinement
 optimiser), and inside ``EXPLORE``, ``REFINE`` and ``INNER`` sub-blocks
 (``INNER`` takes every key but ``SEED``, :ref:`hpo_inner_block`).
-Each backend rejects the attributes it cannot honour at startup, naming
-the key.  Every numeric attribute takes exactly one value (``STEP``'s
+What the file alone settles is checked at startup, before any data is
+loaded: each attribute's grammar and range, a missing ``LIB`` or
+``ALGO``, an unknown optimiser, whether the optimiser uses ``STEP``, the
+``INNER`` and ``STRATEGY`` rules and the ``PC_LAMMPS`` /
+``PC_OBSERVABLE`` gradient rules.  A backend's own list of the
+attributes and ``PARAM`` keys it takes is checked when that optimiser
+starts, naming the key (``DLIB:BFGS does not support MAXTIME``): after
+the data are loaded and any ``NOISE CALIBRATION`` evaluations, and for
+the ``PRESTAGE`` refinement only after the whole exploration.  Every
+numeric attribute takes exactly one value (``STEP``'s
 per-key form and ``PARAM`` take a name first): an *integer* one decimal
 digits only (``SEED`` up to 2\ :sup:`64` − 1, ``POPULATION`` and
 ``VECTOR_ARR`` up to 2\ :sup:`32` − 1, ``MAXEVAL`` up to

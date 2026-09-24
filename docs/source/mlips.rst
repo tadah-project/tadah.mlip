@@ -10,6 +10,8 @@ N2
 
 A machine-learned interatomic potential specifically designed to study the phase diagram of N₂ up to 10 GPa. The model uses ``pair_style tadah`` which requires the ``Tadah!LAMMPS`` plugin to be installed (:ref:`installation_lammps`). The potential is robust and highly transferable, although its performance above 10 GPa is unknown. At higher pressure, we expect that its predictions will gradually diverge from experimental results. It won't support high-pressure polymerisation or bond breaking in general due to its rigid nature.
 
+It describes rigid molecules (a ``DIMER`` model): in LAMMPS each N₂ molecule must be two bonded atoms (for example with ``atom_style bond``) kept at the bond length of the potential's ``DIMER`` key, 1.1014 Å, and ``pair_style tadah`` requires ``newton off`` for this potential.
+
 :download:`Tadah!N2 <mlips/tadah.n2>`
 
 `Understanding solid nitrogen through molecular dynamics simulations with a machine-learning potential <https://doi.org/10.1103/PhysRevB.110.184107>`_
@@ -25,12 +27,14 @@ Potentials are provided in both the native Tadah! format, which uses ``pair_styl
 
 We have re-optimized both potentials using nested fitting procedure (NFP) to make them compatible with the current version of Tadah!. The updated potentials have been enhanced by incorporating the classical ZBL potential for energies above 1 keV, smoothly joined to the existing CCSD(T)-based model. In other words, the Tadah! potentials are stiffer in the core electron region, where the ZBL screening function is often inadequate.
 
+Each tabulated file is the corresponding native potential written out by LAMMPS ``pair_write`` at 1000 separations from 0.5 to 12 Å.
+
 - :download:`Tadah!Kr1 <mlips/Tadah.Kr1>`
 - :download:`Tadah!Kr2 <mlips/Tadah.Kr2>`
 - :download:`Tadah!Kr1 tabulated <mlips/Tadah.Kr1.tab>`
 - :download:`Tadah!Kr2 tabulated <mlips/Tadah.Kr2.tab>`
 
-Below are two original potentials designed for an older version of Ta-dah! (``pair_style tadah/tadah``), which is discontinued but still available online: `Ta-dah old version <https://ta-dah.readthedocs.io/en/latest/>`_.
+Below are two original potentials designed for an older version of Ta-dah! (``pair_style tadah/tadah``), which is discontinued but still available online: `Ta-dah old version <https://ta-dah.readthedocs.io/en/latest/>`_. They are in that version's file format, which the current Tadah! does not read.
 
 - :download:`Ta-dah!Kr1 <mlips/ta-dah.kr1>`
 - :download:`Ta-dah!Kr2 <mlips/ta-dah.kr2>`

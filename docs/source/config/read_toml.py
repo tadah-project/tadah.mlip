@@ -3,6 +3,7 @@ This script generates documentation in rst format from
 the TOML dictionary.
 
 It will generate complete config/config_keys.rst file.
+Run it from docs/source (conf.py does); importing it has no side effects.
 
 '''
 import os
@@ -14,20 +15,6 @@ import pytomlpp as p
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from blueprint_source import locate_blueprint
 from source_locator import SourceNotFound
-
-# Copy CORE's blueprint next to the generated pages (generate_cli.py reads it).
-try:
-    _src = locate_blueprint()
-except SourceNotFound as err:
-    sys.exit(f"read_toml.py: {err}")
-shutil.copy(_src, "config/blueprint_tadah.toml")
-print(f"Using blueprint {_src}")
-
-# Path to TOML dict
-d = p.load("config/blueprint_tadah.toml",'r')
-
-# Path to rst outfile
-f = open("config/config_keys.rst", "w")
 
 header = '''
 .. This file, including introduction, is auto-generated from the TOML blueprint file. Do not edit it directly.
@@ -114,11 +101,16 @@ In short, give every keyword exactly the number of values it expects—no more, 
 Supported KEYS
 --------------
 
-This section contains all KEYS currently used by Tadah!MLIP.
+This section contains all KEYS currently used by Tadah!MLIP. A key marked
+**Deprecated** is still accepted in configuration and potential files so that
+older files load: Tadah!MLIP checks its value, ignores it and writes one
+warning per key to standard error each time it reads the file
+(``WARNING: Deprecated key MBLOCK is ignored: ...``; a file and the files it
+includes with CONFIG count as one). VERBOSE does not silence the warning, and
+``pair_style tadah`` prints it too: in LAMMPS it appears on the terminal, not
+in ``log.lammps``, once from every MPI rank that reads the potential.
 
 '''
-
-f.write(header)
 
 def _deepcopy(obj):
     """Tiny helper because we cannot import copy in the RTD sandbox."""
@@ -164,26 +156,24 @@ def _resolve_inheritance(entry: dict, types_tbl: dict) -> dict:
     return merged
 
 
-# ---------------------------------------------------------------------------
-# 1.  Extract the relevant sub-tables from the blueprint
-# ---------------------------------------------------------------------------
-allowed_keys = d.get('ALLOWED_KEYS', {})
-types_table  = d.get('TYPES',        {})
-
-# ---------------------------------------------------------------------------
-# 2.  Walk over all KEY definitions and emit documentation
-# ---------------------------------------------------------------------------
-for key_name, raw_entry in allowed_keys.items():
-
-    # Final field set after resolving possible inheritance
-    entry = _resolve_inheritance(raw_entry, types_table)
+def render_key(key_name: str, entry: dict) -> str:
+    """Return the rst section of one ALLOWED_KEYS entry (inheritance resolved)."""
+    out = []
 
     # ---------------------------------------------------------------------
     # Start a new labelled section
     # ---------------------------------------------------------------------
-    f.write(f".. _{key_name}:\n\n")
-    f.write(f"{key_name}\n")
-    f.write(f"{'^' * len(key_name)}\n")
+    out.append(f".. _{key_name}:\n\n")
+    out.append(f"{key_name}\n")
+    out.append(f"{'^' * len(key_name)}\n")
+
+    # ---------------------------------------------------------------------
+    # Deprecated key (blueprint field `deprecated`): still accepted in
+    # files, warned about once per parse and ignored. It has no default.
+    # ---------------------------------------------------------------------
+    if entry.get('deprecated', ""):
+        reason = entry['deprecated'].strip().replace('\n', '\n   ')
+        out.append(f"\n.. warning::\n\n   **Deprecated.** {reason}\n\n")
 
     # ---------------------------------------------------------------------
     # VALUE TYPE + FORMAT
@@ -198,14 +188,14 @@ for key_name, raw_entry in allowed_keys.items():
             vtype = value_types[idx]   if idx < len(value_types)   else ""
             vfmt  = value_formats[idx] if idx < len(value_formats) else ""
             joined.append(f"[*{vtype}*] {vfmt}".strip())
-        f.write(", ".join(joined) + "\n")
+        out.append(", ".join(joined) + "\n")
 
     # ---------------------------------------------------------------------
     # Maximum number of values
     # ---------------------------------------------------------------------
     if 'value_N' in entry and entry['value_N']:
         vals = " / ".join(str(abs(v)) for v in entry['value_N'])
-        f.write(f"   *Max number of values*: {vals}\n")
+        out.append(f"   *Max number of values*: {vals}\n")
 
     # ---------------------------------------------------------------------
     # Default value(s)
@@ -217,17 +207,17 @@ for key_name, raw_entry in allowed_keys.items():
                 defaults.append(str(v).lower())
             else:
                 defaults.append(str(v))
-        f.write(f"   *Default*: {' / '.join(defaults)}\n")
+        out.append(f"   *Default*: {' / '.join(defaults)}\n")
 
     # ---------------------------------------------------------------------
     # Short description
     # ---------------------------------------------------------------------
     if entry.get('description', ""):
-        f.write("\n   *Description*:\n\n")
+        out.append("\n   *Description*:\n\n")
         # Re-indent every line of the description so wrapped sentences
         # don't break out of the literal block / definition body.
         desc = entry['description'].replace('\n', '\n   ')
-        f.write(f"   {desc}\n")
+        out.append(f"   {desc}\n")
 
     # ---------------------------------------------------------------------
     # Long description (optional)
@@ -245,29 +235,57 @@ for key_name, raw_entry in allowed_keys.items():
             # all author-supplied wrapping and nested indentation.
             if line.startswith(("- ", "* ", "+ ")):
                 if not in_top_level_list and not previous_blank:
-                    f.write("   \n")
+                    out.append("   \n")
                 in_top_level_list = True
             elif not line.strip():
                 in_top_level_list = False
             elif in_top_level_list and not line[0].isspace():
-                f.write("   \n")
+                out.append("   \n")
                 in_top_level_list = False
-            f.write(f"   {line}\n")
+            out.append(f"   {line}\n")
             previous_blank = not line.strip()
-        f.write("\n")
+        out.append("\n")
 
     # ---------------------------------------------------------------------
     # Examples
     # ---------------------------------------------------------------------
     examples = entry.get('examples', [])
     for idx, example in enumerate(examples, start=1):
-        f.write(f"   *Example* {idx}::\n\n")
+        out.append(f"   *Example* {idx}::\n\n")
         # Re-indent every line inside a multi-line example so the
         # literal block stays consistently indented.
         indented = example.replace('\n', '\n       ')
-        f.write(f"       {indented}\n\n")
+        out.append(f"       {indented}\n\n")
 
     # Blank line between keys
-    f.write("\n")
+    out.append("\n")
+    return "".join(out)
 
-f.close()
+
+def render(blueprint: dict) -> str:
+    """Return the whole config_keys.rst page for a parsed blueprint."""
+    allowed_keys = blueprint.get('ALLOWED_KEYS', {})
+    types_table = blueprint.get('TYPES', {})
+    parts = [header]
+    for key_name, raw_entry in allowed_keys.items():
+        parts.append(render_key(key_name,
+                                _resolve_inheritance(raw_entry, types_table)))
+    return "".join(parts)
+
+
+def main():
+    # Copy CORE's blueprint next to the generated pages (generate_cli.py
+    # reads it).
+    try:
+        src = locate_blueprint()
+    except SourceNotFound as err:
+        sys.exit(f"read_toml.py: {err}")
+    shutil.copy(src, "config/blueprint_tadah.toml")
+    print(f"Using blueprint {src}")
+    d = p.load("config/blueprint_tadah.toml", 'r')
+    with open("config/config_keys.rst", "w") as f:
+        f.write(render(d))
+
+
+if __name__ == '__main__':
+    main()

@@ -321,10 +321,9 @@ or ``PC_LAMMPS``):
    # command line: --validation may be omitted
    tadah hpo -c config.train --hpotarget config.hpo
 
-This mode is serial-only (MPI builds reject it — there is no design
-matrix to distribute).  Misconfigurations (lone keys, size mismatches,
-out-of-range indices, missing loss sources, incomplete pin coverage
-without a ``DBFILE``) are rejected at startup with actionable messages.
+Misconfigurations (lone keys, size mismatches, out-of-range indices,
+missing loss sources, incomplete pin coverage without a ``DBFILE``) are
+rejected at startup with actionable messages.
 
 With ``FIXINDEX`` present, analytical/HYBRID gradient strategies fall
 back to finite differences for all parameters: the analytical chain
@@ -475,6 +474,8 @@ Required options
    this variable only, with the same defaults and validation as the
    root ``LOSS`` (:ref:`loss_functions`).
 
+.. _pc_lammps_options:
+
 Additional options
 ~~~~~~~~~~~~~~~~~~
 
@@ -498,13 +499,22 @@ Additional options
    Per-script override of the root ``PC_SCRIPT_TIMEOUT`` (see
    :ref:`pc_lammps_execution`).
 
-``--ncpu <m>``
-   In the MPI build (``TADAH_BUILD_MPI``) the script runs on a
-   sub-communicator of *m* ranks carved out of ``MPI_COMM_WORLD``
-   (``MPI_Comm_create_group``); nothing is spawned.  In the default
-   serial build the option is accepted but has no effect (a warning is
-   logged for ``--ncpu > 1``); script-level parallelism comes from
-   ``THREADS``.  See :ref:`performance_parallelism`.
+``--ncpu`` (removed)
+   Gave the number of MPI ranks for this script in the legacy MPI build,
+   removed in 1.5.1.  A line that contains ``--ncpu`` is rejected at
+   startup, with or without a value:
+
+   .. code-block:: none
+
+      Error on line 12: --ncpu was removed in 1.5.1 (legacy MPI build); parallelism over PC_LAMMPS scripts is THREADS / PC_ISOLATION. Delete --ncpu from this line.
+      Line: PC_LAMMPS --script in.elastic --varloss C11 250 1 --ncpu 8
+
+   Scripts run in parallel over the ``THREADS`` worker slots, each slot's
+   LAMMPS instances in their own worker process under the default
+   ``PC_ISOLATION PROCESS`` (:ref:`pc_lammps_execution`,
+   :ref:`performance_parallelism`).  ``PC_LAMMPS`` lines keep their
+   configuration order everywhere: in the ``outvar.tadah`` and
+   ``loss.tadah`` columns, in the journal and in the potential header.
 
 Any other token on the line is passed to LAMMPS as a command-line
 argument — for example ``-log run.log`` or ``-screen none`` (see
@@ -604,10 +614,11 @@ Four root keys control how ``PC_LAMMPS`` scripts are executed:
    ``THREAD`` runs the instances in-process; it is a deprecated fallback
    and logs a warning.  The worker processes ignore ``SIGINT``,
    ``SIGTERM`` and ``SIGUSR2``: ``tadah`` stops the run and ends them
-   (:ref:`hpo_stopping`).  MPI builds (``TADAH_BUILD_MPI`` /
-   ``TADAH_HPO_MPI``) cannot use worker processes: there the default
-   silently becomes ``THREAD``, and an explicit ``PC_ISOLATION PROCESS``
-   is an error.  Environment override: ``TADAH_PC_ISOLATION``.
+   (:ref:`hpo_stopping`).  The MPI-parallel build (``TADAH_HPO_MPI``,
+   :ref:`tadah_anneal_mpi`) cannot use worker processes: there the default
+   becomes ``THREAD`` (noted in the journal), and an explicit
+   ``PC_ISOLATION PROCESS`` is an error.  Environment override:
+   ``TADAH_PC_ISOLATION``.
 
 ``PC_SCRIPT_TIMEOUT <seconds>|off`` (default ``off``; legacy alias: root ``MAXTIME``)
    A soft wall-clock limit per script, injected as LAMMPS
@@ -1631,9 +1642,12 @@ Requirements and behaviour:
   loss and a lexicographically smaller ``(rank, slot, evaluation)`` key;
 * ``MAXEVAL`` is a hard global cap across seed/probe evaluation,
   population initialisation, annealing, and finalisation.  No rank-0
-  re-evaluation is performed after the budget is exhausted;
-* mutually exclusive with the ``TADAH_BUILD_MPI``
-  (ScaLAPACK-distributed training) build.
+  re-evaluation is performed after the budget is exhausted.
+
+``TADAH_HPO_MPI`` is the only MPI build of Tadah!MLIP: the legacy MPI
+training build (``TADAH_BUILD_MPI``) was removed in 1.5.1, and
+configuring with ``-DTADAH_BUILD_MPI=ON`` is an error
+(:ref:`installation_hpo_mpi`).
 
 ARCHER2 sketch (128 cores/node, 2x AMD EPYC 7742; inter-node
 communication requires MPI; OpenMP cannot span nodes):
@@ -2323,11 +2337,13 @@ variables were removed in this release; use
 Performance & parallelism
 -------------------------
 
-Tadah!MLIP comes in two flavours; the parallel strategy you can exploit
-depends on which one you compiled.
+Every ``tadah hpo`` run parallelises within one process through the
+shared worker pool below.  The MPI-parallel build (``TADAH_HPO_MPI``)
+additionally spreads the ``TADAH:ANNEAL_PT`` / ``TADAH:ANNEAL_PA``
+optimisers over MPI ranks.
 
-Desktop build (OpenMP)
-......................
+Within one process (OpenMP and the worker pool)
+...............................................
 
 * **Shared worker pool** — ``THREADS`` in the ``STRATEGY`` block is the
   total pool width for ``PC_LAMMPS`` fan-out and MLIP train/predict work.
@@ -2350,35 +2366,21 @@ Desktop build (OpenMP)
 
      THREADS  ≤  physical cores allocated to this rank
 
-* **LAMMPS runs** — Tadah!MLIP always links a *serial* LAMMPS library;
-  parallelism is driven *around* LAMMPS, not inside it.
+* **LAMMPS runs** — every LAMMPS instance runs on a single rank: the
+  default build links a *serial* LAMMPS library, and the MPI-parallel
+  build runs each instance on ``MPI_COMM_SELF``.  Parallelism is driven
+  *around* LAMMPS, not inside it.
 
-MPI build
-.........
+Across MPI ranks (TADAH_HPO_MPI)
+................................
 
-The MPI variant (``TADAH_BUILD_MPI``; see the warning in
-:ref:`installation` — it is not functional in this release) parallelises
-the *inner* regression across **all** ranks (host–client pattern) and
-must be linked against an MPI build of LAMMPS.  Nothing is spawned:
-each LAMMPS calculation runs on a sub-communicator of existing ranks.
-
-``--ncpu <m>``
-   On a ``PC_LAMMPS`` line, the host assigns *m* worker ranks to the
-   script, which build a communicator from them
-   (``MPI_Comm_create_group`` on ``MPI_COMM_WORLD``) and run it there.
-   Several ``PC_LAMMPS`` lines may run side by side, each with its own
-   ``--ncpu`` value.  The sum of all requested ranks must not exceed
-   *available ranks − 1* (one rank is reserved for the host).
-
-Example::
-
-   srun -n 64 tadah hpo …             # 64 MPI ranks available
-   ...
-   PC_LAMMPS --script in.elastic --ncpu 8 …
-                                       # runs on 8 of the 63 worker ranks
-
-Multi-node *annealing* runs use the separate ``TADAH_HPO_MPI`` build
-instead (:ref:`tadah_anneal_mpi`).
+The MPI-parallel build distributes the replicas of ``TADAH:ANNEAL_PT``
+and the walkers of ``TADAH:ANNEAL_PA`` over MPI ranks; every rank trains
+its own models and runs its own ``THREADS`` pool.  Build it with
+``-DTADAH_HPO_MPI=ON`` (:ref:`installation_hpo_mpi`); the requirements
+and an ARCHER2 job script are in :ref:`tadah_anneal_mpi`.  Model training
+itself is never distributed: the legacy MPI training build and its
+``PC_LAMMPS --ncpu`` option were removed in 1.5.1.
 
 Practical advice
 ................
@@ -2435,7 +2437,8 @@ harnesses).  An invalid value is an error, not a silent fallback.
      - Replaces ``OPTIM_SCALE`` (:ref:`search_space_scaling`).
    * - ``TADAH_PC_ISOLATION=THREAD|PROCESS``
      - Replaces ``PC_ISOLATION`` (:ref:`pc_lammps_execution`); counts as
-       an explicit request, so ``PROCESS`` is an error in MPI builds.
+       an explicit request, so ``PROCESS`` is an error in the MPI-parallel
+       build.
    * - ``TADAH_PC_WORKER_TIMEOUT=<seconds>``
      - Replaces ``PC_WORKER_TIMEOUT``; same validation.
    * - ``TADAH_FAILSCORE_GRADING=ON|OFF``

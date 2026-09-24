@@ -22,8 +22,8 @@ The training configuration's ``DBFILE`` is itself *optional* when every
 model weight is pinned via ``FIXINDEX``/``FIXWEIGHT`` (see
 :ref:`hpo_fixweight`) — with no free weights there is nothing for the
 least-squares stage to fit.  In that mode the element set must be
-declared explicitly with the ``ATOM`` key, at least one loss source must
-remain, and the run is serial-only (MPI builds reject it).
+declared explicitly with the ``ATOM`` key, and at least one loss source
+must remain.
 
 The driving command line is
 

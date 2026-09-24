@@ -183,21 +183,6 @@ Filtering and weighting
 These transforms are training-time only: they are not stamped into
 ``pot.tadah`` and not re-applied at predict time.
 
-MPI training caveat
-~~~~~~~~~~~~~~~~~~~
-
-The load transforms need a global view of the dataset that is not yet
-wired through the MPI ``TrainerWorker``. Under an MPI training build
-the engine fails fast if ``LSCALE``, ``ESHIFT`` (explicit or derived
-via ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM``), ``EWEIGHT_TEMP``, or
-``WDBFILE_AUTO`` is set — run the training without MPI to use them.
-
-.. note::
-
-   The MPI training build is **not functional in this release**
-   (see :ref:`installation`); this caveat is documented for forward
-   reference only.
-
 .. _train_outputs:
 
 Output files
@@ -281,8 +266,7 @@ whitespace-separated columns with a single header line::
        …
 
 ``Index`` matches the ordering of the ``WEIGHTS`` row in
-``pot.tadah``. ``--uncertainty`` is not supported by the MPI training
-build.
+``pot.tadah``.
 
 Diagnostic output (verbose 2)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1391,6 +1391,8 @@ Any other ``PARAM`` key is rejected, and so are ``FTOL_REL``, ``XTOL_REL``,
 ``DLIB:GFS`` takes ``MAXEVAL`` and ``FTOL_ABS`` (its solver epsilon,
 default ``1e-3``); it is deterministic, so ``SEED`` has no effect.
 
+.. _hpo_init_methods:
+
 INIT block — seeding strategies
 -------------------------------
 
@@ -1428,10 +1430,25 @@ Method           Args           Default K     Effect
 ``CONFIG``       (none)         1             Take the value next to each ``OPTIM`` key.
 ``RANDOM K``     ``K`` (int≥0)  ``K``         ``K`` uniform samples within (transformed) bounds.
 ``LHS K``        ``K`` (int≥1)  ``K``         Latin-hypercube sample (one per stratum per dim).
-``SOBOL K``      ``K`` (int≥0)  ``K``         Sobol low-discrepancy sequence.
+``SOBOL K``      ``K`` (int≥1)  ``K``         Sobol low-discrepancy sequence: ``SEED`` *s* draws block *s*
+                                              of *K* points (below).
 ``WARM <file>``  path           1             Read a previous ``pot.tadah`` and pull values for
                                               every ``OPTIM`` key.
 ================ ============== ============= ===========================================================
+
+``SOBOL`` draws whole blocks of the Sobol sequence: with seed *s* it takes
+block *s* of *K* points, the points *s·K* … *s·K + K − 1* (the seed's 16
+low bits select the block: *s* mod 65536).  Different blocks share no
+point, so these draw disjoint points: the seeds ``SEED + r`` of
+consecutive ``RESTART`` rounds, and an ``INIT`` block and a ``RESTART``
+block with the same ``SEED`` and *K* (:ref:`restart_decorator`).  *K* is the number of points
+the method draws: its ``K``, or ``K_TOTAL`` when ``SOBOL`` is the only
+method.  ``SOBOL 1`` draws point *s*.  Without ``SEED`` the block is
+chosen by ``std::random_device``; in a chain, each method after the first
+draws with a seed derived from ``SEED``.  A block that would run past the
+end of the sequence (2\ :sup:`64` − 1 points) is an error.  Before 1.5.1 a
+seed skipped *s* points, so the seeds *s* and *s + 1* shared *K − 1* of
+their *K* points.
 
 Top-level keys inside the ``INIT`` block
 ........................................
@@ -1900,14 +1917,19 @@ RESTART decorator
      - int ≥ 0 (default: none)
      - Seed of the ``METHOD`` chain: restart *r* (``1`` … ``MAX``) draws
        its fresh points with ``SEED + r``, so the restart points of a run
-       are reproducible.  Without ``SEED`` each restart draws from
+       are reproducible (with ``SOBOL``, block ``SEED + r`` of the
+       sequence).  Without ``SEED`` each restart draws from
        ``std::random_device``.
 
 The decorator is active only when **both** ``AFTER_STAGNATION`` and
 ``MAX`` are positive; with either at its default ``0`` the ``RESTART``
 block has no effect.  A ``SEED`` inside ``RESTART`` seeds its ``METHOD``
 chain: restart *r* draws its fresh points with ``SEED + r`` (with
-``SEED 42``, restart 1 draws with 43 and restart 2 with 44).  The first
+``SEED 42``, restart 1 draws with 43 and restart 2 with 44).  With
+``METHOD SOBOL 3`` these are blocks 43 and 44 of the Sobol sequence,
+points 129–131 and 132–134, so no two rounds draw the same point; an
+``INIT`` block with ``METHOD SOBOL 3`` and ``SEED 42`` draws block 42,
+points 126–128 (:ref:`INIT methods <hpo_init_methods>`).  The first
 round does not use the ``RESTART`` chain, so ``SEED`` leaves it
 unchanged.  Without a ``SEED`` each restart draws from
 ``std::random_device``, so its fresh points are not reproducible.  Like

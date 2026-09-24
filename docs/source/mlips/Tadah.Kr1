@@ -1,5 +1,5 @@
 ALPHA     1
-ATOMS     Kr
+ATOM     Kr
 BETA     1
 BIAS     false
 CGRID2B     1.308673621     4.619281275     1.373961445     1.38488363     4.196574165
@@ -8,22 +8,19 @@ EWEIGHT     1
 FORCE     false
 FWEIGHT     1
 INIT2B     true
-INIT3B     false
 INITMB     false
 LAMBDA     0
-MBLOCK     64
 MODEL     M_BLR     BF_Linear
-MPIWPCKG     50
-NBLOCK     64
 NORM     false
 OALGO     1     -1
-OUTPREC     10
 RCTYPE2B     Cut_Poly     Cut_Cos
 RCUT2B     6.674971509     11.22580031
 SGRID2B     2.883359721     0.094982335     0.2534286099     1.393700019     2.171521196
 STRESS     false
 SWEIGHT     1
-TYPE2B     D2_mJoin     D2_ZBL     -1     -1     -1     -1     Kr     Kr     D2_BP     5     5     Kr     Kr
+TYPE2B     D2_mJoin
+TYPE2B     D2_ZBL     -1     -1     -1     -1     Kr     Kr
+TYPE2B     D2_BP     5     5     Kr     Kr
 VERBOSE     0
-WATOMS     36
+WATOM     36
 WEIGHTS     0.4012804689     0.1682209104     -0.0001248731371     -0.007209822841     0.1027320096     6.834783402e-05

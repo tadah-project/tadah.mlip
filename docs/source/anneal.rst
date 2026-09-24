@@ -165,7 +165,9 @@ and the remaining ``MAXEVAL`` budget is spread evenly over it,
 :math:`\texttt{CHAIN\_LENGTH} = B / M`. The derivation is journaled
 (:ref:`below <tadah_anneal_journal>`). Because auto needs a budget to
 divide, running with auto lengths and no ``MAXEVAL`` is a configuration
-error — either set ``MAXEVAL`` or choose ``CHAIN_LENGTH`` yourself.
+error, reported at startup before any data is loaded (``TADAH:ANNEAL:
+CHAIN_LENGTH AUTO needs MAXEVAL …``) — either set ``MAXEVAL`` or choose
+``CHAIN_LENGTH`` yourself.
 
 Re-annealing
 ------------

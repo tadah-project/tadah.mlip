@@ -49,6 +49,14 @@ optionally ``RESTART``; :ref:`strategy_block`).  Gradient-based backends
 (``NLOPT`` ``LD_*``/``GD_*``, ``CERES``) obtain their gradient by finite
 differences and are rejected when the configuration has ``PC_LAMMPS``
 lines; ``DLIB:BFGS`` is the one gradient-based optimiser accepted there.
+``MAXEVAL`` caps every backend's evaluations; without it a backend runs
+until its own stops end it (convergence, a finite temperature schedule,
+``MAXTIME``, ``STOPVAL``, ASA's limits).  ``TADAH:RANDOM`` and
+``DLIB:GFS`` have none of their own and need ``MAXEVAL``, a startup
+error before any data is loaded, and so is a setting a backend rejects
+(an attribute it does not support, or, for the annealers, ASA,
+``DLIB:BFGS``, ``CERES`` and ``TADAH:GRID``, a ``PARAM`` key it does not
+read; :ref:`nfp_manual`).
 
 .. toctree::
    :maxdepth: 2

@@ -325,8 +325,16 @@ Legal optimisers and the stop-criteria each stage consumes:
      - CERES ``LM`` | ``DOGLEG``; ``NONE``
      - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``
 
-``MAXEVAL`` is the NLopt evaluation budget / Ceres iteration cap; ``FTOL_REL``
-on the Ceres stages is Ceres' relative function tolerance.  A stage's
+What ``MAXEVAL`` caps depends on the library of the ``ALGO``: an NLopt
+algorithm's evaluations, Ceres' iterations (hence the alias ``MAXITER``),
+dlib ``LBFGS``'s L-BFGS iterations, each a line search of one or more
+evaluations, and dlib ``GLOBAL``'s function calls, ``max(500, MAXEVAL/20)``
+of them (integer division, so a ``MAXEVAL`` below 10020 runs 500 calls).
+REFINE's L-BFGS algorithms take 50 per ``MAXEVAL``: ``LD_LBFGS`` 50 NLopt
+evaluations, ``LBFGS`` 50 dlib L-BFGS iterations, capped at 2147483647
+(before 1.5.1 the product overflowed an ``int`` above ``MAXEVAL
+42949672``).  ``FTOL_REL`` on the Ceres stages is Ceres' relative function
+tolerance.  A stage's
 ``OPTIMIZER`` block takes only the keys the stage reads — ``LIB``, ``ALGO``,
 the stop-criteria of this table, and in EXPLORE the ``INNER`` block.  Any
 other optimiser attribute of :ref:`tadah hpo <nfp_manual>` (``THREADS``,
@@ -364,14 +372,75 @@ out still runs the stage with its defaults:
 
    EXPLORE INNER: ALGO is not set; set ALGO in the INNER block (NONE for no local search)
 
-``LIB`` may be left out when the ``ALGO`` names the optimiser
-(``GN_MLSL_LDS``, ``LN_SBPLX``, ``LM``, and ``LD_LBFGS`` in an EXPLORE
-``INNER`` block); ``LBFGS`` and ``GLOBAL`` need ``LIB DLIB``, and
-``LD_LBFGS`` in REFINE needs ``LIB NLOPT``.  (In ``tadah hpo`` every block,
-``INNER`` included, sets both ``LIB`` and ``ALGO``.)  The numbers are read as
-strictly as in ``tadah hpo`` (:ref:`nfp_manual`): ``MAXEVAL`` and ``MAXITER``
-take decimal digits only, from 0 to 2147483647 (the ``int`` budget the refit
-hands NLopt and Ceres), the tolerances and ``GTOL`` a finite number in
+As in ``tadah hpo``, where every block, ``INNER`` included, sets both
+``LIB`` and ``ALGO``, a block that runs an optimiser names the library of
+its ``ALGO`` in ``LIB``:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 52 30
+
+   * - Stage
+     - ``ALGO`` (fitter name / NLopt name)
+     - ``LIB``
+   * - EXPLORE
+     - ``GN_MLSL_LDS`` / ``MLSL`` / ``GN_MLSL``, ``GN_DIRECT_L`` /
+       ``DIRECT`` / ``GN_DIRECT``, ``GN_CRS2_LM`` / ``CRS2`` / ``GN_CRS2``
+     - ``NLOPT``
+   * - EXPLORE
+     - ``GLOBAL`` / ``DLIB_GLOBAL``
+     - ``DLIB``
+   * - EXPLORE
+     - ``UNIFORM``
+     - not checked
+   * - EXPLORE ``INNER``
+     - ``LN_SBPLX`` / ``SBPLX``, ``LN_NELDERMEAD`` / ``NELDERMEAD``,
+       ``LN_BOBYQA`` / ``BOBYQA``, ``LN_PRAXIS`` / ``PRAXIS``, ``LD_LBFGS``
+       / ``NLOPT_LBFGS``
+     - ``NLOPT``
+   * - EXPLORE ``INNER``, REFINE
+     - ``LBFGS`` / ``DLIB_LBFGS``
+     - ``DLIB``
+   * - REFINE
+     - ``LD_LBFGS`` / ``NLOPT_LBFGS``
+     - ``NLOPT``
+   * - REFINE, FUSE
+     - ``LM`` / ``CERES_LM``, ``DOGLEG`` / ``CERES_DOGLEG``
+     - ``CERES``
+   * - every stage
+     - ``NONE`` (EXPLORE: no global search, the same as ``UNIFORM``;
+       ``INNER``: no local search; REFINE, FUSE: the stage is skipped)
+     - none: ``LIB`` is an error
+
+The ``ALGO`` names are the refit's own, not those of ``tadah hpo``: the
+refit's dlib global search is ``GLOBAL`` (``tadah hpo``'s ``DLIB GFS``),
+and ``LBFGS`` is dlib's L-BFGS (NLopt's is ``LD_LBFGS``; in ``tadah hpo``
+``LBFGS`` is a ``CERES`` algorithm).
+
+A missing ``LIB`` and one that does not match the ``ALGO`` are errors
+naming the right one.  The ``LIB`` given may be the one meant, so when the
+stage has algorithms of that library the message names them too.  A
+``LIB`` in a block with ``ALGO NONE``, which runs no optimiser, would have
+no effect and is an error too:
+
+.. code-block:: none
+
+   REFINE: LIB is not set; set LIB NLOPT (ALGO LD_LBFGS is an NLopt algorithm)
+   EXPLORE: LIB CERES does not match ALGO GN_MLSL_LDS, an NLopt algorithm; set LIB NLOPT
+   REFINE: LIB NLOPT does not match ALGO LBFGS, a dlib algorithm; set LIB DLIB, or with LIB NLOPT set ALGO LD_LBFGS
+   EXPLORE INNER: LIB has no effect with ALGO NONE (no local search runs); remove LIB
+
+Before 1.5.1 ``LIB`` could be left out where the ``ALGO`` named the
+optimiser (``GN_MLSL_LDS``, ``LN_SBPLX``, ``LM``, ``DLIB_GLOBAL``, and
+``LD_LBFGS`` in an EXPLORE ``INNER`` block) but not elsewhere
+(``LD_LBFGS`` in REFINE), and a ``LIB`` that did not match the ``ALGO``
+was ignored (``LIB CERES ALGO GN_MLSL_LDS`` ran MLSL).  ``UNIFORM``, the
+refit's own uniform start, belongs to no library, so ``LIB`` is neither
+required nor checked with it.  The numbers are read as strictly as in
+``tadah hpo`` (:ref:`nfp_manual`): ``MAXEVAL`` and ``MAXITER`` take
+decimal digits only, from 1 to 2147483647 (the ``int`` budget the refit
+hands NLopt, dlib and Ceres; ``MAXEVAL 0`` ran Ceres with no iteration and
+NLopt without a limit), the tolerances and ``GTOL`` a finite number in
 decimal form (no hexadecimal float such as ``0x1p-40``).  Every error of a
 stage's ``OPTIMIZER`` block names the block, an ``INNER`` block's as
 ``EXPLORE INNER``:
@@ -379,7 +448,7 @@ stage's ``OPTIMIZER`` block names the block, an ``INNER`` block's as
 .. code-block:: none
 
    REFINE: FTOL_REL must be a finite number, got '0x1p-40'
-   EXPLORE INNER: MAXEVAL must be an integer from 0 to 2147483647, got '4294967299'
+   EXPLORE INNER: MAXEVAL must be an integer from 1 to 2147483647, got '4294967299'
 
 Output files
 ------------

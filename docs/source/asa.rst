@@ -119,8 +119,13 @@ invalid states).  ``FTOL_REL``/``FTOL_ABS`` and ``XTOL_*`` are rejected
 with a pointer at ``Cost_Precision`` + ``Maximum_Cost_Repeat``;
 ``POPULATION``, ``STEP``, ``GRAD_STRATEGY``, ``VECTOR_ARR`` and
 ``INNER`` are rejected (dead knobs are errors, not silent no-ops).
+These checks, and those of the ``PARAM`` keys, run at startup, before any
+data is loaded, on every phase ASA runs in (:ref:`nfp_manual`).
 When ``Gener_Block > 1``, ``MAXTIME``/``STOPVAL`` act at block
-boundaries (``MAXEVAL`` stays exact).
+boundaries (``MAXEVAL`` stays exact).  Without ``MAXEVAL`` there is no
+evaluation limit: ASA's own limits are its stops (``Limit_Generated``
+99999 and ``Limit_Acceptances`` 10000 by default; set both to ``0`` for
+no limit).
 
 Seeding: ``SEED`` at OPTIMIZER/STRATEGY level seeds ASA's proposal
 stream (unset → non-reproducible ``random_device``).  The first

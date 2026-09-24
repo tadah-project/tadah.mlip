@@ -50,7 +50,7 @@ stage blocks included:
 
 .. code-block:: none
 
-   Error on line 6: MAXEVAL must be an integer from 0 to 2147483647, got '1e5'
+   Error on line 6: MAXEVAL must be an integer from 1 to 2147483647, got '1e5'
    Line: MAXEVAL 1e5
 
    Error on line 9: FAILSCORE must be a finite number, got '0x1p40'
@@ -1135,18 +1135,33 @@ level of ``STRATEGY`` (for ``TYPE PRESTAGE`` this is the refinement
 optimiser), and inside ``EXPLORE``, ``REFINE`` and ``INNER`` sub-blocks
 (``INNER`` takes every key but ``SEED``, :ref:`hpo_inner_block`).
 What the file alone settles is checked at startup, before any data is
-loaded: each attribute's grammar and range, a missing ``LIB`` or
-``ALGO``, an unknown optimiser, whether the optimiser uses ``STEP``, the
-``INNER`` and ``STRATEGY`` rules and the ``PC_LAMMPS`` /
-``PC_OBSERVABLE`` gradient rules.  A backend's own list of the
-attributes and ``PARAM`` keys it takes is checked when that optimiser
-starts, naming the key (``DLIB:BFGS does not support MAXTIME``): after
-the data are loaded and any ``NOISE CALIBRATION`` evaluations, and for
-the ``PRESTAGE`` refinement only after the whole exploration.  Every
+loaded or any evaluation runs: each attribute's grammar and range, a
+missing ``LIB`` or ``ALGO``, an unknown optimiser, whether the optimiser
+uses ``STEP``, the ``INNER`` and ``STRATEGY`` rules, the ``PC_LAMMPS`` /
+``PC_OBSERVABLE`` gradient rules, and each backend's own checks of its
+attributes and ``PARAM`` keys.  The annealers, ASA, ``DLIB:BFGS``,
+``CERES`` and ``TADAH:GRID`` reject a ``PARAM`` key they do not read;
+``TADAH:RANDOM`` and ``DLIB:GFS`` read none and check only that
+``MAXEVAL`` is set, and NLopt passes every ``PARAM`` to NLopt, where an
+algorithm reads only the names it knows.  The backend checks run on the
+settings each phase runs with — the ``STRATEGY``-level optimiser, each
+``MULTISTART`` start (with its ``BUDGET_PER_START`` or its share of
+``MAXEVAL``), the ``PRESTAGE`` exploration and refinement, and every
+``INNER`` block — and the message names the phase and the key:
+
+.. code-block:: none
+
+   HPOEngine error: the PRESTAGE refinement: DLIB:BFGS does not support MAXTIME
+
+Before 1.5.1 these backend checks ran when that optimiser started: after
+the data were loaded and any ``NOISE CALIBRATION`` evaluations, for the
+``PRESTAGE`` refinement only after the whole exploration, and under
+``MULTISTART`` each start failed with a warning, so the run ended without
+an evaluation.  Each optimiser still applies them when it starts.  Every
 numeric attribute takes exactly one value (``STEP``'s
 per-key form and ``PARAM`` take a name first): an *integer* one decimal
 digits only (``SEED`` up to 2\ :sup:`64` − 1, ``POPULATION`` and
-``VECTOR_ARR`` up to 2\ :sup:`32` − 1, ``MAXEVAL`` up to
+``VECTOR_ARR`` up to 2\ :sup:`32` − 1, ``MAXEVAL`` from 1 to
 2\ :sup:`31` − 1, ``THREADS`` from 1 to 2\ :sup:`31` − 1), a *float*
 one a finite number (``MAXTIME`` a positive one).
 
@@ -1169,18 +1184,43 @@ one a finite number (``MAXTIME`` a positive one).
        set``.
    * - ``ALGO`` (string)
      - Algorithm (see table below).
-   * - ``MAXEVAL`` (integer, 0 to 2\ :sup:`31` − 1)
-     - Maximum number of evaluations: an integer from 0 to 2147483647,
-       the ``int`` NLopt counts evaluations in.  A larger value is an
-       error at its line (``MAXEVAL must be an integer from 0 to
-       2147483647, got '4294967299'``); before 1.5.1 it wrapped in NLopt,
-       so ``MAXEVAL 4294967299`` ran 3 evaluations.  Leave the key out
-       for no limit: ``MAXEVAL 0`` means different things to different
-       backends — NLopt runs without an evaluation limit, ``TADAH:RANDOM``,
-       the annealers and ASA make no evaluation, ``DLIB:GFS`` evaluates
-       its first starting point only, and ``DLIB:BFGS`` and ``CERES``
-       reject it when they start.  ``TADAH:GRID`` does not read
-       ``MAXEVAL``: it evaluates its whole grid (``PARAM GRID_POINTS``).
+   * - ``MAXEVAL`` (integer, 1 to 2\ :sup:`31` − 1)
+     - Maximum number of evaluations: an integer from 1 to 2147483647,
+       the ``int`` NLopt counts evaluations in.  ``0`` or a larger value
+       is an error at its line (``MAXEVAL must be an integer from 1 to
+       2147483647, got '0'``).  Before 1.5.1 a larger value wrapped in
+       NLopt, so ``MAXEVAL 4294967299`` ran 3 evaluations, and
+       ``MAXEVAL 0`` meant something different to every backend (no
+       limit to NLopt, no evaluation to ``TADAH:RANDOM``, the annealers
+       and ASA, the first starting point to ``DLIB:GFS``, an error when
+       ``DLIB:BFGS`` and ``CERES`` started, nothing to ``TADAH:GRID``).
+
+       Leave the key out for no evaluation limit.  The run then ends on
+       the optimiser's own stops: NLopt, ``DLIB:BFGS`` and ``CERES`` when
+       they converge (their tolerances), ``TADAH:ANNEAL`` and
+       ``ANNEAL_PA`` at the end of their temperature schedule, ASA on its
+       own ``Limit_Generated`` / ``Limit_Acceptances`` and plateau tests,
+       ``TADAH:GRID`` after its whole grid, and ``ANNEAL_PT`` and NLopt's
+       global algorithms on ``MAXTIME``, ``STOPVAL`` or a tolerance —
+       without one of those they run until interrupted (``Ctrl-C`` leaves
+       a valid ``best_pot.tadah``, :ref:`hpo_stopping`).  Two backends
+       have no stopping rule of their own and need ``MAXEVAL``, a startup
+       error naming them: ``TADAH:RANDOM`` (it reads neither ``MAXTIME``
+       nor ``STOPVAL``) and ``DLIB:GFS``.  ``TADAH:ANNEAL`` needs it for
+       its default ``CHAIN_LENGTH AUTO`` / ``NT AUTO`` (set them to run
+       without it):
+
+       .. code-block:: none
+
+          HPOEngine error: the STRATEGY-level optimiser: TADAH:RANDOM needs MAXEVAL: it stops only when its MAXEVAL evaluations are spent (it reads neither MAXTIME nor STOPVAL); set MAXEVAL (an integer from 1 to 2147483647)
+
+       ``TADAH:GRID`` stops after ``MAXEVAL`` points in the order it
+       visits them (the ``INIT`` point, then the grid nodes, the first
+       dimension of the :ref:`dimension order <hpo_dimension_order>`
+       varying fastest), and the journal says so
+       (``GRID: MAXEVAL 5 < 28 grid points (the INIT point, then 27 = 3^3
+       grid nodes); evaluating the first 5 in grid order``); before 1.5.1
+       it ignored ``MAXEVAL`` and evaluated its whole grid.
    * - ``MAXTIME`` (float > 0)
      - Whole-optimiser wall-time in seconds for this active driver, a
        positive number; leave the key out for no limit.  0 or a negative
@@ -1189,8 +1229,12 @@ one a finite number (``MAXTIME`` a positive one).
        ``TADAH`` and was rejected at startup by ASA and the annealers.
        This is distinct from root-level ``PC_SCRIPT_TIMEOUT`` (whose alias
        is root-level ``MAXTIME``, a LAMMPS time spec).
+       ``TADAH:RANDOM``, ``TADAH:GRID`` and ``DLIB:GFS`` do not read it:
+       they accept the key and ignore it.
    * - ``STOPVAL`` (float)
-     - Stop when the loss falls below this value.
+     - Stop when the loss falls below this value.  ``TADAH:RANDOM``,
+       ``TADAH:GRID`` and ``DLIB:GFS`` do not read it: they accept the
+       key and ignore it.
    * - ``FTOL_REL`` (float)
      - Relative tolerance on the loss.
    * - ``FTOL_ABS`` (float)
@@ -1285,7 +1329,13 @@ one a finite number (``MAXTIME`` a positive one).
    * - LIB
      - ALGO (algorithms from the selected library)
    * - ``TADAH``
-     - ``RANDOM`` (uniform random search), ``GRID``, ``ANNEAL`` (classic
+     - ``RANDOM`` (uniform random search: the ``INIT`` point, then
+       ``MAXEVAL`` − 1 uniform draws; ``MAXEVAL`` required),
+       ``GRID`` (the ``INIT`` point, then every node of a
+       ``PARAM GRID_POINTS``\ :sup:`dim` grid, default 20 points per
+       dimension, the first dimension of the :ref:`dimension order
+       <hpo_dimension_order>` varying fastest; ``MAXEVAL`` stops
+       the sweep after that many points), ``ANNEAL`` (classic
        Kirkpatrick/Metropolis Simulated Annealing — see
        :ref:`tadah_anneal_block` below), ``ANNEAL_PT`` (parallel
        tempering, :ref:`tadah_anneal_pt_block`), ``ANNEAL_PA``
@@ -1397,7 +1447,10 @@ Any other ``PARAM`` key is rejected, and so are ``FTOL_REL``, ``XTOL_REL``,
 ``STOPVAL``, ``POPULATION``, integer dimensions and ``INNER`` blocks.
 ``MAXEVAL`` is enforced by HPO (dlib's own stop rules count iterations).
 ``DLIB:GFS`` takes ``MAXEVAL`` and ``FTOL_ABS`` (its solver epsilon,
-default ``1e-3``); it is deterministic, so ``SEED`` has no effect.
+default ``1e-3``); it is deterministic, so ``SEED`` has no effect.  It
+needs ``MAXEVAL``: dlib's global search has no stopping rule of its own,
+so without it the run never ended (now a startup error, ``DLIB:GFS needs
+MAXEVAL: …``).
 
 .. _hpo_init_methods:
 
@@ -1687,8 +1740,16 @@ best-tracker keeps the global minimum across all runs.
    * - ``BUDGET_PER_START``
      - int, 1 to 2\ :sup:`31` − 1
      - derived
-     - Per-start ``MAXEVAL`` override, in ``MAXEVAL``'s range.  When unset HPO splits the
-       outer ``MAXEVAL`` equally across ``N_STARTS`` (ceil division).
+     - Per-start ``MAXEVAL`` override, in ``MAXEVAL``'s range: ``0`` is
+       an error at its line (``BUDGET_PER_START must be an integer from 1
+       to 2147483647, got '0'``).  When unset HPO splits the outer
+       ``MAXEVAL`` over the starts that run (ceil division); with
+       neither, the starts run without an evaluation limit.  A multi-seed
+       optimiser (``DLIB:GFS``) runs once from every ``INIT`` point with
+       the outer ``MAXEVAL``, so ``BUDGET_PER_START`` does not apply to
+       it.  The startup checks see each start's budget: ``MULTISTART``
+       over ``NLOPT:LN_SBPLX`` with ``BUDGET_PER_START 5`` and no
+       ``MAXEVAL`` is valid.
 
 The number of starts is ``min(N_STARTS, number of INIT points)``; when the
 ``INIT`` chain yields fewer points than ``N_STARTS`` a warning says so,
@@ -2737,10 +2798,12 @@ Marker                                                                       Mea
 ``[HPO] WARM: primed warmstart cache with N HOT_A0 entry(ies)``               ``HOT_A0`` lines parsed from a ``WARM`` file.
 ``[HPO] WARM: clamped dim[d] from X to Y (bounds […])``                       Warm point fell outside narrowed bounds.
 ``[HPO] DLIB:GFS seeding with N starting points``                             Multi-seed forwarding.
+``[HPO] GRID: MAXEVAL N < M grid points (…); evaluating the first N …``       ``TADAH:GRID`` stops its sweep after ``MAXEVAL`` points.
 ``[HPO] MULTISTART: running K starts (parallel=N)``                           MULTISTART fires.
 ``[HPO] MULTISTART per-start MAXEVAL = N``                                    Either from ``BUDGET_PER_START`` or split.
 ``[HPO] MULTISTART start i/K -- running inner optimiser (seed=…)``            Per-start; ``(seed=…)`` only when ``SEED`` is set.
-``[HPO] PRESTAGE: exploration phase LIB:ALGO (MAXEVAL=…)``                    PRESTAGE phase starts.
+``[HPO] PRESTAGE: exploration phase LIB:ALGO (MAXEVAL=…)``                    PRESTAGE phase starts (``MAXEVAL=none: no evaluation limit``
+                                                                              when the ``EXPLORE`` block has none).
 ``[HPO] PRESTAGE: top-K losses: …``                                           Snapshot quality after PRESTAGE finishes.
 ``[HPO] REFINEMENT: refining top-K seed(s) via LIB:ALGO``                     Outer (refinement) phase starts.
 ``[HPO] RESTART i/M -- fresh init from METHOD; SEED …``                       Stagnation watchdog fired.  ``METHOD`` is the ``RESTART`` block's

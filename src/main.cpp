@@ -4,7 +4,7 @@
 #include <exception>
 #include <iostream>
 
-#if defined(TADAH_BUILD_MPI) || defined(TADAH_HPO_MPI)
+#ifdef TADAH_HPO_MPI
 #include <mpi.h>
 #endif
 
@@ -21,16 +21,15 @@ namespace tadah { namespace hpo { int pc_worker_main(int argc, char** argv); } }
 
 int main(int argc, char** argv) {
   /* PC_ISOLATION: a re-exec'd pc_lammps worker child. MUST be intercepted
-   * before ANY other init -- in particular before MPI_Init (a fork+exec'd
-   * child of an MPI parent must never touch MPI; MPI builds reject PROCESS
-   * mode at config time and pc_worker_main double-guards). The worker's
+   * before ANY other init -- in particular before MPI_Init_thread (a
+   * fork+exec'd child of an MPI parent must never touch MPI; the
+   * TADAH_HPO_MPI build rejects PROCESS mode at config time and
+   * pc_worker_main double-guards). The worker's
    * socket is inherited on fd 3. */
   if (argc >= 2 && std::strcmp(argv[1], "--tadah-pc-worker") == 0)
     return tadah::hpo::pc_worker_main(argc, argv);
 
-#if defined(TADAH_BUILD_MPI)
-  MPI_Init(&argc, &argv);
-#elif defined(TADAH_HPO_MPI)
+#ifdef TADAH_HPO_MPI
   /* The HPO parallel-annealing drivers (TADAH:ANNEAL_PT / ANNEAL_PA)
    * distribute replicas over ranks while every rank's evaluation
    * threads run their own LAMMPS instances on MPI_COMM_SELF -- those
@@ -78,7 +77,7 @@ int main(int argc, char** argv) {
     ret = 1;
   }
 
-#if defined(TADAH_BUILD_MPI) || defined(TADAH_HPO_MPI)
+#ifdef TADAH_HPO_MPI
   MPI_Finalize();
 #endif
 

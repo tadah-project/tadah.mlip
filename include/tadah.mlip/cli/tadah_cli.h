@@ -128,8 +128,6 @@ void handleCmdCallback(const std::string &blueprintTaskName);
 std::string handleFooterCallback(const core::BlueprintTask &bpTask);
 
 private:
-  int rank=0;
-
   /**
    * @brief Maps subcommand pointers to their associated CLITask.
    *

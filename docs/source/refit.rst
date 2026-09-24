@@ -276,7 +276,10 @@ the extrapolation behaviour.
 **EXPLORE / REFINE / FUSE** each accept ``ENABLED true|false`` (REFINE/FUSE;
 ``ENABLED false`` skips the stage) and a nested ``OPTIMIZER`` block. EXPLORE
 also accepts ``MAX_ADD`` (one value or three ``phi rho F``) capping the basis
-functions added in that stage.
+functions added in that stage: each an integer from 0 to 2147483647.  Leave
+``MAX_ADD`` out for no cap; a negative value, which used to mean no cap, is
+an error (``EXPLORE MAX_ADD must be an integer from 0 to 2147483647, got
+'-1'``).
 
 .. code-block:: none
 
@@ -323,7 +326,60 @@ Legal optimisers and the stop-criteria each stage consumes:
      - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``
 
 ``MAXEVAL`` is the NLopt evaluation budget / Ceres iteration cap; ``FTOL_REL``
-on the Ceres stages is Ceres' relative function tolerance.
+on the Ceres stages is Ceres' relative function tolerance.  A stage's
+``OPTIMIZER`` block takes only the keys the stage reads — ``LIB``, ``ALGO``,
+the stop-criteria of this table, and in EXPLORE the ``INNER`` block.  Any
+other optimiser attribute of :ref:`tadah hpo <nfp_manual>` (``THREADS``,
+``MAXTIME``, ``STOPVAL``, ``POPULATION``, ``STEP``, ``PARAM``, …), ``GTOL``
+in FUSE, and an ``INNER`` block in REFINE or FUSE is an error that names the
+keys the stage reads; before 1.5.1 they were accepted and did nothing:
+
+.. code-block:: none
+
+   REFINE: THREADS is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL/MAXITER, FTOL_REL, GTOL)
+   EXPLORE INNER: MAXTIME is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL, FTOL_REL, XTOL_REL)
+
+``SEED`` is rejected in every stage's ``OPTIMIZER`` block, ``INNER``
+included, with a pointer to ``REFIT_COMPACT_SEED``, which seeds the refit's
+random numbers; ``FTOL_ABS`` on REFINE and FUSE points to ``FTOL_REL``:
+
+.. code-block:: none
+
+   EXPLORE: SEED is not accepted in a tadah refit OPTIMIZER block: the refit's random numbers come from REFIT_COMPACT_SEED; set REFIT_COMPACT_SEED in the configuration instead.
+
+Within a stage, ``GTOL`` is used by the Ceres optimisers (``LM``,
+``DOGLEG``) and ``XTOL_REL`` by the NLopt local searches; with another
+``ALGO`` of the stage they have no effect.
+
+Every ``OPTIMIZER`` block, and an EXPLORE ``INNER`` block, must set
+``ALGO``.  To switch a search off, write it out: ``ALGO NONE`` in an
+``INNER`` block (no local search), in REFINE or FUSE (the stage is
+skipped), and ``ALGO UNIFORM`` (or ``NONE``) for the EXPLORE optimiser (no
+global search).  An ``INNER`` block without ``ALGO`` used to mean no local
+search, while an EXPLORE ``OPTIMIZER`` block without an ``INNER`` block runs
+the default one (``LN_SBPLX``); leaving a stage's whole ``OPTIMIZER`` block
+out still runs the stage with its defaults:
+
+.. code-block:: none
+
+   EXPLORE INNER: ALGO is not set; set ALGO in the INNER block (NONE for no local search)
+
+``LIB`` may be left out when the ``ALGO`` names the optimiser
+(``GN_MLSL_LDS``, ``LN_SBPLX``, ``LM``, and ``LD_LBFGS`` in an EXPLORE
+``INNER`` block); ``LBFGS`` and ``GLOBAL`` need ``LIB DLIB``, and
+``LD_LBFGS`` in REFINE needs ``LIB NLOPT``.  (In ``tadah hpo`` every block,
+``INNER`` included, sets both ``LIB`` and ``ALGO``.)  The numbers are read as
+strictly as in ``tadah hpo`` (:ref:`nfp_manual`): ``MAXEVAL`` and ``MAXITER``
+take decimal digits only, from 0 to 2147483647 (the ``int`` budget the refit
+hands NLopt and Ceres), the tolerances and ``GTOL`` a finite number in
+decimal form (no hexadecimal float such as ``0x1p-40``).  Every error of a
+stage's ``OPTIMIZER`` block names the block, an ``INNER`` block's as
+``EXPLORE INNER``:
+
+.. code-block:: none
+
+   REFINE: FTOL_REL must be a finite number, got '0x1p-40'
+   EXPLORE INNER: MAXEVAL must be an integer from 0 to 2147483647, got '4294967299'
 
 Output files
 ------------

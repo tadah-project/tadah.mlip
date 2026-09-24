@@ -31,8 +31,30 @@ in the order they normally appear:
 
 Block keywords are case-sensitive.  Comments start with ``#``; long
 lines may be continued with a trailing ``\``.  An unknown key is an
-error naming the line, and so is a stray value after an optimiser
-attribute (``LIB``, ``MAXEVAL``, ``PARAM`` …).
+error naming the line, and so is a malformed number, a missing value or
+a stray value after a key (``LIB``, ``MAXEVAL``, ``PARAM`` …).  Numbers
+are read strictly: an integer key takes decimal digits only (no sign,
+fraction or exponent — ``MAXEVAL 1e5`` is an error, write ``100000``)
+within its range, and a real-valued key one whole finite number in the
+decimal form LAMMPS reads — an optional sign, digits with at most one
+decimal point, and an optional exponent (``5``, ``-0.5``, ``.5``,
+``+1e-3``, ``2.5E+07``).  Anything else is an error: ``inf``, ``nan``,
+a hexadecimal float such as ``0x1p4``, trailing characters such as
+``5x``, a number that overflows a double (``1e400``), and one below the
+smallest normal double (``1e-320``, or ``1e-400``, which underflows to
+0).  LAMMPS accepts the last kind; HPO does not.  A number in this
+grammar but outside its key's range is an error that names it as well.
+Every key reads numbers this way, the options of the ``PC_LAMMPS``,
+``PC_FAILPROBE`` and ``PC_OBSERVABLE`` lines and the ``tadah refit``
+stage blocks included:
+
+.. code-block:: none
+
+   Error on line 6: MAXEVAL must be an integer from 0 to 2147483647, got '1e5'
+   Line: MAXEVAL 1e5
+
+   Error on line 9: FAILSCORE must be a finite number, got '0x1p40'
+   Line: FAILSCORE 0x1p40
 
 Root-level keys are read top to bottom, and **order matters** for three
 of them: every ``PC_LAMMPS`` and ``PC_FAILPROBE`` line captures the
@@ -95,9 +117,11 @@ Root-level loss control:
 
    * - Key (type)
      - Description
-   * - ``FAILSCORE`` (float)
+   * - ``FAILSCORE`` (finite float)
      - Ceiling of the evaluation loss: a total above it, or a non-finite
        total, is clipped to ``FAILSCORE`` (default: the largest double).
+       The value must be a finite number (``FAILSCORE abc`` used to set
+       it to ``0``, so every failure scored as the best loss).
        It is also the value a failed ``PC_OBSERVABLE`` term or an
        unreadable ``--varloss`` variable contributes, and the reference
        for graded failures (:ref:`failscore_grading`).  ``PC_LAMMPS``
@@ -474,7 +498,14 @@ Required options
    ``<weight>`` via the root ``LOSS``.  An optional loss name (and, for
    ``HUBER``/``TUKEY``, an optional parameter) overrides the loss for
    this variable only, with the same defaults and validation as the
-   root ``LOSS`` (:ref:`loss_functions`).
+   root ``LOSS`` (:ref:`loss_functions`).  ``<target>``, ``<weight>``
+   and ``<param>`` must be finite numbers; a negative target or weight
+   is accepted.  A malformed value is an error naming the line:
+
+   .. code-block:: none
+
+      Error on line 9: --varloss Ecoh <target> must be a finite number, got '8.1x'
+      Line: PC_LAMMPS --script Ecoh.in --varloss Ecoh 8.1x 800
 
 .. _pc_lammps_options:
 
@@ -493,12 +524,14 @@ Additional options
    The value substituted for each of this script's ``--varloss`` /
    ``--outvar`` variables when the simulation fails (crash, timeout,
    out-of-window hot value, …); the substituted value then passes
-   through the loss against the target like a measured one.  Default:
-   the root ``FAILSCORE`` in force when the line is read.  The ceiling
+   through the loss against the target like a measured one.  A finite
+   number (it may be negative).  Default: the root ``FAILSCORE`` in force
+   when the line is read.  The ceiling
    that clips the *whole* evaluation is always the root ``FAILSCORE``.
 
-``--maxtime <seconds>|off``
-   Per-script override of the root ``PC_SCRIPT_TIMEOUT`` (see
+``--maxtime <time>|off``
+   Per-script override of the root ``PC_SCRIPT_TIMEOUT``, with the same
+   values: ``off``, ``unlimited`` or a positive time (see
    :ref:`pc_lammps_execution`).
 
 ``--ncpu`` (removed)
@@ -518,10 +551,25 @@ Additional options
    configuration order everywhere: in the ``outvar.tadah`` and
    ``loss.tadah`` columns, in the journal and in the potential header.
 
-Any other token on the line is passed to LAMMPS as a command-line
-argument — for example ``-log run.log`` or ``-screen none`` (see
-:ref:`pc_lammps_result_contract` for how HPO renames ``-log`` /
-``-screen`` files per worker).
+Any other option on the line — a token that starts with ``-`` — is
+passed to LAMMPS as a command-line argument together with the values that
+follow it: for example ``-log run.log``, ``-screen none`` or ``-var x 1
+2`` (see :ref:`pc_lammps_result_contract` for how HPO renames ``-log`` /
+``-screen`` files per worker).  An HPO option takes only its own values:
+a value after them is an error naming the option, and so is a value
+before any option.  Before 1.5.1 it was passed to LAMMPS, and every
+evaluation failed on it:
+
+.. code-block:: none
+
+   Error on line 9: --maxtime takes a single value (unexpected '00')
+   Line: PC_LAMMPS --script Ecoh.in --varloss Ecoh 8.10 800 --maxtime 1:30 00
+
+The LAMMPS variable ``maxtime`` is reserved: HPO sets it from
+``PC_SCRIPT_TIMEOUT`` or ``--maxtime`` for the injected ``timer timeout
+${maxtime}`` (:ref:`pc_lammps_execution`), and ``-var maxtime``, ``-v
+maxtime`` or ``--invar maxtime`` on the line is an error.  Before 1.5.1
+such a value replaced the checked, reported limit.
 
 ``--hotvar <name> <min> <max> [<initial>]``
    Declare this ``PC_LAMMPS`` line as *hot*: a two-phase evaluator
@@ -535,7 +583,10 @@ argument — for example ``-log run.log`` or ``-screen none`` (see
    the cold (no-``--hotvar``) ``PC_LAMMPS`` scripts that use it, which
    run in **phase B**.
    ``<initial>`` is optional; when omitted the midpoint of
-   ``[<min>, <max>]`` seeds the first iteration. If a hot value
+   ``[<min>, <max>]`` seeds the first iteration.  ``<min>``, ``<max>``
+   and ``<initial>`` must be finite numbers: a token after ``<max>``
+   that is not an option is ``<initial>``, and a malformed one is an
+   error (it used to be passed on to LAMMPS). If a hot value
    lands outside ``[min, max]`` HPO fail-scores the iteration and
    skips phase B (a *graded* failure when ``FAILSCORE_GRADING ON``
    — see :ref:`failscore_grading`).
@@ -545,7 +596,9 @@ argument — for example ``-log run.log`` or ``-screen none`` (see
    variable that is ``0`` when the simulation vouches for itself and
    ``> 0`` when it failed, with the magnitude measuring *how badly*
    (natural units; ``<scale>`` converts to the dimensionless failure
-   measure, default 1). When it reads ``> 0`` the sim is treated as
+   measure, default 1; a finite number ``> 0``, and like ``--hotvar``'s
+   ``<initial>`` a token that is not an option is it). When it reads
+   ``> 0`` the sim is treated as
    failed, its outvars are excluded from the fit, and — with
    ``FAILSCORE_GRADING ON`` — ``scale × value`` grades the failure
    loss so the optimiser is pulled toward feasibility instead of
@@ -622,11 +675,35 @@ Four root keys control how ``PC_LAMMPS`` scripts are executed:
    ``PC_ISOLATION PROCESS`` is an error.  Environment override:
    ``TADAH_PC_ISOLATION``.
 
-``PC_SCRIPT_TIMEOUT <seconds>|off`` (default ``off``; legacy alias: root ``MAXTIME``)
+``PC_SCRIPT_TIMEOUT <time>|off`` (default ``off``; legacy alias: root ``MAXTIME``)
    A soft wall-clock limit per script, injected as LAMMPS
    ``timer timeout`` after every ``clear`` (a script that issues its
-   own ``timer`` command is left alone).  A timed-out script counts as
-   failed.  Like ``LOSS``, the value is captured by each ``PC_LAMMPS``
+   own ``timer`` command is left alone).  The value is a LAMMPS time
+   spec: ``off`` or ``unlimited`` (no limit), or a positive
+   ``[[HH:]MM:]SS`` of one to three non-empty parts, each a number of the
+   grammar above — ``90``, ``1:30`` and ``00:01:30`` are all 90 s, the
+   seconds ``timer timeout`` makes of them.  That is a strict subset of
+   what LAMMPS reads, which also takes an empty or a fourth part
+   (``1::30``, ``1:2:3:4``) and the forms of ``std::stod`` (``0x10``,
+   ``inf``).  Anything else is an error naming the line
+   (``PC_SCRIPT_TIMEOUT must be 'off', 'unlimited' or a time
+   [[HH:]MM:]SS, got 'bad'``).  A limit of ``0`` or less is rejected too,
+   although LAMMPS accepts it: ``0`` stops every script at its first
+   timer check, and with ``0`` or a negative limit ``$(timeremain)`` is
+   0, so the section guard stops every multi-section script; the
+   evaluations would score ``FAILSCORE``.  Write ``off`` or ``unlimited``
+   for no limit:
+
+   .. code-block:: none
+
+      Error on line 9: PC_SCRIPT_TIMEOUT must be a positive time, 'off' or 'unlimited' (a limit <= 0 stops every script), got '0'
+      Line: PC_SCRIPT_TIMEOUT 0
+
+   ``--maxtime`` follows the same rule.  A limit whose ``PROCESS``
+   worker deadline (below) does not fit in 64-bit milliseconds — above
+   about 3.07·10\ :sup:`15` s — is an error too (``PC_SCRIPT_TIMEOUT is
+   too large for the worker deadline, got '4e15' (…)``).  A timed-out
+   script counts as failed.  Like ``LOSS``, the value is captured by each ``PC_LAMMPS``
    line when it is read; ``--maxtime`` overrides it for one line.  If
    both spellings are given the later line wins and a warning is
    logged.  Do not confuse it with ``MAXTIME`` *inside* the
@@ -635,10 +712,16 @@ Four root keys control how ``PC_LAMMPS`` scripts are executed:
 ``PC_WORKER_TIMEOUT <seconds>`` (default ``0``; ``PROCESS`` mode only)
    The hard deadline after which a worker process running one script is
    killed.  ``0`` derives it from the script's own timeout
-   ``t`` as :math:`\max(3t,\ t + 120\,\mathrm{s})`, and applies no
-   deadline to scripts whose timeout is ``off``; a positive value is
-   used for every script.  Must be a finite number ``≥ 0``.
-   Environment override: ``TADAH_PC_WORKER_TIMEOUT``.
+   ``t`` (in seconds, from its time spec) as
+   :math:`\max(3t,\ t + 120\,\mathrm{s})`, and applies no deadline to
+   scripts whose timeout is ``off`` or ``unlimited``; a positive value is
+   used for every script.  Must be a single finite number ``≥ 0``, at
+   most about 9.2·10\ :sup:`15` s (the deadline is kept in 64-bit
+   milliseconds).  Environment override: ``TADAH_PC_WORKER_TIMEOUT``.
+   (Before 1.5.1 the derived deadline read only the leading number of the
+   time spec: ``2:00:00`` gave 122 s and ``00:05:00`` no deadline; and a
+   deadline above 2\ :sup:`31` − 1 ms, about 24.8 days, wrapped, so
+   the worker was killed early or not at all.)
 
 ``BUMPGATE CANDIDATE|STRICT``
    Not a ``PC_LAMMPS`` setting as such, but it decides whether a
@@ -682,14 +765,16 @@ included.  The only kind at present is ``cohesive_energy``:
    * - ``--lattice bcc``
      - Crystal structure; only ``bcc`` is supported (default).
    * - ``--supercell <nx> <ny> <nz>``
-     - Supercell size (default ``4 4 4``).
+     - Supercell size (default ``4 4 4``): integers from 1 to 2147483647.
    * - ``--loss <name>``
      - Loss of this term (default ``L2``; ``HUBER``/``TUKEY`` use their
        default parameter).
    * - ``--maxiter <n>``
-     - Relaxation iteration cap (default ``5000``).
+     - Relaxation iteration cap (default ``5000``): an integer from 0 to
+       2147483647.
    * - ``--maxeval <n>``
-     - Cap on energy/force evaluations of the relaxation (default ``5000``).
+     - Cap on energy/force evaluations of the relaxation (default
+       ``5000``): an integer from 0 to 2147483647.
    * - ``--etol <x>``
      - Energy convergence tolerance (default ``0``: force-only convergence).
    * - ``--max-wall-time <s>``
@@ -1037,7 +1122,12 @@ level of ``STRATEGY`` (for ``TYPE PRESTAGE`` this is the refinement
 optimiser), and inside ``EXPLORE``, ``REFINE`` and ``INNER`` sub-blocks
 (``INNER`` takes every key but ``SEED``, :ref:`hpo_inner_block`).
 Each backend rejects the attributes it cannot honour at startup, naming
-the key.
+the key.  Every numeric attribute takes exactly one value (``STEP``'s
+per-key form and ``PARAM`` take a name first): an *integer* one decimal
+digits only (``SEED`` up to 2\ :sup:`64` − 1, ``POPULATION`` and
+``VECTOR_ARR`` up to 2\ :sup:`32` − 1, ``MAXEVAL`` up to
+2\ :sup:`31` − 1, ``THREADS`` from 1 to 2\ :sup:`31` − 1), a *float*
+one a finite number (``MAXTIME`` a positive one).
 
 .. list-table::
    :header-rows: 1
@@ -1058,12 +1148,26 @@ the key.
        set``.
    * - ``ALGO`` (string)
      - Algorithm (see table below).
-   * - ``MAXEVAL`` (uint)
-     - Maximum number of evaluations.
-   * - ``MAXTIME`` (float)
-     - Whole-optimiser wall-time in seconds for this active driver.  This is
-       distinct from root-level ``PC_SCRIPT_TIMEOUT`` (whose alias is
-       root-level ``MAXTIME``).
+   * - ``MAXEVAL`` (integer, 0 to 2\ :sup:`31` − 1)
+     - Maximum number of evaluations: an integer from 0 to 2147483647,
+       the ``int`` NLopt counts evaluations in.  A larger value is an
+       error at its line (``MAXEVAL must be an integer from 0 to
+       2147483647, got '4294967299'``); before 1.5.1 it wrapped in NLopt,
+       so ``MAXEVAL 4294967299`` ran 3 evaluations.  Leave the key out
+       for no limit: ``MAXEVAL 0`` means different things to different
+       backends — NLopt runs without an evaluation limit, ``TADAH:RANDOM``,
+       the annealers and ASA make no evaluation, ``DLIB:GFS`` evaluates
+       its first starting point only, and ``DLIB:BFGS`` and ``CERES``
+       reject it when they start.  ``TADAH:GRID`` does not read
+       ``MAXEVAL``: it evaluates its whole grid (``PARAM GRID_POINTS``).
+   * - ``MAXTIME`` (float > 0)
+     - Whole-optimiser wall-time in seconds for this active driver, a
+       positive number; leave the key out for no limit.  0 or a negative
+       value is an error at its line (``MAXTIME must be a positive number
+       of seconds, got '-5'``); before 1.5.1 it meant no limit to NLopt and
+       ``TADAH`` and was rejected at startup by ASA and the annealers.
+       This is distinct from root-level ``PC_SCRIPT_TIMEOUT`` (whose alias
+       is root-level ``MAXTIME``, a LAMMPS time spec).
    * - ``STOPVAL`` (float)
      - Stop when the loss falls below this value.
    * - ``FTOL_REL`` (float)
@@ -1074,7 +1178,7 @@ the key.
      - Relative tolerance on hyperparameters.
    * - ``XTOL_ABS`` (float)
      - Absolute tolerance on hyperparameters.
-   * - ``POPULATION`` (uint)
+   * - ``POPULATION`` (integer)
      - Population size for population-based algorithms.
    * - ``STEP`` (float)
      - Initial step for the NLopt derivative-free algorithms, as a
@@ -1086,7 +1190,13 @@ the key.
        NEWUOA/PRAXIS collapse them to one radius, MLSL/AUGLAG forward
        them to ``INNER`` (an outer ``STEP`` overrides an ``INNER`` one).
        Per-key/per-index overrides: ``STEP <KEY>[(indices)] <fraction>``
-       (repeatable).  Near a bound the step is adjusted per dimension
+       (repeatable); the index list has the grammar of the ``OPTIM``
+       lines (``1-4,7``, indices from 1).  Every fraction must be a
+       finite number, and a malformed value or index list is an error
+       naming the line (``STEP must be a finite number, got 'inf'``,
+       ``STEP override 'CGRID2B(3x)': bad index list (…)``); before 1.5.1
+       ``STEP inf`` failed only when the run started, and an index that
+       did not parse was dropped, so ``CGRID2B(3x)`` set every index.  Near a bound the step is adjusted per dimension
        (BOBYQA: shrunk to 0.75 of the slack so the warm start is not
        relocated; SBPLX: pointed inward).  Unset: NLopt's own
        per-dimension default (25 % of the width, or 75 % of the distance
@@ -1095,7 +1205,7 @@ the key.
        ``PARAM GRID_POINTS``; GFS/RANDOM/BFGS/CERES/ASA have no initial
        step).  The effective per-dimension step and the algorithm's
        consumption mode are printed in ``hpo_run.log``.
-   * - ``SEED`` (uint)
+   * - ``SEED`` (integer ≥ 0)
      - Random seed of stochastic optimisers (default: drawn from
        ``std::random_device``, so a run without ``SEED`` is not
        reproducible).  ``DLIB:BFGS`` rejects it; ``DLIB:GFS`` is
@@ -1109,15 +1219,19 @@ the key.
        has one random stream per run, seeded by the enclosing block, and
        MLSL/AUGLAG draw their ``INNER`` search from it
        (:ref:`hpo_inner_block`).
-   * - ``VECTOR_ARR`` (uint)
+   * - ``VECTOR_ARR`` (integer)
      - Storage size required by some NLOpt algorithms.
-   * - ``THREADS`` (uint)
+   * - ``THREADS`` (integer ≥ 1)
      - Width of the shared per-rank worker pool that runs the
        ``PC_LAMMPS`` fan-out and MLIP train/predict for every backend
        (default ``1``; ``ANNEAL_PT``/``ANNEAL_PA`` also cap concurrent
-       replicas by it).  Only the value at the ``OPTIMIZER`` /
-       ``STRATEGY`` level sizes the pool; ``THREADS`` inside ``EXPLORE``,
-       ``REFINE`` or ``INNER`` does not resize it.
+       replicas by it).  The value of the ``STRATEGY``-level optimiser
+       sizes the pool: at the ``OPTIMIZER`` / ``STRATEGY`` level, or in a
+       ``REFINE`` block, which configures the same optimiser.
+       ``THREADS`` inside ``EXPLORE`` or ``INNER`` does not resize it.  ``THREADS 0`` is an
+       error at its line in every block (``THREADS must be an integer
+       from 1 to 2147483647, got '0'``); before 1.5.1 it was accepted,
+       and the pool quietly ran one worker.
    * - ``GRAD_STRATEGY`` (string)
      - How gradient-based backends obtain gradients: ``NUMERICAL``
        (default; finite differences, see ``PARAM fd_step`` /
@@ -1128,7 +1242,11 @@ the key.
        with ``PC_OBSERVABLE``.  Both rules hold in every block that
        configures an optimiser, ``EXPLORE`` and ``INNER`` included.
    * - ``PARAM`` (string value)
-     - Algorithm-specific key/value (e.g. ``PARAM fd_step 1e-3``).  Keys
+     - Algorithm-specific key/value (e.g. ``PARAM fd_step 1e-3``).  A
+       value that starts like a number must be a finite number
+       (``PARAM fd_step inf`` and ``PARAM fd_step 5x`` are errors naming
+       the line); a word (``AUTO``, ``inhouse``) is passed to the
+       backend as it is.  Keys
        understood by the finite-difference gradient of every
        gradient-based backend: ``fd_step`` (step as a fraction of the
        internal coordinate, default ``1e-6``) and ``fd_kernel``
@@ -1293,9 +1411,9 @@ before the optimiser runs.
 Method           Args           Default K     Effect
 ================ ============== ============= ===========================================================
 ``CONFIG``       (none)         1             Take the value next to each ``OPTIM`` key.
-``RANDOM K``     ``K`` (uint)   ``K``         ``K`` uniform samples within (transformed) bounds.
-``LHS K``        ``K`` (uint)   ``K``         Latin-hypercube sample (one per stratum per dim).
-``SOBOL K``      ``K`` (uint)   ``K``         Sobol low-discrepancy sequence.
+``RANDOM K``     ``K`` (int≥0)  ``K``         ``K`` uniform samples within (transformed) bounds.
+``LHS K``        ``K`` (int≥1)  ``K``         Latin-hypercube sample (one per stratum per dim).
+``SOBOL K``      ``K`` (int≥0)  ``K``         Sobol low-discrepancy sequence.
 ``WARM <file>``  path           1             Read a previous ``pot.tadah`` and pull values for
                                               every ``OPTIM`` key.
 ================ ============== ============= ===========================================================
@@ -1316,11 +1434,11 @@ Top-level keys inside the ``INIT`` block
      - single ``CONFIG`` point when no ``METHOD`` line is given
      - Append an entry to the chain (see table above).
    * - ``K_TOTAL``
-     - uint
+     - integer ≥ 0
      - sum of strategies' default K
      - Cap on total starting points produced.
    * - ``SEED``
-     - uint
+     - integer ≥ 0
      - ``std::random_device``
      - Seed for the stochastic methods (RANDOM / LHS / SOBOL).  An NLopt
        optimiser without a ``SEED`` of its own also takes its random seed
@@ -1332,6 +1450,10 @@ Top-level keys inside the ``INIT`` block
      - ``warn`` / ``error`` / ``skip``
      - ``warn``
      - What to do when ``WARM`` cannot fill every ``OPTIM`` key.
+
+Each ``METHOD`` line is checked where it is written — a known method,
+its argument count and ``K`` — so an error names that line (``Error on
+line 3: INIT METHOD RANDOM K must be an integer >= 0, got '3x'``).
 
 There is no ``INCLUDE_CONFIG`` keyword.  The in-config point is part of
 the chain only when ``METHOD CONFIG`` is listed explicitly; an
@@ -1523,9 +1645,9 @@ best-tracker keeps the global minimum across all runs.
      - Concurrent starts (currently parsed and validated; runs
        sequentially with a stderr warning if ``PARALLEL > 1``).
    * - ``BUDGET_PER_START``
-     - int ≥ 1
+     - int, 1 to 2\ :sup:`31` − 1
      - derived
-     - Per-start ``MAXEVAL`` override.  When unset HPO splits the
+     - Per-start ``MAXEVAL`` override, in ``MAXEVAL``'s range.  When unset HPO splits the
        outer ``MAXEVAL`` equally across ``N_STARTS`` (ceil division).
 
 The number of starts is ``min(N_STARTS, number of INIT points)``; when the
@@ -2050,10 +2172,13 @@ Cadence and formatting:
 Key          Default   Effect
 ============ ========= =================================================================
 ``OUTPUT N`` ``1``     Write a main-file row when the iteration is divisible by ``N``;
-                       ``N ≥ 1`` (``0`` is rejected — use a large value to write little).
-``DIGITS d`` ``6``     Decimal digits in scientific-notation columns; ``1 ≤ d ≤ 15``.
+                       integer ``N ≥ 1`` (``0`` is rejected — use a large value to write
+                       little).
+``DIGITS d`` ``6``     Decimal digits in scientific-notation columns; integer
+                       ``1 ≤ d ≤ 15``.
 ``QFLUSH N`` ``10``    Queued completed results that trigger a writer-thread drain;
-                       the end of the run drains the remainder
+                       integer ``N ≥ 0`` (``0`` and ``1`` drain after every result).
+                       The end of the run drains the remainder
                        (:ref:`hpo_stopping`).
 ============ ========= =================================================================
 
@@ -2087,8 +2212,8 @@ recorded in ``hpo_run.log`` and in the header of ``best_pot.tadah``).
    * - ``BOUTPUT N``
      - ``1``
      - A cadence over new bests: write the ``best_*`` history row of
-       every ``N``-th improvement (``k`` divisible by ``N``).  ``N ≥ 1``;
-       ``0`` is rejected.  ``best_pot.tadah`` is updated on every
+       every ``N``-th improvement (``k`` divisible by ``N``).  Integer
+       ``N ≥ 1``; ``0`` is rejected.  ``best_pot.tadah`` is updated on every
        improvement regardless.
 
 .. _hpo_potential_archives:
@@ -2155,9 +2280,10 @@ live warm start without waiting for normal program termination.
 Key                          Default        Effect
 ============================ ============== =================================================================
 ``DUMP <N> <DIR>``           off            Save the trial potential of every ``N``-th evaluation as
-                                            ``<DIR>/pot_<iter>.tadah``.  ``N ≥ 1`` and ``<DIR>`` are both
-                                            required (``0`` is rejected); the directory is created if
-                                            needed.
+                                            ``<DIR>/pot_<iter>.tadah``.  Integer ``N ≥ 1`` and ``<DIR>``
+                                            are both required (``0`` is rejected), and nothing may
+                                            follow them; the directory is created once the line is
+                                            valid.
 ``BDUMP <N> <DIR>``          off            Save every ``N``-th new best as
                                             ``<DIR>/best_pot_<k>.tadah``, ``k`` being the improvement
                                             ordinal.  Same rules as ``DUMP``.

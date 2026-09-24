@@ -24,6 +24,9 @@ target_link_libraries(test_tadah
     tadah.models
     tadah.mlip)
 target_include_directories(test_tadah PRIVATE ../include)
+# test_published_potentials.cpp loads the potentials published with the docs.
+target_compile_definitions(test_tadah PRIVATE
+  TADAH_PUBLISHED_MLIPS_DIR="${PROJECT_SOURCE_DIR}/docs/source/mlips")
 
 if(TADAH_ENABLE_NFP)
   target_link_libraries(test_tadah PRIVATE tadah.hpo tadah.lammps)

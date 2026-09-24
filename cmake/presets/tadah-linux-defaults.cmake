@@ -102,14 +102,3 @@ set(TADAH_LAMMPS_DIR "" CACHE PATH
 
 set(TADAH_LAMMPS_LIBS "" CACHE STRING
   "NFP: Extra link libraries for LAMMPS static linking (CMake list, e.g. -lz;-lzstd)")
-
-
-# -----------------------------------------------------------------------------
-# EXPERIMENTAL FEATURES BELOW
-# -----------------------------------------------------------------------------
-
-# -----------------------------------------------------------------------------
-# MPI build (experimental; defaults: OFF)
-# -----------------------------------------------------------------------------
-set(TADAH_BUILD_MPI OFF CACHE BOOL
-  "Build MPI-enabled Tadah (experimental). Requires MPI toolchain and libraries.")

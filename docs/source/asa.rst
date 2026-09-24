@@ -322,9 +322,11 @@ trade-off.
 
 Concurrency contract: ``asa()`` is not re-entrant (upstream statics),
 so one ASA run executes per process at a time; the ``RESTART`` decorator
-re-runs it sequentially and works unchanged.  ``STRATEGY TYPE
-MULTISTART`` (and a ``PRESTAGE`` refinement over ``TOPK > 1`` seeds)
-rejects ASA, a single-seed global optimiser.  Under MPI,
+re-runs it sequentially and works unchanged.  ASA is a single-seed
+global optimiser, so ``STRATEGY TYPE MULTISTART`` rejects it, and so
+does ``TYPE PRESTAGE`` with ``TOPK > 1`` when ASA is the refinement
+optimiser; both are startup errors, raised before any data is loaded
+(an ``EXPLORE`` block may run ASA).  Under MPI,
 ``ASA:ASA`` runs single-rank only (the multi-rank dispatch is reserved
 for ``TADAH:ANNEAL_PT``/``_PA``).
 

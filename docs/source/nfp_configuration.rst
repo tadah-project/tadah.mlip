@@ -454,7 +454,9 @@ term of the loss (:ref:`nested_fitting`).
 ``PC_LAMMPS`` and ``PC_OBSERVABLE`` are mutually exclusive: an HPO
 configuration may use one or the other, not both.  ``PC_LAMMPS`` also
 rejects every gradient-based optimiser except ``DLIB:BFGS``
-(:ref:`strategy_block`), and any ``GRAD_STRATEGY`` line.
+(:ref:`strategy_block`), and any ``GRAD_STRATEGY`` line, in every block
+that configures an optimiser: the ``STRATEGY`` level (or ``REFINE``),
+``EXPLORE``, and their ``INNER`` blocks.
 
 Each line captures the root ``LOSS``, ``FAILSCORE`` and
 ``PC_SCRIPT_TIMEOUT`` in force when it is read, so declare those keys
@@ -653,7 +655,8 @@ Typed observables (PC_OBSERVABLE)
 LAMMPS, with a closed-form derivative with respect to the model
 weights.  Each line is one loss term.  It cannot be combined with
 ``PC_LAMMPS`` in the same configuration, and ``GRAD_STRATEGY NUMERICAL``
-is rejected with it.  The only kind at present is ``cohesive_energy``:
+is rejected with it in every optimiser block, ``EXPLORE`` and ``INNER``
+included.  The only kind at present is ``cohesive_energy``:
 
 .. code-block:: none
 
@@ -1044,7 +1047,15 @@ the key.
      - Description
    * - ``LIB`` (string)
      - Optimisation library: ``TADAH``, ``ASA``, ``NLOPT``, ``DLIB``,
-       ``CERES``.
+       ``CERES``.  Required, with ``ALGO``, for the ``STRATEGY``-level
+       optimiser (under ``TYPE PRESTAGE`` the refinement, written at
+       ``STRATEGY`` level or in a ``REFINE`` block) and for every
+       ``EXPLORE`` and ``INNER`` block; an ``INNER`` block's ``LIB`` is
+       ``NLOPT`` (:ref:`hpo_inner_block`).  A missing ``LIB`` or ``ALGO`` is
+       an error naming the block, reported at the line that closes it
+       (``ENDOPTIMIZER``, ``ENDEXPLORE``, ``ENDINNER``), e.g. ``Error on
+       line 8: the OPTIMIZER block names no optimiser: LIB and ALGO are not
+       set``.
    * - ``ALGO`` (string)
      - Algorithm (see table below).
    * - ``MAXEVAL`` (uint)
@@ -1114,7 +1125,8 @@ the key.
        derivative is registered, finite differences elsewhere).  The
        analytical modes are experimental.  Rejected when the
        configuration has ``PC_LAMMPS`` lines; ``NUMERICAL`` is rejected
-       with ``PC_OBSERVABLE``.
+       with ``PC_OBSERVABLE``.  Both rules hold in every block that
+       configures an optimiser, ``EXPLORE`` and ``INNER`` included.
    * - ``PARAM`` (string value)
      - Algorithm-specific key/value (e.g. ``PARAM fd_step 1e-3``).  Keys
        understood by the finite-difference gradient of every
@@ -1452,11 +1464,32 @@ The optimiser named by ``LIB``/``ALGO`` may be local or global; the
      - Automatic ``LOG`` tagging of wide positive dimensions
        (:ref:`search_space_scaling`).
    * - ``N_STARTS``, ``PARALLEL``, ``BUDGET_PER_START``
-     - ``MULTISTART`` knobs (below).
+     - ``MULTISTART`` knobs (below); rejected under another ``TYPE``.
    * - ``TOPK``
-     - ``PRESTAGE`` knob (below).
+     - ``PRESTAGE`` knob (below); rejected under another ``TYPE``.
    * - ``EXPLORE``, ``REFINE``, ``INNER``, ``RESTART``
      - Nested blocks (below).
+
+A knob of one ``TYPE`` would have no effect under another, so it is an
+error naming its own line.  ``TYPE`` may come before or after the knob;
+the ``TYPE`` in force when the block ends decides, and a block without a
+``TYPE`` line is ``PLAIN``:
+
+.. code-block:: none
+
+   Error on line 6: N_STARTS is not accepted with STRATEGY TYPE PLAIN: only TYPE MULTISTART runs N_STARTS starts, so it would have no effect; set TYPE MULTISTART or remove N_STARTS
+   Line:     N_STARTS 3
+
+The same holds for the ``EXPLORE`` and ``REFINE`` blocks: they need
+``TYPE PRESTAGE`` before them, and a later ``TYPE`` line of the block
+that changes it is an error at the ``EXPLORE`` (``REFINE``) line
+(``EXPLORE block is only valid with TYPE PRESTAGE, but the STRATEGY block
+ends with TYPE PLAIN (the last TYPE line decides); …``).  Before 1.5.1
+the run silently became ``PLAIN``, without the exploration.  An
+``OPTIMIZER`` block has one ``STRATEGY`` block: a second one is an error
+at its line (``STRATEGY block given more than once (the first opens on
+line 4); write every STRATEGY key in one block``); it reopened the first
+and could change the ``TYPE`` its keys had been checked against.
 
 TYPE PLAIN
 ..........
@@ -1519,7 +1552,14 @@ algorithm whose name starts with ``G`` (``GN_*``, ``GD_*``,
 family and ``ASA:ASA``.  Local optimisers (``NLOPT:LN_*``/``LD_*``,
 ``DLIB:BFGS``, CERES) and the multi-seed global ``DLIB:GFS`` are
 accepted; ``DLIB:GFS`` consumes all points in one run.  Use ``TYPE
-PLAIN`` to run a single-seed global once.
+PLAIN`` to run a single-seed global once.  The check is a startup
+error, raised before any data is loaded or any evaluation runs.  The
+message lists the first accepted backends in alphabetical order (the
+list depends on the libraries the build includes):
+
+.. code-block:: none
+
+   HPOEngine error: STRATEGY TYPE MULTISTART cannot run TADAH:ANNEAL: it is a global optimiser that consumes a single starting point, so restarting it from each INIT point is rejected for any N_STARTS. Use a local or multi-seed optimiser (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, DLIB:GFS, ... (24 more)), or STRATEGY TYPE PLAIN to run TADAH:ANNEAL once.
 
 TYPE PRESTAGE — staged global → local
 .....................................
@@ -1555,7 +1595,11 @@ Key              Args          Effect
                                candidates, so the refinement optimiser must be one
                                ``MULTISTART`` accepts, per-start ``MAXEVAL`` is split
                                from the STRATEGY-level ``MAXEVAL`` by the same rule, and
-                               candidate ``i`` runs with ``SEED + i``.
+                               candidate ``i`` runs with ``SEED + i``.  A ``TOPK`` above
+                               1 with a single-seed global refinement optimiser is a
+                               startup error, whatever number of candidates the
+                               exploration would harvest (``TOPK 1`` refines the best
+                               one once).  Only valid with ``TYPE PRESTAGE``.
 ================ ============= =============================================================
 
 The ``EXPLORE`` block accepts the full driver-attribute set
@@ -1836,7 +1880,33 @@ local optimiser.  Configure the inner via:
 Only the driver-attribute keys (``LIB`` / ``ALGO`` / ``MAXEVAL`` /
 ``MAXTIME`` / ``STOPVAL`` / ``FTOL_*`` / ``XTOL_*`` / ``POPULATION`` /
 ``STEP`` / ``VECTOR_ARR`` / ``THREADS`` / ``GRAD_STRATEGY`` / ``PARAM``)
-are valid inside ``INNER``.  With MLSL/AUGLAG an outer ``STEP``
+are valid inside ``INNER``.  ``LIB`` and ``ALGO`` are required, as in
+every block that names an optimiser: a missing one is an error at the
+``ENDINNER`` line that names the enclosing block (``STRATEGY``,
+``EXPLORE`` or ``REFINE``):
+
+.. code-block:: none
+
+   Error on line 10: the INNER block inside STRATEGY names no optimiser: ALGO is not set; set LIB and ALGO inside the INNER block (the local optimiser that NLopt's MLSL and AUGLAG run)
+   Line:     ENDINNER
+
+Before 1.5.1 an ``INNER`` block without ``ALGO`` was accepted and failed
+inside NLopt once the run had started.
+
+Only NLopt's MLSL and AUGLAG algorithms run an ``INNER`` search, and they
+run it with NLopt, so the ``INNER`` block's ``LIB`` is ``NLOPT``.  Both
+rules are startup errors, raised before any data is loaded and naming the
+optimiser the ``INNER`` block belongs to (the ``STRATEGY``-level
+optimiser, the ``PRESTAGE`` refinement or the ``EXPLORE`` block):
+
+.. code-block:: none
+
+   HPOEngine error: DLIB:BFGS does not accept an INNER sub-optimiser (the INNER block of the STRATEGY-level optimiser): only NLopt's MLSL and AUGLAG algorithms run a local search inside their run (NLOPT:AUGLAG, NLOPT:AUGLAG_EQ, NLOPT:GD_MLSL, NLOPT:GD_MLSL_LDS, NLOPT:GN_MLSL, NLOPT:GN_MLSL_LDS, ... (6 more)); remove the INNER block or pick one of them
+   HPOEngine error: the INNER block of the STRATEGY-level optimiser names DLIB:BFGS, but NLOPT:G_MLSL_LDS runs its INNER search with NLopt: set LIB NLOPT and an NLopt ALGO (such as LN_BOBYQA) inside the INNER block
+
+Before 1.5.1 the first was reported only once the host had loaded the
+data, and an ``INNER`` block with another ``LIB`` failed inside NLopt once
+the run had started (``wrong algorithm string``).  With MLSL/AUGLAG an outer ``STEP``
 overrides an ``INNER`` ``STEP`` (NLopt forwards the outer initial step
 to the local optimiser); a startup warning says so.
 
@@ -2239,7 +2309,10 @@ iteration N``.
 An error found while the run is set up, before the optimiser starts (a
 configuration or data error), ends ``tadah`` with status ``1`` and a
 message on stderr; there are no history rows, and the journal, if it was
-opened, has no ``RESULT`` section.  An error the optimiser raises before
+opened, has no ``RESULT`` section but records the error on an ``ERROR``
+line (``ERROR     startup: <message>``).  The configuration rules are
+checked before the worker pool is sized, before any ``PC_ISOLATION
+PROCESS`` worker is started and before any data is loaded.  An error the optimiser raises before
 its first evaluation (for example an unknown ``PARAM`` of ``TADAH:GRID``)
 also leaves no history rows, but the journal has a ``RESULT`` section
 with ``STOPPED with error: <message>`` and zero evaluations.

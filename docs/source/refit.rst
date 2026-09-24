@@ -386,7 +386,10 @@ Output files
 
 * ``pot.tadah`` — fitted native potential.
 * ``refit.eam`` — round-trip setfl for LAMMPS.
-* ``refit.hpotarget`` — ``tadah hpo`` starter target.
+* ``refit.hpotarget`` — ``tadah hpo`` starter target.  Its ``OPTIM`` groups
+  are written as ``CGRID2B``, ``SGRID2B``, ``CGRIDMB``, …, ``FIXWEIGHT``;
+  ``tadah hpo`` orders the dimensions by key whatever the order of the
+  lines (:ref:`dimension order <hpo_dimension_order>`).
 * ``refit_opt.log`` — optimisation log and crystal self-test.
 * ``refit_basis_info.dat`` — final basis: function, centre, width, coefficient, degree.
 * ``refit_curve_{phi,rho,F}.dat`` — fitted vs tabulated curves and derivatives.

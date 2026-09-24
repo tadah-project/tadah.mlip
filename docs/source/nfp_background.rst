@@ -149,9 +149,10 @@ For every candidate :math:`\theta` the host
    written to ``best_pot.tadah`` and the history files.
 
 The optimiser vector is ordered by ``OPTIM`` key (alphabetically) and
-then by index within the key, independent of the order of the ``OPTIM``
-lines; ``params.tadah``, ``best_params.tadah`` and
-``hpo_search_space.tsv`` use the same order (:ref:`output_files`).
+then by index within the key (``FIXWEIGHT``: by ``FIXINDEX`` slot),
+independent of the order of the ``OPTIM`` lines; ``params.tadah``,
+``best_params.tadah`` and ``hpo_search_space.tsv`` use the same order
+(:ref:`output_files`, :ref:`dimension order <hpo_dimension_order>`).
 
 Because the model is retrained for every candidate :math:`\theta`, the
 procedure is computationally expensive but also powerful: it can expose

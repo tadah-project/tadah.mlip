@@ -168,15 +168,28 @@ optimiser may vary, and over what bounds:
 
 ``OPTIM`` lines may be repeated for the same key with different indices.
 
+.. _hpo_dimension_order:
+
 Dimension order.  The optimiser's parameter vector is ordered by key —
 alphabetically, byte-wise, so ``CGRID2B`` comes before ``RCUT2B`` and
-``SGRID2B`` — and then by index within the key, whatever the order of
-the ``OPTIM`` lines.  That order defines the columns of
+``SGRID2B`` — and then by position within the key: by index for every
+key but ``FIXWEIGHT``, whose dimensions follow the slot order of
+``FIXINDEX`` (with ``FIXINDEX 5 2 9`` and all three weights optimised,
+``FIXWEIGHT[5]``, ``FIXWEIGHT[2]``, ``FIXWEIGHT[9]``).  The order of the
+``OPTIM`` lines plays no part.  That order defines the columns of
 ``params.tadah`` / ``best_params.tadah``, the rows of
-``hpo_search_space.tsv`` and the ``dim`` numbers in ``hpo_run.log``.
-For example ``OPTIM SGRID2B (2) …`` followed by ``OPTIM CGRID2B (2) …``
-and ``OPTIM CGRID2B (1) …`` gives the order ``CGRID2B[1]``,
-``CGRID2B[2]``, ``SGRID2B[2]``.
+``hpo_search_space.tsv``, the ``dim`` numbers in ``hpo_run.log``, and
+the index ``i`` of ASA's per-dimension ``PARAM <Name>[i]``, which is the
+``dim`` column of ``hpo_search_space.tsv`` (:ref:`asa_optimizer`).  For
+example ``OPTIM SGRID2B (2) …`` followed by ``OPTIM CGRID2B (2) …`` and
+``OPTIM CGRID2B (1) …`` gives the order ``CGRID2B[1]``, ``CGRID2B[2]``,
+``SGRID2B[2]``.  The hpotarget written by ``tadah refit`` follows the
+same rule: its ``OPTIM`` groups are listed as ``CGRID2B``, ``SGRID2B``,
+``CGRIDMB``, …, ``FIXWEIGHT``, and the run orders them by key.  This
+order is a documented contract, kept from release to release: reordering
+the ``OPTIM`` lines changes neither the columns nor an ASA index, while
+adding or removing a key moves the dimensions of the keys that sort
+after it.
 
 Seed-relative boxes.  When the right range is unknown, let the CONFIG
 seed size the box:
@@ -2159,8 +2172,9 @@ File                   Columns
 =====================  =====================================================================
 ``loss.tadah``         All enabled individual loss terms, then the total loss (their mean).
 ``params.tadah``       One column per optimised dimension, labelled ``KEY[n]``, in the
-                       optimiser order: by key, then by index (see ``OPTIM``) — not the
-                       order of the ``OPTIM`` lines.  Values are in real units.
+                       optimiser order: by key, then by index (``FIXWEIGHT``: by
+                       ``FIXINDEX`` slot; see ``OPTIM``) — not the order of the
+                       ``OPTIM`` lines.  Values are in real units.
 ``outvar.tadah``       Per-evaluation wall time in milliseconds, enabled validation metrics,
                        LAMMPS ``--outvar``/``--varloss`` values, and typed-observable values.
 ``stats.tadah``        Per-validation-dataset values and their average for each enabled metric.
@@ -2337,7 +2351,8 @@ Practical tips
      tail -f loss.tadah
 
 * ``params.tadah`` columns follow the optimiser order (by key, then
-  index), which need not match the order of your ``OPTIM`` lines; read
+  index; :ref:`dimension order <hpo_dimension_order>`), which need not
+  match the order of your ``OPTIM`` lines; read
   the columns by their ``KEY[n]`` labels.  To reproduce a candidate,
   use the potential itself (``best_pot.tadah`` or a ``DUMP``/``BDUMP``
   archive), which carries the full configuration.
@@ -2672,7 +2687,10 @@ Marker                                                                       Mea
 ``[HPO] PRESTAGE: exploration phase LIB:ALGO (MAXEVAL=…)``                    PRESTAGE phase starts.
 ``[HPO] PRESTAGE: top-K losses: …``                                           Snapshot quality after PRESTAGE finishes.
 ``[HPO] REFINEMENT: refining top-K seed(s) via LIB:ALGO``                     Outer (refinement) phase starts.
-``[HPO] RESTART i/M -- fresh init from STRATEGY; SEED …``                     Stagnation watchdog fired; lists the round's derived seeds.
+``[HPO] RESTART i/M -- fresh init from METHOD; SEED …``                       Stagnation watchdog fired.  ``METHOD`` is the ``RESTART`` block's
+                                                                              init method (``CHAIN`` for several ``METHOD`` lines, ``CONFIG``
+                                                                              without one); ``; SEED …`` lists the round's derived seeds when a
+                                                                              phase has a ``SEED``.
 ``[HPO] NOISE_AUTO: PARAM fd_step set to V (diag=…, dim=…)``                  ``NOISE.AUTO`` fired and shows the value used.
 ``[HPO] Initial step (LIB:ALGO): …``                                         NLopt run started; the effective per-dimension step is in the journal.
 ``[HPO] OPTIM_SCALE X taken from the TADAH_OPTIM_SCALE …``                    Env override of the scaling policy is active.

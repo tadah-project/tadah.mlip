@@ -81,6 +81,11 @@ Per-dimension options additionally accept a 1-based indexed form
 The index is the dimension number the run itself prints — the ``dim``
 column of ``hpo_search_space.tsv`` and the ``#`` column of the
 ``SEARCH SPACE`` table in ``hpo_run.log``, both of which start at 1.
+Dimensions are numbered in the optimiser order — by ``OPTIM`` key, then
+by index (:ref:`dimension order <hpo_dimension_order>`) — not in the
+order of the ``OPTIM`` lines, so reordering those lines leaves every
+``[i]`` on its dimension; adding or removing an ``OPTIM`` key moves the
+dimensions of the keys that sort after it.
 
 .. warning::
 

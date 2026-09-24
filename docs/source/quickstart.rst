@@ -259,6 +259,40 @@ Here is an example LAMMPS :download:`script file <quickstart/in.ml>` and :downlo
 
 See :ref:`installation_lammps` for Tadah!LAMMPS interface installation instructions.
 
+When LAMMPS loads this potential, its log contains the line
+
+::
+
+    Tadah! pair-collapse fast path ON (2b-only, nr=8192): table certified for r in [2.80125, 6.5] (rel tol 1e-9: energy 3e-13, force 1e-9); analytic below r=2.80125
+
+The potential is linear and has a single species, so ``pair_style tadah`` does not
+evaluate the descriptors for every pair of atoms: it looks the pair energy and its
+derivative up in a table of 8192 points (``nr``) between 0 and the cutoff ``RCUT2B``.
+This is the fast path controlled by :ref:`EAMFAST`. The line reports how accurate the
+table is:
+
+- ``table certified for r in [2.80125, 6.5]``: in this range the table gives the pair
+  energy and force of the potential to a relative tolerance of ``1e-9`` (``rel tol``).
+  When the potential is loaded, the error of each interval between two table points is
+  bounded from 31 points inside it. Each error is measured against the largest size of
+  the function from that distance to the cutoff, and at least over the outer half of the
+  cutoff range, so it stays meaningful where the energy crosses zero or falls to zero at
+  the cutoff. ``energy`` and ``force`` are the largest of these error bounds.
+- ``analytic below r=2.80125``: pairs closer than this are evaluated from the potential
+  itself. Closer in, the :math:`r^{-12}` term changes too quickly for a table of this
+  size to give the force to the tolerance; for this potential the limit is reached just
+  outside the minimum of the pair energy, at 2.68 Å.
+
+So the fast path gives the same energies and forces as the full calculation
+(``EAMFAST false``) to ``1e-9`` inside the certified range and exactly below it.
+Distances are in the units of the potential (Å here). A model with an EAM-form
+many-body descriptor also reports a density (``rho``) table. The certified range is
+one interval that ends at the cutoff: for a potential with basis-function knots (for
+example Blip functions) or a switching cutoff such as ``Cut_PolyS``, a single interval
+that misses the tolerance ends it, and closer pairs are evaluated from the potential.
+If a table misses the tolerance already next to the cutoff, it has no certified range:
+the log says so and the full calculation is used.
+
 Support for Multi-species Systems
 ---------------------------------
 

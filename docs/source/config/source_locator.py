@@ -20,7 +20,8 @@ Source checkouts (``locate``), in this order:
      names it for FetchContent -- ``$CI_COMMIT_REF_NAME``, else
      ``$READTHEDOCS_GIT_IDENTIFIER`` (the ref Read the Docs checked out; its
      ``latest`` and ``stable`` versions are named after no ref), else
-     ``$READTHEDOCS_VERSION_NAME``, else ``$READTHEDOCS_VERSION``.
+     ``$READTHEDOCS_VERSION_NAME``, else ``$READTHEDOCS_VERSION``.  As
+     there, a variable counts only when it is set and not empty.
 
 Doxygen XML (``doxygen_xml_dir``): ``$TADAH_DOXYGEN_XML_DIR`` when set (it
 must contain ``index.xml``), else the ``build/docs/xml`` directory that
@@ -76,8 +77,8 @@ BUILT_BRANCH_VARS = ('CI_COMMIT_REF_NAME', 'READTHEDOCS_GIT_IDENTIFIER',
 
 def built_branch(environ):
     '''The ref being built on CI/RTD, as tadah_get_git_branch names it:
-    (variable, value) of the first of BUILT_BRANCH_VARS that is set, or
-    (None, None).'''
+    (variable, value) of the first of BUILT_BRANCH_VARS that is set and not
+    empty, or (None, None).'''
     for var in BUILT_BRANCH_VARS:
         if environ.get(var):
             return var, environ[var]
@@ -143,7 +144,8 @@ def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
                      "(not on GitLab CI or Read the Docs)")
     elif branch is None:
         tried.append(f"clone of the built branch: skipped (on {platform}, "
-                     f"but none of {', '.join(BUILT_BRANCH_VARS)} is set)")
+                     f"but none of {', '.join(BUILT_BRANCH_VARS)} is set "
+                     f"to a non-empty value)")
     else:
         dest = os.path.join(
             clone_root if clone_root is not None

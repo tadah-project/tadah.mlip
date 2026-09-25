@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(DOCS, 'source', 'config'))
 
 HAVE_PYTOMLPP = importlib.util.find_spec('pytomlpp') is not None
 
-REASON = ('Removed in 1.5.1 with the legacy MPI training build. '
+REASON = ('Removed in 1.6.0 with the legacy MPI training build. '
           'Delete the line.')
 
 

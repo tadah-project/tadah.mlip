@@ -86,7 +86,7 @@ else()
   endif()
   foreach(text
       "TADAH_BUILD_MPI=ON: the legacy MPI training build"
-      "was removed in Tadah 1.5.1"
+      "was removed in Tadah 1.6.0"
       "configure with -DTADAH_HPO_MPI=ON instead"
       "Set -DTADAH_BUILD_MPI=OFF")
     string(FIND "${flat}" "${text}" at)

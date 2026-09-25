@@ -161,7 +161,7 @@ class ShippedPageTest(unittest.TestCase):
                              'nfp_configuration.html#nfp-manual')
 
     def test_routes_of_the_renamed_parallelism_sections(self):
-        # 1.5.1 removed the legacy MPI build: the "Desktop build (OpenMP)"
+        # 1.6.0 removed the legacy MPI build: the "Desktop build (OpenMP)"
         # and "MPI build" subsections of Performance & parallelism became
         # "Within one process ..." and "Across MPI ranks (TADAH_HPO_MPI)".
         _, table = shipped_routes()

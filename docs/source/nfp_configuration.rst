@@ -128,6 +128,14 @@ Root-level loss control:
        lines capture the value in force when they are read; a line's
        own ``--failscore`` changes only the value substituted for that
        line's variables when its simulation fails.
+       ``DLIB:GFS`` hands dlib a finite stand-in for a failed
+       evaluation instead (:ref:`failed evaluations under DLIB:GFS
+       <hpo_dlib_gfs_failures>`); the history files and the journal
+       keep the loss the evaluation reported (``FAILSCORE``, or a
+       graded failure).
+       A ``FAILSCORE`` of ``0`` or below has no failure band: every
+       finite loss, ``FAILSCORE`` itself included, then counts as a
+       usable loss (:ref:`hpo_stopping`).
    * - ``FAILSCORE_GRADING`` (``ON``/``OFF``)
      - Graded failure losses instead of the constant ``FAILSCORE``
        (default ``OFF``); see :ref:`failscore_grading`.
@@ -903,6 +911,10 @@ gets closer to working*.  Feasible results always win (they are orders
 of magnitude below the band).  The annealing family ranks finite values
 inside the band in its Metropolis decisions and chain/walker personal-best
 updates, so their ordering supplies a downhill path toward feasibility.
+``DLIB:GFS`` keeps that order only among the stand-ins it hands dlib in
+the same state of its search: a stand-in is not revised, so a failure
+before the search's first usable loss stays far above the later ones
+(:ref:`failed evaluations under DLIB:GFS <hpo_dlib_gfs_failures>`).
 Operations that require a genuinely feasible sample remain stricter:
 ``STOPVAL``, the Corana ``FTOL`` plateau, T0 calibration, and PA population
 weighting/resampling classify the entire reserved band as failed.  Thus a
@@ -1587,6 +1599,43 @@ MAXTIME or STOPVAL``).  It has no convergence test, so one of ``MAXEVAL``,
 It is deterministic, so ``SEED`` has no effect.  Before 1.6.0 it read
 only ``MAXEVAL``, which it needed, and ignored ``MAXTIME``, ``STOPVAL``,
 the other tolerances and any ``PARAM``.
+
+.. _hpo_dlib_gfs_failures:
+
+A failed evaluation (one without a usable loss: ``FAILSCORE``, a graded
+failure, a non-finite loss) is not handed to dlib as it is.  dlib is
+given a finite stand-in, fixed when the evaluation returns:
+
+* once the search has usable losses, the worst of them so far plus a
+  margin, the larger of the usable losses' spread and the worst one's
+  magnitude: twice the margin for an ungraded failure, and between one
+  and two margins for a graded one, by its place in the graded-failure
+  band;
+* before the search's first usable loss, ``FAILSCORE`` capped at
+  ``1e100``, and a graded failure at its place in the band below it —
+  with a ``FAILSCORE`` up to ``1e100``, exactly the loss the evaluation
+  reported.
+
+"So far" counts the evaluations of this search only: each time a run
+starts ``DLIB:GFS`` (again in a ``RESTART`` round, for instance), dlib
+starts a new model and the stand-ins start afresh.  Graded failures keep
+their order among the stand-ins handed over in the same state — all
+before the first usable loss, or all while the same worst and best usable
+losses hold — but not across states, since a stand-in is never revised:
+a failure before the first usable loss keeps its value near
+``FAILSCORE`` (or ``1e100``) for the rest of the search, far above a
+later ungraded failure's, and an ungraded failure handed over early can rank below a
+graded one handed over after a worse usable loss has raised the
+stand-ins.
+No value dlib sees exceeds ``1e100`` in magnitude.  ``loss.tadah``, the
+journal and ``best_pot.tadah`` keep the loss the evaluation reported, and
+the journal says once per search, at its first failed evaluation, that
+the stand-in is in use (``DLIB:GFS: dlib is given a finite stand-in for
+each failed evaluation of this search …``).  Before 1.6.0 dlib was given
+``FAILSCORE``: with the default, the largest double, a run whose first
+*dims* + 2 evaluations had all failed crashed (SIGSEGV) in dlib's
+trust-region step, even when later evaluations would have produced
+usable losses.
 
 .. _hpo_stop_criteria:
 
@@ -2771,7 +2820,9 @@ outputs) is the run's structured journal. It opens with a banner
    -- POTENTIAL     --   2B/MB terms, cutoffs, element list
    -- LOSS FUNCTION --   targets, weights, FAILSCORE
    -- PROGRESS      --   timestamped events: bests, warnings, milestones
-   -- DIAGNOSTICS   --   NaN rate, bound-proximity analysis
+   -- DIAGNOSTICS   --   NaN/Inf clampings, graded failures, unusable losses
+                         (every evaluation without a usable loss) with a
+                         verdict, bound-proximity analysis
    -- PERFORMANCE   --   timing statistics
    -- RESULT        --   final status, best loss, best metrics
 
@@ -2810,7 +2861,15 @@ Stopping a run
 A run ends when the optimiser meets its stop criteria (``MAXEVAL``,
 ``STOPVAL``, a tolerance, ``MAXTIME``, the ``RESTART`` budget, …), when
 a signal stops it, or when an error stops it.  ``best_pot.tadah`` holds
-the incumbent in every case (:ref:`hpo_potential_archives`).
+the incumbent in every case (:ref:`hpo_potential_archives`) — unless no
+evaluation produced a usable loss (a feasible one: finite and below the
+graded-failure band ``[0.999 × FAILSCORE, FAILSCORE)``).  Then there is no
+incumbent and no ``best_pot.tadah`` is written, and a run that ends on its
+own ends as a failed one (status ``1``); a signal or an error decides the
+status first (below).  With a ``FAILSCORE`` of ``0`` or below there is no
+failure band, and every finite loss counts as usable, ``FAILSCORE``
+itself included: a run all of whose evaluations failed then ends as a
+completed one, and its ``best_pot.tadah`` holds a failed evaluation.
 
 **Signals.** ``tadah hpo`` handles ``SIGINT`` (Ctrl-C), ``SIGTERM``
 (``kill``, ``scancel``) and ``SIGUSR2`` (an advance warning before a
@@ -2867,6 +2926,14 @@ no advance warning.
        budget ends the run: ``STOPPED -- stagnation, max restarts (MAX)
        used``.
      - Complete.
+   * - Stop criteria met (the ``RESTART`` budget included), but no
+       evaluation produced a usable loss
+     - ``1``, with ``[HPO] ERROR: no evaluation produced a usable loss;
+       no best_pot.tadah was written`` on stderr (and on an ``ERROR``
+       line of the journal)
+     - ``STOPPED -- no evaluation produced a usable loss``
+     - Complete; every row holds ``FAILSCORE`` (or a graded failure),
+       and there is no ``best_pot.tadah``.
    * - ``SIGINT``, ``SIGTERM``, ``SIGUSR2``
      - ``128`` + the signal number: ``130``, ``143``, ``140`` (Linux)
      - ``SHUTDOWN (SIGINT)``, ``SHUTDOWN (SIGTERM)``,
@@ -2915,9 +2982,22 @@ signal report ``SHUTDOWN`` and ``128`` + the signal number.  Every rank
 still writes its queued rows, and ``best_pot.tadah`` holds the global
 incumbent.
 
+A signal or an error decides how a run ends whether or not an
+evaluation produced a usable loss: a run without one that a signal stops
+still exits with ``128`` + the signal number and ``SHUTDOWN
+(<signal>)``, and one an error stops with ``1`` and ``STOPPED with
+error: …``.  Before 1.6.0 a run without a usable loss exited with ``0``
+and ``COMPLETED``.  In a multi-rank run, a rank ends as a successful one
+when any rank produced a usable loss (``best_pot.tadah`` is global).
+Each rank's journal (``hpo_run.log.r<rank>``) counts that rank's
+evaluations only, so its DIAGNOSTICS verdict names the rank: a rank whose
+own evaluations all failed says ``[!] No evaluation on MPI rank 1 (of 2)
+produced a usable loss.`` and still ends as a completed run when another
+rank produced one.
+
 The run's exit status is also ``tadah``'s: a job script can tell a
 completed run (``0``) from a stopped one (``130``, ``143``, ``140``) and
-a failed one (``1``).
+a failed one (``1``: an error, or no usable loss).
 
 .. _warmstart_protocol:
 
@@ -3155,4 +3235,6 @@ Marker                                                                       Mea
 ``[HPO] NOISE_CALIBRATION: running N evals at the seed point``                ``NOISE.CALIBRATION`` started.
 ``[HPO] ASA[Ingber ASA-30.53]: seed=… dim=…``                                 ``ASA:ASA`` entry banner with resolved options.
 ``[HPO] ASA stopped: <reason> after N host eval(s) (asa exit: …)``            ``ASA:ASA`` stop reason + upstream exit code.
+``[HPO] ERROR: no evaluation produced a usable loss; …``                     stderr: the run ends with status ``1`` and no ``best_pot.tadah``
+                                                                             (:ref:`hpo_stopping`).
 ============================================================================ ============================================================

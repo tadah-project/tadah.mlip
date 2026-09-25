@@ -122,7 +122,14 @@ with a pointer at ``Cost_Precision`` + ``Maximum_Cost_Repeat``;
 These checks, and those of the ``PARAM`` keys, run at startup, before any
 data is loaded, on every phase ASA runs in (:ref:`nfp_manual`).
 When ``Gener_Block > 1``, ``MAXTIME``/``STOPVAL`` act at block
-boundaries (``MAXEVAL`` stays exact).  Without ``MAXEVAL`` there is no
+boundaries (``MAXEVAL`` stays exact).  A stop (``MAXEVAL``,
+``MAXTIME``, ``STOPVAL``, a signal, or an error raised by an
+evaluation) ends the run with ``IMMEDIATE_EXIT`` wherever ASA is,
+including while it samples the initial cost temperature, a random
+start (``User_Initial_Parameters 0``) or the ``Reanneal_Cost``
+resampling: upstream ignores its exit request there, and TADAH patches
+it to honour it (``TADAH-PATCHES.md``), so a stop is not held up by
+``Limit_Invalid_Generated_States``.  Without ``MAXEVAL`` there is no
 evaluation limit: ASA's own limits are its stops (``Limit_Generated``
 99999 and ``Limit_Acceptances`` 10000 by default; set both to ``0`` for
 no limit).
@@ -155,7 +162,8 @@ defaults):
    * - ``Limit_Invalid_Generated_States``
      - 1000
      - Invalid-state budget (failed evaluations); 0 = exit at the first
-       invalid state, −1 = bypass the test.
+       invalid state, −1 = bypass the test (a stop still ends the run at
+       once; see *Stops honoured*).
    * - ``Accepted_To_Generated_Ratio``
      - 1e-6
      - Minimum accepted/generated ratio; falling below it triggers the
@@ -299,14 +307,28 @@ Block-parallel evaluation (see *Parallelism* below):
    * - ``Gener_Block``
      - 1
      - Number of trial states generated per iteration and evaluated
-       concurrently.  1 = canonical serial ASA sampling (proved
+       concurrently, at the start of the run.  1 (with the default
+       ``Gener_Block_Max`` 1) = canonical serial ASA sampling (proved
        bit-identical to the unmodified upstream build by a unit test);
        >1 changes the sampled sequence (upstream-documented caveat).
    * - ``Gener_Block_Max``
      - = ``Gener_Block``
      - Cap of the adaptive block resizing (buffers are sized once).
-       Keeping it equal to ``Gener_Block`` freezes the block size;
-       raising it arms upstream's moving-average resizing.
+       At every periodic test (the ``Acceptance_Frequency_Modulus`` and
+       ``Generated_Frequency_Modulus`` cadences, and whenever the
+       accepted-to-generated ratio falls below
+       ``Accepted_To_Generated_Ratio``) upstream's resizing sets the
+       block to the average, over the last ``Gener_Mov_Avr`` tests, of
+       the number of states generated since the last new best (or since
+       the last test that found the ratio below
+       ``Accepted_To_Generated_Ratio``), rounded down and kept between 1
+       and this cap.  So the block never grows above the cap, but it can
+       shrink below ``Gener_Block`` even when the two are equal; only
+       ``Gener_Block_Max`` 1 keeps it fixed (at one state).  The upstream
+       README describes the average as one over the numbers of states
+       needed to find each new best, but the code averages the running
+       count at each test, which is small soon after a new best: on an
+       objective that keeps improving the block tends towards 1.
    * - ``Gener_Mov_Avr``
      - 3
      - Moving-average window of the adaptive block resizing (≥1).
@@ -324,11 +346,17 @@ a persistent worker pool of ``min(THREADS, Gener_Block_Max)`` threads
 see ``TADAH-PATCHES.md``).  Because ASA sorts each block by cost before
 consuming it sequentially, and the evaluation budget is reserved
 per-slot in deterministic order, **results are invariant to THREADS**
-(unit-tested at 1/2/4 workers).  ``Gener_Block 1`` reproduces canonical
-serial ASA exactly; ``Gener_Block > 1`` is a genuine sampling change
+(unit-tested at 1/2/4 workers).  ``Gener_Block 1`` (with its default
+cap of 1) reproduces canonical serial ASA exactly; ``Gener_Block > 1`` is
+a genuine sampling change
 (more states per acceptance decision) that trades some serial
 efficiency for wall-clock speed — the upstream README discusses this
-trade-off.
+trade-off.  ``Gener_Block`` is only the block size the run starts with:
+the periodic tests resize the block to between 1 and
+``Gener_Block_Max`` (see the ``Gener_Block_Max`` row above), so fewer
+than ``min(THREADS, Gener_Block_Max)`` workers may be busy, for
+example with ``Gener_Block 4``/``Gener_Block_Max 4`` on an objective
+that keeps improving.
 
 Concurrency contract: ``asa()`` is not re-entrant (upstream statics),
 so one ASA run executes per process at a time; the ``RESTART`` decorator

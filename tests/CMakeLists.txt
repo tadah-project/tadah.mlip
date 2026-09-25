@@ -97,11 +97,16 @@ endforeach()
 # ------------------------------------------------------------------
 # The ref every Tadah module fetches its sibling modules at: CI and Read
 # the Docs variables (READTHEDOCS_GIT_IDENTIFIER before the version name,
-# which is 'latest' or 'stable' for those versions), then the checkout's
-# upstream or local branch. Each case runs git_branch/probe.cmake with a
-# controlled environment; the git cases use throw-away local repositories.
+# which is 'latest' or 'stable' for those versions; a variable counts only
+# when it is set and non-empty), then the checkout's upstream or local
+# branch. Each case runs git_branch/probe.cmake with a controlled
+# environment; the git cases use throw-away local repositories. Each case
+# also checks that the docs build (docs/source/config/source_locator.py)
+# names the same ref from the same variables.
 find_package(Git REQUIRED)
-foreach(_case ci rtd_latest rtd_stable rtd_version_name rtd_version preset
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+foreach(_case ci rtd_latest rtd_stable rtd_version_name rtd_version
+              rtd_empty_identifier ci_empty preset
               upstream local_branch detached not_git)
   add_test(NAME tadah_git_branch_${_case}
     COMMAND ${CMAKE_COMMAND}
@@ -109,6 +114,8 @@ foreach(_case ci rtd_latest rtd_stable rtd_version_name rtd_version preset
       -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
       -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/git_branch/${_case}
       -DGIT=${GIT_EXECUTABLE}
+      -DPYTHON=${Python3_EXECUTABLE}
+      -DLOCATOR_DIR=${PROJECT_SOURCE_DIR}/docs/source/config
       -P ${CMAKE_CURRENT_SOURCE_DIR}/git_branch/check_git_branch.cmake)
   set_tests_properties(tadah_git_branch_${_case} PROPERTIES
     LABELS cmake
@@ -138,7 +145,6 @@ add_subdirectory(catch_discovery)
 # No bytecode is written: the tests import modules from the source tree.
 # NB: add_test() arguments must not contain ';' or be empty (MLIP's
 # add_test() override; see catch_discovery/CMakeLists.txt).
-find_package(Python3 COMPONENTS Interpreter REQUIRED)
 add_test(NAME tadah_docs_tools
   COMMAND ${Python3_EXECUTABLE} -m unittest discover
     -s ${PROJECT_SOURCE_DIR}/docs/tools/tests -v)

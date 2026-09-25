@@ -182,6 +182,29 @@ class LocateTest(unittest.TestCase):
                 self.assertEqual(loc.built_branch(env), (var, full[var]))
         self.assertEqual(loc.built_branch({}), (None, None))
 
+    def test_set_but_empty_variable_names_no_ref(self):
+        # As in tadah_get_git_branch (tests/git_branch checks both): a
+        # variable counts only when it is set and non-empty.
+        env = {'READTHEDOCS_GIT_IDENTIFIER': '',
+               'READTHEDOCS_VERSION_NAME': 'release/x',
+               'READTHEDOCS_VERSION': 'release-x'}
+        self.assertEqual(loc.built_branch(env),
+                         ('READTHEDOCS_VERSION_NAME', 'release/x'))
+        self.assertEqual(
+            loc.built_branch({v: '' for v in loc.BUILT_BRANCH_VARS}),
+            (None, None))
+
+    def test_ci_with_only_empty_branch_variables_is_reported(self):
+        git = FakeGit(marker=HPO_MARKER)
+        env = {'GITLAB_CI': 'true', 'CI_COMMIT_REF_NAME': ''}
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            self.locate('HPO', env, runner=git)
+        self.assertEqual(git.calls, [])
+        self.assertIn('on GitLab CI, but none of CI_COMMIT_REF_NAME, '
+                      'READTHEDOCS_GIT_IDENTIFIER, READTHEDOCS_VERSION_NAME, '
+                      'READTHEDOCS_VERSION is set to a non-empty value',
+                      str(cm.exception))
+
     def test_clone_names_the_variable_it_took_the_ref_from(self):
         git = FakeGit(returncode=128, stderr='fatal: Remote branch v9 not found')
         env = {'READTHEDOCS': 'True', 'READTHEDOCS_VERSION_NAME': 'stable',

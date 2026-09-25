@@ -155,6 +155,19 @@ into ``pot.tadah`` (the ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles are
 not). ``tadah predict`` re-applies them; ``--no-eshift`` ignores the
 stored values.
 
+.. note::
+
+   **DM_REAM potentials (EMBF0 ZERO, the default).** The zero-referenced
+   embedding fixes the isolated-atom energy of a DM_REAM model at 0, so the
+   model has no free per-atom constant unless ``BIAS true`` is set. When the
+   reference energies are absolute (e.g. DFT totals), remove the per-atom
+   reference with ``ESHIFT``, ``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` (which
+   keeps the LAMMPS ``EAMFAST`` kernel usable) or set ``BIAS true`` (its
+   intercept column precedes the descriptor weights, so ``FIXINDEX``/
+   ``FIXWEIGHT`` indices shift).
+   ``tadah train`` prints a HINT when neither is present. See
+   :ref:`DM_REAM <dm_ream>`.
+
 Filtering and weighting
 ~~~~~~~~~~~~~~~~~~~~~~~
 

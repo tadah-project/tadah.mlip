@@ -5,15 +5,16 @@ Nested Fitting — Worked Examples
 
 .. note::
 
-   The HPO module ships twenty-one end-to-end examples that build up
+   The HPO module ships twenty-two end-to-end examples that build up
    gradually: ``01`` is the smallest viable config, each subsequent one
    introduces one or two new features. Between them they exercise the
    optimiser libraries and the ``INIT``, ``STRATEGY``, ``EXPLORE``,
    ``RESTART``, and ``INNER`` blocks. Each example is a self-contained
    directory with one ``config.hpo`` and one ``README.md``; all share a
    small Ta training/validation bundle in ``examples/common/`` and the
-   shared ``common/run.sh`` driver (two examples ship their own
-   ``run.sh`` to bootstrap a seed first).
+   shared ``common/run.sh`` driver (``09``, ``10``, ``16``, ``17`` and
+   ``22`` ship their own ``run.sh``: to bootstrap a seed, use a local
+   configuration, or check their results).
 
    To keep a **single source of truth** the canonical content for each
    example lives in the HPO source tree. The links below point at the
@@ -161,3 +162,10 @@ Index
        Ingber ASA-30.53) with the original ASA option spellings — see
        :ref:`asa_optimizer`.
      - ``ASA:ASA``, ``PARAM Temperature_Ratio_Scale``
+   * - 22
+     - `22_dm_ream_embf0 <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/22_dm_ream_embf0>`_
+     - A DM_REAM ``tadah refit`` seed with the zero-referenced embedding
+       (``EMBF0 ZERO``): the search moves the negative embedding knots and
+       the isolated-atom energy stays exactly 0 for every candidate — see
+       :ref:`hpo_embf0`.
+     - ``OPTIM CEMBFUNC``, ``--outvar Eiso``

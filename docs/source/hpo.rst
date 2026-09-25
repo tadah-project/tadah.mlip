@@ -283,7 +283,7 @@ the mark has persisted, and the ``DIAGNOSTICS`` section repeats it for
 the final best.  A best that keeps riding a bound suggests widening that
 side (where the physics permits) and rerunning with ``INIT METHOD WARM``.
 
-Two weight-related special cases:
+Special cases:
 
 * ``OPTIM FIXWEIGHT`` — the ``(indices)`` name **model weights** (the
   weights ``FIXINDEX`` pins), *not* positions in the ``FIXWEIGHT`` value
@@ -293,6 +293,49 @@ Two weight-related special cases:
   by least squares on every evaluation, so optimising them directly
   would be a silent no-op; pin them with ``FIXINDEX``/``FIXWEIGHT``
   instead.
+* ``OPTIM EMBF0`` — **rejected** at startup.  ``EMBF0`` (``ZERO``/``FREE``)
+  selects the :ref:`DM_REAM embedding reference <dm_ream>`, a discrete
+  property of the potential; set it in the ``-c`` potential/configuration.
+
+.. _hpo_embf0:
+
+DM_REAM potentials and the embedding reference (EMBF0)
+......................................................
+
+Under the default ``EMBF0 ZERO`` the DM_REAM embedding is zero-referenced,
+:math:`F(\rho) = \sum_m w_m [g_m(\rho) - g_m(0)]`, so the isolated-atom
+energy is 0 by construction for **every candidate** — no penalty term is
+needed to hold :math:`F(0)` in place.  :math:`g_m(0)` is recomputed for each
+candidate from the ``CEMBFUNC``/``SEMBFUNC`` values it evaluates, so the
+constraint also holds when only the embedding shape is searched; the search
+space, ``hpo_search_space.tsv``, ``hpo_optim_resolved.hpo`` and
+``params.tadah`` are unchanged (no dimension is derived or removed), and
+``FIXWEIGHT``/``WEIGHTS``/``FIXINDEX`` keep their meaning.  Every potential
+the run writes (``best_pot.tadah``, ``BDUMP``/``DUMP`` archives, the
+potential handed to ``PC_LAMMPS``) carries the ``EMBF0`` line.
+
+``hpo_run.log`` states the reference in the POTENTIAL SETUP section
+(``Embedding F(0)``, and the raw :math:`F(0)=\sum_m w_m g_m(0)` of the
+``-c`` potential: from its ``FIXWEIGHT`` when every weight is pinned, else
+from its stored ``WEIGHTS``, else "determined per evaluation"), and the
+RESULT section prints the raw :math:`F(0)` of the first and of the best
+evaluation (under ``ZERO``: the per-atom constant the zero reference
+removes).  Both values are reported for models linear in the descriptor
+(``BF_Linear``, ``Kern_Linear``) only, and are not checkpointed: after a
+resume they read "n/a" unless the resumed session records them.  A
+``WARM`` seed whose ``EMBF0`` differs from the run's triggers a WARNING:
+WARM takes only the ``OPTIM`` values from the seed and evaluates them
+unchanged in the run's reference (no conversion), so the seed's recorded
+loss need not be reproduced.  A HINT is printed when a DM_REAM model under
+``ZERO`` is trained on data without ``BIAS`` or ``ESHIFT`` (see
+:ref:`hpo_load_transforms`); prefer ``ESHIFT*``, because ``BIAS true``
+inserts intercept columns before the descriptor weights (``FIXINDEX``/
+``FIXWEIGHT`` indices shift) and disables ``EAMFAST``.  Under ``ZERO`` a combination of
+embedding coefficients that only shifts :math:`F` by a constant (available
+when the bumps nearly sum to a constant) no longer changes any energy, so the
+coefficients may drift along it; the raw :math:`F(0)` of the stored
+``WEIGHTS`` can then grow, which matters only to tools that evaluate the
+weights without honouring ``EMBF0``.
 
 .. _hpo_knot_rcut:
 
@@ -1894,12 +1937,14 @@ outputs) is the run's structured journal. It opens with a banner
    (SUMMARY)         --   ``best point (eval N) sits within 2% of an OPTIM limit on
                          K dim(s)`` table + one HINT (bound-occupancy audit)
    -- DIAGNOSTICS   --   also ``Bound occupancy of the final best`` (or ``[ok]``)
-   -- POTENTIAL     --   2B/MB terms, cutoffs, element list
+   -- POTENTIAL     --   2B/MB terms, cutoffs, element list; DM_REAM:
+                         ``Embedding F(0)`` (EMBF0) and the raw F(0) of -c
    -- LOSS FUNCTION --   targets, weights, FAILSCORE
    -- PROGRESS      --   timestamped events: bests, warnings, milestones
    -- DIAGNOSTICS   --   NaN rate, bound-proximity analysis
    -- PERFORMANCE   --   timing statistics
-   -- RESULT        --   final status, best loss, best metrics
+   -- RESULT        --   final status, best loss, best metrics; DM_REAM:
+                         raw F(0) of the first and the best evaluation
 
 The ``Optimiser status`` line of RESULT, and the exit status of
 ``tadah hpo``:

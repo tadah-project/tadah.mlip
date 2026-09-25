@@ -111,6 +111,29 @@ The end of ``refit_opt.log`` reports a crystal self-test over
 :math:`0.75\!-\!0.95`; ``REFIT_TOL_AMBIENT`` / ``REFIT_TOL_COMPRESSED`` are the
 pass thresholds. ``cohesive delta`` is the equilibrium-energy error.
 
+Embedding reference (``EMBF0``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The native potential declares its :ref:`DM_REAM embedding reference
+<dm_ream>`. Under the default ``EMBF0 ZERO`` both fitting modes fit the
+zero-referenced embedding :math:`F(\rho) - F(0)` against the zero-referenced
+table :math:`F_{tab}(\rho) - F_{tab}(0)` ("fit what you evaluate"), so the
+native potential, ``refit.eam`` (its first ``F`` value is exactly 0) and the
+self-test all have :math:`F(0) = 0` exactly. Forces, energy differences at
+fixed atom count and the cohesive energy are those of the table; absolute energies are referenced
+to the isolated atom, i.e. shifted by :math:`-F_{tab}(0)` per atom, which the
+log reports (``table F(0) = X eV removed``; for most tables X = 0). Under
+``ZERO`` the self-test's ``cohesive`` line is labelled relative to the
+isolated atom.
+
+Put ``EMBF0 FREE`` in the refit configuration to fit the raw embedding of
+tadah 1.5.0 and earlier (dense mode then pins :math:`F(0)` softly to the
+table value, ``REFIT_CONSTRAIN_F0``); the written potential says
+``EMBF0 FREE``. The ``refit.hpotarget`` header notes that under ``ZERO``
+absolute reference energies need ``ESHIFT_ATOM``/``ESHIFT_DBATOM``/
+``ESHIFT`` (not ``BIAS true``: its intercept column precedes the weights that
+the ``FIXINDEX``/``FIXWEIGHT`` and ``OPTIM FIXWEIGHT`` lines index).
+
 Configuration reference
 -----------------------
 
@@ -371,8 +394,10 @@ when the refit will be tuned further.
      - ``4``
      - Automatic basis-escalation rounds while above tolerance.
    * - ``REFIT_CONSTRAIN_F0``
-     - ``false``
-     - Pin :math:`F(0)` to the table value.
+     - ``true``
+     - Under ``EMBF0 FREE``: pin the raw :math:`F(0)` softly to the table
+       value. No effect under the default ``EMBF0 ZERO`` (exact by
+       construction).
 
 Dense ``REFIT_BASIS`` families are ``Blip`` | ``Blip5`` | ``Gaussian``.
 
@@ -427,6 +452,15 @@ Removal is inherently lossy — the log reports the residual before and after
 compensation; expect observables to change and re-validate the potential.
 Removing the outermost radial knot also shrinks the effective cutoff and the
 uncovered tail cannot be compensated (warned).
+
+``F`` edits act in the potential's ``EMBF0`` reference (the log states it). Under
+``EMBF0 ZERO`` the ``F`` curve is :math:`F(\rho) - F(0)`: removing a function
+with :math:`g(0) \neq 0`, or adjusting a compensating function with
+:math:`g(0) \neq 0`, changes ``F`` by a constant over the whole ``F`` domain,
+so the compensation region is then widened to :math:`[0,` largest support
+:math:`]` (logged). A potential without an ``EMBF0`` line is read as ``ZERO``
+(a WARNING says so; add ``EMBF0 FREE`` to the input to edit a tadah 1.5.0 fit
+in its raw reference), and the edited potential always declares its mode.
 
 Outputs default to ``pot_edited.tadah`` and ``refit_edited.hpotarget`` — the
 input file is never overwritten silently (an explicit ``-o`` /

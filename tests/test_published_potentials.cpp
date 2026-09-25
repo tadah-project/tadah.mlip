@@ -20,10 +20,15 @@
 #include <tadah/mlip/atom.h>
 #include <tadah/mlip/descriptors_calc.h>
 #include <tadah/mlip/design_matrix/functions/dm_function_base.h>
+#include <tadah/mlip/memory/mlip_workspace_manager.h>
 #include <tadah/mlip/models/m_tadah_base.h>
 #include <tadah/mlip/nn_finder.h>
 #include <tadah/mlip/structure.h>
+#include <tadah/mlip/trainer.h>
 #include <tadah/models/dc_selector.h>
+#ifdef TADAH_ENABLE_NFP
+#include <tadah/tadah.lammps/lammps_tadah.h>
+#endif
 
 #include <cmath>
 #include <cstdint>
@@ -32,6 +37,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace tadah::core;
@@ -60,7 +66,11 @@ Context load(const std::string &file, Forces forces) {
 class Potential {
 public:
   Potential(const std::string &file, Forces forces)
-      : ctx_(load(file, forces)), dcs_(ctx_),
+      : Potential(load(file, forces)) {}
+
+  /* A potential already parsed into a Context. */
+  explicit Potential(Context ctx)
+      : ctx_(std::move(ctx)), dcs_(ctx_),
         dc_(ctx_, *dcs_.d2b, *dcs_.dmb, *dcs_.c2b, *dcs_.cmb),
         fb_(factory<DM_Function_Base, const Context &>(
             ctx_.get<std::string>("MODEL", 1), ctx_)),
@@ -219,4 +229,56 @@ TEST_CASE("Published potentials: Tadah!N2 reproduces the pair_style tadah "
   // little.
   CHECK(e_near == Approx(-0.00737599445968229).epsilon(1e-9));
   CHECK(e_far == Approx(-0.00502446493587006).epsilon(1e-9));
+}
+
+TEST_CASE("Published potentials: Tadah!N2 with element pairs other than "
+          "* * is refused by tadah train, tadah predict and pair_style "
+          "tadah", "[published_potentials][dimer]") {
+  /* A DIMER potential is evaluated with every atom as Z = 1 (by
+   * DescriptorsCalc::calc_dimer and by pair_style tadah's compute_dimers),
+   * so its descriptors must be declared for `* *`. Declared for `N N` they
+   * applied to no pair the evaluation sees, and the model predicted from
+   * zero descriptors without a word. The published file (`* *`) loads; the
+   * same file with `N N` pairs is refused wherever it is loaded. */
+  const std::string msg =
+      "DIMER evaluates every atom as Z=1; declare TYPE2B/TYPEMB with * * "
+      "element pairs";
+  PeriodicTable::initialize();
+  std::vector<std::string> lines;
+  {
+    std::ifstream in(kMlipsDir + "/tadah.n2");
+    REQUIRE(in.is_open());
+    for (std::string line; std::getline(in, line);) {
+      if (line.rfind("TYPE2B", 0) == 0) {
+        REQUIRE(line.find("*     *") != std::string::npos);
+        line = "TYPE2B D2_Blip 4 4 N N";
+      } else if (line.rfind("TYPEMB", 0) == 0) {
+        REQUIRE(line.find("*     *") != std::string::npos);
+        line = "TYPEMB DM_Blip 1 4 4 N N";
+      }
+      lines.push_back(line);
+    }
+  }
+  const Context n_n = CoreUserConfigParser().parse(lines);
+  REQUIRE(n_n.get<bool>("DIMER", 0));
+
+  /* tadah predict */
+  CHECK_THROWS_WITH(Potential(n_n), Catch::Contains(msg));
+  CHECK_NOTHROW(Potential(kMlipsDir + "/tadah.n2", Forces::no));
+
+  /* tadah train */
+  {
+    tadah::mlip::memory::MLIPWorkspaceManager ws;
+    Context ctx = n_n;
+    CHECK_THROWS_WITH(Trainer(ctx, ws), Catch::Contains(msg));
+    Context published = load(kMlipsDir + "/tadah.n2", Forces::no);
+    CHECK_NOTHROW(Trainer(published, ws));
+  }
+
+#ifdef TADAH_ENABLE_NFP
+  /* pair_style tadah (pair_coeff * * <file> N builds this object) */
+  CHECK_THROWS_WITH(tadah::LammpsTadah(n_n), Catch::Contains(msg));
+  CHECK_NOTHROW(
+      tadah::LammpsTadah(load(kMlipsDir + "/tadah.n2", Forces::no)));
+#endif
 }

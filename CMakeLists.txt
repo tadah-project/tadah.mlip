@@ -244,6 +244,9 @@ tadah_add_tests()
 
 
 find_package(Doxygen)
+# INPUT: the include/ directories of the configured modules (HPO with NFP).
+include(${CMAKE_SOURCE_DIR}/cmake/doxygen_input.cmake)
+tadah_doxygen_input(TADAH_DOXYGEN_INPUT)
 configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in ${CMAKE_BINARY_DIR}/docs/Doxyfile @ONLY)
 add_custom_target(docs
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/docs

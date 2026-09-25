@@ -12,6 +12,8 @@ A machine-learned interatomic potential specifically designed to study the phase
 
 It describes rigid molecules (a ``DIMER`` model): in LAMMPS each N₂ molecule must be two bonded atoms (for example with ``atom_style bond``) kept at the bond length of the potential's ``DIMER`` key, 1.1014 Å, and ``pair_style tadah`` requires ``newton off`` for this potential.
 
+A ``DIMER`` potential is evaluated with every atom as Z = 1, whatever its element (``tadah train``, ``tadah predict`` and ``pair_style tadah`` alike). Every pair therefore gets the weight of the Z = 1 (H–H) pair, which is 1 unless ``WATOM`` sets a weight for H; the ``WATOM`` weight of the potential's own element (N) is not applied. Its two-body and many-body descriptors must be declared for the element pairs ``* *``, as in this file (``TYPE2B D2_Blip 4 4 * *``, ``TYPEMB DM_Blip 1 4 4 * *``). A ``DIMER`` potential whose ``TYPE2B`` or ``TYPEMB`` names specific element pairs, such as ``N N``, applies to no pair the evaluation sees; it is refused when it is loaded: ``DIMER evaluates every atom as Z=1; declare TYPE2B/TYPEMB with * * element pairs``. See :ref:`DIMER`.
+
 :download:`Tadah!N2 <mlips/tadah.n2>`
 
 `Understanding solid nitrogen through molecular dynamics simulations with a machine-learning potential <https://doi.org/10.1103/PhysRevB.110.184107>`_

@@ -124,13 +124,49 @@ endforeach()
 
 
 # ------------------------------------------------------------------
-# 5. Catch test discovery (cmake-tools), used by every Tadah module
+# 5. Doxygen input of the `docs` target (cmake/doxygen_input.cmake)
+# ------------------------------------------------------------------
+# The include/ trees of the configured modules only: HPO with
+# TADAH_ENABLE_NFP, never a bare "/include" from an empty source
+# directory. The function cases use scratch directories; 'configured'
+# checks this build's docs/Doxyfile.
+set(_dx ${CMAKE_CURRENT_SOURCE_DIR}/doxygen_input/probe.cmake)
+function(tadah_doxygen_input_test case regex)
+  add_test(NAME tadah_doxygen_input_${case}
+    COMMAND ${CMAKE_COMMAND}
+      -DCASE=${case}
+      -DFUNCTIONS=${PROJECT_SOURCE_DIR}/cmake/doxygen_input.cmake
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/doxygen_input/${case}
+      -DDOXYFILE=${CMAKE_BINARY_DIR}/docs/Doxyfile
+      -P ${_dx})
+  set_tests_properties(tadah_doxygen_input_${case} PROPERTIES
+    LABELS "cmake;docs"
+    TIMEOUT 60)
+  if(NOT "${regex}" STREQUAL "NONE")
+    set_tests_properties(tadah_doxygen_input_${case} PROPERTIES
+      PASS_REGULAR_EXPRESSION "${regex}")
+  endif()
+endfunction()
+tadah_doxygen_input_test(nfp_off
+  "INPUT=\\[\"<W>/CORE/include\" \"<W>/MODELS/include\" \"<W>/MLIP/include\"\\]")
+tadah_doxygen_input_test(nfp_on
+  "INPUT=\\[\"<W>/CORE/include\" \"<W>/MODELS/include\" \"<W>/MLIP/include\" \"<W>/HPO/include\"\\]")
+# CMake wraps a long error message: allow a line break between words.
+tadah_doxygen_input_test(nfp_on_without_hpo
+  "Tadah\\.HPO[ \n]+is[ \n]+not[ \n]+configured")
+tadah_doxygen_input_test(no_include
+  "/MODELS/include[ \n]+is[ \n]+not[ \n]+a[ \n]+directory")
+tadah_doxygen_input_test(configured NONE)
+
+
+# ------------------------------------------------------------------
+# 6. Catch test discovery (cmake-tools), used by every Tadah module
 # ------------------------------------------------------------------
 add_subdirectory(catch_discovery)
 
 
 # ------------------------------------------------------------------
-# 6. Documentation build tools (docs/tools/tests)
+# 7. Documentation build tools (docs/tools/tests)
 # ------------------------------------------------------------------
 # Unit tests of the docs input lookup (docs/source/config/source_locator.py)
 # and of the hpo.html redirect check (docs/tools/check_redirect.py). They
@@ -157,7 +193,7 @@ set_tests_properties(tadah_docs_tools PROPERTIES
 
 
 # ------------------------------------------------------------------
-# 7. `tadah hpo` stopped by a signal exits with 128 + the signal number
+# 8. `tadah hpo` stopped by a signal exits with 128 + the signal number
 # ------------------------------------------------------------------
 # cli_signal/check_hpo_signal.py runs `tadah hpo` on a tiny problem (no
 # LAMMPS, no network), signals it once evaluations are on disk, and checks

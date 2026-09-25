@@ -37,11 +37,22 @@ Tadah!MLIP provides the command-line interface binary, ``tadah``, for developing
 Obtaining Source Code
 .....................
 
-To obtain Tadah!MLIP, clone the main branch:
+Clone Tadah!MLIP at a release tag, or at ``v1-dev``, the development
+branch of the 1.x line, from which the releases are tagged:
 
 .. code-block:: bash
 
-    git clone https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
+    # the 1.6.0 release
+    git clone -b v1.6.0 https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
+
+    # or the development line
+    git clone -b v1-dev https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
+
+Name the branch or tag: a plain ``git clone`` checks out the repository's
+default branch, which need not be ``v1-dev``. CMake fetches the other
+Tadah! modules at the same ref. It finds a branch by itself, but a tag
+checkout has no branch, so configure a release clone with
+``-DTADAH_GIT_BRANCH=v1.6.0`` (see :ref:`installation_git_branch`).
 
 .. _building_tadah:
 
@@ -171,6 +182,7 @@ Customize the Tadah!MLIP build using CMake options:
 - ``TADAH_LAMMPS_LIB``: Absolute path to the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIBS``: Extra link items for the LAMMPS library, as a CMake list (e.g. ``"-lz;-lzstd"``); needed mainly for a static LAMMPS library, whose own dependencies are not propagated (optional, used by ``TADAH_ENABLE_NFP``).
 - ``TADAH_ENABLE_CERES``: Build the Ceres Solver optimiser family of ``tadah hpo`` (``LIB CERES``) and the ``PARAM fd_kernel ceres`` finite-difference kernel (default: ON; only relevant with ``TADAH_ENABLE_NFP``).
+- ``TADAH_GIT_BRANCH``: The git branch or tag the Tadah! modules are fetched at (detected when not given, see :ref:`installation_git_branch`; pass it for a release source tarball, e.g. ``v1.6.0``).
 - ``TADAH_HPO_MPI``: Distribute the replicas of the ``TADAH:ANNEAL_PT`` / ``TADAH:ANNEAL_PA`` optimisers of ``tadah hpo`` over MPI ranks (default: OFF; only relevant with ``TADAH_ENABLE_NFP``; needs an MPI build of LAMMPS), see :ref:`installation_hpo_mpi`.
 
 Additional CMake options to consider:
@@ -189,6 +201,36 @@ Append flags to the ``cmake`` command with the ``-D`` prefix and a value of ``ON
         -DCMAKE_INSTALL_PREFIX=~/.local
 
 You can provide multiple ``-D<option>=<value>`` pairs in a single call.
+
+.. _installation_git_branch:
+
+Which ref the Tadah! modules are fetched at
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Tadah!MLIP fetches the Tadah! modules it builds on from their git
+repositories (Tadah.MLIP, Tadah.MODELS and Tadah.CORE; with
+``TADAH_ENABLE_NFP`` also Tadah.HPO, Tadah.MD and Tadah!LAMMPS), all at
+one git branch or tag, ``TADAH_GIT_BRANCH``.  There is no fixed default:
+``-DTADAH_GIT_BRANCH=<branch or tag>`` is used when given, and otherwise
+the first of these (cmake-tools' ``tadah_get_git_branch``):
+
+#. ``$CI_COMMIT_REF_NAME`` on GitLab CI (the branch, or the tag of a tag
+   pipeline);
+#. on Read the Docs, ``$READTHEDOCS_GIT_IDENTIFIER`` (the branch or tag it
+   checked out; its ``latest`` and ``stable`` versions are named after no
+   ref), then ``$READTHEDOCS_VERSION_NAME`` and ``$READTHEDOCS_VERSION``;
+#. the upstream branch of the checkout of the project CMake was started on
+   (``origin/v1-dev`` gives ``v1-dev``), else that checkout's local branch.
+
+A Tadah!MLIP clone on ``v1-dev`` therefore fetches every module at
+``v1-dev``.  A detached HEAD (a clone of a release tag, ``git clone -b
+v1.6.0``, is one), or a release source tarball (which has no ``.git``),
+has no branch: CMake warns, and you pass the ref yourself, for a release
+its tag:
+
+.. code-block:: bash
+
+    cmake -S . -B build -DTADAH_GIT_BRANCH=v1.6.0
 
 Build, install, test, and docs from an out-of-tree ``build`` directory:
 
@@ -248,7 +290,7 @@ when an MPI build of LAMMPS is simply named differently. Launch with
 .. note::
 
    The legacy MPI training build (``-DTADAH_BUILD_MPI=ON``, the
-   ``tadah_mpi`` executable and its ScaLAPACK solver) was removed in 1.5.1.
+   ``tadah_mpi`` executable and its ScaLAPACK solver) was removed in 1.6.0.
    Configuring with ``-DTADAH_BUILD_MPI=ON`` stops with an error that
    points to ``TADAH_HPO_MPI``; ``OFF`` is accepted, so older presets still
    work. Its configuration keys :ref:`MPIWPCKG`, :ref:`MBLOCK` and
@@ -332,21 +374,28 @@ Choose a LAMMPS version appropriate for your project (example: git clone stable 
 
 **Step 2 — Clone Tadah!LAMMPS**
 
-Clone Tadah!LAMMPS anywhere on your filesystem:
+Clone Tadah!LAMMPS anywhere on your filesystem, at a release tag or at
+``v1-dev``, the development line (a plain ``git clone`` checks out the
+repository's default branch, which need not be either):
 
 .. code-block:: bash
 
-    git clone https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git /path/to/tadah.lammps
+    # the 1.6.0 release
+    git clone -b v1.6.0 https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git /path/to/tadah.lammps
+
+    # or the development line
+    git clone -b v1-dev https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git /path/to/tadah.lammps
 
 **Step 3 — Configure LAMMPS and enable ML‑TADAH**
 
-From the **LAMMPS root directory** (``/path/to/lammps``), run your usual LAMMPS CMake configure command and **add** these three options:
+From the **LAMMPS root directory** (``/path/to/lammps``), run your usual LAMMPS CMake configure command and **add** these four options:
 
 * ``-DPKG_ML-TADAH=ON``
 * ``-DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake``
 * ``-DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps``
+* ``-DTADAH_GIT_BRANCH=<the branch or tag checked out in Step 2>``
 
-Minimal example:
+Minimal example, for a ``v1-dev`` checkout:
 
 .. code-block:: bash
 
@@ -354,19 +403,26 @@ Minimal example:
     cmake -S cmake -B build \
       -DPKG_ML-TADAH=ON \
       -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
-      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps
+      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps \
+      -DTADAH_GIT_BRANCH=v1-dev
 
-Optional: select the branch/tag used to fetch the Tadah! modules
-that Tadah!LAMMPS pulls transitively (``Tadah.MD`` and friends; the
-branch of Tadah!LAMMPS *itself* is whatever you have checked out at
-``TADAH_LAMMPS_SOURCE_DIR``). Default is ``main``:
+``TADAH_GIT_BRANCH`` is the git branch or tag the Tadah! modules are
+fetched at.  Tadah!LAMMPS pulls ``Tadah.MD`` and, through it,
+``Tadah.MODELS`` and ``Tadah.CORE``; the Tadah!LAMMPS sources themselves
+are whatever you have checked out at ``TADAH_LAMMPS_SOURCE_DIR``.  Give
+the ref of that checkout, so that both come from the same line:
+``-DTADAH_GIT_BRANCH=v1-dev`` for a ``v1-dev`` clone,
+``-DTADAH_GIT_BRANCH=v1.6.0`` for a clone of the 1.6.0 release.
 
-.. code-block:: bash
+Without it the ref is detected (:ref:`installation_git_branch`) from the
+checkout of the project CMake was started on, which in this build is
+**LAMMPS**: a LAMMPS branch (``stable``, ``develop``, …) that has nothing
+to do with your Tadah!LAMMPS checkout, or no ref at all for a LAMMPS
+release tarball or a detached HEAD (CMake warns).  Always pass
+``-DTADAH_GIT_BRANCH`` in the LAMMPS build.
 
-    -DTADAH_GIT_BRANCH=develop
-    # (or: -DTADAH_GIT_BRANCH=main)
-
-Example using the LAMMPS GCC preset and building a serial binary:
+Example using the LAMMPS GCC preset and building a serial binary, for a
+``v1-dev`` checkout:
 
 .. code-block:: bash
 
@@ -375,7 +431,7 @@ Example using the LAMMPS GCC preset and building a serial binary:
       -DPKG_ML-TADAH=ON \
       -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
       -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps \
-      -DTADAH_GIT_BRANCH=develop \
+      -DTADAH_GIT_BRANCH=v1-dev \
       -DLAMMPS_MACHINE=serial
 
 **Step 4 — Build**

@@ -21,9 +21,9 @@ Tadah! is split across several GitLab projects on `git.ecdf.ed.ac.uk`:
 | `tadah.lammps` | LAMMPS plugin and `pair_tadah`. |
 | `cmake-tools`  | Shared CMake helpers (version reader, install helpers, etc.). |
 
-The working branch in every repo is `develop`. Releases are tagged off
-`main`. The pre-release prep happens on `release/beta-prep` (see
-[`RELEASING.md`](RELEASING.md)).
+The working branch of the 1.x line in every repo is `v1-dev` (it
+replaces `develop`). Releases are made from it and tagged `v<X.Y.Z>` in
+every repo (see [`RELEASING.md`](RELEASING.md)).
 
 ## Reporting bugs
 
@@ -58,23 +58,32 @@ The umbrella repo (`tadah.mlip`) drives the multi-module build. The
 quickest path:
 
 ```bash
-# Pick a directory; clone the seven repos as siblings.
+# Pick a directory; clone the repos as siblings, on v1-dev (a plain
+# clone checks out each repository's default branch, which need not be
+# v1-dev), under the directory names the develop build looks for:
+# cmake-tools, CORE, MODELS, MLIP, MD, HPO, Tadah.LAMMPS, Tadah.MLIP.
 export TADAH_PATH=/path/to/your/tadah_root
 mkdir -p "$TADAH_PATH" && cd "$TADAH_PATH"
-for repo in cmake-tools core mlip models md hpo tadah.mlip tadah.lammps; do
-  git clone "https://git.ecdf.ed.ac.uk/tadah/${repo}.git" \
-            "$(echo $repo | tr '[:lower:]' '[:upper:]' | sed 's/TADAH\./Tadah./')"
+for repo in cmake-tools core models mlip md hpo tadah.lammps tadah.mlip; do
+  case "$repo" in
+    cmake-tools) dir=cmake-tools ;;
+    tadah.*)     dir="Tadah.$(echo "${repo#tadah.}" | tr '[:lower:]' '[:upper:]')" ;;
+    *)           dir="$(echo "$repo" | tr '[:lower:]' '[:upper:]')" ;;
+  esac
+  git clone -b v1-dev "https://git.ecdf.ed.ac.uk/tadah/${repo}.git" "$dir"
 done
 
-# Develop build (uses the local sibling copies, not GitLab fetch).
+# Develop build: TADAH_DEVELOP=ON takes cmake-tools and the Tadah modules
+# from the sibling checkouts in $TADAH_PATH instead of fetching them.
 cd Tadah.MLIP
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Develop
+cmake -S . -B build -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON
 cmake --build build -j
 ctest --test-dir build
 ```
 
 For a `Release` build (everything fetched from GitLab — no local
-sibling worktrees needed):
+sibling worktrees needed; the modules are fetched at the branch of the
+`Tadah.MLIP` checkout, here `v1-dev`):
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -178,12 +187,15 @@ and the umbrella itself), an argument containing `;` is split in two and an
 empty argument is dropped. Discovered entries are not affected.
 
 For the HPO worked-example regression suite (added during the beta
-prep — fast subset runs in ~5 s):
+prep — fast subset runs in ~5 s). It runs the `tadah` that `TADAH` names
+(an absolute path: the suite runs it from each example directory), else
+the first one on `PATH`, and writes its outputs into the example
+directories:
 
 ```bash
-bash HPO/examples/run_reference_suite.sh --fast
+TADAH="$TADAH_PATH/Tadah.MLIP/build/tadah" bash HPO/examples/run_reference_suite.sh --fast
 # or
-bash HPO/examples/run_reference_suite.sh --full
+TADAH="$TADAH_PATH/Tadah.MLIP/build/tadah" bash HPO/examples/run_reference_suite.sh --full
 ```
 
 The driver compares the example outputs against
@@ -199,7 +211,7 @@ is missing it stops and lists every location it tried.
 
 | Input | Where the build looks, in order |
 |-------|---------------------------------|
-| CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the `CORE` checkout next to `Tadah.MLIP`; `$TADAH_PATH/CORE`; on GitLab CI and Read the Docs only, a shallow clone of the branch being built |
+| CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the `CORE` checkout next to `Tadah.MLIP`; `$TADAH_PATH/CORE`; on GitLab CI and Read the Docs only, a shallow clone of the branch or tag being built, named the way cmake-tools' `tadah_get_git_branch` names it: `$CI_COMMIT_REF_NAME`, else `$READTHEDOCS_GIT_IDENTIFIER` (Read the Docs' `latest` and `stable` versions are named after no ref), `$READTHEDOCS_VERSION_NAME`, `$READTHEDOCS_VERSION` |
 | HPO sources (ANNEAL key tables) | the same, with `$TADAH_HPO_SOURCE_DIR` and `HPO` |
 | Doxygen XML (API pages) | `$TADAH_DOXYGEN_XML_DIR`; otherwise `build/docs/xml`, which `cmake --build build --target docs` writes |
 
@@ -233,7 +245,7 @@ cases that need `node`, `sphinx-build` or the Python modules `sphinx`,
 is missing. CTest then reports the entry as *Skipped*, not *Passed*, and its
 output names the skipped cases, so a pass means every case ran.
 
-`hpo.html`, the Nested Fitting page before 1.5.1, is now a redirect
+`hpo.html`, the Nested Fitting page before 1.6.0, is now a redirect
 (`docs/source/_extra/hpo.html`) to the pages it was split into. After
 every build with the `html` builder, the `check_redirect` Sphinx
 extension (`docs/tools/check_redirect.py`, listed in `conf.py`) checks
@@ -262,7 +274,7 @@ churn unrelated lines).
 
 1. Fork the relevant project on `git.ecdf.ed.ac.uk/tadah/<module>` (or,
    for maintainers, push a topic branch).
-2. Branch off `develop` (`git checkout -b feature/short-name develop`).
+2. Branch off `v1-dev` (`git checkout -b feature/short-name v1-dev`).
 3. Keep the change focused — one logical change per MR. Cross-repo
    work that needs coordinated tags goes through the multi-repo
    release process described in `RELEASING.md`.

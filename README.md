@@ -31,8 +31,10 @@ Tadah!MLIP installs a single `tadah` binary plus a small set of
 companion libraries.
 
 ```bash
-# 1. Clone and configure with the bundled defaults preset.
-git clone https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
+# 1. Clone the development line, v1-dev, and configure with the bundled
+#    defaults preset. For a release, clone its tag instead
+#    (git clone -b v1.6.0 ...) and add -DTADAH_GIT_BRANCH=v1.6.0.
+git clone -b v1-dev https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
 cd tadah.mlip
 cmake -S . -B build -C cmake/presets/tadah-linux-defaults.cmake \
     -DCMAKE_BUILD_TYPE=Release \

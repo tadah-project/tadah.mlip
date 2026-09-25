@@ -1287,6 +1287,17 @@ best-tracker keeps the global minimum across all runs.
      - Per-start ``MAXEVAL`` override.  When unset HPO splits the
        outer ``MAXEVAL`` equally across ``N_STARTS`` (ceil division).
 
+A start that fails on its own (a rejected setup, an optimiser error) is
+reported as ``MULTISTART start i/K failed: <error>`` — a ``WARNING`` in
+``hpo_run.log`` and on stderr — and the next start runs; the final status
+then notes ``(N of M MULTISTART starts failed; see the WARNINGs)``, counted
+over the whole run: after a :ref:`RESTART <restart_decorator>` relaunch it
+reads ``(N of M MULTISTART starts failed across L launches; ...)``, and it is
+also appended to RESTART's ``STOPPED -- stagnation: ...`` status.  When
+every start of a launch fails, the run fails like a single run would
+(``FAILED -- <first error>``, non-zero exit).  A best potential that cannot
+be saved, or a shutdown signal, ends the whole run at once.
+
 ``MULTISTART`` with ``N_STARTS > 1`` is rejected at validate-time for
 ``NLOPT:GN_*`` algorithms (those globals consume only one starting
 point). Local optimisers — ``NLOPT:LN_*`` (gradient-free) and
@@ -1390,6 +1401,16 @@ Requirements and behaviour:
 * ``MAXEVAL`` is a hard global cap across seed/probe evaluation,
   population initialisation, annealing, and finalisation.  No rank-0
   re-evaluation is performed after the budget is exhausted;
+* at exit the ranks meet in a barrier of their own.  Ranks that all
+  finish — normally or failing together — exit normally, each with its
+  journal complete.  A rank that ends with an error and is not joined by
+  every other rank within 30 s aborts the whole job (``MPI_Abort`` with its
+  exit status; its own ``hpo_run.log.r<rank>`` is already closed): the
+  missing ranks are blocked in a collective the failed rank left — after a
+  failure confined to one rank, such as a best potential it could not save
+  during an ``INIT_MODE JITTER AUTO`` probe or ``NOISE_CALIBRATION`` — and
+  would otherwise hold the allocation until it ends.  Their journals then
+  end without a RESULT section;
 * mutually exclusive with the ``TADAH_BUILD_MPI``
   (ScaLAPACK-distributed training) build.
 
@@ -1461,7 +1482,22 @@ RESTART decorator
        in its history.
 
 Each restart gets its own stagnation window — the windows do not bleed
-into each other.
+into each other.  The window counts evaluations since the last new
+*global* best, so a restart must beat the incumbent within
+``AFTER_STAGNATION`` evaluations to keep going.  ``MAXEVAL`` applies to
+each launch, so a run can use up to ``(MAX + 1) x MAXEVAL`` evaluations.
+When the last launch stagnates again the run stops with ``STOPPED --
+stagnation: no new best in W evals after R restart(s)`` (exit status 0).
+
+Under ``MULTISTART`` every start gets its own window: a start that runs out
+of it ends (``MULTISTART start i/K done: ...; stopped on stagnation``) and
+the next start runs.  After the last start, if any start stagnated, the
+batch reports stagnation and the restart relaunches all ``K`` starts from
+``K`` fresh points (``STRATEGY LHS 3`` for ``N_STARTS 3``, say).  Under
+``PRESTAGE`` a stagnating ``EXPLORE`` phase hands over to the refinement,
+whose seeds again get a window each; the run restarts (both phases) only
+when a refinement seed stagnated **and** the refinement did not improve the
+global best.
 
 NOISE block
 ...........
@@ -1653,7 +1689,134 @@ source rank/slot/evaluation, and candidate-local hot-variable values.
 A canonical checkpoint write or durability failure is fatal rather than
 silently allowing an uncheckpointed optimisation to continue.  A
 rank-local diagnostic-mirror failure is reported but cannot invalidate an
-already-durable canonical winner.
+already-durable canonical winner; the mirror retries for at most 1 s, and
+after a failure makes a single attempt per new best (unlogged) until one
+succeeds again.
+
+Transient filesystem errors are retried first.  On network filesystems
+(SMB/CIFS, NFS) a lock, write, ``fsync`` or rename can fail for a moment
+(``EBUSY``, ``EAGAIN``, ``ESTALE``, ``ETXTBSY``, ``EIO``, ``ENOLCK``,
+``ETIMEDOUT``, ``EDEADLK``) and succeed when repeated.  ``EACCES`` (an SMB
+sharing violation or delete-pending file) is retried too, but only when the
+directory is on a network filesystem (SMB/CIFS, NFS, AFS, Ceph, Lustre,
+GPFS, 9P or FUSE); on a local disk it is a real permission problem and
+fails at once.  A rename that reports ``ENOENT`` is also retried: on NFS a
+retransmitted rename that had already landed fails that way, and the retry
+recognises its own potential in place.
+Publication then retries its whole lock → read → compare → replace
+transaction with exponential backoff (10 ms doubling to 2 s, ±20 %
+jitter), releasing its locks between attempts so that a better candidate
+published meanwhile still wins.  Retrying stops once 30 s have passed since
+the first failure; a failing call that blocks by itself (a soft-mount
+timeout) can add its own duration at either end, and no budget bounds a
+call that hangs on a hard mount.  Meanwhile the evaluations whose loss may
+still become the new best wait at their finalize step, and so does an
+evaluation whose :ref:`RESTART <restart_decorator>` or BASINS stagnation
+check would stop the optimiser (it first waits until as many new-best
+decisions have finished as were in progress when it checked); the others
+carry on.  Permanent errors (``ENOSPC``, ``EROFS``, ``ENOENT``, …) are not
+retried.  When the error is permanent or the retries are exhausted the run
+stops, whatever the optimiser (NLopt, MULTISTART and the
+``ANNEAL_PT``/``ANNEAL_PA`` calibration included): the RESULT section
+reads ::
+
+   Optimiser status        : FAILED -- best-potential persistence: <error> (gave up after N attempts over T s)
+
+and ``tadah hpo`` exits with a non-zero status.  New bests of other
+chains that are still waiting to be saved then get a single attempt each,
+without backoff: a permanent error fails at once, as before the failure,
+and only a rename that reports ``ENOENT`` (which may have landed) gets one
+immediate re-attempt.  A failed one is logged as
+``best-potential persistence failure at eval M (no backoff after the
+failure at eval N): <error>``, which after a transient error ends in
+``(gave up after 1 attempt over 0 s)`` (``2 attempts`` when it follows
+such a rename); the ``over 0 s`` counts from that candidate's first
+failure, so it does not show the call's own duration.  So the run ends
+after about one retry budget, not one per waiting candidate, and the
+first failure stays the status -- but storage that has recovered by then
+still saves them (``best potential of eval M saved after the persistence
+failure at eval N (no backoff); the run still ends FAILED``; see below).
+This holds when failing calls fail fast: with a soft NFS/SMB mount that
+times out after T seconds each waiting candidate adds about T, and at
+most one candidate waits per other thread or chain (``THREADS - 1`` in a
+``DLIB:GFS`` run); a hard mount that hangs is not bounded at all.
+After a shutdown signal (``SIGINT``, ``SIGTERM``, ``SIGUSR2``) retrying
+goes on for at most 2 s, counted from when the retry first sees the
+signal, with the delays
+shortened to fit: the 30 s budget does not hold up the exit, and one
+transient blip right after the signal (a scheduler's time-limit warning,
+say) still saves the candidate.  When those 2 s are spent the candidate
+was not saved, so the run still ends ``FAILED``, with ``(retry abandoned:
+shutdown requested) after N attempts over T s`` in place of the ``gave
+up`` note.  The run also fails when the error meets a concurrent stop on
+its way up (another chain's stagnation stop or a shutdown request in the
+same epoch of a parallel annealer, ASA block or ``DLIB:GFS`` batch, or a
+PRESTAGE, MULTISTART or BASINS stage that ends on stagnation): a new best
+that could not be saved is never overruled, and the run stops at once.
+RESULT names the candidate that was lost and what the file holds::
+
+   Best total loss         : 9.0390e-02  (eval 3) -- NOT saved (best-potential persistence failed)
+   Last saved best         : 1.0133e-01  (eval 2)
+   Best potential saved    : not confirmed -- best_pot.tadah may hold eval 3 (write not synced) or eval 2; check its HPO_SOURCE_EVAL header
+
+``Last saved best`` appears only when an earlier best was saved; the best
+metrics below it (``Best EMAE``, ...) are that potential's.  ``not
+confirmed`` means the candidate's rename may have happened (a directory
+``fsync`` failed afterwards, or the rename itself reported ``ENOENT`` or a
+transient error, which on a network filesystem it can do after landing);
+otherwise — also when the rename failed with ``EROFS``, ``EXDEV``,
+``ENOSPC``, ``EPERM`` or the like, which leave the file untouched — the
+line reads ``best_pot.tadah (eval M)``, or ``(none written)`` for a first
+best.  When several chains fail to save, the lowest loss is reported,
+and ``may hold`` names each candidate whose rename may have happened
+(not necessarily the lowest).  If
+another chain saved a *lower* best after the failure (the storage
+recovered before the run stopped, and its single attempt succeeded), that
+saved best is the result and the lost candidate is listed after it; the
+run still ends ``FAILED`` with the first failure as its status and a
+non-zero exit, because a best was lost on the way::
+
+   Best total loss         : 8.0185e-02  (eval 23)
+   Unsaved candidate       : 9.1781e-02  (eval 9) -- could not be persisted; superseded by eval 23
+   Best potential saved    : best_pot.tadah (eval 23)
+
+The per-evaluation files (``loss.tadah``, ``params.tadah``,
+``outvar.tadah``, ``stats.tadah`` and their ``best_*`` twins) and the
+``DUMP``/``BDUMP`` archives are not fatal.  Each writer drain retries
+transient errors for up to 10 s *in total*, shared by all its files and
+archives, so the first drain after a filesystem goes bad stalls for about
+10 s, not 10 s per file.  Every file and archive still makes its own attempt
+in every drain (and, after a permanent error such as ``ENOSPC`` or
+``EROFS``, one immediate re-attempt); those calls are not bounded by the
+budget.  This matters only when failing calls are slow themselves: with a
+soft NFS/SMB mount that times out after T seconds the first drain costs
+about 10 s plus (files + archives) × T, and every later drain of the outage
+about (files + archives) × T; a hard mount that hangs is not bounded at
+all.  A batch that still fails is dropped whole — never
+half a row, also when the file was truncated underneath the run — and
+reported, and the run goes on; that file (or the archives) then gets a
+single attempt per drain, without backoff, until a write succeeds again.
+After the first ``WARNING`` of such an outage, repeats are summarised (on
+the 2nd, 4th, 8th, … failure, or every 10 min, with the rows lost so far),
+and an ``INFO`` line reports when writes resume.  After a shutdown signal
+a drain's whole retry budget is 2 s instead of 10 s (the final drain keeps
+its rows through a blip and still ends well inside a scheduler's kill
+timeout; rows it cannot write count as lost), and the final drain after a
+best-potential persistence failure does not back off (one immediate
+re-attempt after a permanent error).  An archive that
+cannot be written is removed only when this run created or truncated it: a
+read-only file already at that path is left alone.  The per-evaluation
+files are not ``fsync``'d (that would cost every drain a round trip to the
+server), so a write-back error that NFS or SMB reports only later is not
+seen; ``best_pot.tadah`` is ``fsync``'d.  Every retry is a ``WARNING`` in
+``hpo_run.log``, and DIAGNOSTICS gains ::
+
+   Transient I/O retries   : N (best-potential a, per-eval logs/archives b); rows lost c; archives lost d
+
+whenever one of these counts is non-zero (a single immediate re-attempt
+without backoff -- a log writer's after a permanent error, or a waiting
+candidate's after a rename's ``ENOENT`` -- is logged but not counted as a
+transient retry).
 
 After checkpoint detection, a confirmed **fresh run** removes canonical and
 rank-local incumbents left by an unrelated objective before evaluating its
@@ -1737,6 +1900,62 @@ outputs) is the run's structured journal. It opens with a banner
    -- DIAGNOSTICS   --   NaN rate, bound-proximity analysis
    -- PERFORMANCE   --   timing statistics
    -- RESULT        --   final status, best loss, best metrics
+
+The ``Optimiser status`` line of RESULT, and the exit status of
+``tadah hpo``:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 38 10 52
+
+   * - Status
+     - Exit
+     - Meaning
+   * - the optimiser's stop reason, e.g. ``MAXEVAL_REACHED -- ...``, or
+       ``COMPLETED``
+     - ``0``
+     - normal termination (under MULTISTART: the last successful start's;
+       when a start failed, followed by ``(N of M MULTISTART starts
+       failed; see the WARNINGs)``, counted over the run)
+   * - ``STOPPED -- <reason> (...)``
+     - ``0``
+     - the algorithm terminated itself (NLopt ``NLOPT_FAILURE`` or
+       ``NLOPT_ROUNDOFF_LIMITED``, a masked diagnostic); the best result
+       stands
+   * - ``STOPPED -- stagnation: no new best in W evals after R restart(s)``
+     - ``0``
+     - :ref:`RESTART <restart_decorator>` used all its restarts and the
+       last launch stagnated again (under MULTISTART followed by the
+       failed-starts note when a start failed)
+   * - ``SHUTDOWN (<signal>)``
+     - ``0``
+     - ``SIGINT``/``SIGTERM``/``SIGUSR2``; outputs flushed (see the note
+       below for multi-rank runs)
+   * - ``FAILED -- best-potential persistence: <error>``
+     - non-zero
+     - the best potential could not be saved (see
+       :ref:`hpo_potential_archives`), also when its retries after a
+       shutdown signal used up their 2 s (``(retry abandoned: shutdown
+       requested)``)
+   * - ``FAILED -- <error>``
+     - non-zero
+     - any other error: a rejected setup, an optimiser failure, or an
+       exception outside the per-evaluation FAILSCORE recovery.  Under
+       MULTISTART a failure confined to one start is a ``WARNING``
+       (journal and stderr) and the next start runs; the run fails only
+       when every start of a launch failed
+
+.. note::
+
+   These statuses are per journal.  In a multi-rank ``TADAH_HPO_MPI``
+   ``ANNEAL_PT``/``ANNEAL_PA`` run a shutdown signal during the seed/T0
+   calibration (or PT's calibration pass 2) ends only rank 0 as
+   ``SHUTDOWN`` with exit status 0; the other ranks end ``FAILED --
+   TADAH:ANNEAL_PT: rank 0 aborted during seed/T0 calibration`` (``PA``
+   likewise) with exit status 1, and the launcher reports a failure.  A
+   rank that fails while other ranks are blocked in a collective aborts
+   the whole job (``MPI_Abort``, 30 s after its own journal is closed) so
+   they cannot hold the allocation (see :ref:`tadah_anneal_mpi`).
 
 The optimizer journals documented on the algorithm pages (banners,
 per-rung and per-window reports, audits, the final ``stopped:`` line)
@@ -1991,6 +2210,9 @@ Marker                                                                       Mea
 ``[HPO] PRESTAGE: top-K losses: …``                                           Snapshot quality after PRESTAGE finishes.
 ``[HPO] REFINEMENT: refining top-K seed(s) via LIB:ALGO``                     Outer (refinement) phase starts.
 ``[HPO] RESTART i/M — fresh init from STRATEGY``                              Stagnation watchdog fired.
+``[HPO] RESTART: stagnation reached, max restarts (M) used; stopping``         Restarts exhausted; the run stops.
+``[HPO] MULTISTART: N of K start(s) stopped on stagnation; …``                Batch outcome reported to RESTART.
+``[HPO] WARNING: MULTISTART start i/K failed: …``                             One start failed; the next one runs.
 ``[HPO] NOISE_AUTO: PARAM fd_step set to V (diag=…, dim=…)``                  ``NOISE.AUTO`` fired and shows the value used.
 ``[HPO] Initial step (LIB:ALGO): …``                                         NLopt run started; the effective per-dimension step is in the journal.
 ``[HPO] OPTIM_SCALE X taken from the TADAH_OPTIM_SCALE …``                    Env override of the scaling policy is active.

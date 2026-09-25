@@ -15,9 +15,11 @@ Source checkouts (``locate``), in this order:
   2. A sibling checkout: ``<workspace>/CORE`` or ``<workspace>/core``, where
      ``<workspace>`` is the directory that contains this Tadah.MLIP checkout.
   3. ``$TADAH_PATH/CORE`` or ``$TADAH_PATH/core``.
-  4. On GitLab CI and Read the Docs only: a shallow clone of the branch being
-     built, named the way ``tadah_get_git_branch`` (cmake-tools) names it for
-     FetchContent -- ``$CI_COMMIT_REF_NAME``, else
+  4. On GitLab CI and Read the Docs only: a shallow clone of the branch or
+     tag being built, named the way ``tadah_get_git_branch`` (cmake-tools)
+     names it for FetchContent -- ``$CI_COMMIT_REF_NAME``, else
+     ``$READTHEDOCS_GIT_IDENTIFIER`` (the ref Read the Docs checked out; its
+     ``latest`` and ``stable`` versions are named after no ref), else
      ``$READTHEDOCS_VERSION_NAME``, else ``$READTHEDOCS_VERSION``.
 
 Doxygen XML (``doxygen_xml_dir``): ``$TADAH_DOXYGEN_XML_DIR`` when set (it
@@ -66,10 +68,17 @@ def ci_platform(environ):
     return None
 
 
+# The variables that name the ref being built, in tadah_get_git_branch's
+# order (cmake-tools, cmake/TadahDevelop.cmake).
+BUILT_BRANCH_VARS = ('CI_COMMIT_REF_NAME', 'READTHEDOCS_GIT_IDENTIFIER',
+                     'READTHEDOCS_VERSION_NAME', 'READTHEDOCS_VERSION')
+
+
 def built_branch(environ):
-    '''The branch being built on CI/RTD, as tadah_get_git_branch names it.'''
-    for var in ('CI_COMMIT_REF_NAME', 'READTHEDOCS_VERSION_NAME',
-                'READTHEDOCS_VERSION'):
+    '''The ref being built on CI/RTD, as tadah_get_git_branch names it:
+    (variable, value) of the first of BUILT_BRANCH_VARS that is set, or
+    (None, None).'''
+    for var in BUILT_BRANCH_VARS:
         if environ.get(var):
             return var, environ[var]
     return None, None
@@ -134,8 +143,7 @@ def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
                      "(not on GitLab CI or Read the Docs)")
     elif branch is None:
         tried.append(f"clone of the built branch: skipped (on {platform}, "
-                     "but none of CI_COMMIT_REF_NAME, READTHEDOCS_VERSION_NAME, "
-                     "READTHEDOCS_VERSION is set)")
+                     f"but none of {', '.join(BUILT_BRANCH_VARS)} is set)")
     else:
         dest = os.path.join(
             clone_root if clone_root is not None

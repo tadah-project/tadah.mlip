@@ -18,9 +18,12 @@ build:
     pre_install:
       - echo $READTHEDOCS
       - echo "READTHEDOCS_VERSION (slug)=$READTHEDOCS_VERSION"
-      - echo "READTHEDOCS_VERSION_NAME (ref)=$READTHEDOCS_VERSION_NAME"
+      - echo "READTHEDOCS_VERSION_NAME (verbose version name)=$READTHEDOCS_VERSION_NAME"
+      # The ref the modules are fetched at (tadah_get_git_branch, cmake-tools)
+      # and the docs clone CORE/HPO at (source_locator.py); 'latest' and
+      # 'stable' are version names, not refs.
+      - echo "READTHEDOCS_GIT_IDENTIFIER (checked-out ref)=$READTHEDOCS_GIT_IDENTIFIER"
       - git status
-      - git status | grep origin | sed -e s/.*origin\\/// -e s/[^a-zA-Z\/_-].*// 
       - wget https://cmake.org/files/v3.22/cmake-3.22.0-linux-x86_64.sh
       - chmod +x cmake-3.22.0-linux-x86_64.sh
       - mkdir CMAKE

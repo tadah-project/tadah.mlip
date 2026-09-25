@@ -93,13 +93,37 @@ endforeach()
 
 
 # ------------------------------------------------------------------
-# 4. Catch test discovery (cmake-tools), used by every Tadah module
+# 4. Branch detection (cmake-tools' tadah_get_git_branch)
+# ------------------------------------------------------------------
+# The ref every Tadah module fetches its sibling modules at: CI and Read
+# the Docs variables (READTHEDOCS_GIT_IDENTIFIER before the version name,
+# which is 'latest' or 'stable' for those versions), then the checkout's
+# upstream or local branch. Each case runs git_branch/probe.cmake with a
+# controlled environment; the git cases use throw-away local repositories.
+find_package(Git REQUIRED)
+foreach(_case ci rtd_latest rtd_stable rtd_version_name rtd_version preset
+              upstream local_branch detached not_git)
+  add_test(NAME tadah_git_branch_${_case}
+    COMMAND ${CMAKE_COMMAND}
+      -DCASE=${_case}
+      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/git_branch/${_case}
+      -DGIT=${GIT_EXECUTABLE}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/git_branch/check_git_branch.cmake)
+  set_tests_properties(tadah_git_branch_${_case} PROPERTIES
+    LABELS cmake
+    TIMEOUT 60)
+endforeach()
+
+
+# ------------------------------------------------------------------
+# 5. Catch test discovery (cmake-tools), used by every Tadah module
 # ------------------------------------------------------------------
 add_subdirectory(catch_discovery)
 
 
 # ------------------------------------------------------------------
-# 5. Documentation build tools (docs/tools/tests)
+# 6. Documentation build tools (docs/tools/tests)
 # ------------------------------------------------------------------
 # Unit tests of the docs input lookup (docs/source/config/source_locator.py)
 # and of the hpo.html redirect check (docs/tools/check_redirect.py). They
@@ -127,7 +151,7 @@ set_tests_properties(tadah_docs_tools PROPERTIES
 
 
 # ------------------------------------------------------------------
-# 6. `tadah hpo` stopped by a signal exits with 128 + the signal number
+# 7. `tadah hpo` stopped by a signal exits with 128 + the signal number
 # ------------------------------------------------------------------
 # cli_signal/check_hpo_signal.py runs `tadah hpo` on a tiny problem (no
 # LAMMPS, no network), signals it once evaluations are on disk, and checks

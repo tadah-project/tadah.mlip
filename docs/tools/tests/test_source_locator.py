@@ -149,6 +149,48 @@ class LocateTest(unittest.TestCase):
                              'READTHEDOCS_VERSION': 'release-x'}, runner=git)
         self.assertEqual(git.calls[0][5], 'release-x')
 
+    def test_rtd_latest_and_stable_clone_the_git_identifier(self):
+        # 'latest' and 'stable' are Read the Docs version names, not refs;
+        # READTHEDOCS_GIT_IDENTIFIER is the branch or tag it checked out.
+        for version, ident in (('latest', 'v1-dev'), ('stable', 'v1.6.0'),
+                               ('release-x', 'release/x')):
+            with self.subTest(version=version):
+                git = FakeGit(marker=CORE_MARKER)
+                env = {'READTHEDOCS': 'True',
+                       'READTHEDOCS_VERSION': version,
+                       'READTHEDOCS_VERSION_NAME': version,
+                       'READTHEDOCS_GIT_IDENTIFIER': ident}
+                root = self.locate('CORE', env, runner=git)
+                self.assertEqual(git.calls, [[
+                    'git', 'clone', '--depth', '1', '--branch', ident,
+                    'https://git.ecdf.ed.ac.uk/tadah/core.git',
+                    os.path.join(self.clones, 'CORE')]])
+                self.assertEqual(root, os.path.join(self.clones, 'CORE'))
+
+    def test_built_branch_order_matches_tadah_get_git_branch(self):
+        # CI_COMMIT_REF_NAME, READTHEDOCS_GIT_IDENTIFIER,
+        # READTHEDOCS_VERSION_NAME, READTHEDOCS_VERSION: the first one set.
+        full = {'CI_COMMIT_REF_NAME': 'ci',
+                'READTHEDOCS_GIT_IDENTIFIER': 'ident',
+                'READTHEDOCS_VERSION_NAME': 'name',
+                'READTHEDOCS_VERSION': 'slug'}
+        order = ['CI_COMMIT_REF_NAME', 'READTHEDOCS_GIT_IDENTIFIER',
+                 'READTHEDOCS_VERSION_NAME', 'READTHEDOCS_VERSION']
+        for i, var in enumerate(order):
+            env = {k: v for k, v in full.items() if k in order[i:]}
+            with self.subTest(first=var):
+                self.assertEqual(loc.built_branch(env), (var, full[var]))
+        self.assertEqual(loc.built_branch({}), (None, None))
+
+    def test_clone_names_the_variable_it_took_the_ref_from(self):
+        git = FakeGit(returncode=128, stderr='fatal: Remote branch v9 not found')
+        env = {'READTHEDOCS': 'True', 'READTHEDOCS_VERSION_NAME': 'stable',
+               'READTHEDOCS_GIT_IDENTIFIER': 'v9'}
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            self.locate('HPO', env, runner=git)
+        self.assertIn('hpo.git at v9 ($READTHEDOCS_GIT_IDENTIFIER): git clone '
+                      'exited with 128', str(cm.exception))
+
     def test_failed_clone_has_no_second_attempt_and_is_reported(self):
         git = FakeGit(returncode=128,
                       stderr='Cloning...\nfatal: Remote branch feat not found')
@@ -173,8 +215,9 @@ class LocateTest(unittest.TestCase):
         with self.assertRaises(loc.SourceNotFound) as cm:
             self.locate('HPO', {'READTHEDOCS': 'True'}, runner=git)
         self.assertEqual(git.calls, [])
-        self.assertIn('on Read the Docs, but none of CI_COMMIT_REF_NAME',
-                      str(cm.exception))
+        self.assertIn('on Read the Docs, but none of CI_COMMIT_REF_NAME, '
+                      'READTHEDOCS_GIT_IDENTIFIER, READTHEDOCS_VERSION_NAME, '
+                      'READTHEDOCS_VERSION is set', str(cm.exception))
 
     def test_locate_file_and_unknown_repo(self):
         root = make_checkout(os.path.join(self.workspace, 'CORE'), CORE_MARKER)

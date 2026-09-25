@@ -53,7 +53,7 @@ stage blocks included:
    Error on line 6: MAXEVAL must be an integer from 1 to 2147483647, got '1e5'
    Line: MAXEVAL 1e5
 
-   Error on line 9: FAILSCORE must be a finite number, got '0x1p40'
+   Error on line 9: FAILSCORE must be a positive finite number, got '0x1p40'
    Line: FAILSCORE 0x1p40
 
 Root-level keys are read top to bottom, and **order matters** for three
@@ -117,11 +117,20 @@ Root-level loss control:
 
    * - Key (type)
      - Description
-   * - ``FAILSCORE`` (finite float)
+   * - ``FAILSCORE`` (positive finite float)
      - Ceiling of the evaluation loss: a total above it, or a non-finite
        total, is clipped to ``FAILSCORE`` (default: the largest double).
-       The value must be a finite number (``FAILSCORE abc`` used to set
-       it to ``0``, so every failure scored as the best loss).
+       The value must be a positive finite number, else it is an error
+       at its line (``FAILSCORE must be a positive finite number, got
+       '0'``).  ``FAILSCORE abc`` used to set it to ``0``, so every
+       failure scored as the best loss; and before 1.6.0 a value of
+       ``0`` or below was accepted and left no failure band: every
+       finite loss, ``FAILSCORE`` itself included, counted as usable,
+       so a run all of whose evaluations failed ended as a completed
+       one with a ``best_pot.tadah`` that held a failed evaluation
+       (:ref:`hpo_stopping`).  Negative losses (negative-weight
+       ``--varloss`` terms) are usable under any positive
+       ``FAILSCORE``: the failures sit above every loss.
        It is also the value a failed ``PC_OBSERVABLE`` term or an
        unreadable ``--varloss`` variable contributes, and the reference
        for graded failures (:ref:`failscore_grading`).  ``PC_LAMMPS``
@@ -132,10 +141,10 @@ Root-level loss control:
        evaluation instead (:ref:`failed evaluations under DLIB:GFS
        <hpo_dlib_gfs_failures>`); the history files and the journal
        keep the loss the evaluation reported (``FAILSCORE``, or a
-       graded failure).
-       A ``FAILSCORE`` of ``0`` or below has no failure band: every
-       finite loss, ``FAILSCORE`` itself included, then counts as a
-       usable loss (:ref:`hpo_stopping`).
+       graded failure).  With the default, the largest double, a
+       failed evaluation in a finite-difference stencil makes the
+       gradient not finite, which ends a gradient-based search
+       (:ref:`hpo_gradient_not_finite`).
    * - ``FAILSCORE_GRADING`` (``ON``/``OFF``)
      - Graded failure losses instead of the constant ``FAILSCORE``
        (default ``OFF``); see :ref:`failscore_grading`.
@@ -553,9 +562,16 @@ Additional options
    ``--outvar`` variables when the simulation fails (crash, timeout,
    out-of-window hot value, …); the substituted value then passes
    through the loss against the target like a measured one.  A finite
-   number (it may be negative).  Default: the root ``FAILSCORE`` in force
+   number (it may be negative or ``0``: it is a variable's value, not a
+   failure score).  Default: the root ``FAILSCORE`` in force
    when the line is read.  The ceiling
    that clips the *whole* evaluation is always the root ``FAILSCORE``.
+   On the ``PC_FAILPROBE`` line it is a failure score: the probe's
+   ``S`` reads it when the probe itself fails, and an ``S`` at or above
+   it counts as a failed probe.  There it must be a positive finite
+   number, as ``FAILSCORE`` (``PC_FAILPROBE --failscore must be a
+   positive finite number, got '0'``); before 1.6.0 a value of ``0`` or
+   below was accepted, and every probe read as failed.
 
 ``--maxtime <time>|off``
    Per-script override of the root ``PC_SCRIPT_TIMEOUT``, with the same
@@ -926,12 +942,12 @@ The knobs, most important first
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``FAILSCORE <value>`` (root)
-   The failure ceiling, as before — but with grading ON it **must** be a
-   finite positive number below ``1e300`` (e.g. ``1e9``), large enough
-   that all four grading bands are strictly representable; the plain
-   ``DBL_MAX`` default and unrepresentable tiny values are rejected at
-   startup.  Choose it a few orders of magnitude above your worst
-   plausible *real* loss.
+   The failure ceiling, a positive finite number as always — but with
+   grading ON it **must** also be below ``1e300`` (e.g. ``1e9``) and
+   large enough that all four grading bands are strictly representable;
+   the plain ``DBL_MAX`` default and unrepresentable tiny values are
+   rejected at startup.  Choose it a few orders of magnitude above your
+   worst plausible *real* loss.
 
 ``FAILSCORE_GRADING ON|OFF`` (root, default ``OFF``)
    The master switch.  ``OFF`` reproduces the ungraded
@@ -1417,7 +1433,10 @@ one a finite number (``MAXTIME`` a positive one).
      - How gradient-based backends obtain gradients: ``NUMERICAL``
        (default; finite differences, see ``PARAM fd_step`` /
        ``fd_kernel``), ``ANALYTICAL`` or ``HYBRID`` (analytical where a
-       derivative is registered, finite differences elsewhere).  The
+       derivative is registered, finite differences elsewhere).  A
+       gradient that is not finite — a failed evaluation in the
+       finite-difference stencil — can end the search, with its own
+       status (:ref:`hpo_gradient_not_finite`).  The
        analytical modes are experimental.  Not accepted inside an
        ``INNER`` block (a startup error at its line): ``MLSL`` and
        ``AUGLAG`` hand their ``INNER`` search the gradient of their own
@@ -1457,7 +1476,9 @@ one a finite number (``MAXTIME`` a positive one).
        (``inhouse`` — central differences in the internal coordinates,
        the default under ``OPTIM_SCALE AUTO`` — or ``ceres`` — Ceres'
        numeric differentiation, the default under ``OPTIM_SCALE NONE``;
-       needs a build with ``TADAH_ENABLE_CERES``).
+       needs a build with ``TADAH_ENABLE_CERES``).  ``fd_kernel``
+       overrides the default under either ``OPTIM_SCALE``; before 1.6.0
+       ``inhouse`` was ignored under ``NONE``.
 
 .. list-table:: Algorithms by library
    :header-rows: 1
@@ -1501,7 +1522,9 @@ one a finite number (``MAXTIME`` a positive one).
           gradient-using algorithm (``LD_*``, ``GD_*``, ``DLIB:BFGS``,
           all CERES drivers) obtains its gradient by finite differences
           (``PARAM fd_step``); for ``DLIB:BFGS`` and the CERES drivers
-          every difference evaluation counts toward ``MAXEVAL``.  Analytical gradients (``GRAD_STRATEGY
+          every difference evaluation counts toward ``MAXEVAL``.  A
+          failed evaluation in the stencil can make the gradient not
+          finite and end the search (:ref:`hpo_gradient_not_finite`).  Analytical gradients (``GRAD_STRATEGY
           ANALYTICAL``/``HYBRID``) are experimental; with
           ``PC_OBSERVABLE`` they are the default (:ref:`pc_observable`).
    * - ``DLIB``
@@ -1637,6 +1660,96 @@ each failed evaluation of this search …``).  Before 1.6.0 dlib was given
 trust-region step, even when later evaluations would have produced
 usable losses.
 
+.. _hpo_gradient_not_finite:
+
+Gradients that are not finite
+.............................
+
+The gradient-based backends — ``DLIB:BFGS``, NLopt's ``LD_*`` and
+``GD_*`` algorithms (and the local search of ``MLSL`` / ``AUGLAG``) and
+every CERES driver — take a finite-difference gradient (``GRAD_STRATEGY
+NUMERICAL``, the default, and the finite-difference part of ``HYBRID``)
+from the losses at a stencil of points around the current one (``PARAM
+fd_step``, ``fd_kernel``).  When an evaluation of the stencil fails — its
+loss is ``FAILSCORE`` or a graded failure, or it is not finite — the
+difference with a usable loss overflows under the default ``FAILSCORE``,
+the largest double (for any step below 1/2 in the optimiser's internal
+coordinates: half the box width under ``OPTIM_SCALE AUTO``), and the
+gradient is not finite.  Under a ``FAILSCORE`` a few orders of magnitude
+above the real losses (e.g. ``1e9``) it stays finite, dominated by the
+failure: a steep slope away from the failed point, which the search
+follows.
+
+A gradient that is not finite ends the search where the backend cannot go
+on without it:
+
+* ``DLIB:BFGS`` cannot reject a point: the search ends at the first such
+  gradient.
+* A local NLopt gradient search ends at such a gradient before it has had
+  a finite one — at its starting point, where it has no point to step back
+  to.  That is an ``LD_*`` algorithm without an ``INNER`` block, and an
+  ``AUGLAG`` whose local search is one — ``LD_AUGLAG``'s default
+  ``LD_MMA``, or an ``LD_*`` ``INNER`` block: HPO sets ``AUGLAG`` no
+  constraint, so it runs its local search once, from the starting point.
+* Otherwise NLopt and the CERES drivers reject a point whose gradient is
+  not finite (NLopt sees ``+inf``, Ceres a failed evaluation) and step
+  back, as they do for a failed evaluation, and the search goes on.  A
+  search that ends right after such a rejection ended because of it.  For
+  NLopt that means no evaluation after the rejection — under ``AUGLAG``,
+  none but the one ``AUGLAG`` makes of the point its local search
+  returned — and neither ``MAXEVAL``, ``MAXTIME`` nor ``STOPVAL``
+  reached, nor, under ``AUGLAG``, the ``MAXEVAL`` or ``MAXTIME`` of its
+  local search (which ``AUGLAG`` reports as ``FTOL_REACHED``).  NLopt's
+  own ending is then a success code, ``roundoff-limited``, ``nlopt
+  failure`` or a tolerance: an ``XTOL_REACHED`` or ``FTOL_REACHED`` there
+  is the rejection's ending, reached on the steps the search took back
+  from the rejected point.  For Ceres it means ``FAILURE`` (``Initial
+  cost and jacobian evaluation failed``, ``Numerical failure in line
+  search``) right after the rejection.
+* ``MLSL`` and the global ``GD_*`` searches (``GD_STOGO``) are never
+  stopped at a rejection: a rejected local start or point leaves them the
+  rest of their search.
+
+Such an ending is the search's own.  The journal has a warning that names
+the backend, the point and the stencil point that failed, and the
+``Optimiser status`` is ``STOPPED -- gradient not finite: a failed
+evaluation in the finite-difference stencil``:
+
+.. code-block:: none
+
+   WARNING   DLIB:BFGS stopped: gradient not finite: a failed evaluation in the finite-difference stencil (at CGRID2B[2] = 1.6, the stencil point CGRID2B[2] = 1.4 failed: loss 1.797693135e+308); best-so-far preserved
+
+A gradient that is not finite for another reason ends the search the same
+way, with its own cause: ``the finite-difference quotient overflowed``
+(two usable losses too far apart for the step), ``the analytical gradient
+could not be formed at this point`` or ``the analytical gradient is not
+finite at this point`` (``ANALYTICAL``, ``HYBRID``).  The evaluations are
+the ones the backend made: nothing stands in for the failed one, and the
+search does not go on past the point where it ends.  The run then ends
+like any run whose optimiser ended on its own (:ref:`hpo_stopping`): with
+status ``0`` when an evaluation produced a usable loss — the stencil's
+other points normally did — and as a run without a usable loss otherwise.
+The search's ending does not end the strategy: the other ``MULTISTART``
+starts, and the ``PRESTAGE`` refinement after its exploration, still run,
+and the trailer is the status of the last search that ran, as for any
+search that ends on its own (under ``MULTISTART`` the last start's: a
+start that such a gradient ended shows only in its journal warning when a
+later start runs to its own end).  A signal or an error decides the ending
+first.
+
+Before 1.6.0 these endings were reported as ``MAXEVAL=<n> reached`` and
+``COMPLETED`` (``DLIB:BFGS``), ``SUCCESS -- generic success``
+(``LD_LBFGS``, ``LD_TNEWTON``, ``LD_VAR1``, ``LD_VAR2``),
+``roundoff-limited`` (``LD_SLSQP``) or ``COMPLETED`` (the CERES drivers).
+``LD_MMA`` and ``LD_CCSAQ`` did not stop at a starting point without a
+finite gradient: they asked for the same point again and again until
+``MAXEVAL`` (120 evaluations of three points for ``MAXEVAL 60``), and so
+did ``LD_AUGLAG``'s default local search and an ``INNER`` ``LD_MMA`` or
+``LD_CCSAQ``; ``AUGLAG`` with an ``INNER`` ``LD_LBFGS`` or ``LD_TNEWTON``
+ended at once and reported ``FTOL_REACHED``.  They now stop there too;
+later in a search ``LD_MMA`` and ``LD_CCSAQ`` reject such a point and
+shrink their trust region, as before.
+
 .. _hpo_stop_criteria:
 
 Stop criteria per backend
@@ -1644,7 +1757,10 @@ Stop criteria per backend
 
 Each backend ends a run on the criteria it honours — ``MAXEVAL``,
 ``MAXTIME``, ``STOPVAL`` and the tolerances its stop tests read, set
-above 0 — and most also end on their own.  A backend with no convergence
+above 0 — and most also end on their own.  A tolerance that ends a
+gradient-based search right after it rejected a point whose gradient is
+not finite is reported as that rejection's ending
+(:ref:`hpo_gradient_not_finite`).  A backend with no convergence
 test and no finite schedule runs until it is interrupted when it has
 none of them, so at least one is required: a startup error names the
 backend and the stops it honours.  An active ``RESTART``
@@ -2860,16 +2976,19 @@ Stopping a run
 
 A run ends when the optimiser meets its stop criteria (``MAXEVAL``,
 ``STOPVAL``, a tolerance, ``MAXTIME``, the ``RESTART`` budget, …), when
-a signal stops it, or when an error stops it.  ``best_pot.tadah`` holds
+a gradient that is not finite ends a gradient-based search
+(:ref:`hpo_gradient_not_finite`), when a signal stops it, or when an
+error stops it.  ``best_pot.tadah`` holds
 the incumbent in every case (:ref:`hpo_potential_archives`) — unless no
 evaluation produced a usable loss (a feasible one: finite and below the
 graded-failure band ``[0.999 × FAILSCORE, FAILSCORE)``).  Then there is no
 incumbent and no ``best_pot.tadah`` is written, and a run that ends on its
 own ends as a failed one (status ``1``); a signal or an error decides the
-status first (below).  With a ``FAILSCORE`` of ``0`` or below there is no
-failure band, and every finite loss counts as usable, ``FAILSCORE``
-itself included: a run all of whose evaluations failed then ends as a
-completed one, and its ``best_pot.tadah`` holds a failed evaluation.
+status first (below).  ``FAILSCORE`` is a positive number, so every failed
+evaluation lies in the failure band; before 1.6.0 a ``FAILSCORE`` of
+``0`` or below was accepted and left no band, and a run all of whose
+evaluations failed ended as a completed one, with a ``best_pot.tadah``
+that held a failed evaluation.
 
 **Signals.** ``tadah hpo`` handles ``SIGINT`` (Ctrl-C), ``SIGTERM``
 (``kill``, ``scancel``) and ``SIGUSR2`` (an advance warning before a
@@ -2926,8 +3045,16 @@ no advance warning.
        budget ends the run: ``STOPPED -- stagnation, max restarts (MAX)
        used``.
      - Complete.
-   * - Stop criteria met (the ``RESTART`` budget included), but no
-       evaluation produced a usable loss
+   * - A gradient that is not finite ended the gradient-based search that
+       ended the run (:ref:`hpo_gradient_not_finite`)
+     - ``0`` (``1`` without a usable loss: next row)
+     - ``STOPPED -- gradient not finite: a failed evaluation in the
+       finite-difference stencil`` (or another cause, e.g. ``… the
+       finite-difference quotient overflowed``)
+     - Complete.
+   * - Stop criteria met (the ``RESTART`` budget included), or a
+       gradient that is not finite ended the search, but no evaluation
+       produced a usable loss
      - ``1``, with ``[HPO] ERROR: no evaluation produced a usable loss;
        no best_pot.tadah was written`` on stderr (and on an ``ERROR``
        line of the journal)

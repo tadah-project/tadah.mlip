@@ -49,6 +49,9 @@ optionally ``RESTART``; :ref:`strategy_block`).  Gradient-based backends
 (``NLOPT`` ``LD_*``/``GD_*``, ``CERES``) obtain their gradient by finite
 differences and are rejected when the configuration has ``PC_LAMMPS``
 lines; ``DLIB:BFGS`` is the one gradient-based optimiser accepted there.
+A failed evaluation in the finite-difference stencil can make the
+gradient not finite, which can end such a search with its own status
+(:ref:`hpo_gradient_not_finite`).
 ``MAXEVAL`` caps every backend's evaluations; without it a backend runs
 until its other stops or its own end it (convergence, a finite
 temperature schedule or grid, ASA's limits).  A tolerance is a stop only

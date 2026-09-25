@@ -148,6 +148,14 @@ flag: `add_test(NAME x COMMAND test_foo "[.tag]" --warn NoTests)`.
 `ctest -R tadah_catch` runs the regression tests for the discovery itself
 (`tests/catch_discovery`). `ctest -L docs` runs the unit tests of the
 documentation build tools (see *Building the documentation*).
+`ctest -L examples` runs the CLI examples the documentation includes
+(`tadah_cli_example_<name>`, one per `examples/CLI/<name>/README.rst` that
+`docs/source/examples.rst` includes): `tests/cli_examples` copies the
+example to the build tree, runs every `tadah` command of the README's bash
+code blocks and checks that each exits 0 and leaves its result (the
+potential of `tadah train`; a best potential and a `best_loss.tadah` row
+for `tadah hpo`). An example included in the docs is tested with no further
+registration.
 
 **Skipped, not passed.** A test that cannot run because an optional input
 is absent (an external dataset, an environment variable) must be reported
@@ -168,16 +176,17 @@ as *Skipped*, so that a passing `ctest` means the checks ran:
   `SKIP_REGULAR_EXPRESSION "${TADAH_TEST_SKIP_REGULAR_EXPRESSION}"`
   itself;
 - a script entry either exits with a code of its own and sets
-  `SKIP_RETURN_CODE` (`hpo_strategy_matrix`: 77), or prints a line that its
-  own `SKIP_REGULAR_EXPRESSION` matches (`tadah_docs_tools`, see *Building
-  the documentation*).
+  `SKIP_RETURN_CODE` (`hpo_strategy_matrix` and `tadah_cli_example_*`:
+  77), or prints a line that its own `SKIP_REGULAR_EXPRESSION` matches
+  (`tadah_docs_tools`, see *Building the documentation*).
 
 The CTest summary lists skipped entries under "The following tests did not
 run". With the documentation tools installed and without the optional data,
 the suite skips exactly the two MLIP `NNFinder: real CH4 phase-I structure`
 cases (`TADAH_TEST_PHASEI_DB`) and `hpo_strategy_matrix`
 (`TADAH_HPO_INTEGRATION_BUNDLE`); `tadah_docs_tools` is Skipped too when one
-of its tools is missing. See the cmake-tools README, *Skipped tests: the
+of its tools is missing. A build without `TADAH_ENABLE_NFP` also skips
+`tadah_cli_example_ex_2`, whose README runs `tadah hpo`. See the cmake-tools README, *Skipped tests: the
 TADAH-SKIP marker*, for the rules.
 
 **Pitfall:** MLIP redefines `add_test()` globally (to skip Gemmi's own
@@ -213,7 +222,7 @@ is missing it stops and lists every location it tried.
 |-------|---------------------------------|
 | CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the `CORE` checkout next to `Tadah.MLIP`; `$TADAH_PATH/CORE`; on GitLab CI and Read the Docs only, a shallow clone of the branch or tag being built, named the way cmake-tools' `tadah_get_git_branch` names it: `$CI_COMMIT_REF_NAME`, else `$READTHEDOCS_GIT_IDENTIFIER` (Read the Docs' `latest` and `stable` versions are named after no ref), `$READTHEDOCS_VERSION_NAME`, `$READTHEDOCS_VERSION` |
 | HPO sources (ANNEAL key tables) | the same, with `$TADAH_HPO_SOURCE_DIR` and `HPO` |
-| Doxygen XML (API pages) | `$TADAH_DOXYGEN_XML_DIR`; otherwise `build/docs/xml`, which `cmake --build build --target docs` writes |
+| Doxygen XML (API pages) | `$TADAH_DOXYGEN_XML_DIR`; otherwise `build/docs/xml`, which `cmake --build build --target docs` writes. Its input is the `include/` directory of each module the build configures (`cmake/doxygen_input.cmake`): CORE, MODELS and MLIP, and HPO only with `TADAH_ENABLE_NFP`, so the Read the Docs build (NFP off) has no HPO API |
 
 A variable that is set must be valid. A source override has to name a
 checkout that contains the file the build reads, and the XML override

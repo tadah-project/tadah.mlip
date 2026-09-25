@@ -100,6 +100,28 @@ class ReadTomlTest(unittest.TestCase):
         self.assertIn('standard error', intro)
         self.assertIn('pair_style tadah', intro)
 
+    def test_allowed_values_are_listed(self):
+        # blueprint field `allowed_values` (CORE): the only values of a
+        # string key, matched without regard to case; any other value is an
+        # error at its line.
+        bp = blueprint()
+        bp['TYPES']['STRING'] = {'value_type': ['STRING'],
+                                 'value_format': ['<string>'],
+                                 'value_N': [1],
+                                 'examples': ['word']}
+        bp['ALLOWED_KEYS']['EMBF0'] = {'INHERIT': ['TYPES.STRING'],
+                                       'value_format': ['ZERO|FREE'],
+                                       'allowed_values': ['ZERO', 'FREE'],
+                                       'default_value': ['ZERO'],
+                                       'examples': ['ZERO', 'FREE'],
+                                       'description': 'Reference.'}
+        sec = self.section(self.rt.render(bp), 'EMBF0')
+        self.assertIn('   *Allowed values*: ZERO / FREE (any case; any other '
+                      'value is an error)\n', sec)
+        self.assertLess(sec.index('*Allowed values*'), sec.index('*Default*'))
+        self.assertNotIn('*Allowed values*', self.section(self.rt.render(bp),
+                                                          'LAMBDA'))
+
     def test_multiline_reason_stays_inside_the_warning(self):
         sec = self.section(
             self.rt.render(blueprint({'deprecated': 'Line one.\nLine two.'})),

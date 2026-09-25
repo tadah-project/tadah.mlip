@@ -1,4 +1,4 @@
-# Anchors of the pre-1.5.1 Nested Fitting page (hpo.html), one per line.
+# Anchors of the pre-1.6.0 Nested Fitting page (hpo.html), one per line.
 # docs/tools/check_redirect.py checks that _extra/hpo.html sends each one to
 # a page that has the section (see that script for the rules).
 #

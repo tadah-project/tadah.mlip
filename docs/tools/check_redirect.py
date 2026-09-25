@@ -3,7 +3,7 @@
 
     check_redirect.py <html-output-dir> [--anchors FILE]
 
-hpo.html (docs/source/_extra/hpo.html) redirects the pre-1.5.1 Nested
+hpo.html (docs/source/_extra/hpo.html) redirects the pre-1.6.0 Nested
 Fitting page to the pages it was split into.  Its script sends ``#x`` to
 ``routes[x]`` verbatim when the routes table names ``x``, else to
 ``default#x``.  This checker reads that same table (the JSON script

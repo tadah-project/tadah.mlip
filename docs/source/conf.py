@@ -133,7 +133,7 @@ html_theme = "sphinx_rtd_theme"
 html_static_path = ['_static']
 
 # Files copied verbatim to the output root.  _extra/hpo.html redirects the
-# pre-1.5.1 Nested Fitting page (hpo.html) to the pages it was split into;
+# pre-1.6.0 Nested Fitting page (hpo.html) to the pages it was split into;
 # the check_redirect extension (docs/tools/check_redirect.py) verifies its
 # targets after every 'html' build and warns that it is unchecked when
 # another builder copies it.

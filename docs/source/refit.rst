@@ -360,7 +360,7 @@ Without ``MAXEVAL`` each optimiser takes its default budget:
      - iterations of ``LM`` and ``DOGLEG``
      - 2000
 
-Before 1.5.1 dlib ``GLOBAL`` took ``max(500, MAXEVAL/20)`` function calls,
+Before 1.6.0 dlib ``GLOBAL`` took ``max(500, MAXEVAL/20)`` function calls,
 dlib ``LBFGS`` capped its L-BFGS iterations (at ``MAXEVAL`` in EXPLORE
 ``INNER``, 50 × ``MAXEVAL`` in REFINE) rather than its evaluations, and
 REFINE ``LD_LBFGS`` took 50 × ``MAXEVAL`` evaluations, so a refit with
@@ -382,7 +382,7 @@ the stop-criteria of this table, and in EXPLORE the ``INNER`` block.  Any
 other optimiser attribute of :ref:`tadah hpo <nfp_manual>` (``THREADS``,
 ``MAXTIME``, ``STOPVAL``, ``POPULATION``, ``STEP``, ``PARAM``, …), ``GTOL``
 in FUSE, and an ``INNER`` block in REFINE or FUSE is an error that names the
-keys the stage reads; before 1.5.1 they were accepted and did nothing:
+keys the stage reads; before 1.6.0 they were accepted and did nothing:
 
 .. code-block:: none
 
@@ -414,7 +414,7 @@ accepted: an EXPLORE ``INNER`` block's ``MAXEVAL``, ``FTOL_REL`` and
 ``GN_MLSL_LDS``, and REFINE's are what the FUSE curve refine runs with
 under ``REFIT_OBJECTIVE curve`` while FUSE runs.  EXPLORE's ``INNER``
 block configures the per-rung local search whatever the EXPLORE
-optimiser, ``UNIFORM`` included.  Before 1.5.1 these keys were accepted
+optimiser, ``UNIFORM`` included.  Before 1.6.0 these keys were accepted
 and ignored:
 
 .. code-block:: none
@@ -488,7 +488,7 @@ optimiser, would have no effect and is an error too:
    EXPLORE INNER: LIB has no effect with ALGO NONE (no local search runs); remove LIB
    EXPLORE: LIB has no effect with ALGO UNIFORM (no global search runs); remove LIB
 
-Before 1.5.1 ``LIB`` could be left out where the ``ALGO`` named the
+Before 1.6.0 ``LIB`` could be left out where the ``ALGO`` named the
 optimiser (``GN_MLSL_LDS``, ``LN_SBPLX``, ``LM``, ``DLIB_GLOBAL``, and
 ``LD_LBFGS`` in an EXPLORE ``INNER`` block) but not elsewhere
 (``LD_LBFGS`` in REFINE), and a ``LIB`` that did not match the ``ALGO``

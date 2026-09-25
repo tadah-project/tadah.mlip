@@ -371,7 +371,7 @@ pinning invalidates.  ``GRAD_STRATEGY ANALYTICAL`` — written out, or
 resolved from an unset ``GRAD_STRATEGY`` with ``PC_OBSERVABLE`` — is
 refused at startup (``… cannot form: FIXINDEX pins model weights …``),
 and ``HYBRID`` uses finite differences for every parameter.  Before
-1.5.1 ``ANALYTICAL`` passed startup and stopped the run at its first
+1.6.0 ``ANALYTICAL`` passed startup and stopped the run at its first
 gradient.  Derivative-free algorithms (e.g. ``NLOPT LN_BOBYQA``) are a
 natural choice for coefficient searches.
 
@@ -556,12 +556,12 @@ Additional options
 
 ``--ncpu`` (removed)
    Gave the number of MPI ranks for this script in the legacy MPI build,
-   removed in 1.5.1.  A line that contains ``--ncpu`` is rejected at
+   removed in 1.6.0.  A line that contains ``--ncpu`` is rejected at
    startup, with or without a value:
 
    .. code-block:: none
 
-      Error on line 12: --ncpu was removed in 1.5.1 (legacy MPI build); parallelism over PC_LAMMPS scripts is THREADS / PC_ISOLATION. Delete --ncpu from this line.
+      Error on line 12: --ncpu was removed in 1.6.0 (legacy MPI build); parallelism over PC_LAMMPS scripts is THREADS / PC_ISOLATION. Delete --ncpu from this line.
       Line: PC_LAMMPS --script in.elastic --varloss C11 250 1 --ncpu 8
 
    Scripts run in parallel over the ``THREADS`` worker slots, each slot's
@@ -577,7 +577,7 @@ follow it: for example ``-log run.log``, ``-screen none`` or ``-var x 1
 2`` (see :ref:`pc_lammps_result_contract` for how HPO renames ``-log`` /
 ``-screen`` files per worker).  An HPO option takes only its own values:
 a value after them is an error naming the option, and so is a value
-before any option.  Before 1.5.1 it was passed to LAMMPS, and every
+before any option.  Before 1.6.0 it was passed to LAMMPS, and every
 evaluation failed on it:
 
 .. code-block:: none
@@ -588,7 +588,7 @@ evaluation failed on it:
 The LAMMPS variable ``maxtime`` is reserved: HPO sets it from
 ``PC_SCRIPT_TIMEOUT`` or ``--maxtime`` for the injected ``timer timeout
 ${maxtime}`` (:ref:`pc_lammps_execution`), and ``-var maxtime``, ``-v
-maxtime`` or ``--invar maxtime`` on the line is an error.  Before 1.5.1
+maxtime`` or ``--invar maxtime`` on the line is an error.  Before 1.6.0
 such a value replaced the checked, reported limit.
 
 ``--hotvar <name> <min> <max> [<initial>]``
@@ -738,7 +738,7 @@ Four root keys control how ``PC_LAMMPS`` scripts are executed:
    used for every script.  Must be a single finite number ``≥ 0``, at
    most about 9.2·10\ :sup:`15` s (the deadline is kept in 64-bit
    milliseconds).  Environment override: ``TADAH_PC_WORKER_TIMEOUT``.
-   (Before 1.5.1 the derived deadline read only the leading number of the
+   (Before 1.6.0 the derived deadline read only the leading number of the
    time spec: ``2:00:00`` gave 122 s and ``00:05:00`` no deadline; and a
    deadline above 2\ :sup:`31` − 1 ms, about 24.8 days, wrapped, so
    the worker was killed early or not at all.)
@@ -822,7 +822,7 @@ first line.  The journal names the term ``cohesive_energy[k]`` (the
 loss section and the ``top:`` breakdown of a new best).  These labels
 fit every ``DIGITS`` setting up to ``k = 99``; past that the tag is
 shortened and the index kept (``L(Eco*[100]``), and the journal's loss
-section names the columns as the files write them.  Before 1.5.1 the
+section names the columns as the files write them.  Before 1.6.0 the
 index was 0-based and the loss column ``L(cohesive_energy[0])``, which
 every ``DIGITS`` setting cut to ``L(cohesive*``.
 
@@ -841,14 +841,14 @@ local search is one:
   (resolved for PC_OBSERVABLE)``); derivative-free blocks are left
   alone;
 * ``HYBRID`` and ``ANALYTICAL`` written out are kept;
-* ``GRAD_STRATEGY NUMERICAL`` is rejected (in an ``INNER`` block too).
+* ``GRAD_STRATEGY NUMERICAL`` is rejected.
 
-An ``INNER`` block is not resolved: ``MLSL`` and ``AUGLAG`` hand their
-``INNER`` search the gradient of their own objective, so the
-``GRAD_STRATEGY`` of the block they belong to decides how it is
-obtained, and one written in the ``INNER`` block does not apply (the
-journal prints it as ``Inner GRAD_STRATEGY : HYBRID (not used: …)``).
-Set it in the enclosing block.
+An ``INNER`` block is not resolved, and takes no ``GRAD_STRATEGY`` of
+its own: ``MLSL`` and ``AUGLAG`` hand their ``INNER`` search the
+gradient of their own objective, so the ``GRAD_STRATEGY`` of the block
+they belong to decides how it is obtained.  Set it in that block; one
+written in the ``INNER`` block is a startup error at its line
+(:ref:`hpo_inner_block`).
 
 ``ANALYTICAL`` needs a setup the analytical gradient covers — see the
 ``GRAD_STRATEGY`` row of :ref:`hpo_optimizer_common` — and
@@ -872,7 +872,7 @@ is missing: at an unconverged ``force-scaled`` relaxation, or for every
 gradient with ``MAPE``/``RMSLE``.  The constant ``--unconverged const``
 penalty contributes a zero gradient and needs neither.
 
-Before 1.5.1 an unset ``GRAD_STRATEGY`` ran finite differences with
+Before 1.6.0 an unset ``GRAD_STRATEGY`` ran finite differences with
 ``PC_OBSERVABLE``, and the analytical gradient left out the term's own
 dependence on the descriptor parameters and the averaging over the loss
 terms, so it could point the wrong way.  Example ``22_pc_observable``
@@ -1215,7 +1215,8 @@ The driver-attribute keys below are accepted wherever an optimiser is
 being configured: directly inside ``OPTIMIZER`` (short form), at the top
 level of ``STRATEGY`` (for ``TYPE PRESTAGE`` this is the refinement
 optimiser), and inside ``EXPLORE``, ``REFINE`` and ``INNER`` sub-blocks
-(``INNER`` takes every key but ``SEED``, :ref:`hpo_inner_block`).
+(``INNER`` takes every key but ``SEED`` and ``GRAD_STRATEGY``,
+:ref:`hpo_inner_block`).
 What the file alone settles is checked at startup, before any data is
 loaded or any evaluation runs: each attribute's grammar and range, a
 missing ``LIB`` or ``ALGO``, an unknown optimiser, whether the optimiser
@@ -1226,7 +1227,7 @@ its own has a stop (:ref:`hpo_stop_criteria`).  Every backend but NLopt
 rejects a ``PARAM`` key it does not read, and ``TADAH:RANDOM``,
 ``TADAH:GRID`` and ``DLIB:GFS`` name the ones they take
 (``TADAH:RANDOM: unknown PARAM 'FOO' (it takes none)``, ``TADAH:GRID:
-unknown PARAM 'FOO' (it takes GRID_POINTS)``; before 1.5.1 ``RANDOM``
+unknown PARAM 'FOO' (it takes GRID_POINTS)``; before 1.6.0 ``RANDOM``
 and ``GFS`` accepted any ``PARAM`` and ignored it).  NLopt passes every
 ``PARAM`` to NLopt, where an algorithm reads only the names it knows.
 The backend checks run on the
@@ -1239,7 +1240,7 @@ settings each phase runs with — the ``STRATEGY``-level optimiser, each
 
    HPOEngine error: the PRESTAGE refinement: DLIB:BFGS does not support MAXTIME
 
-Before 1.5.1 these backend checks ran when that optimiser started: after
+Before 1.6.0 these backend checks ran when that optimiser started: after
 the data were loaded and any ``NOISE CALIBRATION`` evaluations, for the
 ``PRESTAGE`` refinement only after the whole exploration, and under
 ``MULTISTART`` each start failed with a warning, so the run ended without
@@ -1274,7 +1275,7 @@ one a finite number (``MAXTIME`` a positive one).
      - Maximum number of evaluations: an integer from 1 to 2147483647,
        the ``int`` NLopt counts evaluations in.  ``0`` or a larger value
        is an error at its line (``MAXEVAL must be an integer from 1 to
-       2147483647, got '0'``).  Before 1.5.1 a larger value wrapped in
+       2147483647, got '0'``).  Before 1.6.0 a larger value wrapped in
        NLopt, so ``MAXEVAL 4294967299`` ran 3 evaluations, and
        ``MAXEVAL 0`` meant something different to every backend (no
        limit to NLopt, no evaluation to ``TADAH:RANDOM``, the annealers
@@ -1306,13 +1307,13 @@ one a finite number (``MAXTIME`` a positive one).
        dimension of the :ref:`dimension order <hpo_dimension_order>`
        varying fastest), and the journal says so
        (``GRID: MAXEVAL 5 < 28 grid points (the INIT point, then 27 = 3^3
-       grid nodes); evaluating the first 5 in grid order``); before 1.5.1
+       grid nodes); evaluating the first 5 in grid order``); before 1.6.0
        it ignored ``MAXEVAL`` and evaluated its whole grid.
    * - ``MAXTIME`` (float > 0)
      - Whole-optimiser wall-time in seconds for this active driver, a
        positive number; leave the key out for no limit.  0 or a negative
        value is an error at its line (``MAXTIME must be a positive number
-       of seconds, got '-5'``); before 1.5.1 it meant no limit to NLopt and
+       of seconds, got '-5'``); before 1.6.0 it meant no limit to NLopt and
        ``TADAH`` and was rejected at startup by ASA and the annealers.
        This is distinct from root-level ``PC_SCRIPT_TIMEOUT`` (whose alias
        is root-level ``MAXTIME``, a LAMMPS time spec).  No evaluation
@@ -1320,7 +1321,7 @@ one a finite number (``MAXTIME`` a positive one).
        started; the evaluations already running finish.
        ``DLIB:BFGS`` and ``CERES`` reject it.  ``TADAH:RANDOM``,
        ``TADAH:GRID`` and ``DLIB:GFS`` accepted it and ignored it before
-       1.5.1.
+       1.6.0.
    * - ``STOPVAL`` (float)
      - Stop at the first loss that reaches this value.  ``TADAH:RANDOM``,
        ``TADAH:GRID``, ``DLIB:GFS`` and the ``TADAH:ANNEAL`` family stop
@@ -1330,7 +1331,7 @@ one a finite number (``MAXTIME`` a positive one).
        at or below it) to every loss, a failed evaluation's included, so
        keep ``STOPVAL`` below ``FAILSCORE`` with them.  ``DLIB:BFGS`` and
        ``CERES`` reject it.  ``TADAH:RANDOM``, ``TADAH:GRID`` and ``DLIB:GFS``
-       accepted it and ignored it before 1.5.1; with ``THREADS`` > 1 the
+       accepted it and ignored it before 1.6.0; with ``THREADS`` > 1 the
        ``DLIB:GFS`` evaluations already running when one reaches it
        finish.  An ``INNER`` block's ``STOPVAL`` has no effect
        (:ref:`hpo_inner_block`).
@@ -1360,7 +1361,7 @@ one a finite number (``MAXTIME`` a positive one).
        lines (``1-4,7``, indices from 1).  Every fraction must be a
        finite number, and a malformed value or index list is an error
        naming the line (``STEP must be a finite number, got 'inf'``,
-       ``STEP override 'CGRID2B(3x)': bad index list (…)``); before 1.5.1
+       ``STEP override 'CGRID2B(3x)': bad index list (…)``); before 1.6.0
        ``STEP inf`` failed only when the run started, and an index that
        did not parse was dropped, so ``CGRID2B(3x)`` set every index.  Near a bound the step is adjusted per dimension
        (BOBYQA: shrunk to 0.75 of the slack so the warm start is not
@@ -1398,23 +1399,23 @@ one a finite number (``MAXTIME`` a positive one).
        ``REFINE`` block, which configures the same optimiser.
        ``THREADS`` inside ``EXPLORE`` or ``INNER`` does not resize it.  ``THREADS 0`` is an
        error at its line in every block (``THREADS must be an integer
-       from 1 to 2147483647, got '0'``); before 1.5.1 it was accepted,
+       from 1 to 2147483647, got '0'``); before 1.6.0 it was accepted,
        and the pool quietly ran one worker.
    * - ``GRAD_STRATEGY`` (string)
      - How gradient-based backends obtain gradients: ``NUMERICAL``
        (default; finite differences, see ``PARAM fd_step`` /
        ``fd_kernel``), ``ANALYTICAL`` or ``HYBRID`` (analytical where a
        derivative is registered, finite differences elsewhere).  The
-       analytical modes are experimental.  Rejected when the
-       configuration has ``PC_LAMMPS`` lines.  With ``PC_OBSERVABLE``
-       ``NUMERICAL`` is rejected in every block that configures an
-       optimiser, ``EXPLORE`` and ``INNER`` included, and an unset
+       analytical modes are experimental.  Not accepted inside an
+       ``INNER`` block (a startup error at its line): ``MLSL`` and
+       ``AUGLAG`` hand their ``INNER`` search the gradient of their own
+       objective, which the enclosing block's ``GRAD_STRATEGY`` obtains
+       (:ref:`hpo_inner_block`).  Rejected when the configuration has
+       ``PC_LAMMPS`` lines.  With ``PC_OBSERVABLE`` ``NUMERICAL`` is
+       rejected in every block, ``EXPLORE`` included, and an unset
        value resolves to ``ANALYTICAL`` in each block that runs an
        optimiser and obtains gradients: the ``STRATEGY``-level block and
-       ``EXPLORE`` (:ref:`pc_observable`).  An ``INNER`` block's value
-       does not apply: ``MLSL`` and ``AUGLAG`` hand their ``INNER``
-       search the gradient of their own objective, which the enclosing
-       block's ``GRAD_STRATEGY`` obtains.
+       ``EXPLORE`` (:ref:`pc_observable`).
        ``ANALYTICAL`` (written out or resolved) differentiates the
        least-squares fit through its Cholesky factor, so it needs
        training data with every weight fitted (no ``FIXINDEX``),
@@ -1429,7 +1430,7 @@ one a finite number (``MAXTIME`` a positive one).
        a parameter without an analytical derivative, a candidate
        rejected before training, an ill-conditioned fit — where
        ``HYBRID`` uses finite
-       differences instead.  Before 1.5.1 such a setup passed startup
+       differences instead.  Before 1.6.0 such a setup passed startup
        and stopped at the first gradient with ``no registered
        analytical derivative``.
    * - ``PARAM`` (string value)
@@ -1583,7 +1584,7 @@ it cannot apply (``DLIB:GFS does not support FTOL_REL: dlib's global
 search has no convergence test to apply it to; stop it with MAXEVAL,
 MAXTIME or STOPVAL``).  It has no convergence test, so one of ``MAXEVAL``,
 ``MAXTIME`` or ``STOPVAL`` is required (``DLIB:GFS needs a stop: …``).
-It is deterministic, so ``SEED`` has no effect.  Before 1.5.1 it read
+It is deterministic, so ``SEED`` has no effect.  Before 1.6.0 it read
 only ``MAXEVAL``, which it needed, and ignored ``MAXTIME``, ``STOPVAL``,
 the other tolerances and any ``PARAM``.
 
@@ -1700,7 +1701,7 @@ The rule holds in every phase (each ``MULTISTART`` start, the
 active ``RESTART`` bounds every phase, the ``PRESTAGE`` exploration
 included (it ends at its first stagnation and hands its best points to
 the refinement).
-Before 1.5.1 these configurations were accepted and ran until
+Before 1.6.0 these configurations were accepted and ran until
 interrupted (``Ctrl-C`` leaves a valid ``best_pot.tadah``,
 :ref:`hpo_stopping`), and ``TADAH:RANDOM`` and ``DLIB:GFS`` needed
 ``MAXEVAL`` itself.  The journal says which stop ended a ``RANDOM``,
@@ -1773,7 +1774,7 @@ the method draws: its ``K``, or ``K_TOTAL`` when ``SOBOL`` is the only
 method.  ``SOBOL 1`` draws point *s*.  Without ``SEED`` the block is
 chosen by ``std::random_device``; in a chain, each method after the first
 draws with a seed derived from ``SEED``.  A block that would run past the
-end of the sequence (2\ :sup:`64` − 1 points) is an error.  Before 1.5.1 a
+end of the sequence (2\ :sup:`64` − 1 points) is an error.  Before 1.6.0 a
 seed skipped *s* points, so the seeds *s* and *s + 1* shared *K − 1* of
 their *K* points.
 
@@ -1965,7 +1966,7 @@ The same holds for the ``EXPLORE`` and ``REFINE`` blocks: they need
 ``TYPE PRESTAGE`` before them, and a later ``TYPE`` line of the block
 that changes it is an error at the ``EXPLORE`` (``REFINE``) line
 (``EXPLORE block is only valid with TYPE PRESTAGE, but the STRATEGY block
-ends with TYPE PLAIN (the last TYPE line decides); …``).  Before 1.5.1
+ends with TYPE PLAIN (the last TYPE line decides); …``).  Before 1.6.0
 the run silently became ``PLAIN``, without the exploration.  An
 ``OPTIMIZER`` block has one ``STRATEGY`` block: a second one is an error
 at its line (``STRATEGY block given more than once (the first opens on
@@ -2015,7 +2016,7 @@ best-tracker keeps the global minimum across all runs.
        the outer ``MAXEVAL``, so ``BUDGET_PER_START`` would have no effect
        there: it is a startup error (``BUDGET_PER_START has no effect
        with DLIB:GFS, which runs every start in one optimiser; use
-       MAXEVAL``); before 1.5.1 it was ignored.  The startup checks see
+       MAXEVAL``); before 1.6.0 it was ignored.  The startup checks see
        each start's budget: ``MULTISTART`` over ``NLOPT:LN_SBPLX`` with
        ``BUDGET_PER_START 5`` and no ``MAXEVAL`` is valid.
 
@@ -2180,7 +2181,7 @@ Requirements and behaviour:
   re-evaluation is performed after the budget is exhausted.
 
 ``TADAH_HPO_MPI`` is the only MPI build of Tadah!MLIP: the legacy MPI
-training build (``TADAH_BUILD_MPI``) was removed in 1.5.1, and
+training build (``TADAH_BUILD_MPI``) was removed in 1.6.0, and
 configuring with ``-DTADAH_BUILD_MPI=ON`` is an error
 (:ref:`installation_hpo_mpi`).
 
@@ -2279,7 +2280,7 @@ unchanged.  Without a ``SEED`` each restart draws from
 an ``INIT`` block's ``SEED``, it needs a ``RANDOM``, ``LHS`` or
 ``SOBOL`` method to draw from: with only ``CONFIG`` or ``WARM`` (or no
 ``METHOD`` line) a startup warning says the seed does not affect the
-restart points.  (Before 1.5.1 the ``SEED`` was accepted and ignored.)
+restart points.  (Before 1.6.0 the ``SEED`` was accepted and ignored.)
 Each restart gets its own stagnation window — the windows do not bleed
 into each other.  ``RESTART`` runs on one MPI rank only: a launch on more
 than one rank rejects it at startup (:ref:`tadah_anneal_mpi`).
@@ -2405,11 +2406,9 @@ local optimiser.  Configure the inner via:
 
 Only the driver-attribute keys (``LIB`` / ``ALGO`` / ``MAXEVAL`` /
 ``MAXTIME`` / ``STOPVAL`` / ``FTOL_*`` / ``XTOL_*`` / ``POPULATION`` /
-``STEP`` / ``VECTOR_ARR`` / ``THREADS`` / ``GRAD_STRATEGY`` / ``PARAM``)
-are valid inside ``INNER``.  An ``INNER`` ``GRAD_STRATEGY`` is accepted
-but does not apply: NLopt hands the ``INNER`` search the gradient of the
-enclosing block's objective, obtained with that block's
-``GRAD_STRATEGY``; the journal prints it with ``(not used: …)``.  ``LIB`` and ``ALGO`` are required, as in
+``STEP`` / ``VECTOR_ARR`` / ``THREADS`` / ``PARAM``) are valid inside
+``INNER``; ``SEED`` and ``GRAD_STRATEGY`` belong to the enclosing block
+(see below).  ``LIB`` and ``ALGO`` are required, as in
 every block that names an optimiser: a missing one is an error at the
 ``ENDINNER`` line that names the enclosing block (``STRATEGY``,
 ``EXPLORE`` or ``REFINE``):
@@ -2419,7 +2418,7 @@ every block that names an optimiser: a missing one is an error at the
    Error on line 10: the INNER block inside STRATEGY names no optimiser: ALGO is not set; set LIB and ALGO inside the INNER block (the local optimiser that NLopt's MLSL and AUGLAG run)
    Line:     ENDINNER
 
-Before 1.5.1 an ``INNER`` block without ``ALGO`` was accepted and failed
+Before 1.6.0 an ``INNER`` block without ``ALGO`` was accepted and failed
 inside NLopt once the run had started.
 
 Only NLopt's MLSL and AUGLAG algorithms run an ``INNER`` search, and they
@@ -2433,7 +2432,7 @@ optimiser, the ``PRESTAGE`` refinement or the ``EXPLORE`` block):
    HPOEngine error: DLIB:BFGS does not accept an INNER sub-optimiser (the INNER block of the STRATEGY-level optimiser): only NLopt's MLSL and AUGLAG algorithms run a local search inside their run (NLOPT:AUGLAG, NLOPT:AUGLAG_EQ, NLOPT:GD_MLSL, NLOPT:GD_MLSL_LDS, NLOPT:GN_MLSL, NLOPT:GN_MLSL_LDS, ... (6 more)); remove the INNER block or pick one of them
    HPOEngine error: the INNER block of the STRATEGY-level optimiser names DLIB:BFGS, but NLOPT:G_MLSL_LDS runs its INNER search with NLopt: set LIB NLOPT and an NLopt ALGO (such as LN_BOBYQA) inside the INNER block
 
-Before 1.5.1 the first was reported only once the host had loaded the
+Before 1.6.0 the first was reported only once the host had loaded the
 data, and an ``INNER`` block with another ``LIB`` failed inside NLopt once
 the run had started (``wrong algorithm string``).  With MLSL/AUGLAG an outer ``STEP``
 overrides an ``INNER`` ``STEP`` (NLopt forwards the outer initial step
@@ -2503,6 +2502,41 @@ its seed.  In the same way the ``PRESTAGE`` refinement runs candidate
 (:ref:`restart_decorator`) that its ``INNER`` search draws from too.  An
 ``INIT`` block is not valid inside ``INNER`` either; MLSL picks its local
 starting points itself.
+
+``GRAD_STRATEGY`` is not valid inside ``INNER`` either.  MLSL and AUGLAG
+hand their ``INNER`` search the gradient of their own objective, which
+the enclosing block obtains with its ``GRAD_STRATEGY``
+(:ref:`hpo_optimizer_common`), so a value written in the ``INNER`` block
+would never be used; the startup check rejects it and names the line.
+This block:
+
+.. code-block:: none
+
+   OPTIMIZER
+     STRATEGY
+       TYPE PLAIN
+       LIB NLOPT
+       ALGO G_MLSL_LDS
+       MAXEVAL 400
+       INNER
+         LIB NLOPT
+         ALGO LD_LBFGS
+         MAXEVAL 50
+         GRAD_STRATEGY HYBRID
+       ENDINNER
+     ENDSTRATEGY
+   ENDOPTIMIZER
+
+stops at startup with:
+
+.. code-block:: none
+
+   HPOEngine error: Error on line 11: GRAD_STRATEGY is not accepted inside an INNER block: the enclosing block's GRAD_STRATEGY applies to its local search; set GRAD_STRATEGY on the enclosing STRATEGY block
+   Line:       GRAD_STRATEGY HYBRID
+
+Move the line to the ``STRATEGY``, ``EXPLORE`` or ``REFINE`` block the
+``INNER`` block sits in, which the message names.  Before 1.6.0 it was
+accepted and had no effect.
 
 .. _hpo_load_transforms:
 
@@ -3007,7 +3041,7 @@ its own models and runs its own ``THREADS`` pool.  Build it with
 ``-DTADAH_HPO_MPI=ON`` (:ref:`installation_hpo_mpi`); the requirements
 and an ARCHER2 job script are in :ref:`tadah_anneal_mpi`.  Model training
 itself is never distributed: the legacy MPI training build and its
-``PC_LAMMPS --ncpu`` option were removed in 1.5.1.
+``PC_LAMMPS --ncpu`` option were removed in 1.6.0.
 
 Practical advice
 ................

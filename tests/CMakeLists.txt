@@ -222,8 +222,11 @@ endif()
 # status 1, says so on stderr and in the journal trailer, and writes no
 # best_pot.tadah; DLIB:GFS reaches MAXEVAL (it used to crash, SIGSEGV).
 # gfs_mixed starts with failures and ends as a successful run.
+# fd_straddle: a failed evaluation in DLIB:BFGS's finite-difference stencil
+# ends the search with its own trailer and status 0; failscore_zero:
+# FAILSCORE 0 is a startup error at its line.
 if(TADAH_ENABLE_NFP)
-  foreach(_case random_skip gfs_throws gfs_mixed)
+  foreach(_case random_skip gfs_throws gfs_mixed fd_straddle failscore_zero)
     add_test(NAME tadah_hpo_failed_evaluations_${_case}
       COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/cli_failed_evaluations/check_hpo_failed_evaluations.py

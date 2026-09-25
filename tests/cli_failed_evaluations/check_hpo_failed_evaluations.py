@@ -34,6 +34,20 @@ For gfs_mixed the run ends as a successful one: status 0, "COMPLETED",
 best_pot.tadah holds the lowest loss.tadah row, and every failed
 evaluation's row records FAILSCORE.
 
+  fd_straddle  DLIB:BFGS from CGRID2B[2] = 1.6, PARAM fd_step 0.2: the
+               finite-difference stencil of the start point is 1.8 and 1.4,
+               and a skip cap fails 1.4, so the gradient is not finite (the
+               default FAILSCORE, the largest double, overflows the
+               difference). The search ends there, after the same four
+               evaluations as before, with status 0 (1.6 and 1.8 are usable
+               losses) and the trailer "STOPPED -- gradient not finite: a
+               failed evaluation in the finite-difference stencil"; it used
+               to report "MAXEVAL=60 reached" and COMPLETED.
+  failscore_zero  FAILSCORE 0: a startup error at its line, status 1, no
+               evaluation. With 0 there was no failure band, and a run all
+               of whose evaluations failed ended COMPLETED with a
+               best_pot.tadah that held a failed evaluation.
+
 Every file lives in a fresh temporary directory, removed afterwards unless
 --keep is given. No network, no LAMMPS.
 """
@@ -139,9 +153,47 @@ ENDOPTIMIZER
 OPTIM CGRID2B (2) 1.0 2.0
 """,
     },
+    "fd_straddle": {
+        "oalgo": 4, "bias": "false", "evals": 4, "usable": True,
+        "kind": "fd_stop",
+        "tadah_grids": ("CGRID2B 0.5 1.6", "SGRID2B 3.0 5.0", 2),
+        "hpo": """OPTIMIZER
+  STRATEGY
+    TYPE PLAIN
+    LIB DLIB
+    ALGO BFGS
+    MAXEVAL 60
+    PARAM fd_step 0.2
+  ENDSTRATEGY
+ENDOPTIMIZER
+""" + OBJECTIVE + """PC_ERMSE 0 1 --skip-above 9.9
+OPTIM CGRID2B (2) 1.0 2.0
+""",
+    },
+    "failscore_zero": {
+        "oalgo": 4, "bias": "false", "evals": 0, "usable": False,
+        "kind": "startup_error",
+        "hpo": """OPTIMIZER
+  STRATEGY
+    TYPE PLAIN
+    LIB TADAH
+    ALGO RANDOM
+    MAXEVAL 20
+    SEED 3
+  ENDSTRATEGY
+ENDOPTIMIZER
+""" + OBJECTIVE + """FAILSCORE 0
+PC_ERMSE 0 1 --skip-above 1e-30
+OPTIM CGRID2B (1) 0.1 0.9
+""",
+    },
 }
 
 NO_USABLE_STATUS = "STOPPED -- no evaluation produced a usable loss"
+FD_STOP_STATUS = ("STOPPED -- gradient not finite: a failed evaluation in "
+                  "the finite-difference stencil")
+FAILSCORE_ZERO_ERROR = ("Error on line 13: FAILSCORE must be a positive "
+                        "finite number, got '0'")
 NO_USABLE_ERROR = ("no evaluation produced a usable loss; no best_pot.tadah "
                    "was written")
 # The default FAILSCORE, the largest double, as loss.tadah prints it with
@@ -185,8 +237,24 @@ def journal_value(journal, key):
     return m.group(1).strip() if m else None
 
 
+def check_startup_error(work, rc, stderr):
+    """failscore_zero: refused before any evaluation."""
+    failures = []
+    if rc != 1:
+        failures.append(f"exit status {rc}, expected 1")
+    if FAILSCORE_ZERO_ERROR not in stderr:
+        failures.append(f"stderr lacks {FAILSCORE_ZERO_ERROR!r}")
+    if data_rows(work / "loss.tadah"):
+        failures.append("loss.tadah has rows")
+    if (work / "best_pot.tadah").exists():
+        failures.append("best_pot.tadah exists")
+    return failures
+
+
 def check_files(work, case, rc, stderr, journal):
     """Failures, as a list."""
+    if case.get("kind") == "startup_error":
+        return check_startup_error(work, rc, stderr)
     failures = []
     rows = data_rows(work / "loss.tadah")
     iters = [int(r[0]) for r in rows]
@@ -226,11 +294,27 @@ def check_files(work, case, rc, stderr, journal):
         failures.append(f"exit status {rc}, expected 0")
     if NO_USABLE_ERROR in stderr:
         failures.append(f"stderr says {NO_USABLE_ERROR!r}")
-    if status != "COMPLETED":
-        failures.append(f"journal status {status!r}, expected 'COMPLETED'")
-    if any(r[-1] != FAILSCORE_ROW for r in rows[:3]):
-        failures.append("the three starting points did not all fail: "
-                        f"{[r[-1] for r in rows[:3]]}")
+    if case.get("kind") == "fd_stop":
+        if status != FD_STOP_STATUS:
+            failures.append(f"journal status {status!r}, expected "
+                            f"{FD_STOP_STATUS!r}")
+        if "MAXEVAL=60 reached" in journal:
+            failures.append("the journal says MAXEVAL=60 was reached")
+        xs = [float(r[-1]) for r in data_rows(work / "params.tadah")]
+        if [round(x, 12) for x in xs] != [1.6, 1.6, 1.8, 1.4]:
+            failures.append(f"the evaluations are {xs}, expected the start "
+                            "point 1.6 and its stencil 1.6, 1.8, 1.4")
+        if [r[-1] == FAILSCORE_ROW for r in rows] != [False, False, False,
+                                                     True]:
+            failures.append("only the stencil point 1.4 should fail: "
+                            f"{[r[-1] for r in rows]}")
+    else:
+        if status != "COMPLETED":
+            failures.append(f"journal status {status!r}, expected "
+                            "'COMPLETED'")
+        if any(r[-1] != FAILSCORE_ROW for r in rows[:3]):
+            failures.append("the three starting points did not all fail: "
+                            f"{[r[-1] for r in rows[:3]]}")
     usable = {int(r[0]): float(r[-1]) for r in rows if r[-1] != FAILSCORE_ROW}
     if not usable:
         failures.append("no evaluation produced a usable loss")

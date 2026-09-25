@@ -331,14 +331,19 @@ Block-parallel evaluation (see *Parallelism* below):
        ``Accepted_To_Generated_Ratio``), rounded down and kept between 1
        and this cap.  So the block never grows above the cap, but it can
        shrink below ``Gener_Block`` even when the two are equal; only
-       ``Gener_Block_Max`` 1 keeps it fixed (at one state).  The upstream
+       ``Gener_Block_Max`` 1 or ``Gener_Mov_Avr`` 0 keeps it fixed.  The upstream
        README describes the average as one over the numbers of states
        needed to find each new best, but the code averages the running
        count at each test, which is small soon after a new best: on an
        objective that keeps improving the block tends towards 1.
    * - ``Gener_Mov_Avr``
      - 3
-     - Moving-average window of the adaptive block resizing (≥1).
+     - Moving-average window of the adaptive block resizing (≥0).
+       ``0`` switches the resizing off, as the upstream README documents:
+       every block holds ``Gener_Block`` states for the whole run, so
+       ``Gener_Block 4`` with ``Gener_Block_Max 4`` keeps
+       ``min(THREADS, 4)`` workers busy.  Upstream's own option check
+       rejected 0; the vendored copy accepts it (TADAH-PATCH 7).
 
 Parallelism
 -----------
@@ -363,7 +368,8 @@ the periodic tests resize the block to between 1 and
 ``Gener_Block_Max`` (see the ``Gener_Block_Max`` row above), so fewer
 than ``min(THREADS, Gener_Block_Max)`` workers may be busy, for
 example with ``Gener_Block 4``/``Gener_Block_Max 4`` on an objective
-that keeps improving.
+that keeps improving.  ``PARAM Gener_Mov_Avr 0`` keeps every block at
+``Gener_Block`` states.
 
 Concurrency contract: ``asa()`` is not re-entrant (upstream statics),
 so one ASA run executes per process at a time; the ``RESTART`` decorator

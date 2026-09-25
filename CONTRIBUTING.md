@@ -140,6 +140,37 @@ flag: `add_test(NAME x COMMAND test_foo "[.tag]" --warn NoTests)`.
 (`tests/catch_discovery`). `ctest -L docs` runs the unit tests of the
 documentation build tools (see *Building the documentation*).
 
+**Skipped, not passed.** A test that cannot run because an optional input
+is absent (an external dataset, an environment variable) must be reported
+as *Skipped*, so that a passing `ctest` means the checks ran:
+
+- a Catch test case includes `tadah_test_skip.hpp` (cmake-tools) before,
+  or instead of, `catch2/catch.hpp` and calls `TADAH_SKIP("<reason>" << ...)`
+  before its first check, directly in the `TEST_CASE` body (not in a helper
+  function, from which it returns only to the test case) and outside every
+  `SECTION`. The macro returns from the test case; when the test case ends
+  without a failed assertion, the marker line `TADAH-SKIP: <reason>` is
+  written to standard error, and every discovered entry has a
+  `SKIP_REGULAR_EXPRESSION` for that line. A test case that asked to be
+  skipped and failed stays *Failed*. Do not `WARN` and `return`: that is a
+  pass. An optional input that the user names explicitly (an environment
+  variable that is set) and that cannot be read is a failure, not a skip.
+  An explicit `add_test` entry that runs exactly one test case sets
+  `SKIP_REGULAR_EXPRESSION "${TADAH_TEST_SKIP_REGULAR_EXPRESSION}"`
+  itself;
+- a script entry either exits with a code of its own and sets
+  `SKIP_RETURN_CODE` (`hpo_strategy_matrix`: 77), or prints a line that its
+  own `SKIP_REGULAR_EXPRESSION` matches (`tadah_docs_tools`, see *Building
+  the documentation*).
+
+The CTest summary lists skipped entries under "The following tests did not
+run". With the documentation tools installed and without the optional data,
+the suite skips exactly the two MLIP `NNFinder: real CH4 phase-I structure`
+cases (`TADAH_TEST_PHASEI_DB`) and `hpo_strategy_matrix`
+(`TADAH_HPO_INTEGRATION_BUNDLE`); `tadah_docs_tools` is Skipped too when one
+of its tools is missing. See the cmake-tools README, *Skipped tests: the
+TADAH-SKIP marker*, for the rules.
+
 **Pitfall:** MLIP redefines `add_test()` globally (to skip Gemmi's own
 test) and forwards its arguments unquoted. In every `add_test()` that runs
 after MLIP is configured (in the umbrella build: MLIP, MD, HPO, Tadah.LAMMPS

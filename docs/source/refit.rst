@@ -303,7 +303,9 @@ an error (``EXPLORE MAX_ADD must be an integer from 0 to 2147483647, got
      ENDOPTIMIZER
    ENDFUSE
 
-Legal optimisers and the stop-criteria each stage consumes:
+Legal optimisers and the stop-criteria each stage consumes (a block with
+``ALGO NONE`` or ``UNIFORM`` runs no optimiser and takes none of them,
+except those another stage reads, below):
 
 .. list-table::
    :header-rows: 1
@@ -325,16 +327,56 @@ Legal optimisers and the stop-criteria each stage consumes:
      - CERES ``LM`` | ``DOGLEG``; ``NONE``
      - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``
 
-What ``MAXEVAL`` caps depends on the library of the ``ALGO``: an NLopt
-algorithm's evaluations, Ceres' iterations (hence the alias ``MAXITER``),
-dlib ``LBFGS``'s L-BFGS iterations, each a line search of one or more
-evaluations, and dlib ``GLOBAL``'s function calls, ``max(500, MAXEVAL/20)``
-of them (integer division, so a ``MAXEVAL`` below 10020 runs 500 calls).
-REFINE's L-BFGS algorithms take 50 per ``MAXEVAL``: ``LD_LBFGS`` 50 NLopt
-evaluations, ``LBFGS`` 50 dlib L-BFGS iterations, capped at 2147483647
-(before 1.5.1 the product overflowed an ``int`` above ``MAXEVAL
-42949672``).  ``FTOL_REL`` on the Ceres stages is Ceres' relative function
-tolerance.  A stage's
+``MAXEVAL`` counts objective evaluations, exactly, for every NLopt and
+dlib algorithm: each call of the stage's objective, for its value or its
+gradient, is one.  dlib asks for the value and the gradient of its
+objective in separate calls, so its L-BFGS counts both, in the objective
+wrapper; the call past ``MAXEVAL`` ends the search at its last iterate.
+Ceres' ``LM`` and ``DOGLEG`` count their solver iterations instead
+(``max_num_iterations``), each one Jacobian evaluation and one or more
+residual evaluations; ``MAXITER``, the alias of ``MAXEVAL``, says so.
+Without ``MAXEVAL`` each optimiser takes its default budget:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 28 44 28
+
+   * - Stage
+     - ``MAXEVAL`` / ``MAXITER`` counts
+     - Default
+   * - EXPLORE (the seed)
+     - evaluations of ``GN_MLSL_LDS`` (its local searches included),
+       ``GN_DIRECT_L``, ``GN_CRS2_LM``; of dlib ``GLOBAL``
+     - 60000; 3000 for ``GLOBAL``
+   * - EXPLORE ``INNER``
+     - evaluations of each candidate's local search (and of each local
+       search of ``GN_MLSL_LDS``)
+     - 20000
+   * - REFINE
+     - evaluations of ``LD_LBFGS`` and dlib ``LBFGS``; iterations of
+       ``LM`` and ``DOGLEG``
+     - 50000 evaluations; 1000 iterations
+   * - FUSE
+     - iterations of ``LM`` and ``DOGLEG``
+     - 2000
+
+Before 1.5.1 dlib ``GLOBAL`` took ``max(500, MAXEVAL/20)`` function calls,
+dlib ``LBFGS`` capped its L-BFGS iterations (at ``MAXEVAL`` in EXPLORE
+``INNER``, 50 × ``MAXEVAL`` in REFINE) rather than its evaluations, and
+REFINE ``LD_LBFGS`` took 50 × ``MAXEVAL`` evaluations, so a refit with
+one of them and an explicit ``MAXEVAL`` gives different results now.
+Without ``MAXEVAL`` the defaults of ``GLOBAL`` (3000) and of REFINE
+``LD_LBFGS`` (50000) are the budgets they had; dlib ``LBFGS`` keeps the
+numbers of its old iteration caps (20000 in EXPLORE ``INNER``, 50000 in
+REFINE), now counted in evaluations, at least two per L-BFGS iteration
+(its value and its gradient), so a default dlib ``LBFGS`` run whose cap
+binds stops sooner than before.
+``FTOL_REL`` on the Ceres stages is Ceres' relative function tolerance.
+Under ``REFIT_OBJECTIVE curve`` the FUSE curve refine runs with REFINE's
+``MAXEVAL``/``MAXITER``, ``FTOL_REL`` and ``GTOL`` (as Ceres iterations),
+not with FUSE's own.  The refit log states each stage's budget in its
+unit and each stage's termination with the evaluations it spent
+(``term=DLIB_GLOBAL:MAXEVAL_REACHED(3000ev)``).  A stage's
 ``OPTIMIZER`` block takes only the keys the stage reads — ``LIB``, ``ALGO``,
 the stop-criteria of this table, and in EXPLORE the ``INNER`` block.  Any
 other optimiser attribute of :ref:`tadah hpo <nfp_manual>` (``THREADS``,
@@ -363,7 +405,25 @@ Every ``OPTIMIZER`` block, and an EXPLORE ``INNER`` block, must set
 ``ALGO``.  To switch a search off, write it out: ``ALGO NONE`` in an
 ``INNER`` block (no local search), in REFINE or FUSE (the stage is
 skipped), and ``ALGO UNIFORM`` (or ``NONE``) for the EXPLORE optimiser (no
-global search).  An ``INNER`` block without ``ALGO`` used to mean no local
+global search).  A block switched off runs no optimiser, so a stop
+criterion in it would have no effect: ``MAXEVAL``/``MAXITER``,
+``FTOL_REL``, ``XTOL_REL`` and ``GTOL`` there are errors, named as
+written, as ``LIB`` is (below).  Two are read by another stage and stay
+accepted: an EXPLORE ``INNER`` block's ``MAXEVAL``, ``FTOL_REL`` and
+``XTOL_REL`` also set the local searches of the EXPLORE optimiser
+``GN_MLSL_LDS``, and REFINE's are what the FUSE curve refine runs with
+under ``REFIT_OBJECTIVE curve`` while FUSE runs.  EXPLORE's ``INNER``
+block configures the per-rung local search whatever the EXPLORE
+optimiser, ``UNIFORM`` included.  Before 1.5.1 these keys were accepted
+and ignored:
+
+.. code-block:: none
+
+   REFINE: MAXITER has no effect with ALGO NONE (the stage is skipped); remove MAXITER
+   EXPLORE: MAXEVAL has no effect with ALGO UNIFORM (no global search runs); remove MAXEVAL
+   EXPLORE INNER: FTOL_REL has no effect with ALGO NONE (no local search runs); remove FTOL_REL
+
+An ``INNER`` block without ``ALGO`` used to mean no local
 search, while an EXPLORE ``OPTIMIZER`` block without an ``INNER`` block runs
 the default one (``LN_SBPLX``); leaving a stage's whole ``OPTIMIZER`` block
 out still runs the stage with its defaults:
@@ -390,9 +450,6 @@ its ``ALGO`` in ``LIB``:
    * - EXPLORE
      - ``GLOBAL`` / ``DLIB_GLOBAL``
      - ``DLIB``
-   * - EXPLORE
-     - ``UNIFORM``
-     - not checked
    * - EXPLORE ``INNER``
      - ``LN_SBPLX`` / ``SBPLX``, ``LN_NELDERMEAD`` / ``NELDERMEAD``,
        ``LN_BOBYQA`` / ``BOBYQA``, ``LN_PRAXIS`` / ``PRAXIS``, ``LD_LBFGS``
@@ -408,7 +465,7 @@ its ``ALGO`` in ``LIB``:
      - ``LM`` / ``CERES_LM``, ``DOGLEG`` / ``CERES_DOGLEG``
      - ``CERES``
    * - every stage
-     - ``NONE`` (EXPLORE: no global search, the same as ``UNIFORM``;
+     - ``NONE``, and ``UNIFORM`` in EXPLORE (EXPLORE: no global search;
        ``INNER``: no local search; REFINE, FUSE: the stage is skipped)
      - none: ``LIB`` is an error
 
@@ -420,8 +477,8 @@ and ``LBFGS`` is dlib's L-BFGS (NLopt's is ``LD_LBFGS``; in ``tadah hpo``
 A missing ``LIB`` and one that does not match the ``ALGO`` are errors
 naming the right one.  The ``LIB`` given may be the one meant, so when the
 stage has algorithms of that library the message names them too.  A
-``LIB`` in a block with ``ALGO NONE``, which runs no optimiser, would have
-no effect and is an error too:
+``LIB`` in a block with ``ALGO NONE`` or ``UNIFORM``, which runs no
+optimiser, would have no effect and is an error too:
 
 .. code-block:: none
 
@@ -429,14 +486,15 @@ no effect and is an error too:
    EXPLORE: LIB CERES does not match ALGO GN_MLSL_LDS, an NLopt algorithm; set LIB NLOPT
    REFINE: LIB NLOPT does not match ALGO LBFGS, a dlib algorithm; set LIB DLIB, or with LIB NLOPT set ALGO LD_LBFGS
    EXPLORE INNER: LIB has no effect with ALGO NONE (no local search runs); remove LIB
+   EXPLORE: LIB has no effect with ALGO UNIFORM (no global search runs); remove LIB
 
 Before 1.5.1 ``LIB`` could be left out where the ``ALGO`` named the
 optimiser (``GN_MLSL_LDS``, ``LN_SBPLX``, ``LM``, ``DLIB_GLOBAL``, and
 ``LD_LBFGS`` in an EXPLORE ``INNER`` block) but not elsewhere
 (``LD_LBFGS`` in REFINE), and a ``LIB`` that did not match the ``ALGO``
-was ignored (``LIB CERES ALGO GN_MLSL_LDS`` ran MLSL).  ``UNIFORM``, the
-refit's own uniform start, belongs to no library, so ``LIB`` is neither
-required nor checked with it.  The numbers are read as strictly as in
+was ignored (``LIB CERES ALGO GN_MLSL_LDS`` ran MLSL), and ``UNIFORM``,
+the refit's own uniform start, took any ``LIB`` (``LIB FOO`` included)
+and ignored it.  The numbers are read as strictly as in
 ``tadah hpo`` (:ref:`nfp_manual`): ``MAXEVAL`` and ``MAXITER`` take
 decimal digits only, from 1 to 2147483647 (the ``int`` budget the refit
 hands NLopt, dlib and Ceres; ``MAXEVAL 0`` ran Ceres with no iteration and

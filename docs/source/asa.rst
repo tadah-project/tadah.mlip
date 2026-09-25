@@ -135,10 +135,17 @@ evaluation limit: ASA's own limits are its stops (``Limit_Generated``
 no limit).
 
 Seeding: ``SEED`` at OPTIMIZER/STRATEGY level seeds ASA's proposal
-stream (unset → non-reproducible ``random_device``).  The first
-``INIT`` seed becomes ASA's starting point and auto-sets
-``User_Initial_Parameters 1``; with no ``INIT`` block the OPTIM box
-centre is used.
+stream (unset → non-reproducible ``random_device``).  The first ``INIT``
+point becomes ASA's starting point and sets ``User_Initial_Parameters
+1``; without an ``INIT`` block that point is the configuration's values
+(``CONFIG``), as for every optimiser.  Only when the ``INIT`` chain yields
+no point (a ``WARM`` seed file that is missing under
+``WARM_ON_MISMATCH warn`` or ``skip``) is ``User_Initial_Parameters`` 0:
+ASA then draws its first state at random around the OPTIM box centre,
+from its generating distribution at the initial parameter temperature,
+redrawn until it is valid; the centre itself is not evaluated.  ``PARAM
+User_Initial_Parameters 0`` with an ``INIT`` point, or ``1`` without
+one, is an error.
 
 Options
 -------

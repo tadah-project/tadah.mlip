@@ -1138,12 +1138,16 @@ What the file alone settles is checked at startup, before any data is
 loaded or any evaluation runs: each attribute's grammar and range, a
 missing ``LIB`` or ``ALGO``, an unknown optimiser, whether the optimiser
 uses ``STEP``, the ``INNER`` and ``STRATEGY`` rules, the ``PC_LAMMPS`` /
-``PC_OBSERVABLE`` gradient rules, and each backend's own checks of its
-attributes and ``PARAM`` keys.  The annealers, ASA, ``DLIB:BFGS``,
-``CERES`` and ``TADAH:GRID`` reject a ``PARAM`` key they do not read;
-``TADAH:RANDOM`` and ``DLIB:GFS`` read none and check only that
-``MAXEVAL`` is set, and NLopt passes every ``PARAM`` to NLopt, where an
-algorithm reads only the names it knows.  The backend checks run on the
+``PC_OBSERVABLE`` gradient rules, each backend's own checks of its
+attributes and ``PARAM`` keys, and whether a backend that never ends on
+its own has a stop (:ref:`hpo_stop_criteria`).  Every backend but NLopt
+rejects a ``PARAM`` key it does not read, and ``TADAH:RANDOM``,
+``TADAH:GRID`` and ``DLIB:GFS`` name the ones they take
+(``TADAH:RANDOM: unknown PARAM 'FOO' (it takes none)``, ``TADAH:GRID:
+unknown PARAM 'FOO' (it takes GRID_POINTS)``; before 1.5.1 ``RANDOM``
+and ``GFS`` accepted any ``PARAM`` and ignored it).  NLopt passes every
+``PARAM`` to NLopt, where an algorithm reads only the names it knows.
+The backend checks run on the
 settings each phase runs with — the ``STRATEGY``-level optimiser, each
 ``MULTISTART`` start (with its ``BUDGET_PER_START`` or its share of
 ``MAXEVAL``), the ``PRESTAGE`` exploration and refinement, and every
@@ -1196,23 +1200,24 @@ one a finite number (``MAXTIME`` a positive one).
        ``DLIB:BFGS`` and ``CERES`` started, nothing to ``TADAH:GRID``).
 
        Leave the key out for no evaluation limit.  The run then ends on
-       the optimiser's own stops: NLopt, ``DLIB:BFGS`` and ``CERES`` when
-       they converge (their tolerances), ``TADAH:ANNEAL`` and
+       the optimiser's other stops (``MAXTIME``, ``STOPVAL``, a
+       tolerance), or on its own: NLopt's local algorithms, ``DLIB:BFGS``
+       and ``CERES`` when they converge, ``TADAH:ANNEAL`` and
        ``ANNEAL_PA`` at the end of their temperature schedule, ASA on its
        own ``Limit_Generated`` / ``Limit_Acceptances`` and plateau tests,
-       ``TADAH:GRID`` after its whole grid, and ``ANNEAL_PT`` and NLopt's
-       global algorithms on ``MAXTIME``, ``STOPVAL`` or a tolerance —
-       without one of those they run until interrupted (``Ctrl-C`` leaves
-       a valid ``best_pot.tadah``, :ref:`hpo_stopping`).  Two backends
-       have no stopping rule of their own and need ``MAXEVAL``, a startup
-       error naming them: ``TADAH:RANDOM`` (it reads neither ``MAXTIME``
-       nor ``STOPVAL``) and ``DLIB:GFS``.  ``TADAH:ANNEAL`` needs it for
+       ``TADAH:GRID`` after its whole grid.  A backend with no convergence
+       test and no finite schedule — ``TADAH:RANDOM``, ``DLIB:GFS``,
+       ``ANNEAL_PT``, NLopt's global searches and three of its gradient
+       algorithms — needs a stop: ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``,
+       a tolerance it honours set above 0, or an active ``RESTART``, a
+       startup error otherwise; the table of :ref:`hpo_stop_criteria` says
+       which backend needs one and which stops it honours.  ``TADAH:ANNEAL`` needs ``MAXEVAL`` itself for
        its default ``CHAIN_LENGTH AUTO`` / ``NT AUTO`` (set them to run
        without it):
 
        .. code-block:: none
 
-          HPOEngine error: the STRATEGY-level optimiser: TADAH:RANDOM needs MAXEVAL: it stops only when its MAXEVAL evaluations are spent (it reads neither MAXTIME nor STOPVAL); set MAXEVAL (an integer from 1 to 2147483647)
+          HPOEngine error: the STRATEGY-level optimiser: NLOPT:GN_DIRECT needs a stop: NLopt's global search has no convergence test of its own and runs until it is interrupted; set MAXEVAL, MAXTIME, STOPVAL or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS); DIRECT's XTOL_REL and XTOL_ABS end it only once every rectangle is that small, after roughly (1/XTOL_REL)^n evaluations in n dimensions
 
        ``TADAH:GRID`` stops after ``MAXEVAL`` points in the order it
        visits them (the ``INIT`` point, then the grid nodes, the first
@@ -1228,21 +1233,35 @@ one a finite number (``MAXTIME`` a positive one).
        of seconds, got '-5'``); before 1.5.1 it meant no limit to NLopt and
        ``TADAH`` and was rejected at startup by ASA and the annealers.
        This is distinct from root-level ``PC_SCRIPT_TIMEOUT`` (whose alias
-       is root-level ``MAXTIME``, a LAMMPS time spec).
-       ``TADAH:RANDOM``, ``TADAH:GRID`` and ``DLIB:GFS`` do not read it:
-       they accept the key and ignore it.
+       is root-level ``MAXTIME``, a LAMMPS time spec).  No evaluation
+       starts once that many seconds have passed since the optimiser
+       started; the evaluations already running finish.
+       ``DLIB:BFGS`` and ``CERES`` reject it.  ``TADAH:RANDOM``,
+       ``TADAH:GRID`` and ``DLIB:GFS`` accepted it and ignored it before
+       1.5.1.
    * - ``STOPVAL`` (float)
-     - Stop when the loss falls below this value.  ``TADAH:RANDOM``,
-       ``TADAH:GRID`` and ``DLIB:GFS`` do not read it: they accept the
-       key and ignore it.
+     - Stop at the first loss that reaches this value.  ``TADAH:RANDOM``,
+       ``TADAH:GRID``, ``DLIB:GFS`` and the ``TADAH:ANNEAL`` family stop
+       at the first feasible loss at or below it (a ``FAILSCORE`` loss,
+       graded or not, never reaches it).  NLopt and ASA apply their own
+       test (NLopt: below it, or at or below it for some algorithms; ASA:
+       at or below it) to every loss, a failed evaluation's included, so
+       keep ``STOPVAL`` below ``FAILSCORE`` with them.  ``DLIB:BFGS`` and
+       ``CERES`` reject it.  ``TADAH:RANDOM``, ``TADAH:GRID`` and ``DLIB:GFS``
+       accepted it and ignored it before 1.5.1; with ``THREADS`` > 1 the
+       ``DLIB:GFS`` evaluations already running when one reaches it
+       finish.  An ``INNER`` block's ``STOPVAL`` has no effect
+       (:ref:`hpo_inner_block`).
    * - ``FTOL_REL`` (float)
-     - Relative tolerance on the loss.
+     - Relative tolerance on the loss.  A tolerance of 0 or below switches
+       the test off (NLopt; the annealers' plateau rule arms only above
+       0), so it is no stop (:ref:`hpo_stop_criteria`).
    * - ``FTOL_ABS`` (float)
-     - Absolute tolerance on the loss.
+     - Absolute tolerance on the loss (0 or below: off, as ``FTOL_REL``).
    * - ``XTOL_REL`` (float)
-     - Relative tolerance on hyperparameters.
+     - Relative tolerance on hyperparameters (0 or below: off).
    * - ``XTOL_ABS`` (float)
-     - Absolute tolerance on hyperparameters.
+     - Absolute tolerance on hyperparameters (0 or below: off).
    * - ``POPULATION`` (integer)
      - Population size for population-based algorithms.
    * - ``STEP`` (float)
@@ -1330,12 +1349,14 @@ one a finite number (``MAXTIME`` a positive one).
      - ALGO (algorithms from the selected library)
    * - ``TADAH``
      - ``RANDOM`` (uniform random search: the ``INIT`` point, then
-       ``MAXEVAL`` − 1 uniform draws; ``MAXEVAL`` required),
+       uniform draws until ``MAXEVAL``, ``MAXTIME`` or ``STOPVAL`` ends
+       it — one of them is required; no ``PARAM``),
        ``GRID`` (the ``INIT`` point, then every node of a
        ``PARAM GRID_POINTS``\ :sup:`dim` grid, default 20 points per
        dimension, the first dimension of the :ref:`dimension order
-       <hpo_dimension_order>` varying fastest; ``MAXEVAL`` stops
-       the sweep after that many points), ``ANNEAL`` (classic
+       <hpo_dimension_order>` varying fastest; ``MAXEVAL``, ``MAXTIME``
+       and ``STOPVAL`` stop the sweep earlier, still in grid order),
+       ``ANNEAL`` (classic
        Kirkpatrick/Metropolis Simulated Annealing — see
        :ref:`tadah_anneal_block` below), ``ANNEAL_PT`` (parallel
        tempering, :ref:`tadah_anneal_pt_block`), ``ANNEAL_PA``
@@ -1446,11 +1467,150 @@ Any other ``PARAM`` key is rejected, and so are ``FTOL_REL``, ``XTOL_REL``,
 ``XTOL_ABS``, ``SEED``, ``VECTOR_ARR``, ``STEP``, ``MAXTIME``,
 ``STOPVAL``, ``POPULATION``, integer dimensions and ``INNER`` blocks.
 ``MAXEVAL`` is enforced by HPO (dlib's own stop rules count iterations).
-``DLIB:GFS`` takes ``MAXEVAL`` and ``FTOL_ABS`` (its solver epsilon,
-default ``1e-3``); it is deterministic, so ``SEED`` has no effect.  It
-needs ``MAXEVAL``: dlib's global search has no stopping rule of its own,
-so without it the run never ended (now a startup error, ``DLIB:GFS needs
-MAXEVAL: …``).
+
+``DLIB:GFS`` (dlib's ``find_min_global``) takes ``MAXEVAL``, ``MAXTIME``
+and ``STOPVAL`` — dlib's call budget, run-time limit and stop condition,
+the ``INIT`` points' evaluations counted — and ``FTOL_ABS``, dlib's
+solver epsilon (default ``1e-3``), which ends no run.  It takes no
+``PARAM`` and rejects ``FTOL_REL``, ``XTOL_REL`` and ``XTOL_ABS``, which
+it cannot apply (``DLIB:GFS does not support FTOL_REL: dlib's global
+search has no convergence test to apply it to; stop it with MAXEVAL,
+MAXTIME or STOPVAL``).  It has no convergence test, so one of ``MAXEVAL``,
+``MAXTIME`` or ``STOPVAL`` is required (``DLIB:GFS needs a stop: …``).
+It is deterministic, so ``SEED`` has no effect.  Before 1.5.1 it read
+only ``MAXEVAL``, which it needed, and ignored ``MAXTIME``, ``STOPVAL``,
+the other tolerances and any ``PARAM``.
+
+.. _hpo_stop_criteria:
+
+Stop criteria per backend
+.........................
+
+Each backend ends a run on the criteria it honours — ``MAXEVAL``,
+``MAXTIME``, ``STOPVAL`` and the tolerances its stop tests read, set
+above 0 — and most also end on their own.  A backend with no convergence
+test and no finite schedule runs until it is interrupted when it has
+none of them, so at least one is required: a startup error names the
+backend and the stops it honours.  An active ``RESTART``
+(:ref:`restart_decorator`) counts as one: once its ``MAX`` restarts are
+used, the next ``AFTER_STAGNATION`` evaluations without a new best end
+the run, whatever the phase.  Which backend is which was measured: each
+ran without a stop, on the HPO example data and on synthetic objectives,
+until it was killed or ended.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 26 44
+
+   * - Backend
+     - Without a stop
+     - Stops that end a run
+   * - ``TADAH:RANDOM``
+     - never ends: one required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
+   * - ``TADAH:GRID``
+     - ends after its grid
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
+   * - ``TADAH:ANNEAL``, ``ANNEAL_PA``
+     - ends at the end of its temperature schedule
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``FTOL_REL``, ``FTOL_ABS``
+       (the plateau rule)
+   * - ``TADAH:ANNEAL_PT``
+     - never ends (the ladder keeps its temperatures): one required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``FTOL_REL``, ``FTOL_ABS``
+       (the best-stall rule)
+   * - ``ASA:ASA``
+     - ends on its own limits
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` (and ASA's own options)
+   * - ``DLIB:GFS``
+     - never ends: one required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` (``FTOL_ABS`` is its solver
+       epsilon)
+   * - ``DLIB:BFGS``
+     - converges
+     - ``MAXEVAL``, ``FTOL_ABS`` (or ``PARAM tol_gradinf``)
+   * - ``CERES`` (all four)
+     - converges
+     - ``MAXEVAL``, ``FTOL_REL``, ``XTOL_REL`` (and ``PARAM tol_gradinf``)
+   * - NLopt ``GN_DIRECT``, ``GN_DIRECT_L``, ``GN_DIRECT_L_RAND`` and
+       their ``_NOSCAL`` forms, ``GN_CRS2_LM``, ``GN_ISRES``
+     - never ends: one required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``FTOL_REL``, ``FTOL_ABS``,
+       ``XTOL_REL``, ``XTOL_ABS``
+   * - NLopt ``GN_ESCH``, ``GN_AGS``, ``GD_STOGO``, ``GD_STOGO_RAND``
+     - never ends: one required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
+   * - NLopt ``GN_MLSL``, ``GN_MLSL_LDS``, ``GD_MLSL``, ``GD_MLSL_LDS``,
+       ``G_MLSL``, ``G_MLSL_LDS``
+     - never ends: one required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` (its tolerances reach only its
+       local searches)
+   * - NLopt ``LD_MMA``, ``LD_CCSAQ``, ``LD_SLSQP``
+     - never ends (the tolerances are its only convergence test): one
+       required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``FTOL_REL``, ``FTOL_ABS``,
+       ``XTOL_REL``, ``XTOL_ABS``
+   * - NLopt ``GN_ORIG_DIRECT``, ``GN_ORIG_DIRECT_L``
+     - ends after about 100000 evaluations of its own (the cap is
+       checked once per iteration)
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``XTOL_REL``
+   * - NLopt ``AUGLAG``, ``AUGLAG_EQ``, ``LN_AUGLAG``, ``LD_AUGLAG`` and
+       their ``_EQ`` forms
+     - ends when its local search ends
+     - its local search's (below)
+   * - every other NLopt algorithm (``LN_*``, ``LD_LBFGS``, …)
+     - converges
+     - all seven
+
+Each of these ends the run only when it is met: a ``STOPVAL`` below
+every loss the search finds, or a tolerance too tight to be reached,
+leaves it running until it is interrupted, so ``MAXEVAL`` or ``MAXTIME``
+is the stop that always ends it.  A tolerance of 0 or below is no stop
+at all: NLopt switches it off, and ``ANNEAL_PT``'s best-stall rule arms
+only above 0, so ``FTOL_REL 0`` alone is a startup error for a backend
+that needs a stop (it used to run until it was killed).  DIRECT tests
+``XTOL`` on every rectangle it divides, and it divides the largest one
+in every sweep, so ``XTOL`` ends it only once every rectangle is that
+small: roughly (1/``XTOL_REL``)\ :sup:`n` evaluations for *n*
+dimensions (``XTOL_REL 1e-3`` in two dimensions ran past 20000); it
+counts as a stop, and the message says what it costs.  ``CRS2`` and
+``ISRES`` test the tolerances when the best improves.  ``TADAH:RANDOM`` and ``TADAH:GRID`` accept the tolerances
+(and ``POPULATION`` and ``VECTOR_ARR``; ``GRID`` also ``SEED``) and
+ignore them, as before.  The local search of NLopt's MLSL
+and AUGLAG (an ``INNER`` block, or without one NLopt's default local
+optimiser, ``LN_COBYLA`` or ``LD_MMA``, which takes the block's
+tolerances) must end too: it runs with the enclosing block's ``MAXEVAL``,
+``MAXTIME`` and ``STOPVAL`` as well as its own ``MAXEVAL``, ``MAXTIME``
+and tolerances (:ref:`hpo_inner_block`), so an ``INNER`` global search
+under ``AUGLAG``, or ``LD_AUGLAG`` without an ``INNER`` block, needs one
+of those:
+
+.. code-block:: none
+
+   HPOEngine error: the STRATEGY-level optimiser: the local search of NLOPT:LD_AUGLAG (NLopt's default NLOPT:LD_MMA, as the block has no INNER block) needs a stop: without a tolerance it has no convergence test and runs until it is interrupted; set MAXEVAL, MAXTIME, STOPVAL or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the NLOPT:LD_AUGLAG block, which NLopt hands on to it
+
+The rule holds in every phase (each ``MULTISTART`` start, the
+``PRESTAGE`` exploration and refinement), and the message names it; an
+active ``RESTART`` bounds every phase, the ``PRESTAGE`` exploration
+included (it ends at its first stagnation and hands its best points to
+the refinement).
+Before 1.5.1 these configurations were accepted and ran until
+interrupted (``Ctrl-C`` leaves a valid ``best_pot.tadah``,
+:ref:`hpo_stopping`), and ``TADAH:RANDOM`` and ``DLIB:GFS`` needed
+``MAXEVAL`` itself.  The journal says which stop ended a ``RANDOM``,
+``GRID`` or ``GFS`` search (``TADAH:RANDOM stopped: STOPVAL reached after
+7 evaluation(s)``), and a ``MAXTIME`` or ``STOPVAL`` stop is the run's
+status (:ref:`hpo_stopping`).  ``MAXTIME`` counts only while another
+evaluation would start: a search whose last evaluation spends its
+``MAXEVAL`` or its grid ends on that (``TADAH:GRID stopped: MAXEVAL
+reached after 5 of 28 grid points``, status ``COMPLETED``), however
+long that evaluation took.  The journal's stop criteria say what ends a
+run that sets none of its own: its own end (``(none set -- TADAH:GRID
+ends on its own: …)``), each ``MULTISTART`` start's
+``BUDGET_PER_START``, or the ``RESTART`` stagnation stop (``(none set --
+the RESTART stagnation stop ends NLOPT:GN_DIRECT_L: once its MAX 1
+restart(s) are used, AFTER_STAGNATION 60 evaluations without a new
+best)``).
 
 .. _hpo_init_methods:
 
@@ -1746,10 +1906,12 @@ best-tracker keeps the global minimum across all runs.
        ``MAXEVAL`` over the starts that run (ceil division); with
        neither, the starts run without an evaluation limit.  A multi-seed
        optimiser (``DLIB:GFS``) runs once from every ``INIT`` point with
-       the outer ``MAXEVAL``, so ``BUDGET_PER_START`` does not apply to
-       it.  The startup checks see each start's budget: ``MULTISTART``
-       over ``NLOPT:LN_SBPLX`` with ``BUDGET_PER_START 5`` and no
-       ``MAXEVAL`` is valid.
+       the outer ``MAXEVAL``, so ``BUDGET_PER_START`` would have no effect
+       there: it is a startup error (``BUDGET_PER_START has no effect
+       with DLIB:GFS, which runs every start in one optimiser; use
+       MAXEVAL``); before 1.5.1 it was ignored.  The startup checks see
+       each start's budget: ``MULTISTART`` over ``NLOPT:LN_SBPLX`` with
+       ``BUDGET_PER_START 5`` and no ``MAXEVAL`` is valid.
 
 The number of starts is ``min(N_STARTS, number of INIT points)``; when the
 ``INIT`` chain yields fewer points than ``N_STARTS`` a warning says so,
@@ -1992,7 +2154,13 @@ RESTART decorator
 
 The decorator is active only when **both** ``AFTER_STAGNATION`` and
 ``MAX`` are positive; with either at its default ``0`` the ``RESTART``
-block has no effect.  A ``SEED`` inside ``RESTART`` seeds its ``METHOD``
+block has no effect.  An active ``RESTART`` ends the run: once its
+``MAX`` restarts are used, the next ``AFTER_STAGNATION`` evaluations
+without a new best stop it (``STOPPED -- stagnation, max restarts (MAX)
+used``), so it is the stop of a backend that needs one
+(:ref:`hpo_stop_criteria`): ``NLOPT GN_DIRECT_L`` with no stop of its
+own under ``AFTER_STAGNATION 60`` and ``MAX 1`` ran 699 evaluations on
+the examples' data.  A ``SEED`` inside ``RESTART`` seeds its ``METHOD``
 chain: restart *r* draws its fresh points with ``SEED + r`` (with
 ``SEED 42``, restart 1 draws with 43 and restart 2 with 44).  With
 ``METHOD SOBOL 3`` these are blocks 43 and 44 of the Sobol sequence,
@@ -2161,6 +2329,21 @@ data, and an ``INNER`` block with another ``LIB`` failed inside NLopt once
 the run had started (``wrong algorithm string``).  With MLSL/AUGLAG an outer ``STEP``
 overrides an ``INNER`` ``STEP`` (NLopt forwards the outer initial step
 to the local optimiser); a startup warning says so.
+
+NLopt hands each ``INNER`` search what is left of the enclosing block's
+``MAXEVAL`` and ``MAXTIME`` when they are tighter than the ``INNER``
+block's own, and the enclosing block's ``STOPVAL`` in place of the
+``INNER`` block's, which therefore has no effect (it is accepted, as
+before).  MLSL's own loop never ends without a stop, and AUGLAG ends when
+its ``INNER`` search ends, so an ``INNER`` search that needs a stop
+(:ref:`hpo_stop_criteria`) takes it from either block.  AUGLAG
+evaluates the result of its ``INNER`` search once more when that search
+ends, so it can make one evaluation more than its ``MAXEVAL`` (NLopt's
+``auglag.c``):
+
+.. code-block:: none
+
+   HPOEngine error: the STRATEGY-level optimiser: the INNER search of NLOPT:AUGLAG (NLOPT:GN_DIRECT_L) needs a stop: NLopt's global search has no convergence test of its own and runs until it is interrupted; set MAXEVAL, MAXTIME or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the INNER block, or MAXEVAL, MAXTIME or STOPVAL in the NLOPT:AUGLAG block, which NLopt hands on to it; DIRECT's XTOL_REL and XTOL_ABS end it only once every rectangle is that small, after roughly (1/XTOL_REL)^n evaluations in n dimensions
 
 ``SEED`` is not valid inside ``INNER``.  MLSL and AUGLAG run the
 ``INNER`` search inside the enclosing block's NLopt run, and NLopt has
@@ -2533,7 +2716,9 @@ no advance warning.
      - The reason of the optimiser run that ended the run (under
        ``MULTISTART`` the last start, under ``PRESTAGE`` the refinement)
        where it gives one (NLopt, e.g. ``MAXEVAL_REACHED -- …``;
-       ``ASA: …``), otherwise ``COMPLETED``.  When the ``RESTART``
+       ``ASA: …``; ``TADAH:RANDOM``, ``TADAH:GRID`` and ``DLIB:GFS``
+       when ``MAXTIME`` or ``STOPVAL`` ended them, e.g. ``TADAH:RANDOM:
+       STOPVAL reached``), otherwise ``COMPLETED``.  When the ``RESTART``
        budget ends the run: ``STOPPED -- stagnation, max restarts (MAX)
        used``.
      - Complete.
@@ -2799,6 +2984,11 @@ Marker                                                                       Mea
 ``[HPO] WARM: clamped dim[d] from X to Y (bounds […])``                       Warm point fell outside narrowed bounds.
 ``[HPO] DLIB:GFS seeding with N starting points``                             Multi-seed forwarding.
 ``[HPO] GRID: MAXEVAL N < M grid points (…); evaluating the first N …``       ``TADAH:GRID`` stops its sweep after ``MAXEVAL`` points.
+``[HPO] TADAH:RANDOM stopped: <stop> after N evaluation(s)``                 The stop that ended ``RANDOM``: ``MAXEVAL reached``, ``MAXTIME exceeded``,
+                                                                             ``STOPVAL reached``.
+``[HPO] TADAH:GRID stopped: <stop> after N of M grid points``                The stop that ended the sweep early; ``TADAH:GRID finished: all M
+                                                                             grid points evaluated`` otherwise.
+``[HPO] DLIB:GFS stopped: <stop> after N evaluation(s)``                     The stop that ended ``DLIB:GFS`` (``MAXEVAL``, ``MAXTIME``, ``STOPVAL``).
 ``[HPO] MULTISTART: running K starts (parallel=N)``                           MULTISTART fires.
 ``[HPO] MULTISTART per-start MAXEVAL = N``                                    Either from ``BUDGET_PER_START`` or split.
 ``[HPO] MULTISTART start i/K -- running inner optimiser (seed=…)``            Per-start; ``(seed=…)`` only when ``SEED`` is set.

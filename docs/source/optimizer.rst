@@ -50,13 +50,63 @@ optionally ``RESTART``; :ref:`strategy_block`).  Gradient-based backends
 differences and are rejected when the configuration has ``PC_LAMMPS``
 lines; ``DLIB:BFGS`` is the one gradient-based optimiser accepted there.
 ``MAXEVAL`` caps every backend's evaluations; without it a backend runs
-until its own stops end it (convergence, a finite temperature schedule,
-``MAXTIME``, ``STOPVAL``, ASA's limits).  ``TADAH:RANDOM`` and
-``DLIB:GFS`` have none of their own and need ``MAXEVAL``, a startup
-error before any data is loaded, and so is a setting a backend rejects
-(an attribute it does not support, or, for the annealers, ASA,
-``DLIB:BFGS``, ``CERES`` and ``TADAH:GRID``, a ``PARAM`` key it does not
-read; :ref:`nfp_manual`).
+until its other stops or its own end it (convergence, a finite
+temperature schedule or grid, ASA's limits).  A tolerance is a stop only
+above 0, and an active ``RESTART`` (:ref:`restart_decorator`) is one
+too: once its ``MAX`` restarts are used, the next ``AFTER_STAGNATION``
+evaluations without a new best end the run.  The backends compare as
+follows (:ref:`hpo_stop_criteria` has the whole table):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 34 36
+
+   * - Backend
+     - Ends on its own
+     - Stops it honours
+   * - ``TADAH:RANDOM``, ``DLIB:GFS``
+     - no: one stop required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
+   * - ``TADAH:GRID``
+     - after its grid
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
+   * - ``TADAH:ANNEAL``, ``ANNEAL_PA``
+     - at the end of the schedule
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``FTOL_*``
+   * - ``TADAH:ANNEAL_PT``
+     - no: one stop required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``FTOL_*``
+   * - ``ASA:ASA``
+     - on its own limits
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
+   * - ``DLIB:BFGS``, ``CERES``
+     - converge
+     - ``MAXEVAL`` and their tolerances
+   * - NLopt global searches (``GN_DIRECT*``, ``GN_CRS2_LM``,
+       ``GN_ISRES``, ``GN_ESCH``, ``GN_AGS``, ``GD_STOGO*``, the MLSL
+       family) and ``LD_MMA``, ``LD_CCSAQ``, ``LD_SLSQP``
+     - no: one stop required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, and the tolerances of
+       DIRECT (its ``XTOL`` only once every rectangle is that small),
+       CRS2, ISRES, MMA, CCSAQ and SLSQP
+   * - NLopt ``GN_ORIG_DIRECT``, ``GN_ORIG_DIRECT_L``
+     - after about 100000 evaluations
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``XTOL_REL``
+   * - NLopt AUGLAG (``AUGLAG``, ``LN_AUGLAG``, ``LD_AUGLAG``, and their
+       ``_EQ`` forms)
+     - when its local search does
+     - its local search's
+   * - the other NLopt algorithms
+     - converge
+     - all
+
+A backend that cannot end without a stop and has none is a startup
+error before any data is loaded (``NLOPT:GN_DIRECT needs a stop: …``),
+and so is a setting a backend rejects: an attribute it does not support
+(``DLIB:GFS`` rejects the tolerances it cannot apply), or, for every
+backend but NLopt, a ``PARAM`` key it does not read, named with the keys
+it takes (``TADAH:RANDOM: unknown PARAM 'FOO' (it takes none)``;
+:ref:`nfp_manual`).
 
 .. toctree::
    :maxdepth: 2

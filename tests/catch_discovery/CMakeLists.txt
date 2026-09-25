@@ -43,3 +43,21 @@ add_test(NAME tadah_catch_discovery_module
 # canary name through the spec generated for it. The prefix ends in a space
 # on purpose (it must reach the discovery script intact).
 catch_discover_tests(tadah_catch_canary TEST_PREFIX "tadah_catch_canary: ")
+
+# The TADAH-SKIP marker (testing/tadah_test_skip.hpp): a case that calls
+# TADAH_SKIP() is reported as Skipped by a real CTest run, while passes,
+# failures that merely contain the marker text and failures of a case that
+# also asked to be skipped keep their status (see check_skip.cmake). The
+# skip canary fails on purpose in five cases, so it is NOT registered with
+# catch_discover_tests(): check_skip.cmake discovers and runs it in a
+# scratch CTest directory of its own.
+add_executable(tadah_catch_skip_canary
+  skip_canary_main.cpp skip_canary.cpp skip_canary_more.cpp)
+target_link_libraries(tadah_catch_skip_canary PRIVATE Catch2)
+add_test(NAME tadah_catch_skip_marker
+  COMMAND ${CMAKE_COMMAND}
+    -DSCRIPT=${_CATCH_DISCOVER_TESTS_SCRIPT}
+    -DSKIP_CANARY=$<TARGET_FILE:tadah_catch_skip_canary>
+    -DCTEST=${CMAKE_CTEST_COMMAND}
+    -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/skip_check
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/check_skip.cmake)

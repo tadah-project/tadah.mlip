@@ -9,8 +9,11 @@
 #    without Catch.cmake's quoting, and the list options have two elements.
 #    The listings (the fake lister records its arguments) and the recorded
 #    add_test() / set_tests_properties() arguments are compared exactly;
-#  * changing the discovery script relinks the test executable and so re-runs
-#    discovery (LINK_DEPENDS); a build without a change re-runs nothing.
+#  * every entry carries the SKIP_REGULAR_EXPRESSION of the TADAH-SKIP
+#    marker (testing/TadahTestSkip.cmake, included by the discovery script);
+#  * changing the discovery script, or the TadahTestSkip.cmake it includes,
+#    relinks the test executable and so re-runs discovery (LINK_DEPENDS); a
+#    build without a change re-runs nothing.
 #
 #   cmake -DTADAH_CMAKE_DIR=<cmake-tools> -DLISTER_SOURCE=<fake_lister.cpp>
 #         -DWORK_DIR=<scratch dir> -DGENERATOR=<CMake generator>
@@ -129,7 +132,8 @@ macro(expect_registered step name)
     get_property(_argc GLOBAL PROPERTY CM_PROP_ARGC)
     set(_i 0)
     foreach(_want IN ITEMS "${_test}" PROPERTIES WORKING_DIRECTORY
-                           "${build}/work dir " LABELS "'label' ")
+                           "${build}/work dir " SKIP_REGULAR_EXPRESSION
+                           "(^|\n)TADAH-SKIP: " LABELS "'label' ")
       get_property(_got GLOBAL PROPERTY "CM_PROP_${_i}")
       if(NOT _got STREQUAL _want)
         fail("${step}: set_tests_properties() argument ${_i}: got [${_got}], "
@@ -196,6 +200,14 @@ execute_process(COMMAND "${CMAKE_COMMAND}" -E sleep 1.1)
 file(APPEND "${build}/CatchAddTests.cmake" "\n# changed by check_module.cmake\n")
 run(build "${CMAKE_COMMAND}" --build "${build}")
 expect_registered("rebuild after the script changed" "second case")
+
+# 4. The skip-marker definitions the script includes changed: relink,
+#    re-discover.
+file(WRITE "${listing}" "third case\n")
+execute_process(COMMAND "${CMAKE_COMMAND}" -E sleep 1.1)
+file(APPEND "${build}/TadahTestSkip.cmake" "\n# changed by check_module.cmake\n")
+run(build "${CMAKE_COMMAND}" --build "${build}")
+expect_registered("rebuild after TadahTestSkip.cmake changed" "third case")
 
 get_property(failures GLOBAL PROPERTY CM_NFAIL)
 if(failures GREATER 0)

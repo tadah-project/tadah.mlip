@@ -1,7 +1,8 @@
 # Throw-away project driven by ../check_module.cmake: catch_discover_tests()
 # from cmake-tools (testing/Catch.cmake), used the way the Tadah modules use
 # it, on the fake lister. Discovery runs through a copy of the discovery
-# script in the build tree, so the check can change the script.
+# script, and of the skip-marker definitions it includes
+# (TadahTestSkip.cmake), in the build tree, so the check can change them.
 cmake_minimum_required(VERSION 3.15)
 project(tadah_catch_module_case CXX)
 
@@ -11,6 +12,9 @@ include(Catch)
 
 configure_file("${_CATCH_DISCOVER_TESTS_SCRIPT}"
   "${CMAKE_BINARY_DIR}/CatchAddTests.cmake" COPYONLY)
+get_filename_component(_catch_dir "${_CATCH_DISCOVER_TESTS_SCRIPT}" DIRECTORY)
+configure_file("${_catch_dir}/TadahTestSkip.cmake"
+  "${CMAKE_BINARY_DIR}/TadahTestSkip.cmake" COPYONLY)
 set(_CATCH_DISCOVER_TESTS_SCRIPT "${CMAKE_BINARY_DIR}/CatchAddTests.cmake")
 
 add_executable(fake_lister "${LISTER_SOURCE}")

@@ -19,6 +19,9 @@
 #    letter case and surrounding whitespace) stops discovery;
 #  * EXTRA_ARGS that Catch reads as --warn stop discovery (Catch accepts one
 #    --warn, and every entry passes --warn NoTests); similar options pass;
+#  * every entry carries the SKIP_REGULAR_EXPRESSION of the TADAH-SKIP
+#    marker, and PROPERTIES that set SKIP_REGULAR_EXPRESSION stop discovery
+#    (check_skip.cmake runs the marker through a real CTest);
 #  * fake lister (fake_lister.cpp): 256 names (exit status wraps to 0), CRLF
 #    line ends with a quoted '#' name, a last line ending in a lone '\r', an
 #    empty listing; and the listings that must stop discovery: a crash, a
@@ -177,6 +180,11 @@ set(cd_extra_args "")
 set(cd_properties "")
 set(cd_reporter "")
 
+# Every entry reports a TADAH_SKIP() case as Skipped: the marker line
+# "TADAH-SKIP: <reason>" at the start of a line of the output
+# (cmake-tools testing/tadah_test_skip.hpp).
+set(cd_skip_regex "(^|\n)TADAH-SKIP: ")
+
 # =============================================================================
 # 1. The canary: a real Catch2 binary with hostile names.
 # =============================================================================
@@ -248,13 +256,16 @@ else()
       endforeach()
 
       # set_tests_properties(<test> PROPERTIES WORKING_DIRECTORY <dir>
+      #                      SKIP_REGULAR_EXPRESSION <TADAH-SKIP marker>
       #                      LABELS catch_discovery TIMEOUT 30)
       get_property(pargc GLOBAL PROPERTY "CD_PROP_${k}_ARGC")
       cd_expect_eq("canary: set_tests_properties() argument count for [${name}]"
-        "${pargc}" 8)
+        "${pargc}" 10)
       set(i 0)
       foreach(want IN ITEMS "${test}" PROPERTIES WORKING_DIRECTORY
-                            "${WORK_DIR}" LABELS catch_discovery TIMEOUT 30)
+                            "${WORK_DIR}" SKIP_REGULAR_EXPRESSION
+                            "${cd_skip_regex}"
+                            LABELS catch_discovery TIMEOUT 30)
         cd_get(got PROP ${k} ${i})
         cd_expect_eq("canary: property argument ${i} for [${name}]"
           "${got}" "${want}")
@@ -363,6 +374,15 @@ else()
   endforeach()
 endif()
 set(cd_extra_args "")
+
+# PROPERTIES: every entry already has SKIP_REGULAR_EXPRESSION (the
+# TADAH-SKIP marker); a second value would replace it.
+set(cd_properties "LABELS;x;SKIP_REGULAR_EXPRESSION;skipped")
+cd_fake_listing(skip_property "alpha\n" "")
+cd_discover(skip_property "${LISTER}")
+cd_expect_refusal(skip_property "set SKIP_REGULAR_EXPRESSION")
+cd_expect_refusal(skip_property "TADAH-SKIP")
+set(cd_properties "")
 
 # Reporter: passed through when valid, refused when unknown.
 set(cd_prefix "")
@@ -524,4 +544,5 @@ if(n_fail GREATER 0)
 endif()
 message(STATUS "Catch discovery check passed: ${canary_count} canary names, "
                "256/CRLF/lone-CR/empty listings, 9 refused listings, "
-               "6 refused --warn EXTRA_ARGS (${SCRIPT})")
+               "6 refused --warn EXTRA_ARGS, a refused SKIP_REGULAR_EXPRESSION "
+               "property (${SCRIPT})")

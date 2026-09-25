@@ -5,7 +5,7 @@ This example demonstrates how to train a model using Tadah!MLIP. The ``config.tr
 the necessary parameters for the model.
 
 To use this example, ensure you have access to all required files available in the Git repository at:
-`https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/tree/main/examples/CLI/ex_1 <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/tree/main/examples/CLI/ex_1>`_
+`https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/tree/v1-dev/examples/CLI/ex_1 <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/tree/v1-dev/examples/CLI/ex_1>`_
 
 Training
 ........

@@ -214,6 +214,29 @@ endif()
 
 
 # ------------------------------------------------------------------
+# 8b. `tadah hpo` when evaluations fail
+# ------------------------------------------------------------------
+# cli_failed_evaluations/check_hpo_failed_evaluations.py runs `tadah hpo`
+# on a tiny problem (no LAMMPS, no network) whose evaluations fail. When
+# none produced a usable loss (random_skip, gfs_throws) the run exits with
+# status 1, says so on stderr and in the journal trailer, and writes no
+# best_pot.tadah; DLIB:GFS reaches MAXEVAL (it used to crash, SIGSEGV).
+# gfs_mixed starts with failures and ends as a successful run.
+if(TADAH_ENABLE_NFP)
+  foreach(_case random_skip gfs_throws gfs_mixed)
+    add_test(NAME tadah_hpo_failed_evaluations_${_case}
+      COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/cli_failed_evaluations/check_hpo_failed_evaluations.py
+        --tadah $<TARGET_FILE:tadah> --case ${_case})
+    set_tests_properties(tadah_hpo_failed_evaluations_${_case} PROPERTIES
+      LABELS "hpo"
+      TIMEOUT 300
+      ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+  endforeach()
+endif()
+
+
+# ------------------------------------------------------------------
 # 9. The CLI examples the documentation includes
 # ------------------------------------------------------------------
 # One entry per examples/CLI/<name>/README.rst that docs/source/examples.rst

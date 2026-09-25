@@ -1,11 +1,68 @@
 #include <tadah.mlip/cli/tadah_cli.h>
 
+#include <cstdio>
 #include <cstring>
 #include <exception>
 #include <iostream>
 
 #ifdef TADAH_HPO_MPI
 #include <mpi.h>
+
+#include <chrono>
+#include <thread>
+
+namespace {
+/* A rank that ends with an error must not leave its peers blocked in a
+ * collective: MPI_Finalize would then wait for them forever and the job
+ * would burn its allocation instead of exiting non-zero (a TADAH_HPO_MPI
+ * rank whose ANNEAL_PT jitter probe or NOISE_CALIBRATION evaluation fails
+ * leaves the others in the next gather/allreduce). Every rank that reaches
+ * the end of main() enters a
+ * barrier on a communicator of its own -- so it can never be matched
+ * against a collective a stuck peer sits in on MPI_COMM_WORLD. When all
+ * ranks arrive (all succeeded, or all failed together: each has closed its
+ * own journal) they finalize normally. A failing rank whose peers have not
+ * all arrived within kExitGrace aborts the job with its status: they are
+ * blocked. Its own journal is already closed (hpo_run writes RESULT before
+ * the error leaves it). */
+MPI_Comm exit_comm = MPI_COMM_NULL;
+constexpr std::chrono::seconds kExitGrace{30};
+
+void create_exit_comm()
+{
+  MPI_Comm_dup(MPI_COMM_WORLD, &exit_comm);
+}
+
+void exit_handshake(int ret)
+{
+  int world = 1;
+  MPI_Comm_size(MPI_COMM_WORLD, &world);
+  if (world < 2 || exit_comm == MPI_COMM_NULL) return;
+  /* Nonblocking on every rank: a blocking MPI_Barrier would not match. */
+  MPI_Request req = MPI_REQUEST_NULL;
+  MPI_Ibarrier(exit_comm, &req);
+  if (ret == 0) {
+    /* A peer that failed waits for this rank; if one is stuck, a failing
+     * rank aborts the job (a successful rank never does). */
+    MPI_Wait(&req, MPI_STATUS_IGNORE);
+    return;
+  }
+  const auto deadline = std::chrono::steady_clock::now() + kExitGrace;
+  int arrived = 0;
+  for (;;) {
+    MPI_Test(&req, &arrived, MPI_STATUS_IGNORE);
+    if (arrived || std::chrono::steady_clock::now() >= deadline) break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  }
+  if (arrived) return;
+  std::cerr << "ERROR: exiting with status " << ret << "; not every MPI rank "
+            << "reached the end within " << kExitGrace.count()
+            << " s (a rank is blocked) -- aborting the job" << std::endl;
+  std::cout.flush();
+  std::fflush(nullptr);
+  MPI_Abort(MPI_COMM_WORLD, ret);
+}
+}  // namespace
 #endif
 
 /**
@@ -65,6 +122,7 @@ int main(int argc, char** argv) {
       MPI_Cart_create(MPI_COMM_SELF, 1, dims, periods, 0, &cart);
       if (cart != MPI_COMM_NULL) MPI_Comm_free(&cart);
     }
+    create_exit_comm();
   }
 #endif
 
@@ -78,6 +136,7 @@ int main(int argc, char** argv) {
   }
 
 #ifdef TADAH_HPO_MPI
+  exit_handshake(ret);   // may MPI_Abort (see above)
   MPI_Finalize();
 #endif
 

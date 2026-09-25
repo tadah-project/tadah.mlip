@@ -20,7 +20,10 @@ Tadah!MLIP and the ML‑TADAH LAMMPS integration use **CMake** for configuration
 
 General requirements:
 
-- A **C++17**-capable compiler toolchain
+- A **C++17**-capable compiler toolchain whose standard library implements
+  floating-point ``std::to_chars`` (GCC 11+ / libstdc++ 11+, Clang with
+  libc++ 14+ or libstdc++ 11+, MSVC 2019 16.4+); Tadah! uses it to write
+  numbers losslessly
 - **CMake** (3.15+)
 - **LAPACK**
 - Internet access during installation (some dependencies may be fetched at configure/build time)
@@ -564,7 +567,7 @@ Troubleshooting
 
 #. **Compiler not found / version too old**
 
-   Ensure your C++ compiler supports C++17. Update your compiler if necessary (e.g., GCC 7+, Clang 5+, MSVC 2017+).
+   Ensure your C++ compiler supports C++17, including floating-point ``std::to_chars`` in its standard library. Update your compiler if necessary (e.g., GCC 11+, Clang with libc++ 14+ or libstdc++ 11+, MSVC 2019 16.4+).
 
 #. **LAPACK not found**
 

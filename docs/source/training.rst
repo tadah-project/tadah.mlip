@@ -156,6 +156,19 @@ into ``pot.tadah`` (the ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles are
 not). ``tadah predict`` re-applies them; ``--no-eshift`` ignores the
 stored values.
 
+.. note::
+
+   **DM_REAM potentials (EMBF0 ZERO, the default).** The zero-referenced
+   embedding fixes the isolated-atom energy of a DM_REAM model at 0, so the
+   model has no free per-atom constant unless ``BIAS true`` is set. When the
+   reference energies are absolute (e.g. DFT totals), remove the per-atom
+   reference with ``ESHIFT``, ``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` (which
+   keeps the LAMMPS ``EAMFAST`` kernel usable) or set ``BIAS true`` (its
+   intercept column precedes the descriptor weights, so ``FIXINDEX``/
+   ``FIXWEIGHT`` indices shift).
+   ``tadah train`` prints a HINT when neither is present. See
+   :ref:`DM_REAM <dm_ream>`.
+
 Filtering and weighting
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -216,8 +229,8 @@ A minimal single-species, two-body, kernel-ridge example::
    ATOM     Ta
    BIAS     false
    DIMER    false   0   false
-   EWEIGHT  1.0
-   FWEIGHT  1.0
+   EWEIGHT  1
+   FWEIGHT  1
    INIT2B   true
    INITMB   false
    LAMBDA   0
@@ -226,7 +239,7 @@ A minimal single-species, two-body, kernel-ridge example::
    OALGO    1
    RCTYPE2B Cut_Dummy
    RCUT2B   6.5
-   SWEIGHT  1.0
+   SWEIGHT  1
    TYPE2B   D2_LJ   Ta   Ta
    WATOM    73
    WEIGHTS  14.20421334...   2604.39696519...
@@ -253,6 +266,57 @@ Three categories of keys appear:
 Runtime-only knobs (``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
 ``HEALTH_LOG``) are stripped before write — leaving them in the file
 would trigger "Invalid key" errors in the LAMMPS-side parser.
+
+.. _pot_number_format:
+
+Number format
+~~~~~~~~~~~~~
+
+Every non-integer number of a potential's key/value lines is written
+with ``NUMERIC`` **significant** digits (``printf`` ``%.{N}g``). The
+default, ``18``, is exact: 17 significant digits identify every double,
+so a potential reloaded from ``pot.tadah`` is bit-identical to the one in
+memory. That is why a value typed as ``5.3`` comes back as
+``5.29999999999999982`` — the exact double nearest to 5.3 — and why
+``1.0`` is written as ``1``. Integers, names, booleans, index lists and
+grid generators (``LIN`` / ``GEOM``) are written as they are stored, so
+integers are always exact. ``#`` comment lines (such as the header
+``tadah hpo`` writes) are annotations that ``NUMERIC`` does not govern.
+
+* ``NUMERIC`` itself is never written into a potential file.
+* An explicit ``NUMERIC`` below 17 is honoured (the numbers are rounded to
+  that many significant digits) but ``tadah`` prints a WARNING: the
+  written potential then differs slightly from the fitted one.
+* ``NUMERIC`` never limits the values held in memory: calculations
+  always run at full double precision, whatever it is set to. Every
+  ``tadah`` reader of a file ``tadah`` writes (potentials, configurations,
+  datasets, POSCAR exports) accepts what the writers produce, including
+  exponent forms and subnormal values such as ``1e-310``.
+* Dataset files written by ``tadah data convert``, ``merge``, ``split``,
+  ``sample``, ``dedup`` and ``balance`` follow the same rule: every
+  number with ``NUMERIC`` significant digits (default ``18``, exact — a
+  rewritten dataset trains on exactly the values the command computed,
+  e.g. the ``--rescale`` weights of ``balance``), and a WARNING below 17.
+  So do the LAMMPS data and VASP POSCAR exports of ``tadah data write``
+  (both formats read E-notation; ``tadah`` reads its POSCAR export back
+  exactly); the CASTEP cell export keeps ``NUMERIC`` decimal places, with
+  no warning.
+* Other outputs (predictions, analysis tables) keep their established
+  meaning of ``NUMERIC``, but the wider default applies to them as well.
+
+The same rules apply to ``tadah refit`` (a ``NUMERIC`` in the refit
+configuration sets the precision of ``pot.tadah``), to ``tadah refit
+--edit`` (a ``NUMERIC`` carried by the edited potential, or set for the
+run, is honoured — the edit is then exact only up to that rounding, and a
+WARNING says so) and to the potentials ``tadah hpo`` writes (see
+:ref:`hpo_potential_archives`).
+
+.. note::
+
+   Potentials written by ``tadah hpo`` 1.5.0 carry an automatically
+   inserted ``NUMERIC 12`` line. When such a file is used as a
+   configuration, or edited with ``tadah refit --edit``, that line counts
+   as an explicit setting: delete it to get exact output again.
 
 weights.tadah format
 ~~~~~~~~~~~~~~~~~~~~

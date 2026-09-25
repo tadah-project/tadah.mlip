@@ -267,6 +267,8 @@ Many-Body
      - Embedded Atom Descriptor with Gaussian-type orbital basis
    * - ``DM_EAM``
      - Many-body part of the Embedded Atom Method
+   * - ``DM_REAM``
+     - Refittable EAM: flexible density and embedding expansions (``tadah refit``)
    * - ``DM_mRLR``
      - mEAD with s·ρ·log(c·ρ) embedding
    * - ``DM_mSQRT``
@@ -326,6 +328,71 @@ DM_EAM
 ~~~~~~
 
 .. doxygenclass:: tadah::models::DM_EAM
+
+.. _dm_ream:
+
+DM_REAM
+~~~~~~~
+
+The native EAM many-body descriptor written by :ref:`tadah refit <refit>`.
+Both EAM functions are basis expansions: the density
+:math:`\rho(r)=\sum_n a_n\,\psi_n(r)` (centres ``CGRIDMB``, widths
+``SGRIDMB``, fixed amplitudes ``AMPGRIDMB``) and the embedding
+:math:`F(\rho)=\sum_m w_m\,\tilde g_m(\rho)` (centres ``CEMBFUNC``, widths
+``SEMBFUNC``), whose coefficients :math:`w_m` are the model's linear weights.
+
+**Embedding reference, EMBF0.** An isolated atom has :math:`\rho = 0`, so its
+embedding energy is :math:`F(0)`. The key ``EMBF0`` selects how :math:`F(0)`
+is treated:
+
+* ``EMBF0 ZERO`` (default): every embedding basis function is
+  zero-referenced, :math:`\tilde g_m(\rho) = g_m(\rho) - g_m(0)`, with
+  :math:`g_m(0)` computed from the ``CEMBFUNC``/``SEMBFUNC``/``KDEGEMB``
+  values actually evaluated (for every HPO candidate as well). Hence
+  :math:`F(0) = 0` exactly for any weights: with a linear model and
+  ``BIAS false`` an isolated atom has energy 0.0, on every path (``tadah
+  predict``/``train``/``hpo`` and the LAMMPS pair style, all kernels).
+* ``EMBF0 FREE``: the raw basis :math:`\tilde g_m = g_m` of tadah 1.5.0 and
+  earlier, where :math:`F(0) = \sum_m w_m g_m(0)` is whatever the weights
+  make it.
+
+``EMBF0`` is a property of the potential: every DM_REAM ``pot.tadah`` that
+tadah writes carries an explicit ``EMBF0`` line (binaries older than the key
+refuse such files with ``Invalid key: EMBF0``), and a potential without the
+line is read as ``ZERO``. It is not an ``OPTIM`` target.
+
+.. list-table:: What changes between ZERO and FREE for the same weights
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Model
+     - Effect
+   * - Linear (``BF_Linear``, ``Kern_Linear``)
+     - The derivatives :math:`g'_m` are identical, so forces and stresses are
+       identical; every atomic energy moves by the same constant
+       (:math:`-F(0)`, from the stored ``WEIGHTS``, with or without
+       ``NORM``). Energy differences at fixed atom count, and cohesive or
+       formation energies, are unchanged.
+   * - Non-linear (``BF_Polynomial2``, non-linear KRR kernels)
+     - The descriptor values change, so energies **and** forces change.
+   * - ``DM_mJoin`` containing DM_REAM
+     - One global setting for every DM_REAM block; only the DM_REAM block
+       vanishes at :math:`\rho = 0`, other many-body blocks keep their value.
+
+To reproduce the energies of a potential written by tadah 1.5.0 or earlier,
+add ``EMBF0 FREE`` to it. A trained DM_REAM potential loaded without the key
+prints a warning: ``tadah`` logs it once per process, and the LAMMPS pair
+style prints a LAMMPS ``WARNING`` (screen and ``log.lammps``) on every
+``pair_coeff`` that loads one, with a banner that reads ``EMBF0 ZERO (key
+absent: default ZERO, ...)``. Training on absolute reference energies (e.g. DFT totals) under
+``ZERO`` needs a per-atom reference energy from ``ESHIFT``, ``ESHIFT_ATOM`` or
+``ESHIFT_DBATOM`` (compatible with the LAMMPS ``EAMFAST`` kernel) or
+``BIAS true`` (disables ``EAMFAST``; its intercept column precedes the
+descriptor weights, so ``FIXINDEX``/``FIXWEIGHT`` indices shift). External tools that tabulate the embedding from ``WEIGHTS``
+(setfl converters) must tabulate :math:`F(\rho) - F(0)` unless the potential
+says ``EMBF0 FREE``.
+
+.. doxygenclass:: tadah::models::DM_REAM
 
 DM_mEAD variants
 ~~~~~~~~~~~~~~~~

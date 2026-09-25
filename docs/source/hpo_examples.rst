@@ -5,21 +5,22 @@ Worked Examples
 
 .. note::
 
-   The HPO module ships twenty-six end-to-end examples that build up
+   The HPO module ships twenty-seven end-to-end examples that build up
    gradually: ``01`` is the smallest viable config, each subsequent one
    introduces one or two new features. Between them they exercise the
    optimiser libraries, the ``INIT``, ``STRATEGY``, ``EXPLORE``,
    ``RESTART`` and ``INNER`` blocks, typed observables, per-dataset
-   targets, seed-relative boxes, graded failures and ``PC_LAMMPS``
-   isolation. Each example is a self-contained directory with one
-   ``config.hpo`` and one ``README.md``; all share a small Ta
-   training/validation bundle in ``examples/common/`` and the shared
-   ``common/run.sh`` driver, which takes an example's own
-   ``config.tadah`` and ``config.val`` when it has them (22 and 23) and
-   prints which files it uses. Four examples ship their own ``run.sh``:
-   ``09`` and ``10`` bootstrap a seed potential first, ``16`` runs with
-   its local ``config.tadah``, and ``17`` trains and pins the model
-   before the HPO run; start those with ``bash ./run.sh``.
+   targets, seed-relative boxes, graded failures, ``PC_LAMMPS``
+   isolation and a DM_REAM potential with the zero-referenced embedding.
+   Each example is a self-contained directory with one ``config.hpo`` and
+   one ``README.md``; all share a small Ta training/validation bundle in
+   ``examples/common/`` and the shared ``common/run.sh`` driver, which
+   takes an example's own ``config.tadah`` and ``config.val`` when it has
+   them (22 and 23) and prints which files it uses. Five examples ship
+   their own ``run.sh``: ``09`` and ``10`` bootstrap a seed potential
+   first, ``16`` runs with its local ``config.tadah``, ``17`` trains and
+   pins the model before the HPO run, and ``27`` checks the ``EMBF0 ZERO``
+   contract on its outputs; start those with ``bash ./run.sh``.
 
    To keep a **single source of truth** the canonical content for each
    example lives in the HPO source tree. The links below point at the
@@ -202,3 +203,9 @@ Index
        deadline; the results equal 01's in either isolation mode
        (:ref:`pc_lammps_execution`).
      - ``PC_ISOLATION``, ``PC_WORKER_TIMEOUT``
+   * - 27
+     - `27_dm_ream_embf0 <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/v1-dev/examples/27_dm_ream_embf0>`_
+     - A DM_REAM ``tadah refit`` seed with the zero-referenced embedding
+       (``EMBF0 ZERO``): the search moves the negative embedding knots and
+       the isolated-atom energy stays exactly 0 for every candidate.
+     - ``OPTIM CEMBFUNC``, ``--outvar Eiso``

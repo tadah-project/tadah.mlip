@@ -211,3 +211,39 @@ if(TADAH_ENABLE_NFP)
       ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
   endforeach()
 endif()
+
+
+# ------------------------------------------------------------------
+# 9. The CLI examples the documentation includes
+# ------------------------------------------------------------------
+# One entry per examples/CLI/<name>/README.rst that docs/source/examples.rst
+# includes: cli_examples/check_cli_example.py runs the README's `tadah`
+# commands, in a scratch copy of the example, and checks their results. An
+# example that runs `tadah hpo` is Skipped in a build without NFP.
+set(_examples_rst ${PROJECT_SOURCE_DIR}/docs/source/examples.rst)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${_examples_rst})
+file(STRINGS ${_examples_rst} _cli_example_includes
+  REGEX "^\\.\\. include:: \\.\\./\\.\\./examples/CLI/[^/]+/README\\.rst$")
+if(NOT _cli_example_includes)
+  message(FATAL_ERROR "${_examples_rst} includes no examples/CLI/<name>/README.rst")
+endif()
+if(TADAH_ENABLE_NFP)
+  set(_cli_example_nfp ON)
+else()
+  set(_cli_example_nfp OFF)
+endif()
+foreach(_inc IN LISTS _cli_example_includes)
+  string(REGEX REPLACE "^.*/examples/CLI/([^/]+)/README\\.rst$" "\\1" _ex "${_inc}")
+  add_test(NAME tadah_cli_example_${_ex}
+    COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/cli_examples/check_cli_example.py
+      --tadah $<TARGET_FILE:tadah>
+      --example ${PROJECT_SOURCE_DIR}/examples/CLI/${_ex}
+      --workdir ${CMAKE_CURRENT_BINARY_DIR}/cli_examples/${_ex}
+      --nfp ${_cli_example_nfp})
+  set_tests_properties(tadah_cli_example_${_ex} PROPERTIES
+    LABELS examples
+    TIMEOUT 900
+    SKIP_RETURN_CODE 77
+    ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+endforeach()

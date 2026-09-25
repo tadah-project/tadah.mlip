@@ -482,8 +482,13 @@ The two basis families treat ``RCUT2B`` / ``RCUTMB`` differently:
        nothing exists beyond the largest one.
      - **Derived.** Every consumer (``refit``, ``--edit``, ``--retarget``,
        ``train``, ``predict``, ``hpo``) recomputes them from the largest
-       knot; a differing stated value is corrected with a warning. Moving
-       ``RCUT`` anywhere at or beyond the largest knot is prediction-exact.
+       knot; any differing stated value is replaced by it (a WARNING when
+       the gap exceeds ``1e-9`` relative or the cutoff is smooth, INFO
+       otherwise). Moving ``RCUT`` anywhere at or beyond the largest knot is
+       prediction-exact only under a hard cutoff (``Cut_Dummy``): a smooth
+       ``RCTYPE`` evaluates :math:`f_c(r)` with the ``RCUT`` value for
+       every pair. ``pair_style tadah`` in LAMMPS reads the stated ``RCUT``
+       and does not re-derive it (see below).
    * - Blip (``Blip``/``Blip5``)
      - The stated ``RCUT`` — blips near the cutoff overhang it and are
        hard-truncated there **by design** (the truncation was present during
@@ -502,6 +507,12 @@ Practical consequences for knot potentials:
   cutoff the search can reach (including the upper bounds of OPTIM'd knot
   positions), and the RCUT keys follow the moving knots automatically; the
   written ``best_pot.tadah`` is always self-consistent.
-* Hand-editing knot positions in a ``pot.tadah`` is safe: the stale RCUT is
-  detected and corrected (with a warning) by whichever command reads the
-  file next.
+* Hand-editing knot positions in a ``pot.tadah`` is safe for ``tadah``: the
+  stale RCUT is detected and replaced by whichever command reads the file
+  next. ``pair_style tadah`` (LAMMPS) reads the stated ``RCUT`` as it is,
+  so under a smooth cutoff LAMMPS and ``tadah train``/``predict``/``hpo``
+  differ on such a file (for the ``~3e-13`` gap of knot potentials written
+  by ``tadah`` 1.5.0 and earlier, about ``1e-13`` relative) until it is
+  re-written: a potential written by ``tadah train``, ``tadah refit
+  --edit`` or ``tadah hpo`` (``best_pot.tadah``) carries the derived value.
+  The WARNING printed in that case says so.

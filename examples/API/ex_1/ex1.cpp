@@ -5,6 +5,7 @@
 #include <tadah/models/functions/kernels/kern_all.h>
 #include <tadah/core/context.h>
 #include <tadah/core/core_user_config_parser.h>
+#include <tadah/core/number_format.h>
 #include <tadah/mlip/structure.h>
 #include <tadah/mlip/descriptors_calc.h>
 #include <tadah/mlip/nn_finder.h>
@@ -131,10 +132,18 @@ int main() {
   // Once model is trained we can dump it to a file. 
   // Saved models can be used with LAMMPS or can be reloaded
   // to make predictions.
+  // write_potential() writes every number with NUMERIC significant digits
+  // (default 18: the file reloads bit-identically) and never writes the
+  // NUMERIC key itself. A NUMERIC below 17 loses precision, hence the warning.
   std::cout << "Saving LAMMPS pot.tadah file..." << std::flush;
   Context param_file = model.get_param_file();
+  const PotDigits pot_digits = resolve_pot_digits(param_file);
+  const std::string digits_warning = pot_digits_warning(pot_digits);
+  if (!digits_warning.empty())
+    std::cerr << "WARNING: " << digits_warning << std::endl;
   std::ofstream outfile("pot.tadah");
-  outfile << param_file << std::endl;
+  param_file.write_potential(outfile, pot_digits.digits);
+  outfile << std::endl;
   outfile.close();
   std::cout << "Done!" << std::endl;
 

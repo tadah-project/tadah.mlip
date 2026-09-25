@@ -307,7 +307,9 @@ quantities (see :ref:`refit_rcut_contract`).  ``tadah hpo`` enforces this
 automatically:
 
 * at startup, a stated ``RCUT`` that differs from the largest knot is
-  corrected (with a warning) before anything is built;
+  replaced by it before anything is built (a WARNING when the gap exceeds
+  ``1e-9`` relative or the channel's cutoff is smooth, INFO otherwise --
+  see :ref:`refit_rcut_contract` for why LAMMPS can then differ);
 * on **every evaluation**, the ``RCUT`` keys are re-derived from the
   current (possibly ``OPTIM``'d) knot positions, so searching
   ``OPTIM CGRID2B`` / ``CGRIDMB`` moves the effective cutoff with the
@@ -1154,11 +1156,16 @@ the point of the transform: real searches mix box widths across five to
 nine decades (knot positions in Angstrom next to amplitude coefficients
 of order ``1e-3`` and pinned linear weights of order ``1e4``), and every
 derivative-free algorithm assumes its variables are commensurate.
-Under ``NONE`` the internal coordinates are exactly the pre-1.5 ones
-(raw units, ``ln`` for ``LOG`` dims), reproducing every earlier run
-byte-identically -- the escape hatch for A/B checks, also reachable
-through the environment override ``TADAH_OPTIM_SCALE=NONE``.  The
-default is ``AUTO``.
+Under ``NONE`` the internal coordinates are the pre-1.5 ones (raw
+units, ``ln`` for ``LOG`` dims) -- the escape hatch for A/B checks of the
+coordinate system, also reachable through the environment override
+``TADAH_OPTIM_SCALE=NONE``.  Runs are not byte-identical to those of
+earlier releases, however: numbers are no longer rounded on their way
+through the code (grid values, for example), which shifts losses at
+about the ``1e-13`` relative level, and starting points are evaluated at
+exactly their loaded values (see below; this matters for ``LOG``/``ASINH``
+dimensions, whose ``exp``/``log`` round trip is not exact, and for
+optimisers that round their start point).  The default is ``AUTO``.
 
 ``LOG_HP <ratio>`` (a finite ratio ``>= 1``, declared once at the
 ``OPTIMIZER`` or ``STRATEGY`` level; rejected inside
@@ -1173,6 +1180,57 @@ files are real-space.  The ``SEARCH SPACE`` section of ``hpo_run.log``
 prints the policy, the real width ratio across dimensions, and one row
 per dimension with its scale, box origin, real and internal bounds and
 the starting point in both spaces.
+
+Starting points are evaluated exactly.  The round trip ``x -> u -> x``
+is not the identity in floating point: ``lo + u*(hi - lo)`` rounds (in a
+``[-300, 300]`` box a weight of ``-2.87486722631648e-4`` comes back
+with a relative error of ``3e-11`` and ``1.2e-14`` comes back as ``0``),
+and ``LOG``/``ASINH`` add ``exp``/``log`` rounding.  Every optimiser run
+therefore maps the internal coordinate of each of its starting points
+back to exactly the real value it came from, dimension by dimension:
+the ``CONFIG`` and ``WARM`` values, every other ``INIT`` chain point,
+``MULTISTART`` starts, ``RESTART`` refreshes, ``PRESTAGE`` top-K seeds
+and ``BASINS`` pool seeds.  Whenever the optimiser evaluates one of its
+starting points (most do so first; ``ASA`` after its initial
+cost-temperature samples), the model sees the loaded doubles bit for
+bit, whatever the box (explicit, ``AUTO`` ``FRAC``/``RATIO``/``FLOOR``/
+``GROUP_FLOOR``, ``LIN``/``LOG``/``ASINH``, either ``OPTIM_SCALE``; one
+exception under ``NONE`` below), and a coordinate the optimiser has not
+moved keeps its seed value in later evaluations.  This includes
+optimisers that round the start point before evaluating it (NLopt's
+``BOBYQA`` and ``COBYLA`` rescale it when the initial steps differ
+between dimensions, ``PRAXIS`` maps it through its bound transform),
+whose first evaluation lands a few units in the last place away from the
+seed's ``u``: any ``u`` within 4 units in the last place of the internal
+box's largest magnitude is evaluated at the seed.  The window is
+absolute -- ``4 x 2.2e-16`` of the box width under ``AUTO``, capped at
+``2^-27`` (``7.5e-9``) but never below 2 units in the last place of the
+seed's own ``u`` -- so it replaces only a move smaller than itself away
+from a seed, which the plain map resolves where it is finer than the box
+(a ``[0, W]`` box near ``0``, or any linear dimension under ``NONE``).
+No optimiser moves that little on purpose: steps and finite-difference
+steps are far larger (with the default ``PARAM fd_step`` of ``1e-6``, at
+least ``1e-6`` in internal units, or ``1.5e-8`` for the Ceres kernel,
+whose smallest step is what caps the window), and an annealing proposal
+that small evaluates the seed again; only a ``PARAM fd_step`` set by hand
+below the window (under ``NONE`` with ``fd_kernel inhouse`` on a linear
+box reaching ``1.7e7``: below about ``7.5e-9``) gives a zero derivative
+at the seed.  The cap matters only under ``NONE`` for a linear box
+reaching beyond ``1.7e7``: there ``PRAXIS``'s start can be evaluated a
+few units in the last place of the box off a seed of smaller magnitude
+than the box (the exception above).  ``PRAXIS`` rounds its start by a few
+units in the last place of the box's midpoint and half-width, while the
+capped window is only ``2^-27`` or 2 units in the last place of the seed;
+measured with NLopt 2.10 this happens for seeds up to about 0.3 of
+``max(|lo|, |hi|)`` on a ``[0, W]`` box and up to about 0.6 (rarely 0.8)
+on a box straddling ``0``, never from 0.9 of it on, and only on boxes of
+``2^25`` (``3.4e7``) or more.  Any other point maps as before.  Two limits: when
+two seeds of one run are closer in a dimension than the box resolves
+(e.g. ``0`` and ``1e-20`` in ``[-300, 300]``), the first one listed wins;
+and a start point an optimiser moves on purpose is evaluated where it
+was moved to (``PRAXIS`` moves a start that lies on a bound ``1e-12`` of
+the half-width inside; ``BOBYQA`` moves a start closer to a bound than
+its initial step onto the bound or one step away from it).
 
 .. _strategy_block:
 
@@ -1543,7 +1601,8 @@ Cadence and formatting:
 Key          Default   Effect
 ============ ========= =================================================================
 ``OUTPUT N`` ``1``     Write a main-file row when the iteration is divisible by ``N``.
-``DIGITS d`` ``6``     Decimal digits in scientific-notation columns; ``1 ≤ d ≤ 15``.
+``DIGITS d`` ``6``     Decimal digits in scientific-notation columns (also the RESULT
+                       table in the ``#`` header of potential archives); ``1 ≤ d ≤ 15``.
 ``QFLUSH N`` ``10``    Queued completed results that trigger a writer-thread drain;
                        shutdown or an explicit flush drains the remainder.
 ============ ========= =================================================================
@@ -1575,6 +1634,8 @@ not single-row snapshots.
      - ``1``
      - ``0`` disables tabular ``best_*`` history rows; any positive value
        enables a row for every new best.  The magnitude is not a cadence.
+
+.. _hpo_potential_archives:
 
 Potential archives
 ~~~~~~~~~~~~~~~~~~
@@ -1620,6 +1681,35 @@ Key                          Default        Effect
                                             ``DIR`` as ``pot_<iter>.tadah``.  Directory is created if needed.
 ``BDUMP <N> <DIR>``          ``0`` (off)    As ``DUMP`` but only for new global bests.
 ============================ ============== =================================================================
+
+Number format.  ``best_pot.tadah``, its rank-local mirrors and the
+``DUMP``/``BDUMP`` archives follow the potential-file rules of
+:ref:`pot_number_format`: every non-integer number of the key/value
+lines is written with
+``NUMERIC`` significant digits, default ``18`` — exact, so the file
+re-parses to precisely the doubles the evaluation used — and ``NUMERIC``
+itself is never written.  A ``WARM`` restart from it starts from the
+file's ``OPTIM`` values bit for bit when they lie inside the boxes
+(starting points are evaluated exactly, see :ref:`search_space_scaling`);
+every other key comes from the ``-c`` configuration, so with the same
+configuration the restart's starting point is the archived potential.
+The precision is read once, from the configuration given with ``-c``;
+it only shapes the files, never the evaluation.  The ``#`` header is an
+annotation that ``NUMERIC`` does not govern.  Its machine-read lines, ``# HPO_BEST_LOSS`` and ``# HOT``, are
+always written with 18 significant digits (lossless), whatever
+``NUMERIC`` is: the durable-best check compares the loss exactly, and
+``WARM`` primes the hot-value cache from ``# HOT``.  The rest of the
+header (banner, LOSS, RESULT, DATA and OPTIMISER sections) is for
+reading: the RESULT table and the archive banners' ``loss=`` use
+``DIGITS``, the other annotations fixed short formats.
+
+.. warning::
+
+   ``best_pot.tadah`` files written by ``tadah hpo`` 1.5.0 contain an
+   automatically inserted ``NUMERIC 12`` line.  Used as the ``-c``
+   configuration of a new run, that line is an explicit setting: the new
+   run writes 12-digit potentials and warns about it (``hpo_run.log`` and
+   stderr).  Delete the ``NUMERIC`` line to get exact potentials again.
 
 Run log
 ~~~~~~~
@@ -1694,8 +1784,15 @@ can short-circuit the expensive minimisation:
    ``<min> <max>`` bound the physical range; ``<initial>`` is optional
    (midpoint of ``[min, max]`` when omitted).
 
-#. Replace the hard-coded ``lattice bcc 3.2`` in that script with
-   ``lattice bcc ${hot_a0}``.
+#. Replace the hard-coded ``lattice bcc 3.2`` in that script with the
+   injected value. ``lattice bcc ${hot_a0}`` works, but LAMMPS expands
+   ``${hot_a0}`` with 15 significant digits; a ``format``-style copy
+   passes the exact value (see :ref:`hot_value_precision`):
+
+   .. code-block:: none
+
+      variable hot_a0_s format hot_a0 %.17g
+      lattice bcc ${hot_a0_s}
 
 #. End the script by redefining ``hot_a0`` as an ``equal``-style
    variable (**not** ``string``):
@@ -1727,6 +1824,59 @@ line; ``hot_a0`` is just a conventional name (any identifier works).
 Per-line environment variables (``TADAH_HPO_HOT_A0_DEFAULT``,
 ``TADAH_HPO_A0_MIN``, ``TADAH_HPO_A0_MAX``) were removed in this
 release; the per-line ``--hotvar`` flag replaces all three.
+
+.. _hot_value_precision:
+
+Precision of values passed to and read from LAMMPS
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+HPO's side of the hand-over is lossless: an injected value (a ``--hotvar``
+value, or a hot value propagated to a cold script) is defined as
+``variable <name> equal <value>`` with 17 significant digits, and every
+``--varloss``, ``--outvar``, ``--failvar`` and ``--hotvar`` readback
+evaluates the variable's formula directly (LAMMPS ``compute_equal``),
+keeping the full double.  Inside the script, however, LAMMPS turns
+variables into text with 15 significant digits in two places:
+
+* ``${name}`` of an ``equal``- or ``internal``-style variable, and
+* ``v_name`` of an ``equal``-style variable inside a formula, including
+  inside ``$(...)`` (``v_name`` of an ``internal``-style variable reads
+  the double directly).
+
+A value assembled through these references therefore carries 15 digits
+(a relative change of up to ~5e-15), whatever HPO does at either end.
+Lossless idioms:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 26 34 40
+
+   * - Need
+     - 15 digits
+     - Exact
+   * - an injected value as a command argument
+     - ``lattice bcc ${hot_a0}``
+     - ``variable hot_a0_s format hot_a0 %.17g`` then
+       ``lattice bcc ${hot_a0_s}``
+   * - capture a scalar for later formulas
+     - ``variable Ebulk equal $(c_eatoms)``, used as ``v_Ebulk``
+     - ``variable Ebulk internal $(c_eatoms)``, used as ``v_Ebulk``
+   * - an outvar built from other variables
+     - ``variable Ecoh equal v_Ecoh_raw`` with ``Ecoh_raw``
+       ``equal``-style
+     - one formula over computes, thermo keywords and ``internal``
+       captures, e.g. ``variable Ecoh equal ternary(v_eq_ok,
+       -(v_Ebulk-v_N*v_Eiso)/v_N, 100.0)``
+
+``$(...)`` itself renders with 20 significant digits, and ``format``- and
+``internal``-style variables may be redefined with the same style on
+every evaluation of the cached LAMMPS instance.  Keep the readback of a
+hot script as ``variable hot_a0 equal lx/<divisor>``: HPO reads it with
+``compute_equal``, so it is exact.  Every variable HPO reads
+(``--varloss``, ``--outvar``, ``--failvar``, ``--hotvar``) must stay
+``equal``-style; define it over ``internal`` captures (``variable Eiso
+equal v_Eiso_i``).  The example scripts ``HPO/examples/common/lammps/Ecoh.in``
+and ``Ecoh_param.in`` follow these idioms.
 
 Bad-potential early-exit
 ~~~~~~~~~~~~~~~~~~~~~~~~

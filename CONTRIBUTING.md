@@ -155,7 +155,12 @@ example to the build tree, runs every `tadah` command of the README's bash
 code blocks and checks that each exits 0 and leaves its result (the
 potential of `tadah train`; a best potential and a `best_loss.tadah` row
 for `tadah hpo`). An example included in the docs is tested with no further
-registration.
+registration. `ctest -L e2e` runs HPO's host end-to-end groups
+(`hpo_fixweight_e2e`, `hpo_durable_e2e`, `hpo_embf0_e2e`, `hpo_rcut_e2e`)
+and the `hpo_tadah_cli_*` cases, which run the built `tadah`: their entries
+set `TADAH_BINARY` to it in a build with the `tadah` target, and in one
+without it (a standalone HPO build) the cases are Skipped unless
+`TADAH_BINARY` names an executable.
 
 **Skipped, not passed.** A test that cannot run because an optional input
 is absent (an external dataset, an environment variable) must be reported

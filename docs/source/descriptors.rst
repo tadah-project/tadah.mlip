@@ -359,7 +359,15 @@ is treated:
 ``EMBF0`` is a property of the potential: every DM_REAM ``pot.tadah`` that
 tadah writes carries an explicit ``EMBF0`` line (binaries older than the key
 refuse such files with ``Invalid key: EMBF0``), and a potential without the
-line is read as ``ZERO``. It is not an ``OPTIM`` target.
+line is read as ``ZERO``. It takes ``ZERO`` or ``FREE`` only, in any case;
+any other value is an error at its line when the configuration, task file
+or potential is read (``Invalid value for key EMBF0 on line N of
+pot.tadah: 'ZEROO' (allowed: ZERO, FREE)``). It is not an ``OPTIM`` target (:ref:`hpo_embf0`). ``EMBF0`` has no
+effect on a potential without a DM_REAM block: ``tadah train`` and ``tadah
+refit`` do not write it into such a potential (a warning says so, once per
+process), and ``tadah predict`` ignores a task value for it with a warning;
+it is kept, rather than refused, so that one configuration can serve
+several descriptor choices.
 
 .. list-table:: What changes between ZERO and FREE for the same weights
    :header-rows: 1

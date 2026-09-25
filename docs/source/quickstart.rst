@@ -104,6 +104,13 @@ Basic rules
 
    * Keys appearing **inside** a task block override global keys written **above** the first ``TASK`` line.  
 
+#. A task file needs at least one ``TASK`` block: ``tadah --task`` refuses a
+   file without one (``the task file 'run.task' has no TASK section``).
+
+#. An error in a line names the line of the file and the file, whichever
+   block it is in (``Invalid value for key EMBF0 on line 6 of run.task:
+   'frei' (allowed: ZERO, FREE)``).
+
 #. Boolean values are written in lowercase ``true`` / ``false``.
 
 #. There is a one-to-one mapping between CLI flags/options and configuration

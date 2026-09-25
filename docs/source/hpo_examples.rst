@@ -207,5 +207,6 @@ Index
      - `27_dm_ream_embf0 <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/v1-dev/examples/27_dm_ream_embf0>`_
      - A DM_REAM ``tadah refit`` seed with the zero-referenced embedding
        (``EMBF0 ZERO``): the search moves the negative embedding knots and
-       the isolated-atom energy stays exactly 0 for every candidate.
+       the isolated-atom energy stays exactly 0 for every candidate
+       (:ref:`hpo_embf0`).
      - ``OPTIM CEMBFUNC``, ``--outvar Eiso``

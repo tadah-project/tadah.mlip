@@ -248,7 +248,7 @@ the final best.  A best that keeps riding a bound suggests widening that
 side (where the physics permits) and rerunning from the best potential
 with ``METHOD WARM best_pot.tadah`` in the ``INIT`` block.
 
-Two weight-related special cases:
+Special cases:
 
 * ``OPTIM FIXWEIGHT`` — the ``(indices)`` name **model weights** (the
   weights ``FIXINDEX`` pins), *not* positions in the ``FIXWEIGHT`` value
@@ -258,6 +258,55 @@ Two weight-related special cases:
   by least squares on every evaluation, so optimising them directly
   would be a silent no-op; pin them with ``FIXINDEX``/``FIXWEIGHT``
   instead.
+* ``OPTIM EMBF0`` — **rejected** at its line.  ``EMBF0`` (``ZERO``/``FREE``)
+  selects the :ref:`DM_REAM embedding reference <dm_ream>`, a discrete
+  property of the potential; set it in the ``-c`` potential or
+  configuration.  A top-level ``EMBF0`` line in the hpotarget file is an
+  unknown key.
+
+.. _hpo_embf0:
+
+DM_REAM potentials and the embedding reference (EMBF0)
+......................................................
+
+Under the default ``EMBF0 ZERO`` the DM_REAM embedding is zero-referenced,
+:math:`F(\rho) = \sum_m w_m [g_m(\rho) - g_m(0)]`, so the isolated-atom
+energy is 0 by construction for **every candidate** — no penalty term is
+needed to hold :math:`F(0)` in place.  :math:`g_m(0)` is recomputed for each
+candidate from the ``CEMBFUNC``/``SEMBFUNC`` values it evaluates, so the
+constraint also holds when only the embedding shape is searched; the search
+space, ``hpo_search_space.tsv``, ``hpo_optim_resolved.hpo`` and
+``params.tadah`` are unchanged (no dimension is derived or removed), and
+``FIXWEIGHT``/``WEIGHTS``/``FIXINDEX`` keep their meaning.  Every potential
+the run writes (``best_pot.tadah``, ``BDUMP``/``DUMP`` archives, the
+potential handed to ``PC_LAMMPS``) carries the ``EMBF0`` line.
+``EMBF0`` takes ``ZERO`` or ``FREE`` only (in any case); another value is an
+error at its line of the configuration or potential file.
+
+``hpo_run.log`` states the reference in the POTENTIAL SETUP section
+(``Embedding F(0)``, and the raw :math:`F(0)=\sum_m w_m g_m(0)` of the
+``-c`` potential: from its ``FIXWEIGHT`` when every weight is pinned, else
+from its stored ``WEIGHTS``, else "determined per evaluation"), and the
+RESULT section prints the raw :math:`F(0)` of the first and of the best
+evaluation (under ``ZERO``: the per-atom constant the zero reference
+removes).  Both values are reported for models linear in the descriptor
+(``BF_Linear``, ``Kern_Linear``) only.  A ``WARM`` seed whose ``EMBF0``
+differs from the run's triggers a WARNING: ``WARM`` takes only the
+``OPTIM`` values from the seed and evaluates them unchanged in the run's
+reference (no conversion), so the seed's recorded loss need not be
+reproduced.  A HINT is printed when a DM_REAM model under ``ZERO`` is
+trained on data without ``BIAS`` or ``ESHIFT`` (see
+:ref:`hpo_load_transforms`); prefer ``ESHIFT*``, because ``BIAS true``
+inserts intercept columns before the descriptor weights (``FIXINDEX``/
+``FIXWEIGHT`` indices shift) and disables ``EAMFAST``.  Under ``ZERO`` a
+combination of embedding coefficients that only shifts :math:`F` by a
+constant (available when the bumps nearly sum to a constant) no longer
+changes any energy, so the coefficients may drift along it; the raw
+:math:`F(0)` of the stored ``WEIGHTS`` can then grow, which matters only to
+tools that evaluate the weights without honouring ``EMBF0``.  Example
+``27_dm_ream_embf0`` (:doc:`hpo_examples`) searches the embedding knots of
+a ``tadah refit`` seed and checks that the isolated atom stays at exactly
+0 for every candidate.
 
 .. _hpo_knot_rcut:
 
@@ -272,7 +321,9 @@ quantities (see :ref:`refit_rcut_contract`).  ``tadah hpo`` enforces this
 automatically:
 
 * at startup, a stated ``RCUT`` that differs from the largest knot is
-  corrected (with a warning) before anything is built;
+  replaced by it before anything is built (a WARNING when the gap exceeds
+  ``1e-9`` relative or the channel's cutoff is smooth, INFO otherwise --
+  see :ref:`refit_rcut_contract` for why LAMMPS can then differ);
 * on **every evaluation**, the ``RCUT`` keys are re-derived from the
   current (possibly ``OPTIM``'d) knot positions, so searching
   ``OPTIM CGRID2B`` / ``CGRIDMB`` moves the effective cutoff with the
@@ -2056,11 +2107,16 @@ the point of the transform: real searches mix box widths across five to
 nine decades (knot positions in Angstrom next to amplitude coefficients
 of order ``1e-3`` and pinned linear weights of order ``1e4``), and every
 derivative-free algorithm assumes its variables are commensurate.
-Under ``NONE`` the internal coordinates are exactly the pre-1.5 ones
-(raw units, ``ln`` for ``LOG`` dims), reproducing every earlier run
-byte-identically -- the escape hatch for A/B checks, also reachable
-through the environment override ``TADAH_OPTIM_SCALE=NONE``.  The
-default is ``AUTO``.
+Under ``NONE`` the internal coordinates are the pre-1.5 ones (raw
+units, ``ln`` for ``LOG`` dims) -- the escape hatch for A/B checks of the
+coordinate system, also reachable through the environment override
+``TADAH_OPTIM_SCALE=NONE``.  Runs are not byte-identical to those of
+earlier releases, however: numbers are no longer rounded on their way
+through the code (grid values, for example), which shifts losses at
+about the ``1e-13`` relative level, and starting points are evaluated at
+exactly their loaded values (see below; this matters for ``LOG``/``ASINH``
+dimensions, whose ``exp``/``log`` round trip is not exact, and for
+optimisers that round their start point).  The default is ``AUTO``.
 
 ``LOG_HP <ratio>`` (a finite ratio ``>= 1``, declared once at the
 ``OPTIMIZER`` or ``STRATEGY`` level; rejected inside
@@ -2075,6 +2131,57 @@ files are real-space.  The ``SEARCH SPACE`` section of ``hpo_run.log``
 prints the policy, the real width ratio across dimensions, and one row
 per dimension with its scale, box origin, real and internal bounds and
 the starting point in both spaces.
+
+Starting points are evaluated exactly.  The round trip ``x -> u -> x``
+is not the identity in floating point: ``lo + u*(hi - lo)`` rounds (in a
+``[-300, 300]`` box a weight of ``-2.87486722631648e-4`` comes back
+with a relative error of ``3e-11`` and ``1.2e-14`` comes back as ``0``),
+and ``LOG``/``ASINH`` add ``exp``/``log`` rounding.  Every optimiser run
+therefore maps the internal coordinate of each of its starting points
+back to exactly the real value it came from, dimension by dimension:
+the ``CONFIG`` and ``WARM`` values, every other ``INIT`` chain point,
+``MULTISTART`` starts, ``RESTART`` refreshes and ``PRESTAGE`` top-K
+seeds.  Whenever the optimiser evaluates one of its starting points
+(most do so first; ``ASA`` after its initial cost-temperature samples),
+the model sees the loaded doubles bit for bit, whatever the box
+(explicit, ``AUTO`` ``FRAC``/``RATIO``/``FLOOR``/``GROUP_FLOOR``,
+``LIN``/``LOG``/``ASINH``, either ``OPTIM_SCALE``; one exception under
+``NONE`` below), and a coordinate the optimiser has not moved keeps its
+seed value in later evaluations.  This includes optimisers that round the
+start point before evaluating it (NLopt's ``BOBYQA`` and ``COBYLA``
+rescale it when the initial steps differ between dimensions, ``PRAXIS``
+maps it through its bound transform), whose first evaluation lands a few
+units in the last place away from the seed's ``u``: any ``u`` within 4
+units in the last place of the internal box's largest magnitude is
+evaluated at the seed.  The window is absolute -- ``4 x 2.2e-16`` of the
+box width under ``AUTO``, capped at ``2^-27`` (``7.5e-9``) but never below
+2 units in the last place of the seed's own ``u`` -- so it replaces only
+a move smaller than itself away from a seed, which the plain map resolves
+where it is finer than the box (a ``[0, W]`` box near ``0``, or any
+linear dimension under ``NONE``).  No optimiser moves that little on
+purpose: steps and finite-difference steps are far larger (with the
+default ``PARAM fd_step`` of ``1e-6``, at least ``1e-6`` in internal
+units, or ``1.5e-8`` for the Ceres kernel, whose smallest step is what
+caps the window), and an annealing proposal that small evaluates the
+seed again; only a ``PARAM fd_step`` set by hand below the window (under
+``NONE`` with ``fd_kernel inhouse`` on a linear box reaching ``1.7e7``:
+below about ``7.5e-9``) gives a zero derivative at the seed.  The cap
+matters only under ``NONE`` for a linear box reaching beyond ``1.7e7``:
+there ``PRAXIS``'s start can be evaluated a few units in the last place
+of the box off a seed of smaller magnitude than the box (the exception
+above).  ``PRAXIS`` rounds its start by a few units in the last place of
+the box's midpoint and half-width, while the capped window is only
+``2^-27`` or 2 units in the last place of the seed; measured with NLopt
+2.10 this happens for seeds up to about 0.3 of ``max(|lo|, |hi|)`` on a
+``[0, W]`` box and up to about 0.6 (rarely 0.8) on a box straddling
+``0``, never from 0.9 of it on, and only on boxes of ``2^25``
+(``3.4e7``) or more.  Any other point maps as before.  Two limits: when
+two seeds of one run are closer in a dimension than the box resolves
+(e.g. ``0`` and ``1e-20`` in ``[-300, 300]``), the first one listed wins;
+and a start point an optimiser moves on purpose is evaluated where it
+was moved to (``PRAXIS`` moves a start that lies on a bound ``1e-12`` of
+the half-width inside; ``BOBYQA`` moves a start closer to a bound than
+its initial step onto the bound or one step away from it).
 
 .. _strategy_block:
 
@@ -2195,12 +2302,21 @@ restart *r* of a ``RESTART``, ``SEED + r·N_STARTS + i``
 when the ``INIT`` block has a ``SEED``, which draws the start points, and
 so does the ``INNER`` search of an AUGLAG start (:ref:`hpo_inner_block`).
 
-A start that fails with an error is logged as a ``WARNING`` and the next
-start runs.  Three stops end the whole ``MULTISTART`` instead, because
-they concern the run rather than the start: a signal
-(:ref:`hpo_stopping`), the ``RESTART`` stagnation stop (the restart runs
-the ``MULTISTART`` again from the fresh points, :ref:`restart_decorator`),
-and a failure to save ``best_pot.tadah`` (:ref:`hpo_potential_archives`).
+A start that fails on its own (a rejected setup, an optimiser error) is
+reported as ``MULTISTART start i/K failed: <error>`` — a ``WARNING`` in
+``hpo_run.log`` and on stderr — and the next start runs; the final status
+then notes ``(N of M MULTISTART starts failed; see the WARNINGs)``, counted
+over the whole run: after a :ref:`RESTART <restart_decorator>` relaunch it
+reads ``(N of M MULTISTART starts failed across L launches; ...)``, and it
+is also appended to RESTART's ``STOPPED -- stagnation: ...`` status.  When
+every start of a launch fails, the run fails like a single run would
+(``FAILED -- <first error>``, exit status ``1``).  Two stops end the whole
+``MULTISTART`` at once, because they concern the run rather than the
+start: a signal (:ref:`hpo_stopping`) and a failure to save
+``best_pot.tadah`` (:ref:`hpo_potential_archives`).  Under ``RESTART``
+each start runs in a stagnation window of its own: a start that runs out
+of it ends (``MULTISTART start i/K done: ...; stopped on stagnation``) and
+the next start runs (:ref:`restart_decorator`).
 
 ``MULTISTART`` rejects — for any ``N_STARTS``, including ``1`` — every
 *global* backend that consumes a single starting point: every NLopt
@@ -2268,9 +2384,10 @@ yields no candidate, the refinement runs from the OPTIMIZER-level
 ``INIT`` points instead.
 
 With ``RESTART``, stagnation during the exploration ends it early and
-hands its top-K to the refinement, which starts with a stagnation window
-of its own; stagnation during the refinement restarts the whole
-``PRESTAGE``, exploration first.  The restarted exploration starts from
+hands its top-K to the refinement, whose seeds each run in a stagnation
+window of its own; when a refinement seed stagnated, the whole
+``PRESTAGE`` restarts after the refinement's last seed, exploration first,
+whether or not the refinement improved the global best.  The restarted exploration starts from
 the restart's fresh points, unless the ``EXPLORE`` block has an ``INIT``
 block of its own.  In restart *r* a seeded exploration draws from
 ``SEED + r`` and the refinement's candidate ``i`` from ``SEED + r·TOPK + i``
@@ -2343,7 +2460,17 @@ Requirements and behaviour:
   loss and a lexicographically smaller ``(rank, slot, evaluation)`` key;
 * ``MAXEVAL`` is a hard global cap across seed/probe evaluation,
   population initialisation, annealing, and finalisation.  No rank-0
-  re-evaluation is performed after the budget is exhausted.
+  re-evaluation is performed after the budget is exhausted;
+* at exit the ranks meet in a barrier of their own.  Ranks that all
+  finish — normally or failing together — exit normally, each with its
+  journal complete.  A rank that ends with a non-zero status and is not
+  joined by every other rank within 30 s aborts the whole job
+  (``MPI_Abort`` with its exit status; its own ``hpo_run.log.r<rank>`` is
+  already closed): the missing ranks are blocked in a collective the
+  failed rank left — after a failure confined to one rank, such as a best
+  potential it could not save during an ``INIT_MODE JITTER AUTO`` probe or
+  ``NOISE_CALIBRATION`` — and would otherwise hold the allocation until it
+  ends.  Their journals then end without a RESULT section.
 
 ``TADAH_HPO_MPI`` is the only MPI build of Tadah!MLIP: the legacy MPI
 training build (``TADAH_BUILD_MPI``) was removed in 1.6.0, and
@@ -2428,8 +2555,8 @@ The decorator is active only when **both** ``AFTER_STAGNATION`` and
 ``MAX`` are positive; with either at its default ``0`` the ``RESTART``
 block has no effect.  An active ``RESTART`` ends the run: once its
 ``MAX`` restarts are used, the next ``AFTER_STAGNATION`` evaluations
-without a new best stop it (``STOPPED -- stagnation, max restarts (MAX)
-used``), so it is the stop of a backend that needs one
+without a new best stop it (``STOPPED -- stagnation: no new best in W
+evals after R restart(s)``), so it is the stop of a backend that needs one
 (:ref:`hpo_stop_criteria`): ``NLOPT GN_DIRECT_L`` with no stop of its
 own under ``AFTER_STAGNATION 60`` and ``MAX 1`` ran 699 evaluations on
 the examples' data.  A ``SEED`` inside ``RESTART`` seeds its ``METHOD``
@@ -2447,7 +2574,10 @@ an ``INIT`` block's ``SEED``, it needs a ``RANDOM``, ``LHS`` or
 ``METHOD`` line) a startup warning says the seed does not affect the
 restart points.  (Before 1.6.0 the ``SEED`` was accepted and ignored.)
 Each restart gets its own stagnation window — the windows do not bleed
-into each other.  ``RESTART`` runs on one MPI rank only: a launch on more
+into each other.  The window counts evaluations since the last new
+*global* best, so a restart must beat the incumbent within
+``AFTER_STAGNATION`` evaluations to keep going.  ``MAXEVAL`` applies to
+each launch, so a run can use up to ``(MAX + 1) x MAXEVAL`` evaluations.  ``RESTART`` runs on one MPI rank only: a launch on more
 than one rank rejects it at startup (:ref:`tadah_anneal_mpi`).
 
 A restart re-runs the whole strategy from the *K* fresh points the
@@ -2455,15 +2585,29 @@ A restart re-runs the whole strategy from the *K* fresh points the
 
 * ``PLAIN``: the optimiser starts again from the first of them (a
   multi-seed optimiser such as ``DLIB:GFS`` takes all *K*).
-* ``MULTISTART``: runs again from its first start, with ``min(N_STARTS,
-  K)`` starts, one per fresh point — use a ``METHOD`` with *K* ≥
-  ``N_STARTS`` (e.g. ``METHOD LHS 8``) to re-run every start.  Without a
-  ``METHOD`` line, a restart runs a single start, from ``CONFIG``.
-* ``PRESTAGE``: only stagnation in the refinement restarts (a stagnating
-  exploration hands over to the refinement early).  The exploration
-  starts again from the fresh points, or from its own points again when
-  the ``EXPLORE`` block has an ``INIT`` block of its own; the refinement
-  then refines the new top-K.
+* ``MULTISTART``: every start runs in a stagnation window of its own; a
+  start that runs out of it ends and the next start runs.  After the
+  last start, if any start stagnated, the batch reports stagnation and
+  the restart runs the ``MULTISTART`` again from its first start, with
+  ``min(N_STARTS, K)`` starts, one per fresh point — use a ``METHOD`` with
+  *K* ≥ ``N_STARTS`` (e.g. ``METHOD LHS 8``) to re-run every start.
+  Without a ``METHOD`` line, a restart runs a single start, from
+  ``CONFIG``.
+* ``PRESTAGE``: a stagnating exploration hands over to the refinement
+  early, and every refinement seed runs in a window of its own.  After
+  the last seed, if any seed stagnated, the run restarts both phases —
+  also when the refinement improved the global best before it stagnated,
+  as a ``PLAIN`` run that improved and then stagnated restarts
+  (``REFINEMENT: 1 of 2 seed(s) stopped on stagnation (the refinement
+  improved the global best); reporting stagnation to RESTART``).  The
+  exploration then starts again from the fresh points, or from its own
+  points again when the ``EXPLORE`` block has an ``INIT`` block of its
+  own; the refinement then refines the new top-K.
+
+Under an active ``RESTART`` a stagnation therefore always restarts the
+strategy until the ``MAX`` restarts are used; no strategy ends a run on a
+stagnation it absorbed, except the ``PRESTAGE`` exploration, which hands
+over to the refinement.
 
 Restart *r* (``1`` … ``MAX``) also gives every optimiser that has a
 ``SEED`` a seed of its own, so a seeded stochastic optimiser or
@@ -2515,7 +2659,9 @@ inside the ``INNER`` local search of MLSL/AUGLAG), ``DLIB:GFS`` with any
 restarts are used up, the next stagnation ends the run normally (exit
 status ``0``): the journal records ``RESTART: stagnation reached, max
 restarts (MAX) used; stopping``, and its trailer reads ``STOPPED --
-stagnation, max restarts (MAX) used``.
+stagnation: no new best in W evals after MAX restart(s)`` (*W* is
+``AFTER_STAGNATION``; under ``MULTISTART`` followed by the failed-starts
+note when a start failed).
 
 NOISE block
 -----------
@@ -2798,7 +2944,8 @@ Key          Default   Effect
 ``OUTPUT N`` ``1``     Write a main-file row when the iteration is divisible by ``N``;
                        integer ``N ≥ 1`` (``0`` is rejected — use a large value to write
                        little).
-``DIGITS d`` ``6``     Decimal digits in scientific-notation columns; integer
+``DIGITS d`` ``6``     Decimal digits in scientific-notation columns (also the RESULT
+                       table in the ``#`` header of potential archives); integer
                        ``1 ≤ d ≤ 15``.
 ``QFLUSH N`` ``10``    Queued completed results that trigger a writer-thread drain;
                        integer ``N ≥ 0`` (``0`` and ``1`` drain after every result).
@@ -2859,7 +3006,134 @@ source rank/slot/evaluation, and candidate-local hot-variable values.
 A write or durability failure of the canonical file is fatal rather than
 silently allowing the optimisation to continue without a durable
 incumbent.  A rank-local diagnostic-mirror failure is reported but cannot
-invalidate an already-durable canonical winner.
+invalidate an already-durable canonical winner; the mirror retries for at
+most 1 s, and after a failure makes a single attempt per new best
+(unlogged) until one succeeds again.
+
+Transient filesystem errors are retried first.  On network filesystems
+(SMB/CIFS, NFS) a lock, write, ``fsync`` or rename can fail for a moment
+(``EBUSY``, ``EAGAIN``, ``ESTALE``, ``ETXTBSY``, ``EIO``, ``ENOLCK``,
+``ETIMEDOUT``, ``EDEADLK``) and succeed when repeated.  ``EACCES`` (an SMB
+sharing violation or delete-pending file) is retried too, but only when the
+directory is on a network filesystem (SMB/CIFS, NFS, AFS, Ceph, Lustre,
+GPFS, 9P or FUSE); on a local disk it is a real permission problem and
+fails at once.  A rename that reports ``ENOENT`` is also retried: on NFS a
+retransmitted rename that had already landed fails that way, and the retry
+recognises its own potential in place.
+Publication then retries its whole lock → read → compare → replace
+transaction with exponential backoff (10 ms doubling to 2 s, ±20 %
+jitter), releasing its locks between attempts so that a better candidate
+published meanwhile still wins.  Retrying stops once 30 s have passed since
+the first failure; a failing call that blocks by itself (a soft-mount
+timeout) can add its own duration at either end, and no budget bounds a
+call that hangs on a hard mount.  Meanwhile the evaluations whose loss may
+still become the new best wait at their finalize step, and so does an
+evaluation whose :ref:`RESTART <restart_decorator>` stagnation check would
+stop the optimiser (it first waits until as many new-best decisions have
+finished as were in progress when it checked); the others carry on.
+Permanent errors (``ENOSPC``, ``EROFS``, ``ENOENT``, …) are not retried.
+When the error is permanent or the retries are exhausted the run fails,
+whatever the optimiser (NLopt, MULTISTART and the
+``ANNEAL_PT``/``ANNEAL_PA`` calibration included): the RESULT section
+reads ::
+
+   Optimiser status        : FAILED -- best-potential persistence: <error> (gave up after N attempts over T s)
+
+and ``tadah hpo`` exits with status ``1`` (:ref:`hpo_stopping`).  New bests
+of other chains that are still waiting to be saved then get a single
+attempt each, without backoff: a permanent error fails at once, as before
+the failure, and only a rename that reports ``ENOENT`` (which may have
+landed) gets one immediate re-attempt.  A failed one is logged as
+``best-potential persistence failure at eval M (no backoff after the
+failure at eval N): <error>``, which after a transient error ends in
+``(gave up after 1 attempt over 0 s)`` (``2 attempts`` when it follows
+such a rename); the ``over 0 s`` counts from that candidate's first
+failure, so it does not show the call's own duration.  So the run ends
+after about one retry budget, not one per waiting candidate, and the
+first failure stays the status -- but storage that has recovered by then
+still saves them (``best potential of eval M saved after the persistence
+failure at eval N (no backoff); the run still ends FAILED``; see below).
+This holds when failing calls fail fast: with a soft NFS/SMB mount that
+times out after T seconds each waiting candidate adds about T, and at
+most one candidate waits per other thread or chain (``THREADS - 1`` in a
+``DLIB:GFS`` run); a hard mount that hangs is not bounded at all.
+After a shutdown signal (``SIGINT``, ``SIGTERM``, ``SIGUSR2``) retrying
+goes on for at most 2 s, counted from when the retry first sees the
+signal, with the delays shortened to fit: the 30 s budget does not hold
+up the exit, and one transient blip right after the signal (a
+scheduler's time-limit warning, say) still saves the candidate.  When
+those 2 s are spent the candidate was not saved, so the run still ends
+``FAILED`` (status ``1``, not ``128`` + the signal number), with
+``(retry abandoned: shutdown requested) after N attempts over T s`` in
+place of the ``gave up`` note.  The run also fails when the error meets
+a concurrent stop on its way up (another chain's stagnation stop or a
+shutdown request in the same epoch of a parallel annealer, ASA block or
+``DLIB:GFS`` batch, or a PRESTAGE or MULTISTART stage that ends on
+stagnation): a new best that could not be saved is never overruled, and
+the run stops at once.  RESULT names the candidate that was lost and
+what the file holds::
+
+   Best total loss         : 9.0390e-02  (eval 3) -- NOT saved (best-potential persistence failed)
+   Last saved best         : 1.0133e-01  (eval 2)
+   Best potential saved    : not confirmed -- best_pot.tadah may hold eval 3 (write not synced) or eval 2; check its HPO_SOURCE_EVAL header
+
+``Last saved best`` appears only when an earlier best was saved; the best
+metrics below it (``Best EMAE``, ...) are that potential's.  ``not
+confirmed`` means the candidate's rename may have happened (a directory
+``fsync`` failed afterwards, or the rename itself reported ``ENOENT`` or a
+transient error, which on a network filesystem it can do after landing);
+otherwise — also when the rename failed with ``EROFS``, ``EXDEV``,
+``ENOSPC``, ``EPERM`` or the like, which leave the file untouched — the
+line reads ``best_pot.tadah (eval M)``, or ``(none written)`` for a first
+best.  When several chains fail to save, the lowest loss is reported,
+and ``may hold`` names each candidate whose rename may have happened
+(not necessarily the lowest).  If another chain saved a *lower* best after
+the failure (the storage recovered before the run stopped, and its single
+attempt succeeded), that saved best is the result and the lost candidate
+is listed after it; the run still ends ``FAILED`` with the first failure
+as its status and exit status ``1``, because a best was lost on the way::
+
+   Best total loss         : 8.0185e-02  (eval 23)
+   Unsaved candidate       : 9.1781e-02  (eval 9) -- could not be persisted; superseded by eval 23
+   Best potential saved    : best_pot.tadah (eval 23)
+
+The per-evaluation files (``loss.tadah``, ``params.tadah``,
+``outvar.tadah``, ``stats.tadah`` and their ``best_*`` twins) and the
+``DUMP``/``BDUMP`` archives are not fatal.  Each writer drain retries
+transient errors for up to 10 s *in total*, shared by all its files and
+archives, so the first drain after a filesystem goes bad stalls for about
+10 s, not 10 s per file.  Every file and archive still makes its own
+attempt in every drain (and, after a permanent error such as ``ENOSPC``
+or ``EROFS``, one immediate re-attempt); those calls are not bounded by
+the budget.  This matters only when failing calls are slow themselves:
+with a soft NFS/SMB mount that times out after T seconds the first drain
+costs about 10 s plus (files + archives) × T, and every later drain of
+the outage about (files + archives) × T; a hard mount that hangs is not
+bounded at all.  A batch that still fails is dropped whole — never half
+a row, also when the file was truncated underneath the run — and
+reported, and the run goes on; that file (or the archives) then gets a
+single attempt per drain, without backoff, until a write succeeds again.
+After the first ``WARNING`` of such an outage, repeats are summarised (on
+the 2nd, 4th, 8th, … failure, or every 10 min, with the rows lost so
+far), and an ``INFO`` line reports when writes resume.  After a shutdown
+signal a drain's whole retry budget is 2 s instead of 10 s (the final
+drain keeps its rows through a blip and still ends well inside a
+scheduler's kill timeout; rows it cannot write count as lost), and the
+final drain after a best-potential persistence failure does not back off
+(one immediate re-attempt after a permanent error).  An archive that
+cannot be written is removed only when this run created or truncated it:
+a read-only file already at that path is left alone.  The per-evaluation
+files are not ``fsync``'d (that would cost every drain a round trip to
+the server), so a write-back error that NFS or SMB reports only later is
+not seen; ``best_pot.tadah`` is ``fsync``'d.  Every retry is a ``WARNING``
+in ``hpo_run.log``, and DIAGNOSTICS gains ::
+
+   Transient I/O retries   : N (best-potential a, per-eval logs/archives b); rows lost c; archives lost d
+
+whenever one of these counts is non-zero (a single immediate re-attempt
+without backoff -- a log writer's after a permanent error, or a waiting
+candidate's after a rename's ``ENOENT`` -- is logged but not counted as a
+transient retry).
 
 ``best_pot.tadah`` therefore holds the incumbent — the lowest-loss
 evaluation that completed — at all times, however the run ends: stop
@@ -2913,6 +3187,35 @@ Key                          Default        Effect
                                             ordinal.  Same rules as ``DUMP``.
 ============================ ============== =================================================================
 
+Number format.  ``best_pot.tadah``, its rank-local mirrors and the
+``DUMP``/``BDUMP`` archives follow the potential-file rules of
+:ref:`pot_number_format`: every non-integer number of the key/value
+lines is written with ``NUMERIC`` significant digits, default ``18`` —
+exact, so the file re-parses to precisely the doubles the evaluation used
+— and ``NUMERIC`` itself is never written.  A ``WARM`` restart from it
+starts from the file's ``OPTIM`` values bit for bit when they lie inside
+the boxes (starting points are evaluated exactly, see
+:ref:`search_space_scaling`); every other key comes from the ``-c``
+configuration, so with the same configuration the restart's starting
+point is the archived potential.  The precision is read once, from the
+configuration given with ``-c``; it only shapes the files, never the
+evaluation.  The ``#`` header is an annotation that ``NUMERIC`` does not
+govern.  Its machine-read lines, ``# HPO_BEST_LOSS`` and ``# HOT``, are
+always written with 18 significant digits (lossless), whatever
+``NUMERIC`` is: the durable-best check compares the loss exactly, and
+``WARM`` primes the hot-value cache from ``# HOT``.  The rest of the
+header (banner, LOSS, RESULT, DATA and OPTIMISER sections) is for
+reading: the RESULT table and the archive banners' ``loss=`` use
+``DIGITS``, the other annotations fixed short formats.
+
+.. warning::
+
+   ``best_pot.tadah`` files written by ``tadah hpo`` 1.5.0 contain an
+   automatically inserted ``NUMERIC 12`` line.  Used as the ``-c``
+   configuration of a new run, that line is an explicit setting: the new
+   run writes 12-digit potentials and warns about it (``hpo_run.log`` and
+   stderr).  Delete the ``NUMERIC`` line to get exact potentials again.
+
 Run log
 .......
 
@@ -2933,14 +3236,16 @@ outputs) is the run's structured journal. It opens with a banner
    (SUMMARY)         --   ``best point (eval N) sits within 2% of an OPTIM limit on
                          K dim(s)`` table + one HINT (bound-occupancy audit)
    -- DIAGNOSTICS   --   also ``Bound occupancy of the final best`` (or ``[ok]``)
-   -- POTENTIAL     --   2B/MB terms, cutoffs, element list
+   -- POTENTIAL     --   2B/MB terms, cutoffs, element list; DM_REAM:
+                         ``Embedding F(0)`` (EMBF0) and the raw F(0) of -c
    -- LOSS FUNCTION --   targets, weights, FAILSCORE
    -- PROGRESS      --   timestamped events: bests, warnings, milestones
    -- DIAGNOSTICS   --   NaN/Inf clampings, graded failures, unusable losses
                          (every evaluation without a usable loss) with a
                          verdict, bound-proximity analysis
    -- PERFORMANCE   --   timing statistics
-   -- RESULT        --   final status, best loss, best metrics
+   -- RESULT        --   final status, best loss, best metrics; DM_REAM:
+                         raw F(0) of the first and the best evaluation
 
 The optimizer journals documented on the algorithm pages (banners,
 per-rung and per-window reports, audits, the final ``stopped:`` line)
@@ -3037,13 +3342,18 @@ no advance warning.
    * - Stop criteria met
      - ``0``
      - The reason of the optimiser run that ended the run (under
-       ``MULTISTART`` the last start, under ``PRESTAGE`` the refinement)
-       where it gives one (NLopt, e.g. ``MAXEVAL_REACHED -- …``;
-       ``ASA: …``; ``TADAH:RANDOM``, ``TADAH:GRID`` and ``DLIB:GFS``
+       ``MULTISTART`` the last successful start, under ``PRESTAGE`` the
+       refinement) where it gives one (NLopt, e.g. ``MAXEVAL_REACHED --
+       …``; ``ASA: …``; ``TADAH:RANDOM``, ``TADAH:GRID`` and ``DLIB:GFS``
        when ``MAXTIME`` or ``STOPVAL`` ended them, e.g. ``TADAH:RANDOM:
-       STOPVAL reached``), otherwise ``COMPLETED``.  When the ``RESTART``
-       budget ends the run: ``STOPPED -- stagnation, max restarts (MAX)
-       used``.
+       STOPVAL reached``), otherwise ``COMPLETED``.  An NLopt algorithm that
+       terminated itself (``NLOPT_FAILURE`` or ``NLOPT_ROUNDOFF_LIMITED``, a
+       masked diagnostic) reads ``STOPPED -- <reason> (…)``; the best
+       result stands.  When the ``RESTART`` budget ends the run:
+       ``STOPPED -- stagnation: no new best in W evals after R
+       restart(s)``.  Under ``MULTISTART``, when a start failed, followed
+       by ``(N of M MULTISTART starts failed; see the WARNINGs)``, counted
+       over the run.
      - Complete.
    * - A gradient that is not finite ended the gradient-based search that
        ended the run (:ref:`hpo_gradient_not_finite`)
@@ -3066,11 +3376,24 @@ no advance warning.
      - ``SHUTDOWN (SIGINT)``, ``SHUTDOWN (SIGTERM)``,
        ``SHUTDOWN (SIGUSR2)``
      - Complete.
-   * - An error during the run (including a failure to save
-       ``best_pot.tadah``)
+   * - A new best could not be saved (:ref:`hpo_potential_archives`),
+       also when the run then ended on a stop criterion, the ``RESTART``
+       budget, a signal (its retries after the signal used up their
+       2 s) or a concurrent stagnation stop; or the reset of
+       ``best_pot.tadah`` before the first evaluation failed
      - ``1``
-     - ``STOPPED with error: <message>`` (``STOPPED with unknown error``
-       for an error that is not a C++ standard exception)
+     - ``FAILED -- best-potential persistence: <error>`` (the first
+       failure of the run)
+     - Complete, except that the lost candidate's evaluation is not the
+       incumbent (below).
+   * - Any other error during the run: an optimiser failure, every start
+       of a ``MULTISTART`` launch failing, an exception outside the
+       per-evaluation ``FAILSCORE`` recovery
+     - ``1``
+     - ``FAILED -- <message>`` (``FAILED -- non-standard exception`` for
+       an error that is not a C++ standard exception).  Under
+       ``MULTISTART`` a failure confined to one start is a ``WARNING``
+       (journal and stderr) and the next start runs.
      - Complete.
    * - ``SIGKILL``, a crash, a node failure
      - Killed (a shell reports ``137`` for ``SIGKILL``)
@@ -3097,12 +3420,15 @@ checked before the worker pool is sized, before any ``PC_ISOLATION
 PROCESS`` worker is started and before any data is loaded.  An error the optimiser raises before
 its first evaluation (for example an unknown ``PARAM`` of ``TADAH:GRID``)
 also leaves no history rows, but the journal has a ``RESULT`` section
-with ``STOPPED with error: <message>`` and zero evaluations.
+with ``FAILED -- <message>`` and zero evaluations.  So does a run whose
+reset of ``best_pot.tadah`` before the first evaluation fails (its lock
+cannot be taken, say): ``FAILED -- best-potential persistence: <error>``,
+status ``1``, its retries counted in ``DIAGNOSTICS``.
 
 In a multi-rank ``ANNEAL_PT`` / ``ANNEAL_PA`` run
 (:ref:`tadah_anneal_mpi`), each rank stops on the signal it receives
 itself.  A rank that has not seen it when another rank stops ends with an
-error instead, status ``1`` and ``STOPPED with error: … worker failed on
+error instead, status ``1`` and ``FAILED -- … worker failed on
 another MPI rank …`` (or ``… rank 0 aborted during … calibration`` when
 the signal arrives during the calibration); only the ranks that saw the
 signal report ``SHUTDOWN`` and ``128`` + the signal number.  Every rank
@@ -3112,8 +3438,8 @@ incumbent.
 A signal or an error decides how a run ends whether or not an
 evaluation produced a usable loss: a run without one that a signal stops
 still exits with ``128`` + the signal number and ``SHUTDOWN
-(<signal>)``, and one an error stops with ``1`` and ``STOPPED with
-error: …``.  Before 1.6.0 a run without a usable loss exited with ``0``
+(<signal>)``, and one an error stops with ``1`` and ``FAILED --
+…``.  Before 1.6.0 a run without a usable loss exited with ``0``
 and ``COMPLETED``.  In a multi-rank run, a rank ends as a successful one
 when any rank produced a usable loss (``best_pot.tadah`` is global).
 Each rank's journal (``hpo_run.log.r<rank>``) counts that rank's
@@ -3149,8 +3475,15 @@ can short-circuit the expensive minimisation:
    ``<min> <max>`` bound the physical range; ``<initial>`` is optional
    (midpoint of ``[min, max]`` when omitted).
 
-#. Replace the hard-coded ``lattice bcc 3.2`` in that script with
-   ``lattice bcc ${hot_a0}``.
+#. Replace the hard-coded ``lattice bcc 3.2`` in that script with the
+   injected value. ``lattice bcc ${hot_a0}`` works, but LAMMPS expands
+   ``${hot_a0}`` with 15 significant digits; a ``format``-style copy
+   passes the exact value (see :ref:`hot_value_precision`):
+
+   .. code-block:: none
+
+      variable hot_a0_s format hot_a0 %.17g
+      lattice bcc ${hot_a0_s}
 
 #. End the script by redefining ``hot_a0`` as an ``equal``-style
    variable (**not** ``string``):
@@ -3182,6 +3515,59 @@ line; ``hot_a0`` is just a conventional name (any identifier works).
 Per-line environment variables (``TADAH_HPO_HOT_A0_DEFAULT``,
 ``TADAH_HPO_A0_MIN``, ``TADAH_HPO_A0_MAX``) were removed in this
 release; the per-line ``--hotvar`` flag replaces all three.
+
+.. _hot_value_precision:
+
+Precision of values passed to and read from LAMMPS
+..................................................
+
+HPO's side of the hand-over is lossless: an injected value (a ``--hotvar``
+value, or a hot value propagated to a cold script) is defined as
+``variable <name> equal <value>`` with 17 significant digits, and every
+``--varloss``, ``--outvar``, ``--failvar`` and ``--hotvar`` readback
+evaluates the variable's formula directly (LAMMPS ``compute_equal``),
+keeping the full double.  Inside the script, however, LAMMPS turns
+variables into text with 15 significant digits in two places:
+
+* ``${name}`` of an ``equal``- or ``internal``-style variable, and
+* ``v_name`` of an ``equal``-style variable inside a formula, including
+  inside ``$(...)`` (``v_name`` of an ``internal``-style variable reads
+  the double directly).
+
+A value assembled through these references therefore carries 15 digits
+(a relative change of up to ~5e-15), whatever HPO does at either end.
+Lossless idioms:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 26 34 40
+
+   * - Need
+     - 15 digits
+     - Exact
+   * - an injected value as a command argument
+     - ``lattice bcc ${hot_a0}``
+     - ``variable hot_a0_s format hot_a0 %.17g`` then
+       ``lattice bcc ${hot_a0_s}``
+   * - capture a scalar for later formulas
+     - ``variable Ebulk equal $(c_eatoms)``, used as ``v_Ebulk``
+     - ``variable Ebulk internal $(c_eatoms)``, used as ``v_Ebulk``
+   * - an outvar built from other variables
+     - ``variable Ecoh equal v_Ecoh_raw`` with ``Ecoh_raw``
+       ``equal``-style
+     - one formula over computes, thermo keywords and ``internal``
+       captures, e.g. ``variable Ecoh equal ternary(v_eq_ok,
+       -(v_Ebulk-v_N*v_Eiso)/v_N, 100.0)``
+
+``$(...)`` itself renders with 20 significant digits, and ``format``- and
+``internal``-style variables may be redefined with the same style on
+every evaluation of the cached LAMMPS instance.  Keep the readback of a
+hot script as ``variable hot_a0 equal lx/<divisor>``: HPO reads it with
+``compute_equal``, so it is exact.  Every variable HPO reads
+(``--varloss``, ``--outvar``, ``--failvar``, ``--hotvar``) must stay
+``equal``-style; define it over ``internal`` captures (``variable Eiso
+equal v_Eiso_i``).  The example scripts ``HPO/examples/common/lammps/Ecoh.in``
+and ``Ecoh_param.in`` follow these idioms.
 
 Bad-potential early-exit
 ........................
@@ -3353,6 +3739,10 @@ Marker                                                                       Mea
                                                                               without one); ``; …`` lists the round's seeds: ``RESTART SEED``
                                                                               (the fresh points', ``SEED + i``) when the ``RESTART`` block has a
                                                                               ``SEED``, then the derived seeds of the phases that have one.
+``[HPO] RESTART: stagnation reached, max restarts (M) used; stopping``         Restarts exhausted; the run stops.
+``[HPO] MULTISTART: N of K start(s) stopped on stagnation; …``                Batch outcome reported to RESTART.
+``[HPO] REFINEMENT: N of K seed(s) stopped on stagnation …``                  PRESTAGE refinement outcome, reported to RESTART.
+``[HPO] WARNING: MULTISTART start i/K failed: …``                             One start failed; the next one runs.
 ``[HPO] NOISE_AUTO: PARAM fd_step set to V (diag=…, dim=…)``                  ``NOISE.AUTO`` fired and shows the value used.
 ``[HPO] Initial step (LIB:ALGO): …``                                         NLopt run started; the effective per-dimension step is in the journal.
 ``[HPO] OPTIM_SCALE X taken from the TADAH_OPTIM_SCALE …``                    Env override of the scaling policy is active.

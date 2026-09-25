@@ -198,6 +198,16 @@ def render_key(key_name: str, entry: dict) -> str:
         out.append(f"   *Max number of values*: {vals}\n")
 
     # ---------------------------------------------------------------------
+    # Allowed values (blueprint field `allowed_values`): the only values of
+    # a string key, matched without regard to case; CORE rejects any other
+    # at its line.
+    # ---------------------------------------------------------------------
+    if entry.get('allowed_values'):
+        allowed = " / ".join(str(v) for v in entry['allowed_values'])
+        out.append(f"   *Allowed values*: {allowed} (any case; any other "
+                   "value is an error)\n")
+
+    # ---------------------------------------------------------------------
     # Default value(s)
     # ---------------------------------------------------------------------
     if 'default_value' in entry and entry['default_value']:

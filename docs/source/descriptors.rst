@@ -380,8 +380,11 @@ line is read as ``ZERO``. It is not an ``OPTIM`` target.
        vanishes at :math:`\rho = 0`, other many-body blocks keep their value.
 
 To reproduce the energies of a potential written by tadah 1.5.0 or earlier,
-add ``EMBF0 FREE`` to it (a DM_REAM potential loaded without the key prints a
-warning). Training on absolute reference energies (e.g. DFT totals) under
+add ``EMBF0 FREE`` to it. A trained DM_REAM potential loaded without the key
+prints a warning: ``tadah`` logs it once per process, and the LAMMPS pair
+style prints a LAMMPS ``WARNING`` (screen and ``log.lammps``) on every
+``pair_coeff`` that loads one, with a banner that reads ``EMBF0 ZERO (key
+absent: default ZERO, ...)``. Training on absolute reference energies (e.g. DFT totals) under
 ``ZERO`` needs a per-atom reference energy from ``ESHIFT``, ``ESHIFT_ATOM`` or
 ``ESHIFT_DBATOM`` (compatible with the LAMMPS ``EAMFAST`` kernel) or
 ``BIAS true`` (disables ``EAMFAST``; its intercept column precedes the

@@ -15,5 +15,5 @@ SGRID2B GEOM 4 0.1 1.0    # Automatic generation blips for SGRID
 CGRID2B LIN 4 1.0 5.3     # Automatic generation blips for CGRID
 
 LAMBDA 1e-7               # Control regularization parameter
-OALGO  3                  # Select optimization algorithm
+OALGO  1                  # Select optimization algorithm (GELSD)
 BIAS true                 # Append constant to descriptor

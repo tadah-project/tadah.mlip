@@ -342,7 +342,10 @@ coefficients directly:
 **No training data** — with every weight pinned, the training ``DBFILE``
 may be omitted entirely.  Declare the element set with ``ATOM`` and keep
 at least one loss source (``--validation`` metrics, ``PC_OBSERVABLE``,
-or ``PC_LAMMPS``):
+or ``PC_LAMMPS``).  With ``PC_OBSERVABLE`` and a gradient-based backend,
+set ``GRAD_STRATEGY HYBRID`` or use a derivative-free backend: an unset
+``GRAD_STRATEGY`` resolves to ``ANALYTICAL`` (:ref:`pc_observable`),
+which needs training data, and startup refuses it.
 
 .. code-block:: none
 
@@ -362,11 +365,15 @@ Misconfigurations (lone keys, size mismatches, out-of-range indices,
 missing loss sources, incomplete pin coverage without a ``DBFILE``) are
 rejected at startup with actionable messages.
 
-With ``FIXINDEX`` present, analytical/HYBRID gradient strategies fall
-back to finite differences for all parameters: the analytical chain
-assumes the unconstrained LS solution map, which pinning invalidates.
-Derivative-free algorithms (e.g. ``NLOPT LN_BOBYQA``) are a natural
-choice for coefficient searches.
+With ``FIXINDEX`` present there is no analytical gradient: the
+analytical chain assumes the unconstrained LS solution map, which
+pinning invalidates.  ``GRAD_STRATEGY ANALYTICAL`` — written out, or
+resolved from an unset ``GRAD_STRATEGY`` with ``PC_OBSERVABLE`` — is
+refused at startup (``… cannot form: FIXINDEX pins model weights …``),
+and ``HYBRID`` uses finite differences for every parameter.  Before
+1.5.1 ``ANALYTICAL`` passed startup and stopped the run at its first
+gradient.  Derivative-free algorithms (e.g. ``NLOPT LN_BOBYQA``) are a
+natural choice for coefficient searches.
 
 .. _performance_constraints:
 
@@ -750,9 +757,8 @@ Typed observables (PC_OBSERVABLE)
 ``PC_OBSERVABLE`` evaluates a physical property *in process*, without
 LAMMPS, with a closed-form derivative with respect to the model
 weights.  Each line is one loss term.  It cannot be combined with
-``PC_LAMMPS`` in the same configuration, and ``GRAD_STRATEGY NUMERICAL``
-is rejected with it in every optimiser block, ``EXPLORE`` and ``INNER``
-included.  The only kind at present is ``cohesive_energy``:
+``PC_LAMMPS`` in the same configuration.  The only kind at present is
+``cohesive_energy``:
 
 .. code-block:: none
 
@@ -781,7 +787,10 @@ included.  The only kind at present is ``cohesive_energy``:
      - Supercell size (default ``4 4 4``): integers from 1 to 2147483647.
    * - ``--loss <name>``
      - Loss of this term (default ``L2``; ``HUBER``/``TUKEY`` use their
-       default parameter).
+       default parameter).  ``MAPE`` and ``RMSLE`` have no analytical
+       derivative with respect to the value, so with a gradient-based
+       backend they need ``GRAD_STRATEGY HYBRID`` (see *Gradients*
+       below).
    * - ``--maxiter <n>``
      - Relaxation iteration cap (default ``5000``): an integer from 0 to
        2147483647.
@@ -796,11 +805,78 @@ included.  The only kind at present is ``cohesive_energy``:
      - Largest residual force (eV/Å) accepted as converged (default ``0.1``).
    * - ``--unconverged const <V>`` / ``--unconverged force-scaled <slope>``
      - Value reported when the relaxation does not converge: the constant
-       ``V`` (default ``const 100``), or ``target + slope × fmax`` which
-       keeps a slope toward convergence.
+       ``V`` (default ``const 100``; its gradient is zero), or
+       ``target + slope × fmax``, which keeps a slope toward convergence
+       that only finite differences can follow: with a gradient-based
+       backend ``force-scaled`` needs ``GRAD_STRATEGY HYBRID`` (see
+       *Gradients* below).
 
 A term whose evaluation fails (divergent relaxation, non-finite value)
 contributes ``FAILSCORE``.
+
+Columns.  The *k*-th ``PC_OBSERVABLE`` line (1-based, in configuration
+order) writes the ``loss.tadah`` column ``L(<tag>)[k]`` and the
+``outvar.tadah`` column ``<tag>[k]``, where the tag of
+``cohesive_energy`` is ``Ecoh``: ``L(Ecoh)[1]`` and ``Ecoh[1]`` for the
+first line.  The journal names the term ``cohesive_energy[k]`` (the
+loss section and the ``top:`` breakdown of a new best).  These labels
+fit every ``DIGITS`` setting up to ``k = 99``; past that the tag is
+shortened and the index kept (``L(Eco*[100]``), and the journal's loss
+section names the columns as the files write them.  Before 1.5.1 the
+index was 0-based and the loss column ``L(cohesive_energy[0])``, which
+every ``DIGITS`` setting cut to ``L(cohesive*``.
+
+Gradients.  ``PC_OBSERVABLE`` is built for the analytical gradient
+(``GRAD_STRATEGY``, :ref:`hpo_optimizer_common`), which differentiates
+each term through the refitted weights and through its own structures
+(the relaxed crystal and the isolated atom) at fixed weights; the
+relaxation itself adds nothing at the relaxed geometry.  In every block
+that runs an optimiser and obtains gradients — the ``STRATEGY``-level
+block and ``EXPLORE``, with a gradient-based backend (``DLIB:BFGS``,
+``NLOPT`` ``LD_*``/``GD_*``, ``CERES``) or an ``MLSL``/``AUGLAG`` whose
+local search is one:
+
+* an unset ``GRAD_STRATEGY`` resolves to ``ANALYTICAL``, and the
+  journal's OPTIMISER section says so (``GRAD_STRATEGY : ANALYTICAL
+  (resolved for PC_OBSERVABLE)``); derivative-free blocks are left
+  alone;
+* ``HYBRID`` and ``ANALYTICAL`` written out are kept;
+* ``GRAD_STRATEGY NUMERICAL`` is rejected (in an ``INNER`` block too).
+
+An ``INNER`` block is not resolved: ``MLSL`` and ``AUGLAG`` hand their
+``INNER`` search the gradient of their own objective, so the
+``GRAD_STRATEGY`` of the block they belong to decides how it is
+obtained, and one written in the ``INNER`` block does not apply (the
+journal prints it as ``Inner GRAD_STRATEGY : HYBRID (not used: …)``).
+Set it in the enclosing block.
+
+``ANALYTICAL`` needs a setup the analytical gradient covers — see the
+``GRAD_STRATEGY`` row of :ref:`hpo_optimizer_common` — and
+``PC_OBSERVABLE`` lines whose values it can differentiate: no
+``--loss MAPE`` or ``RMSLE`` and no ``--unconverged force-scaled``.
+Startup refuses a setup that falls short, naming the setting or the
+line; the shared example model, for instance, uses ``OALGO 1``:
+
+.. code-block:: none
+
+   HPOEngine error: OPTIMIZER block: GRAD_STRATEGY ANALYTICAL (resolved for PC_OBSERVABLE: the block sets no GRAD_STRATEGY) needs the analytical gradient of the loss, which this setup cannot form: OALGO is 1 (it needs OALGO 4, the Cholesky normal equations). Change that setting, or set GRAD_STRATEGY HYBRID to use finite differences where no analytical gradient is available.
+
+and a ``force-scaled`` line (a ``MAPE`` or ``RMSLE`` one alike):
+
+.. code-block:: none
+
+   HPOEngine error: OPTIMIZER block: GRAD_STRATEGY ANALYTICAL (resolved for PC_OBSERVABLE: the block sets no GRAD_STRATEGY) needs the analytical gradient of the loss, which this setup cannot form: the PC_OBSERVABLE term cohesive_energy[1]: --unconverged force-scaled reports target + slope x fmax for a relaxation that does not converge, a value without an analytical derivative. Change that setting, or set GRAD_STRATEGY HYBRID to use finite differences where no analytical gradient is available.
+
+``HYBRID`` takes finite differences only where the analytical gradient
+is missing: at an unconverged ``force-scaled`` relaxation, or for every
+gradient with ``MAPE``/``RMSLE``.  The constant ``--unconverged const``
+penalty contributes a zero gradient and needs neither.
+
+Before 1.5.1 an unset ``GRAD_STRATEGY`` ran finite differences with
+``PC_OBSERVABLE``, and the analytical gradient left out the term's own
+dependence on the descriptor parameters and the averaging over the loss
+terms, so it could point the wrong way.  Example ``22_pc_observable``
+(:ref:`hpo_examples`) runs this configuration.
 
 .. _failscore_grading:
 
@@ -1067,7 +1143,11 @@ with the configuration line
 (Adapt the element, ``a0``, volumes and thresholds to your system; add
 Born-stability hinges via finite-difference stress probes on fixed
 strained cells if shear stability matters for your fits — the
-``pen_born`` machinery in the examples shows the pattern.)
+``pen_born`` machinery in the examples shows the pattern.)  The HPO
+examples ship this probe as ``examples/common/lammps/failprobe.in``;
+example ``25_failprobe_grading`` (:ref:`hpo_examples`) runs it with
+``FAILSCORE_GRADING ON`` and a lattice window that grades six band-A
+failures.
 
 ``--failvar`` recipes for typical scripts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1125,6 +1205,8 @@ script, once, assembled from the same hinge idioms as the ``pen_*``
 observables.  The only knob that can *change your objective* if set
 carelessly is the probe ``--gate`` — leave it off until you have
 calibrated ``S``.
+
+.. _hpo_optimizer_common:
 
 OPTIMIZER block — common attributes
 -----------------------------------
@@ -1324,9 +1406,32 @@ one a finite number (``MAXTIME`` a positive one).
        ``fd_kernel``), ``ANALYTICAL`` or ``HYBRID`` (analytical where a
        derivative is registered, finite differences elsewhere).  The
        analytical modes are experimental.  Rejected when the
-       configuration has ``PC_LAMMPS`` lines; ``NUMERICAL`` is rejected
-       with ``PC_OBSERVABLE``.  Both rules hold in every block that
-       configures an optimiser, ``EXPLORE`` and ``INNER`` included.
+       configuration has ``PC_LAMMPS`` lines.  With ``PC_OBSERVABLE``
+       ``NUMERICAL`` is rejected in every block that configures an
+       optimiser, ``EXPLORE`` and ``INNER`` included, and an unset
+       value resolves to ``ANALYTICAL`` in each block that runs an
+       optimiser and obtains gradients: the ``STRATEGY``-level block and
+       ``EXPLORE`` (:ref:`pc_observable`).  An ``INNER`` block's value
+       does not apply: ``MLSL`` and ``AUGLAG`` hand their ``INNER``
+       search the gradient of their own objective, which the enclosing
+       block's ``GRAD_STRATEGY`` obtains.
+       ``ANALYTICAL`` (written out or resolved) differentiates the
+       least-squares fit through its Cholesky factor, so it needs
+       training data with every weight fitted (no ``FIXINDEX``),
+       ``OALGO 4`` with a fixed ``LAMBDA`` ≥ 0 (not ``-1``),
+       ``NORM false``, a linear basis (``MODEL … BF_Linear`` or
+       ``Kern_Linear``), ``STRESS false`` and no ``PC_SRMSE``, and
+       ``FORCE true`` for ``PC_FRMSE``; it also needs loss terms it can
+       differentiate: no ``PC_OBSERVABLE`` ``--loss MAPE`` or
+       ``RMSLE``, and no ``--unconverged force-scaled``.  Startup
+       refuses a block that sets it without them, naming the setting or
+       the line.  It still stops the run at a gradient it cannot form —
+       a parameter without an analytical derivative, a candidate
+       rejected before training, an ill-conditioned fit — where
+       ``HYBRID`` uses finite
+       differences instead.  Before 1.5.1 such a setup passed startup
+       and stopped at the first gradient with ``no registered
+       analytical derivative``.
    * - ``PARAM`` (string value)
      - Algorithm-specific key/value (e.g. ``PARAM fd_step 1e-3``).  A
        value that starts like a number must be a finite number
@@ -1384,7 +1489,8 @@ one a finite number (``MAXTIME`` a positive one).
           all CERES drivers) obtains its gradient by finite differences
           (``PARAM fd_step``); for ``DLIB:BFGS`` and the CERES drivers
           every difference evaluation counts toward ``MAXEVAL``.  Analytical gradients (``GRAD_STRATEGY
-          ANALYTICAL``/``HYBRID``) are experimental.
+          ANALYTICAL``/``HYBRID``) are experimental; with
+          ``PC_OBSERVABLE`` they are the default (:ref:`pc_observable`).
    * - ``DLIB``
      - ``BFGS`` — local, box-constrained quasi-Newton with a
        finite-difference gradient; the only gradient-based optimiser
@@ -2300,7 +2406,10 @@ local optimiser.  Configure the inner via:
 Only the driver-attribute keys (``LIB`` / ``ALGO`` / ``MAXEVAL`` /
 ``MAXTIME`` / ``STOPVAL`` / ``FTOL_*`` / ``XTOL_*`` / ``POPULATION`` /
 ``STEP`` / ``VECTOR_ARR`` / ``THREADS`` / ``GRAD_STRATEGY`` / ``PARAM``)
-are valid inside ``INNER``.  ``LIB`` and ``ALGO`` are required, as in
+are valid inside ``INNER``.  An ``INNER`` ``GRAD_STRATEGY`` is accepted
+but does not apply: NLopt hands the ``INNER`` search the gradient of the
+enclosing block's objective, obtained with that block's
+``GRAD_STRATEGY``; the journal prints it with ``(not used: …)``.  ``LIB`` and ``ALGO`` are required, as in
 every block that names an optimiser: a missing one is an error at the
 ``ENDINNER`` line that names the enclosing block (``STRATEGY``,
 ``EXPLORE`` or ``REFINE``):
@@ -2476,7 +2585,9 @@ File                   Columns
                        ``FIXINDEX`` slot; see ``OPTIM``) — not the order of the
                        ``OPTIM`` lines.  Values are in real units.
 ``outvar.tadah``       Per-evaluation wall time in milliseconds, enabled validation metrics,
-                       LAMMPS ``--outvar``/``--varloss`` values, and typed-observable values.
+                       LAMMPS ``--outvar``/``--varloss`` values, and typed-observable values
+                       (``<tag>[k]`` for the *k*-th ``PC_OBSERVABLE`` line, e.g.
+                       ``Ecoh[1]``; its loss column is ``L(Ecoh)[1]``).
 ``stats.tadah``        Per-validation-dataset values and their average for each enabled metric.
 =====================  =====================================================================
 

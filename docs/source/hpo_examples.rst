@@ -5,15 +5,21 @@ Worked Examples
 
 .. note::
 
-   The HPO module ships twenty-one end-to-end examples that build up
+   The HPO module ships twenty-six end-to-end examples that build up
    gradually: ``01`` is the smallest viable config, each subsequent one
    introduces one or two new features. Between them they exercise the
-   optimiser libraries and the ``INIT``, ``STRATEGY``, ``EXPLORE``,
-   ``RESTART``, and ``INNER`` blocks. Each example is a self-contained
-   directory with one ``config.hpo`` and one ``README.md``; all share a
-   small Ta training/validation bundle in ``examples/common/`` and the
-   shared ``common/run.sh`` driver (two examples ship their own
-   ``run.sh`` to bootstrap a seed first).
+   optimiser libraries, the ``INIT``, ``STRATEGY``, ``EXPLORE``,
+   ``RESTART`` and ``INNER`` blocks, typed observables, per-dataset
+   targets, seed-relative boxes, graded failures and ``PC_LAMMPS``
+   isolation. Each example is a self-contained directory with one
+   ``config.hpo`` and one ``README.md``; all share a small Ta
+   training/validation bundle in ``examples/common/`` and the shared
+   ``common/run.sh`` driver, which takes an example's own
+   ``config.tadah`` and ``config.val`` when it has them (22 and 23) and
+   prints which files it uses. Four examples ship their own ``run.sh``:
+   ``09`` and ``10`` bootstrap a seed potential first, ``16`` runs with
+   its local ``config.tadah``, and ``17`` trains and pins the model
+   before the HPO run; start those with ``bash ./run.sh``.
 
    To keep a **single source of truth** the canonical content for each
    example lives in the HPO source tree. The links below point at the
@@ -162,3 +168,37 @@ Index
        Ingber ASA-30.53) with the original ASA option spellings — see
        :ref:`asa_optimizer`.
      - ``ASA:ASA``, ``PARAM Temperature_Ratio_Scale``
+   * - 22
+     - `22_pc_observable <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/22_pc_observable>`_
+     - Example 01 with a typed observable instead of LAMMPS: the
+       cohesive energy is relaxed and differentiated in process
+       (:ref:`pc_observable`). ``GRAD_STRATEGY`` is unset and resolves
+       to ``ANALYTICAL`` for ``DLIB:BFGS``; a local ``config.tadah`` sets
+       ``OALGO 4`` and ``LAMBDA``, which the analytical gradient needs.
+       Columns ``L(Ecoh)[1]`` and ``Ecoh[1]``.
+     - ``PC_OBSERVABLE``, ``GRAD_STRATEGY``
+   * - 23
+     - `23_per_dataset_targets <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/23_per_dataset_targets>`_
+     - Two validation datasets in a local ``config.val``, each with its
+       own ``PC_ERMSE (i)`` target and weight, and a per-dataset
+       ``--skip-above``.
+     - ``PC_ERMSE (i)``, local ``config.val``
+   * - 24
+     - `24_optim_auto <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/24_optim_auto>`_
+     - Example 03 with a seed-relative box: ``OPTIM SGRIDMB (1) AUTO``
+       resolves to 03's ``[0.1, 0.4]`` (written to
+       ``hpo_optim_resolved.hpo``) and reproduces 03's run.
+     - ``OPTIM ... AUTO``
+   * - 25
+     - `25_failprobe_grading <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/25_failprobe_grading>`_
+     - Example 02's seeded random search with a tight ``--hotvar``
+       lattice window: six candidates fail and are graded (band A) by
+       ``FAILSCORE_GRADING ON``; ``PC_FAILPROBE`` runs the sanity probe
+       of :ref:`failscore_grading` (``common/lammps/failprobe.in``).
+     - ``FAILSCORE_GRADING``, ``PC_FAILPROBE``
+   * - 26
+     - `26_pc_isolation <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/develop/examples/26_pc_isolation>`_
+     - Example 01 with ``PC_ISOLATION PROCESS`` and a hard worker
+       deadline; the results equal 01's in either isolation mode
+       (:ref:`pc_lammps_execution`).
+     - ``PC_ISOLATION``, ``PC_WORKER_TIMEOUT``

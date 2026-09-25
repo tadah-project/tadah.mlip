@@ -114,7 +114,10 @@ the box declared with the ``OPTIM`` directive:
   = \operatorname*{arg\,min}_{\theta\in\Theta} L(\theta).
 
 Any backend can drive it — local or global, gradient-free or
-finite-difference gradient-based (:doc:`optimizer`).  The backend is
+gradient-based (:doc:`optimizer`).  A gradient-based backend takes
+finite differences of :math:`L(\theta)` by default; with
+``PC_OBSERVABLE`` it uses the analytical gradient
+(``GRAD_STRATEGY``, :ref:`pc_observable`).  The backend is
 wrapped by a ``STRATEGY``: ``PLAIN`` (one run), ``MULTISTART`` (one run
 per starting point) or ``PRESTAGE`` (an exploration phase followed by a
 refinement of its best candidates), optionally decorated by ``RESTART``

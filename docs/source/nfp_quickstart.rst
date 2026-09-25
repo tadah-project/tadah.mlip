@@ -23,7 +23,10 @@ model weight is pinned via ``FIXINDEX``/``FIXWEIGHT`` (see
 :ref:`hpo_fixweight`) — with no free weights there is nothing for the
 least-squares stage to fit.  In that mode the element set must be
 declared explicitly with the ``ATOM`` key, and at least one loss source
-must remain.
+must remain.  A ``PC_OBSERVABLE`` run of that kind with a gradient-based
+backend needs ``GRAD_STRATEGY HYBRID`` (or a derivative-free backend):
+an unset ``GRAD_STRATEGY`` resolves to ``ANALYTICAL`` there, which needs
+training data, and startup refuses it (:ref:`pc_observable`).
 
 The driving command line is
 

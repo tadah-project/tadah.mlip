@@ -104,9 +104,11 @@ Supported KEYS
 This section contains all KEYS currently used by Tadah!MLIP. A key marked
 **Deprecated** is still accepted in configuration and potential files so that
 older files load: Tadah!MLIP checks its value, ignores it and writes one
-warning per key to standard error each time it reads the file
-(``WARNING: Deprecated key MBLOCK is ignored: ...``; a file and the files it
-includes with CONFIG count as one). VERBOSE does not silence the warning, and
+warning per key and process to standard error
+(``WARNING: Deprecated key MBLOCK is ignored: ...``), however many lines,
+files included with CONFIG or reads of the file contain it -- the rule of
+every ignored key, :ref:`EMBF0 and RHOFORM without a DM_REAM block
+<dm_ream_only_keys>` included. VERBOSE does not silence the warning, and
 ``pair_style tadah`` prints it too: in LAMMPS it appears on the terminal, not
 in ``log.lammps``, once from every MPI rank that reads the potential.
 

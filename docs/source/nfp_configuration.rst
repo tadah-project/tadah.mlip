@@ -2520,32 +2520,34 @@ The step is not shrunk for such a dimension: that would change what
 ``NONE`` a ``LOG`` box suits a positive parameter that spans decades: its
 internal width is then its number of e-foldings.
 
-**A point outside the box** is evaluated only when an optimiser that
-ignores the bounds — the ``CERES`` drivers and NLopt ``LN_NEWUOA`` — puts
-one there, or hands one to a ``PRESTAGE`` refinement.  Finite differences
-never do, nor, with the bundled ASA, do ASA's probes (:ref:`asa_optimizer`).
-A coordinate proposed outside its box by no more than rounding is evaluated
-on the bound instead, recorded there (``params.tadah``, the potentials, the
-best) and counted in ``DIAGNOSTICS`` (``Snapped onto the box``), with no
-warning.  Rounding means at most 8 units in the last place from the bound,
-in real coordinates — of :math:`\max(|lo|, |hi|)` on a linear dimension, of
-the bound itself on a ``LOG`` or ``ASINH`` one — or in the internal
-coordinates the optimiser works in.  Under ``OPTIM_SCALE NONE`` NLopt's own
-arithmetic rounds points on a bound up to 2 such units past it
-(``LN_COBYLA``, ``LN_PRAXIS``, whose map of the box is ``mid +
-width·tanh``, ``LN_BOBYQA``, the unscaled ``GN_DIRECT*_NOSCAL`` variants,
-and ``MLSL`` and ``AUGLAG`` with such a local search; none of them does in
-the unit box of ``OPTIM_SCALE AUTO``): such points were evaluated outside
-the box and warned about.  Its gradient is
-differenced towards the box, one-sided (``FORWARD``: the one step towards
-it), so no finite-difference point lies further outside than the point
-itself; ``DIAGNOSTICS`` counts such gradients.  ``HPO_Host`` counts every
-evaluation outside the box, whatever asked for it, before the ``RHOFORM``
-projection (:ref:`hpo_rhoform_positive`), and warns at the first:
+**A point outside the box** is evaluated only when an optimiser that ignores
+the bounds — the ``CERES`` drivers and NLopt ``LN_NEWUOA`` — puts one there,
+or hands one to a ``PRESTAGE`` refinement.  Finite differences never do, nor,
+with the bundled ASA, do ASA's probes (:ref:`asa_optimizer`).  A gradient at
+such a point is differenced towards the box, one-sided (``FORWARD``: the one
+step towards it), so no finite-difference point lies further outside than
+the point itself; ``DIAGNOSTICS`` counts such gradients.  ``HPO_Host`` counts
+every evaluation outside the box, whatever asked for it, before the
+``RHOFORM`` projection (:ref:`hpo_rhoform_positive`), and warns at the
+first:
 
 .. code-block:: none
 
    WARNING   eval 5: CGRID2B[2] = 3 lies outside its OPTIM box [1, 2] and is evaluated there: finite differences keep to the box, and a point proposed within rounding of a bound is evaluated on it, so an optimiser that ignores the bounds (CERES:*, NLopt LN_NEWUOA), or a start it handed on, stepped outside it; the loss of such a point can become the best. DIAGNOSTICS counts every evaluation outside the box
+
+**A point within rounding of a bound.** A coordinate proposed outside its
+box by no more than rounding is evaluated on the bound instead, recorded
+there (``params.tadah``, the potentials, the best) and counted in
+``DIAGNOSTICS`` (``Snapped onto the box``), with no warning.  Rounding means
+at most 8 units in the last place from the bound, in real coordinates — of
+:math:`\max(|lo|, |hi|)` on a linear dimension, of the bound itself on a
+``LOG`` or ``ASINH`` one — or in the internal coordinates the optimiser
+works in.  Under ``OPTIM_SCALE NONE`` NLopt's own arithmetic rounds points on
+a bound up to 2 such units past it (``LN_COBYLA``, ``LN_PRAXIS``, whose map
+of the box is ``mid + width·tanh``, ``LN_BOBYQA``, the unscaled
+``GN_DIRECT*_NOSCAL`` variants, and ``MLSL`` and ``AUGLAG`` with such a
+local search; none of them does in the unit box of ``OPTIM_SCALE AUTO``):
+such points were evaluated outside the box and warned about.
 
 An optimiser that ignores the bounds gets one startup ``WARNING`` in every run that uses it
 (``CERES:LBFGS (OUTER): ignores the OPTIM box: Ceres'

@@ -166,8 +166,9 @@ stored values.
    keeps the LAMMPS ``EAMFAST`` kernel usable) or set ``BIAS true`` (its
    intercept column precedes the descriptor weights, so ``FIXINDEX``/
    ``FIXWEIGHT`` indices shift).
-   ``tadah train`` prints a HINT when neither is present. See
-   :ref:`DM_REAM <dm_ream>`.
+   ``tadah train`` prints a HINT when neither is present. A DM_REAM
+   configuration must also declare its density form ``RHOFORM`` (see
+   `pot.tadah format`_). See :ref:`DM_REAM <dm_ream>`.
 
 Filtering and weighting
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -262,6 +263,13 @@ Three categories of keys appear:
    written so prediction re-applies them automatically. The
    ``*_ATOM`` / ``*_DBATOM`` toggles themselves are not stamped (only
    their resolved output).
+
+DM_REAM potentials always carry explicit ``EMBF0`` and ``RHOFORM`` lines;
+the writer spells ``RHOFORM`` in upper case and drops a stray one (with a
+WARNING) from a potential without a DM_REAM block. ``RHOFORM`` has no
+default: a DM_REAM training configuration without it stops before any
+fitting with the migration message (``RHOFORM SIGNED`` is the density of
+tadah 1.5.1 and earlier); see :ref:`DM_REAM <dm_ream_rhoform>`.
 
 Runtime-only knobs (``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
 ``HEALTH_LOG``) are stripped before write — leaving them in the file

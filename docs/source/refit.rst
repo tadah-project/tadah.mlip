@@ -17,7 +17,8 @@ The result is usable with ``tadah predict``, the Tadah!LAMMPS plugin, and
 Typical workflow
 ----------------
 
-#. Write a ``refit.cfg`` naming the input EAM and the basis (see `Quick start`_).
+#. Write a ``refit.cfg`` naming the input EAM, the density form and the basis
+   (see `Quick start`_).
 #. Run ``refit`` on a setfl EAM: ``tadah refit -c refit.cfg -v 2``.
 #. Read the crystal self-test at the end of ``refit_opt.log`` (energy–volume
    accuracy of the fitted model vs the original table).
@@ -27,11 +28,13 @@ Typical workflow
 Quick start
 -----------
 
-Minimal config (all other settings take their defaults):
+Minimal config (``EAM`` and ``RHOFORM`` are required, all other settings
+take their defaults):
 
 .. code-block:: none
 
    EAM             Ti1.eam.fs
+   RHOFORM         SIGNED
    REFIT_OBJECTIVE curve
    REFIT_BASIS     Knot5
 
@@ -46,6 +49,7 @@ A fuller curve-mode config (pinned window edges, explicit basis ceiling):
 .. code-block:: none
 
    EAM             Ti1.eam.fs
+   RHOFORM         SIGNED           # see "Density form"; MONOTONE needs Blip/Blip5
    OUTFILE         pot.tadah
    SETFL_OUT       refit.eam
    REFIT_OBJECTIVE curve
@@ -111,6 +115,128 @@ The end of ``refit_opt.log`` reports a crystal self-test over
 :math:`0.75\!-\!0.95`; ``REFIT_TOL_AMBIENT`` / ``REFIT_TOL_COMPRESSED`` are the
 pass thresholds. ``cohesive delta`` is the equilibrium-energy error.
 
+.. _refit_rhoform:
+
+Density form (``RHOFORM``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The refit configuration must declare the :ref:`DM_REAM density form
+<dm_ream_rhoform>` of the potential it writes: ``RHOFORM SIGNED``,
+``NONNEG`` or ``MONOTONE``. There is no default; without the key ``refit``
+stops before reading the table with ``tadah refit configuration: DM_REAM:
+RHOFORM is required: ...``. The density is fitted, self-tested (the crystal
+self-test and ``refit.eam`` use the fitted density in its form) and written
+in the declared form, and the log states it (``tadah refit: RHOFORM
+<form>: ...; the potential declares RHOFORM <form>.``).
+
+.. list-table::
+   :header-rows: 1
+   :widths: 13 44 43
+
+   * - Form
+     - Density fit
+     - Use
+   * - ``SIGNED``
+     - Signed amplitudes :math:`a_n` of the basis functions
+       :math:`\psi_n`, as tadah 1.5.1 fitted them. In dense mode
+       ``pot.tadah`` is 1.5.1's plus the ``RHOFORM SIGNED`` line, and
+       ``refit.eam`` and ``refit.hpotarget`` are unchanged; compact mode
+       can differ where 1.5.1's joint refinement left a bump past the
+       cutoff (see *Compact mode* below).
+     - Any table; no sign or shape guarantee.
+   * - ``NONNEG``
+     - The same columns with every :math:`a_n \ge 0`, by non-negative least
+       squares.
+     - :math:`\rho \ge 0` for every configuration the potential sees.
+   * - ``MONOTONE``
+     - The integrated-bump steps :math:`S_n` with every :math:`a_n \ge 0`,
+       by non-negative least squares. Bump bases only (``Blip``,
+       ``Blip5``, dense ``Gaussian``).
+     - :math:`\rho \ge 0` and non-increasing, so :math:`\bar\rho(a)` falls
+       monotonically under expansion on every lattice.
+
+**Basis and mode.** Every form fits in both modes. ``MONOTONE`` is not
+defined for the one-sided knot families (``Knot3``, ``Knot5``, ``KnotMix``),
+and ``REFIT_MODE compact`` defaults to ``Knot5``, so a ``MONOTONE`` refit
+must set ``REFIT_BASIS Blip`` or ``Blip5`` (compact) or ``Blip``, ``Blip5``
+or ``Gaussian`` (dense); otherwise it stops with ``tadah refit: RHOFORM
+MONOTONE is not defined for REFIT_BASIS Knot5 (the REFIT_MODE compact
+default, a one-sided knot family): use a bump basis (Blip, Blip5) or RHOFORM
+NONNEG ...``. ``MONOTONE`` also needs a non-negative, non-increasing
+many-body cutoff; ``refit`` writes ``Cut_Dummy``, which is one.
+``NONNEG`` with a knot family is allowed, but a knot density with every
+amplitude :math:`\ge 0` is non-increasing and convex (knots :math:`\le`
+``RCUTMB``, non-increasing cutoff), so the fit is locked to such shapes and
+a table whose density is concave anywhere in the fit window (near the core,
+say) is fitted poorly: the default compact ``Knot5`` fit of the Ravelo 2013
+Ta setfl under ``NONNEG`` fails its self-test with errors above 100
+meV/atom. A knot family set with ``REFIT_BASIS`` logs a HINT; the defaulted
+compact ``Knot5`` logs a WARNING that recommends ``REFIT_BASIS Blip5`` (a
+non-negative bump density without the convex lock) or ``RHOFORM SIGNED``.
+
+**Table pre-checks.** Under ``NONNEG`` and ``MONOTONE`` the tabulated
+density is checked on the radial fit window (the table nodes from the
+window's lower edge to the cutoff) before any fitting, in both modes: a
+node value below :math:`-\mathrm{tol}` is an error (a positive-form density
+cannot be negative), and under ``MONOTONE`` so is a rise between
+neighbouring nodes above :math:`\mathrm{tol}`, with
+:math:`\mathrm{tol} = 8\,\varepsilon \max|\rho_{tab}|` over the window. The
+message names the node, e.g. ``EAMRefit: RHOFORM MONOTONE cannot fit this
+table: the tabulated density rises from rho = ... at r = ... A to ... at r
+= ... A, inside the fit window [..., ...] A, and a MONOTONE density is
+non-increasing. Use RHOFORM NONNEG or SIGNED.``
+
+**Dense mode.** ``SIGNED`` solves each window block by the rank-revealing
+least squares of 1.5.1 (GELSD); ``NONNEG`` and ``MONOTONE`` solve it by
+Lawson-Hanson non-negative least squares (Householder QR on the passive
+columns, never the normal equations: the step columns of ``MONOTONE`` have
+condition numbers up to about ``4e9``). ``LAMBDA`` applies in every form.
+Under ``MONOTONE`` a step reaches down to :math:`r = 0`, so every step whose
+outer edge lies inside the window takes part in the window block. The
+non-negative solve costs more than GELSD and grows faster with the basis
+size: with ``NRHO_BASIS 800`` a dense ``Blip5`` refit of a Ta table took
+about 1.3 s under ``SIGNED``, 7 s under ``NONNEG`` and 33 s under
+``MONOTONE`` on one machine (``NRHO_BASIS 400``: 0.4 s, 0.9 s and 2.3 s), and
+basis escalations (``REFIT_MAX_ESCALATIONS``) repeat the fit. A solve that
+reaches its iteration cap (``3 n + 10``) keeps its non-negative amplitudes
+and logs a WARNING that they are not proven optimal.
+
+**Compact mode** (the HPO build). The ``rho`` ladder solves its coefficients
+by the same non-negative least squares, with the variable-projection
+gradient taken over the passive set (the coefficients above 0). REFINE and
+FUSE hold every amplitude at :math:`\ge 0` with Ceres lower bounds (and
+re-solve the final coefficients non-negatively). An ``INIT RHO`` anchor whose
+width (``MANUAL <mu> <eta>``) is 0 or less is an error under ``MONOTONE`` (a
+step needs ``SGRIDMB > 0``).
+
+In every form the energy-mode joint refinement (FUSE) optimises the radial
+bumps (``phi`` and ``rho``) in their outer support edges
+:math:`\mu + w/\eta`, bounded at the hard cutoff, and keeps every free bump
+width at or above the ladder's width floor (:math:`0.03\,\eta_0`). Every
+free bump therefore ends inside the cutoff and the result is the joint
+optimum of curves and energy–volume residuals. The bump-support projection
+after it normally moves nothing; it still guards a pinned ``INIT`` anchor.
+When it does move a bump and the curve-only re-solve of that channel leaves
+the energy–volume residual above tolerance (``max |dE|/tol > 1``), the joint
+refinement is re-run with the moved bumps held until nothing spills, and the
+result with the smaller ``max |dE|/tol`` is kept; the ``joint:`` lines of
+``refit_opt.log`` record it. Up to tadah 1.5.1 the joint refinement bounded
+only the bump centres, so a bump could end past the cutoff (or with a negative
+width, which the projection skipped and ``tadah hpo`` then refused), and the
+projection's curve-only re-solve could undo the energy–volume fit: compact
+``SIGNED`` refits therefore differ from 1.5.1 wherever that happened (dense
+``SIGNED`` refits are unchanged).
+
+Without the HPO build (no Ceres) ``REFIT_MODE compact`` falls back to the
+dense path, in the declared form.
+
+``refit.eam`` tabulates the fitted density above the fit window's lower
+edge; below it, the table continued from the edge, clamped at 0 under
+``NONNEG`` and ``MONOTONE``. The form's guarantees are those of the native
+density, from the lower edge out. ``tadah analysis bfunc`` plots the basis
+functions :math:`\psi_n` of a potential, not the steps :math:`S_n` of a
+``MONOTONE`` density.
+
 Embedding reference (``EMBF0``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -150,6 +276,10 @@ General and output
    * - ``EAM`` (path)
      - —
      - Input setfl EAM file to refit (required).
+   * - ``RHOFORM``
+     - —
+     - Density form of the written potential, ``SIGNED`` | ``NONNEG`` |
+       ``MONOTONE`` (required; see :ref:`refit_rhoform`).
    * - ``OUTFILE`` (path)
      - ``pot.tadah``
      - Output native Tadah! potential.
@@ -572,7 +702,9 @@ when the refit will be tuned further.
      - :math:`\phi(r)` basis count.
    * - ``NRHO_BASIS``
      - —
-     - :math:`\rho(r)` basis count.
+     - :math:`\rho(r)` basis count. Under ``RHOFORM NONNEG``/``MONOTONE``
+       the density solve is non-negative least squares, whose cost grows
+       faster with the count (see :ref:`refit_rhoform`).
    * - ``NF_BASIS``
      - —
      - :math:`F(\rho)` basis count.
@@ -648,6 +780,26 @@ so the compensation region is then widened to :math:`[0,` largest support
 (a WARNING says so; add ``EMBF0 FREE`` to the input to edit a tadah 1.5.0 fit
 in its raw reference), and the edited potential always declares its mode.
 
+``rho`` edits act in the potential's :ref:`density form <dm_ream_rhoform>`
+(the log states it), and the edited potential keeps its ``RHOFORM`` line.
+The input must declare ``RHOFORM`` (a DM_REAM potential without it stops
+with ``pot edit: DM_REAM: RHOFORM is required: ...``; add ``RHOFORM
+SIGNED`` to a tadah 1.5.1 fit), and under ``NONNEG`` and ``MONOTONE`` its
+density must pass the checks DM_REAM applies on load (the messages are
+prefixed ``pot edit:``). **Adding** inserts a coefficient of 0, which is
+valid in every form; under ``MONOTONE`` the new function is a step
+:math:`S_k`, which is 1 below its bump, so only the rule on a support
+*crossing* ``RCUT`` applies to it. **Removing** under ``NONNEG`` and
+``MONOTONE`` solves the same compensation as a bounded least-squares
+problem with every adjusted amplitude kept :math:`\ge 0` (exactly: each of
+the at most two compensators is tried free and held at 0, and the best
+feasible combination wins); a note names a compensator held at 0, a
+compensator whose support misses the affected region is left unchanged, and
+when none is left the removal is plain (logged). Under ``MONOTONE`` the
+removed step contributed its full height everywhere below its bump, so the
+affected region runs from the inner sampling bound to the removed step's
+outer edge.
+
 Outputs default to ``pot_edited.tadah`` and ``refit_edited.hpotarget`` — the
 input file is never overwritten silently (an explicit ``-o`` /
 ``--hpofileout`` wins; writing onto the input is refused). All bookkeeping
@@ -680,7 +832,27 @@ Retargeting a freshly-emitted file at the same percentage reproduces it
 byte-for-byte, and any retargeted file is a fixed point of further
 retargeting at the same settings. Bound recovery is exact at the printed
 precision (8 significant digits); a hand-pruned group (deleted lines) shifts
-the group's scale floor relative to a fresh emission (warned).
+the group's scale floor relative to a fresh emission (warned). A line whose
+lower bound was clamped (the width channels, ``RCUT``, the non-negative
+amplitudes below) is recovered with the percentage of its own group comment
+(``# KEY  (+-X%``, which a per-key ``--pct`` rewrites), so repeating a
+per-key retarget such as ``--pct 5 SGRIDMB=50`` is a fixed point too.
+
+**Density form.** Under ``RHOFORM NONNEG`` and ``MONOTONE`` the hpotarget
+written by ``refit`` (and ``refit --edit``) keeps every ``AMPGRIDMB`` box
+non-negative, :math:`lo = \max(0, v - d)` (a zero amplitude gets
+:math:`[0, d]`), and records the form in a header line, because the
+hpotarget does not carry the potential::
+
+   # RHOFORM NONNEG: AMPGRIDMB bounds are non-negative (lo = max(0, v - d))
+
+``--retarget`` parses that line: it recovers an ``AMPGRIDMB`` line clamped
+at ``lo = 0`` from its upper bound without a warning, clamps every
+rewritten ``AMPGRIDMB`` lower bound at 0, keeps the line, says so in the log
+(``tadah refit --retarget: <file> declares RHOFORM <form>: ...``) and
+refuses ``--set 'AMPGRIDMB(i)=lo,hi'`` with ``lo < 0`` (``tadah hpo``
+refuses such a box under that form as well). A ``SIGNED`` hpotarget has no
+such line and is written exactly as before.
 
 .. _refit_rcut_contract:
 

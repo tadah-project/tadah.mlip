@@ -478,6 +478,28 @@ density. To get a density in a positive form, fit it in that form:
 :ref:`tadah refit <refit_rhoform>` with ``RHOFORM`` in the refit
 configuration.
 
+.. _dm_ream_only_keys:
+
+*RHOFORM and EMBF0 without a DM_REAM block.* Both keys apply only to a
+DM_REAM many-body block (bare or inside a ``DM_mJoin``). A value that is not
+allowed (``RHOFORM SQUARE``) is an error at its line whatever the
+potential, but a valid ``RHOFORM`` or ``EMBF0`` in a potential or
+configuration without a DM_REAM block has no effect. It is accepted, so
+that one configuration can serve several descriptor choices; it is never
+written into a potential (``tadah train``, ``refit`` and ``hpo`` drop it);
+and it is reported on standard error once per key and process, like a
+:ref:`deprecated key <MBLOCK>`::
+
+   WARNING: Key RHOFORM is ignored: it applies only to a DM_REAM many-body
+   block, and the potential has none (the key has no effect and is not
+   written to a potential).
+
+The notice comes from wherever such a potential or configuration is used
+(``tadah train``, ``predict``, ``analysis``, ``hpo`` and ``pair_style
+tadah``, which prints it on every rank), also when only the task
+configuration sets the key. Neither the log level nor ``VERBOSE 0`` hides
+it.
+
 **Embedding reference, EMBF0.** An isolated atom has :math:`\rho = 0`, so its
 embedding energy is :math:`F(0)`. The key ``EMBF0`` selects how :math:`F(0)`
 is treated:
@@ -500,11 +522,7 @@ line is read as ``ZERO``. It takes ``ZERO`` or ``FREE`` only, in any case;
 any other value is an error at its line when the configuration, task file
 or potential is read (``Invalid value for key EMBF0 on line N of
 pot.tadah: 'ZEROO' (allowed: ZERO, FREE)``). It is not an ``OPTIM`` target (:ref:`hpo_embf0`). ``EMBF0`` has no
-effect on a potential without a DM_REAM block: ``tadah train`` and ``tadah
-refit`` do not write it into such a potential (a warning says so, once per
-process), and ``tadah predict`` ignores a task value for it with a warning;
-it is kept, rather than refused, so that one configuration can serve
-several descriptor choices.
+effect on a potential without a DM_REAM block (see :ref:`RHOFORM and EMBF0 without a DM_REAM block <dm_ream_only_keys>`).
 
 .. list-table:: What changes between ZERO and FREE for the same weights
    :header-rows: 1

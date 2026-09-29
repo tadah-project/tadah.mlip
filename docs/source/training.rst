@@ -265,8 +265,9 @@ Three categories of keys appear:
    their resolved output).
 
 DM_REAM potentials always carry explicit ``EMBF0`` and ``RHOFORM`` lines;
-the writer spells ``RHOFORM`` in upper case and drops a stray one (with a
-WARNING) from a potential without a DM_REAM block. ``RHOFORM`` has no
+the writer spells ``RHOFORM`` in upper case and drops a stray one from a
+potential without a DM_REAM block (a notice on standard error, once per
+process: :ref:`RHOFORM and EMBF0 without a DM_REAM block <dm_ream_only_keys>`). ``RHOFORM`` has no
 default: a DM_REAM training configuration without it stops before any
 fitting with the migration message (``RHOFORM SIGNED`` is the density of
 every tadah before 1.6.0); see :ref:`DM_REAM <dm_ream_rhoform>`.

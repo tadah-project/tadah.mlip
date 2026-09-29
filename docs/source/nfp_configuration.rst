@@ -2520,15 +2520,23 @@ The step is not shrunk for such a dimension: that would change what
 ``NONE`` a ``LOG`` box suits a positive parameter that spans decades: its
 internal width is then its number of e-foldings.
 
-**A point outside the box** is evaluated only where the optimiser puts
-one: an optimiser that ignores the bounds — the ``CERES`` drivers and NLopt
-``LN_NEWUOA`` — or, under ``OPTIM_SCALE NONE``, an NLopt algorithm whose
-own arithmetic rounds a point on a bound past it, by a rounding error (seen
-with ``LN_PRAXIS``, whose map of the box is ``mid + width·tanh``,
-``LN_COBYLA`` and the ``GN_DIRECT*_NOSCAL`` variants; in the unit box of
-``OPTIM_SCALE AUTO`` none of them does), or a start such a search hands to
-a ``PRESTAGE`` refinement.  Finite differences never do, nor, with the
-bundled ASA, do ASA's probes (:ref:`asa_optimizer`).  Its gradient is
+**A point outside the box** is evaluated only when an optimiser that
+ignores the bounds — the ``CERES`` drivers and NLopt ``LN_NEWUOA`` — puts
+one there, or hands one to a ``PRESTAGE`` refinement.  Finite differences
+never do, nor, with the bundled ASA, do ASA's probes (:ref:`asa_optimizer`).
+A coordinate proposed outside its box by no more than rounding is evaluated
+on the bound instead, recorded there (``params.tadah``, the potentials, the
+best) and counted in ``DIAGNOSTICS`` (``Snapped onto the box``), with no
+warning.  Rounding means at most 8 units in the last place from the bound,
+in real coordinates — of :math:`\max(|lo|, |hi|)` on a linear dimension, of
+the bound itself on a ``LOG`` or ``ASINH`` one — or in the internal
+coordinates the optimiser works in.  Under ``OPTIM_SCALE NONE`` NLopt's own
+arithmetic rounds points on a bound up to 2 such units past it
+(``LN_COBYLA``, ``LN_PRAXIS``, whose map of the box is ``mid +
+width·tanh``, ``LN_BOBYQA``, the unscaled ``GN_DIRECT*_NOSCAL`` variants,
+and ``MLSL`` and ``AUGLAG`` with such a local search; none of them does in
+the unit box of ``OPTIM_SCALE AUTO``): such points were evaluated outside
+the box and warned about.  Its gradient is
 differenced towards the box, one-sided (``FORWARD``: the one step towards
 it), so no finite-difference point lies further outside than the point
 itself; ``DIAGNOSTICS`` counts such gradients.  ``HPO_Host`` counts every
@@ -2537,7 +2545,7 @@ projection (:ref:`hpo_rhoform_positive`), and warns at the first:
 
 .. code-block:: none
 
-   WARNING   eval 5: CGRID2B[2] = 3 lies outside its OPTIM box [1, 2] and is evaluated there: finite differences keep to the box, so the optimiser put it there: one that ignores the bounds (CERES:*, NLopt LN_NEWUOA), under OPTIM_SCALE NONE an NLopt algorithm whose own arithmetic rounds a point on a bound past it (seen with LN_PRAXIS, LN_COBYLA, the GN_DIRECT*_NOSCAL variants), or a start such a search handed on; the loss of such a point can become the best. DIAGNOSTICS counts every evaluation outside the box
+   WARNING   eval 5: CGRID2B[2] = 3 lies outside its OPTIM box [1, 2] and is evaluated there: finite differences keep to the box, and a point proposed within rounding of a bound is evaluated on it, so an optimiser that ignores the bounds (CERES:*, NLopt LN_NEWUOA), or a start it handed on, stepped outside it; the loss of such a point can become the best. DIAGNOSTICS counts every evaluation outside the box
 
 An optimiser that ignores the bounds gets one startup ``WARNING`` in every run that uses it
 (``CERES:LBFGS (OUTER): ignores the OPTIM box: Ceres'
@@ -2559,16 +2567,18 @@ The first one-sided difference of each dimension is an ``INFO`` line
 (OPTIM box [4, 6]): one-sided 3-point difference, at RCUT2B = 5.999998 and
 RCUT2B = 5.999996 with the loss at the point itself; …``), and
 ``DIAGNOSTICS`` counts, each only when it is not zero, the one-sided
-differences per dimension, the evaluations and the gradients outside the
-box, and ``HYBRID``'s own evaluations of the point:
+differences per dimension, the points snapped onto the box, the evaluations
+and the gradients outside the box, and ``HYBRID``'s own evaluations of the
+point:
 
 .. code-block:: none
 
    One-sided differences   : 1 (a coordinate within a step of its bound, or outside
      the box, differenced into it): RCUT2B 1
+   Snapped onto the box    : 4 (points proposed outside the OPTIM box within
+     rounding, 8 units in the last place, and evaluated on the bound)
    Out-of-box evaluations  : 3 (points outside the OPTIM box, evaluated there: an
-     optimiser that ignores the bounds, or NLopt rounding past a bound under
-     OPTIM_SCALE NONE; see the first such WARNING)
+     optimiser that ignores the bounds; see the first such WARNING)
    Out-of-box gradients    : 2 (at points outside the OPTIM box, each finite
      difference stepped towards the box)
    HYBRID centre losses    : 1 (evaluations of a gradient's point for its
@@ -2591,10 +2601,14 @@ derivative-free, ``ANALYTICAL``, annealing, ``ASA``, ``GRID`` and
 ``RANDOM`` runs — except where a run evaluates an end of a ``LOG`` or
 ``ASINH`` box (a ``GRID`` over one always does) or, rarely, of a linear box
 under ``OPTIM_SCALE AUTO``: that end is now exactly the ``OPTIM`` bound,
-where it could come out one unit in the last place outside.  A search whose gradient reaches a bound can take a
+where it could come out one unit in the last place outside; and where an
+NLopt search under ``OPTIM_SCALE NONE`` proposes a point within rounding
+outside the box, which is now evaluated on the bound.  A search whose gradient reaches a bound can take a
 different path from there; so can a ``NONNEG``/``MONOTONE`` run at a zero
 amplitude, a ``CERES`` run whose iterates leave the box, a ``LOG`` or
-``ASINH`` run at a bound (at the ulp level), a run with a formerly ignored
+``ASINH`` run at a bound (at the ulp level), an NLopt run under
+``OPTIM_SCALE NONE`` that rounded a point past a bound (evaluated on it
+now), a run with a formerly ignored
 ``diff_method`` or ``fd_kernel``, and a ``HYBRID`` run without an
 analytical derivative, which took no finite differences and returned a zero
 gradient, so that a local search stopped at its start.  Refused at startup:

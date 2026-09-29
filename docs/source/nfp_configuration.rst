@@ -1390,7 +1390,7 @@ are ``INFO`` lines ``eval N: <gate> reject (...); total rejects=K``, where
 ``bumpgate=N``, ``rhogate=N`` and ``rhobargate=N`` (each when it is not 0)
 after the band counts, and ``DIAGNOSTICS`` breaks the band-D count down::
 
-   SUMMARY ... failed=72 (72.0%; A=0 B=0 C=0 D=72) rhogate=49 rhobargate=23
+   SUMMARY ... failed=86 (71.7%; A=0 B=0 C=0 D=86) rhogate=57 rhobargate=29
 
      Graded failures         : 86  (71.7%)
        A=0 (hot-var out of range)  B=0 (script failed)  C=0 (did not complete)  D=86 (pot build / gated)
@@ -4240,7 +4240,7 @@ harnesses).  An invalid value is an error, not a silent fallback.
    * - ``TADAH_FAILSCORE_GRADING=ON|OFF``
      - Replaces ``FAILSCORE_GRADING`` (:ref:`failscore_grading`).
    * - ``TADAH_BUMPGATE=CANDIDATE|STRICT``
-     - Replaces ``BUMPGATE`` (:ref:`hpo_knot_rcut`).
+     - Replaces ``BUMPGATE`` (:ref:`hpo_feasibility_gates`).
    * - ``TADAH_HPO_FORCE_REBUILD`` (any value)
      - Rebuild the per-thread trainer from scratch on every evaluation
        instead of re-initialising the cached one (serial builds) — slower;

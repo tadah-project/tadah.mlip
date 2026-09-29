@@ -363,7 +363,7 @@ many-body cutoff ``RCTYPEMB``, :math:`\psi_n` the basis function of centre
    * - ``SIGNED``
      - :math:`W f_c(r) \sum_n a_n\,\psi_n(r)`, amplitudes of any sign
      - None: :math:`\rho` can go negative (in the tail, say). This is the
-       density of tadah 1.5.1 and earlier, bit for bit.
+       density of every tadah before 1.6.0, bit for bit.
    * - ``NONNEG``
      - :math:`W \max(f_c(r),0) \sum_n a_n\,\psi_n(r)`, every
        :math:`a_n \ge 0`
@@ -383,7 +383,10 @@ On a density that is valid under both (every amplitude :math:`\ge 0`),
 differ only where the cutoff dips below 0 (``Cut_Poly`` and ``Cut_PolyS``, by
 about ``-2.7e-15`` near ``RCUTMB``). The key is global: every DM_REAM block,
 including the children of a ``DM_mJoin``, uses the same form. Values are
-case-insensitive and written in upper case. It is not an ``OPTIM`` target.
+case-insensitive and written in upper case; any other value is an error at
+its line of the configuration or potential file (``Invalid value for key
+RHOFORM on line 24 of pot.tadah: 'SQUARE' (allowed: SIGNED, NONNEG,
+MONOTONE)``), as for ``EMBF0``. It is not an ``OPTIM`` target.
 
 *The integrated bump.* :math:`S_n(r)` is the integral of :math:`\psi_n` from
 :math:`r` outwards divided by its integral over the whole support, so
@@ -450,13 +453,13 @@ no zero ``SGRIDMB`` entry for the bump families and ``KDEGMB`` entries in
 refused with::
 
    DM_REAM: RHOFORM is required: SIGNED (rho = W f_c sum a_n psi_n with signed
-   a_n, the tadah <= 1.5.1 density; add 'RHOFORM SIGNED' to use an existing
-   potential unchanged), NONNEG (the same with every a_n >= 0: rho >= 0 by
-   construction) or MONOTONE (rho = W f_c sum a_n S_n(r), S_n the integrated
-   bump, a_n >= 0: rho >= 0 and non-increasing by construction).
+   a_n, the density before tadah 1.6.0; add 'RHOFORM SIGNED' to use an
+   existing potential unchanged), NONNEG (the same with every a_n >= 0: rho >=
+   0 by construction) or MONOTONE (rho = W f_c sum a_n S_n(r), S_n the
+   integrated bump, a_n >= 0: rho >= 0 and non-increasing by construction).
 
-Add ``RHOFORM SIGNED`` to a potential written by tadah 1.5.1 or earlier to
-use it unchanged (bit for bit). ``tadah predict``, ``tadah analysis
+The key is new in tadah 1.6.0: add ``RHOFORM SIGNED`` to a potential written
+before 1.6.0 to use it unchanged (bit for bit). ``tadah predict``, ``tadah analysis
 descriptor`` and ``tadah properties pairwise`` refuse a key-less DM_REAM
 potential even when the task configuration sets ``RHOFORM`` (the form
 belongs to the potential, whose amplitudes were fitted in it), and a task

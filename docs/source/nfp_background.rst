@@ -128,6 +128,9 @@ One evaluation, step by step
 
 For every candidate :math:`\theta` the host
 
+#. under ``RHOFORM NONNEG``/``MONOTONE``, **projects** every negative
+   ``AMPGRIDMB`` coordinate onto 0, and evaluates and records that point
+   (:ref:`hpo_rhoform_positive`);
 #. **checks the bump-support gate** (``BUMPGATE CANDIDATE``, the
    default): a candidate whose hard-cutoff bumps would reach past their
    cutoff is rejected with a failure loss before any training work;
@@ -138,6 +141,10 @@ For every candidate :math:`\theta` the host
    context rather than rebuilt; for knot-family refit potentials the
    ``RCUT`` keys are re-derived from the current knot positions
    (:ref:`hpo_knot_rcut`);
+#. **checks the density gates** (``RHOGATE``, ``RHOBARGATE``, when
+   configured) on that configuration: a DM_REAM density that fails them is
+   rejected with a failure loss before any training work
+   (:ref:`hpo_feasibility_gates`);
 #. **trains** the model (the inner fit above);
 #. **computes the validation metrics** and their loss terms;
 #. **applies the skip caps** (``--skip-above`` / ``--skip-rel``): an

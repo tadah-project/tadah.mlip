@@ -269,7 +269,7 @@ the writer spells ``RHOFORM`` in upper case and drops a stray one (with a
 WARNING) from a potential without a DM_REAM block. ``RHOFORM`` has no
 default: a DM_REAM training configuration without it stops before any
 fitting with the migration message (``RHOFORM SIGNED`` is the density of
-tadah 1.5.1 and earlier); see :ref:`DM_REAM <dm_ream_rhoform>`.
+every tadah before 1.6.0); see :ref:`DM_REAM <dm_ream_rhoform>`.
 
 Runtime-only knobs (``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
 ``HEALTH_LOG``) are stripped before write — leaving them in the file

@@ -138,11 +138,12 @@ in the declared form, and the log states it (``tadah refit: RHOFORM
      - Use
    * - ``SIGNED``
      - Signed amplitudes :math:`a_n` of the basis functions
-       :math:`\psi_n`, as tadah 1.5.1 fitted them. In dense mode
-       ``pot.tadah`` is 1.5.1's plus the ``RHOFORM SIGNED`` line, and
-       ``refit.eam`` and ``refit.hpotarget`` are unchanged; compact mode
-       can differ where 1.5.1's joint refinement left a bump past the
-       cutoff (see *Compact mode* below).
+       :math:`\psi_n`, as every tadah before 1.6.0 fitted them. In dense
+       mode the key only adds the ``RHOFORM SIGNED`` line to
+       ``pot.tadah``: the fit, ``refit.eam`` and ``refit.hpotarget`` are
+       those of the density before the key existed; compact mode can differ
+       where the earlier joint refinement left a bump past the cutoff (see
+       *Compact mode* below).
      - Any table; no sign or shape guarantee.
    * - ``NONNEG``
      - The same columns with every :math:`a_n \ge 0`, by non-negative least
@@ -187,7 +188,7 @@ table: the tabulated density rises from rho = ... at r = ... A to ... at r
 non-increasing. Use RHOFORM NONNEG or SIGNED.``
 
 **Dense mode.** ``SIGNED`` solves each window block by the rank-revealing
-least squares of 1.5.1 (GELSD); ``NONNEG`` and ``MONOTONE`` solve it by
+least squares used before 1.6.0 (GELSD); ``NONNEG`` and ``MONOTONE`` solve it by
 Lawson-Hanson non-negative least squares (Householder QR on the passive
 columns, never the normal equations: the step columns of ``MONOTONE`` have
 condition numbers up to about ``4e9``). ``LAMBDA`` applies in every form.
@@ -220,12 +221,12 @@ When it does move a bump and the curve-only re-solve of that channel leaves
 the energy–volume residual above tolerance (``max |dE|/tol > 1``), the joint
 refinement is re-run with the moved bumps held until nothing spills, and the
 result with the smaller ``max |dE|/tol`` is kept; the ``joint:`` lines of
-``refit_opt.log`` record it. Up to tadah 1.5.1 the joint refinement bounded
+``refit_opt.log`` record it. Before tadah 1.6.0 the joint refinement bounded
 only the bump centres, so a bump could end past the cutoff (or with a negative
 width, which the projection skipped and ``tadah hpo`` then refused), and the
 projection's curve-only re-solve could undo the energy–volume fit: compact
-``SIGNED`` refits therefore differ from 1.5.1 wherever that happened (dense
-``SIGNED`` refits are unchanged).
+``SIGNED`` refits therefore differ from those of earlier versions wherever
+that happened (the dense fit of the density is unchanged).
 
 Without the HPO build (no Ceres) ``REFIT_MODE compact`` falls back to the
 dense path, in the declared form.
@@ -510,7 +511,9 @@ Without ``MAXEVAL`` each optimiser takes its default budget:
        ``LM`` and ``DOGLEG``
      - 50000 evaluations; 1000 iterations
    * - FUSE
-     - iterations of ``LM`` and ``DOGLEG``
+     - iterations of ``LM`` and ``DOGLEG`` in each joint solve (the held
+       re-run of *Compact mode* below, a fallback, runs up to one more
+       solve per radial bump, each with this budget)
      - 2000
 
 Before 1.6.0 dlib ``GLOBAL`` took ``max(500, MAXEVAL/20)`` function calls,
@@ -784,8 +787,8 @@ in its raw reference), and the edited potential always declares its mode.
 (the log states it), and the edited potential keeps its ``RHOFORM`` line.
 The input must declare ``RHOFORM`` (a DM_REAM potential without it stops
 with ``pot edit: DM_REAM: RHOFORM is required: ...``; add ``RHOFORM
-SIGNED`` to a tadah 1.5.1 fit), and under ``NONNEG`` and ``MONOTONE`` its
-density must pass the checks DM_REAM applies on load (the messages are
+SIGNED`` to a fit written before tadah 1.6.0), and under ``NONNEG`` and
+``MONOTONE`` its density must pass the checks DM_REAM applies on load (the messages are
 prefixed ``pot edit:``). **Adding** inserts a coefficient of 0, which is
 valid in every form; under ``MONOTONE`` the new function is a step
 :math:`S_k`, which is 1 below its bump, so only the rule on a support

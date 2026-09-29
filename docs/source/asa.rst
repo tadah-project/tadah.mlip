@@ -55,6 +55,34 @@ parameter space; for log-scaled dimensions the reanneal sensitivities
 are therefore :math:`\partial L/\partial \log x` — usually what you
 want.
 
+.. _asa_probes_box:
+
+ASA's finite-difference probes stay in the ``OPTIM`` box.  Its tangents —
+at every reannealing and at the exit, whatever ``Reanneal_Parameters`` says
+— evaluate :math:`(1 + \Delta) x`, or :math:`(1 - \Delta) x` when that
+lies outside the box, and its exit curvature (``Curvature_0 0`` or ``-1``)
+:math:`x \pm \Delta|x|`, or next to a bound :math:`x \mp \Delta|x|` and
+:math:`x \mp 2\Delta|x|`, with :math:`\Delta` = ``Delta_X`` or
+``User_Delta_Parameter[i]`` in internal coordinates.  A setting whose
+probes would leave a box is refused at startup (and when ASA starts),
+naming each dimension and the largest :math:`\Delta` that fits it.  Under
+``OPTIM_SCALE AUTO`` (every box the unit interval) the tangents fit for
+:math:`\Delta \le 1` and the curvature for :math:`\Delta \le 0.5`; under
+``NONE`` a box narrower than about :math:`2\Delta|x|` does not fit:
+
+.. code-block:: none
+
+   the STRATEGY-level optimiser ASA:ASA: ASA's finite-difference probes -- the reannealing and exit tangents at (1 + Delta) x, or (1 - Delta) x when that lies outside the box -- would be evaluated outside the OPTIM box of these dimensions:
+     - WATOM: OPTIM box [1, 1.000001], PARAM Delta_X 0.001: a probe of WATOM = 1.0000005 lies outside the box; Delta_X up to 4.99999e-07 fits it
+     Lower the Delta; or use OPTIM_SCALE AUTO, where every box is the unit box (the tangents fit for Delta <= 1).
+
+Before 1.6.0 such probes were evaluated outside the box.  The check uses
+exact arithmetic; ASA computes the curvature's inner points as
+:math:`(1 \pm \Delta) x` after testing :math:`x \pm \Delta|x|`, which can
+differ in the last unit, so a probe landing exactly on a bound can come out
+one unit in the last place beyond it — ``tadah hpo`` then counts it as an
+evaluation outside the box and warns (:ref:`hpo_fd_stencil`).
+
 Quick start
 -----------
 
@@ -232,7 +260,8 @@ defaults):
    * - ``Delta_X``
      - 0.001
      - Finite-difference step of the reanneal tangents; 0 disables
-       tangents entirely.
+       tangents entirely.  Its probes must fit every ``OPTIM`` box
+       (:ref:`the probes and the box <asa_probes_box>`).
    * - ``User_Tangents``
      - 0
      - Rejected if set: the HPO host has no analytic tangents.
@@ -268,7 +297,8 @@ Quenching and per-dimension scales:
      - Per-dimension multiplier of :math:`-\log(\mathrm{TRS})`.
    * - ``User_Delta_Parameter`` [/i]
      - = ``Delta_X``
-     - Per-dimension finite-difference tangent step.
+     - Per-dimension finite-difference tangent step; its probes must fit
+       the dimension's ``OPTIM`` box (:ref:`the probes and the box <asa_probes_box>`).
    * - ``User_Parameter_Temperature`` [/i]
      - = ``Initial_Parameter_Temperature``
      - Per-dimension initial temperature.

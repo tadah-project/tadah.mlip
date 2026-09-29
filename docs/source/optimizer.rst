@@ -271,6 +271,6 @@ box and how it consumes an initial step.
      - rejected
      - no (H0 = I, ``|x|``-relative tolerances)
      - ``PARAM fd_step`` = fraction of width under ``AUTO`` (in-house
-       kernel, one-sided within a step of a bound:
-       :ref:`hpo_fd_stencil`); Ceres kernel under ``NONE``; CERES is
+       rule); Ceres' rule under ``NONE``; either is one-sided within a
+       step of a bound (:ref:`hpo_fd_stencil`); CERES iterates are
        unbounded

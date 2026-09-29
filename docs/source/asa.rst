@@ -73,15 +73,21 @@ naming each dimension and the largest :math:`\Delta` that fits it.  Under
 .. code-block:: none
 
    the STRATEGY-level optimiser ASA:ASA: ASA's finite-difference probes -- the reannealing and exit tangents at (1 + Delta) x, or (1 - Delta) x when that lies outside the box -- would be evaluated outside the OPTIM box of these dimensions:
-     - WATOM: OPTIM box [1, 1.000001], PARAM Delta_X 0.001: a probe of WATOM = 1.0000005 lies outside the box; Delta_X up to 4.99999e-07 fits it
+     - WATOM: OPTIM box [1, 1.000001], the default Delta_X 0.001: a probe of WATOM = 1.0000005 lies outside the box; Delta_X up to 4.99999e-07 fits it
      Lower the Delta; or use OPTIM_SCALE AUTO, where every box is the unit box (the tangents fit for Delta <= 1).
 
-Before 1.6.0 such probes were evaluated outside the box.  The check uses
-exact arithmetic; ASA computes the curvature's inner points as
-:math:`(1 \pm \Delta) x` after testing :math:`x \pm \Delta|x|`, which can
-differ in the last unit, so a probe landing exactly on a bound can come out
-one unit in the last place beyond it — ``tadah hpo`` then counts it as an
-evaluation outside the box and warns (:ref:`hpo_fd_stencil`).
+Before 1.6.0 such probes were evaluated outside the box.  The check works
+on the probes as ASA computes them in double precision — the factors
+:math:`1 \pm \Delta` rounded, and :math:`\Delta|x|` bounded by its rounding
+— so at the largest :math:`\Delta` it names no tangent and no one-sided
+curvature probe lies outside the box, not even by a unit in the last place
+(an exact test of the real probes let :math:`x - 2\Delta|x|` fall a few
+units below the lower bound there).  One case is beyond any :math:`\Delta`:
+where both :math:`x \pm \Delta|x|` lie in the box, ASA evaluates the
+curvature at :math:`(1 \pm \Delta) x` instead, which can round one unit in
+the last place beyond a bound at a point or two of some boxes (about one in
+six), whatever :math:`\Delta`.  ``tadah hpo`` counts such an evaluation as
+one outside the box and warns (:ref:`hpo_fd_stencil`).
 
 Quick start
 -----------

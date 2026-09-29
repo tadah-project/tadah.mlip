@@ -2389,15 +2389,16 @@ gradients: the ``STRATEGY``-level optimiser (each ``MULTISTART`` start),
 the ``PRESTAGE`` exploration and refinement, and an ``MLSL`` / ``AUGLAG``
 block whose local search takes gradients — NLopt differentiates that
 block's objective, so its ``INNER`` search takes the enclosing block's
-settings.  An invalid value is an error there, and so is one that can never
-take effect (``… PARAM fd_step never takes effect: NLOPT:LN_SBPLX takes no
-gradient; remove it.``): ``fd_step``, ``fd_kernel`` or ``diff_method`` in
-an ``INNER`` block, on a derivative-free optimiser, or under ``GRAD_STRATEGY
-ANALYTICAL`` (the ``NOISE`` block's ``AUTO`` too, as it only derives
-``fd_step``).  Before 1.6.0 such settings were accepted and ignored, and so
-were ``diff_method`` with the in-house kernel and ``fd_kernel`` and
-``diff_method`` under ``HYBRID``; an invalid ``fd_kernel`` under ``HYBRID``
-was accepted too.
+settings.  An invalid value is an error there, with the same message on
+every backend (``PARAM fd_kernel must be inhouse or ceres (got 1)``), and so
+is one that can never take effect (``… PARAM fd_step never takes effect:
+NLOPT:LN_SBPLX takes no gradient; remove it.``): ``fd_step``, ``fd_kernel``
+or ``diff_method`` in an ``INNER`` block, on a derivative-free optimiser, or
+under ``GRAD_STRATEGY ANALYTICAL``.  The ``NOISE`` block's ``AUTO``, which
+derives ``fd_step``, follows the same rule (:ref:`hpo_noise_block`).  Before
+1.6.0 such settings were accepted and ignored, and so were ``diff_method``
+with the in-house kernel and ``fd_kernel`` and ``diff_method`` under
+``HYBRID``; an invalid ``fd_kernel`` under ``HYBRID`` was accepted too.
 
 **The stencil.**  The step :math:`h` is never shrunk or grown; only its
 direction changes.  Along each coordinate, with the box :math:`[a, b]` in
@@ -2466,16 +2467,23 @@ same:
      - 1 + *n*
    * - ``HYBRID``, ``CENTRAL``
      - 1 + 2 *m*
-     - 1 + 2 *m*, or 2 + 2 *m*
+     - 1 + 2 *m*, plus 1 when the loss at the point is not passed
+   * - ``HYBRID``, ``FORWARD``
+     - 1 + *m*, plus 1 when the loss at the point is not passed
+     - 1 + *m*, plus 1 when the loss at the point is not passed
 
 ``NUMERICAL`` evaluates the loss at the point itself first, as it always
 has.  ``HYBRID``'s analytical pass (the 1) does not, so a one-sided or
 forward difference takes the loss the optimiser has just evaluated at
-exactly that point — the NLopt ``LD_*`` searches and the ``CERES`` drivers
-always pass it, ``DLIB:BFGS`` after its line search — and evaluates it
-itself only otherwise (``DIAGNOSTICS``: ``HYBRID centre evaluations``).
-With a hot-variable warm start the loss the optimiser was given is the one
-used.  Every evaluation counts toward ``MAXEVAL`` as before.
+exactly that point.  All three gradient families pass it with every
+gradient they ask for: the NLopt ``LD_*`` searches and the ``CERES``
+drivers evaluate the loss and the gradient together, and ``DLIB:BFGS`` asks
+for each gradient right after the loss at the same point — at its start and
+at each point of its line search.  ``HYBRID`` evaluates the point itself
+only for a gradient asked for without that loss, once per gradient
+(``DIAGNOSTICS``: ``HYBRID centre losses``).  With a hot-variable warm
+start the loss the optimiser was given is the one used.  Every evaluation
+counts toward ``MAXEVAL`` as before.
 
 **A box too narrow for the step** — one in which some point has no
 stencil — is refused at startup on each phase that takes finite
@@ -2483,7 +2491,11 @@ differences, and by the gradient before it evaluates anything.  Under
 ``OPTIM_SCALE AUTO`` that is ``fd_step`` above 1/3 (``CENTRAL``) or 1/2
 (``FORWARD``) with the in-house rule, and above 1/2 (``CENTRAL``) or 1
 (``FORWARD``) with Ceres' rule, whose step shrinks towards the lower bound;
-under ``NONE`` the check runs over the whole box.  The message names the phase,
+under ``NONE`` the check runs over the whole box.  It works on the steps
+and points as computed, so a box it accepts never has a point evaluated
+outside it; it is exact where the computed step is (the limits above, and
+any ``fd_step`` that is a power of two), and otherwise may refuse an
+``fd_step`` one unit in the last place above the true limit.  The message names the phase,
 each such dimension with its box and a point without a stencil, the step and
 its source (``PARAM``, the default, or ``NOISE`` ``AUTO``), the largest
 ``fd_step`` that fits, and what else would do:
@@ -2537,13 +2549,20 @@ The first one-sided difference of each dimension is an ``INFO`` line
 (OPTIM box [4, 6]): one-sided 3-point difference, at RCUT2B = 5.999998 and
 RCUT2B = 5.999996 with the loss at the point itself; …``), and
 ``DIAGNOSTICS`` counts, each only when it is not zero, the one-sided
-differences per dimension, the gradients and the evaluations outside the
+differences per dimension, the evaluations and the gradients outside the
 box, and ``HYBRID``'s own evaluations of the point:
 
 .. code-block:: none
 
    One-sided differences   : 1 (a coordinate within a step of its bound, or outside
      the box, differenced into it): RCUT2B 1
+   Out-of-box evaluations  : 3 (points outside the OPTIM box, evaluated there:
+     an optimiser that ignores the bounds; see the first such WARNING)
+   Out-of-box gradients    : 2 (at points outside the OPTIM box, each finite
+     difference stepped towards the box)
+   HYBRID centre losses    : 1 (evaluations of a gradient's point for its
+     one-sided or forward differences, where the optimiser's own loss could not
+     be reused)
 
 A run whose gradients never come within a step of a bound keeps its
 ``DIAGNOSTICS``.
@@ -2558,7 +2577,10 @@ onto its bound, the derivative at a zero amplitude came out as
 come within a step of a bound are unchanged bit for bit, with either rule
 and with ``HYBRID`` (only the ``OPTIMISER`` line is new), and so are
 derivative-free, ``ANALYTICAL``, annealing, ``ASA``, ``GRID`` and
-``RANDOM`` runs.  A search whose gradient reaches a bound can take a
+``RANDOM`` runs — except where a run evaluates an end of a ``LOG`` or
+``ASINH`` box (a ``GRID`` over one always does) or, rarely, of a linear box
+under ``OPTIM_SCALE AUTO``: that end is now exactly the ``OPTIM`` bound,
+where it could come out one unit in the last place outside.  A search whose gradient reaches a bound can take a
 different path from there; so can a ``NONNEG``/``MONOTONE`` run at a zero
 amplitude, a ``CERES`` run whose iterates leave the box, a ``LOG`` or
 ``ASINH`` run at a bound (at the ulp level), a run with a formerly ignored
@@ -2566,8 +2588,11 @@ amplitude, a ``CERES`` run whose iterates leave the box, a ``LOG`` or
 analytical derivative, which took no finite differences and returned a zero
 gradient, so that a local search stopped at its start.  Refused at startup:
 an ``fd_step`` too large for a box (above 1/3 under ``AUTO``), ``RIDDERS``,
-settings that never take effect, and ``ASA`` settings whose probes cannot
-fit a box (:ref:`asa_optimizer`).
+settings that never take effect, the ``NOISE`` block's ``AUTO`` where no
+slope is measured (it was ignored with a note on stderr), and ``ASA``
+settings whose probes cannot fit a box (:ref:`asa_optimizer`).  ``NOISE``
+``AUTO`` now derives ``fd_step`` for an ``MLSL`` or ``AUGLAG`` block whose
+local search takes gradients too, which it left without.
 
 .. _hpo_gradient_not_finite:
 
@@ -3550,10 +3575,25 @@ Key                Args          Effect
                                  from the search-space geometry:
                                  ``fd_step = max(1e-3 × diag / sqrt(dim), 1e-6)``,
                                  where ``diag`` is the L2 norm of ``high − low`` in
-                                 internal coordinates.  Applies to any gradient-based
-                                 backend configured at the STRATEGY level (ignored with a
-                                 message otherwise), and only when ``PARAM fd_step`` is
-                                 not set explicitly.  Bareword ``AUTO`` parses as
+                                 internal coordinates, for the ``STRATEGY``-level
+                                 optimiser (each ``MULTISTART`` start, the
+                                 ``PRESTAGE`` refinement) when it takes
+                                 finite-difference gradients — a gradient-based
+                                 backend, or an ``MLSL`` / ``AUGLAG`` whose local
+                                 search is one, under ``GRAD_STRATEGY NUMERICAL`` or
+                                 ``HYBRID`` — and only when ``PARAM fd_step`` is not
+                                 set explicitly; the journal has an ``INFO`` line
+                                 ``NOISE_AUTO: PARAM fd_step set to …``.  Where that
+                                 optimiser measures no slopes — a derivative-free one,
+                                 ``ASA`` (its own probes use ``Delta_X``), or
+                                 ``GRAD_STRATEGY ANALYTICAL``, written or resolved —
+                                 ``AUTO`` would have no effect and is refused at
+                                 startup (``the STRATEGY-level optimiser
+                                 NLOPT:LN_SBPLX: NOISE AUTO has no effect:
+                                 NLOPT:LN_SBPLX measures no slopes; remove AUTO from
+                                 the NOISE block.``); before 1.6.0 it was ignored with
+                                 a note on stderr, and an ``MLSL`` / ``AUGLAG`` block
+                                 got no step from it.  Bareword ``AUTO`` parses as
                                  ``true``; default off.  The derived step must fit
                                  every ``OPTIM`` box like any other: under
                                  ``OPTIM_SCALE NONE`` (Ceres' rule, relative to
@@ -3561,9 +3601,7 @@ Key                Args          Effect
                                  refused at startup, naming ``NOISE AUTO`` as the
                                  step's source and the largest ``fd_step`` that fits
                                  (:ref:`hpo_fd_stencil`); a ``PARAM fd_step`` set by
-                                 hand overrides it.  Under ``GRAD_STRATEGY
-                                 ANALYTICAL``, which takes no finite differences, it is
-                                 refused.
+                                 hand overrides it.
 ``CALIBRATION``    int (0 or ≥2) Repeat the seed evaluation ``N`` times to surface
                                  the objective's noise floor and emit a suggested
                                  ``FTOL_REL``.  ``0`` disables; ``1`` is rejected as

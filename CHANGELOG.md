@@ -161,6 +161,7 @@ A clean-up release for wider testing: one version everywhere, documentation that
 - `[hpo][umbrella]` `tadah hpo` reads an active RESTART block's `METHOD WARM` seeds at startup: a missing or unreadable file, or one whose `RHOFORM` the run refuses, stops the run before the first evaluation, not at the first stagnation, and the density gates check restart seeds as they check INIT seeds.
 - `[hpo][umbrella]` A second `tadah hpo` run in the same process no longer prints the first run's bound-occupancy table, and prints its own once-per-run notes (the DLIB:BFGS MAXEVAL preamble, the gradient diagnostics) and counts (FAILPROBE "total gated=N", pc-worker failures) from 1.
 - `[hpo][umbrella]` `BUMPGATE`'s reject line prints the violation losslessly (`violation=0.4166666666666667`; below 5e-7 it read `0.000000`).
+- `[hpo][umbrella]` The `--hotvar` reject line prints the hot value and its window losslessly (`rejecting (hot_a0=4.500000000000001 outside [2.5, 4.5], ...)`; a value just above the max read as the max itself).
 - `[hpo][umbrella]` Compact refit under `REFIT_OBJECTIVE curve`: FUSE refines the radial bumps in their outer support edges bounded at the cutoff, as the energy-mode FUSE does, so it never ends worse than its start (the bump-support projection undid it: a test curve went from 0.0948 to 0.1020).
 
 ## [1.5.0] — 2026-09-10

@@ -768,7 +768,11 @@ such a value replaced the checked, reported limit.
    error (it used to be passed on to LAMMPS). If a hot value
    lands outside ``[min, max]`` HPO fail-scores the iteration and
    skips phase B (a *graded* failure when ``FAILSCORE_GRADING ON``
-   — see :ref:`failscore_grading`).
+   — see :ref:`failscore_grading`); the journal WARNING ``eval N script
+   <script>: rejecting (hot_a0=4.500000000000001 outside [2.5, 4.5],
+   total rejects=K)`` prints the value and the window in the shortest
+   form that reads back exactly (six decimals before 1.6.0, which printed
+   a value just above ``<max>`` as ``<max>`` itself).
 
 ``--failvar <name> [<scale>]``
    Declare a *violation variable*: a nonnegative LAMMPS ``equal``-style

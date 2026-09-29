@@ -82,12 +82,14 @@ on the probes as ASA computes them in double precision — the factors
 — so at the largest :math:`\Delta` it names no tangent and no one-sided
 curvature probe lies outside the box, not even by a unit in the last place
 (an exact test of the real probes let :math:`x - 2\Delta|x|` fall a few
-units below the lower bound there).  One case is beyond any :math:`\Delta`:
-where both :math:`x \pm \Delta|x|` lie in the box, ASA evaluates the
-curvature at :math:`(1 \pm \Delta) x` instead, which can round one unit in
-the last place beyond a bound at a point or two of some boxes (about one in
-six), whatever :math:`\Delta`.  ``tadah hpo`` counts such an evaluation as
-one outside the box and warns (:ref:`hpo_fd_stencil`).
+units below the lower bound there).  Where both :math:`x \pm \Delta|x|`
+lie in the box, upstream ASA tested them but evaluated the curvature at
+:math:`(1 \pm \Delta) x` instead, which can round one unit in the last
+place beyond a bound — at a point or two of about one box in six, whatever
+:math:`\Delta`; the bundled ASA evaluates the points it tested
+(TADAH-PATCH 8 in ``HPO/external/asa/TADAH-PATCHES.md``), so every probe the
+check covers is the one evaluated.  ``tadah hpo`` still counts any
+evaluation outside the box and warns at the first (:ref:`hpo_fd_stencil`).
 
 Quick start
 -----------

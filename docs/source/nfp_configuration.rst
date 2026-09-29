@@ -2478,9 +2478,10 @@ forward difference takes the loss the optimiser has just evaluated at
 exactly that point.  All three gradient families pass it with every
 gradient they ask for: the NLopt ``LD_*`` searches and the ``CERES``
 drivers evaluate the loss and the gradient together, and ``DLIB:BFGS`` asks
-for each gradient right after the loss at the same point — at its start and
-at each point of its line search.  ``HYBRID`` evaluates the point itself
-only for a gradient asked for without that loss, once per gradient
+for a gradient at its start, right after the loss there, and after each
+line search at the point the search ended on, the last point it evaluated
+(its line search evaluates the loss alone).  ``HYBRID`` evaluates the point
+itself only for a gradient asked for without that loss, once per gradient
 (``DIAGNOSTICS``: ``HYBRID centre losses``).  With a hot-variable warm
 start the loss the optimiser was given is the one used.  Every evaluation
 counts toward ``MAXEVAL`` as before.
@@ -2491,11 +2492,14 @@ differences, and by the gradient before it evaluates anything.  Under
 ``OPTIM_SCALE AUTO`` that is ``fd_step`` above 1/3 (``CENTRAL``) or 1/2
 (``FORWARD``) with the in-house rule, and above 1/2 (``CENTRAL``) or 1
 (``FORWARD``) with Ceres' rule, whose step shrinks towards the lower bound;
-under ``NONE`` the check runs over the whole box.  It works on the steps
-and points as computed, so a box it accepts never has a point evaluated
-outside it; it is exact where the computed step is (the limits above, and
-any ``fd_step`` that is a power of two), and otherwise may refuse an
-``fd_step`` one unit in the last place above the true limit.  The message names the phase,
+under ``NONE`` the check runs over the whole box.  The check is sound: a
+box it accepts never has a point evaluated outside it.  The limits above
+are exact.  It bounds the step as computed — exactly for a power-of-two
+``fd_step``, else within an ulp of it — but takes :math:`u \pm h` as exact
+numbers, where the stencil tests them rounded, so in a box only hundreds or
+thousands of ulps wide (possible under ``NONE``) it can refuse an
+``fd_step`` that every point of the box would accept, by up to a few per
+cent.  The message names the phase,
 each such dimension with its box and a point without a stencil, the step and
 its source (``PARAM``, the default, or ``NOISE`` ``AUTO``), the largest
 ``fd_step`` that fits, and what else would do:
@@ -2516,9 +2520,15 @@ The step is not shrunk for such a dimension: that would change what
 ``NONE`` a ``LOG`` box suits a positive parameter that spans decades: its
 internal width is then its number of e-foldings.
 
-**A point outside the box** is evaluated only when an optimiser that
-ignores the bounds — the ``CERES`` drivers and NLopt ``LN_NEWUOA`` — puts
-one there, or hands one to a ``PRESTAGE`` refinement.  Its gradient is
+**A point outside the box** is evaluated only where the optimiser puts
+one: an optimiser that ignores the bounds — the ``CERES`` drivers and NLopt
+``LN_NEWUOA`` — or, under ``OPTIM_SCALE NONE``, an NLopt algorithm whose
+own arithmetic rounds a point on a bound past it, by a rounding error (seen
+with ``LN_PRAXIS``, whose map of the box is ``mid + width·tanh``,
+``LN_COBYLA`` and the ``GN_DIRECT*_NOSCAL`` variants; in the unit box of
+``OPTIM_SCALE AUTO`` none of them does), or a start such a search hands to
+a ``PRESTAGE`` refinement.  Finite differences never do, nor, with the
+bundled ASA, do ASA's probes (:ref:`asa_optimizer`).  Its gradient is
 differenced towards the box, one-sided (``FORWARD``: the one step towards
 it), so no finite-difference point lies further outside than the point
 itself; ``DIAGNOSTICS`` counts such gradients.  ``HPO_Host`` counts every
@@ -2527,9 +2537,9 @@ projection (:ref:`hpo_rhoform_positive`), and warns at the first:
 
 .. code-block:: none
 
-   WARNING   eval 5: CGRID2B[2] = 3 lies outside its OPTIM box [1, 2] and is evaluated there: finite differences keep to the box, so an optimiser that ignores the bounds (CERES:*, NLopt LN_NEWUOA), or a start it handed on, stepped outside it; the loss of such a point can become the best. DIAGNOSTICS counts every evaluation outside the box
+   WARNING   eval 5: CGRID2B[2] = 3 lies outside its OPTIM box [1, 2] and is evaluated there: finite differences keep to the box, so the optimiser put it there: one that ignores the bounds (CERES:*, NLopt LN_NEWUOA), under OPTIM_SCALE NONE an NLopt algorithm whose own arithmetic rounds a point on a bound past it (seen with LN_PRAXIS, LN_COBYLA, the GN_DIRECT*_NOSCAL variants), or a start such a search handed on; the loss of such a point can become the best. DIAGNOSTICS counts every evaluation outside the box
 
-Such an optimiser gets one startup ``WARNING`` in every run that uses it
+An optimiser that ignores the bounds gets one startup ``WARNING`` in every run that uses it
 (``CERES:LBFGS (OUTER): ignores the OPTIM box: Ceres'
 GradientProblemSolver has no bounds, …``); keeping its own iterates in the
 box is a separate matter.  The ends of a box map to exactly its ``OPTIM``
@@ -2556,8 +2566,9 @@ box, and ``HYBRID``'s own evaluations of the point:
 
    One-sided differences   : 1 (a coordinate within a step of its bound, or outside
      the box, differenced into it): RCUT2B 1
-   Out-of-box evaluations  : 3 (points outside the OPTIM box, evaluated there:
-     an optimiser that ignores the bounds; see the first such WARNING)
+   Out-of-box evaluations  : 3 (points outside the OPTIM box, evaluated there: an
+     optimiser that ignores the bounds, or NLopt rounding past a bound under
+     OPTIM_SCALE NONE; see the first such WARNING)
    Out-of-box gradients    : 2 (at points outside the OPTIM box, each finite
      difference stepped towards the box)
    HYBRID centre losses    : 1 (evaluations of a gradient's point for its
@@ -2589,7 +2600,8 @@ analytical derivative, which took no finite differences and returned a zero
 gradient, so that a local search stopped at its start.  Refused at startup:
 an ``fd_step`` too large for a box (above 1/3 under ``AUTO``), ``RIDDERS``,
 settings that never take effect, the ``NOISE`` block's ``AUTO`` where no
-slope is measured (it was ignored with a note on stderr), and ``ASA``
+slope is measured or beside a written ``PARAM fd_step`` (it was ignored
+with a note on stderr), and ``ASA``
 settings whose probes cannot fit a box (:ref:`asa_optimizer`).  ``NOISE``
 ``AUTO`` now derives ``fd_step`` for an ``MLSL`` or ``AUGLAG`` block whose
 local search takes gradients too, which it left without.
@@ -3581,9 +3593,13 @@ Key                Args          Effect
                                  finite-difference gradients — a gradient-based
                                  backend, or an ``MLSL`` / ``AUGLAG`` whose local
                                  search is one, under ``GRAD_STRATEGY NUMERICAL`` or
-                                 ``HYBRID`` — and only when ``PARAM fd_step`` is not
-                                 set explicitly; the journal has an ``INFO`` line
-                                 ``NOISE_AUTO: PARAM fd_step set to …``.  Where that
+                                 ``HYBRID``; the journal has an ``INFO`` line
+                                 ``NOISE_AUTO: PARAM fd_step set to …``.  Beside a
+                                 ``PARAM fd_step`` written in the block it has no
+                                 effect and is refused on the phase concerned
+                                 (``… NOISE AUTO has no effect: PARAM fd_step 0.0001
+                                 is set; remove one of them.``); before 1.6.0 the
+                                 written step was taken, with a note on stderr.  Where that
                                  optimiser measures no slopes — a derivative-free one,
                                  ``ASA`` (its own probes use ``Delta_X``), or
                                  ``GRAD_STRATEGY ANALYTICAL``, written or resolved —
@@ -3599,9 +3615,9 @@ Key                Args          Effect
                                  ``OPTIM_SCALE NONE`` (Ceres' rule, relative to
                                  ``|u|``) a box much narrower than the others can be
                                  refused at startup, naming ``NOISE AUTO`` as the
-                                 step's source and the largest ``fd_step`` that fits
-                                 (:ref:`hpo_fd_stencil`); a ``PARAM fd_step`` set by
-                                 hand overrides it.
+                                 step's source and the largest ``fd_step`` that fits,
+                                 with the advice to remove ``AUTO`` and set ``PARAM
+                                 fd_step`` to at most that (:ref:`hpo_fd_stencil`).
 ``CALIBRATION``    int (0 or ≥2) Repeat the seed evaluation ``N`` times to surface
                                  the objective's noise floor and emit a suggested
                                  ``FTOL_REL``.  ``0`` disables; ``1`` is rejected as

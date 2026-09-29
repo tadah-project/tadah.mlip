@@ -167,5 +167,9 @@ Index
      - A DM_REAM ``tadah refit`` seed with the zero-referenced embedding
        (``EMBF0 ZERO``): the search moves the negative embedding knots and
        the isolated-atom energy stays exactly 0 for every candidate — see
-       :ref:`hpo_embf0`.
-     - ``OPTIM CEMBFUNC``, ``--outvar Eiso``
+       :ref:`hpo_embf0`. The seed declares the mandatory density form
+       ``RHOFORM SIGNED`` (four of its eight density amplitudes are
+       negative); that line is the seed's only change, and the run's losses
+       and parameters are bitwise those it had before the key existed — see
+       :ref:`hpo_rhoform`.
+     - ``OPTIM CEMBFUNC``, ``--outvar Eiso``, ``RHOFORM SIGNED``

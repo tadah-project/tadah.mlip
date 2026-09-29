@@ -335,11 +335,145 @@ DM_REAM
 ~~~~~~~
 
 The native EAM many-body descriptor written by :ref:`tadah refit <refit>`.
-Both EAM functions are basis expansions: the density
-:math:`\rho(r)=\sum_n a_n\,\psi_n(r)` (centres ``CGRIDMB``, widths
-``SGRIDMB``, fixed amplitudes ``AMPGRIDMB``) and the embedding
+Both EAM functions are basis expansions: the pair density
+:math:`\rho(r)=W f_c(r)\sum_n a_n\,T_n(r)` (centres ``CGRIDMB``, widths
+``SGRIDMB``, fixed amplitudes ``AMPGRIDMB``; :math:`T_n` depends on the
+density form ``RHOFORM``, below) and the embedding
 :math:`F(\rho)=\sum_m w_m\,\tilde g_m(\rho)` (centres ``CEMBFUNC``, widths
 ``SEMBFUNC``), whose coefficients :math:`w_m` are the model's linear weights.
+
+.. _dm_ream_rhoform:
+
+**Density form, RHOFORM.** The key ``RHOFORM SIGNED | NONNEG | MONOTONE`` is
+**mandatory** for every DM_REAM potential and configuration: it has no
+default, and nothing supplies it implicitly. With :math:`W` the ``WATOM``
+pair weight (per species :math:`W_{ii}=w_i`,
+:math:`W_{ij}=\sqrt{w_i w_j}`; or the listed pair value), :math:`f_c` the
+many-body cutoff ``RCTYPEMB``, :math:`\psi_n` the basis function of centre
+:math:`n` (the ``TYPEMB`` basis code) and :math:`S_n` its integrated bump
+(below):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 13 37 50
+
+   * - Form
+     - Pair density
+     - Guarantee
+   * - ``SIGNED``
+     - :math:`W f_c(r) \sum_n a_n\,\psi_n(r)`, amplitudes of any sign
+     - None: :math:`\rho` can go negative (in the tail, say). This is the
+       density of tadah 1.5.1 and earlier, bit for bit.
+   * - ``NONNEG``
+     - :math:`W \max(f_c(r),0) \sum_n a_n\,\psi_n(r)`, every
+       :math:`a_n \ge 0`
+     - :math:`\rho \ge 0` exactly. With the knot family, knots
+       :math:`\le` ``RCUTMB`` and a non-increasing cutoff (every cutoff
+       except ``Cut_SinInv``), :math:`\rho` is also non-increasing and
+       convex.
+   * - ``MONOTONE``
+     - :math:`W \max(f_c(r),0) \sum_n a_n\,S_n(r)`, every
+       :math:`a_n \ge 0`
+     - :math:`\rho \ge 0` exactly and :math:`\rho' \le 0` (to rounding), so
+       the lattice density :math:`\bar\rho(a)` is non-increasing in the
+       lattice constant on every lattice.
+
+On a density that is valid under both (every amplitude :math:`\ge 0`),
+``NONNEG`` is bit-identical to ``SIGNED`` wherever :math:`f_c \ge 0`; the two
+differ only where the cutoff dips below 0 (``Cut_Poly`` and ``Cut_PolyS``, by
+about ``-2.7e-15`` near ``RCUTMB``). The key is global: every DM_REAM block,
+including the children of a ``DM_mJoin``, uses the same form. Values are
+case-insensitive and written in upper case. It is not an ``OPTIM`` target.
+
+*The integrated bump.* :math:`S_n(r)` is the integral of :math:`\psi_n` from
+:math:`r` outwards divided by its integral over the whole support, so
+:math:`S_n = 1` inside the bump's inner support edge,
+:math:`S_n(c_n) = 1/2` exactly and :math:`S_n = 0` beyond the outer edge
+(the same outer edge as the bump's). With :math:`x = s_n (r - c_n)`
+(:math:`s_n` the ``SGRIDMB`` width) and :math:`a = |x|`:
+
+* ``Blip`` (basis code 0): :math:`Q(a) = (2-a)^4 - 4(1-a)_+^4`,
+  :math:`S = Q/24` for :math:`x \ge 0` and :math:`1 - Q/24` for
+  :math:`x < 0` (:math:`S = 1` for :math:`x \le -2`, 0 for
+  :math:`x \ge 2`); :math:`dS/dr = -s_n B(x)/1.5`.
+* ``Blip5`` (basis code 3): :math:`P(a) = (3-a)^6 - 6(2-a)_+^6 + 15(1-a)_+^6`,
+  :math:`S = P/720` for :math:`x \ge 0` and :math:`1 - P/720` for
+  :math:`x < 0` (support :math:`|x| < 3`);
+  :math:`dS/dr = -s_n B_5(x)\cdot 11/20`.
+* ``Gaussian`` (basis code 1):
+  :math:`S = \tfrac12\,\mathrm{erfc}\big(\sqrt{s_n}\,(r - c_n)\big)`,
+  :math:`dS/dr = -\sqrt{s_n/\pi}\,e^{-s_n (r-c_n)^2}`. Like the Gaussian
+  itself, the step has no compact support.
+* the knot family (basis code 2, any ``KDEGMB``): **refused** under
+  ``MONOTONE``. Use ``NONNEG``: a non-negative knot density is already
+  non-increasing with a non-increasing cutoff.
+
+Under ``MONOTONE`` an amplitude is the height of a step, not of a bump:
+:math:`\partial\rho/\partial a_n = W S_n f_c` equals :math:`W f_c`
+everywhere inside the bump's inner edge, so :math:`a_n` is how much
+:math:`\rho` drops across bump :math:`n`, and changing it moves the whole
+density inside that bump's outer edge, the core included. Below the
+innermost inner edge every :math:`S_n = 1`, so :math:`\rho = W f_c(r)
+\sum_n a_n` there: constant under ``Cut_Dummy``, following the cutoff
+otherwise. Keep this non-local meaning in mind when sizing
+``OPTIM AMPGRIDMB`` boxes: a change to an outer amplitude shifts the density
+by the same amount (times :math:`W f_c`) all the way in to the core.
+Monotonicity holds to rounding only: the Blip5 step has 1-ulp rises for
+:math:`|x| \lesssim 1.2`, and ``Cut_Poly``/``Cut_PolyS`` rise at the
+``1e-15`` level near the cutoff.
+``tadah analysis bfunc`` plots the basis functions :math:`\psi_n`, never the
+steps :math:`S_n`.
+
+*Validation* (in the constructor and on every HPO candidate; an invalid
+density is an error naming the 1-based entry and its value). Every form:
+the existing size checks (``CGRIDMB``/``SGRIDMB``/``AMPGRIDMB``/``KDEGMB``),
+no zero ``SGRIDMB`` entry for the bump families and ``KDEGMB`` entries in
+``{3, 5}``. ``NONNEG`` and ``MONOTONE`` add:
+
+* every ``AMPGRIDMB`` entry finite and :math:`\ge 0`, and every ``CGRIDMB``
+  entry finite;
+* every density pair weight :math:`W > 0`, i.e. every ``WATOM`` value finite
+  and :math:`> 0`. Without a ``WATOM`` line :math:`W = 1` where DM_REAM
+  reads the potential directly (``tadah predict``, LAMMPS); ``tadah train``
+  and ``tadah hpo`` first insert ``WATOM`` = Z (the atomic number), so there
+  :math:`W = Z`;
+* ``NONNEG``: every ``SGRIDMB`` entry finite, and :math:`> 0` for the
+  Gaussian basis;
+* ``MONOTONE``: every ``SGRIDMB`` entry finite and :math:`> 0` (a step with
+  a negative width rises), a bump basis (not the knot family), and a
+  many-body cutoff on the list of measured non-negative, non-increasing
+  cutoffs: ``Cut_Dummy``, ``Cut_Cos``, ``Cut_CosS``, ``Cut_Tanh``,
+  ``Cut_PT``, ``Cut_Poly`` and ``Cut_PolyS``. ``Cut_SinInv`` (increasing)
+  and any other cutoff are refused.
+
+*Migration.* A DM_REAM potential or configuration without ``RHOFORM`` is
+refused with::
+
+   DM_REAM: RHOFORM is required: SIGNED (rho = W f_c sum a_n psi_n with signed
+   a_n, the tadah <= 1.5.1 density; add 'RHOFORM SIGNED' to use an existing
+   potential unchanged), NONNEG (the same with every a_n >= 0: rho >= 0 by
+   construction) or MONOTONE (rho = W f_c sum a_n S_n(r), S_n the integrated
+   bump, a_n >= 0: rho >= 0 and non-increasing by construction).
+
+Add ``RHOFORM SIGNED`` to a potential written by tadah 1.5.1 or earlier to
+use it unchanged (bit for bit). ``tadah predict``, ``tadah analysis
+descriptor`` and ``tadah properties pairwise`` refuse a key-less DM_REAM
+potential even when the task configuration sets ``RHOFORM`` (the form
+belongs to the potential, whose amplitudes were fitted in it), and a task
+value that differs from the potential's is refused as well. The LAMMPS pair
+style refuses a key-less potential with ``pair_coeff: failed to load Tadah
+potential from '<file>': DM_REAM: RHOFORM is required: ...``, and on a
+successful load its banner states the form (``Tadah! DM_REAM density form
+RHOFORM <form>``). Every DM_REAM ``pot.tadah`` that tadah writes carries the
+``RHOFORM`` line (``tadah train``, ``refit``, ``refit --edit`` and ``hpo``),
+and binaries older than the key refuse such files with ``Invalid key:
+RHOFORM``. Changing the key of an existing potential is safe only from
+``SIGNED`` to ``NONNEG`` when every amplitude is already :math:`\ge 0` and
+every pair weight :math:`> 0` (the density is then unchanged);
+``MONOTONE`` reads the same amplitudes as step heights, which is a different
+density. To get a density in a positive form, fit it in that form:
+:ref:`tadah refit <refit_rhoform>` with ``RHOFORM`` in the refit
+configuration.
 
 **Embedding reference, EMBF0.** An isolated atom has :math:`\rho = 0`, so its
 embedding energy is :math:`F(0)`. The key ``EMBF0`` selects how :math:`F(0)`

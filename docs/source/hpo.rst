@@ -264,6 +264,13 @@ seed size the box:
   than the value.
 * cutoff keys (``RCUT*``) cannot be ``AUTO`` — the neighbour list is
   sized from an explicit high bound.
+* under ``RHOFORM NONNEG``/``MONOTONE`` the ``AMPGRIDMB`` boxes are clamped
+  at 0 and marked ``AUTO FRAC>=0`` (see :ref:`hpo_rhoform_positive`).
+  Under ``MONOTONE`` an amplitude is a step height: a change to an outer
+  amplitude shifts the density by the same amount (times :math:`W f_c`)
+  all the way in to the core (see :ref:`density form <dm_ream_rhoform>`),
+  so size those boxes more tightly than under ``NONNEG``, where an amplitude
+  changes only its own bump.
 
 The resolved boxes are written to ``hpo_optim_resolved.hpo`` (a
 paste-ready explicit ``OPTIM`` block) and every run writes
@@ -282,6 +289,10 @@ bound, the gap as a fraction of the width and the evaluation since which
 the mark has persisted, and the ``DIAGNOSTICS`` section repeats it for
 the final best.  A best that keeps riding a bound suggests widening that
 side (where the physics permits) and rerunning with ``INIT METHOD WARM``.
+The exception is a lower bound the potential itself imposes: an
+``AMPGRIDMB`` amplitude at 0 under ``RHOFORM NONNEG``/``MONOTONE`` is an
+admissible optimum, marked ``LO*`` and given no such advice (see
+:ref:`hpo_rhoform_positive`).
 
 Special cases:
 
@@ -296,6 +307,10 @@ Special cases:
 * ``OPTIM EMBF0`` — **rejected** at startup.  ``EMBF0`` (``ZERO``/``FREE``)
   selects the :ref:`DM_REAM embedding reference <dm_ream>`, a discrete
   property of the potential; set it in the ``-c`` potential/configuration.
+* ``OPTIM`` on structure data — ``RHOFORM``, ``TYPE2B``, ``TYPEMB``,
+  ``RCTYPE2B``, ``RCTYPEMB``, ``KDEG2B``, ``KDEGMB``, ``KDEGEMB`` (any
+  case) — is **rejected** at startup: these are discrete properties of the
+  potential, not continuous parameters.
 
 .. _hpo_embf0:
 
@@ -337,6 +352,25 @@ coefficients may drift along it; the raw :math:`F(0)` of the stored
 ``WEIGHTS`` can then grow, which matters only to tools that evaluate the
 weights without honouring ``EMBF0``.
 
+.. _hpo_rhoform:
+
+DM_REAM potentials and the density form (RHOFORM)
+.................................................
+
+The ``-c`` configuration of a DM_REAM model must declare its
+:ref:`density form <dm_ream_rhoform>` (``RHOFORM SIGNED | NONNEG |
+MONOTONE``; startup stops without it), and every potential the run writes
+carries it. Under ``SIGNED`` nothing changes for the search. Under
+``NONNEG`` and ``MONOTONE`` every candidate must remain a valid density: the
+``AMPGRIDMB`` boxes are non-negative and every evaluated candidate is
+projected onto them (see :ref:`hpo_rhoform_positive`). Whatever the form,
+two gates can keep the density physical during the search, ``RHOGATE`` (the
+sign of a ``SIGNED`` density) and ``RHOBARGATE`` (a lattice density that
+falls under expansion), and ``hpo_run.log`` reports the density of the
+``-c`` potential and of the best (see :ref:`hpo_feasibility_gates`).
+``WARM`` seeds must declare the run's form when density keys are searched
+(see the same section).
+
 .. _hpo_knot_rcut:
 
 Cutoffs of knot-family refit potentials
@@ -370,8 +404,8 @@ hpotarget and widen its upper bound.
 
 Blip-family potentials are unaffected: their hard truncation at the
 stated ``RCUT`` is part of the fitted model, so the key remains
-authoritative (warnings fire if ``OPTIM`` bounds let a blip's support
-cross it).
+authoritative; under a hard cutoff ``BUMPGATE`` keeps every candidate's
+bumps inside it (see :ref:`hpo_feasibility_gates`).
 
 .. _hpo_fixweight:
 
@@ -680,6 +714,7 @@ Order of firing within one iteration
 
 ::
 
+   feasibility gates (BUMPGATE, RHOGATE, RHOBARGATE)  →  [any fails?  → graded band D, stop]
    train/validate  →  [skip caps?  → graded band D, stop]
    dispatch batch:  FAILPROBE first (cheapest → returns first),
                     hot scripts + independent cold scripts alongside
@@ -712,8 +747,11 @@ windows satisfied, then feasible:
      - Failure modes
      - Graded by
    * - D
-     - probe gate fired; potential build crashed; skip caps
-     - ``S`` (probe) / metric excess (caps)
+     - probe gate fired; potential build crashed; skip caps; a
+       :ref:`feasibility gate <hpo_feasibility_gates>` rejected the
+       candidate before training
+     - ``S`` (probe) / metric excess (caps) / the gate's violation
+       measure ``v``
    * - C
      - run hung and was killed; worker died
      - ``S`` (probe)
@@ -916,6 +954,482 @@ script, once, assembled from the same hinge idioms as the ``pen_*``
 observables.  The only knob that can *change your objective* if set
 carelessly is the probe ``--gate`` — leave it off until you have
 calibrated ``S``.
+
+.. _hpo_feasibility_gates:
+
+Feasibility gates
+~~~~~~~~~~~~~~~~~
+
+Three root-level keys reject a candidate **before any training work** when
+its model is invalid in a way the parameters alone decide:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 16 50
+
+   * - Key
+     - Default
+     - Rejects a candidate whose
+   * - ``BUMPGATE CANDIDATE|STRICT``
+     - ``CANDIDATE`` (always on)
+     - compact bump reaches past a hard cutoff, :math:`c + w/\eta > r_c`
+   * - ``RHOGATE <tol> ...``
+     - off
+     - DM_REAM pair density :math:`\rho(r)` dips below
+       :math:`-\mathrm{tol}\,\rho_{max}` (``RHOFORM SIGNED`` only)
+   * - ``RHOBARGATE <lattice> <a0> <f_lo> <f_hi> ...``
+     - off
+     - lattice density :math:`\bar\rho(a)` is not strictly decreasing on
+       :math:`a \in [f_{lo} a_0, f_{hi} a_0]`
+
+**What a reject is.** The candidate gets a :ref:`band-D failure
+<failscore_grading>` without being trained, predicted or run through
+LAMMPS. With ``FAILSCORE_GRADING ON`` the loss is graded by the gate's
+violation measure :math:`v \ge 0`,
+
+.. math::
+
+   L = 0.999\,\mathrm{FS} + 0.001\,\mathrm{FS}\,\Big(0.75 + 0.25\,\frac{v}{1+v}\Big),
+
+so :math:`v = 0` sits at the band-D floor :math:`0.99975\,\mathrm{FS}`,
+a smaller violation is always a lower loss, and a *saturated* measure
+(:math:`v` = ``DBL_MAX``, for a density gate whose density is not finite,
+has no positive value, or has a pair weight :math:`\le 0`; see below) sits
+at the top of band D. With
+grading ``OFF`` the loss is the flat ``FAILSCORE``. A reject is otherwise a
+complete evaluation: it takes an evaluation number and a ``MAXEVAL`` slot
+(at almost no wall time, so budget ``MAXEVAL`` for them or stop on
+``MAXTIME``), its rows are written, it counts toward stagnation, and it can
+never become the best; its ``DUMP`` archive is header-only (no potential
+was built). The verdicts are pure functions of the candidate and the
+settings (the same at any ``THREADS``), and a gate never changes the
+candidate, so a candidate that passes evaluates bit for bit as without the
+gate.
+
+**Journal.** The first five rejects of each gate, then every power of two,
+are ``INFO`` lines ``eval N: <gate> reject (...); total rejects=K``, where
+``K`` counts that gate's rejects. The ``SUMMARY`` failure census gains
+``bumpgate=N``, ``rhogate=N`` and ``rhobargate=N`` (each when it is not 0)
+after the band counts, and ``DIAGNOSTICS`` breaks the band-D count down::
+
+   SUMMARY ... failed=72 (72.0%; A=0 B=0 C=0 D=72) rhogate=49 rhobargate=23
+
+     Graded failures         : 86  (71.7%)
+       A=0 (hot-var out of range)  B=0 (script failed)  C=0 (did not complete)  D=86 (pot build / gated)
+       of which rho-sign gate rejects: 57 (rho_min < -tol*rho_max on the RHOGATE window, rejected before training)
+       of which lattice-rhobar gate rejects: 29 (rhobar(a) not strictly decreasing, rejected before training)
+
+(``of which bump-support gate rejects: N (c + w/eta past RCUT, rejected
+before training)`` for ``BUMPGATE``.)
+
+BUMPGATE — bump support inside a hard cutoff
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+::
+
+   BUMPGATE CANDIDATE | STRICT        # default CANDIDATE
+
+On a channel whose basis is a compact bump family (``D2_Blip`` or
+``D2_Blip5`` pair channels, the ``Blip``/``Blip5`` density of ``DM_REAM``)
+and whose cutoff is hard (``Cut_Dummy``, also when ``RCTYPE*`` is absent),
+every bump must end at or before the cutoff: :math:`c + w/\eta \le r_c`,
+with :math:`c` the ``CGRID*`` centre, :math:`\eta` the ``SGRID*`` width,
+:math:`w = 2` (Blip) or 3 (Blip5) and :math:`r_c` the ``RCUT*`` value (to a
+relative tolerance of ``1e-6``). A bump that overhangs is cut off at
+:math:`r_c`: an energy and force step whenever a neighbour crosses the
+cutoff. Under a smooth cutoff the overhang is damped to zero and there is no
+gate.
+
+* **Startup, both modes.** The ``-c`` potential's own bumps must fit its
+  stated cutoff: a centre beyond it, or a support past it, is an error that
+  says how to fix it (the ``SGRID*`` value that fits, moving the centre with
+  ``tadah refit --edit``, or a larger ``RCUT*``).
+* **CANDIDATE** (default). An ``OPTIM`` box is refused only when it holds no
+  feasible point at all (even its most favourable corner, lowest centre and
+  largest :math:`\eta`, reaches past the largest cutoff a candidate can
+  have). A box that is only partly feasible is accepted at full width, and
+  an ``INFO`` message per bump (``tadah`` log, verbosity 2) says that the
+  gate is armed for it. Every armed bump is then checked on every candidate,
+  against the candidate's own sampled cutoff when ``RCUT*`` is ``OPTIM``'d,
+  with the measure
+
+  .. math::
+
+     v = \sum_{\text{violating bumps}} \frac{(c + w/\eta - r_c)\,\eta}{w},
+
+  the summed overhang in units of the half-width, which grows with every
+  violating coordinate. The reject line reads ``eval N: bump-support gate
+  reject (c + w/eta past the cutoff, violation=<v>, graded band D); total
+  rejects=K``. A configuration whose boxes cannot violate arms nothing and
+  evaluates exactly as without the gate.
+* **STRICT** (the behaviour of 1.4.0, before ``CANDIDATE`` became the
+  default). The worst corner of every box
+  (``CGRID*`` high bound, ``SGRID*`` low bound, the lowest ``OPTIM RCUT*``
+  bound) must fit, or startup stops naming the bound to change; no candidate
+  is rejected at run time. Use it for strict ``MAXEVAL`` budgeting or to
+  reproduce an older run.
+
+The environment variable ``TADAH_BUMPGATE=CANDIDATE|STRICT`` overrides the
+key. ``OPTIM RCUT*`` on a bump channel is usually a wasted dimension (a
+feasible bump vanishes inside the cutoff, so the sampled value only moves
+the feasible region; startup warns).
+
+*Example.* A ``D2_Blip5`` pair channel with ``RCTYPE2B Cut_Dummy`` and
+``RCUT2B 5.5`` whose fourth bump sits at ``CGRID2B`` 4.4, ``SGRID2B`` 3
+(reach :math:`4.4 + 3/3 = 5.4`), searched with
+
+.. code-block:: none
+
+   FAILSCORE 1e9
+   FAILSCORE_GRADING ON
+   OPTIM CGRID2B (4) 4.0 5.0
+   OPTIM SGRID2B (4) 2.0 4.0
+
+The most favourable corner (4.0, 4.0) reaches 4.75 and the worst (5.0, 2.0)
+reaches 6.5, so ``CANDIDATE`` accepts the box and arms the gate for bump 4::
+
+   bump-support gate (CANDIDATE): armed for CGRID2B bump 4 — candidates with c + 3/eta > RCUT2B = 5.5
+   are rejected before training as graded band-D failures (worst box corner reaches 6.5). BUMPGATE
+   STRICT restores the startup box-corner error.
+
+A candidate at :math:`c = 4.8`, :math:`\eta = 2.5` reaches 6.0: it is
+rejected with :math:`v = 0.5 \cdot 2.5/3 = 0.416667` (``eval N:
+bump-support gate reject (c + w/eta past the cutoff, violation=0.416667,
+graded band D); total rejects=K``) and a loss of about ``9.99824e8``, while
+candidates at (4.4, 3.0) or (4.2, 2.5) reach 5.4 and are trained as usual.
+``STRICT`` refuses this box at startup: its worst corner needs an ``SGRID2B
+(4)`` low bound of at least :math:`w/(r_c - c_{hi}) = 3/(5.5 - 5.0) = 6`.
+
+RHOGATE — the sign of a SIGNED density
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+::
+
+   RHOGATE <tol> [R_LO <r>] [NPTS <n>] [SEED ERROR|WARN]
+
+======== =========================== ==========================================================
+Token    Default                     Rule
+======== =========================== ==========================================================
+``tol``  — (required)                finite, ``>= 0``
+``R_LO`` ``0.15`` × the candidate's  finite, ``>= 0``, below the smallest cutoff a candidate can
+         ``RCUTMB``                  have (startup error otherwise)
+``NPTS`` ``20001``                   integer in ``[2, 10000000]``
+``SEED`` ``ERROR``                   ``ERROR`` or ``WARN``: what a failing seed does (below)
+======== =========================== ==========================================================
+
+Keywords and their values are case-insensitive; a second ``RHOGATE`` line, an
+unknown or repeated keyword, a keyword without a value and a number that is
+not one finite token are errors. There is no environment override.
+``RHOGATE`` needs a bare DM_REAM many-body term (``INITMB true``, ``TYPEMB
+DM_REAM``; ``DM_mJoin`` is refused) with ``RHOFORM SIGNED``: ``NONNEG`` and
+``MONOTONE`` guarantee :math:`\rho \ge 0` by construction, and startup says
+so.
+
+The gate scans :math:`\rho_{raw}(r) = f_c(r)\sum_n a_n\psi_n(r)`, the pair
+density without the pair weight, as DM_REAM trains with it, on ``NPTS``
+equally spaced points of :math:`[r_{lo}, r_{hi}]`: :math:`r_{hi}` is the
+candidate's ``RCUTMB`` (for a knot density its largest knot) and
+:math:`r_{lo}` is ``R_LO`` or :math:`0.15\,r_{hi}`. The pair weights
+:math:`W` scale every pair alike, so the verdict does not depend on them,
+but each must be finite and :math:`> 0`. The candidate **fails** when
+
+.. math::
+
+   \rho_{min} < -\mathrm{tol}\cdot\rho_{max}
+
+(``tol 0`` rejects any negative value; a small ``tol`` tolerates a small
+relative dip), with the measure
+
+.. math::
+
+   v = \min\!\big(10^8,\ v_{peak} + v_{int}\big),\qquad
+   v_{peak} = \max\!\Big(0, \frac{-\rho_{min} - \mathrm{tol}\,\rho_{max}}{\rho_{max}}\Big),\qquad
+   v_{int} = \sum_i \frac{\max(0, -\rho_i - \mathrm{tol}\,\rho_{max})\,w_i}{\rho_{max}\,(r_{hi} - r_{lo})}
+
+(:math:`w_i` trapezoid weights): the depth of the worst dip plus the mean
+depth over the window, both relative to :math:`\rho_{max}`. The measure is
+saturated when :math:`\rho_{max} \le 0` on the window, a value is not
+finite, a pair weight is :math:`\le 0` or not finite, or the window is
+empty. A candidate whose density DM_REAM would refuse (for instance a zero
+``SGRIDMB`` entry) gets no verdict: it fails in training exactly as it would
+without the gate. The reject line is ``eval N: rho-sign gate reject
+(rho_min/rho_max = <rel> at r = <r> A, tol <tol>, v = <v>); total
+rejects=K``, or ``(<reason>, v = saturated)``. The scan costs about 0.7 ms
+per candidate at 20001 points with 20 Blip5 bumps.
+
+*Example.* A ``SIGNED`` DM_REAM density of three Blip5 bumps (``TYPEMB``
+basis code 3) and a search over the sign of the outermost amplitude:
+
+.. code-block:: none
+
+   # -c potential (excerpt)
+   CGRIDMB    2.8 3.6 4.4
+   SGRIDMB    3.0 3.0 3.0
+   AMPGRIDMB  0.5 0.3 0.1
+   RHOFORM    SIGNED
+   RCTYPEMB   Cut_Dummy
+   RCUTMB     5.5
+
+   # config.hpo
+   FAILSCORE 1e9
+   FAILSCORE_GRADING ON
+   OPTIM AMPGRIDMB (3) -0.5 0.5
+   RHOGATE 1e-5
+
+At startup the journal states the gate and the seeds' verdicts::
+
+   INFO  RHOGATE: rho(r) sign gate, tol 1.0000e-05, window [0.15 RCUTMB, RCUTMB] of each candidate,
+         20001-point grid, SEED ERROR; armed per candidate on AMPGRIDMB[3]: candidates with
+         rho_min < -tol*rho_max are rejected before training as graded band-D failures;
+         seeds: -c pot (INIT CONFIG) PASS
+
+(one line in the file). The seed passes (:math:`\rho \ge 0`, ``rel
+0.0000e+00``). A candidate with ``AMPGRIDMB(3) = -0.2`` has a dip to
+:math:`-0.19966` at :math:`r = 4.4025` Å against :math:`\rho_{max} =
+0.50036`, on the window :math:`[0.825, 5.5]`::
+
+   INFO  eval 7: rho-sign gate reject (rho_min/rho_max = -3.9903e-01 at r = 4.4025 A, tol 1.0000e-05,
+         v = 4.4515e-01); total rejects=1
+
+and its loss is about ``9.99827e8``. Had the ``-c`` potential itself carried
+``AMPGRIDMB 0.5 0.3 -0.2``, startup would stop (``SEED ERROR``)::
+
+   RHOGATE: seed -c pot (INIT CONFIG) fails the rho(r) sign gate: rho_min -1.9966e-01 at r 4.4025 A,
+   rho_max 5.0036e-01, rel -3.9903e-01 < -tol = -1.0000e-05 on [0.8250, 5.5000] A (20001 points),
+   v = 4.4515e-01. Repair the seed's density (for a WARM seed, its OPTIM'd density values: the
+   rest comes from the -c potential) with tadah refit --edit, relax the gate, or add SEED WARN to
+   evaluate it as a rejected start.
+
+RHOBARGATE — the lattice density decreases under expansion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+::
+
+   RHOBARGATE <bcc|fcc|hcp> <a0> <f_lo> <f_hi> [NPTS <n>] [SEED ERROR|WARN]
+
+The lattice is case-insensitive (``hcp`` takes the ideal
+:math:`c/a = \sqrt{8/3}`, with ``a0`` its in-plane constant); ``a0`` is
+finite and :math:`> 0`; :math:`0 < f_{lo} < f_{hi}`, both finite; ``NPTS``
+is an integer in ``[3, 10000000]``, default ``1001``; ``SEED`` and the
+grammar rules are those of ``RHOGATE``. It works under **every**
+``RHOFORM`` and needs a bare DM_REAM many-body term.
+
+For every lattice constant :math:`a_k = a_0\,(f_{lo} + k\,(f_{hi} -
+f_{lo})/(\mathrm{NPTS}-1))` (the last point exactly :math:`a_0 f_{hi}`) the
+gate sums the density an atom of the perfect monatomic crystal receives,
+
+.. math::
+
+   \bar\rho(a_k) = \sum_s m_s\,\rho_{raw}(d_s\,a_k),
+
+over the neighbour shells :math:`s` (distance :math:`d_s a`, multiplicity
+:math:`m_s`) inside the candidate's ``RCUTMB``. The candidate **fails**
+when :math:`\bar\rho` does not decrease strictly on the whole grid, i.e.
+when :math:`\bar\rho(a_{k+1}) \ge \bar\rho(a_k)` for some :math:`k`, with
+the measure
+
+.. math::
+
+   v = \min\!\Big(10^8,\ \frac{\sum_k \max\big(0,\ \bar\rho(a_{k+1}) - \bar\rho(a_k)\big)}{\max_k |\bar\rho(a_k)|}\Big),
+
+the summed rise relative to the largest density. A flat step (a rise of
+exactly 0) fails with :math:`v = 0`, at the band-D floor. The measure is
+saturated when :math:`\bar\rho = 0` on the whole grid, a value is not
+finite, or a pair weight is :math:`\le 0`. Under ``RHOFORM MONOTONE``
+:math:`\bar\rho(a)` is non-increasing by construction, but the gate asks
+for a strict decrease: a flat stretch still fails (under ``Cut_Dummy``,
+every shell on the plateau below the innermost bump, where :math:`\rho` is
+constant), and so does a rise at the rounding level. At startup the
+first shell at :math:`a = f_{hi} a_0` must lie inside the smallest cutoff a
+candidate can have (``RHOBARGATE: the first bcc shell at a = f_hi a0 = ...
+A lies at r = ... A, beyond the smallest cutoff a candidate can have ...``);
+the shells are enumerated once, for the largest cutoff a candidate can
+reach. The reject line is ``eval N: lattice-rhobar gate reject (<K> rises
+over a/a0 [<f_lo>, <f_hi>] on <lattice>, first at a/a0 = <f>, v = <v>);
+total rejects=K`` (the first rising step, not the worst). The scan costs
+about 0.3 ms per candidate at 1001 points (0.9 ms at 3501).
+
+*Example.* The potential of the ``RHOGATE`` example, searched over two
+amplitudes with both density gates (bcc Ta, :math:`a_0 = 3.304` Å):
+
+.. code-block:: none
+
+   FAILSCORE 1e9
+   FAILSCORE_GRADING ON
+   OPTIM AMPGRIDMB (2) 0.0 2.0
+   OPTIM AMPGRIDMB (3) -0.5 0.5
+   RHOGATE 1e-5
+   RHOBARGATE bcc 3.304 0.98 1.10
+
+The startup line reads ``RHOBARGATE: lattice rhobar(a) gate, bcc (a0 3.304
+A, a/a0 [0.98, 1.1], 1001 points), 4 shells within the largest reachable
+RCUTMB, SEED ERROR; armed per candidate on AMPGRIDMB[2], AMPGRIDMB[3]: ...;
+seeds: -c pot (INIT CONFIG) PASS``. In a 120-candidate ``TADAH:RANDOM``
+search of this box, 57 candidates failed the sign gate and 29 more only the
+lattice gate, for instance::
+
+   INFO  eval 21: lattice-rhobar gate reject (577 rises over a/a0 [0.98, 1.1] on bcc,
+         first at a/a0 = 1.0255, v = 3.3868e-02); total rejects=4
+
+Combined grading and attribution
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``BUMPGATE`` is checked first, on the raw parameters; ``RHOGATE`` and
+``RHOBARGATE`` right after the candidate's configuration is built (still
+before training and before any MPI traffic). When any configured gate fails,
+every configured gate is evaluated and the candidate is graded by the sum
+of the failing gates' measures, ``v = min(DBL_MAX, sum of their v)``,
+so a move that shrinks any one violation is downhill even while another
+gate still fails (a saturated measure stays saturated). The reject is
+counted, and journalled, for the **first** failing gate in the order
+``BUMPGATE``, ``RHOGATE``, ``RHOBARGATE``; its line names the others. From
+the example above::
+
+   INFO  eval 2: rho-sign gate reject (rho_min/rho_max = -2.3527e-01 at r = 4.4068 A, tol 1.0000e-05,
+         v = 2.6067e-01); also failing: lattice-rhobar gate (v = 7.2300e-01); graded by the summed
+         v = 9.8367e-01; total rejects=1
+
+A lone failure keeps its own line, so without ``RHOGATE`` and ``RHOBARGATE``
+every evaluation, ``BUMPGATE`` line and count is exactly as before.
+
+**Arming and seeds** (``RHOGATE``, ``RHOBARGATE``). A density gate is
+*armed*, i.e. evaluated for every candidate, when an ``OPTIM`` key
+(case-insensitive) is ``AMPGRIDMB``, ``CGRIDMB``, ``SGRIDMB`` or
+``RCUTMB``. Otherwise every candidate has the ``-c`` density: its verdict is
+computed once and reused, and an ``OPTIM WATOM`` only has each candidate's
+pair weights checked. Because every evaluation would then be rejected, a
+failing ``-c`` density with an unarmed gate is a startup error under either
+``SEED`` mode, and so is a pair weight no candidate can make positive
+(``WATOM`` fixed at :math:`\le 0`, or an ``OPTIM WATOM`` box that does not
+reach above 0). At startup every *seed* is evaluated as a candidate: the
+``-c`` potential and every ``CONFIG`` or ``WARM`` point of the resolved
+``INIT`` chains (``OUTER``, ``PRESTAGE``, ``PRESTAGE.INNER``, the
+``BASINS`` stages). A failing seed that the optimiser may start from stops
+the run under ``SEED ERROR`` (one message listing every failing seed with
+its origin, the extremes, the window and ``v``, or for ``RHOBARGATE`` the
+rises, the first :math:`a/a_0` and ``v``) and is a WARNING under ``SEED
+WARN`` (``SEED WARN: the run proceeds; if the optimiser starts from this
+seed, that evaluation is rejected before training (band D).``). A failing
+``-c`` potential that is not an ``INIT`` start (a ``WARM``- or ``LHS``-only
+chain) gets a WARNING. ``RANDOM``, ``LHS`` and ``SOBOL`` points are ordinary
+candidates. Each configured gate logs one startup ``INFO`` line: its
+settings, whether it is armed (and on which dimensions, or why not) and
+every seed's verdict.
+
+.. _hpo_density_report:
+
+The density report
+^^^^^^^^^^^^^^^^^^
+
+Every run whose many-body term is a bare DM_REAM, gated or not, reports the
+density of the ``-c`` potential in the POTENTIAL SETUP section of
+``hpo_run.log``, and of the best in RESULT. Example 22::
+
+   Density form          : RHOFORM SIGNED -- rho = W f_c sum a_n psi_n, signed amplitudes (no sign guarantee)
+   Density rho(r), -c pot: [0.8226, 5.4840] A, 20001 pts: min 0.0000e+00 (r 5.4840) max 5.5617e+00 (r 0.8226)
+                           rel 0.0000e+00; max rho' +4.61e-03 (r 2.1430); non-increasing on window: no; W = 1
+
+(one line in the file). The window is ``RHOGATE``'s (``R_LO``, ``NPTS``)
+when it is configured, else :math:`[0.15\,r_c, r_c]` with 20001 points,
+:math:`r_c` the ``RCUTMB`` of the potential. The row gives the extremes of
+:math:`\rho_{raw}` and where they occur, ``rel`` = :math:`\rho_{min} /
+\rho_{max}` (``n/a`` when :math:`\rho_{max} \le 0`), the largest
+forward-difference slope ``max rho'`` and where, whether :math:`\rho_{raw}`
+is non-increasing on the window, the pair weights (``W = <w>`` or
+``W in [<lo>, <hi>]``; ``tadah hpo`` inserts ``WATOM`` = Z, the atomic
+number, when the potential has none, so a potential without a ``WATOM``
+line reports ``W = Z``) and, with ``RHOGATE``, its verdict.
+*Non-increasing* means :math:`\max_i(\rho_{i+1} - \rho_i) \le
+8\,\varepsilon \max_i \sum_n |a_n T_n(r_i) f_c(r_i)|`: the tolerance is
+relative to the size of the terms, not to :math:`\rho`, because
+``MONOTONE`` is non-increasing to rounding only. A ``SIGNED`` density often
+reads ``no`` (example 22: ``max rho' +4.61e-03``), which is information, not
+an error. With ``RHOBARGATE`` a ``Density rhobar`` row follows
+(``strictly decreasing (0 rising steps)`` or ``rises at <K> of <NPTS-1>
+steps, first at a/a0 = ... (v = ...): RHOBARGATE FAIL``). Each distinct
+``WARM`` seed adds ``Density rho(r), WARM <k>`` rows, evaluated as the run
+evaluates it (its ``OPTIM`` dimensions from the seed, the rest from
+``-c``). RESULT prints the same rows for the best (``Density rho(r) : best
+(eval N) ...``), or ``n/a (the best predates this session)`` after a
+resume. A density that cannot be evaluated prints ``not derivable:
+<reason>``; the report never stops a run.
+
+.. _hpo_rhoform_positive:
+
+Positive density forms: projection and non-negative boxes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A DM_REAM ``-c`` configuration must declare :ref:`RHOFORM
+<dm_ream_rhoform>` (without it startup stops with ``tadah hpo: DM_REAM:
+RHOFORM is required: ...``), and its density is validated for its form at
+startup: a density DM_REAM would refuse (a negative amplitude under
+``NONNEG``, a ``WATOM`` :math:`\le 0` under a positive form, ...) is a
+startup error rather than a failure of every evaluation. Under ``NONNEG``
+and ``MONOTONE`` every candidate must stay a valid density, so the search
+space is restricted:
+
+* ``OPTIM AMPGRIDMB ... AUTO`` (a linear rule; ``FRAC 0.5`` by default)
+  clamps the box at 0, :math:`lo = \max(0, x_0 - d)`, and without ``FLOOR``
+  or ``GROUP_FLOOR`` it takes an implicit ``GROUP_FLOOR 1e-3`` (the ``tadah
+  refit`` writer's group floor), so a zero amplitude, which non-negative
+  fits produce, gets the box :math:`[0, 10^{-3}\max|x_0|]` of its line.
+  Such boxes carry the origin ``AUTO FRAC>=0`` in the SEARCH SPACE section,
+  ``hpo_search_space.tsv`` and ``hpo_optim_resolved.hpo``. ``RATIO`` is
+  allowed only when every seed on the line is :math:`> 0`, a negative seed
+  is an error, and a line whose seeds are all 0 needs ``FLOOR <a>`` (the box
+  :math:`[0, a]`) or explicit bounds. ``LOG`` needs :math:`lo > 0`, so a box
+  clamped at 0 cannot be ``LOG``.
+* An explicit ``AMPGRIDMB`` low bound below 0 is an error (0 is allowed), a
+  ``WATOM`` low bound :math:`\le 0` is an error (explicit or ``AUTO``), and
+  under ``MONOTONE`` so is an ``SGRIDMB`` low bound :math:`\le 0`.
+* **Projection.** Each evaluation evaluates a copy of the candidate with
+  every negative ``AMPGRIDMB`` coordinate set to 0 (a NaN is left for
+  DM_REAM to refuse), before the gates and the model build, and that
+  projected point is what is recorded (``params.tadah``, the potentials),
+  so every recorded point is a valid potential; the optimiser still sees its
+  own point with the projection's loss. Inside the box this happens only to
+  finite-difference probes next to a zero amplitude: at the bound a central
+  difference then becomes a one-sided difference halved, finite and of the
+  right sign. The first projection is an ``INFO`` line (``eval 8: RHOFORM
+  NONNEG: AMPGRIDMB[3] = -5.0000e-10 below 0 is evaluated and recorded as 0:
+  the candidate is projected onto AMPGRIDMB >= 0 (a finite-difference probe
+  next to a zero amplitude, or an optimiser that ignores bounds);
+  DIAGNOSTICS counts every projection``), and ``DIAGNOSTICS`` prints
+  ``Positive-form projection: N evaluation(s) with an AMPGRIDMB amplitude <
+  0, ...`` when there was one. An optimiser that can leave the box
+  (``CERES`` ``LBFGS``/``WOLFE``/``NLCG``/``STEEPEST_DESCENT``, ``NLOPT
+  LN_NEWUOA``, or ``PARAM fd_kernel ceres`` on a gradient-based optimiser)
+  gets one startup WARNING when ``AMPGRIDMB`` is ``OPTIM``'d. A zero
+  amplitude seed sits on its box's lower bound, and ``PRAXIS`` and
+  ``BOBYQA`` may move a start that lies on a bound (see
+  :ref:`search_space_scaling`). Under ``SIGNED`` nothing is projected.
+* **Hard lower bounds.** An ``AMPGRIDMB`` lower bound of exactly 0 is
+  *hard*: when the best rides it, the bound-occupancy audit shows ``LO*``
+  instead of ``LO``, with the note ``(* a hard lower bound: RHOFORM NONNEG/MONOTONE require AMPGRIDMB
+  >= 0, so an amplitude at 0 is an admissible optimum, not bound
+  pressure)``; the advice to widen that side (and its HINT) is printed only
+  when another dimension rides a bound. An ``AUTO`` box whose lower bound is
+  above 0 can still be widened down to 0 and keeps the normal advice.
+
+WARM seeds and structure keys
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A ``WARM`` seed whose ``RHOFORM`` is absent, invalid or different from the
+run's (both being DM_REAM potentials) is an **error** when an ``OPTIM`` key
+is ``AMPGRIDMB``, ``CGRIDMB`` or ``SGRIDMB``: density amplitudes mean
+something only in the form they were fitted in. A tadah 1.5.1 seed is
+``SIGNED``: add ``RHOFORM SIGNED`` to it for a ``SIGNED`` run; a
+``NONNEG`` or ``MONOTONE`` run needs a seed fitted in its form. Otherwise
+(no density key searched) it is a WARNING: the seed's density keys are not
+read. The rule is independent of
+``WARM_ON_MISMATCH``.
+
+``OPTIM`` on structure data is refused at startup, case-insensitively:
+``RHOFORM``, ``TYPE2B``, ``TYPEMB``, ``RCTYPE2B``, ``RCTYPEMB``,
+``KDEG2B``, ``KDEGMB`` and ``KDEGEMB`` (``OPTIM <KEY> is not a valid
+search target: ..., structure data rather than a continuous parameter;
+set it in the -c potential/configuration.``); ``OPTIM EMBF0`` has its own
+message.
 
 OPTIMIZER block — common attributes
 ...................................
@@ -1938,13 +2452,18 @@ outputs) is the run's structured journal. It opens with a banner
                          K dim(s)`` table + one HINT (bound-occupancy audit)
    -- DIAGNOSTICS   --   also ``Bound occupancy of the final best`` (or ``[ok]``)
    -- POTENTIAL     --   2B/MB terms, cutoffs, element list; DM_REAM:
-                         ``Embedding F(0)`` (EMBF0) and the raw F(0) of -c
+                         ``Embedding F(0)`` (EMBF0) and the raw F(0) of -c,
+                         the density report (``Density form``, ``Density
+                         rho(r)``, ``Density rhobar``) of -c and each WARM seed
    -- LOSS FUNCTION --   targets, weights, FAILSCORE
-   -- PROGRESS      --   timestamped events: bests, warnings, milestones
-   -- DIAGNOSTICS   --   NaN rate, bound-proximity analysis
+   -- PROGRESS      --   timestamped events: bests, warnings, milestones,
+                         feasibility-gate rejects
+   -- DIAGNOSTICS   --   NaN rate, graded failures with the gate rejects,
+                         positive-form projections, bound-proximity analysis
    -- PERFORMANCE   --   timing statistics
    -- RESULT        --   final status, best loss, best metrics; DM_REAM:
-                         raw F(0) of the first and the best evaluation
+                         raw F(0) of the first and the best evaluation, the
+                         best's density rows
 
 The ``Optimiser status`` line of RESULT, and the exit status of
 ``tadah hpo``:

@@ -1835,22 +1835,37 @@ space is restricted:
   DM_REAM to refuse), before the gates and the model build, and that
   projected point is what is recorded (``params.tadah``, the potentials),
   so every recorded point is a valid potential; the optimiser still sees its
-  own point with the projection's loss. Inside the box this happens only to
-  finite-difference probes next to a zero amplitude: at the bound a central
-  difference then becomes a one-sided difference halved, finite and of the
-  right sign. The first projection is an ``INFO`` line (``eval 8: RHOFORM
-  NONNEG: AMPGRIDMB[3] = -5.0000e-10 below 0 is evaluated and recorded as 0:
-  the candidate is projected onto AMPGRIDMB >= 0 (a finite-difference probe
-  next to a zero amplitude, or an optimiser that ignores bounds);
+  own point with the projection's loss. A search that keeps to the box has
+  nothing projected: the in-house finite-difference stencil (the default
+  under ``OPTIM_SCALE AUTO``, and ``HYBRID``'s) is one-sided within a step
+  of a bound and never evaluates outside the box
+  (:ref:`hpo_fd_stencil`). Two things still reach below 0: an optimiser
+  that ignores the bounds, and a step of Ceres' numeric differentiation
+  (``PARAM fd_kernel ceres``, the default under ``OPTIM_SCALE NONE``),
+  which cannot be bounded; at a zero amplitude its central difference then
+  becomes half the one-sided slope, finite and of the right sign. The first
+  projection is an ``INFO`` line (``eval 8: RHOFORM NONNEG: AMPGRIDMB[3] =
+  -5.0000e-10 below 0 is evaluated and recorded as 0: the candidate is
+  projected onto AMPGRIDMB >= 0 (a step of the Ceres finite-difference
+  kernel next to a zero amplitude, or an optimiser that ignores bounds);
   DIAGNOSTICS counts every projection``), and ``DIAGNOSTICS`` prints
   ``Positive-form projection: N evaluation(s) with an AMPGRIDMB amplitude <
-  0, ...`` when there was one. An optimiser that can leave the box
-  (``CERES`` ``LBFGS``/``WOLFE``/``NLCG``/``STEEPEST_DESCENT``, ``NLOPT
-  LN_NEWUOA``, or ``PARAM fd_kernel ceres`` on a gradient-based optimiser)
-  gets one startup WARNING when ``AMPGRIDMB`` is ``OPTIM``'d, naming each
-  phase that runs one, as the other startup checks do (``RHOFORM NONNEG:
-  the PRESTAGE refinement CERES:LBFGS (ignores the OPTIM bounds) can
-  evaluate AMPGRIDMB amplitudes outside the non-negative OPTIM box ...``). A zero
+  0, ...`` when there was one. A phase that can leave the box gets one
+  startup WARNING when ``AMPGRIDMB`` is ``OPTIM``'d, naming each such
+  phase, as the other startup checks do: an optimiser that ignores the
+  bounds (``CERES`` ``LBFGS``/``WOLFE``/``NLCG``/``STEEPEST_DESCENT``,
+  ``NLOPT LN_NEWUOA``: ``RHOFORM NONNEG: the PRESTAGE refinement
+  CERES:LBFGS (ignores the OPTIM bounds) can evaluate AMPGRIDMB amplitudes
+  outside the non-negative OPTIM box ...``), and a phase that takes
+  ``GRAD_STRATEGY NUMERICAL`` gradients with the Ceres kernel, written or
+  by default (``... DLIB:BFGS (fd_kernel ceres, the default under
+  OPTIM_SCALE NONE: Ceres' finite-difference steps are not bounded) can
+  evaluate ...``, and then ``A Ceres finite-difference step projected onto
+  a zero amplitude halves the derivative there; PARAM fd_kernel inhouse
+  keeps the stencil inside the box.``). A ``HYBRID`` phase takes the
+  in-house stencil whatever ``fd_kernel`` says, and an ``INNER`` search
+  differentiates its enclosing block's objective with that block's
+  settings, so neither is named for its own ``PARAM fd_kernel``. A zero
   amplitude seed sits on its box's lower bound, and ``PRAXIS`` and
   ``BOBYQA`` may move a start that lies on a bound (see
   :ref:`search_space_scaling`). Under ``SIGNED`` nothing is projected.
@@ -2124,11 +2139,14 @@ one a finite number (``MAXTIME`` a positive one).
        gradient-based backend: ``fd_step`` (step as a fraction of the
        internal coordinate, default ``1e-6``) and ``fd_kernel``
        (``inhouse`` — central differences in the internal coordinates,
-       the default under ``OPTIM_SCALE AUTO`` — or ``ceres`` — Ceres'
-       numeric differentiation, the default under ``OPTIM_SCALE NONE``;
-       needs a build with ``TADAH_ENABLE_CERES``).  ``fd_kernel``
-       overrides the default under either ``OPTIM_SCALE``; before 1.6.0
-       ``inhouse`` was ignored under ``NONE``.
+       one-sided within a step of a bound so that no evaluation leaves
+       the ``OPTIM`` box, the default under ``OPTIM_SCALE AUTO`` — or
+       ``ceres`` — Ceres' numeric differentiation, which cannot be
+       bounded, the default under ``OPTIM_SCALE NONE``; needs a build
+       with ``TADAH_ENABLE_CERES``; :ref:`hpo_fd_stencil`).
+       ``fd_kernel`` overrides the default under either
+       ``OPTIM_SCALE``; before 1.6.0 ``inhouse`` was ignored under
+       ``NONE``.
 
 .. list-table:: Algorithms by library
    :header-rows: 1
@@ -2207,11 +2225,14 @@ entries (all keys are optional unless noted):
 ================== =================================================================================
 Key                Effect
 ================== =================================================================================
-``fd_step``        Finite-difference step (default ``1e-6``).  In-house kernel: central difference
-                   with step ``fd_step * max(|u|, 1)`` in internal coordinates ``u`` — a fraction of
-                   the box width under ``OPTIM_SCALE AUTO``.  Ceres kernel: relative step.
+``fd_step``        Finite-difference step (default ``1e-6``).  In-house kernel: step
+                   ``fd_step * max(|u|, 1)`` in internal coordinates ``u`` — a fraction of the box
+                   width under ``OPTIM_SCALE AUTO`` — central, or one-sided within a step of a bound,
+                   so that every evaluation stays in the ``OPTIM`` box; every box must hold three
+                   steps (:ref:`hpo_fd_stencil`).  Ceres kernel: relative step.
 ``fd_kernel``      ``inhouse`` (default under ``OPTIM_SCALE AUTO``) or ``ceres`` (default under
-                   ``OPTIM_SCALE NONE``); see the ``PARAM`` row of the attribute table.
+                   ``OPTIM_SCALE NONE``; its steps are not bounded); see the ``PARAM`` row of the
+                   attribute table.
 ``diff_method``    Ceres kernel only: ``0`` = CENTRAL (default), ``1`` = FORWARD, ``2`` = RIDDERS.
                    RIDDERS extrapolates assuming a smooth Taylor expansion; not recommended near
                    ``FAILSCORE`` plateaus or for noisy loss components.
@@ -2310,6 +2331,94 @@ each failed evaluation of this search …``).  Before 1.6.0 dlib was given
 trust-region step, even when later evaluations would have produced
 usable losses.
 
+.. _hpo_fd_stencil:
+
+Finite-difference gradients and the OPTIM box
+.............................................
+
+A ``GRAD_STRATEGY NUMERICAL`` gradient (the default) is taken by one of two
+kernels, ``PARAM fd_kernel``: the in-house stencil (``inhouse``, the default
+under ``OPTIM_SCALE AUTO``) or Ceres' numeric differentiation (``ceres``,
+the default under ``OPTIM_SCALE NONE``).  ``HYBRID`` takes its finite
+differences — the parameters without an analytical derivative — with the
+in-house stencil, whatever ``fd_kernel`` says; ``ANALYTICAL`` takes none.
+
+The in-house stencil steps :math:`h = \mathrm{fd\_step}\cdot\max(|u|, 1)`
+along the internal coordinate :math:`u` the optimiser iterates on:
+``fd_step`` of the box width under ``OPTIM_SCALE AUTO``, where every box is
+the unit interval, and under ``NONE`` absolute below :math:`|u| = 1` and
+relative above.  It never evaluates outside the ``OPTIM`` box:
+
+* at least :math:`h` from both bounds it takes the central difference
+  :math:`(f(u+h) - f(u-h)) / 2h`, as before 1.6.0, bit for bit;
+* within :math:`h` of a bound it takes the one-sided difference into the
+  box, :math:`(-3 f(u) + 4 f(u+h) - f(u+2h)) / 2h` near the lower bound and
+  its mirror (:math:`h \to -h`) near the upper one.
+
+Both are second order: the central difference is off by
+:math:`h^2 f'''/6`, the one-sided one by :math:`-h^2 f'''/3`, twice as much
+at the same step.  They cost the same: the one-sided difference needs the
+loss at :math:`u` itself, which the ``NUMERICAL`` kernel evaluates anyway —
+one evaluation for the point and two per dimension, either way.
+``HYBRID``'s analytical pass does not evaluate the loss, so a ``HYBRID``
+gradient with a finite-difference parameter within :math:`h` of its bound
+evaluates the point once more.  Every evaluation counts toward ``MAXEVAL``
+as before.
+
+Before 1.6.0 the central difference was taken at every point, and within
+:math:`h` of a bound one of its points lay outside the box: it was
+evaluated there, or — a ``RHOFORM NONNEG``/``MONOTONE`` amplitude, which is
+projected onto ``AMPGRIDMB >= 0`` (:ref:`hpo_rhoform_positive`) — at the
+bound, so that at an amplitude on its bound the derivative came out as
+:math:`(f(h) - f(0)) / 2h`, half the one-sided slope.  **This changes every
+bounded gradient search whose iterates come within a step of a bound**
+(``DLIB:BFGS``, NLopt's ``LD_*`` searches, the local search of ``MLSL`` /
+``AUGLAG``, ``HYBRID``): the gradient there is now the one-sided one, and
+the trajectory can differ from then on.  With the default ``fd_step``,
+``1e-6`` of the box width, only an iterate that practically sits on a bound
+is affected.
+
+The one-sided stencil needs three steps inside the box.  A box narrower
+than that — :math:`hi - lo < 3H` in internal coordinates, with
+:math:`H = \mathrm{fd\_step}\cdot\max(|lo|, |hi|, 1)` the largest step in
+it; under ``OPTIM_SCALE AUTO`` an ``fd_step`` above a third — is refused at
+startup, on each phase that takes gradients with the in-house stencil,
+naming each such dimension, its box and the ``fd_step`` that would fit it:
+
+.. code-block:: none
+
+   the STRATEGY-level optimiser DLIB:BFGS: PARAM fd_step 0.4: the finite-difference stencil takes three steps of fd_step x max(|u|, 1) inside the OPTIM box, in internal coordinates (the unit box under OPTIM_SCALE AUTO), so that it never evaluates outside it; these boxes are narrower:
+     - CGRID2B[2]: box [0, 1], width 1 < 3 x 0.4 (fd_step below 0.3333333333 fits it)
+     Lower PARAM fd_step (set it by hand when the NOISE block's AUTO derived it) or widen these boxes.
+
+The step is not shrunk for such a dimension: that would change what
+``fd_step`` means there (and the noise it was chosen to step over), and a
+step of a third of the box or more says little about the slope.  The phase
+checked is the one whose settings take the gradient: the ``STRATEGY``-level
+optimiser (each ``MULTISTART`` start), the ``PRESTAGE`` exploration and
+refinement, and an ``MLSL`` / ``AUGLAG`` block whose local search takes
+gradients — NLopt differentiates that block's objective, so an ``INNER``
+block's own ``PARAM fd_step`` and ``fd_kernel`` are not used.  An invalid
+``PARAM fd_kernel`` or an ``fd_step`` that is not positive is a startup
+error of such a phase too (they stopped the optimiser when it started, and
+under ``HYBRID`` ``fd_step`` was not checked at all).
+
+Two things can still evaluate outside the box:
+
+* an optimiser that ignores the bounds — the ``CERES`` drivers and NLopt
+  ``LN_NEWUOA`` — evaluates its own iterates outside it; around such a
+  point the in-house stencil stays central;
+* Ceres' numeric differentiation (``fd_kernel ceres``) perturbs each
+  coordinate by :math:`\pm\delta` (``diff_method`` ``CENTRAL``,
+  ``RIDDERS``) or :math:`+\delta` (``FORWARD``) inside Ceres, whose numeric
+  differentiation takes no bounds, so it cannot be kept in the box.  Under
+  ``OPTIM_SCALE NONE``, where it is the default, ``PARAM fd_kernel
+  inhouse`` gives a bounded gradient.
+
+Under ``RHOFORM NONNEG``/``MONOTONE`` with an ``OPTIM AMPGRIDMB`` line, a
+startup warning names every phase that can still leave the box
+(:ref:`hpo_rhoform_positive`).
+
 .. _hpo_gradient_not_finite:
 
 Gradients that are not finite
@@ -2325,7 +2434,9 @@ loss is ``FAILSCORE`` or a graded failure, or it is not finite — the
 difference with a usable loss overflows under the default ``FAILSCORE``,
 the largest double (for any step below 1/2 in the optimiser's internal
 coordinates: half the box width under ``OPTIM_SCALE AUTO``), and the
-gradient is not finite.  Under a ``FAILSCORE`` a few orders of magnitude
+gradient is not finite.  A one-sided stencil near a bound
+(:ref:`hpo_fd_stencil`) takes the loss at the point itself, so a failed
+evaluation there is one of its stencil's too.  Under a ``FAILSCORE`` a few orders of magnitude
 above the real losses (e.g. ``1e9``) it stays finite, dominated by the
 failure: a steep slope away from the failed point, which the search
 follows.

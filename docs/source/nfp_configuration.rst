@@ -181,7 +181,15 @@ optimiser may vary, and over what bounds:
 * ``<KEY>`` — any optimisable key from the training configuration.
   Whether a key can be re-initialised safely is validated at startup:
   an unsafe combination (e.g. ``RCUT2B`` with ``D2_EAM``) is a hard
-  error naming the offending key.
+  error naming the offending key.  Keys are case-insensitive, as in the
+  configuration: the key is upper-cased when the line is read, so every
+  rule below applies whatever its case (``OPTIM weights`` is refused like
+  ``OPTIM WEIGHTS``, ``OPTIM fixweight`` maps its indices through
+  ``FIXINDEX``, ``OPTIM cgrid2b`` arms ``BUMPGATE``), and the labels of
+  ``params.tadah``, the journal and the sidecars are upper-case
+  (``OPTIM ampgridmb (1) 0 1`` gives ``AMPGRIDMB[1]``).  Before 1.6.0 a
+  key in lower case was searched under its own spelling and missed every
+  rule keyed on the upper-case name.
 * ``(indices)`` — selects a subset of the values bound to ``<KEY>``.
   Indices follow the order in the training configuration and start
   from **1**.  Comma-separated lists, ranges ``a-b``, and strides
@@ -200,7 +208,12 @@ optimiser may vary, and over what bounds:
   several decades).  See :ref:`search_space_scaling`.  Any other trailing
   token is an error (stray tokens used to be silently ignored).
 
-``OPTIM`` lines may be repeated for the same key with different indices.
+``OPTIM`` lines may be repeated for the same key with different indices,
+in any case (``OPTIM cgridmb (1) ...`` and ``OPTIM CGRIDMB (3) ...`` are
+lines of one key).  An index an earlier line of the same key already
+selects is an error at the second line, naming the first
+(``OPTIM CGRIDMB (1): the index is already selected by the OPTIM CGRIDMB
+line on line 1``); it used to replace the first box without a word.
 
 .. _hpo_dimension_order:
 
@@ -292,9 +305,28 @@ Special cases:
   configuration.  A top-level ``EMBF0`` line in the hpotarget file is an
   unknown key.
 * ``OPTIM`` on structure data — ``RHOFORM``, ``TYPE2B``, ``TYPEMB``,
-  ``RCTYPE2B``, ``RCTYPEMB``, ``KDEG2B``, ``KDEGMB``, ``KDEGEMB`` (any
-  case) — is **rejected** at its line: these are discrete properties of the
-  potential, not continuous parameters.
+  ``RCTYPE2B``, ``RCTYPEMB``, ``KDEG2B``, ``KDEGMB``, ``KDEGEMB``,
+  ``DIMER`` (the rigid-dimer layout of the training data, its bond length
+  included), ``FIXINDEX`` (which weights are pinned: search their values
+  with ``OPTIM FIXWEIGHT``) and ``MODEL`` (the model, its basis function
+  or kernel and its integer option) — is **rejected** at its line: these
+  are discrete properties of the potential or of the data, not continuous
+  parameters (a searched value was truncated to an integer, broke
+  ``FIXINDEX`` or moved the data's bond length).  So is ``OPTIM OALGO
+  (1)``, the training algorithm; ``OPTIM OALGO (2)``, the ``rcond`` *M*
+  of options 1 and 3, is continuous and stays a search target.
+* A radial bump width — ``SGRID2B`` of a ``D2_Blip``/``D2_Blip5`` pair
+  term, ``SGRIDMB`` of a DM_REAM ``Blip``/``Blip5`` density — must be
+  :math:`> 0` in every ``RHOFORM``.  A bump spans :math:`[c - w/\eta,
+  c + w/\eta]`; a width :math:`\le 0` has no support edge (the bump is even
+  in :math:`\eta`, so it evaluates as its mirror) and the bump-support gate
+  cannot hold it inside the cutoff.  An ``OPTIM`` box whose low bound on
+  such a width, explicit or ``AUTO``, is :math:`\le 0` is an error at its
+  line (``OPTIM SGRID2B (2): the low bound 0 is not > 0, but the D2_Blip
+  pair basis requires every SGRID2B width > 0 ...``), and so is a width
+  :math:`\le 0` in the ``-c`` potential at startup, naming each key, bump
+  and value (``SGRID2B (2) = -1: the D2_Blip pair basis requires ...``).
+  ``tadah analysis check_bounds`` reports such corners too.
 
 .. _hpo_embf0:
 
@@ -422,7 +454,16 @@ the target, and the remaining weights are fitted against the residual.
 The i-th ``FIXWEIGHT`` value pins the weight named by the i-th
 ``FIXINDEX`` entry; a lone key is an error, and ``NORM true`` is
 incompatible with pinning (the values would live in normalized feature
-space).
+space).  These rules need the model's weight count, so startup builds the
+model of the ``-c`` configuration once, as every evaluation builds it; it
+does so for every run.  A configuration whose model does not build (a
+``DIMER`` potential whose ``TYPE2B`` names element pairs, say) is refused
+with the reason (``the -c configuration does not build a model: DIMER
+evaluates every atom as Z=1; ... Every evaluation would fail; fix the -c
+potential/configuration.``).  Before 1.6.0 startup printed a WARNING
+(with ``FIXINDEX``: "FIXINDEX bounds/coverage checks are deferred to the
+first training evaluation") or nothing, every evaluation failed, and the
+run ended "no evaluation produced a usable loss".
 
 **Mixed mode** — LS-fit most weights, hold one, search another.  With a
 5-weight model: weights 1–3 LS-fitted, weight 4 held at 0.75, weight 5
@@ -1436,10 +1477,21 @@ gate.
      v = \sum_{\text{violating bumps}} \frac{(c + w/\eta - r_c)\,\eta}{w},
 
   the summed overhang in units of the half-width, which grows with every
-  violating coordinate. The reject line reads ``eval N: bump-support gate
-  reject (c + w/eta past the cutoff, violation=<v>, graded band D); total
-  rejects=K``. A configuration whose boxes cannot violate arms nothing and
-  evaluates exactly as without the gate.
+  violating coordinate. A width :math:`\eta \le 0`, which only an
+  optimiser that leaves the ``OPTIM`` box evaluates (the box's low bound
+  on a width is :math:`> 0`), has no support edge and is a violation too:
+  it counts :math:`1 - \eta\, r_c / w`, the continuation of the measure
+  (which tends to 1 as :math:`\eta \to 0^+`), and a NaN width the top of
+  band D; it was skipped before 1.6.0. The reject line reads ``eval N:
+  bump-support gate reject (c + w/eta past the cutoff, violation=<v>,
+  graded band D); total rejects=K``, with :math:`v` in the shortest text
+  that reads back as the same double (six decimals before 1.6.0, so a
+  :math:`v` below :math:`5\times10^{-7}` read ``0.000000``). A
+  configuration whose boxes cannot violate arms nothing and evaluates
+  exactly as without the gate. A bump channel whose ``CGRID``/``SGRID``
+  grids or per-pair ``RCUT`` list cannot be read, or whose grids do not
+  pair up, is an error naming the key (its descriptor cannot be built),
+  not a channel the gate skips.
 * **STRICT** (the behaviour of 1.4.0, before ``CANDIDATE`` became the
   default). The worst corner of every box
   (``CGRID*`` high bound, ``SGRID*`` low bound, the lowest ``OPTIM RCUT*``
@@ -1471,9 +1523,9 @@ reaches 6.5, so ``CANDIDATE`` accepts the box and arms the gate for bump 4::
    STRICT restores the startup box-corner error.
 
 A candidate at :math:`c = 4.8`, :math:`\eta = 2.5` reaches 6.0: it is
-rejected with :math:`v = 0.5 \cdot 2.5/3 = 0.416667` (``eval N:
-bump-support gate reject (c + w/eta past the cutoff, violation=0.416667,
-graded band D); total rejects=K``) and a loss of about ``9.99824e8``, while
+rejected with :math:`v = 0.5 \cdot 2.5/3 \approx 0.41667` (``eval N:
+bump-support gate reject (c + w/eta past the cutoff,
+violation=0.4166666666666667, graded band D); total rejects=K``) and a loss of about ``9.99824e8``, while
 candidates at (4.4, 3.0) or (4.2, 2.5) reach 5.4 and are trained as usual.
 ``STRICT`` refuses this box at startup: its worst corner needs an ``SGRID2B
 (4)`` low bound of at least :math:`w/(r_c - c_{hi}) = 3/(5.5 - 5.0) = 6`.
@@ -1674,17 +1726,25 @@ A lone failure keeps its own line, so without ``RHOGATE`` and ``RHOBARGATE``
 every evaluation, ``BUMPGATE`` line and count is exactly as before.
 
 **Arming and seeds** (``RHOGATE``, ``RHOBARGATE``). A density gate is
-*armed*, i.e. evaluated for every candidate, when an ``OPTIM`` key
-(case-insensitive) is ``AMPGRIDMB``, ``CGRIDMB``, ``SGRIDMB`` or
-``RCUTMB``. Otherwise every candidate has the ``-c`` density: its verdict is
-computed once and reused, and an ``OPTIM WATOM`` only has each candidate's
-pair weights checked. Because every evaluation would then be rejected, a
-failing ``-c`` density with an unarmed gate is a startup error under either
-``SEED`` mode, and so is a pair weight no candidate can make positive
-(``WATOM`` fixed at :math:`\le 0`, or an ``OPTIM WATOM`` box that does not
-reach above 0). At startup every *seed* is evaluated as a candidate: the
-``-c`` potential and every ``CONFIG`` or ``WARM`` point of the resolved
-``INIT`` chains (``OUTER``, ``PRESTAGE`` and ``PRESTAGE.INNER``). A
+*armed*, i.e. evaluated for every candidate (its density pair weights
+included), by an ``OPTIM`` line (in any case, anywhere in the file) on
+``AMPGRIDMB``, ``CGRIDMB``, ``SGRIDMB`` or ``RCUTMB``, the keys that change
+:math:`\rho(r)` or its window. A gate without one cannot act: every
+candidate would have the ``-c`` density and its one verdict (an ``OPTIM
+WATOM`` only scales the density, and the verdicts are scale-invariant), so
+it is an error at the gate's line naming the keys that would arm it
+(``Error on line 12: RHOGATE cannot act: no OPTIM line searches a key that
+changes the DM_REAM density or its window (AMPGRIDMB, CGRIDMB, SGRIDMB or
+RCUTMB), ...``). Before 1.6.0 such a gate was accepted with an INFO line
+("not armed per candidate") and the ``-c`` verdict reused. A pair weight no
+candidate can make positive (``WATOM`` fixed at :math:`\le 0`, or an
+``OPTIM WATOM`` box that does not reach above 0) is a startup error under
+either ``SEED`` mode, since every evaluation would be rejected. At startup
+every *seed* is evaluated as a candidate: the ``-c`` potential and every
+``CONFIG`` or ``WARM`` point of the resolved ``INIT`` chains (``OUTER``,
+``PRESTAGE`` and ``PRESTAGE.INNER``) and of the ``RESTART`` block's
+``METHOD`` chain (a restart round starts from them; ``RESTART WARM
+<file>`` in the messages). A
 failing seed that the optimiser may start from stops
 the run under ``SEED ERROR`` (one message listing every failing seed with
 its origin, the extremes, the window and ``v``, or for ``RHOBARGATE`` the
@@ -1694,8 +1754,7 @@ seed, that evaluation is rejected before training (band D).``). A failing
 ``-c`` potential that is not an ``INIT`` start (a ``WARM``- or ``LHS``-only
 chain) gets a WARNING. ``RANDOM``, ``LHS`` and ``SOBOL`` points are ordinary
 candidates. Each configured gate logs one startup ``INFO`` line: its
-settings, whether it is armed (and on which dimensions, or why not) and
-every seed's verdict.
+settings, the dimensions that arm it and every seed's verdict.
 
 .. _hpo_density_report:
 
@@ -1768,7 +1827,9 @@ space is restricted:
   Gaussian ``NONNEG`` seed stops startup with ``... is not > 0, but RHOFORM
   NONNEG requires every SGRIDMB width > 0 for the Gaussian basis ...``). In a
   ``DM_mJoin`` with a Gaussian DM_REAM child the Gaussian rule holds every
-  ``SGRIDMB`` entry (a box does not say whose entries it holds).
+  ``SGRIDMB`` entry (a box does not say whose entries it holds). A ``Blip``
+  or ``Blip5`` density needs an ``SGRIDMB`` low bound :math:`> 0` in every
+  form, as every radial bump width does (:ref:`search_space_constraints`).
 * **Projection.** Each evaluation evaluates a copy of the candidate with
   every negative ``AMPGRIDMB`` coordinate set to 0 (a NaN is left for
   DM_REAM to refuse), before the gates and the model build, and that
@@ -1812,15 +1873,16 @@ tadah 1.6.0 is ``SIGNED``: add ``RHOFORM SIGNED`` to it for a ``SIGNED`` run; a
 ``NONNEG`` or ``MONOTONE`` run needs a seed fitted in its form. Otherwise
 (no density key searched) it is a WARNING: the seed's density keys are not
 read. The rule is independent of ``WARM_ON_MISMATCH``, and it applies to the
-``WARM`` seeds of the ``INIT`` chains at startup and to those of a
-``RESTART`` block's ``METHOD`` chain at each restart.
+``WARM`` seeds of the ``INIT`` chains and of an active ``RESTART`` block's
+``METHOD`` chain at startup (:ref:`restart_decorator`), and again at each
+restart.
 
 ``OPTIM`` on structure data is an error at its line, case-insensitively:
 ``RHOFORM``, ``TYPE2B``, ``TYPEMB``, ``RCTYPE2B``, ``RCTYPEMB``,
-``KDEG2B``, ``KDEGMB`` and ``KDEGEMB`` (``OPTIM <KEY> is not a valid
-search target: ..., structure data rather than a continuous parameter;
-set it in the -c potential/configuration.``); ``OPTIM EMBF0`` has its own
-message.
+``KDEG2B``, ``KDEGMB``, ``KDEGEMB``, ``DIMER``, ``FIXINDEX``, ``MODEL``
+and the first ``OALGO`` value (``OPTIM <KEY> is not a valid search
+target: ..., structure data rather than a continuous parameter; set it in
+the -c potential/configuration.``); ``OPTIM EMBF0`` has its own message.
 
 .. _hpo_optimizer_common:
 
@@ -3079,7 +3141,13 @@ RESTART decorator
        (the ``INIT``-block grammar, including ``K_TOTAL``).  Implicit
        ``CONFIG`` is *not* auto-prepended here: a stagnated run already
        has CONFIG in its history.  Without a ``METHOD`` line a restart
-       uses the single ``CONFIG`` point.
+       uses the single ``CONFIG`` point.  Its seeds (``CONFIG`` and
+       ``WARM``) are resolved at startup when the block is active: a
+       ``WARM`` file that is missing or unreadable, or whose ``RHOFORM``
+       the run refuses, is a startup error (it was one only when the
+       first stagnation drew it), the ``EMBF0`` note comes at startup, and
+       the density gates check these points as seeds
+       (:ref:`hpo_feasibility_gates`).
    * - ``SEED``
      - int ≥ 0 (default: none)
      - Seed of the ``METHOD`` chain: restart *r* (``1`` … ``MAX``) draws

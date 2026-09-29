@@ -213,9 +213,15 @@ and a WARNING give the count and the reason (``RHOFORM NONNEG: 2 of 5311
 non-negative least-squares coefficient solves stopped before a Kuhn-Tucker
 point (the last: ...)``). REFINE and
 FUSE hold every amplitude at :math:`\ge 0` with Ceres lower bounds (and
-re-solve the final coefficients non-negatively). An ``INIT RHO`` anchor whose
-width (``MANUAL <mu> <eta>``) is 0 or less is an error under ``MONOTONE`` (a
-step needs ``SGRIDMB > 0``).
+re-solve the final coefficients non-negatively). With a bump basis (``Blip``,
+``Blip5``) an ``INIT PHI`` or ``INIT RHO`` anchor whose width (``MANUAL <mu>
+<eta>``) is 0 or less is an error in every form (a radial bump spans :math:`[\mu - w/\eta, \mu + w/\eta]`, so a
+width :math:`\le 0` has no support edge; under ``MONOTONE`` a step also needs
+``SGRIDMB > 0``): ``tadah refit INIT [phi]: the basis at mu 5 (INIT PHI
+anchor 1) has eta -1 <= 0; a radial bump needs a width eta > 0 ...``. Before
+1.6.0 only ``MONOTONE`` refused it; in the other forms the anchor was fitted
+as its mirror (the bump is even in :math:`\eta`) and written, or the refit
+failed with ``zero entry in SGRIDMB``.
 
 In every form the energy-mode joint refinement (FUSE) optimises the radial
 bumps (``phi`` and ``rho``) in their outer support edges
@@ -228,12 +234,26 @@ When it does move a bump and the curve-only re-solve of that channel leaves
 the energy–volume residual above tolerance (``max |dE|/tol > 1``), the joint
 refinement is re-run with the moved bumps held until nothing spills, and the
 result with the smaller ``max |dE|/tol`` is kept; the ``joint:`` lines of
-``refit_opt.log`` record it. Before tadah 1.6.0 the joint refinement bounded
-only the bump centres, so a bump could end past the cutoff (or with a negative
-width, which the projection skipped and ``tadah hpo`` then refused), and the
+``refit_opt.log`` record it. The held re-run passes share the stage's
+``MAXEVAL`` with the joint solve (the stage budgets below): each pass gets the
+iterations that are left, and with none left the held re-run is skipped and
+the linear re-solve result kept (``joint: ... FUSE held re-run skipped:
+MAXEVAL 2000 spent by the joint solve, the re-solve result is kept``). Before
+tadah 1.6.0 the joint refinement bounded only the bump centres, so a bump
+could end past the cutoff, or with a negative width, which the projection
+skipped (``tadah hpo`` 1.6.0 refuses such a width in a potential); and the
 projection's curve-only re-solve could undo the energy–volume fit: compact
 ``SIGNED`` refits therefore differ from those of earlier versions wherever
 that happened (the dense fit of the density is unchanged).
+
+Under ``REFIT_OBJECTIVE curve`` FUSE refines each function against its own
+curve (no energy–volume coupling). On the radial bump channels it does so in
+the same outer support edges, bounded at the hard cutoff, with the same width
+floor, so the bump-support projection after it moves nothing and FUSE never
+ends worse than it started. Before 1.6.0 it bounded only the centres: a bump
+pushed past the cutoff was moved back and the coefficients re-solved, which
+could leave the curve score worse than before FUSE (0.0948 to 0.1020 on a
+test curve).
 
 Without the HPO build (no Ceres) ``REFIT_MODE compact`` falls back to the
 dense path, in the declared form.
@@ -518,9 +538,10 @@ Without ``MAXEVAL`` each optimiser takes its default budget:
        ``LM`` and ``DOGLEG``
      - 50000 evaluations; 1000 iterations
    * - FUSE
-     - iterations of ``LM`` and ``DOGLEG`` in each joint solve (the held
-       re-run of *Compact mode* below, a fallback, runs up to one more
-       solve per radial bump, each with this budget)
+     - iterations of ``LM`` and ``DOGLEG`` over the whole stage: the joint
+       solve and the held re-run of *Compact mode* (a fallback, up to one
+       more solve per radial bump) share it; before 1.6.0 each held pass
+       had the full budget
      - 2000
 
 Before 1.6.0 dlib ``GLOBAL`` took ``max(500, MAXEVAL/20)`` function calls,

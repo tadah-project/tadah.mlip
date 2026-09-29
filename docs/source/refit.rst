@@ -199,12 +199,19 @@ size: with ``NRHO_BASIS 800`` a dense ``Blip5`` refit of a Ta table took
 about 1.3 s under ``SIGNED``, 7 s under ``NONNEG`` and 33 s under
 ``MONOTONE`` on one machine (``NRHO_BASIS 400``: 0.4 s, 0.9 s and 2.3 s), and
 basis escalations (``REFIT_MAX_ESCALATIONS``) repeat the fit. A solve that
-reaches its iteration cap (``3 n + 10``) keeps its non-negative amplitudes
-and logs a WARNING that they are not proven optimal.
+stops before a Kuhn-Tucker point (at its iteration cap, ``3 n + 10``, or
+because every column whose dual is above the tolerance was refused as
+numerically dependent on the others) keeps its non-negative amplitudes and
+logs a WARNING that names the reason and that they are not proven optimal.
 
 **Compact mode** (the HPO build). The ``rho`` ladder solves its coefficients
 by the same non-negative least squares, with the variable-projection
-gradient taken over the passive set (the coefficients above 0). REFINE and
+gradient taken over the passive set (the coefficients above 0). A
+coefficient solve that stops before a Kuhn-Tucker point keeps its feasible
+coefficients; the ladder counts such solves, and at its end the refit log
+and a WARNING give the count and the reason (``RHOFORM NONNEG: 2 of 5311
+non-negative least-squares coefficient solves stopped before a Kuhn-Tucker
+point (the last: ...)``). REFINE and
 FUSE hold every amplitude at :math:`\ge 0` with Ceres lower bounds (and
 re-solve the final coefficients non-negatively). An ``INIT RHO`` anchor whose
 width (``MANUAL <mu> <eta>``) is 0 or less is an error under ``MONOTONE`` (a
@@ -783,6 +790,14 @@ so the compensation region is then widened to :math:`[0,` largest support
 (a WARNING says so; add ``EMBF0 FREE`` to the input to edit a tadah 1.5.0 fit
 in its raw reference), and the edited potential always declares its mode.
 
+``EMBF0`` and ``RHOFORM`` are properties of the potential. A configuration
+passed with ``-c`` may set them only to the potential's own values: a
+different value is refused before anything is written, as in ``tadah
+predict`` (``RHOFORM conflict: pot.tadah declares RHOFORM NONNEG but the
+task configuration sets RHOFORM MONOTONE. ...``; ``EMBF0 conflict: ...``),
+and a ``RHOFORM`` set for a DM_REAM potential without one does not supply
+it.
+
 ``rho`` edits act in the potential's :ref:`density form <dm_ream_rhoform>`
 (the log states it), and the edited potential keeps its ``RHOFORM`` line.
 The input must declare ``RHOFORM`` (a DM_REAM potential without it stops
@@ -805,7 +820,10 @@ outer edge.
 
 Outputs default to ``pot_edited.tadah`` and ``refit_edited.hpotarget`` — the
 input file is never overwritten silently (an explicit ``-o`` /
-``--hpofileout`` wins; writing onto the input is refused). All bookkeeping
+``--hpofileout`` wins; writing onto the input is refused). An output that
+cannot be written (a missing directory, a directory in its place) stops the
+command with an error naming the file, here as in every ``refit`` mode and
+in ``tadah train``. All bookkeeping
 (``TYPE2B`` / ``TYPEMB`` count tokens, ``WEIGHTS``, ``FIXINDEX``/
 ``FIXWEIGHT``, ``KDEG*``, ``RCUT2B``/``RCUTMB``) is regenerated consistently.
 
@@ -831,6 +849,20 @@ overrides; ``--set 'KEY(i)=lo,hi'`` (repeatable) is applied last. Output goes
 to ``<input>_edited.hpotarget`` by default, ``-o <name>``, or back into the
 input with ``--in-place``.
 
+The numbers of ``--pct`` and ``--set`` are read with the number grammar of
+the hpotarget file, which ``tadah hpo`` reads the rewritten bounds with
+(:ref:`nfp_manual`): an optional sign, decimal digits with at most one
+``.``, an optional exponent, a finite value that is zero or a normal double.
+``5x``, ``0x10``, ``inf``, ``nan`` and ``1e-320`` are errors naming the
+token. A percentage must be positive, and ``--pct KEY=N`` needs an ``OPTIM``
+line on ``KEY`` in the file (active or commented; the error lists the keys
+it has). A ``--set`` needs finite bounds with ``lo < hi``, and its ``lo``
+must satisfy the rule the file's density form sets (below; ``tadah hpo``
+refuses such a box at startup). The file takes no ``RHOFORM`` or ``EMBF0``
+from a configuration (``-c``): an hpotarget carries no potential, so they
+would have no effect, and either is an error (``RHOFORM has no effect on
+--retarget ...``); the density form is ``--rhoform``, below.
+
 Retargeting a freshly-emitted file at the same percentage reproduces it
 byte-for-byte, and any retargeted file is a fixed point of further
 retargeting at the same settings. Bound recovery is exact at the printed
@@ -839,7 +871,11 @@ the group's scale floor relative to a fresh emission (warned). A line whose
 lower bound was clamped (the width channels, ``RCUT``, the non-negative
 amplitudes below) is recovered with the percentage of its own group comment
 (``# KEY  (+-X%``, which a per-key ``--pct`` rewrites), so repeating a
-per-key retarget such as ``--pct 5 SGRIDMB=50`` is a fixed point too.
+per-key retarget such as ``--pct 5 SGRIDMB=50`` is a fixed point too. An
+``RCUT2B``/``RCUTMB`` line has no group comment in a fresh file: a per-key
+``--pct RCUT2B=50`` writes one above the line (``# RCUT2B  (+-50%, 1
+params)``) and a retarget at the global percentage removes it again, so
+``RCUT`` lines are fixed points as well.
 
 **Density form.** Under ``RHOFORM NONNEG`` and ``MONOTONE`` the hpotarget
 written by ``refit`` (and ``refit --edit``) keeps every ``AMPGRIDMB`` box
@@ -855,7 +891,26 @@ rewritten ``AMPGRIDMB`` lower bound at 0, keeps the line, says so in the log
 (``tadah refit --retarget: <file> declares RHOFORM <form>: ...``) and
 refuses ``--set 'AMPGRIDMB(i)=lo,hi'`` with ``lo < 0`` (``tadah hpo``
 refuses such a box under that form as well). A ``SIGNED`` hpotarget has no
-such line and is written exactly as before.
+such line and is written exactly as before. A header line that names no
+density form is an error at its line.
+
+``--rhoform SIGNED|NONNEG|MONOTONE`` states the form of the potential the
+file searches around, for an hpotarget written without the line (by a
+``SIGNED`` potential, or before the potential declared a positive form).
+Under ``NONNEG`` or ``MONOTONE`` every rewritten ``AMPGRIDMB`` box is
+non-negative by the writer's rule and the header line is added where the
+writer puts it, so the result is the file ``refit`` writes for a potential
+in that form. For example, an amplitude of ``2.5e-5`` in a group whose
+bound floor is ``6e-5`` has the ``SIGNED`` box ``[-3.5e-5, 8.5e-5]``::
+
+   tadah refit --retarget refit.hpotarget --rhoform NONNEG -o nonneg.hpotarget
+
+makes it ``[0, 8.5e-5]`` and adds ``# RHOFORM NONNEG: AMPGRIDMB bounds are
+non-negative (lo = max(0, v - d))``; later retargets read the form from the
+line. ``--rhoform SIGNED`` adds nothing. A file whose header names another
+form is refused, naming the line (``--rhoform MONOTONE conflicts with the
+file: line 10 declares RHOFORM NONNEG ...``): an hpotarget searches around
+one potential, whose form does not change.
 
 .. _refit_rcut_contract:
 

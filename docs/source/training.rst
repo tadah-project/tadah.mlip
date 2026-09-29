@@ -215,6 +215,11 @@ File               Contents
                    ``UNCERTAINTY true`` is set.
 ================== ============================================================================
 
+A potential file that cannot be written (its directory does not exist, or
+a directory has its name) stops ``tadah train`` with an error that names
+the file and a non-zero exit status; it used to log an ``ERROR`` line and
+exit 0 without a potential.
+
 pot.tadah format
 ~~~~~~~~~~~~~~~~
 

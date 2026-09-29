@@ -46,7 +46,8 @@ smallest normal double (``1e-320``, or ``1e-400``, which underflows to
 grammar but outside its key's range is an error that names it as well.
 Every key reads numbers this way, the options of the ``PC_LAMMPS``,
 ``PC_FAILPROBE`` and ``PC_OBSERVABLE`` lines and the ``tadah refit``
-stage blocks included:
+stage blocks included, and ``tadah refit --retarget`` reads its ``--pct``
+and ``--set`` numbers, which it writes into an hpotarget, the same way:
 
 .. code-block:: none
 
@@ -1761,7 +1762,13 @@ space is restricted:
   clamped at 0 cannot be ``LOG``.
 * An explicit ``AMPGRIDMB`` low bound below 0 is an error (0 is allowed), a
   ``WATOM`` low bound :math:`\le 0` is an error (explicit or ``AUTO``), and
-  under ``MONOTONE`` so is an ``SGRIDMB`` low bound :math:`\le 0`.
+  so is an ``SGRIDMB`` low bound :math:`\le 0` under ``MONOTONE`` and, for
+  a Gaussian density (basis code 1), under ``NONNEG``: these are the width
+  rules DM_REAM applies to the density (``OPTIM SGRIDMB (1) -0.5 2.0`` on a
+  Gaussian ``NONNEG`` seed stops startup with ``... is not > 0, but RHOFORM
+  NONNEG requires every SGRIDMB width > 0 for the Gaussian basis ...``). In a
+  ``DM_mJoin`` with a Gaussian DM_REAM child the Gaussian rule holds every
+  ``SGRIDMB`` entry (a box does not say whose entries it holds).
 * **Projection.** Each evaluation evaluates a copy of the candidate with
   every negative ``AMPGRIDMB`` coordinate set to 0 (a NaN is left for
   DM_REAM to refuse), before the gates and the model build, and that

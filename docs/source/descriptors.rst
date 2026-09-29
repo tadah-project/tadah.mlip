@@ -429,9 +429,18 @@ steps :math:`S_n`.
 
 *Validation* (in the constructor and on every HPO candidate; an invalid
 density is an error naming the 1-based entry and its value). Every form:
-the existing size checks (``CGRIDMB``/``SGRIDMB``/``AMPGRIDMB``/``KDEGMB``),
-no zero ``SGRIDMB`` entry for the bump families and ``KDEGMB`` entries in
-``{3, 5}``. ``NONNEG`` and ``MONOTONE`` add:
+the ``TYPEMB`` basis code (the token after ``DM_REAM``) is an integer naming
+a known basis, 0 to 3 (a code that is not an integer, or no code, is an
+error, ``DM_REAM: TYPEMB basis code 'x' is not an integer (known: 0=Blip,
+1=Gaussian, 2=Knot5, 3=Blip5).``, not the Blip basis); the existing size
+checks (``CGRIDMB``/``SGRIDMB``/``AMPGRIDMB``/``KDEGMB``), no zero
+``SGRIDMB`` entry for the bump families and ``KDEGMB`` entries in
+``{3, 5}``. ``WATOM`` values are read with the decimal number grammar of
+potential files (a sign, digits with at most one ``.``, an optional
+exponent; a finite value) by the model, the density checks and the HPO
+density gates alike: anything else, such as ``0x1p-1``, ``inf`` or ``nan``,
+is an error (``WATOM entry 1 ('0x1p-1') is not a decimal number: ...``).
+``NONNEG`` and ``MONOTONE`` add:
 
 * every ``AMPGRIDMB`` entry finite and :math:`\ge 0`, and every ``CGRIDMB``
   entry finite;
@@ -460,7 +469,7 @@ refused with::
 
 The key is new in tadah 1.6.0: add ``RHOFORM SIGNED`` to a potential written
 before 1.6.0 to use it unchanged (bit for bit). ``tadah predict``, ``tadah analysis
-descriptor`` and ``tadah properties pairwise`` refuse a key-less DM_REAM
+descriptor``, ``tadah analysis bfunc`` and ``tadah properties pairwise`` refuse a key-less DM_REAM
 potential even when the task configuration sets ``RHOFORM`` (the form
 belongs to the potential, whose amplitudes were fitted in it), and a task
 value that differs from the potential's is refused as well. The LAMMPS pair

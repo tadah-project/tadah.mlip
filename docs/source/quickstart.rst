@@ -264,6 +264,13 @@ Once trained, the ``pot.tadah`` file can be used with LAMMPS like any other pair
 
 Here is an example LAMMPS :download:`script file <quickstart/in.ml>` and :download:`pot.file <quickstart/pot.tadah>`.
 
+The elements after the file name map the LAMMPS atom types, in order, to
+elements of the potential (``NULL`` leaves a type out). A potential that
+cannot be loaded, or an element it does not have, stops LAMMPS with an
+``ERROR`` that gives the reason, on the screen and in ``log.lammps``, e.g.
+``ERROR: pair_coeff: failed to initialise Tadah potential 'pot.tadah':
+Symbol not in potential file: W``.
+
 See :ref:`installation_lammps` for Tadah!LAMMPS interface installation instructions.
 
 When LAMMPS loads this potential, its log contains the line

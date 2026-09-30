@@ -976,8 +976,10 @@ Practical consequences for knot potentials:
   dimension is wasted (warned at startup).
 * During ``tadah hpo`` the neighbour list is sized once for the largest
   cutoff the search can reach (including the upper bounds of OPTIM'd knot
-  positions), and the RCUT keys follow the moving knots automatically; the
-  written ``best_pot.tadah`` is always self-consistent.
+  positions), and rebuilt for an evaluation outside the ``OPTIM`` box that
+  reaches further (counted in ``DIAGNOSTICS``); the RCUT keys follow the
+  moving knots automatically; the written ``best_pot.tadah`` is always
+  self-consistent.
 * Hand-editing knot positions in a ``pot.tadah`` is safe for ``tadah``: the
   stale RCUT is detected and replaced by whichever command reads the file
   next. ``pair_style tadah`` (LAMMPS) reads the stated ``RCUT`` as it is,

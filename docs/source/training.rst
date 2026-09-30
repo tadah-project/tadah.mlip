@@ -45,7 +45,10 @@ in order:
 #. **Apply load-time data transforms** (``LSCALE``, ``ESHIFT*``,
    ``EFILTER`` / ``FFILTER``, ``EWEIGHT_TEMP``, ``WDBFILE`` /
    ``WDBFILE_AUTO``, ``ZERO_COM_FORCE``) — see :ref:`load_transforms`.
-#. **Build the neighbour list** out to ``RCUTMAX``.
+#. **Build the neighbour list** out to ``RCUTMAX``: every periodic image
+   of every atom closer than the cutoff, for any cell (triclinic, or
+   thinner than the cutoff) and for atoms inside or outside the cell (see
+   :doc:`API/nn_finder`).
 #. **Run the pre-flight audit** when enabled (``AUDIT`` is ``off`` by
    default; ``warn`` reports findings, ``error`` refuses to launch on a
    FAIL-level finding), which checks dataset statistics and
@@ -54,6 +57,16 @@ in order:
 #. **Fit the regression model** declared by ``MODEL``.
 #. **Write ``pot.tadah``** (or whatever ``--outfile`` requests) and the
    optional uncertainty file.
+
+.. versionchanged:: 1.6.0
+   The neighbour list holds every periodic image. Earlier versions missed
+   images of structures whose cell is thinner than the cutoff in some
+   direction (e.g. a 2-atom bcc cell with :math:`a = 3.41` Å at a 10 Å
+   cutoff kept 168 of each atom's 180 neighbours), or is triclinic, or whose
+   atoms lie outside the cell. Potentials trained on such structures, and
+   ``tadah predict`` results for them, change; retrain the potentials.
+   ``tadah predict`` now agrees with ``pair_style tadah`` in LAMMPS on every
+   cell.
 
 .. _load_transforms:
 

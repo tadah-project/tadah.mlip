@@ -251,6 +251,10 @@ The dataset has the following structure:
 - ``px``, ``py``, and ``pz`` are Cartesian coordinates of the atom position,
   in Å; its fractional coordinates :math:`f_1, f_2, f_3` are defined by
   :math:`\mathbf{r} = f_1\mathbf{a} + f_2\mathbf{b} + f_3\mathbf{c}`.
+  An atom may lie outside the cell (a fractional coordinate below 0 or above
+  1): it stands for all its periodic images, and nothing needs to be
+  wrapped. A cell may also be thinner than the cutoff; every image within the
+  cutoff is used.
 - ``fx``, ``fy``, and ``fz`` are components of the force vector acting on the atom.
 - Each configuration is separated by a blank line.
 

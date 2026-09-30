@@ -273,9 +273,13 @@ Also see :ref:`units`.
    - before 1.3.0-beta.1 from a VASP ``vasprun.xml``: the cell is right but
      the positions are not
      (:math:`\mathbf{r}_\text{new} = C^\mathsf{T} C^{-1}\,\mathbf{r}_\text{old}`,
-     with :math:`C` the cell block, repairs them);
-   - before 1.6.0 from a non-orthogonal CIF or COD entry: the cell was
-     stored transposed.
+     with :math:`C` the cell block, repairs them).
+
+   Structure files that ``tadah data write -s`` exported (VASP POSCAR,
+   LAMMPS data, CASTEP ``.cell``) from a non-orthogonal CIF or COD entry
+   before 1.6.0 hold a transposed cell; export them again. Potentials and
+   ``tadah hpo`` results fitted to affected structures need to be
+   regenerated.
 
 Tadah! and LAMMPS
 -----------------

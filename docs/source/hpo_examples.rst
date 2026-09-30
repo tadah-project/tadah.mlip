@@ -193,7 +193,7 @@ Index
    * - 25
      - `25_failprobe_grading <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/v1-dev/examples/25_failprobe_grading>`_
      - Example 02's seeded random search with a tight ``--hotvar``
-       lattice window: six candidates fail and are graded (band A) by
+       lattice window: four candidates fail and are graded (band A) by
        ``FAILSCORE_GRADING ON``; ``PC_FAILPROBE`` runs the sanity probe
        of :ref:`failscore_grading` (``common/lammps/failprobe.in``).
      - ``FAILSCORE_GRADING``, ``PC_FAILPROBE``

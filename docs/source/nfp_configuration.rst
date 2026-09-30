@@ -1314,11 +1314,10 @@ with the configuration line
 
 (Adapt the element, ``a0``, volumes and thresholds to your system; add
 Born-stability hinges via finite-difference stress probes on fixed
-strained cells if shear stability matters for your fits — the
-``pen_born`` machinery in the examples shows the pattern.)  The HPO
+strained cells if shear stability matters for your fits.)  The HPO
 examples ship this probe as ``examples/common/lammps/failprobe.in``;
 example ``25_failprobe_grading`` (:ref:`hpo_examples`) runs it with
-``FAILSCORE_GRADING ON`` and a lattice window that grades six band-A
+``FAILSCORE_GRADING ON`` and a lattice window that grades four band-A
 failures.
 
 ``--failvar`` recipes for typical scripts
@@ -4444,8 +4443,9 @@ can short-circuit the expensive minimisation:
 
       variable hot_a0 equal lx/<divisor>
 
-   where ``<divisor>`` matches the conventional cell size (e.g.
-   ``4.0`` for a 4-atom BCC conventional cell). HPO injects
+   where ``<divisor>`` is the number of conventional cells along x
+   (e.g. ``4.0`` for the ``region box block 0 4 0 4 0 4 units lattice``
+   of ``examples/common/lammps/Ecoh.in``). HPO injects
    ``hot_a0`` as an ``equal``-style variable, so this is a same-style
    overwrite that LAMMPS accepts without a prior ``variable delete``.
    A ``string``-style readback clashes with the injected variable on

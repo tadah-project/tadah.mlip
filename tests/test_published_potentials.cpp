@@ -10,6 +10,11 @@
 //
 // The files are loaded the way `tadah predict` loads a potential (with
 // `-F` for the Kr tables).
+//
+// A crystal predicts the same per-atom energy and forces whichever
+// periodic cell describes it: a cell thinner than the cutoff, a triclinic
+// or sheared one, or one whose atoms lie outside it, must give what its
+// supercell (every height at least the cutoff) gives.
 
 #include "catch2/catch.hpp"
 
@@ -30,6 +35,8 @@
 #include <tadah/tadah.lammps/lammps_tadah.h>
 #endif
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -191,6 +198,80 @@ void check_kr_against_table(const std::string &name) {
   }
 }
 
+using Rows = std::array<std::array<double, 3>, 3>;  // rows[k]: lattice vector a_k
+using Frac = std::array<double, 3>;
+using Offset = std::array<int, 3>;
+
+/* A Kr crystal whose cell rows are the lattice vectors a_k: atom i sits at
+ * r_i = f_i0 a0 + f_i1 a1 + f_i2 a2, with its fractional coordinates f_i in
+ * [0, 1), moved by the lattice vector m_i0 a0 + m_i1 a1 + m_i2 a2 when
+ * offsets m are given (an unwrapped copy of the same crystal). */
+Structure kr_crystal(const Rows &rows, const std::vector<Frac> &frac,
+                     const std::vector<Offset> &offset = {}) {
+  const Element Kr = PeriodicTable::find_by_symbol("Kr");
+  Structure st;
+  st.cell.load(rows[0][0], rows[0][1], rows[0][2],
+               rows[1][0], rows[1][1], rows[1][2],
+               rows[2][0], rows[2][1], rows[2][2]);
+  for (size_t i = 0; i < frac.size(); ++i) {
+    double r[3];
+    for (int c = 0; c < 3; ++c) {
+      r[c] = frac[i][0] * rows[0][c] + frac[i][1] * rows[1][c] +
+             frac[i][2] * rows[2][c];
+      if (!offset.empty())
+        r[c] += offset[i][0] * rows[0][c] + offset[i][1] * rows[1][c] +
+                offset[i][2] * rows[2][c];
+    }
+    st.add_atom(Atom(Kr, r[0], r[1], r[2], 0, 0, 0));
+  }
+  return st;
+}
+
+/* Heights h_k = V / |a_{k+1} x a_{k+2}| of the cell (the distances between
+ * the lattice planes the rows span), computed here, not by the library. */
+std::array<double, 3> cell_heights(const Structure &st) {
+  double a[3][3];
+  for (int k = 0; k < 3; ++k)
+    for (int c = 0; c < 3; ++c) a[k][c] = st.cell(k, c);
+  double cr[3][3];  // cr[k] = a_{k+1} x a_{k+2}
+  for (int k = 0; k < 3; ++k) {
+    const double *u = a[(k + 1) % 3], *v = a[(k + 2) % 3];
+    cr[k][0] = u[1] * v[2] - u[2] * v[1];
+    cr[k][1] = u[2] * v[0] - u[0] * v[2];
+    cr[k][2] = u[0] * v[1] - u[1] * v[0];
+  }
+  const double vol = std::fabs(a[0][0] * cr[0][0] + a[0][1] * cr[0][1] +
+                               a[0][2] * cr[0][2]);
+  std::array<double, 3> h;
+  for (int k = 0; k < 3; ++k)
+    h[k] = vol / std::sqrt(cr[k][0] * cr[k][0] + cr[k][1] * cr[k][1] +
+                           cr[k][2] * cr[k][2]);
+  return h;
+}
+
+/* The n0 x n1 x n2 supercell along the cell rows, built here (the check
+ * must not share code with StructureTransformation::replicate): row k is
+ * scaled by n_k and copy (x, y, z) of atom i sits at
+ * r_i + x a0 + y a1 + z a2, in the loop order x, y, z, then atoms, so atom
+ * c * natoms + i is a copy of atom i. */
+Structure supercell(const Structure &st, const std::array<int, 3> &n) {
+  Structure out;
+  out.cell.load(st.cell(0, 0) * n[0], st.cell(0, 1) * n[0], st.cell(0, 2) * n[0],
+                st.cell(1, 0) * n[1], st.cell(1, 1) * n[1], st.cell(1, 2) * n[1],
+                st.cell(2, 0) * n[2], st.cell(2, 1) * n[2], st.cell(2, 2) * n[2]);
+  for (int x = 0; x < n[0]; ++x)
+    for (int y = 0; y < n[1]; ++y)
+      for (int z = 0; z < n[2]; ++z)
+        for (const Atom &at : st.atoms) {
+          Atom copy = at;
+          for (int c = 0; c < 3; ++c)
+            copy.position[c] = at.position[c] + x * st.cell(0, c) +
+                               y * st.cell(1, c) + z * st.cell(2, c);
+          out.add_atom(copy);
+        }
+  return out;
+}
+
 } // namespace
 
 TEST_CASE("Published potentials: Tadah!Kr1 reproduces Tadah.Kr1.tab",
@@ -281,4 +362,120 @@ TEST_CASE("Published potentials: Tadah!N2 with element pairs other than "
   CHECK_NOTHROW(
       tadah::LammpsTadah(load(kMlipsDir + "/tadah.n2", Forces::no)));
 #endif
+}
+
+TEST_CASE("published potentials predict the same per-atom energy and forces "
+          "on a thin or triclinic cell as on its supercell",
+          "[published_potentials][published][nn]") {
+  /* Kr fcc at a = 6.0 A, the atoms moved off their lattice sites so that
+   * they feel forces. Each cell below is thinner than the cutoffs (Kr1
+   * 11.23 A, Kr2 12.00 A) in at least one direction, and describes the
+   * same crystal as its supercell along the rows with every height at
+   * least the cutoff: the energy per atom, and the force on each atom and
+   * on each of its copies, must be the same. The reference is the
+   * supercell of the wrapped cell. A neighbour list that misses periodic
+   * images of the thin cell changes both: before the fix, the list of the
+   * conventional cell held 392 of its 536 entries at Kr2's cutoff (360 of
+   * 438 at Kr1's), 138 with its atoms outside the cell, 428 in the sheared
+   * basis, and that of the doubled primitive cell 248 of 268. A one-atom
+   * cell only pairs the atom with its own images, and was exact. */
+  PeriodicTable::initialize();
+  const double a = 6.0, h = 0.5 * a;
+  const Rows cubic = {{{a, 0.0, 0.0}, {0.0, a, 0.0}, {0.0, 0.0, a}}};
+  const Rows primitive = {{{0.0, h, h}, {h, 0.0, h}, {h, h, 0.0}}};
+  const Rows primitive_x2 = {{{0.0, a, a}, {h, 0.0, h}, {h, h, 0.0}}};
+  // the cubic lattice in the basis a0, a0 + a1, a2
+  const Rows sheared = {{{a, 0.0, 0.0}, {a, a, 0.0}, {0.0, 0.0, a}}};
+  const std::vector<Frac> conventional = {{0.02, 0.01, 0.015},
+                                          {0.0, 0.512, 0.48},
+                                          {0.485, 0.018, 0.51},
+                                          {0.52, 0.49, 0.007}};
+  // the same atoms in the sheared basis: g0 = f0 - f1 (wrapped), g1 = f1
+  std::vector<Frac> conventional_sheared;
+  for (const Frac &f : conventional) {
+    double g0 = f[0] - f[1];
+    if (g0 < 0.0) g0 += 1.0;
+    conventional_sheared.push_back({g0, f[1], f[2]});
+  }
+  const std::vector<Frac> doubled = {{0.01, 0.02, 0.03}, {0.52, 0.01, 0.97}};
+
+  struct Case {
+    std::string name;
+    Rows rows;
+    std::vector<Frac> frac;
+    std::vector<Offset> offset;  // empty: wrapped
+  };
+  const std::vector<Case> cases = {
+      {"conventional cubic cell (4 atoms)", cubic, conventional, {}},
+      {"conventional cubic cell, atoms moved by lattice vectors", cubic,
+       conventional, {{1, 0, -1}, {-2, 1, 0}, {0, 3, 1}, {1, 1, 1}}},
+      {"conventional cell in the sheared basis a0, a0 + a1, a2", sheared,
+       conventional_sheared, {}},
+      {"primitive triclinic cell (1 atom)", primitive, {{0.1, 0.2, 0.3}}, {}},
+      {"primitive triclinic cell, atom moved by a lattice vector", primitive,
+       {{0.1, 0.2, 0.3}}, {{2, -1, 3}}},
+      {"primitive triclinic cell doubled along a0 (2 atoms)", primitive_x2,
+       doubled, {}},
+      {"primitive triclinic cell doubled along a0, atoms moved by lattice "
+       "vectors", primitive_x2, doubled, {{1, -1, 0}, {-1, 2, 1}}},
+  };
+
+  for (const std::string name : {"Tadah.Kr1", "Tadah.Kr2"}) {
+    std::unique_ptr<Potential> pot;
+    REQUIRE_NOTHROW(
+        pot.reset(new Potential(kMlipsDir + "/" + name, Forces::yes)));
+    const double rc = pot->context().get<double>("RCUTMAX");
+    for (const Case &cs : cases) {
+      const Structure wrapped = kr_crystal(cs.rows, cs.frac);
+      const Structure st = kr_crystal(cs.rows, cs.frac, cs.offset);
+      const std::array<double, 3> hk = cell_heights(wrapped);
+      std::array<int, 3> n;
+      for (int k = 0; k < 3; ++k)
+        n[k] = static_cast<int>(std::ceil(rc / hk[k]));
+      INFO(name << " (cutoff " << rc << " A): " << cs.name << "; heights "
+                << hk[0] << ", " << hk[1] << ", " << hk[2] << " A; supercell "
+                << n[0] << " x " << n[1] << " x " << n[2]);
+      // the cell is thinner than the cutoff; the supercell is not
+      REQUIRE(std::min({hk[0], hk[1], hk[2]}) < rc);
+      for (int k = 0; k < 3; ++k) REQUIRE(n[k] * hk[k] >= rc);
+
+      const Structure big = supercell(wrapped, n);
+      const size_t nat = st.natoms();
+      REQUIRE(big.natoms() == nat * n[0] * n[1] * n[2]);
+      const Structure pred = pot->predict(st);
+      const Structure ref = pot->predict(big);
+      REQUIRE(pred.atoms.size() == nat);
+      REQUIRE(ref.atoms.size() == big.natoms());
+
+      const double e = pred.energy / nat;
+      const double e_ref = ref.energy / big.natoms();
+      INFO("E/N " << e << " eV, supercell " << e_ref << " eV");
+      bool finite = is_finite_bits(e) && is_finite_bits(e_ref);
+      CHECK(e == Approx(e_ref).epsilon(1e-10));
+
+      // the largest difference between the force on an atom and on any
+      // of its copies in the supercell
+      double df_max = 0.0, f_ref_max = 0.0;
+      size_t worst_atom = 0;
+      for (size_t c = 0; c < big.natoms() / nat; ++c)
+        for (size_t i = 0; i < nat; ++i)
+          for (int k = 0; k < 3; ++k) {
+            const double f = pred.atoms[i].force(k);
+            const double f_ref = ref.atoms[c * nat + i].force(k);
+            finite = finite && is_finite_bits(f) && is_finite_bits(f_ref);
+            f_ref_max = std::max(f_ref_max, std::fabs(f_ref));
+            if (!(std::fabs(f - f_ref) <= df_max)) {
+              df_max = std::fabs(f - f_ref);
+              worst_atom = i;
+            }
+          }
+      INFO("largest force difference " << df_max << " eV/A (atom "
+           << worst_atom << "); largest supercell force component "
+           << f_ref_max << " eV/A");
+      CHECK(finite);
+      CHECK(df_max <= 1e-10);
+      // off their lattice sites, the atoms of a multi-atom cell feel forces
+      if (nat > 1) CHECK(f_ref_max > 1e-3);
+    }
+  }
 }

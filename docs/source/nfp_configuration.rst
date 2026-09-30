@@ -415,7 +415,10 @@ automatically:
   knots;
 * the neighbour list is sized **once** for the largest cutoff the search
   can reach — including the upper bounds of any ``OPTIM`` block on the
-  knot grids — so no evaluation can silently outrun it.
+  knot grids. An evaluation beyond it (a point outside the ``OPTIM`` box,
+  from an optimiser that ignores the bounds) is evaluated with lists
+  rebuilt for it, and ``DIAGNOSTICS`` counts it (``Neighbour lists
+  rebuilt``), so no evaluation silently outruns the list.
 
 Consequently ``OPTIM RCUT2B`` / ``OPTIM RCUTMB`` on a knot-family
 potential is a *wasted search dimension* (the value is overridden each
@@ -949,6 +952,9 @@ weights.  Each line is one loss term.  It cannot be combined with
      - Crystal structure; only ``bcc`` is supported (default).
    * - ``--supercell <nx> <ny> <nz>``
      - Supercell size (default ``4 4 4``): integers from 1 to 2147483647.
+       The neighbour list holds every periodic image, so any size gives the
+       bulk energy of the perfect crystal (``1 1 1`` too); a larger one
+       costs time.
    * - ``--loss <name>``
      - Loss of this term (default ``L2``; ``HUBER``/``TUKEY`` use their
        default parameter).  ``MAPE`` and ``RMSLE`` have no analytical
@@ -2569,19 +2575,25 @@ The first one-sided difference of each dimension is an ``INFO`` line
 RCUT2B = 5.999996 with the loss at the point itself; …``), and
 ``DIAGNOSTICS`` counts, each only when it is not zero, the one-sided
 differences per dimension, the points snapped onto the box, the evaluations
-and the gradients outside the box, and ``HYBRID``'s own evaluations of the
-point:
+and the gradients outside the box, ``HYBRID``'s own evaluations of the
+point, and the evaluations whose cutoff (``RCUT2B``/``RCUTMB``, or a knot
+beyond the box) exceeds the neighbour lists, which ``tadah hpo`` builds
+once for the ``OPTIM`` box and rebuilds for such an evaluation (1.6.0;
+before, the short lists were used silently):
 
 .. code-block:: none
 
-   One-sided differences   : 1 (a coordinate within a step of its bound, or outside
-     the box, differenced into it): RCUT2B 1
    Snapped onto the box    : 4 (points proposed outside the OPTIM box within
      rounding, 8 units in the last place, and evaluated on the bound)
    Out-of-box evaluations  : 3 (points outside the OPTIM box, evaluated there: an
      optimiser that ignores the bounds; see the first such WARNING)
    Out-of-box gradients    : 2 (at points outside the OPTIM box, each finite
      difference stepped towards the box)
+   Neighbour lists rebuilt : 2 evaluation(s) with a cutoff above the one-time neighbour
+     lists (sized for the OPTIM box), evaluated with lists rebuilt for them;
+     see the first such WARNING
+   One-sided differences   : 1 (a coordinate within a step of its bound, or outside
+     the box, differenced into it): RCUT2B 1
    HYBRID centre losses    : 1 (evaluations of a gradient's point for its
      one-sided or forward differences, where the optimiser's own loss could not
      be reused)

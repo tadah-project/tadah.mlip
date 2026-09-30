@@ -158,7 +158,7 @@ for `tadah hpo`). An example included in the docs is tested with no further
 registration. `ctest -L e2e` runs HPO's host end-to-end groups
 (`hpo_fixweight_e2e`, `hpo_durable_e2e`, `hpo_embf0_e2e`, `hpo_rcut_e2e`,
 `hpo_rhoform_e2e`, `hpo_rhogate_e2e`, `hpo_rhobargate_e2e`,
-`hpo_bumpgate_e2e`) and the `hpo_tadah_cli_*` cases, which run the built `tadah`: their entries
+`hpo_bumpgate_e2e`, `hpo_nn_e2e`) and the `hpo_tadah_cli_*` cases, which run the built `tadah`: their entries
 set `TADAH_BINARY` to it in a build with the `tadah` target, and in one
 without it (a standalone HPO build) the cases are Skipped unless
 `TADAH_BINARY` names an executable.

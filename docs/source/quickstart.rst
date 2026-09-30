@@ -240,17 +240,42 @@ The dataset has the following structure:
 
 - The first line is a comment line; it will be used as a label for a structure. Do not leave a blank line.
 - ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line.
-- Each cell vector contains 3 numbers.
+- The three cell lines are the lattice vectors **a**, **b** and **c**, one
+  vector per line, as Cartesian components in Å (the lattice vectors are the
+  *rows* of the 3×3 block). A vector is **not** written down a column.
+  The vectors may be given in either handedness; the cell volume is
+  :math:`|\mathbf{a}\cdot(\mathbf{b}\times\mathbf{c})|`.
 - Each stress tensor row contains 3 numbers.
 - The number of lines beginning with Element is equal to the number of atoms in a structure.
 - Element is an atom label, a chemical element symbol, such as Fe, Ti.
-- ``px``, ``py``, and ``pz`` are Cartesian coordinates of the atom position.
+- ``px``, ``py``, and ``pz`` are Cartesian coordinates of the atom position,
+  in Å; its fractional coordinates :math:`f_1, f_2, f_3` are defined by
+  :math:`\mathbf{r} = f_1\mathbf{a} + f_2\mathbf{b} + f_3\mathbf{c}`.
 - ``fx``, ``fy``, and ``fz`` are components of the force vector acting on the atom.
 - Each configuration is separated by a blank line.
 
 If forces and/or stresses are not available, they can be set to zero to satisfy the parser.
 
 Also see :ref:`units`.
+
+.. _dataset_cell_migration:
+
+.. note::
+
+   **Datasets written by older versions** may hold a wrong cell. Only
+   structures whose 3×3 cell block is not symmetric can be affected, and
+   ``tadah analysis dataset_stats`` lists them by index and label.
+   Re-convert such a structure from its source file if it was written
+
+   - before 1.3.0-beta.1 from a VASP OUTCAR or a CASTEP ``.castep``,
+     ``.md`` or ``.geom`` file: the cell was stored transposed (the
+     positions are right, so transposing the cell block repairs it);
+   - before 1.3.0-beta.1 from a VASP ``vasprun.xml``: the cell is right but
+     the positions are not
+     (:math:`\mathbf{r}_\text{new} = C^\mathsf{T} C^{-1}\,\mathbf{r}_\text{old}`,
+     with :math:`C` the cell block, repairs them);
+   - before 1.6.0 from a non-orthogonal CIF or COD entry: the cell was
+     stored transposed.
 
 Tadah! and LAMMPS
 -----------------

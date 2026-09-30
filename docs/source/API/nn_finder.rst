@@ -18,8 +18,11 @@ The list (``NNTable``, stored in ``Structure::nn``) is:
     integer triple.
   - :math:`j = i` is allowed when :math:`\mathbf{s} \ne 0`.
   - The list may also hold pairs up to :math:`R` plus ``NNTable::guard``.
-    That is the rounding bound of a computed distance, about
-    :math:`10^{-13}` relative.
+    That is twice the rounding bound of a computed distance,
+    :math:`32\varepsilon (G + 2)(R + 2\max_i |\mathbf{r}_i|)` with
+    :math:`G = \sum_k |\mathbf{a}_k||\mathbf{b}^*_k|`: about
+    :math:`10^{-13}` relative for atoms near the cell, growing with their
+    distance from the origin.
   - A consumer that computes a distance below :math:`R` always finds the
     pair. Consumers filter by their own cutoff.
 - **relative to the stored positions**: the positions are never changed. An
@@ -50,14 +53,27 @@ How the list is built:
 Refusals:
 
 - A cell so small for the cutoff that the search would span more than
-  :math:`10^4` image cells is refused with ``std::runtime_error``. A cube is
-  refused once the cutoff reaches ten edges.
+  :math:`10^4` image cells is refused with ``std::runtime_error``. The count,
+  :math:`\prod_k (2N_k + 1)` with :math:`N_k = \lfloor R/h_k \rfloor + 1`
+  over the heights of the reduced cell, has no rounding margin, so it does
+  not depend on where the atoms are stored: a cube is refused once the
+  cutoff reaches ten edges.
 - Invalid input is refused with ``std::invalid_argument``:
 
   - a cutoff that is not a finite positive number;
   - a non-finite cell entry or position;
-  - a singular cell;
-  - an atom more than :math:`2^{31}` cells from the origin.
+  - a cell vector shorter than :math:`2^{-200}` Å or longer than
+    :math:`2^{200}` Å (about :math:`6\cdot10^{-61}` to
+    :math:`1.6\cdot10^{60}` Å), where the cell geometry would under- or
+    overflow;
+  - a singular or numerically singular cell;
+  - an atom more than :math:`2^{31}` cells from the origin;
+  - positions whose rounding bound exceeds an image cell (an atom far out
+    in a cell near the conditioning limit).
+
+A structure without atoms gets an empty list; its cell is not examined. Two
+atoms at the same position are listed as neighbours at distance 0; the
+descriptors divide by the distance, so such a structure is not usable.
 
 .. versionchanged:: 1.6.0
    Earlier versions missed periodic images when the cell was thinner than the

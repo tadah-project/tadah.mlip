@@ -2583,20 +2583,20 @@ before, the short lists were used silently):
 
 .. code-block:: none
 
-   One-sided differences   : 1 (a coordinate within a step of its bound, or outside
-     the box, differenced into it): RCUT2B 1
    Snapped onto the box    : 4 (points proposed outside the OPTIM box within
      rounding, 8 units in the last place, and evaluated on the bound)
    Out-of-box evaluations  : 3 (points outside the OPTIM box, evaluated there: an
      optimiser that ignores the bounds; see the first such WARNING)
    Out-of-box gradients    : 2 (at points outside the OPTIM box, each finite
      difference stepped towards the box)
-   HYBRID centre losses    : 1 (evaluations of a gradient's point for its
-     one-sided or forward differences, where the optimiser's own loss could not
-     be reused)
    Neighbour lists rebuilt : 2 evaluation(s) with a cutoff above the one-time neighbour
      lists (sized for the OPTIM box), evaluated with lists rebuilt for them;
      see the first such WARNING
+   One-sided differences   : 1 (a coordinate within a step of its bound, or outside
+     the box, differenced into it): RCUT2B 1
+   HYBRID centre losses    : 1 (evaluations of a gradient's point for its
+     one-sided or forward differences, where the optimiser's own loss could not
+     be reused)
 
 A run whose gradients never come within a step of a bound keeps its
 ``DIAGNOSTICS``.

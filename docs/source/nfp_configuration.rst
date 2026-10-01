@@ -546,18 +546,45 @@ applies the loss to the arithmetic average of that metric across datasets:
 
    PC_<METRIC> <target> <weight>
 
-================== =================================================================
-Key                Quantity
-================== =================================================================
-``PC_EMAE``        Energy mean absolute error (per atom)
-``PC_ERMSE``       Energy root-mean-square error (per atom)
-``PC_ErRMSE``      Energy *relative* RMSE
-``PC_ERSQ``        Coefficient of determination (R²) for energies
-``PC_FRMSE``       Force component RMSE
-``PC_SRMSE``       Stress component RMSE
-================== =================================================================
+================== ======================================================= ==============
+Key                Quantity                                                Unit
+================== ======================================================= ==============
+``PC_EMAE``        Energy mean absolute error (per atom)                   meV/atom
+``PC_ERMSE``       Energy root-mean-square error (per atom)                meV/atom
+``PC_ErRMSE``      Energy *relative* RMSE                                  ‰ (× 1000)
+``PC_ERSQ``        Coefficient of determination (R²) for energies          —
+``PC_FRMSE``       Force component RMSE                                    eV/Å
+``PC_SRMSE``       Stress component RMSE                                   eV/Å³
+================== ======================================================= ==============
 
 These constraints use the global ``LOSS`` selected above.
+
+.. _hpo_validation_follows_metrics:
+
+**What validation predicts.** ``FORCE`` and ``STRESS`` (in the ``-c``
+configuration file, or ``-F``/``-S`` on the command line, which take
+precedence) decide only what *training* fits, exactly as in
+``tadah train``.  Validation predicts what its metrics measure: forces
+whenever ``PC_FRMSE`` is set, stresses whenever ``PC_SRMSE`` is set,
+whatever the potential was fitted with.  An energy-only fit
+(``FORCE false``, or no ``FORCE`` key) with ``PC_FRMSE`` therefore searches
+for hyperparameters whose energy-only fit also gives good forces, and
+``best_pot.tadah`` keeps ``FORCE false``, so ``tadah train`` with the best
+hyperparameters reproduces it.  The journal's POTENTIAL SETUP states both
+sides, for example::
+
+   Fit forces (FORCE)    : no  (configuration file config.tadah)
+   Fit stresses (STRESS) : no  (default)
+   Validation predicts   : energies, forces (PC_FRMSE)
+
+and, with ``-F`` on the command line,
+``yes  (command line -F/--force; overrides FORCE false in config.tadah)``.
+``FORCE`` and ``STRESS`` are refused in the ``--validation`` file, at their
+line: it has no fit, so they would have no effect there.  Before 1.6.0
+``PC_FRMSE`` with ``FORCE false`` (or no ``FORCE`` key) stopped the run with a
+segmentation fault at the first evaluation, ``MODEL M_KRR`` did so even with
+``FORCE true``, and ``PC_SRMSE`` with ``STRESS false`` compared the reference
+stresses with zero.
 
 Individual validation targets and weights
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2120,8 +2147,9 @@ one a finite number (``MAXTIME`` a positive one).
        training data with every weight fitted (no ``FIXINDEX``),
        ``OALGO 4`` with a fixed ``LAMBDA`` ≥ 0 (not ``-1``),
        ``NORM false``, a linear basis (``MODEL … BF_Linear`` or
-       ``Kern_Linear``), ``STRESS false`` and no ``PC_SRMSE``, and
-       ``FORCE true`` for ``PC_FRMSE``; it also needs loss terms it can
+       ``Kern_Linear``), and ``STRESS false`` and no ``PC_SRMSE``
+       (``PC_FRMSE`` is covered with ``FORCE`` true or false; before
+       1.6.0 it needed ``FORCE true``); it also needs loss terms it can
        differentiate: no ``PC_OBSERVABLE`` ``--loss MAPE`` or
        ``RMSLE``, and no ``--unconverged force-scaled``.  Startup
        refuses a block that sets it without them, naming the setting or
@@ -3848,6 +3876,12 @@ pass to ``--validation`` directly:
    DBFILE   val_eos.tadahdb
    EFILTER  -12.0  -2.0       # honoured for validation only
    FFILTER   20.0
+
+``FORCE`` and ``STRESS`` are refused in this file, at their line (also in a
+file it includes with ``CONFIG``): validation predicts forces for
+``PC_FRMSE`` and stresses for ``PC_SRMSE`` whatever they say
+(:ref:`hpo_validation_follows_metrics`).  Before 1.6.0 they were accepted
+and ignored.
 
 The host emits a single ``INFO`` log line at start-up summarising
 the resulting validation set::

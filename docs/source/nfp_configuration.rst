@@ -580,11 +580,25 @@ sides, for example::
 and, with ``-F`` on the command line,
 ``yes  (command line -F/--force; overrides FORCE false in config.tadah)``.
 ``FORCE`` and ``STRESS`` are refused in the ``--validation`` file, at their
-line: it has no fit, so they would have no effect there.  Before 1.6.0
-``PC_FRMSE`` with ``FORCE false`` (or no ``FORCE`` key) stopped the run with a
-segmentation fault at the first evaluation, ``MODEL M_KRR`` did so even with
-``FORCE true``, and ``PC_SRMSE`` with ``STRESS false`` compared the reference
-stresses with zero.
+line: it has no fit, so they would have no effect there.  When no metric
+asks for them, validation predicts neither forces nor stresses, whatever
+training fitted.  Before 1.6.0 ``PC_FRMSE`` with ``FORCE false`` (or no
+``FORCE`` key) stopped the run with a segmentation fault at the first
+evaluation, ``MODEL M_KRR`` did so even with ``FORCE true``, and
+``PC_SRMSE`` compared the reference stresses with zero when ``STRESS`` was
+false, and with ``MODEL M_KRR`` also when it was true; an ``M_KRR``
+``best_pot.tadah`` did not record ``FORCE`` and ``STRESS``.
+
+``ErRMSE`` is a relative error times 1000, so the journal and the
+``best_pot.tadah`` headers give it in *per mille*; ``SRMSE`` is in the
+dataset's stress unit, eV/Å³, written ``eV/A^3``.  Before 1.6.0 they were
+labelled ``meV/atom`` and ``GPa``, with the same values.
+
+**One run per process.** Run each ``tadah hpo`` in a process of its own.
+Two runs in one process — a ``tadah --task`` file with two ``hpo`` tasks,
+or a program that calls ``hpo_run`` twice — share each thread's cached
+trainer, so the second run fits with the first run's ``FORCE``, ``STRESS``
+and other keys it does not search.
 
 Individual validation targets and weights
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

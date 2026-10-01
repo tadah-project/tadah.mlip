@@ -2,6 +2,7 @@ Example 3 - DM_mBlipEnv: Train and Predict
 ------------------------------------------
 
 This example exercises the ``DM_mBlipEnv`` many-body descriptor.
+The dataset ``tdata.db`` holds bcc Ta configurations from LAMMPS molecular dynamics with the Ta1_Ravelo_2013 EAM potential: energies in eV, forces in eV/Å and the virial (configurational) Cauchy stress in eV/Å³, positive under tension.
 
 What the descriptor does
 ........................

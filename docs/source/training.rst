@@ -124,19 +124,23 @@ Key                          One-line summary
 LSCALE: uniform length rescale
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``LSCALE s`` multiplies every position and cell vector by ``s``. To
-keep the total energy invariant under the change of length scale,
-forces are divided by ``s``; stresses are stored as a virial (energy
-units) and are left untouched. ``s = 1`` (the default) is a no-op and
-``s <= 0`` is a configuration error.
+``LSCALE s`` multiplies every position and cell vector by ``s``. The
+total energy is invariant under the change of length scale, so forces
+are divided by ``s`` and stresses (eV Å⁻³) by ``s³``: the virial
+:math:`V\sigma` is invariant and the volume grows by ``s³``. Before
+1.6.0 the stress was left unchanged, which made the targets of a
+``STRESS true`` fit too large by ``s³`` (6 % at ``s = 1.02``). ``s = 1``
+(the default) is a no-op and ``s <= 0`` is a configuration error.
 
 The intended use is matching a DFT lattice constant to experiment: set
 ``LSCALE = a_exp / a_DFT`` so the trained model's equilibrium volume
 sits at the experimental scale.
 
 ``LSCALE`` is stamped into ``pot.tadah``. ``tadah predict`` re-applies
-it so a raw DFT dataset round-trips; pass ``--no-lscale`` to ignore the
-stored value when the dataset is already at the trained scale. The
+it to the dataset it reads, so a raw DFT dataset can be given as it is;
+both the reference (``True``) and the predicted columns it writes are in
+the rescaled frame. Pass ``--no-lscale`` to ignore the stored value when
+the dataset is already at the trained scale. The
 LAMMPS ``pair_style tadah`` does **not** re-apply ``LSCALE`` — supply
 LAMMPS with positions already at the trained scale.
 

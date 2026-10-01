@@ -3880,7 +3880,7 @@ pass to ``--validation`` directly:
 ``FORCE`` and ``STRESS`` are refused in this file, at their line (also in a
 file it includes with ``CONFIG``): validation predicts forces for
 ``PC_FRMSE`` and stresses for ``PC_SRMSE`` whatever they say
-(:ref:`hpo_validation_follows_metrics`).  Before 1.6.0 they were accepted
+(:ref:`What validation predicts <hpo_validation_follows_metrics>`).  Before 1.6.0 they were accepted
 and ignored.
 
 The host emits a single ``INFO`` log line at start-up summarising

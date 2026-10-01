@@ -184,8 +184,9 @@ constexpr std::size_t kValForceComponents = 2 * 4 * 3;
 /* Writes, in the working directory: val.db, config.val (DBFILE val.db),
  * config.hpo and the training configuration `cfg_name`. Every weight is
  * pinned (FIXINDEX 1-5) and there is no training DBFILE, so nothing is
- * fitted: FORCE/STRESS cannot change the weights, only what validation
- * would predict today. `switches` holds the FORCE/STRESS lines, if any.
+ * fitted: FORCE/STRESS cannot change the weights. (Before the fix they
+ * also decided what validation predicted.) `switches` holds the
+ * FORCE/STRESS lines, if any.
  * The hpotarget has PC_ERMSE + PC_FRMSE and MAXEVAL 1, so the run makes
  * exactly one evaluation, at the seed FIXWEIGHT[1] = -15, and
  * best_pot.tadah is that evaluation's potential. */
@@ -367,7 +368,8 @@ bool names_line(const std::string& s, int n) {
  * "Output digits 6" (%.6e, 7 significant digits), a relative rounding of at
  * most 5e-7; the two predictions use the same weights (best_pot.tadah keeps
  * them to 18 digits) and differ only by floating-point rounding, so the
- * tolerance is rel 1e-6 (today's -F run of this fixture: 1.7e-7). */
+ * tolerance is rel 1e-6 (the -F run of this fixture, measured when the
+ * case was written: 1.7e-7). */
 void check_frmse_measured(const std::string& journal) {
   const auto frmse1 = table_column("stats.tadah", "FRMSE[1]");
   const auto frmse_avg = table_column("stats.tadah", "FRMSE[avg]");
@@ -487,6 +489,22 @@ TEST_CASE("Subcommand: hpo: a best-potential persistence failure yields a non-ze
   CHECK(journal.find("FAILED -- best-potential persistence") != std::string::npos);
 }
 
+/* ---- the [validation-metric] cases -------------------------------------
+ *
+ * Each of these cases runs `tadah hpo` in this process and relies on
+ * having the process to itself, as CTest gives it: catch_discover_tests
+ * registers every TEST_CASE as its own CTest entry, one test_tadah process
+ * each. Two `tadah hpo` runs in one process share the per-thread trainer
+ * cache (HPO_Host's tls_trainer_cache_): the second run reuses the first
+ * run's trainer and rewrites only the searched parameters, so it trains
+ * with the first run's FORCE/STRESS. Run together in one process (for
+ * example `test_tadah "[validation-metric]"`), a case that follows another
+ * `tadah hpo` run with a different training FORCE fails its best_pot.tadah
+ * FORCE check. That is a recorded open issue, not a defect of these cases:
+ * see RELEASE-1.6.0-FOLLOWUPS.md, "Two HPO runs in one process share the
+ * thread-local trainer cache".
+ */
+
 /* Pins: PC_FRMSE works with FORCE false written in the -c file. Validation
  * predicts forces because PC_FRMSE asks for them, whatever FORCE the
  * potential was fitted with: exit 0, a finite FRMSE equal to `tadah predict
@@ -494,9 +512,10 @@ TEST_CASE("Subcommand: hpo: a best-potential persistence failure yields a non-ze
  * STRESS false. The journal's POTENTIAL SETUP says "Fit forces (FORCE) : no
  * (configuration file config_ffalse.tadah)", the same for STRESS, and
  * "Validation predicts : energies, forces (PC_FRMSE)".
- * Today: validation predicts with the model's FORCE false, so no forces are
- * predicted and Analytics::calc_f_rmse reads past the empty predicted atoms:
- * SIGSEGV at the first evaluation (the test process dies). */
+ * Before the fix validation predicted with the model's FORCE false, so no
+ * forces were predicted and Analytics::calc_f_rmse read past the empty
+ * predicted atoms: SIGSEGV at the first evaluation (the test process
+ * died). */
 TEST_CASE("Subcommand: hpo: PC_FRMSE with FORCE false in the -c file measures "
           "validation forces",
           "[TadahCLI][hpo][validation-metric]") {
@@ -532,7 +551,8 @@ TEST_CASE("Subcommand: hpo: PC_FRMSE with FORCE false in the -c file measures "
  * FORCE is the blueprint default false: exit 0, the FRMSE equals `tadah
  * predict -F`, best_pot.tadah says FORCE false and STRESS false, and the
  * journal says "Fit forces (FORCE) : no (default)" and the same for STRESS.
- * Today: the same SIGSEGV as with FORCE false written in the file. */
+ * Before the fix: the same SIGSEGV as with FORCE false written in the
+ * file. */
 TEST_CASE("Subcommand: hpo: PC_FRMSE with no FORCE key in the -c file measures "
           "validation forces",
           "[TadahCLI][hpo][validation-metric]") {
@@ -570,8 +590,8 @@ TEST_CASE("Subcommand: hpo: PC_FRMSE with no FORCE key in the -c file measures "
  * -F/--force; overrides FORCE false in config_ffalse.tadah)", while STRESS
  * still comes from the file. The FRMSE equals `tadah predict -F` (all
  * weights pinned, so the same as with FORCE false).
- * Today: the run succeeds and the FRMSE is right, but POTENTIAL SETUP has no
- * "Fit forces (FORCE)" line: the REQUIRE on it fails. */
+ * Before the fix the run succeeded and the FRMSE was right, but POTENTIAL
+ * SETUP had no "Fit forces (FORCE)" line: the REQUIRE on it failed. */
 TEST_CASE("Subcommand: hpo: -F overrides FORCE false in the -c file and the "
           "journal records it",
           "[TadahCLI][hpo][validation-metric]") {
@@ -611,7 +631,7 @@ TEST_CASE("Subcommand: hpo: -F overrides FORCE false in the -c file and the "
  * names FORCE as a word, "not accepted", "line 2" and the file
  * config_force.val. The training configuration has FORCE true, so the run
  * is valid apart from that line.
- * Today: the key is silently ignored and the run exits 0. */
+ * Before the fix the key was silently ignored and the run exited 0. */
 TEST_CASE("Subcommand: hpo: FORCE in the --validation file is refused at its "
           "line",
           "[TadahCLI][hpo][validation-metric]") {

@@ -127,8 +127,9 @@ LSCALE: uniform length rescale
 ``LSCALE s`` multiplies every position and cell vector by ``s``. The
 total energy is invariant under the change of length scale, so forces
 are divided by ``s`` and stresses (eV Å⁻³) by ``s³``: the virial
-:math:`V\sigma` is invariant and the volume grows by ``s³``. Before
-1.6.0 the stress was left unchanged, which made the targets of a
+:math:`V\sigma` is invariant and the volume grows by ``s³``. Earlier
+builds (1.0.0 to 1.5.x, and 1.6.0 development builds made before
+1 October 2026) left the stress unchanged, which made the targets of a
 ``STRESS true`` fit too large by ``s³`` (6 % at ``s = 1.02``). ``s = 1``
 (the default) is a no-op and ``s <= 0`` is a configuration error.
 

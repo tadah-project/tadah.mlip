@@ -248,7 +248,10 @@ The dataset has the following structure:
 - ``ENERGY`` is the total energy of the structure, in eV. For DFT data
   it is the energy whose gradient the forces are: the free energy F
   (VASP's ``free  energy   TOTEN``, CASTEP's ``Final free energy``), which
-  ``tadah data convert`` stores.
+  ``tadah data convert`` stores. The steps of an OUTCAR that VASP's
+  machine-learned force field computed (``ML_MODE = train``; their blocks
+  are marked ``ML``) are not DFT data: ``tadah data convert`` skips them
+  and says so in one warning.
 - Each stress tensor row contains 3 numbers: the **Cauchy stress** in
   eV Å⁻³, **positive under tension** — :math:`\sigma = \frac{1}{V}
   \frac{\partial E}{\partial \varepsilon}`, what the model predicts and
@@ -299,21 +302,26 @@ Also see :ref:`units`.
 
 .. note::
 
-   **Datasets converted from VASP before 1.6.0** (an OUTCAR or a
-   ``vasprun.xml``, with ``tadah data convert`` from 1.0.0 on) hold the
+   **Datasets converted from VASP by an earlier build** (an OUTCAR or a
+   ``vasprun.xml``, with ``tadah data convert`` from Tadah 1.0.0 to 1.5.x,
+   or from a 1.6.0 development build made before 1 October 2026) hold the
    stress with the opposite sign — VASP's pressure, positive under
    compression — and an energy other than F: the energy without entropy
-   (OUTCAR) or, with VASP 5.4.4, energy(σ→0) (``vasprun.xml``), which differ
-   from F by an amount that varies by structure (up to about 20 meV/atom
-   with Methfessel–Paxton smearing). **Re-convert them** from the source
-   files with ``tadah data convert``; neither can be repaired in place
-   exactly (the entropy term is not stored). A fit with ``STRESS true`` on
-   the old stress fitted its negative. Datasets from CASTEP, from the
-   LAMMPS examples shipped with Tadah!, or written with ASE already have
-   the tension-positive sign. The stress of a CASTEP ``.md`` file
-   converted before 1.6.0 still holds its kinetic part (about
-   :math:`N k_B T / V`, e.g. 0.43 GPa at 633 K for 8 Si atoms in
-   163 Å³); re-convert it too.
+   (OUTCAR) or, with VASP 5.4.4, energy(σ→0) (``vasprun.xml``). These
+   differ from F by the electronic entropy term, which varies by structure
+   and grows with the smearing width ``SIGMA`` (18.7 meV/atom in a 54-atom
+   Ta test file at ``SIGMA = 0.2`` with Methfessel–Paxton smearing). To
+   tell which build converted a dataset, compare a stored stress with the
+   OUTCAR's ``in kB`` line: a current build stores the ``in kB`` value
+   times −6.241509074e-4 (eV/Å³), an earlier one times +6.241509074e-4.
+   **Re-convert them** from the source files with ``tadah data convert``;
+   neither can be repaired in place exactly (the entropy term is not
+   stored). A fit with ``STRESS true`` on the old stress fitted its
+   negative. Datasets from CASTEP, from the LAMMPS examples shipped with
+   Tadah!, or written with ASE already have the tension-positive sign. The
+   stress of a CASTEP ``.md`` file converted by such an earlier build still
+   holds its kinetic part (about :math:`N k_B T / V`, e.g. 0.43 GPa at
+   633 K for 8 Si atoms in 163 Å³); re-convert it too.
 
 Tadah! and LAMMPS
 -----------------

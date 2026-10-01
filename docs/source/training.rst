@@ -128,9 +128,11 @@ LSCALE: uniform length rescale
 total energy is invariant under the change of length scale, so forces
 are divided by ``s`` and stresses (eV Å⁻³) by ``s³``: the virial
 :math:`V\sigma` is invariant and the volume grows by ``s³``. Earlier
-builds (1.0.0 to 1.5.x, and 1.6.0 development builds made before
-1 October 2026) left the stress unchanged, which made the targets of a
-``STRESS true`` fit too large by ``s³`` (6 % at ``s = 1.02``). ``s = 1``
+builds (1.3.0-beta.1, which introduced ``LSCALE``, to 1.5.x, and 1.6.0
+development builds without this change) left the stress unchanged, which
+made the targets of a ``STRESS true`` fit too large by ``s³`` (6 % at
+``s = 1.02``); their log line reads ``LSCALE: ... energy and stress
+invariant``, this build's ``... stress by 1/s^3; energy invariant``. ``s = 1``
 (the default) is a no-op and ``s <= 0`` is a configuration error.
 
 The intended use is matching a DFT lattice constant to experiment: set

@@ -239,7 +239,7 @@ The dataset has the following structure:
     <blank line>
 
 - The first line is a comment line; it will be used as a label for a structure. Do not leave a blank line.
-- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line.
+- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor (and says so in one INFO line), so that a ``STRESS true`` fit ignores its stress instead of fitting it to zero.
 - The three cell lines are the lattice vectors **a**, **b** and **c**, one
   vector per line, as Cartesian components in Å (the lattice vectors are the
   *rows* of the 3×3 block). A vector is **not** written down a column.
@@ -260,6 +260,10 @@ The dataset has the following structure:
   kinetic (ideal-gas) part. ``tadah data convert`` converts every reader
   to it.
 - The number of lines beginning with Element is equal to the number of atoms in a structure.
+- Every value must be a finite number: a dataset with ``nan``, ``inf``, an
+  out-of-range number such as ``1e309``, or an atom line that is not
+  ``Element px py pz fx fy fz`` is refused, naming the file and the
+  structure.
 - Element is an atom label, a chemical element symbol, such as Fe, Ti.
 - ``px``, ``py``, and ``pz`` are Cartesian coordinates of the atom position,
   in Å; its fractional coordinates :math:`f_1, f_2, f_3` are defined by
@@ -304,16 +308,20 @@ Also see :ref:`units`.
 
    **Datasets converted from VASP by an earlier build** (an OUTCAR or a
    ``vasprun.xml``, with ``tadah data convert`` from Tadah 1.0.0 to 1.5.x,
-   or from a 1.6.0 development build made before 1 October 2026) hold the
-   stress with the opposite sign — VASP's pressure, positive under
-   compression — and an energy other than F: the energy without entropy
-   (OUTCAR) or, with VASP 5.4.4, energy(σ→0) (``vasprun.xml``). These
-   differ from F by the electronic entropy term, which varies by structure
-   and grows with the smearing width ``SIGMA`` (18.7 meV/atom in a 54-atom
-   Ta test file at ``SIGMA = 0.2`` with Methfessel–Paxton smearing). To
-   tell which build converted a dataset, compare a stored stress with the
-   OUTCAR's ``in kB`` line: a current build stores the ``in kB`` value
-   times −6.241509074e-4 (eV/Å³), an earlier one times +6.241509074e-4.
+   or from a 1.6.0 development build without this change; the version
+   number does not tell them apart) hold the stress with the opposite
+   sign — VASP's pressure, positive under compression — and an energy
+   other than F. The OUTCAR reader stored the energy without entropy,
+   which differs from F by the electronic entropy term −TS (18.7 meV/atom
+   in a 54-atom Ta test file at ``SIGMA = 0.2`` with Methfessel–Paxton
+   order 1). With VASP 5.4.4 the ``vasprun.xml`` reader stored
+   energy(σ→0), which differs from F by a fraction of that term (a third
+   for Methfessel–Paxton order 1, half for Gaussian smearing; 6.2 meV/atom
+   for the same structures). Both vary by structure and grow with the
+   smearing width ``SIGMA``. To tell which build converted a dataset,
+   compare a stored stress with the OUTCAR's ``in kB`` line: a current
+   build stores the ``in kB`` value times −6.241509074e-4 (eV/Å³), an
+   earlier one times +6.241509074e-4.
    **Re-convert them** from the source files with ``tadah data convert``;
    neither can be repaired in place exactly (the entropy term is not
    stored). A fit with ``STRESS true`` on the old stress fitted its

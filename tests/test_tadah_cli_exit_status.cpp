@@ -14,10 +14,24 @@
 // validation predicts forces because PC_FRMSE asks for them, the journal
 // says where FORCE/STRESS came from, and FORCE in the --validation file is
 // refused at its line.
+//
+// The [data] cases run the `tadah data` tools on small structure files
+// (RELEASE-1.6.0-FOLLOWUPS.md, "Known-issues session ... decisions", D,
+// "Data tools"): `data convert` on a file that is not DFT output, or that
+// does not exist, exits non-zero with a message naming the file (and the
+// recognised formats) instead of crashing; `data print -s` and `data write
+// -s` read a structure file; `data dedup` needs --threshold, keeps the first
+// of each set of equal structures, and matches atoms independently of their
+// order and periodically. They need no HPO and run in every build.
 
 #include "catch2/catch.hpp"
 #include <tadah.mlip/cli/tadah_cli.h>
+#include <tadah/core/periodic_table.h>
+#include <tadah/mlip/structure.h>
+#include <tadah/mlip/structure_db.h>
+#include <tadah/mlip/structure_readers/vasp_poscar_reader.h>
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
@@ -37,6 +51,7 @@
 
 #ifdef TADAH_ENABLE_NFP
 #include <tadah/hpo/io_retry.h>
+#endif  // TADAH_ENABLE_NFP
 
 namespace {
 
@@ -156,6 +171,12 @@ CliRun run_tadah(std::vector<std::string> args) {
   r.err = slurp(stem + ".stderr");
   return r;
 }
+
+bool contains(const std::string& s, const std::string& what) {
+  return s.find(what) != std::string::npos;
+}
+
+#ifdef TADAH_ENABLE_NFP
 
 /* Two rattled 4-atom bcc Ta cells (a = 3.301 A) with nonzero reference
  * forces. The rattle breaks the lattice symmetry, so the pinned model below
@@ -344,10 +365,6 @@ std::string leading_word(const std::string& v) {
   return v.substr(0, n);
 }
 
-bool contains(const std::string& s, const std::string& what) {
-  return s.find(what) != std::string::npos;
-}
-
 /* True when `s` names "line <n>" (and not, for n = 2, "line 20"). */
 bool names_line(const std::string& s, int n) {
   const std::string what = "line " + std::to_string(n);
@@ -406,7 +423,67 @@ void check_frmse_measured(const std::string& journal) {
   CHECK_FALSE(contains(*predicts, "no validation set"));
 }
 
+#endif  // TADAH_ENABLE_NFP
+
+/* ---- helpers of the [data] cases ------------------------------------- */
+
+/* Everything a run reported: the escaping exception, stderr and stdout. */
+std::string reported(const CliRun& r) {
+  return r.what + "\n" + r.err + "\n" + r.out;
+}
+
+/* A dataset entry in a 5 A cubic cell with zero energy, stress and forces;
+ * `atoms` holds "<symbol> <x> <y> <z>" lines. */
+std::string dataset_entry(const std::string& label,
+                          const std::vector<std::string>& atoms) {
+  std::string s = label + "\n1 1 1\n-1.0 0.0\n5 0 0\n0 5 0\n0 0 5\n"
+                          "0 0 0\n0 0 0\n0 0 0\n";
+  for (const auto& a : atoms) s += a + " 0 0 0\n";
+  return s + "\n";
+}
+
+/* The labels of the structures in a dataset file, in order. */
+std::vector<std::string> dataset_labels(const std::string& path) {
+  tadah::core::PeriodicTable::initialize();
+  tadah::mlip::StructureDB db;
+  db.add(path);
+  std::vector<std::string> labels;
+  for (size_t i = 0; i < db.size(); ++i) labels.push_back(db(i).label);
+  return labels;
+}
+
+/* NaCl in an orthorhombic 4 x 5 x 6 A cell, P 1 with its one symmetry
+ * operator written out, so the reading does not depend on how the
+ * space-group symbol is looked up: Na at (0, 0, 0) and Cl at
+ * (0.5, 0.5, 0.5) -> (2, 2.5, 3) A; volume 120 A^3. */
+const char* const kNaClP1Cif =
+    "data_NaCl_P1\n"
+    "_cell_length_a 4.0\n_cell_length_b 5.0\n_cell_length_c 6.0\n"
+    "_cell_angle_alpha 90\n_cell_angle_beta 90\n_cell_angle_gamma 90\n"
+    "_symmetry_space_group_name_H-M 'P 1'\n"
+    "loop_\n_symmetry_equiv_pos_as_xyz\n'x,y,z'\n"
+    "loop_\n_atom_site_label\n_atom_site_type_symbol\n"
+    "_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n"
+    "Na1 Na 0.0 0.0 0.0\nCl1 Cl 0.5 0.5 0.5\n";
+
+/* The whitespace-separated tokens of the first line of `text` whose first
+ * token is `key`; empty when there is none. */
+std::vector<std::string> line_tokens(const std::string& text,
+                                     const std::string& key) {
+  std::istringstream in(text);
+  std::string line;
+  while (std::getline(in, line)) {
+    std::istringstream ss(line);
+    std::vector<std::string> tok;
+    for (std::string t; ss >> t;) tok.push_back(t);
+    if (!tok.empty() && tok[0] == key) return tok;
+  }
+  return {};
+}
+
 }  // namespace
+
+#ifdef TADAH_ENABLE_NFP
 
 TEST_CASE("Subcommand: hpo: a fatal error inside the engine yields a non-zero status",
           "[TadahCLI][exit-status]") {
@@ -673,3 +750,210 @@ TEST_CASE("Subcommand: hpo: FORCE in the --validation file is refused at its "
 }
 
 #endif  // TADAH_ENABLE_NFP
+
+/* ---- the [data] cases ---------------------------------------------------
+ *
+ * Inputs are written into a scratch working directory (ScratchCwd), which
+ * each case removes. */
+
+/* Pins: `tadah data convert --dft-file <POSCAR>` (a valid structure file,
+ * not DFT output) exits non-zero without writing the output file, and the
+ * report names the file and the recognised formats OUTCAR, vasprun.xml,
+ * .castep, .md and .geom.
+ * Before the fix: DatasetReaderSelector returned nullptr ("Unknown type!
+ * Returning nullptr.") and DataConvertEngine called parse_data() on it:
+ * SIGSEGV (exit 139 from the binary; here the test process died). */
+TEST_CASE("Subcommand: data convert: a structure file is refused, naming it "
+          "and the recognised formats",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("convert_poscar");
+  {
+    std::ofstream os("POSCAR_fe_bcc");
+    os << "Fe bcc\n1.0\n2.87 0 0\n0 2.87 0\n0 0 2.87\nFe\n2\nDirect\n"
+          "0 0 0\n0.5 0.5 0.5\n";
+  }
+  const CliRun r = run_tadah({"tadah", "data", "convert", "--dft-file",
+                              "POSCAR_fe_bcc", "-o", "out.tadah"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status != 0);
+  CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  CHECK(contains(rep, "POSCAR_fe_bcc"));
+  for (const char* fmt : {"OUTCAR", "vasprun.xml", ".castep", ".md", ".geom"})
+    CHECK(contains(rep, fmt));
+}
+
+/* Pins: `tadah data convert --dft-file <missing file>` exits non-zero
+ * without writing the output file, and the report names the file, says it
+ * cannot be opened (it holds "open", in any case) and, as for an
+ * unrecognised file, names the recognised formats (the decision: "data
+ * convert on an unknown or missing file gives an error naming the
+ * recognised formats").
+ * Before the fix: "Could not open file: ...", then the same nullptr
+ * dereference: SIGSEGV. */
+TEST_CASE("Subcommand: data convert: a missing file is refused, naming it "
+          "and the recognised formats",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("convert_missing");
+  REQUIRE_FALSE(std::filesystem::exists("no_such_file.xyz"));
+  const CliRun r = run_tadah({"tadah", "data", "convert", "--dft-file",
+                              "no_such_file.xyz", "-o", "out.tadah"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status != 0);
+  CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  CHECK(contains(rep, "no_such_file.xyz"));
+  std::string lower = rep;
+  for (auto& c : lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  CHECK(contains(lower, "open"));
+  for (const char* fmt : {"OUTCAR", "vasprun.xml", ".castep", ".md", ".geom"})
+    CHECK(contains(rep, fmt));
+}
+
+/* Pins: `tadah data print -s <cif>` (the help's own example) prints the
+ * structure and exits 0: the summary has 2 atoms, the elements Na and Cl,
+ * and the volume 4 * 5 * 6 = 120 A^3 (printed with 6 decimals, so checked
+ * to 1e-6).
+ * Before the fix: DataPrintEngine asked the context for the size of DBFILE,
+ * which -s does not set: "Key not found in the Context object: DBFILE",
+ * status 1. */
+TEST_CASE("Subcommand: data print -s prints a structure read from a CIF file",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("print_cif");
+  { std::ofstream os("nacl_p1.cif"); os << kNaClP1Cif; }
+  const CliRun r = run_tadah({"tadah", "data", "print", "-s", "nacl_p1.cif"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  CHECK_FALSE(contains(reported(r), "Key not found"));
+
+  const auto atoms = line_tokens(r.out, "Atoms");
+  REQUIRE(atoms.size() >= 3);
+  CHECK(atoms[2] == "2");
+  CHECK(std::find(atoms.begin(), atoms.end(), "Na") != atoms.end());
+  CHECK(std::find(atoms.begin(), atoms.end(), "Cl") != atoms.end());
+  const auto volume = line_tokens(r.out, "Volume");
+  REQUIRE(volume.size() >= 3);
+  CHECK(std::strtod(volume[2].c_str(), nullptr) == Approx(120.0).margin(1e-6));
+}
+
+/* Pins: `tadah data write -s <cif> -o nacl.vasp -f vasp` exits 0 and
+ * writes a POSCAR that Tadah's POSCAR reader reads back as the CIF's
+ * structure: lattice rows (4, 0, 0), (0, 5, 0), (0, 0, 6), Na at (0, 0, 0)
+ * and Cl at (2, 2.5, 3) A (by hand from the fractional coordinates; the
+ * file is written with 18 significant digits, so 1e-9 A).
+ * Before the fix: DataWriteEngine generated the indices 0-based and then
+ * decremented them, so index 0 became SIZE_MAX: "Index i is out of
+ * range.", status 1, no file. */
+TEST_CASE("Subcommand: data write -s -f vasp writes a CIF structure as a "
+          "readable POSCAR",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("write_cif");
+  { std::ofstream os("nacl_p1.cif"); os << kNaClP1Cif; }
+  const CliRun r = run_tadah({"tadah", "data", "write", "-s", "nacl_p1.cif",
+                              "-o", "nacl.vasp", "-f", "vasp"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  REQUIRE(std::filesystem::exists("nacl.vasp"));
+  INFO("nacl.vasp:\n" << slurp("nacl.vasp"));
+
+  tadah::core::PeriodicTable::initialize();
+  tadah::mlip::VaspPoscarReader reader;
+  REQUIRE_NOTHROW(reader.read("nacl.vasp"));
+  const tadah::mlip::Structure st = reader.getStructure();
+  const double cell[3][3] = {{4, 0, 0}, {0, 5, 0}, {0, 0, 6}};
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j) {
+      INFO("cell(" << i << "," << j << ")");
+      CHECK(st.cell(i, j) == Approx(cell[i][j]).margin(1e-9));
+    }
+  REQUIRE(st.natoms() == 2);
+  for (const auto& a : st.atoms) {
+    INFO("atom " << a.symbol);
+    const bool na = a.symbol == "Na";
+    CHECK((na || a.symbol == "Cl"));
+    CHECK(a.position[0] == Approx(na ? 0.0 : 2.0).margin(1e-9));
+    CHECK(a.position[1] == Approx(na ? 0.0 : 2.5).margin(1e-9));
+    CHECK(a.position[2] == Approx(na ? 0.0 : 3.0).margin(1e-9));
+  }
+  CHECK(st.atoms[0].symbol != st.atoms[1].symbol);
+}
+
+/* Pins: `tadah data dedup` without --threshold (as the help examples were
+ * written) exits non-zero without writing the output file, and the report
+ * says that --threshold is needed (it names "--threshold"), not the
+ * internal "Key not found".
+ * Before the fix: "Key not found in the Context object: THRESHOLD",
+ * status 1, so the "--threshold" and "Key not found" CHECKs failed. */
+TEST_CASE("Subcommand: data dedup without --threshold says it needs "
+          "--threshold",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("dedup_nothreshold");
+  {
+    std::ofstream os("db.tadah");
+    os << dataset_entry("T1", {"Na 0 0 0", "Cl 2.5 2.5 2.5"})
+       << dataset_entry("T2", {"Na 0 0 0", "Cl 2.5 2.5 2.5"});
+  }
+  const CliRun r = run_tadah({"tadah", "data", "dedup", "-d", "db.tadah",
+                              "-o", "out.tadah"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status != 0);
+  CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  CHECK(contains(rep, "--threshold"));
+  CHECK_FALSE(contains(rep, "Key not found"));
+}
+
+/* Pins: `tadah data dedup --threshold 1e-6` on T1 = T2 = T3 and a different
+ * T4 (Cl at x = 2.0 instead of 2.5; report_leftovers.md section 2) keeps the
+ * first of the three equal structures and T4: exactly T1, T4, in that order.
+ * Before the fix: the prune removed the first index of every duplicate pair
+ * ((1,2), (1,3), (2,3)), so index 1 was removed three times and the later
+ * structures shifted into it: "Removed: 3", only T4 kept. */
+TEST_CASE("Subcommand: data dedup keeps the first of three equal structures",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("dedup_triple");
+  {
+    std::ofstream os("db.tadah");
+    for (const char* l : {"T1", "T2", "T3"})
+      os << dataset_entry(l, {"Na 0 0 0", "Cl 2.5 2.5 2.5"});
+    os << dataset_entry("T4", {"Na 0 0 0", "Cl 2.0 2.5 2.5"});
+  }
+  const CliRun r = run_tadah({"tadah", "data", "dedup", "-d", "db.tadah",
+                              "-o", "out.tadah", "--threshold", "1e-6"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  REQUIRE(std::filesystem::exists("out.tadah"));
+  CHECK(dataset_labels("out.tadah") == std::vector<std::string>{"T1", "T4"});
+}
+
+/* Pins: `tadah data dedup --threshold 1e-6` matches atoms independently of
+ * their order, periodically, and each atom at most once. Of
+ *   S1 = [Na (0,0,0), Cl (2.5,2.5,2.5)],
+ *   S2 = S1 with Cl listed first,
+ *   S3 = S1 with Na stored at x + a0 = (5,0,0),
+ *   F1 = [Na, Na (coincident), Cl], F2 = [Na, Na (coincident), K elsewhere],
+ * it keeps exactly S1, F1, F2: S2 and S3 are copies of S1, and F1 and F2
+ * differ (report_leftovers.md section 2).
+ * Before the fix: is_the_same depended on the atom order and ignored the
+ * cell, and counted the coincident Na of F2 twice; so S2 and S3 were kept
+ * and F1 was removed as a duplicate of F2: S1, S2, S3, F2. */
+TEST_CASE("Subcommand: data dedup removes copies with the atoms in another "
+          "order or as a periodic image, and not coincident-atom look-alikes",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("dedup_perm");
+  {
+    std::ofstream os("db.tadah");
+    os << dataset_entry("S1", {"Na 0 0 0", "Cl 2.5 2.5 2.5"})
+       << dataset_entry("S2", {"Cl 2.5 2.5 2.5", "Na 0 0 0"})
+       << dataset_entry("S3", {"Na 5.0 0 0", "Cl 2.5 2.5 2.5"})
+       << dataset_entry("F1", {"Na 0 0 0", "Na 0 0 0", "Cl 2.5 2.5 2.5"})
+       << dataset_entry("F2", {"Na 0 0 0", "Na 0 0 0", "K 1.0 1.0 1.0"});
+  }
+  const CliRun r = run_tadah({"tadah", "data", "dedup", "-d", "db.tadah",
+                              "-o", "out.tadah", "--threshold", "1e-6"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  REQUIRE(std::filesystem::exists("out.tadah"));
+  CHECK(dataset_labels("out.tadah") ==
+        std::vector<std::string>{"S1", "F1", "F2"});
+}

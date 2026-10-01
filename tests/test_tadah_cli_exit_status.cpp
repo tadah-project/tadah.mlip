@@ -926,6 +926,32 @@ TEST_CASE("Subcommand: data dedup keeps the first of three equal structures",
   CHECK(dataset_labels("out.tadah") == std::vector<std::string>{"T1", "T4"});
 }
 
+/* Pins: `tadah data dedup` on two copies of a structure whose cell block
+ * is all zeros exits 1 without writing the output, and the report names
+ * the file, the structure and the singular cell.
+ * Before the fix: no atom matched through the NaN inverse cell, so it
+ * exited 0 and kept both copies, silently. */
+TEST_CASE("Subcommand: data dedup refuses a structure with a singular cell",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("dedup_singular");
+  {
+    std::ofstream os("db.tadah");
+    for (const char* l : {"Z1", "Z2"})
+      os << l << "\n1 1 1\n-1.0 0.0\n0 0 0\n0 0 0\n0 0 0\n"
+         << "0 0 0\n0 0 0\n0 0 0\n"
+         << "Ta 0 0 0 0 0 0\nTa 1.5 1.5 1.5 0 0 0\n\n";
+  }
+  const CliRun r = run_tadah({"tadah", "data", "dedup", "-d", "db.tadah",
+                              "-o", "out.tadah", "--threshold", "1e-6"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  CHECK(contains(rep, "db.tadah"));
+  CHECK(contains(rep, "singular"));
+  CHECK(contains(rep, "Z1"));
+}
+
 /* Pins: `tadah data dedup --threshold 1e-6` matches atoms independently of
  * their order, periodically, and each atom at most once. Of
  *   S1 = [Na (0,0,0), Cl (2.5,2.5,2.5)],

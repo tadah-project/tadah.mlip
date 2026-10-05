@@ -239,7 +239,7 @@ The dataset has the following structure:
     <blank line>
 
 - The first line is a comment line; it will be used as a label for a structure. Do not leave a blank line.
-- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor (and says so in one INFO line), so that a ``STRESS true`` fit ignores its stress instead of fitting it to zero.
+- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor, and (CASTEP ``.castep``) ``fweight`` 0 for one without forces, and says so in one INFO line, so that a ``STRESS true`` (``FORCE true``) fit ignores them instead of fitting zeros. ``tadah data balance --rescale`` keeps a weight of 0.
 - The three cell lines are the lattice vectors **a**, **b** and **c**, one
   vector per line, as Cartesian components in Å (the lattice vectors are the
   *rows* of the 3×3 block). A vector is **not** written down a column.
@@ -261,9 +261,10 @@ The dataset has the following structure:
   to it.
 - The number of lines beginning with Element is equal to the number of atoms in a structure.
 - Every value must be a finite number: a dataset with ``nan``, ``inf``, an
-  out-of-range number such as ``1e309``, or an atom line that is not
-  ``Element px py pz fx fy fz`` is refused, naming the file and the
-  structure.
+  out-of-range number such as ``1e309``, or an atom line with fewer than
+  the seven fields ``Element px py pz fx fy fz`` is refused, naming the file
+  and the structure. Fields after the seventh are ignored. A line of only
+  whitespace separates structures like an empty one.
 - Element is an atom label, a chemical element symbol, such as Fe, Ti.
 - ``px``, ``py``, and ``pz`` are Cartesian coordinates of the atom position,
   in Å; its fractional coordinates :math:`f_1, f_2, f_3` are defined by

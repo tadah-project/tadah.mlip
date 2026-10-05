@@ -39,6 +39,8 @@
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
+#include <set>
+#include <initializer_list>
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -876,6 +878,150 @@ TEST_CASE("Subcommand: data write -s -f vasp writes a CIF structure as a "
     CHECK(a.position[2] == Approx(na ? 0.0 : 3.0).margin(1e-9));
   }
   CHECK(st.atoms[0].symbol != st.atoms[1].symbol);
+}
+
+/* A dataset of `n` one-atom structures labelled S1 ... Sn, in that order. */
+void write_numbered_dataset(const std::string& path, int n) {
+  std::ofstream os(path);
+  for (int k = 1; k <= n; ++k)
+    os << dataset_entry("S" + std::to_string(k), {"Na 0 0 0"});
+}
+
+std::vector<std::string> numbered_labels(std::initializer_list<int> ks) {
+  std::vector<std::string> v;
+  for (int k : ks) v.push_back("S" + std::to_string(k));
+  return v;
+}
+
+/* Pins: `tadah data sample --uniform N` keeps every N-th structure,
+ * starting with the first: of S1 ... S5, N = 1 keeps all five, N = 2 S1, S3,
+ * S5, N = 3 S1, S4 and N = 5 S1.
+ * Before the fix: the loop counter was incremented twice per pass and read
+ * after the increment, so the sample started at S2, skipped structures and
+ * read one past the last (N = 1: S2, S4 and the structure after S5). */
+TEST_CASE("Subcommand: data sample --uniform keeps every N-th structure",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_uniform");
+  write_numbered_dataset("db.tadah", 5);
+  const std::vector<std::pair<int, std::vector<std::string>>> cases = {
+      {1, numbered_labels({1, 2, 3, 4, 5})},
+      {2, numbered_labels({1, 3, 5})},
+      {3, numbered_labels({1, 4})},
+      {5, numbered_labels({1})}};
+  for (const auto& c : cases) {
+    INFO("--uniform " << c.first);
+    std::filesystem::remove("out.tadah");
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "--uniform", std::to_string(c.first)});
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    CHECK(dataset_labels("out.tadah") == c.second);
+  }
+}
+
+/* Pins: `tadah data sample --uniform 0` is refused with exit status 1 and a
+ * message naming --uniform, without writing the output; so is a step larger
+ * than the number of structures (6 of 5), naming both numbers.
+ * Before the fix: --uniform 0 divided by zero (SIGFPE); --uniform 6 said
+ * only "Selected number is larger than total number of configurations
+ * available." */
+TEST_CASE("Subcommand: data sample --uniform 0 is refused",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_uniform_zero");
+  write_numbered_dataset("db.tadah", 5);
+  {
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "--uniform", "0"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "--uniform"));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "--uniform", "6"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "--uniform 6"));
+    CHECK(contains(rep, "5 structures"));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+}
+
+/* Pins: `tadah data sample --random N` draws N distinct structures from
+ * the whole dataset, each with the same chance, and writes them in their
+ * dataset order: of S1 ... S10, 40 draws of 5 each give 5 distinct
+ * structures in increasing order, and together every one of the ten (a
+ * correct draw misses a given structure in all 40 with probability 2^-40);
+ * --random 10 gives all ten in order.
+ * Before the fix: only the indices 0 ... N-1 were shuffled, so every draw
+ * was S1 ... S5 in some order and S6 ... S10 were never sampled. */
+TEST_CASE("Subcommand: data sample --random draws from the whole dataset",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_random");
+  write_numbered_dataset("db.tadah", 10);
+  std::set<std::string> seen;
+  for (int draw = 0; draw < 40; ++draw) {
+    INFO("draw " << draw + 1);
+    std::filesystem::remove("out.tadah");
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "--random", "5"});
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    const std::vector<std::string> labels = dataset_labels("out.tadah");
+    REQUIRE(labels.size() == 5);
+    std::vector<int> ks;
+    for (const auto& l : labels) ks.push_back(std::stoi(l.substr(1)));
+    CHECK(std::is_sorted(ks.begin(), ks.end()));
+    CHECK(std::adjacent_find(ks.begin(), ks.end()) == ks.end());
+    seen.insert(labels.begin(), labels.end());
+  }
+  CHECK(seen.size() == 10);
+  std::filesystem::remove("out.tadah");
+  const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                              "out.tadah", "--random", "10"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  CHECK(dataset_labels("out.tadah") == numbered_labels({1, 2, 3, 4, 5, 6, 7, 8, 9, 10}));
+}
+
+/* Pins: `tadah data sample -i` takes 1-based indices: of S1 ... S5, -i 5
+ * gives S5 and -i 1-5 all five; -i 0 and -i 6 are refused with exit status
+ * 1 and a message naming the index and the 5 structures, without writing
+ * the output.
+ * Before the fix: the last index and the whole dataset were refused
+ * ("Selected index is larger than the number of available structures.",
+ * "Number of indices is larger ..."), and index 0 read the structure
+ * before the first. */
+TEST_CASE("Subcommand: data sample -i takes 1-based indices up to the last structure",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_index");
+  write_numbered_dataset("db.tadah", 5);
+  const std::vector<std::pair<std::string, std::vector<std::string>>> ok = {
+      {"5", numbered_labels({5})}, {"1-5", numbered_labels({1, 2, 3, 4, 5})}};
+  for (const auto& c : ok) {
+    INFO("-i " << c.first);
+    std::filesystem::remove("out.tadah");
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "-i", c.first});
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    CHECK(dataset_labels("out.tadah") == c.second);
+  }
+  for (const char* bad : {"0", "6"}) {
+    INFO("-i " << bad);
+    std::filesystem::remove("out.tadah");
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "-i", bad});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, std::string("index ") + bad));
+    CHECK(contains(rep, "5 structures"));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
 }
 
 /* Pins: `tadah data dedup` without --threshold (as the help examples were

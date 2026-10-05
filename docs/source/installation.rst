@@ -26,6 +26,10 @@ General requirements:
   numbers losslessly
 - **CMake** (3.15+)
 - **LAPACK**
+- **libcurl** development files (``libcurl4-openssl-dev`` on Debian and
+  Ubuntu, ``libcurl-devel`` on Fedora and Red Hat): Tadah! reads structures
+  from the AFLOW, Materials Project, COD and NOMAD databases with it, and
+  CMake stops with an error without them
 - Internet access during installation (some dependencies may be fetched at configure/build time)
 
 LAMMPS-specific notes:

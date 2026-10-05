@@ -926,6 +926,38 @@ TEST_CASE("Subcommand: data dedup keeps the first of three equal structures",
   CHECK(dataset_labels("out.tadah") == std::vector<std::string>{"T1", "T4"});
 }
 
+/* Pins: `tadah data balance --rescale -F -S` keeps a weight of 0: it marks
+ * a quantity the structure has no data for (the DFT readers write sweight 0
+ * for a structure without a stress tensor) or that is excluded, so
+ * rescaling leaves it 0. Of B1 (weights 1 1 1) and B2 (weights 1 0 0, no
+ * forces or stress data), B2 keeps fweight 0 and sweight 0 while B1's are
+ * rescaled.
+ * Before the fix: every weight was rescaled, so B2's zero stress and forces
+ * were fitted again (fweight and sweight 1 below the thresholds). */
+TEST_CASE("Subcommand: data balance --rescale keeps a weight of 0",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("balance_zero_weight");
+  {
+    std::ofstream os("db.tadah");
+    os << "B1\n1 1 1\n-11.5\n3.3 0 0\n0 3.3 0\n0 0 3.3\n0.01 0 0\n0 0.01 0\n0 0 0.01\n"
+          "Ta 0 0 0 0.1 0 0\nTa 1.65 1.65 1.65 -0.1 0 0\n\n"
+       << "B2\n1 0 0\n-11.4\n3.31 0 0\n0 3.31 0\n0 0 3.31\n0 0 0\n0 0 0\n0 0 0\n"
+          "Ta 0 0 0 0 0 0\nTa 1.655 1.655 1.655 0 0 0\n\n";
+  }
+  const CliRun r = run_tadah({"tadah", "data", "balance", "-d", "db.tadah",
+                              "-o", "out.tadah", "--rescale", "-F", "-S"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  tadah::core::PeriodicTable::initialize();
+  tadah::mlip::StructureDB db;
+  db.add("out.tadah");
+  REQUIRE(db.size() == 2);
+  CHECK(db(0).fweight == Approx(1.0 / 0.2));
+  CHECK(db(0).sweight == Approx(1.0 / std::sqrt(3 * 0.01 * 0.01)));
+  CHECK(db(1).fweight == 0.0);
+  CHECK(db(1).sweight == 0.0);
+}
+
 /* Pins: `tadah data dedup` on two copies of a structure whose cell block
  * is all zeros exits 1 without writing the output, and the report names
  * the file, the structure and the singular cell.

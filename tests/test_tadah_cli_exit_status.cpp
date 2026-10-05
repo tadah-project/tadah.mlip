@@ -1060,20 +1060,20 @@ TEST_CASE("Subcommand: data sample needs exactly one selection",
 
 /* Pins: `tadah data sample -i` parses every value strictly and checks the
  * bounds before expanding a range, on S1 ... S5:
- *  - a descending range (-i 1,5-3) and a value that is not an index (-i x)
- *    are refused, naming the segment;
+ *  - a descending range (-i 1,5-3) is refused, naming the segment (a value
+ *    that is not an index pattern, like -i x, the command line refuses
+ *    already);
  *  - -i 1-10000000 is refused at once, naming 10000000;
  *  - several -i values are one list: -i 1,3 5 gives S1, S3, S5;
  *  - repeated indices are removed: -i 1,1,2 gives S1, S2.
  * Before the fix: 5-3 and the second value were dropped silently (S1, exit
- * 0), 'x' gave 'Parsing of indices failed.', and the range was expanded to
- * ten million indices before the check. */
+ * 0), and the range was expanded to ten million indices before the check. */
 TEST_CASE("Subcommand: data sample -i parses strictly and checks bounds first",
           "[TadahCLI][exit-status][data][sample]") {
   ScratchCwd cwd("sample_index_parse");
   write_numbered_dataset("db.tadah", 5);
   const std::vector<std::pair<std::vector<std::string>, std::string>> bad = {
-      {{"1,5-3"}, "5-3"}, {{"x"}, "x"}, {{"1-10000000"}, "10000000"}};
+      {{"1,5-3"}, "'5-3'"}, {{"1-10000000"}, "index 10000000"}};
   for (const auto& b : bad) {
     INFO("-i " << b.first[0]);
     std::filesystem::remove("out.tadah");
@@ -1084,7 +1084,7 @@ TEST_CASE("Subcommand: data sample -i parses strictly and checks bounds first",
     const std::string rep = reported(r);
     INFO("status " << r.status << "\n" << rep);
     CHECK(r.status == 1);
-    CHECK(contains(rep, "'" + b.second + "'"));
+    CHECK(contains(rep, b.second));
     CHECK_FALSE(std::filesystem::exists("out.tadah"));
   }
   const std::vector<std::pair<std::vector<std::string>, std::vector<std::string>>> ok = {

@@ -111,6 +111,8 @@ A clean-up release for wider testing: one version everywhere, documentation that
 - `[mlip]` `FastCellFrac` and `FastEnergyEvaluator` (no callers; `FastCellFrac` missed images), and `NNFinder::calc_naive`, `calc_binned`, `deduplicate` and `num_shifts`.
 
 ### Fixed
+- `[mlip][core]` **`tadah data sample`:** `--uniform N` started at the second structure, took every 2N-th for odd N, and for some dataset sizes wrote a garbage structure read past the end; `--uniform 0` crashed (SIGFPE). It now keeps every N-th structure from the first, and refuses 0. `--random N` always returned the first N structures; it now draws from the whole dataset, each structure with the same chance, in dataset order. `-i` refused the last structure, did not check index 0, and dropped descending ranges and a second `-i` value silently; it now parses strictly against the dataset size. Exactly one of `--uniform`, `--random` and `--index` is required (none wrote an empty dataset).
+- `[mlip]` **A `tadah data` command whose output file cannot be written exits 1**, naming the file; it printed an error and exited 0.
 - `[mlip]` **Readers and data tools:**
   - the first frame of every CASTEP `.md`/`.geom` file was dropped;
   - a `.castep` (L)BFGS revert paired the reverted geometry with the trial SCF's results; each SCF now pairs with the last geometry printed before it, line- and quadratic-minimisation steps included;

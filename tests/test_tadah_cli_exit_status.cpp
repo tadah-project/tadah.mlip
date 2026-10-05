@@ -1024,6 +1024,103 @@ TEST_CASE("Subcommand: data sample -i takes 1-based indices up to the last struc
   }
 }
 
+/* Pins: `tadah data sample` needs exactly one selection: without --uniform,
+ * --random or --index (the help's former example) it exits 1 naming the
+ * three options and writes nothing; a task file with two selections
+ * (UNIFORM 2 and RANDOM 2) exits 1 naming both.
+ * Before the fix: no selection wrote an empty dataset with exit 0; with two,
+ * the first (UNIFORM, then RANDOM, then INDEX) ran and the other was ignored
+ * silently. */
+TEST_CASE("Subcommand: data sample needs exactly one selection",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_selection");
+  write_numbered_dataset("db.tadah", 5);
+  {
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o", "out.tadah"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "--uniform"));
+    CHECK(contains(rep, "--random"));
+    CHECK(contains(rep, "--index"));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+  {
+    std::ofstream("two.task") << "TASK data sample\nDBFILE db.tadah\nOUTFILE out.tadah\n"
+                                 "UNIFORM 2\nRANDOM 2\n";
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-t", "two.task"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "UNIFORM"));
+    CHECK(contains(rep, "RANDOM"));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+}
+
+/* Pins: `tadah data sample -i` parses every value strictly and checks the
+ * bounds before expanding a range, on S1 ... S5:
+ *  - a descending range (-i 1,5-3) and a value that is not an index (-i x)
+ *    are refused, naming the segment;
+ *  - -i 1-10000000 is refused at once, naming 10000000;
+ *  - several -i values are one list: -i 1,3 5 gives S1, S3, S5;
+ *  - repeated indices are removed: -i 1,1,2 gives S1, S2.
+ * Before the fix: 5-3 and the second value were dropped silently (S1, exit
+ * 0), 'x' gave 'Parsing of indices failed.', and the range was expanded to
+ * ten million indices before the check. */
+TEST_CASE("Subcommand: data sample -i parses strictly and checks bounds first",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_index_parse");
+  write_numbered_dataset("db.tadah", 5);
+  const std::vector<std::pair<std::vector<std::string>, std::string>> bad = {
+      {{"1,5-3"}, "5-3"}, {{"x"}, "x"}, {{"1-10000000"}, "10000000"}};
+  for (const auto& b : bad) {
+    INFO("-i " << b.first[0]);
+    std::filesystem::remove("out.tadah");
+    std::vector<std::string> args = {"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                     "out.tadah", "-i"};
+    args.insert(args.end(), b.first.begin(), b.first.end());
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "'" + b.second + "'"));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+  const std::vector<std::pair<std::vector<std::string>, std::vector<std::string>>> ok = {
+      {{"1,3", "5"}, numbered_labels({1, 3, 5})}, {{"1,1,2"}, numbered_labels({1, 2})}};
+  for (const auto& c : ok) {
+    INFO("-i " << c.first[0] << (c.first.size() > 1 ? " " + c.first[1] : ""));
+    std::filesystem::remove("out.tadah");
+    std::vector<std::string> args = {"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                     "out.tadah", "-i"};
+    args.insert(args.end(), c.first.begin(), c.first.end());
+    const CliRun r = run_tadah(args);
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    CHECK(dataset_labels("out.tadah") == c.second);
+  }
+}
+
+/* Pins: a data command whose output file cannot be written exits 1 with a
+ * message naming the file: `tadah data sample -o nodir/out.tadah` (a
+ * missing directory).
+ * Before the fix: StructureDB::dump_to_file printed 'Error: Could not open
+ * file for writing' and returned; the command logged 'Sampled data written
+ * to' and exited 0. */
+TEST_CASE("Subcommand: data sample to an unwritable file exits 1",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_unwritable");
+  write_numbered_dataset("db.tadah", 5);
+  const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                              "nodir/out.tadah", "--uniform", "2"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "nodir/out.tadah"));
+  CHECK_FALSE(std::filesystem::exists("nodir"));
+}
+
 /* Pins: `tadah data dedup` without --threshold (as the help examples were
  * written) exits non-zero without writing the output file, and the report
  * says that --threshold is needed (it names "--threshold"), not the

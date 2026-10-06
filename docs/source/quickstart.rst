@@ -56,7 +56,7 @@ The :ref:`DBFILE` key specifies the dataset to be used for training. The path ca
 
 For a detailed explanation of KEYS and a general discussion about the configuration files, see :ref:`ConfigSection`.
 
-An example dataset can be downloaded from :download:`here <quickstart/db.train>`.
+An example dataset can be downloaded from :download:`here <quickstart/db.train>`. The data are bcc Ta configurations from LAMMPS molecular dynamics with the Ta1_Ravelo_2013 EAM potential: energies in eV, forces in eV/Å and the virial (configurational) Cauchy stress in eV/Å³, positive under tension.
 
 .. _prediction:
 
@@ -239,14 +239,32 @@ The dataset has the following structure:
     <blank line>
 
 - The first line is a comment line; it will be used as a label for a structure. Do not leave a blank line.
-- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line.
+- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor, and (CASTEP ``.castep``) ``fweight`` 0 for one without forces, and says so in one INFO line, so that a ``STRESS true`` (``FORCE true``) fit ignores them instead of fitting zeros. ``tadah data balance --rescale`` keeps a weight of 0.
 - The three cell lines are the lattice vectors **a**, **b** and **c**, one
   vector per line, as Cartesian components in Å (the lattice vectors are the
   *rows* of the 3×3 block). A vector is **not** written down a column.
   The vectors may be given in either handedness; the cell volume is
   :math:`|\mathbf{a}\cdot(\mathbf{b}\times\mathbf{c})|`.
-- Each stress tensor row contains 3 numbers.
+- ``ENERGY`` is the total energy of the structure, in eV. For DFT data
+  it is the energy whose gradient the forces are: the free energy F
+  (VASP's ``free  energy   TOTEN``, CASTEP's ``Final free energy``), which
+  ``tadah data convert`` stores. The steps of an OUTCAR that VASP's
+  machine-learned force field computed (``ML_MODE = train``; their blocks
+  are marked ``ML``) are not DFT data: ``tadah data convert`` skips them
+  and says so in one warning.
+- Each stress tensor row contains 3 numbers: the **Cauchy stress** in
+  eV Å⁻³, **positive under tension** — :math:`\sigma = \frac{1}{V}
+  \frac{\partial E}{\partial \varepsilon}`, what the model predicts and
+  ASE's ``get_stress()`` gives. It is the negative of the pressure tensor
+  that VASP prints (``in kB``) and that LAMMPS reports, and it holds no
+  kinetic (ideal-gas) part. ``tadah data convert`` converts every reader
+  to it.
 - The number of lines beginning with Element is equal to the number of atoms in a structure.
+- Every value must be a finite number: a dataset with ``nan``, ``inf``, an
+  out-of-range number such as ``1e309``, or an atom line with fewer than
+  the seven fields ``Element px py pz fx fy fz`` is refused, naming the file
+  and the structure. Fields after the seventh are ignored. A line of only
+  whitespace separates structures like an empty one.
 - Element is an atom label, a chemical element symbol, such as Fe, Ti.
 - ``px``, ``py``, and ``pz`` are Cartesian coordinates of the atom position,
   in Å; its fractional coordinates :math:`f_1, f_2, f_3` are defined by
@@ -284,6 +302,35 @@ Also see :ref:`units`.
    before 1.6.0 hold a transposed cell; export them again. Potentials and
    ``tadah hpo`` results fitted to affected structures need to be
    regenerated.
+
+.. _dataset_vasp_migration:
+
+.. note::
+
+   **Datasets converted from VASP by an earlier build** (an OUTCAR or a
+   ``vasprun.xml``, with ``tadah data convert`` from Tadah 1.0.0 to 1.5.x,
+   or from a 1.6.0 development build without this change; the version
+   number does not tell them apart) hold the stress with the opposite
+   sign — VASP's pressure, positive under compression — and an energy
+   other than F. The OUTCAR reader stored the energy without entropy,
+   which differs from F by the electronic entropy term −TS (18.7 meV/atom
+   in a 54-atom Ta test file at ``SIGMA = 0.2`` with Methfessel–Paxton
+   order 1). With VASP 5.4.4 the ``vasprun.xml`` reader stored
+   energy(σ→0), which differs from F by a fraction of that term (a third
+   for Methfessel–Paxton order 1, half for Gaussian smearing; 6.2 meV/atom
+   for the same structures). Both vary by structure and grow with the
+   smearing width ``SIGMA``. To tell which build converted a dataset,
+   compare a stored stress with the OUTCAR's ``in kB`` line: a current
+   build stores the ``in kB`` value times −6.241509074e-4 (eV/Å³), an
+   earlier one times +6.241509074e-4.
+   **Re-convert them** from the source files with ``tadah data convert``;
+   neither can be repaired in place exactly (the entropy term is not
+   stored). A fit with ``STRESS true`` on the old stress fitted its
+   negative. Datasets from CASTEP, from the LAMMPS examples shipped with
+   Tadah!, or written with ASE already have the tension-positive sign. The
+   stress of a CASTEP ``.md`` file converted by such an earlier build still
+   holds its kinetic part (about :math:`N k_B T / V`, e.g. 0.43 GPa at
+   633 K for 8 Si atoms in 163 Å³); re-convert it too.
 
 Tadah! and LAMMPS
 -----------------

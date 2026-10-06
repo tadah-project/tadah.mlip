@@ -1,7 +1,8 @@
 Example 2 - Basics: Nested Fitting Procedure
 --------------------------------------------
 
-This example shows how to optimise a model’s hyper-parameters (HPs) with Tadah!MLIP.  
+This example shows how to optimise a model’s hyper-parameters (HPs) with Tadah!MLIP.
+The datasets ``tdata.db`` and ``vdata.db`` hold bcc Ta configurations from LAMMPS molecular dynamics with the Ta1_Ravelo_2013 EAM potential: energies in eV, forces in eV/Å and the virial (configurational) Cauchy stress in eV/Å³, positive under tension.  
 The workflow is deliberately simple and is intended only as a minimal, self-contained
 demonstration of the *nested fitting* (also called hyper-parameter optimisation, HPO)
 capability.

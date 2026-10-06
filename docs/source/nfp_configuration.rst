@@ -1364,7 +1364,7 @@ Born-stability hinges via finite-difference stress probes on fixed
 strained cells if shear stability matters for your fits.)  The HPO
 examples ship this probe as ``examples/common/lammps/failprobe.in``;
 example ``25_failprobe_grading`` (:ref:`hpo_examples`) runs it with
-``FAILSCORE_GRADING ON`` and a lattice window that grades four band-A
+``FAILSCORE_GRADING ON`` and a lattice window that grades six band-A
 failures.
 
 ``--failvar`` recipes for typical scripts

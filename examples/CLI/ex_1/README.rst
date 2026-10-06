@@ -2,7 +2,7 @@ Example 1 - Basics: Training and Prediction
 ---------------------------------------------
 
 This example demonstrates how to train a model using Tadah!MLIP. The ``config.train`` file defines
-the necessary parameters for the model.
+the necessary parameters for the model. The dataset ``tdata.db`` holds bcc Ta configurations from LAMMPS molecular dynamics with the Ta1_Ravelo_2013 EAM potential: energies in eV, forces in eV/Å and the virial (configurational) Cauchy stress in eV/Å³, positive under tension.
 
 To use this example, ensure you have access to all required files available in the Git repository at:
 `https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/tree/v1-dev/examples/CLI/ex_1 <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/tree/v1-dev/examples/CLI/ex_1>`_

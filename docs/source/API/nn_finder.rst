@@ -66,7 +66,8 @@ Refusals:
     physical structure. The message names the atoms (1-based, with their
     symbols), the position and the image shift in the stored basis, for
     example ``atoms 1 and 3 (Ta, Ta) are at the same position (0, 0, 0),
-    image shift (0, 0, 0)``; ``tadah train``, ``predict`` and ``hpo`` add the
+    image shift (0, 0, 0)``; ``tadah train``, ``predict``, ``hpo``,
+    ``analysis suggest_bounds`` and ``analysis check_bounds`` add the
     structure (``structure 2 of 2 ('label')``). A pair :math:`10^{-12}` Å
     apart is listed. ``NNFinder::list_coincident(true)`` lists such a pair at
     distance 0 instead, for tools that audit the data

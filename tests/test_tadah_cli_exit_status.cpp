@@ -24,6 +24,7 @@
 // of each set of equal structures, and matches atoms independently of their
 // order and periodically. They need no HPO and run in every build.
 
+#include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
 #include <tadah.mlip/cli/tadah_cli.h>
 #include <tadah/core/periodic_table.h>
@@ -39,6 +40,8 @@
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
+#include <set>
+#include <initializer_list>
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -876,6 +879,462 @@ TEST_CASE("Subcommand: data write -s -f vasp writes a CIF structure as a "
     CHECK(a.position[2] == Approx(na ? 0.0 : 3.0).margin(1e-9));
   }
   CHECK(st.atoms[0].symbol != st.atoms[1].symbol);
+}
+
+/* A dataset of `n` one-atom structures labelled S1 ... Sn, in that order. */
+void write_numbered_dataset(const std::string& path, int n) {
+  std::ofstream os(path);
+  for (int k = 1; k <= n; ++k)
+    os << dataset_entry("S" + std::to_string(k), {"Na 0 0 0"});
+}
+
+std::vector<std::string> numbered_labels(std::initializer_list<int> ks) {
+  std::vector<std::string> v;
+  for (int k : ks) v.push_back("S" + std::to_string(k));
+  return v;
+}
+
+/* Pins: `tadah data sample --uniform N` keeps every N-th structure,
+ * starting with the first: of S1 ... S5, N = 1 keeps all five, N = 2 S1, S3,
+ * S5, N = 3 S1, S4 and N = 5 S1.
+ * Before the fix: the loop counter was incremented twice per pass and read
+ * after the increment, so the sample started at S2, skipped structures and
+ * read one past the last (N = 1: S2, S4 and the structure after S5). */
+TEST_CASE("Subcommand: data sample --uniform keeps every N-th structure",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_uniform");
+  write_numbered_dataset("db.tadah", 5);
+  const std::vector<std::pair<int, std::vector<std::string>>> cases = {
+      {1, numbered_labels({1, 2, 3, 4, 5})},
+      {2, numbered_labels({1, 3, 5})},
+      {3, numbered_labels({1, 4})},
+      {5, numbered_labels({1})}};
+  for (const auto& c : cases) {
+    INFO("--uniform " << c.first);
+    std::filesystem::remove("out.tadah");
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "--uniform", std::to_string(c.first)});
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    CHECK(dataset_labels("out.tadah") == c.second);
+  }
+}
+
+/* Pins: `tadah data sample --uniform 0` is refused with exit status 1 and a
+ * message naming --uniform, without writing the output; so is a step larger
+ * than the number of structures (6 of 5), naming both numbers.
+ * Before the fix: --uniform 0 divided by zero (SIGFPE); --uniform 6 said
+ * only "Selected number is larger than total number of configurations
+ * available." */
+TEST_CASE("Subcommand: data sample --uniform 0 is refused",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_uniform_zero");
+  write_numbered_dataset("db.tadah", 5);
+  {
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "--uniform", "0"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "--uniform"));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "--uniform", "6"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "--uniform 6"));
+    CHECK(contains(rep, "5 structures"));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+}
+
+/* Pins: `tadah data sample --random N` draws N distinct structures from
+ * the whole dataset, each with the same chance, and writes them in their
+ * dataset order: of S1 ... S10, 40 draws of 5 each give 5 distinct
+ * structures in increasing order, and together every one of the ten (a
+ * correct draw misses a given structure in all 40 with probability 2^-40);
+ * --random 10 gives all ten in order.
+ * Before the fix: only the indices 0 ... N-1 were shuffled, so every draw
+ * was S1 ... S5 in some order and S6 ... S10 were never sampled. */
+TEST_CASE("Subcommand: data sample --random draws from the whole dataset",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_random");
+  write_numbered_dataset("db.tadah", 10);
+  std::set<std::string> seen;
+  for (int draw = 0; draw < 40; ++draw) {
+    INFO("draw " << draw + 1);
+    std::filesystem::remove("out.tadah");
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "--random", "5"});
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    const std::vector<std::string> labels = dataset_labels("out.tadah");
+    REQUIRE(labels.size() == 5);
+    std::vector<int> ks;
+    for (const auto& l : labels) ks.push_back(std::stoi(l.substr(1)));
+    CHECK(std::is_sorted(ks.begin(), ks.end()));
+    CHECK(std::adjacent_find(ks.begin(), ks.end()) == ks.end());
+    seen.insert(labels.begin(), labels.end());
+  }
+  CHECK(seen.size() == 10);
+  std::filesystem::remove("out.tadah");
+  const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                              "out.tadah", "--random", "10"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  CHECK(dataset_labels("out.tadah") == numbered_labels({1, 2, 3, 4, 5, 6, 7, 8, 9, 10}));
+}
+
+/* Pins: `tadah data sample -i` takes 1-based indices: of S1 ... S5, -i 5
+ * gives S5 and -i 1-5 all five; -i 0 and -i 6 are refused with exit status
+ * 1 and a message naming the index and the 5 structures, without writing
+ * the output.
+ * Before the fix: the last index and the whole dataset were refused
+ * ("Selected index is larger than the number of available structures.",
+ * "Number of indices is larger ..."), and index 0 read the structure
+ * before the first. */
+TEST_CASE("Subcommand: data sample -i takes 1-based indices up to the last structure",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_index");
+  write_numbered_dataset("db.tadah", 5);
+  const std::vector<std::pair<std::string, std::vector<std::string>>> ok = {
+      {"5", numbered_labels({5})}, {"1-5", numbered_labels({1, 2, 3, 4, 5})}};
+  for (const auto& c : ok) {
+    INFO("-i " << c.first);
+    std::filesystem::remove("out.tadah");
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "-i", c.first});
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    CHECK(dataset_labels("out.tadah") == c.second);
+  }
+  for (const char* bad : {"0", "6"}) {
+    INFO("-i " << bad);
+    std::filesystem::remove("out.tadah");
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                "out.tadah", "-i", bad});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, std::string("index ") + bad));
+    CHECK(contains(rep, "5 structures"));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+}
+
+/* Pins: `tadah data sample` needs exactly one selection: without --uniform,
+ * --random or --index (the help's former example) it exits 1 naming the
+ * three options and writes nothing; a task file with two selections
+ * (UNIFORM 2 and RANDOM 2) exits 1 naming both.
+ * Before the fix: no selection wrote an empty dataset with exit 0; with two,
+ * the first (UNIFORM, then RANDOM, then INDEX) ran and the other was ignored
+ * silently. */
+TEST_CASE("Subcommand: data sample needs exactly one selection",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_selection");
+  write_numbered_dataset("db.tadah", 5);
+  {
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o", "out.tadah"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "--uniform"));
+    CHECK(contains(rep, "--random"));
+    CHECK(contains(rep, "--index"));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+  {
+    std::ofstream("two.task") << "TASK data sample\nDBFILE db.tadah\nOUTFILE out.tadah\n"
+                                 "UNIFORM 2\nRANDOM 2\n";
+    const CliRun r = run_tadah({"tadah", "data", "sample", "-t", "two.task"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "UNIFORM"));
+    CHECK(contains(rep, "RANDOM"));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+}
+
+/* Pins: `tadah data sample -i` parses every value strictly and checks the
+ * bounds before expanding a range, on S1 ... S5:
+ *  - a descending range (-i 1,5-3) is refused, naming the segment (a value
+ *    that is not an index pattern, like -i x, the command line refuses
+ *    already);
+ *  - -i 1-10000000 is refused at once, naming 10000000;
+ *  - several -i values are one list: -i 1,3 5 gives S1, S3, S5;
+ *  - repeated indices are removed: -i 1,1,2 gives S1, S2.
+ * Before the fix: 5-3 and the second value were dropped silently (S1, exit
+ * 0), and the range was expanded to ten million indices before the check. */
+TEST_CASE("Subcommand: data sample -i parses strictly and checks bounds first",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_index_parse");
+  write_numbered_dataset("db.tadah", 5);
+  const std::vector<std::pair<std::vector<std::string>, std::string>> bad = {
+      {{"1,5-3"}, "'5-3'"}, {{"1-10000000"}, "index 10000000"}};
+  for (const auto& b : bad) {
+    INFO("-i " << b.first[0]);
+    std::filesystem::remove("out.tadah");
+    std::vector<std::string> args = {"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                     "out.tadah", "-i"};
+    args.insert(args.end(), b.first.begin(), b.first.end());
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, b.second));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+  const std::vector<std::pair<std::vector<std::string>, std::vector<std::string>>> ok = {
+      {{"1,3", "5"}, numbered_labels({1, 3, 5})}, {{"1,1,2"}, numbered_labels({1, 2})}};
+  for (const auto& c : ok) {
+    INFO("-i " << c.first[0] << (c.first.size() > 1 ? " " + c.first[1] : ""));
+    std::filesystem::remove("out.tadah");
+    std::vector<std::string> args = {"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                     "out.tadah", "-i"};
+    args.insert(args.end(), c.first.begin(), c.first.end());
+    const CliRun r = run_tadah(args);
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    CHECK(dataset_labels("out.tadah") == c.second);
+  }
+}
+
+/* Pins: a data command whose output file cannot be written exits 1 with a
+ * message naming the file: `tadah data sample -o nodir/out.tadah` (a
+ * missing directory).
+ * Before the fix: StructureDB::dump_to_file printed 'Error: Could not open
+ * file for writing' and returned; the command logged 'Sampled data written
+ * to' and exited 0. */
+TEST_CASE("Subcommand: data sample to an unwritable file exits 1",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_unwritable");
+  write_numbered_dataset("db.tadah", 5);
+  const CliRun r = run_tadah({"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                              "nodir/out.tadah", "--uniform", "2"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "nodir/out.tadah"));
+  CHECK_FALSE(std::filesystem::exists("nodir"));
+}
+
+/* Pins: the index list of `tadah data sample -i` (and INDEX in a task
+ * file) is one list however it is spaced, as the command-line schema
+ * accepts it: on S1 ... S5, '-i "1, 3"' and '-i 1, 3' give S1, S3,
+ * '-i "1 - 3"' S1, S2, S3, '-i "1-5 : 2"' S1, S3, S5, and a task file
+ * 'INDEX 1, 3, 5' S1, S3, S5.
+ * Before the fix: each command-line value was parsed on its own, so '1,'
+ * left an empty segment and '-' or ':' a segment of its own, all refused
+ * ("index '' is not an index"). */
+TEST_CASE("Subcommand: data sample -i accepts the spacing the schema allows",
+          "[TadahCLI][exit-status][data][sample]") {
+  ScratchCwd cwd("sample_index_spacing");
+  write_numbered_dataset("db.tadah", 5);
+  const std::vector<std::pair<std::vector<std::string>, std::vector<std::string>>> cases = {
+      {{"1, 3"}, numbered_labels({1, 3})},
+      {{"1,", "3"}, numbered_labels({1, 3})},
+      {{"1 - 3"}, numbered_labels({1, 2, 3})},
+      {{"1-5 : 2"}, numbered_labels({1, 3, 5})}};
+  for (const auto& c : cases) {
+    std::string shown;
+    for (const auto& v : c.first) shown += " '" + v + "'";
+    INFO("-i" << shown);
+    std::filesystem::remove("out.tadah");
+    std::vector<std::string> args = {"tadah", "data", "sample", "-d", "db.tadah", "-o",
+                                     "out.tadah", "-i"};
+    args.insert(args.end(), c.first.begin(), c.first.end());
+    const CliRun r = run_tadah(args);
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    CHECK(dataset_labels("out.tadah") == c.second);
+  }
+  std::filesystem::remove("out.tadah");
+  std::ofstream("idx.task") << "TASK data sample\nDBFILE db.tadah\nOUTFILE out.tadah\nINDEX 1, 3, 5\n";
+  const CliRun r = run_tadah({"tadah", "data", "sample", "-t", "idx.task"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  CHECK(dataset_labels("out.tadah") == numbered_labels({1, 3, 5}));
+}
+
+/* Pins: `tadah data balance -i` takes the same strict 1-based list as data
+ * sample: on S1 ... S5 (energy -1 eV each), '--eshift 1.0 -i 5' shifts only
+ * S5 (the last structure) to -2 eV; '-i 0' and '-i 5-3' are refused with
+ * exit 1, naming the index, without writing the output.
+ * Before the fix: '-i 5' was refused ("Index out of range."), '-i 0' wrote
+ * far out of bounds (element SIZE_MAX of a vector<bool>: undefined
+ * behaviour, a crash of the test executable) and '-i 5-3' silently selected
+ * nothing. */
+TEST_CASE("Subcommand: data balance -i takes 1-based indices up to the last structure",
+          "[TadahCLI][exit-status][data][balance]") {
+  ScratchCwd cwd("balance_index");
+  write_numbered_dataset("db.tadah", 5);
+  {
+    const CliRun r = run_tadah({"tadah", "data", "balance", "-d", "db.tadah", "-o",
+                                "out.tadah", "--eshift", "1.0", "-i", "5"});
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    tadah::core::PeriodicTable::initialize();
+    tadah::mlip::StructureDB db;
+    db.add("out.tadah");
+    REQUIRE(db.size() == 5);
+    for (size_t k = 0; k < 4; ++k) CHECK(db(k).energy == Approx(-1.0));
+    CHECK(db(4).energy == Approx(-2.0));
+  }
+  for (const auto& bad : std::vector<std::pair<std::string, std::string>>{
+           {"0", "index 0"}, {"5-3", "'5-3'"}}) {
+    INFO("-i " << bad.first);
+    std::filesystem::remove("out.tadah");
+    const CliRun r = run_tadah({"tadah", "data", "balance", "-d", "db.tadah", "-o",
+                                "out.tadah", "--eshift", "1.0", "-i", bad.first});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, bad.second));
+    CHECK_FALSE(std::filesystem::exists("out.tadah"));
+  }
+}
+
+/* Pins: `tadah data write` exits 1, naming the file, when the structure file
+ * cannot be written (-f castep, vasp and lammps to /dev/full, which refuses
+ * every write). Skipped where /dev/full does not exist.
+ * Before the fix: the CASTEP cell, POSCAR and LAMMPS writers checked only
+ * that the file opened, so data write exited 0 with nothing written. */
+TEST_CASE("Subcommand: data write to a file that cannot be written exits 1",
+          "[TadahCLI][exit-status][data]") {
+  if (!std::filesystem::exists("/dev/full")) TADAH_SKIP("/dev/full does not exist here");
+  ScratchCwd cwd("write_full");
+  write_numbered_dataset("db.tadah", 2);
+  for (const char* format : {"castep", "vasp", "lammps"}) {
+    INFO("-f " << format);
+    const CliRun r = run_tadah({"tadah", "data", "write", "-d", "db.tadah", "-o", "/dev/full",
+                                "-f", format, "-i", "1"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "/dev/full"));
+  }
+}
+
+/* Pins: a data command with several output files checks that all of them can
+ * be written before it writes any: `tadah data split -o p1.tadah
+ * nodir/p2.tadah --even --append` (nodir missing) exits 1 naming
+ * nodir/p2.tadah and leaves p1.tadah unwritten.
+ * Before the fix: p1.tadah received its half before the second file failed,
+ * so a rerun after creating nodir appended that half twice. */
+TEST_CASE("Subcommand: data split checks every output before writing any",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("split_outputs");
+  write_numbered_dataset("db.tadah", 4);
+  const CliRun r = run_tadah({"tadah", "data", "split", "-d", "db.tadah", "-o", "p1.tadah",
+                              "nodir/p2.tadah", "--even", "--append"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "nodir/p2.tadah"));
+  CHECK_FALSE(std::filesystem::exists("p1.tadah"));
+}
+
+/* Pins: data dedup, balance and write, which also write several files,
+ * check them all before writing any: with a second output in a missing
+ * directory (nodir), each exits 1 naming nodir/... and leaves the first
+ * output unwritten:
+ *  - `data dedup -d a.tadah b.tadah -o o1.tadah nodir/o2.tadah --threshold 1e-6`;
+ *  - `data balance -d a.tadah b.tadah -o o1.tadah nodir/o2.tadah --eshift 1.0`;
+ *  - `data write -d a.tadah -i 1,2 -o o1.cell nodir/o2.cell -f castep`.
+ * Before the fix: each wrote o1 before the second output failed. */
+TEST_CASE("Subcommand: data dedup, balance and write check every output before writing any",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("multi_outputs");
+  write_numbered_dataset("a.tadah", 2);
+  { std::ofstream os("b.tadah"); os << dataset_entry("T1", {"Na 1 1 1"}); }
+  const std::vector<std::pair<std::vector<std::string>, std::string>> runs = {
+      {{"tadah", "data", "dedup", "-d", "a.tadah", "b.tadah", "-o", "o1.tadah",
+        "nodir/o2.tadah", "--threshold", "1e-6"}, "o1.tadah"},
+      {{"tadah", "data", "balance", "-d", "a.tadah", "b.tadah", "-o", "o1.tadah",
+        "nodir/o2.tadah", "--eshift", "1.0"}, "o1.tadah"},
+      {{"tadah", "data", "write", "-d", "a.tadah", "-i", "1,2", "-o", "o1.cell",
+        "nodir/o2.cell", "-f", "castep"}, "o1.cell"}};
+  for (const auto& run : runs) {
+    INFO(run.first[2]);
+    const CliRun r = run_tadah(run.first);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "nodir/o2"));
+    CHECK_FALSE(std::filesystem::exists(run.second));
+  }
+}
+
+/* Pins: `tadah data write -i` takes the strict 1-based list of data sample
+ * and checks every selected structure before writing any file: on S1 ... S3,
+ *  - `-i 1 3 -o a.cell b.cell` (two values, one list) writes S1 and S3;
+ *  - `-i 1,4 -o a.cell b.cell` and `-i 0 -o a.cell` exit 1 naming the index
+ *    (index 4, index 0), with nothing written;
+ *  - with S2's cell singular, `-f vasp -i 1,2 -o a.vasp b.vasp` exits 1
+ *    naming the singular cell, with a.vasp not written.
+ * Before the fix: the two values were read as one malformed entry, '1 3', and
+ * dropped ("Number of OUTFILE must be equal to the number of INDEX"); index 4
+ * and the singular cell were refused only after a.cell or a.vasp had been
+ * written; index 0 became the largest size_t ("Index i is out of range."). */
+TEST_CASE("Subcommand: data write checks every index and structure before writing any",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("write_indices");
+  write_numbered_dataset("db.tadah", 3);
+  {
+    const CliRun r = run_tadah({"tadah", "data", "write", "-d", "db.tadah", "-i", "1", "3",
+                                "-o", "a.cell", "b.cell", "-f", "castep"});
+    INFO("status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(slurp("a.cell"), "S1"));
+    CHECK(contains(slurp("b.cell"), "S3"));
+  }
+  const std::vector<std::pair<std::vector<std::string>, std::string>> bad = {
+      {{"tadah", "data", "write", "-d", "db.tadah", "-i", "1,4", "-o", "c.cell", "d.cell",
+        "-f", "castep"}, "index 4"},
+      {{"tadah", "data", "write", "-d", "db.tadah", "-i", "0", "-o", "c.cell", "-f", "castep"},
+       "index 0"}};
+  for (const auto& b : bad) {
+    INFO(b.second);
+    const CliRun r = run_tadah(b.first);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, b.second));
+    CHECK_FALSE(std::filesystem::exists("c.cell"));
+  }
+  {
+    std::ofstream os("singular.tadah");
+    os << dataset_entry("S1", {"Na 0 0 0"});
+    os << "S2\n1 1 1\n-1.0 0.0\n5 0 0\n0 5 0\n10 0 0\n0 0 0\n0 0 0\n0 0 0\nNa 0 0 0 0 0 0\n\n";
+  }
+  const CliRun r = run_tadah({"tadah", "data", "write", "-d", "singular.tadah", "-i", "1,2",
+                              "-o", "a.vasp", "b.vasp", "-f", "vasp"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "singular cell"));
+  CHECK_FALSE(std::filesystem::exists("a.vasp"));
+}
+
+/* Pins: the help example of `tadah data merge`, '-d db1.tadah db2.tadah -o
+ * merged.tadah', merges the two files.
+ * Before the fix: -d was registered twice (as a key and in the input group),
+ * so every command-line merge exited 106 ("Exactly 1 option from
+ * [-t,--task,-d,--dbfile] is required"). */
+TEST_CASE("Subcommand: data merge merges its -d files",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("merge_example");
+  write_numbered_dataset("db1.tadah", 2);
+  { std::ofstream os("db2.tadah"); os << dataset_entry("T1", {"Na 0 0 0"}); }
+  const CliRun r = run_tadah({"tadah", "data", "merge", "-d", "db1.tadah", "db2.tadah",
+                              "-o", "merged.tadah"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  CHECK(dataset_labels("merged.tadah") == std::vector<std::string>{"S1", "S2", "T1"});
 }
 
 /* Pins: `tadah data dedup` without --threshold (as the help examples were

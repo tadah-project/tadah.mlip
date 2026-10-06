@@ -111,13 +111,20 @@ A clean-up release for wider testing: one version everywhere, documentation that
 - `[mlip]` `FastCellFrac` and `FastEnergyEvaluator` (no callers; `FastCellFrac` missed images), and `NNFinder::calc_naive`, `calc_binned`, `deduplicate` and `num_shifts`.
 
 ### Fixed
+- `[mlip][core]` **`tadah data sample`:** `--uniform N` started at the second structure, took every 2N-th for odd N, and for some dataset sizes wrote a garbage structure read past the end; `--uniform 0` crashed (SIGFPE). It now keeps every N-th structure from the first, and refuses 0. `--random N` always returned the first N structures; it now draws from the whole dataset, each structure with the same chance, in dataset order. `-i` refused the last structure and did not check index 0; it dropped a malformed entry with an `Error:` line but exited 0, dropped a descending range (`5-3`) without a word, and read the last entry of one `-i` value and the first of the next as one malformed entry. It now parses the indices as one list, strictly against the dataset size, refusing what it cannot use. Exactly one of `--uniform`, `--random` and `--index` is required (none wrote an empty dataset). `tadah data balance -i` and `data write -i` take their indices the same way (balance refused the last structure and wrote out of bounds for index 0; write dropped two `-i` values as one malformed entry).
+- `[mlip]` **A `tadah data` command whose output file cannot be written exits 1**, naming the file; it printed an error and exited 0 (`data write` checked only that the file opened, not a full disk). `data split`, `dedup`, `balance` and `write`, which write several files, check them all before writing any (`data write` checks every selected structure too: an index beyond the dataset or a singular cell for VASP or LAMMPS): a second output in a missing directory left the first written, and an `--append` rerun appended it twice.
+- `[core]` **`tadah data merge -d a.tadah b.tadah -o merged.tadah`** (its help example) exited 106 (`Exactly 1 option from [-t,--task,-d,--dbfile] is required`): `-d` was registered twice. It merges.
+- `[mlip]` **The dataset scanners read blank lines as the dataset reader does:** `StructureDB::find_unique_elements` (what `tadah train` and `tadah hpo` read first) read a separator line of spaces or a CRLF blank line as an atom line; `count` and `add(file, first, N)` read a separator of spaces as an atom line and stopped at an extra blank line.
+- `[hpo][mlip]` **HPO builds without a system Boost** (the SOBOL init strategy's headers are vendored), and a test checks that every Boost header HPO includes, and every one those include, comes from the vendored tree.
 - `[mlip]` **Readers and data tools:**
   - the first frame of every CASTEP `.md`/`.geom` file was dropped;
   - a `.castep` (L)BFGS revert paired the reverted geometry with the trial SCF's results; each SCF now pairs with the last geometry printed before it, line- and quadratic-minimisation steps included;
   - a fixed-cell `.castep` geometry optimisation with the finite basis correction lost its iteration 0, and an MD run with the correction its step 0;
   - a fixed-occupancy (insulator) `.castep` run stored energy 0, or an earlier structure's energy and temperature; a structure without an energy of its own is now refused;
   - the stress a `.castep` geometry optimisation prints for its final configuration, or an MD run after it finishes, was dropped;
-  - a constrained `.castep` optimisation stored the optimiser's `Constrained` stress and forces instead of the physical ones;
+  - a constrained `.castep` optimisation stored the optimiser's `Constrained` stress and forces instead of the physical ones, and a single point with stress off and `iprint` 2 or more stored one term of the force breakdown (`Ewald forces`, …) as its forces; only the physical blocks are read;
+  - an MD step's stress printed after its MD Data (CASTEP samples it every few steps) was dropped;
+  - a run of another type (a phonon calculation, say) with the finite basis correction stored a `CASTEP FBSC` structure;
   - a dispersion-corrected (DFT-D) `.castep` run stored the energy without the correction its forces and stress include;
   - a `.castep` run's type could come from a parameter line, and its state carried into the next run in the file;
   - `.castep` atoms had Z = 0;

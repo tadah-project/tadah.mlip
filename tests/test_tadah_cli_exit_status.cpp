@@ -1388,37 +1388,66 @@ TEST_CASE("Subcommand: predict -A leaves structures with weight 0 out of the "
   }
 }
 
-/* Pins: `tadah predict -F -A` on a dataset whose structures all have force
- * weight 0 exits 1 before predicting, naming the dataset file and the force
- * weight (its force metrics would have nothing to measure); with -S -A and
- * all stress weights 0 the same, naming the stress weight. Without -A it
- * predicts (exit 0).
- * Before the fix: it printed force metrics of the zero reference forces. */
-TEST_CASE("Subcommand: predict -A refuses a dataset whose structures all have weight 0",
+/* The whitespace-separated fields of `line`. */
+std::vector<std::string> fields_of(const std::string& line) {
+  std::istringstream is(line);
+  std::vector<std::string> out;
+  for (std::string f; is >> f;) out.push_back(f);
+  return out;
+}
+
+/* Pins (MK, 2026-10-06): `tadah predict -A` measures a dataset whose
+ * structures all have force weight 0 (stress weight 0) in no force (stress)
+ * metric: with -F -A on S.tadah (weights 1) and nof.tadah (force weights 0)
+ * it exits 0, prints nan for nof.tadah in each Force line, a mean equal to
+ * S.tadah's value, and a line naming nof.tadah as not measured; the same
+ * with -S for nos.tadah (stress weights 0). With only the file without the
+ * data it exits 1 before predicting, naming it and the weight. The other
+ * weight refuses nothing (nof.tadah -S -A and nos.tadah -F -A, and -A
+ * alone, exit 0).
+ * Before the fix: the run with both files was refused. */
+TEST_CASE("Subcommand: predict -A leaves out a dataset without the data, and "
+          "refuses when no dataset has it",
           "[TadahCLI][predict][weight0]") {
   ScratchCwd cwd("predict_all_weight0");
   std::ofstream("pot.tadah") << kPairPotential;
+  std::ofstream("S.tadah") << weighted_entry("S1", "1 1 1", "1.40 1.30 1.20", "0.1", "0.001")
+                           << weighted_entry("S3", "1 1 1", "1.60 1.25 1.30", "-0.1", "0.002");
   std::ofstream("nof.tadah") << weighted_entry("N1", "1 0 1", "1.40 1.30 1.20", "0", "0.001")
                              << weighted_entry("N2", "1 0 1", "1.60 1.25 1.30", "0", "0.002");
   std::ofstream("nos.tadah") << weighted_entry("N1", "1 1 0", "1.40 1.30 1.20", "0.1", "0")
                              << weighted_entry("N2", "1 1 0", "1.60 1.25 1.30", "-0.1", "0");
-  const std::vector<std::tuple<std::string, std::string, std::string>> cases = {
-      {"nof.tadah", "-F", "force weight 0"}, {"nos.tadah", "-S", "stress weight 0"}};
-  for (const auto& c : cases) {
-    INFO(std::get<0>(c));
-    std::filesystem::remove("energy.pred");
-    const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", std::get<0>(c),
-                                std::get<1>(c), "-A"});
-    const std::string rep = reported(r);
-    INFO("status " << r.status << "\n" << rep);
-    CHECK(r.status == 1);
-    CHECK(contains(rep, std::get<0>(c)));
-    CHECK(contains(rep, std::get<2>(c)));
-    CHECK_FALSE(std::filesystem::exists("energy.pred"));
-    const CliRun plain = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
-                                    std::get<0>(c), std::get<1>(c)});
-    INFO("without -A: status " << plain.status << "\n" << reported(plain));
-    CHECK(plain.status == 0);
+  struct Case { std::string file, flag, metric, weight; };
+  for (const Case& c : {Case{"nof.tadah", "-F", "Force", "force weight 0"},
+                        Case{"nos.tadah", "-S", "Stress", "stress weight 0"}}) {
+    INFO(c.file);
+    {
+      const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "S.tadah",
+                                  c.file, c.flag, "-A"});
+      const std::string rep = reported(r);
+      INFO("both files: status " << r.status << "\n" << rep);
+      CHECK(r.status == 0);
+      for (const std::string kind : {" MAE", " RMSE", " R^2"}) {
+        const std::vector<std::string> f = fields_of(metric_line(r.out, c.metric + kind));
+        INFO(c.metric + kind << ": " << metric_line(r.out, c.metric + kind));
+        REQUIRE(f.size() == 5u);  // name (2 words), mean, Val1, Val2
+        CHECK(f[2] == f[3]);
+        CHECK(std::isnan(std::stod(f[4])));
+      }
+      CHECK(contains(rep, c.file));
+      CHECK(contains(rep, "not measured"));
+    }
+    {
+      std::filesystem::remove("energy.pred");
+      const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", c.file,
+                                  c.flag, "-A"});
+      const std::string rep = reported(r);
+      INFO("alone: status " << r.status << "\n" << rep);
+      CHECK(r.status == 1);
+      CHECK(contains(rep, c.file));
+      CHECK(contains(rep, c.weight));
+      CHECK_FALSE(std::filesystem::exists("energy.pred"));
+    }
   }
   // The other weight refuses nothing: nof.tadah has stress weights 1 and
   // nos.tadah force weights 1.

@@ -23,6 +23,12 @@
 // -s` read a structure file; `data dedup` needs --threshold, keeps the first
 // of each set of equal structures, and matches atoms independently of their
 // order and periodically. They need no HPO and run in every build.
+//
+// The [coincident] cases (report_leftovers.md section 3, option A): `tadah
+// predict`, `tadah train` and `tadah hpo` refuse a dataset holding a
+// structure with two atoms at the same position before they predict, train
+// or evaluate, naming the structure and the atoms (NNFinder's refusal). The
+// predict and train cases run in every build, the hpo case needs NFP.
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
@@ -1738,4 +1744,248 @@ TEST_CASE("Subcommand: data dedup removes copies with the atoms in another "
   REQUIRE(std::filesystem::exists("out.tadah"));
   CHECK(dataset_labels("out.tadah") ==
         std::vector<std::string>{"S1", "F1", "F2"});
+}
+
+/* ---- the [coincident] cases ---------------------------------------------
+ *
+ * NNFinder refuses a structure with two atoms at one position, naming the
+ * structure and the atoms (report_leftovers.md section 3, option A). `tadah
+ * predict`, `tadah train` and `tadah hpo` build their neighbour lists before
+ * they predict, train or evaluate, so each stops there with that message. */
+
+namespace {
+
+/* A bcc Ta structure and "Ta3 coincident", whose atoms 1 and 3 are both at
+ * the origin (5 A cubes, see dataset_entry). */
+std::string coincident_dataset() {
+  return dataset_entry("bcc Ta", {"Ta 0 0 0", "Ta 2.5 2.5 2.5"}) +
+         dataset_entry("Ta3 coincident",
+                       {"Ta 0 0 0", "Ta 2.5 2.5 2.5", "Ta 0 0 0"});
+}
+
+/* `rep` names the structure (`which`, e.g. "structure 2 of 2", and its
+ * label) and the atoms, as NNFinder's refusal does. */
+void check_names_coincident(const std::string& rep, const std::string& which) {
+  CHECK(contains(rep, which));
+  CHECK(contains(rep, "'Ta3 coincident'"));
+  CHECK(contains(rep, "atoms 1 and 3 (Ta, Ta)"));
+  CHECK(contains(rep, "same position"));
+}
+
+}  // namespace
+
+/* Pins: `tadah predict` with a fixed pair potential (kPairPotential) on a
+ * dataset whose second structure has two Ta atoms at the same position exits
+ * 1 without writing energy.pred, and the report names the structure
+ * ("structure 2 of 2", 'Ta3 coincident') and the atoms ("atoms 1 and 3 (Ta,
+ * Ta)", "same position"); with -F -S and without them.
+ * Before the fix: both runs exited 0 and wrote energy.pred (with -F -S the
+ * structure's forces and stresses were nan; without them its energy was a
+ * number), and nothing named the structure, so every CHECK failed. */
+TEST_CASE("Subcommand: predict refuses a structure with two atoms at the same "
+          "position, naming it",
+          "[TadahCLI][predict][coincident]") {
+  ScratchCwd cwd("predict_coincident");
+  std::ofstream("pot.tadah") << kPairPotential;
+  std::ofstream("db.tadah") << coincident_dataset();
+  for (const bool with_fs : {true, false}) {
+    INFO("-F -S: " << with_fs);
+    for (const char* f : {"energy.pred", "forces.pred", "stress.pred"})
+      std::filesystem::remove(f);
+    std::vector<std::string> args = {"tadah", "predict", "-p", "pot.tadah",
+                                     "-d", "db.tadah"};
+    if (with_fs) {
+      args.push_back("-F");
+      args.push_back("-S");
+    }
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK_FALSE(std::filesystem::exists("energy.pred"));
+    check_names_coincident(rep, "structure 2 of 2");
+  }
+}
+
+/* Pins: `tadah train` on the same dataset exits 1 without writing the
+ * potential, and the report names the structure and the atoms, both when
+ * the fit uses forces and stresses (FORCE/STRESS true) and in an
+ * energy-only fit (FORCE/STRESS false).
+ * Before the fix: with FORCE/STRESS true, exit 1 with only a LAPACK error
+ * naming no structure (here "On entry to DLASCL parameter number 4 had an
+ * illegal value" and "Error in DGELSD: info = 4"; with MKL "Parameter 4 was
+ * incorrect on entry to DGELSD", info = -4), so the four name CHECKs failed; energy-only, exit 0 and
+ * pot.tadah written, fitted to the unphysical structure (the D2_BP energy is
+ * finite at r = 0), so every CHECK failed. */
+TEST_CASE("Subcommand: train refuses a structure with two atoms at the same "
+          "position, naming it",
+          "[TadahCLI][train][coincident]") {
+  ScratchCwd cwd("train_coincident");
+  std::ofstream("db.tadah") << coincident_dataset();
+  for (const bool with_fs : {true, false}) {
+    INFO("FORCE/STRESS " << (with_fs ? "true" : "false"));
+    std::filesystem::remove("pot.tadah");
+    {
+      std::ofstream os("config");
+      os << "DBFILE db.tadah\nATOM Ta\nWATOM 1\nINIT2B true\nINITMB false\n"
+            "TYPE2B D2_BP 5 5 Ta Ta\n"
+            "CGRID2B 0.3 0.6 1.0 1.4 1.8\nSGRID2B 2.0 2.7 3.4 4.2 5.0\n"
+            "RCTYPE2B Cut_Cos\nRCUT2B 5.0\n"
+         << (with_fs ? "FORCE true\nSTRESS true\n"
+                     : "FORCE false\nSTRESS false\n")
+         << "BIAS false\nNORM false\nVERBOSE 0\n"
+            "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+    }
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+    check_names_coincident(rep, "structure 2 of 2");
+  }
+}
+
+#ifdef TADAH_ENABLE_NFP
+/* Pins: `tadah hpo` whose --validation set holds, after the two rattled Ta
+ * cells, a structure with two Ta atoms at the same position stops at
+ * startup: exit 1, no evaluation (no loss.tadah, no best_pot.tadah), and
+ * both the report and the journal (its startup ERROR) name the structure
+ * ("structure 3 of 3", 'Ta3 coincident') and the atoms.
+ * Before the fix: the host started and made its evaluation, so loss.tadah
+ * was written; the structure's predicted forces were nan; nothing named the
+ * structure. The loss.tadah CHECK and the name CHECKs failed. */
+TEST_CASE("Subcommand: hpo: a validation structure with two atoms at the same "
+          "position stops the run at startup, naming it",
+          "[TadahCLI][hpo][coincident]") {
+  ScratchCwd cwd("hpo_coincident");
+  write_frmse_fixture("config.tadah", "FORCE false\nSTRESS false\n");
+  {
+    std::ofstream os("val.db", std::ios::app);
+    os << "Ta3 coincident\n1.0 1.0 1.0\n-0.30 0.0\n"
+          "3.301 0.0 0.0\n0.0 3.301 0.0\n0.0 0.0 3.301\n"
+          "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+          "Ta 0.0 0.0 0.0  0.0 0.0 0.0\n"
+          "Ta 1.6505 1.6505 1.6505  0.0 0.0 0.0\n"
+          "Ta 0.0 0.0 0.0  0.0 0.0 0.0\n\n";
+  }
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                              "--hpotarget", "config.hpo",
+                              "--validation", "config.val"});
+  const std::string journal = std::filesystem::exists("hpo_run.log")
+                                  ? slurp("hpo_run.log")
+                                  : std::string();
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep << "\nhpo_run.log:\n" << journal);
+  CHECK(r.status == 1);
+  CHECK_FALSE(std::filesystem::exists("loss.tadah"));
+  CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  check_names_coincident(rep, "structure 3 of 3");
+  CHECK(contains(journal, "startup"));
+  check_names_coincident(journal, "structure 3 of 3");
+}
+#endif  // TADAH_ENABLE_NFP
+
+namespace {
+
+/* ---- helpers of the [analysis] dataset_stats case -------------------- */
+
+/* The first line of `text` that contains `what`; empty when there is none. */
+std::string first_line_with(const std::string& text, const std::string& what) {
+  std::istringstream in(text);
+  std::string line;
+  while (std::getline(in, line))
+    if (contains(line, what)) return line;
+  return {};
+}
+
+/* The number written after "distance " in `line`; nullopt when there is no
+ * such text or no number after it. */
+std::optional<double> distance_after(const std::string& line) {
+  const std::string key = "distance ";
+  const auto p = line.find(key);
+  if (p == std::string::npos) return std::nullopt;
+  const char* begin = line.c_str() + p + key.size();
+  char* end = nullptr;
+  const double v = std::strtod(begin, &end);
+  if (end == begin) return std::nullopt;
+  return v;
+}
+
+/* The r_min of the element pair `a b` in a dataset_stats file
+ * (TADAH_DATASTATS_V1: "<a> <b> n_pairs <n> r_min <x> r_max <y>"); nullopt
+ * when the file has no such line. */
+std::optional<double> stats_pair_r_min(const std::string& text,
+                                       const std::string& a,
+                                       const std::string& b) {
+  std::istringstream in(text);
+  std::string line;
+  while (std::getline(in, line)) {
+    std::istringstream ss(line);
+    std::vector<std::string> tok;
+    for (std::string t; ss >> t;) tok.push_back(t);
+    if (tok.size() >= 6 && tok[0] == a && tok[1] == b &&
+        tok[2] == "n_pairs" && tok[4] == "r_min")
+      return std::strtod(tok[5].c_str(), nullptr);
+  }
+  return std::nullopt;
+}
+
+}  // namespace
+
+/* Pins: `tadah analysis dataset_stats -c <config> --close-contact 0.5`, the
+ * help's -c route with the new option, lists on standard output every pair
+ * of atoms closer than 0.5 A, by structure (1-based index and label), atoms
+ * (1-based, with symbols) and distance, after the line "Atom pairs closer
+ * than 0.5 A (CLOSE_CONTACT): <K>"; and the r_min it writes counts a pair
+ * at distance 0. Of
+ *   clean-Ta      Ta (0,0,0), Ta (2.5,2.5,2.5) in a 5 A cell (4.33 A apart),
+ *   close-Ta      the same plus Ta (0.3,0,0): atoms 1 and 3 at 0.3 A,
+ *   coincident-Ta the same plus Ta (0,0,0): atoms 1 and 3 at 0,
+ * it lists exactly the pairs of structures 2 and 3 (report_leftovers.md
+ * sections 3.6 E and 9 item 5).
+ * Before the fix: there was no --close-contact option; the command line was
+ * refused (CLI11 "The following arguments were not expected: --close-contact
+ * 0.5", status 109) and nothing ran. The r_min check fails on its own while
+ * the pair loop skips rij <= 0: r_min is then the 0.3 A pair. */
+TEST_CASE("Subcommand: analysis dataset_stats --close-contact lists the "
+          "close pairs, and r_min counts coincident atoms",
+          "[TadahCLI][exit-status][analysis]") {
+  ScratchCwd cwd("dataset_stats_close");
+  {
+    std::ofstream os("db.tadah");
+    os << dataset_entry("clean-Ta", {"Ta 0 0 0", "Ta 2.5 2.5 2.5"})
+       << dataset_entry("close-Ta",
+                        {"Ta 0 0 0", "Ta 2.5 2.5 2.5", "Ta 0.3 0 0"})
+       << dataset_entry("coincident-Ta",
+                        {"Ta 0 0 0", "Ta 2.5 2.5 2.5", "Ta 0 0 0"});
+  }
+  { std::ofstream os("stats.cfg"); os << "DBFILE db.tadah\nRCUT2B 4.5\n"; }
+
+  const CliRun r = run_tadah({"tadah", "analysis", "dataset_stats", "-c",
+                              "stats.cfg", "-o", "stats.tadah",
+                              "--close-contact", "0.5"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+
+  CHECK(contains(r.out, "Atom pairs closer than 0.5 A (CLOSE_CONTACT): 2"));
+  const std::string close = first_line_with(r.out, "structure 2 ('close-Ta'):");
+  const std::string coinc =
+      first_line_with(r.out, "structure 3 ('coincident-Ta'):");
+  REQUIRE_FALSE(close.empty());
+  REQUIRE_FALSE(coinc.empty());
+  CHECK(contains(close, "atoms 1 and 3 (Ta, Ta)"));
+  CHECK(contains(coinc, "atoms 1 and 3 (Ta, Ta)"));
+  const auto r_close = distance_after(close);
+  const auto r_coinc = distance_after(coinc);
+  REQUIRE(r_close);
+  REQUIRE(r_coinc);
+  CHECK(*r_close == Approx(0.3).margin(1e-6));
+  CHECK(*r_coinc == Approx(0.0).margin(1e-6));
+  CHECK_FALSE(contains(r.out, "('clean-Ta')"));
+
+  REQUIRE(std::filesystem::exists("stats.tadah"));
+  const auto r_min = stats_pair_r_min(slurp("stats.tadah"), "Ta", "Ta");
+  REQUIRE(r_min);
+  CHECK(*r_min == 0.0);
 }

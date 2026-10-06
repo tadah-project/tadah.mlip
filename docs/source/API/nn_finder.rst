@@ -60,6 +60,18 @@ Refusals:
   cutoff reaches ten edges.
 - Invalid input is refused with ``std::invalid_argument``:
 
+  - two atoms at the same position, or an atom on a periodic image of
+    another: every descriptor divides by the distance, so the forces and the
+    stress would be ``nan``, and two atoms at one position are not a
+    physical structure. The message names the atoms (1-based, with their
+    symbols), the position and the image shift in the stored basis, for
+    example ``atoms 1 and 3 (Ta, Ta) are at the same position (0, 0, 0),
+    image shift (0, 0, 0)``; ``tadah train``, ``predict``, ``hpo``,
+    ``analysis suggest_bounds`` and ``analysis check_bounds`` add the
+    structure (``structure 2 of 2 ('label')``). A pair :math:`10^{-12}` Å
+    apart is listed. ``NNFinder::list_coincident(true)`` lists such a pair at
+    distance 0 instead, for tools that audit the data
+    (``tadah analysis dataset_stats``);
   - a cutoff that is not a finite positive number;
   - a non-finite cell entry or position;
   - a cell vector shorter than :math:`2^{-200}` Å or longer than
@@ -71,9 +83,13 @@ Refusals:
   - positions whose rounding bound exceeds an image cell (an atom far out
     in a cell near the conditioning limit).
 
-A structure without atoms gets an empty list; its cell is not examined. Two
-atoms at the same position are listed as neighbours at distance 0; the
-descriptors divide by the distance, so such a structure is not usable.
+A structure without atoms gets an empty list; its cell is not examined.
+
+.. versionchanged:: 1.6.0
+   Two atoms at the same position are refused; they were listed at distance
+   0, so ``tadah predict`` printed ``nan`` forces, ``tadah train`` failed with
+   a LAPACK error naming no structure (or, fitting energies only, fitted the
+   structure), and ``tadah hpo`` failed every evaluation.
 
 .. versionchanged:: 1.6.0
    Earlier versions missed periodic images when the cell was thinner than the

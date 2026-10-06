@@ -1165,8 +1165,9 @@ TEST_CASE("Subcommand: data sample -i accepts the spacing the schema allows",
  * S5 (the last structure) to -2 eV; '-i 0' and '-i 5-3' are refused with
  * exit 1, naming the index, without writing the output.
  * Before the fix: '-i 5' was refused ("Index out of range."), '-i 0' wrote
- * before the start of the selection (undefined behaviour, a crash) and
- * '-i 5-3' silently selected nothing. */
+ * far out of bounds (element SIZE_MAX of a vector<bool>: undefined
+ * behaviour, a crash of the test executable) and '-i 5-3' silently selected
+ * nothing. */
 TEST_CASE("Subcommand: data balance -i takes 1-based indices up to the last structure",
           "[TadahCLI][exit-status][data][balance]") {
   ScratchCwd cwd("balance_index");
@@ -1235,6 +1236,88 @@ TEST_CASE("Subcommand: data split checks every output before writing any",
   CHECK(r.status == 1);
   CHECK(contains(rep, "nodir/p2.tadah"));
   CHECK_FALSE(std::filesystem::exists("p1.tadah"));
+}
+
+/* Pins: data dedup, balance and write, which also write several files,
+ * check them all before writing any: with a second output in a missing
+ * directory (nodir), each exits 1 naming nodir/... and leaves the first
+ * output unwritten:
+ *  - `data dedup -d a.tadah b.tadah -o o1.tadah nodir/o2.tadah --threshold 1e-6`;
+ *  - `data balance -d a.tadah b.tadah -o o1.tadah nodir/o2.tadah --eshift 1.0`;
+ *  - `data write -d a.tadah -i 1,2 -o o1.cell nodir/o2.cell -f castep`.
+ * Before the fix: each wrote o1 before the second output failed. */
+TEST_CASE("Subcommand: data dedup, balance and write check every output before writing any",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("multi_outputs");
+  write_numbered_dataset("a.tadah", 2);
+  { std::ofstream os("b.tadah"); os << dataset_entry("T1", {"Na 1 1 1"}); }
+  const std::vector<std::pair<std::vector<std::string>, std::string>> runs = {
+      {{"tadah", "data", "dedup", "-d", "a.tadah", "b.tadah", "-o", "o1.tadah",
+        "nodir/o2.tadah", "--threshold", "1e-6"}, "o1.tadah"},
+      {{"tadah", "data", "balance", "-d", "a.tadah", "b.tadah", "-o", "o1.tadah",
+        "nodir/o2.tadah", "--eshift", "1.0"}, "o1.tadah"},
+      {{"tadah", "data", "write", "-d", "a.tadah", "-i", "1,2", "-o", "o1.cell",
+        "nodir/o2.cell", "-f", "castep"}, "o1.cell"}};
+  for (const auto& run : runs) {
+    INFO(run.first[2]);
+    const CliRun r = run_tadah(run.first);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "nodir/o2"));
+    CHECK_FALSE(std::filesystem::exists(run.second));
+  }
+}
+
+/* Pins: `tadah data write -i` takes the strict 1-based list of data sample
+ * and checks every selected structure before writing any file: on S1 ... S3,
+ *  - `-i 1 3 -o a.cell b.cell` (two values, one list) writes S1 and S3;
+ *  - `-i 1,4 -o a.cell b.cell` and `-i 0 -o a.cell` exit 1 naming the index
+ *    (index 4, index 0), with nothing written;
+ *  - with S2's cell singular, `-f vasp -i 1,2 -o a.vasp b.vasp` exits 1
+ *    naming the singular cell, with a.vasp not written.
+ * Before the fix: the two values were read as one malformed entry, '1 3', and
+ * dropped ("Number of OUTFILE must be equal to the number of INDEX"); index 4
+ * and the singular cell were refused only after a.cell or a.vasp had been
+ * written; index 0 became the largest size_t ("Index i is out of range."). */
+TEST_CASE("Subcommand: data write checks every index and structure before writing any",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("write_indices");
+  write_numbered_dataset("db.tadah", 3);
+  {
+    const CliRun r = run_tadah({"tadah", "data", "write", "-d", "db.tadah", "-i", "1", "3",
+                                "-o", "a.cell", "b.cell", "-f", "castep"});
+    INFO("status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(slurp("a.cell"), "S1"));
+    CHECK(contains(slurp("b.cell"), "S3"));
+  }
+  const std::vector<std::pair<std::vector<std::string>, std::string>> bad = {
+      {{"tadah", "data", "write", "-d", "db.tadah", "-i", "1,4", "-o", "c.cell", "d.cell",
+        "-f", "castep"}, "index 4"},
+      {{"tadah", "data", "write", "-d", "db.tadah", "-i", "0", "-o", "c.cell", "-f", "castep"},
+       "index 0"}};
+  for (const auto& b : bad) {
+    INFO(b.second);
+    const CliRun r = run_tadah(b.first);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, b.second));
+    CHECK_FALSE(std::filesystem::exists("c.cell"));
+  }
+  {
+    std::ofstream os("singular.tadah");
+    os << dataset_entry("S1", {"Na 0 0 0"});
+    os << "S2\n1 1 1\n-1.0 0.0\n5 0 0\n0 5 0\n10 0 0\n0 0 0\n0 0 0\n0 0 0\nNa 0 0 0 0 0 0\n\n";
+  }
+  const CliRun r = run_tadah({"tadah", "data", "write", "-d", "singular.tadah", "-i", "1,2",
+                              "-o", "a.vasp", "b.vasp", "-f", "vasp"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "singular cell"));
+  CHECK_FALSE(std::filesystem::exists("a.vasp"));
 }
 
 /* Pins: the help example of `tadah data merge`, '-d db1.tadah db2.tadah -o

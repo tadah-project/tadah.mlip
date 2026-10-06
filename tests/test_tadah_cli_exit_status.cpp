@@ -1811,9 +1811,10 @@ TEST_CASE("Subcommand: predict refuses a structure with two atoms at the same "
  * potential, and the report names the structure and the atoms, both when
  * the fit uses forces and stresses (FORCE/STRESS true) and in an
  * energy-only fit (FORCE/STRESS false).
- * Before the fix: with FORCE/STRESS true, exit 1 with only "Intel MKL
- * ERROR: Parameter 4 was incorrect on entry to DGELSD" and "Error in DGELSD:
- * info = -4", so the four name CHECKs failed; energy-only, exit 0 and
+ * Before the fix: with FORCE/STRESS true, exit 1 with only a LAPACK error
+ * naming no structure (here "On entry to DLASCL parameter number 4 had an
+ * illegal value" and "Error in DGELSD: info = 4"; with MKL "Parameter 4 was
+ * incorrect on entry to DGELSD", info = -4), so the four name CHECKs failed; energy-only, exit 0 and
  * pot.tadah written, fitted to the unphysical structure (the D2_BP energy is
  * finite at r = 0), so every CHECK failed. */
 TEST_CASE("Subcommand: train refuses a structure with two atoms at the same "

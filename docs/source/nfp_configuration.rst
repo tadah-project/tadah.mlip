@@ -568,9 +568,10 @@ structure without a stress tensor that way, and a CASTEP ``.castep``
 structure without forces, with zeros in their place, so there is nothing to
 compare; a weight of 0 set by hand has the same effect.
 A validation dataset in which every structure has that weight 0 is *not
-measured*: its value is ``nan`` in ``stats.tadah``, the journal and the
-``best_pot.tadah`` header, it is left out of the average (``FRMSE[avg]``,
-``SRMSE[avg]``) and of its gradient, and one INFO line names it.  For
+measured*: its value and its loss term are ``nan`` in ``stats.tadah``,
+``loss.tadah`` and the ``best_pot.tadah`` result table, it is left out of
+the average (``FRMSE[avg]``, ``SRMSE[avg]``) and of its gradient, and one
+line of the journal names it at startup.  For
 example, with ``DBFILE md.tadahdb`` (forces) and ``DBFILE relax.tadahdb``
 (a relaxation converted without forces), ``PC_FRMSE 0 1`` gives ``FRMSE[2]``
 ``nan`` and ``FRMSE[avg]`` equal to ``FRMSE[1]``, and so does ``PC_FRMSE (1)

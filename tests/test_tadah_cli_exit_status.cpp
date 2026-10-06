@@ -1432,7 +1432,7 @@ TEST_CASE("Subcommand: predict -A leaves out a dataset without the data, and "
         INFO(c.metric + kind << ": " << metric_line(r.out, c.metric + kind));
         REQUIRE(f.size() == 5u);  // name (2 words), mean, Val1, Val2
         CHECK(f[2] == f[3]);
-        CHECK(std::isnan(std::stod(f[4])));
+        CHECK((f[4] == "nan" || f[4] == "-nan"));  // as printed (no isnan: fast-math)
       }
       CHECK(contains(rep, c.file));
       CHECK(contains(rep, "not measured"));

@@ -239,7 +239,7 @@ The dataset has the following structure:
     <blank line>
 
 - The first line is a comment line; it will be used as a label for a structure. Do not leave a blank line.
-- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor, and (CASTEP ``.castep``) ``fweight`` 0 for one without forces, and says so in one INFO line, so that a ``STRESS true`` (``FORCE true``) fit ignores them instead of fitting zeros. ``tadah data balance --rescale`` keeps a weight of 0.
+- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor, and (CASTEP ``.castep``) ``fweight`` 0 for one without forces, and says so in one INFO line, so that a ``STRESS true`` (``FORCE true``) fit ignores them instead of fitting zeros. The force and stress metrics (``tadah predict -A``, ``PC_FRMSE`` and ``PC_SRMSE`` in ``tadah hpo``) leave such a structure out too; a dataset in which every structure has that weight 0 is not measured (``nan``, left out of the average), and a run in which no dataset has the data is refused. ``tadah data balance --rescale`` keeps a weight of 0.
 - The three cell lines are the lattice vectors **a**, **b** and **c**, one
   vector per line, as Cartesian components in Å (the lattice vectors are the
   *rows* of the 3×3 block). A vector is **not** written down a column.

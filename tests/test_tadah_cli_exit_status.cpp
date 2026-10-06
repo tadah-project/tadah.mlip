@@ -50,6 +50,7 @@
 #include <string>
 #include <fcntl.h>
 #include <unistd.h>
+#include <tuple>
 #include <vector>
 
 #ifdef TADAH_ENABLE_NFP
@@ -1318,6 +1319,270 @@ TEST_CASE("Subcommand: data write checks every index and structure before writin
   CHECK(r.status == 1);
   CHECK(contains(rep, "singular cell"));
   CHECK_FALSE(std::filesystem::exists("a.vasp"));
+}
+
+/* ---- helpers of the [weight0] cases ------------------------------------ */
+
+/* A linear two-body potential (D2_BP, Ta, cutoff 4.5 A) with fixed weights,
+ * in the format of the published potentials. */
+const char* const kPairPotential =
+    "ATOM     Ta\nBIAS     false\nCGRID2B     2.5     3.0     3.5     4.0\n"
+    "DIMER     false     0     false\nFORCE     false\nINIT2B     true\n"
+    "INITMB     false\nMODEL     M_BLR     BF_Linear\nNORM     false\n"
+    "RCTYPE2B     Cut_Cos\nRCUT2B     4.5\nSGRID2B     0.5     0.5     0.5     0.5\n"
+    "STRESS     false\nTYPE2B     D2_BP     4     4     Ta     Ta\nVERBOSE     0\n"
+    "WATOM     73\nWEIGHTS     0.02     -0.01     0.005     0.04\n";
+
+/* A two-atom Ta structure in a 5 A cubic cell, with the weights line
+ * `weights`, reference forces `f` on every component and reference stress
+ * `s` on every entry. */
+std::string weighted_entry(const std::string& label, const std::string& weights,
+                           const std::string& second_atom, const std::string& f,
+                           const std::string& s) {
+  std::string e = label + "\n" + weights + "\n-1.0\n5 0 0\n0 5 0\n0 0 5\n";
+  for (int r = 0; r < 3; ++r) e += s + " " + s + " " + s + "\n";
+  e += "Ta 0 0 0 " + f + " " + f + " " + f + "\n";
+  e += "Ta " + second_atom + " " + f + " " + f + " " + f + "\n\n";
+  return e;
+}
+
+/* The lines of `out` that start with `metric` (e.g. "Force RMSE"). */
+std::string metric_line(const std::string& out, const std::string& metric) {
+  std::istringstream is(out);
+  for (std::string line; std::getline(is, line);)
+    if (line.rfind(metric, 0) == 0) return line;
+  return "";
+}
+
+/* Pins: `tadah predict -F -S -A` leaves a structure stored with force and
+ * stress weight 0 (weights line `1 0 0`) out of the force and stress
+ * metrics: on S1, W, S3, where W's reference forces (50 eV/A) and stress
+ * (0.5 eV/A^3) are far from the prediction, every Force and Stress MAE,
+ * RMSE and R^2 line equals the one for S1, S3 alone.
+ * Before the fix: W was included, so the force metrics were off by O(10)
+ * eV/A and the stress metrics by O(0.1) eV/A^3. */
+TEST_CASE("Subcommand: predict -A leaves structures with weight 0 out of the "
+          "force and stress metrics",
+          "[TadahCLI][predict][weight0]") {
+  ScratchCwd cwd("predict_weight0");
+  std::ofstream("pot.tadah") << kPairPotential;
+  const std::string s1 = weighted_entry("S1", "1 1 1", "1.40 1.30 1.20", "0.1", "0.001");
+  const std::string w = weighted_entry("W", "1 0 0", "1.50 1.45 1.35", "50", "0.5");
+  const std::string s3 = weighted_entry("S3", "1 1 1", "1.60 1.25 1.30", "-0.1", "0.002");
+  std::ofstream("full.tadah") << s1 << w << s3;
+  std::ofstream("kept.tadah") << s1 << s3;
+  const CliRun full = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "full.tadah",
+                                 "-F", "-S", "-A"});
+  INFO("full: status " << full.status << "\n" << reported(full));
+  REQUIRE(full.status == 0);
+  const CliRun kept = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "kept.tadah",
+                                 "-F", "-S", "-A"});
+  INFO("kept: status " << kept.status << "\n" << reported(kept));
+  REQUIRE(kept.status == 0);
+  for (const char* metric : {"Force MAE", "Force RMSE", "Force R^2", "Stress MAE",
+                             "Stress RMSE", "Stress R^2"}) {
+    INFO(metric);
+    const std::string line = metric_line(kept.out, metric);
+    REQUIRE_FALSE(line.empty());
+    CHECK(metric_line(full.out, metric) == line);
+  }
+}
+
+/* The whitespace-separated fields of `line`. */
+std::vector<std::string> fields_of(const std::string& line) {
+  std::istringstream is(line);
+  std::vector<std::string> out;
+  for (std::string f; is >> f;) out.push_back(f);
+  return out;
+}
+
+/* Pins (MK, 2026-10-06): `tadah predict -A` measures a dataset whose
+ * structures all have force weight 0 (stress weight 0) in no force (stress)
+ * metric: with -F -A on S.tadah (weights 1) and nof.tadah (force weights 0)
+ * it exits 0, prints nan for nof.tadah in each Force line, a mean equal to
+ * S.tadah's value, and a line naming nof.tadah as not measured; the same
+ * with -S for nos.tadah (stress weights 0). With only the file without the
+ * data it exits 1 before predicting, naming it and the weight. The other
+ * weight refuses nothing (nof.tadah -S -A and nos.tadah -F -A, and -A
+ * alone, exit 0).
+ * Before the fix: the run with both files was refused. */
+TEST_CASE("Subcommand: predict -A leaves out a dataset without the data, and "
+          "refuses when no dataset has it",
+          "[TadahCLI][predict][weight0]") {
+  ScratchCwd cwd("predict_all_weight0");
+  std::ofstream("pot.tadah") << kPairPotential;
+  std::ofstream("S.tadah") << weighted_entry("S1", "1 1 1", "1.40 1.30 1.20", "0.1", "0.001")
+                           << weighted_entry("S3", "1 1 1", "1.60 1.25 1.30", "-0.1", "0.002");
+  std::ofstream("nof.tadah") << weighted_entry("N1", "1 0 1", "1.40 1.30 1.20", "0", "0.001")
+                             << weighted_entry("N2", "1 0 1", "1.60 1.25 1.30", "0", "0.002");
+  std::ofstream("nos.tadah") << weighted_entry("N1", "1 1 0", "1.40 1.30 1.20", "0.1", "0")
+                             << weighted_entry("N2", "1 1 0", "1.60 1.25 1.30", "-0.1", "0");
+  struct Case { std::string file, flag, metric, weight; };
+  for (const Case& c : {Case{"nof.tadah", "-F", "Force", "force weight 0"},
+                        Case{"nos.tadah", "-S", "Stress", "stress weight 0"}}) {
+    INFO(c.file);
+    {
+      const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "S.tadah",
+                                  c.file, c.flag, "-A"});
+      const std::string rep = reported(r);
+      INFO("both files: status " << r.status << "\n" << rep);
+      CHECK(r.status == 0);
+      for (const std::string kind : {" MAE", " RMSE", " R^2"}) {
+        const std::vector<std::string> f = fields_of(metric_line(r.out, c.metric + kind));
+        INFO(c.metric + kind << ": " << metric_line(r.out, c.metric + kind));
+        REQUIRE(f.size() == 5u);  // name (2 words), mean, Val1, Val2
+        CHECK(f[2] == f[3]);
+        CHECK((f[4] == "nan" || f[4] == "-nan"));  // as printed (no isnan: fast-math)
+      }
+      CHECK(contains(rep, c.file));
+      CHECK(contains(rep, "not measured"));
+    }
+    {
+      std::filesystem::remove("energy.pred");
+      const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", c.file,
+                                  c.flag, "-A"});
+      const std::string rep = reported(r);
+      INFO("alone: status " << r.status << "\n" << rep);
+      CHECK(r.status == 1);
+      CHECK(contains(rep, c.file));
+      CHECK(contains(rep, c.weight));
+      CHECK_FALSE(std::filesystem::exists("energy.pred"));
+    }
+  }
+  // The other weight refuses nothing: nof.tadah has stress weights 1 and
+  // nos.tadah force weights 1.
+  const std::vector<std::tuple<std::string, std::string, std::string>> other = {
+      {"nof.tadah", "-S", "Stress RMSE"}, {"nos.tadah", "-F", "Force RMSE"}};
+  for (const auto& c : other) {
+    INFO(std::get<0>(c) << " " << std::get<1>(c) << " -A");
+    const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", std::get<0>(c),
+                                std::get<1>(c), "-A"});
+    INFO("status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK_FALSE(metric_line(r.out, std::get<2>(c)).empty());
+    const CliRun e = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", std::get<0>(c), "-A"});
+    INFO("-A alone: status " << e.status << "\n" << reported(e));
+    CHECK(e.status == 0);
+    CHECK_FALSE(metric_line(e.out, "Energy RMSE").empty());
+  }
+}
+
+/* Pins: `tadah predict` does not re-apply the training-only weight knobs a
+ * potential records (`tadah train` writes its whole configuration into
+ * pot.tadah): with `WDBFILE 1 0` in the potential, `predict -F -A` on two
+ * files of weight 1 exits 0 and prints the same force metrics as with a
+ * potential without it.
+ * Before the fix: WDBFILE multiplied the weights of the second file by 0 at
+ * predict time, so its structures were left out of the force metrics and
+ * the dataset was refused. */
+TEST_CASE("Subcommand: predict ignores the training-only weights a potential records",
+          "[TadahCLI][predict][weight0]") {
+  ScratchCwd cwd("predict_wdbfile");
+  std::ofstream("pot.tadah") << kPairPotential;
+  std::ofstream("pot_w.tadah") << kPairPotential << "WDBFILE     1     0\n";
+  std::ofstream("a.tadah") << weighted_entry("S1", "1 1 1", "1.40 1.30 1.20", "0.1", "0.001");
+  std::ofstream("b.tadah") << weighted_entry("S3", "1 1 1", "1.60 1.25 1.30", "-0.1", "0.002");
+  const CliRun plain = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "a.tadah",
+                                  "b.tadah", "-F", "-A"});
+  INFO("plain: status " << plain.status << "\n" << reported(plain));
+  REQUIRE(plain.status == 0);
+  const CliRun w = run_tadah({"tadah", "predict", "-p", "pot_w.tadah", "-d", "a.tadah",
+                              "b.tadah", "-F", "-A"});
+  INFO("WDBFILE: status " << w.status << "\n" << reported(w));
+  REQUIRE(w.status == 0);
+  for (const char* metric : {"Force MAE", "Force RMSE", "Force R^2"}) {
+    INFO(metric);
+    CHECK(metric_line(w.out, metric) == metric_line(plain.out, metric));
+  }
+}
+
+/* The predicted column of a `tadah predict` output file (a header line, then
+ * `index true predicted [error]` per line). */
+std::vector<double> predicted_values(const std::string& file) {
+  std::ifstream in(file);
+  std::vector<double> out;
+  std::string line;
+  std::getline(in, line);  // header
+  while (std::getline(in, line)) {
+    std::istringstream ls(line);
+    double index, truth, pred;
+    if (ls >> index >> truth >> pred) out.push_back(pred);
+  }
+  return out;
+}
+
+/* Pins: `tadah predict --error` predicts the same energies, forces and
+ * stresses as `tadah predict`, whatever the weights: on two structures with
+ * weights `0.25 0.36 0.49` and a potential with EWEIGHT 4, FWEIGHT 9 and
+ * SWEIGHT 16 (and the error matrix SIGMA = I), energy.pred, forces.pred and
+ * stress.pred agree to 1e-12, and so do the -A metric lines.
+ * Before the fix: the --error path predicted from the weighted design
+ * matrix, so each value was multiplied by the square root of its weight
+ * times the global weight (energies by 1, forces by 1.8, stresses by 2.8). */
+TEST_CASE("Subcommand: predict --error predicts what predict predicts",
+          "[TadahCLI][predict][weight0]") {
+  ScratchCwd cwd("predict_error_weights");
+  std::ofstream("pot.tadah") << kPairPotential
+                             << "EWEIGHT     4\nFWEIGHT     9\nSWEIGHT     16\n"
+                                "SIGMA     4     1 0 0 0     0 1 0 0     0 0 1 0     0 0 0 1\n";
+  std::ofstream("d.tadah")
+      << weighted_entry("S1", "0.25 0.36 0.49", "1.40 1.30 1.20", "0.1", "0.001")
+      << weighted_entry("S3", "0.25 0.36 0.49", "1.60 1.25 1.30", "-0.1", "0.002");
+  std::vector<std::vector<double>> values[2];
+  std::string out[2];
+  for (int with_error = 0; with_error < 2; ++with_error) {
+    std::vector<std::string> args = {"tadah", "predict", "-p", "pot.tadah", "-d", "d.tadah",
+                                     "-F", "-S", "-A"};
+    if (with_error) args.push_back("--error");
+    const CliRun r = run_tadah(args);
+    INFO("--error " << with_error << ": status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    for (const char* f : {"energy.pred", "forces.pred", "stress.pred"})
+      values[with_error].push_back(predicted_values(f));
+    out[with_error] = r.out;
+  }
+  const char* files[3] = {"energy.pred", "forces.pred", "stress.pred"};
+  for (int k = 0; k < 3; ++k) {
+    INFO(files[k]);
+    REQUIRE(values[1][k].size() == values[0][k].size());
+    REQUIRE_FALSE(values[0][k].empty());
+    for (size_t i = 0; i < values[0][k].size(); ++i) {
+      INFO("row " << i);
+      CHECK(values[1][k][i] == Approx(values[0][k][i]).epsilon(1e-12).margin(1e-14));
+    }
+  }
+  for (const char* metric : {"Force RMSE", "Stress RMSE"})
+    CHECK(metric_line(out[1], metric) == metric_line(out[0], metric));
+}
+
+/* Pins: `tadah predict -A` refuses, before predicting, a dataset that
+ * loading leaves without structures (here every structure is dropped by
+ * --ffilter 0.01, below its reference forces of 0.1 eV/A), naming the file
+ * and saying so, with or without -F.
+ * Before the fix: with -F it said every structure had force weight 0 (their
+ * force weights are 1); without -F it printed energy metrics of no
+ * structure. */
+TEST_CASE("Subcommand: predict -A refuses a dataset left empty by the filters",
+          "[TadahCLI][predict][weight0]") {
+  ScratchCwd cwd("predict_filtered_empty");
+  std::ofstream("pot.tadah") << kPairPotential;
+  std::ofstream("hot.tadah") << weighted_entry("H1", "1 1 1", "1.40 1.30 1.20", "0.1", "0.001")
+                             << weighted_entry("H2", "1 1 1", "1.60 1.25 1.30", "-0.1", "0.002");
+  for (const bool force : {true, false}) {
+    INFO("-F " << force);
+    std::filesystem::remove("energy.pred");
+    std::vector<std::string> args = {"tadah", "predict", "-p", "pot.tadah", "-d", "hot.tadah",
+                                     "--ffilter", "0.01", "-A"};
+    if (force) args.push_back("-F");
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "hot.tadah"));
+    CHECK(contains(rep, "no structures after loading"));
+    CHECK_FALSE(contains(rep, "force weight 0"));
+    CHECK_FALSE(std::filesystem::exists("energy.pred"));
+  }
 }
 
 /* Pins: the help example of `tadah data merge`, '-d db1.tadah db2.tadah -o

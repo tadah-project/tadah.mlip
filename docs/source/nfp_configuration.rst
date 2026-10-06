@@ -562,10 +562,11 @@ These constraints use the global ``LOSS`` selected above.
 **Structures without forces or a stress tensor.** A validation structure
 stored with force weight 0 (``fweight``, on the dataset's weights line) is
 left out of ``PC_FRMSE``, and one with stress weight 0 (``sweight``) out of
-``PC_SRMSE``: neither its components nor their count enter the metric (or
-its gradient).  ``tadah data convert`` stores a structure whose source file
-has no forces, or no stress tensor, that way, with zeros in their place, so
-there is nothing to compare; a weight of 0 set by hand has the same effect.
+``PC_SRMSE``: neither its components nor their count enter the metric (nor,
+for ``PC_FRMSE``, its analytical gradient).  ``tadah data convert`` stores a
+structure without a stress tensor that way, and a CASTEP ``.castep``
+structure without forces, with zeros in their place, so there is nothing to
+compare; a weight of 0 set by hand has the same effect.
 A validation dataset in which every structure has that weight 0 is refused
 at startup, naming the file, when the metric is set.  ``tadah predict -A``
 leaves the same structures out of its force and stress metrics.  Before

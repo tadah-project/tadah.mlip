@@ -30,8 +30,10 @@ For random_skip and gfs_throws, no evaluation produced a usable loss:
   * loss.tadah has one row per evaluation, numbered 1, 2, 3, ..., each
     FAILSCORE; there is no best_pot.tadah.
 
-For gfs_mixed the run ends as a successful one: status 0, "COMPLETED",
-best_pot.tadah holds the lowest loss.tadah row, and every failed
+For gfs_mixed the run ends as a successful one: status 0, the trailer
+"DLIB:GFS: MAXEVAL reached" (the search spent its MAXEVAL; it read
+"COMPLETED", which nothing recorded, before each HPO driver recorded why it
+ended), best_pot.tadah holds the lowest loss.tadah row, and every failed
 evaluation's row records FAILSCORE.
 
   fd_straddle  DLIB:BFGS from CGRID2B[2] = 1.6, PARAM fd_step 0.2: the
@@ -225,6 +227,7 @@ OPTIM CGRID2B (1) 0.1 0.9
 }
 
 NO_USABLE_STATUS = "STOPPED -- no evaluation produced a usable loss"
+GFS_MAXEVAL_STATUS = "DLIB:GFS: MAXEVAL reached"
 FD_STOP_STATUS = ("STOPPED -- no usable gradient: a failed evaluation in "
                   "the finite-difference stencil")
 FD_INSIDE_STOP = ("DLIB:BFGS stopped: no usable gradient: a failed evaluation "
@@ -354,9 +357,9 @@ def check_files(work, case, rc, stderr, journal):
             failures.append("only the stencil point 1.4 should fail: "
                             f"{[r[-1] for r in rows]}")
     else:
-        if status != "COMPLETED":
+        if status != GFS_MAXEVAL_STATUS:
             failures.append(f"journal status {status!r}, expected "
-                            "'COMPLETED'")
+                            f"{GFS_MAXEVAL_STATUS!r}")
         if any(r[-1] != FAILSCORE_ROW for r in rows[:3]):
             failures.append("the three starting points did not all fail: "
                             f"{[r[-1] for r in rows[:3]]}")

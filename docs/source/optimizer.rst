@@ -31,7 +31,9 @@ mature third-party optimizers behind the same interface.
      - Ingber's ASA with per-parameter temperatures and reannealing.
    * - ``NLOPT``
      - global (``G_MLSL_LDS``, ``GN_DIRECT``, ...) and local
-       (``LN_BOBYQA``, ``LD_LBFGS``, ...) algorithms
+       (``LN_BOBYQA``, ``LD_LBFGS``, ...) algorithms; ``LN_NEWUOA_BOUND``
+       and ``NLOPT_LD_LBFGS_NOCEDAL`` are refused (:doc:`nfp_configuration`,
+       the ``NLOPT`` row of *Algorithms by library*)
      - Broad third-party collection; see the OPTIMIZER-block table in
        :ref:`nfp_manual`.
    * - ``DLIB``

@@ -197,7 +197,9 @@ and with the running best to within
    \texttt{FTOL\_REL}\cdot |f|\big)
 
 (Corana *et al.* 1987, §4). A tolerance of 0 disables the plateau. The
-final ``ANNEAL stopped:`` journal line always names the reason.
+final ``ANNEAL stopped:`` journal line always names the reason, and the
+run's status says it too (``TADAH:ANNEAL: FTOL plateau``;
+:ref:`hpo_end_status`).
 
 .. _tadah_anneal_corana:
 
@@ -365,8 +367,10 @@ Summary and stop::
    ANNEAL accept-rate trajectory: min=4.2%  max=78.1%
    ANNEAL stopped: MAXEVAL exhausted after 200 host eval(s) (93 rung(s) completed, 1 re-anneal(s))
 
-Every run ends with exactly one ``stopped:`` line naming the reason;
-budget accounting is exact (probes and seed included).
+Every run ends with exactly one ``stopped:`` line naming the reason,
+which is also the run's status (``TADAH:ANNEAL: MAXEVAL reached``; it
+read ``COMPLETED`` before 1.6.0); budget accounting is exact (probes and
+seed included).
 
 MPI
 ===

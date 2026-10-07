@@ -176,6 +176,21 @@ without it (a standalone HPO build) the cases are Skipped unless
 `PROCESS` half needs `socketpair` even where `TADAH_PC_ISOLATION=THREAD` is
 set.
 
+`ctest -L headers` checks that every header compiles on its own: one entry
+per module (`tadah.core_headers`, `tadah.models_headers`, `tadah.mlip_headers`,
+`tadah.md_headers`, `tadah.lammps_headers`, `tadah.hpo_headers` and, for the
+`tadah` executable, `tadah_headers`), from cmake-tools'
+`tadah_add_header_check()`. Each header of the module's `include/` (and
+CORE's generated blueprint header) is compiled in a translation unit that
+includes it twice and nothing else, with the include directories and
+definitions a user of the library gets (for `tadah`, the executable's own):
+a header that relies on something included before it, or has no include
+guard, fails, and the output names it.
+A new header is checked without being registered. The checks are not part of
+the default build; their entries build them (`cmake --build`), and a rerun
+compiles only what changed. `ctest -R tadah_header_check` tests the function
+itself. The installed tree is not checked.
+
 **Skipped, not passed.** A test that cannot run because an optional input
 is absent (an external dataset, an environment variable) must be reported
 as *Skipped*, so that a passing `ctest` means the checks ran:

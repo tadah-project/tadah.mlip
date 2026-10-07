@@ -506,7 +506,7 @@ except those another stage reads, below):
      - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``, ``GTOL``
    * - FUSE
      - CERES ``LM`` | ``DOGLEG``; ``NONE``
-     - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``
+     - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``, ``GTOL``
 
 ``MAXEVAL`` counts objective evaluations, exactly, for every NLopt and
 dlib algorithm: each call of the stage's objective, for its value or its
@@ -538,10 +538,12 @@ Without ``MAXEVAL`` each optimiser takes its default budget:
        ``LM`` and ``DOGLEG``
      - 50000 evaluations; 1000 iterations
    * - FUSE
-     - iterations of ``LM`` and ``DOGLEG`` over the whole stage: the joint
-       solve and the held re-run of *Compact mode* (a fallback, up to one
-       more solve per radial bump) share it; before 1.6.0 each held pass
-       had the full budget
+     - iterations of ``LM`` and ``DOGLEG``: in energy mode over the whole
+       stage, the joint solve and the held re-run of *Compact mode* (a
+       fallback, up to one more solve per radial bump) sharing it (before
+       1.6.0 each held pass had the full budget); under ``REFIT_OBJECTIVE
+       curve`` of each function's refine, so phi, rho and F each get the
+       whole budget
      - 2000
 
 Before 1.6.0 dlib ``GLOBAL`` took ``max(500, MAXEVAL/20)`` function calls,
@@ -555,18 +557,27 @@ numbers of its old iteration caps (20000 in EXPLORE ``INNER``, 50000 in
 REFINE), now counted in evaluations, at least two per L-BFGS iteration
 (its value and its gradient), so a default dlib ``LBFGS`` run whose cap
 binds stops sooner than before.
-``FTOL_REL`` on the Ceres stages is Ceres' relative function tolerance.
-Under ``REFIT_OBJECTIVE curve`` the FUSE curve refine runs with REFINE's
-``MAXEVAL``/``MAXITER``, ``FTOL_REL`` and ``GTOL`` (as Ceres iterations),
-not with FUSE's own.  The refit log states each stage's budget in its
-unit and each stage's termination with the evaluations it spent
-(``term=DLIB_GLOBAL:MAXEVAL_REACHED(3000ev)``).  A stage's
+``FTOL_REL`` on the Ceres stages is Ceres' relative function tolerance,
+and ``GTOL`` its gradient tolerance.  FUSE's settings are those of the
+joint solve and, under ``REFIT_OBJECTIVE curve``, of each function's FUSE
+refine.  Before 1.6.0 the curve FUSE refine ran with REFINE's
+``MAXEVAL``/``MAXITER`` (an L-BFGS REFINE's evaluations read as Ceres
+iterations), ``FTOL_REL`` and ``GTOL``, also with REFINE ``ENABLED
+false``, and FUSE's own had no effect; FUSE ``GTOL`` was ignored, and the
+joint solve's gradient tolerance was 1e-14, still the default.  Curve
+refits that set those keys give different results now, and so does one
+whose FUSE refine reached REFINE's default 1000 iterations (FUSE's
+default is 2000).  The refit log states each stage's budget in its unit
+and each stage's termination with the evaluations it spent
+(``term=DLIB_GLOBAL:MAXEVAL_REACHED(3000ev)``), and in curve mode each
+function's FUSE refine with its Ceres iterations
+(``FUSE[phi] curve score 0.0304 -> 0.0287 (NO_CONVERGENCE(501it, maxiter))``).  A stage's
 ``OPTIMIZER`` block takes only the keys the stage reads — ``LIB``, ``ALGO``,
 the stop-criteria of this table, and in EXPLORE the ``INNER`` block.  Any
 other optimiser attribute of :ref:`tadah hpo <nfp_manual>` (``THREADS``,
-``MAXTIME``, ``STOPVAL``, ``POPULATION``, ``STEP``, ``PARAM``, …), ``GTOL``
-in FUSE, and an ``INNER`` block in REFINE or FUSE is an error that names the
-keys the stage reads; before 1.6.0 they were accepted and did nothing:
+``MAXTIME``, ``STOPVAL``, ``POPULATION``, ``STEP``, ``PARAM``, …) and an
+``INNER`` block in REFINE or FUSE is an error that names the keys the stage
+reads; before 1.6.0 they were accepted and did nothing:
 
 .. code-block:: none
 
@@ -592,11 +603,11 @@ skipped), and ``ALGO UNIFORM`` (or ``NONE``) for the EXPLORE optimiser (no
 global search).  A block switched off runs no optimiser, so a stop
 criterion in it would have no effect: ``MAXEVAL``/``MAXITER``,
 ``FTOL_REL``, ``XTOL_REL`` and ``GTOL`` there are errors, named as
-written, as ``LIB`` is (below).  Two are read by another stage and stay
-accepted: an EXPLORE ``INNER`` block's ``MAXEVAL``, ``FTOL_REL`` and
-``XTOL_REL`` also set the local searches of the EXPLORE optimiser
-``GN_MLSL_LDS``, and REFINE's are what the FUSE curve refine runs with
-under ``REFIT_OBJECTIVE curve`` while FUSE runs.  EXPLORE's ``INNER``
+written, as ``LIB`` is (below).  An EXPLORE ``INNER`` block's
+``MAXEVAL``, ``FTOL_REL`` and ``XTOL_REL`` stay accepted with ``ALGO
+NONE`` under the EXPLORE optimiser ``GN_MLSL_LDS``, whose local searches
+they also set; before 1.6.0 REFINE's were accepted under ``REFIT_OBJECTIVE
+curve`` too (the FUSE curve refine ran with them).  EXPLORE's ``INNER``
 block configures the per-rung local search whatever the EXPLORE
 optimiser, ``UNIFORM`` included.  Before 1.6.0 these keys were accepted
 and ignored:

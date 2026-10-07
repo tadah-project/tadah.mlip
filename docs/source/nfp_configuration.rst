@@ -85,7 +85,9 @@ different loss locally, and a ``PC_OBSERVABLE`` line takes its own
 ``--loss``.  Every term is the loss of the measured value :math:`y`
 against its target :math:`t` (residual :math:`r = y - t`), multiplied by
 the term's weight; the loss of an evaluation is the mean of its terms
-(:ref:`nested_fitting`).
+(:ref:`nested_fitting`), unless one of its ``PC_LAMMPS`` simulations
+failed: such an evaluation scores ``FAILSCORE`` (see ``--failscore``,
+:ref:`pc_lammps_options`).
 
 ================ ================= ==========================================================
 Name             Parameter         Term (before the weight)
@@ -132,9 +134,11 @@ Root-level loss control:
        (:ref:`hpo_stopping`).  Negative losses (negative-weight
        ``--varloss`` terms) are usable under any positive
        ``FAILSCORE``: the failures sit above every loss.
-       It is also the value a failed ``PC_OBSERVABLE`` term or an
-       unreadable ``--varloss`` variable contributes, and the reference
-       for graded failures (:ref:`failscore_grading`).  ``PC_LAMMPS``
+       It is also the value a failed ``PC_OBSERVABLE`` term
+       contributes, the loss of an evaluation in which a ``PC_LAMMPS``
+       simulation failed (``--failscore``, :ref:`pc_lammps_options`),
+       and the reference for graded failures
+       (:ref:`failscore_grading`).  ``PC_LAMMPS``
        lines capture the value in force when they are read; a line's
        own ``--failscore`` changes only the value substituted for that
        line's variables when its simulation fails.
@@ -776,13 +780,20 @@ Additional options
    ``--outvar`` variables when the simulation fails (crash, timeout,
    out-of-window hot value, a hot value LAMMPS refuses to inject, a
    ``--varloss``, ``--hotvar`` or ``--failvar`` variable that cannot be
-   read back or has no number for its value, …); the substituted
-   value then passes
-   through the loss against the target like a measured one.  A finite
+   read back or has no number for its value, …): their value in
+   ``outvar.tadah``, which passes through the loss against the target
+   into their terms in ``loss.tadah`` like a measured one.  A finite
    number (it may be negative or ``0``: it is a variable's value, not a
    failure score).  Default: the root ``FAILSCORE`` in force
-   when the line is read.  The ceiling
-   that clips the *whole* evaluation is always the root ``FAILSCORE``.
+   when the line is read.  The evaluation is a failed one whatever that
+   value and the line's loss: its loss is the root ``FAILSCORE`` (under
+   ``FAILSCORE_GRADING ON`` the graded failure loss,
+   :ref:`failscore_grading`).  Before 1.6.0 it was the mean of its
+   terms, which reached ``0.999 × FAILSCORE`` only when the line's loss
+   carried the substituted value past ``FAILSCORE``, as ``L2`` does with
+   the default value: under ``L1`` or the bounded ``TUKEY``, or with a
+   small ``--failscore``, a failed evaluation counted as feasible and
+   could become the best.
    On the ``PC_FAILPROBE`` line it is a failure score: the probe's
    ``S`` reads it when the probe itself fails, and an ``S`` at or above
    it counts as a failed probe.  There it must be a positive finite
@@ -983,9 +994,10 @@ role, the same way under ``PC_ISOLATION THREAD`` and ``PROCESS``:
 
 * a ``--varloss``, ``--hotvar`` or ``--failvar`` variable that cannot be
   read fails its simulation, as a failed run does: the line's variables
-  take its ``--failscore``, a hot script's cold scripts do not run, and
-  the failvars still grade the failure (:ref:`failscore_grading`).  The
-  journal says, with the variable and the LAMMPS message:
+  take its ``--failscore``, the evaluation scores ``FAILSCORE`` (under
+  ``FAILSCORE_GRADING`` a graded loss, the failvars still grading the
+  failure: :ref:`failscore_grading`), and a hot script's cold scripts do
+  not run.  The journal says, with the variable and the LAMMPS message:
 
   .. code-block:: none
 
@@ -994,9 +1006,10 @@ role, the same way under ``PC_ISOLATION THREAD`` and ``PROCESS``:
   So does the ``S`` of the ``PC_FAILPROBE`` line (its first ``--outvar``),
   which grades every failure of the evaluation: an ``S`` that cannot be
   read is a failed probe, as when the probe's script fails, so the
-  evaluation is aborted and, under ``FAILSCORE_GRADING``, graded band D
-  with ``S`` unavailable (``PC_LAMMPS task failed (probe.in, occurrence
-  1): reading PC_FAILPROBE --outvar S after the script: …``).
+  evaluation is aborted (``FAILSCORE_GRADING OFF`` or ``ON``) and, under
+  ``FAILSCORE_GRADING ON``, graded band D with ``S`` unavailable
+  (``PC_LAMMPS task failed (probe.in, occurrence 1): reading PC_FAILPROBE
+  --outvar S after the script: …``).
 
 * a variable declared only with ``--outvar`` (a diagnostic) that cannot
   be read is ``NaN`` in ``outvar.tadah``, and the evaluation keeps its
@@ -1044,9 +1057,10 @@ instance that cannot be created (``PC_LAMMPS task failed (relax.in,
 occurrence 1): creating the LAMMPS instance: ERROR: …``) or a script that
 cannot be rendered to its temporary file (``… rendering the script to a
 temporary file: …``, e.g. when ``TMPDIR`` names no directory).  Such a
-failure gives that script's variables their ``--failscore`` but does not
-abort the evaluation and is not graded (:ref:`failscore_grading`); before
-1.6.0 it left nothing in the journal.  Each kind of line is
+failure gives that script's variables their ``--failscore`` and the
+evaluation the loss ``FAILSCORE`` (under ``FAILSCORE_GRADING`` a constant
+failure loss, not graded: :ref:`failscore_grading`), but does not abort
+the evaluation; before 1.6.0 it left nothing in the journal.  Each kind of line is
 written for the occurrences 1, 2, 4, 8, … of a run.  The LAMMPS instance
 that raised the error is discarded and created afresh for the next
 evaluation.  To read a thermo keyword after the run, list it in
@@ -1321,7 +1335,14 @@ The knobs, most important first
 
 ``FAILSCORE_GRADING ON|OFF`` (root, default ``OFF``)
    The master switch.  ``OFF`` reproduces the ungraded
-   behaviour.  Everything below only matters when this is ``ON``.
+   behaviour: a failed evaluation scores the constant ``FAILSCORE``.
+   What follows grades or gates only when this is ``ON``; under ``OFF`` a
+   simulation that fails still fails its evaluation, and so does one
+   whose ``--failvar`` cannot be read back or is not a finite number, and
+   a ``PC_FAILPROBE`` whose script fails or whose ``S`` cannot be read or
+   has no number.  The startup warning for a probe line under ``OFF``
+   says so; it said that the probe ran "as a plain diagnostic sim", but a
+   probe whose script failed failed the evaluation then too.
    Environment override: ``TADAH_FAILSCORE_GRADING=ON|OFF``.
 
 ``--failvar <name> [<scale>]`` (per ``PC_LAMMPS`` line)
@@ -1344,9 +1365,10 @@ The knobs, most important first
    ``--failvar`` on it are rejected (the probe grades failures — it must
    not shape the feasible objective).
    An ``S`` that cannot be read back after the probe's
-   script (:ref:`pc_lammps_readback`) is a failed probe, as when the script
-   fails: the evaluation is aborted and, under ``FAILSCORE_GRADING``,
-   graded band D with ``S`` unavailable.
+   script, or has no number for its value (:ref:`pc_lammps_readback`), is
+   a failed probe, as when the script fails: the evaluation is aborted
+   (under ``OFF`` too) and, under ``FAILSCORE_GRADING``, graded band D
+   with ``S`` unavailable.
 
 ``--gate <T>`` (on ``PC_FAILPROBE``)
    **The only knob that needs real care.**  If the gate can fire on a

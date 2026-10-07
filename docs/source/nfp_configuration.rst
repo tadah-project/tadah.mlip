@@ -4150,9 +4150,26 @@ The ``EXPLORE`` block accepts the full driver-attribute set
 (``LIB``/``ALGO``/``MAXEVAL`` / …) and an optional ``INIT`` block; it
 inherits the search space automatically and, without its own ``INIT``
 block, starts from the OPTIMIZER-level ``INIT`` points.  Candidates are
-deduplicated so the ``TOPK`` seeds are distinct.  If the exploration
-yields no candidate, the refinement runs from the OPTIMIZER-level
-``INIT`` points instead.
+deduplicated so the ``TOPK`` seeds are distinct, and only an evaluation
+with a usable loss is a candidate: a failed one (``FAILSCORE``, a graded
+failure, :ref:`failscore_grading`) never seeds the refinement.  When the
+exploration has fewer usable points than ``TOPK``, the refinement runs
+from those it has, and the journal says so:
+
+.. code-block:: none
+
+   PRESTAGE: 4 usable candidate(s) for TOPK 6 (the exploration made 6 evaluation(s), 2 without a usable loss); refining 4
+
+When none of its evaluations produced a usable loss, nothing is refined
+(``PRESTAGE: no evaluation of the exploration produced a usable loss (9
+evaluation(s)); nothing to refine``), and a run without a usable loss
+ends as one (``STOPPED -- no evaluation produced a usable loss``, status
+1); under ``RESTART`` an exploration that stagnated so restarts the
+``PRESTAGE`` instead.  Before, a failed point stayed among the
+candidates while fewer than ``TOPK`` usable ones existed, and the
+refinement started from it.  If the exploration made no evaluation at
+all, the refinement runs from the OPTIMIZER-level ``INIT`` points
+instead.
 
 With ``RESTART``, stagnation during the exploration ends it early and
 hands its top-K to the refinement, whose seeds each run in a stagnation

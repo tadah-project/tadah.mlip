@@ -52,7 +52,11 @@ lines; ``DLIB:BFGS`` is the one gradient-based optimiser accepted there.
 A failed evaluation in the finite-difference stencil can make the
 gradient not finite, which can end such a search with its own status
 (:ref:`hpo_gradient_not_finite`).
-``MAXEVAL`` caps every backend's evaluations; without it a backend runs
+``MAXEVAL`` caps every backend's evaluations, and every evaluation
+counts: each loss and, for a gradient-based backend, each
+finite-difference point of its gradients and each analytical gradient
+(an ``INNER`` block's ``MAXEVAL`` counts the NLopt calls of each local
+search, :ref:`hpo_inner_block`).  Without it a backend runs
 until its other stops or its own end it (convergence, a finite
 temperature schedule or grid, ASA's limits).  A tolerance is a stop only
 above 0, and an active ``RESTART`` (:ref:`restart_decorator`) is one

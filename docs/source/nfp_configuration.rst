@@ -765,8 +765,9 @@ Additional options
 ``--outvar <name>``
    Record the variable in ``outvar.tadah`` without contributing to the
    loss.  Useful for diagnostic plots.  A diagnostic that cannot be read
-   back after the script (:ref:`pc_lammps_readback`) is ``NaN`` in its
-   column, and the evaluation keeps its loss.  (The ``S`` of the
+   back after the script, or has no number for its value
+   (:ref:`pc_lammps_readback`), is ``NaN`` in its column, and the
+   evaluation keeps its loss.  (The ``S`` of the
    ``PC_FAILPROBE`` line is not a diagnostic: one that cannot be read
    fails the probe.)
 
@@ -775,7 +776,7 @@ Additional options
    ``--outvar`` variables when the simulation fails (crash, timeout,
    out-of-window hot value, a hot value LAMMPS refuses to inject, a
    ``--varloss``, ``--hotvar`` or ``--failvar`` variable that cannot be
-   read back, …); the substituted
+   read back or has no number for its value, …); the substituted
    value then passes
    through the loss against the target like a measured one.  A finite
    number (it may be negative or ``0``: it is a variable's value, not a
@@ -893,12 +894,14 @@ such a value replaced the checked, reported limit.
    ``> 0`` when it failed, with the magnitude measuring *how badly*
    (natural units; ``<scale>`` converts to the dimensionless failure
    measure, default 1; a finite number ``> 0``, and like ``--hotvar``'s
-   ``<initial>`` a token that is not an option is it). When it reads
-   ``> 0`` the sim is treated as
-   failed, its outvars are excluded from the fit, and — with
-   ``FAILSCORE_GRADING ON`` — ``scale × value`` grades the failure
-   loss so the optimiser is pulled toward feasibility instead of
-   hitting a constant. Define it **early** in the script (right after
+   ``<initial>`` a token that is not an option is it). With
+   ``FAILSCORE_GRADING ON``, when it reads ``> 0`` the sim is treated as
+   failed, its outvars are excluded from the fit, and ``scale × value``
+   grades the failure loss so the optimiser is pulled toward feasibility
+   instead of hitting a constant; with ``OFF`` its value is not used.  In
+   both, a failvar that cannot be read back, or whose value is not a
+   finite number, fails the simulation (:ref:`pc_lammps_readback`).
+   Define it **early** in the script (right after
    the risky command), so it is still readable when a later section
    times out. Like ``--varloss``/``--outvar`` names, the variable must
    be defined in the script as an ``equal``-style variable — a typo'd
@@ -990,6 +993,31 @@ role, the same way under ``PC_ISOLATION THREAD`` and ``PROCESS``:
   .. code-block:: none
 
      PC_LAMMPS --outvar is NaN (press.in, occurrence 1): reading --outvar Pend after the script: ERROR: Thermo keyword press in variable requires thermo to use/init press (src/thermo.cpp:1331)
+
+A variable can also be read and have no number for its value: it is not
+defined after the script (the script deleted it, or defined it in a branch
+it did not take), has no single value, or is text (redefined as a
+string).  That is handled the same way, by role: a ``--varloss``,
+``--hotvar`` or ``--failvar`` variable or the ``PC_FAILPROBE`` ``S`` fails
+its simulation, and a diagnostic is ``NaN`` with its journal line.  A
+``--failvar`` must also be finite: one that is ``inf`` or ``nan`` fails the
+simulation (``exp(1000)`` is ``inf`` in LAMMPS), whatever
+``FAILSCORE_GRADING``.  The message says which:
+
+.. code-block:: none
+
+   PC_LAMMPS task failed (relax.in, occurrence 1): reading --varloss F after the script: no value (the variable is not defined, or has no single value)
+   PC_LAMMPS task failed (hot.in, occurrence 1): reading --hotvar hot_a0 after the script: its value 'abc' is not a number
+   PC_LAMMPS task failed (relax.in, occurrence 1): reading --failvar viol after the script: its value 'inf' is not a finite number
+
+Before 1.6.0 such a value was skipped: a ``--varloss`` one added
+``FAILSCORE`` to the mean of the evaluation's terms, which with other terms
+fell below ``0.999 × FAILSCORE`` and counted as a feasible loss; a hot
+value had no range check or warm start, and the cold scripts ran without it;
+a failvar counted as no violation; a diagnostic was ``NaN`` with nothing in
+the journal.  A startup check already refuses a ``--varloss``, ``--outvar``
+or ``--failvar`` name the script never defines (as an ``equal``-style
+variable); this covers what only the run shows.
 
 A variable that reads one that cannot be read (``variable Pdiff equal
 v_Pend-1.0``) raises that one's LAMMPS error, so the journal gives the cause

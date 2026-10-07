@@ -187,8 +187,9 @@ definitions a user of the library gets (for `tadah`, the executable's own):
 a header that relies on something included before it, or has no include
 guard, fails, and the output names it.
 A new header is checked without being registered. The checks are not part of
-the default build; their entries build them (`cmake --build`), and a rerun
-compiles only what changed. `ctest -R tadah_header_check` tests the function
+the default build; their entries build them (`cmake --build`), on the
+machine's physical cores or on `-DTADAH_HEADER_CHECK_JOBS=<n>` processes, and
+a rerun compiles only what changed. `ctest -R tadah_header_check` tests the function
 itself. The installed tree is not checked.
 
 **Skipped, not passed.** A test that cannot run because an optional input

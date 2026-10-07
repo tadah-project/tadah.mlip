@@ -85,7 +85,9 @@ different loss locally, and a ``PC_OBSERVABLE`` line takes its own
 ``--loss``.  Every term is the loss of the measured value :math:`y`
 against its target :math:`t` (residual :math:`r = y - t`), multiplied by
 the term's weight; the loss of an evaluation is the mean of its terms
-(:ref:`nested_fitting`).
+(:ref:`nested_fitting`), unless one of its ``PC_LAMMPS`` simulations
+failed: such an evaluation scores ``FAILSCORE`` (see ``--failscore``,
+:ref:`pc_lammps_options`).
 
 ================ ================= ==========================================================
 Name             Parameter         Term (before the weight)
@@ -132,9 +134,11 @@ Root-level loss control:
        (:ref:`hpo_stopping`).  Negative losses (negative-weight
        ``--varloss`` terms) are usable under any positive
        ``FAILSCORE``: the failures sit above every loss.
-       It is also the value a failed ``PC_OBSERVABLE`` term or an
-       unreadable ``--varloss`` variable contributes, and the reference
-       for graded failures (:ref:`failscore_grading`).  ``PC_LAMMPS``
+       It is also the value a failed ``PC_OBSERVABLE`` term
+       contributes, the loss of an evaluation in which a ``PC_LAMMPS``
+       simulation failed (``--failscore``, :ref:`pc_lammps_options`),
+       and the reference for graded failures
+       (:ref:`failscore_grading`).  ``PC_LAMMPS``
        lines capture the value in force when they are read; a line's
        own ``--failscore`` changes only the value substituted for that
        line's variables when its simulation fails.
@@ -812,22 +816,31 @@ Additional options
 ``--outvar <name>``
    Record the variable in ``outvar.tadah`` without contributing to the
    loss.  Useful for diagnostic plots.  A diagnostic that cannot be read
-   back after the script (:ref:`pc_lammps_readback`) is ``NaN`` in its
-   column, and the evaluation keeps its loss.  (The ``S`` of the
+   back after the script, or has no number for its value
+   (:ref:`pc_lammps_readback`), is ``NaN`` in its column, and the
+   evaluation keeps its loss.  (The ``S`` of the
    ``PC_FAILPROBE`` line is not a diagnostic: one that cannot be read
    fails the probe.)
 
 ``--failscore <value>``
    The value substituted for each of this script's ``--varloss`` /
    ``--outvar`` variables when the simulation fails (crash, timeout,
-   out-of-window hot value, a ``--varloss``, ``--hotvar`` or
-   ``--failvar`` variable that cannot be read back, …); the substituted
-   value then passes
-   through the loss against the target like a measured one.  A finite
+   out-of-window hot value, a hot value LAMMPS refuses to inject, a
+   ``--varloss``, ``--hotvar`` or ``--failvar`` variable that cannot be
+   read back or has no number for its value, …): their value in
+   ``outvar.tadah``, which passes through the loss against the target
+   into their terms in ``loss.tadah`` like a measured one.  A finite
    number (it may be negative or ``0``: it is a variable's value, not a
    failure score).  Default: the root ``FAILSCORE`` in force
-   when the line is read.  The ceiling
-   that clips the *whole* evaluation is always the root ``FAILSCORE``.
+   when the line is read.  The evaluation is a failed one whatever that
+   value and the line's loss: its loss is the root ``FAILSCORE`` (under
+   ``FAILSCORE_GRADING ON`` the graded failure loss,
+   :ref:`failscore_grading`).  Before 1.6.0 it was the mean of its
+   terms, which reached ``0.999 × FAILSCORE`` only when the line's loss
+   carried the substituted value past ``FAILSCORE``, as ``L2`` does with
+   the default value: under ``L1`` or the bounded ``TUKEY``, or with a
+   small ``--failscore``, a failed evaluation counted as feasible and
+   could become the best.
    On the ``PC_FAILPROBE`` line it is a failure score: the probe's
    ``S`` reads it when the probe itself fails, and an ``S`` at or above
    it counts as a failed probe.  There it must be a positive finite
@@ -861,7 +874,19 @@ A token that starts with a single ``-`` is a LAMMPS option, passed to
 LAMMPS as a command-line argument together with the values that follow
 it: for example ``-log run.log``, ``-screen none`` or ``-var x 1 2`` (see
 :ref:`pc_lammps_result_contract` for how HPO renames ``-log`` /
-``-screen`` files per worker); LAMMPS judges these itself.  Every LAMMPS
+``-screen`` files per worker); LAMMPS judges these itself, when the line
+is read: HPO starts a LAMMPS instance with the line's arguments to check
+the script's variables, and one LAMMPS refuses — a typo, or an option
+this LAMMPS build cannot honour, such as ``-sf omp`` without the
+``OPENMP`` package — is an error at its line, with LAMMPS' message:
+
+.. code-block:: none
+
+   Error on line 9: PC_LAMMPS: LAMMPS cannot start with this line's command-line options: ERROR: Invalid command-line argument: -sff (src/lammps.cpp:490)
+   Line: PC_LAMMPS --script Ecoh.in --varloss Ecoh 8.10 800 -sff omp
+
+Before 1.6.0 the line was accepted and every evaluation failed to create
+its LAMMPS instance, with nothing in the journal.  Every LAMMPS
 command-line option starts with a single ``-``, so an option that starts
 with ``--`` and is none of the HPO options of this section is an error at
 its line, naming HPO's options and, for a near miss, the closest one:
@@ -906,7 +931,27 @@ such a value replaced the checked, reported limit.
    against ``[min, max]``. Validated values are cached per
    ``(script, name)`` and propagated as ``${<name>}`` into
    the cold (no-``--hotvar``) ``PC_LAMMPS`` scripts that use it, which
-   run in **phase B**.
+   run in **phase B**.  HPO injects the value as ``variable <name> equal
+   <value>`` before each cold script that reads it (``${<name>}`` or
+   ``v_<name>`` in its text, ``include`` files included; a cold script
+   gets no hot value it does not read), and the warm-start seed before
+   the hot script.  LAMMPS refuses that when the name is already
+   another style in the script's LAMMPS instance — ``--invar <name>`` or
+   ``-var <name>`` on the line makes it an index-style variable — and
+   then the script does not run: it fails as a failed run does, journalled
+   with the LAMMPS message:
+
+   .. code-block:: none
+
+      PC_LAMMPS task failed (cold.in, occurrence 1): injecting `variable hot_a0 equal 3.25` before the script: ERROR: Cannot redefine variable hot_a0 with a different style (src/variable.cpp:478)
+
+   Before 1.6.0 the refusal was ignored and the script ran on the value
+   it had.  A cold script that reads a hot value its hot script did not
+   produce — that script's LAMMPS instance could not be created, a
+   failure that does not abort the evaluation (:ref:`pc_lammps_readback`)
+   — does not run either, and its variables take its ``--failscore``; it
+   used to run without the value, or in a cached instance on an earlier
+   evaluation's.
    ``<initial>`` is optional; when omitted the midpoint of
    ``[<min>, <max>]`` seeds the first iteration.  ``<min>``, ``<max>``
    and ``<initial>`` must be finite numbers: a token after ``<max>``
@@ -926,12 +971,14 @@ such a value replaced the checked, reported limit.
    ``> 0`` when it failed, with the magnitude measuring *how badly*
    (natural units; ``<scale>`` converts to the dimensionless failure
    measure, default 1; a finite number ``> 0``, and like ``--hotvar``'s
-   ``<initial>`` a token that is not an option is it). When it reads
-   ``> 0`` the sim is treated as
-   failed, its outvars are excluded from the fit, and — with
-   ``FAILSCORE_GRADING ON`` — ``scale × value`` grades the failure
-   loss so the optimiser is pulled toward feasibility instead of
-   hitting a constant. Define it **early** in the script (right after
+   ``<initial>`` a token that is not an option is it). With
+   ``FAILSCORE_GRADING ON``, when it reads ``> 0`` the sim is treated as
+   failed, its outvars are excluded from the fit, and ``scale × value``
+   grades the failure loss so the optimiser is pulled toward feasibility
+   instead of hitting a constant; with ``OFF`` its value is not used.  In
+   both, a failvar that cannot be read back, or whose value is not a
+   finite number, fails the simulation (:ref:`pc_lammps_readback`).
+   Define it **early** in the script (right after
    the risky command), so it is still readable when a later section
    times out. Like ``--varloss``/``--outvar`` names, the variable must
    be defined in the script as an ``equal``-style variable — a typo'd
@@ -1001,9 +1048,10 @@ role, the same way under ``PC_ISOLATION THREAD`` and ``PROCESS``:
 
 * a ``--varloss``, ``--hotvar`` or ``--failvar`` variable that cannot be
   read fails its simulation, as a failed run does: the line's variables
-  take its ``--failscore``, a hot script's cold scripts do not run, and
-  the failvars still grade the failure (:ref:`failscore_grading`).  The
-  journal says, with the variable and the LAMMPS message:
+  take its ``--failscore``, the evaluation scores ``FAILSCORE`` (under
+  ``FAILSCORE_GRADING`` a graded loss, the failvars still grading the
+  failure: :ref:`failscore_grading`), and a hot script's cold scripts do
+  not run.  The journal says, with the variable and the LAMMPS message:
 
   .. code-block:: none
 
@@ -1012,9 +1060,10 @@ role, the same way under ``PC_ISOLATION THREAD`` and ``PROCESS``:
   So does the ``S`` of the ``PC_FAILPROBE`` line (its first ``--outvar``),
   which grades every failure of the evaluation: an ``S`` that cannot be
   read is a failed probe, as when the probe's script fails, so the
-  evaluation is aborted and, under ``FAILSCORE_GRADING``, graded band D
-  with ``S`` unavailable (``PC_LAMMPS task failed (probe.in, occurrence
-  1): reading PC_FAILPROBE --outvar S after the script: …``).
+  evaluation is aborted (``FAILSCORE_GRADING OFF`` or ``ON``) and, under
+  ``FAILSCORE_GRADING ON``, graded band D with ``S`` unavailable
+  (``PC_LAMMPS task failed (probe.in, occurrence 1): reading PC_FAILPROBE
+  --outvar S after the script: …``).
 
 * a variable declared only with ``--outvar`` (a diagnostic) that cannot
   be read is ``NaN`` in ``outvar.tadah``, and the evaluation keeps its
@@ -1024,6 +1073,31 @@ role, the same way under ``PC_ISOLATION THREAD`` and ``PROCESS``:
 
      PC_LAMMPS --outvar is NaN (press.in, occurrence 1): reading --outvar Pend after the script: ERROR: Thermo keyword press in variable requires thermo to use/init press (src/thermo.cpp:1331)
 
+A variable can also be read and have no number for its value: it is not
+defined after the script (the script deleted it, or defined it in a branch
+it did not take), has no single value, or is text (redefined as a
+string).  That is handled the same way, by role: a ``--varloss``,
+``--hotvar`` or ``--failvar`` variable or the ``PC_FAILPROBE`` ``S`` fails
+its simulation, and a diagnostic is ``NaN`` with its journal line.  A
+``--failvar`` must also be finite: one that is ``inf`` or ``nan`` fails the
+simulation (``exp(1000)`` is ``inf`` in LAMMPS), whatever
+``FAILSCORE_GRADING``.  The message says which:
+
+.. code-block:: none
+
+   PC_LAMMPS task failed (relax.in, occurrence 1): reading --varloss F after the script: no value (the variable is not defined, or has no single value)
+   PC_LAMMPS task failed (hot.in, occurrence 1): reading --hotvar hot_a0 after the script: its value 'abc' is not a number
+   PC_LAMMPS task failed (relax.in, occurrence 1): reading --failvar viol after the script: its value 'inf' is not a finite number
+
+Before 1.6.0 such a value was skipped: a ``--varloss`` one added
+``FAILSCORE`` to the mean of the evaluation's terms, which with other terms
+fell below ``0.999 × FAILSCORE`` and counted as a feasible loss; a hot
+value had no range check or warm start, and the cold scripts ran without it;
+a failvar counted as no violation; a diagnostic was ``NaN`` with nothing in
+the journal.  A startup check already refuses a ``--varloss``, ``--outvar``
+or ``--failvar`` name the script never defines (as an ``equal``-style
+variable); this covers what only the run shows.
+
 A variable that reads one that cannot be read (``variable Pdiff equal
 v_Pend-1.0``) raises that one's LAMMPS error, so the journal gives the cause
 whichever of them fails the simulation.  The LAMMPS message may go on with
@@ -1031,7 +1105,18 @@ whichever of them fails the simulation.  The LAMMPS message may go on with
 variable was read.  A LAMMPS error inside the
 script is journalled the same way, with its own message (``PC_LAMMPS task
 failed (bad.in, occurrence 1): ERROR: Unknown command: bogus_command 1 2
-…``); a script that times out has no message.  Each kind of line is
+…``); a script that times out has no message.  So is a task that fails
+before its script runs, for a reason that is not the candidate's: a LAMMPS
+instance that cannot be created (``PC_LAMMPS task failed (relax.in,
+occurrence 1): creating the LAMMPS instance: ERROR: …``) or a script that
+cannot be rendered to its temporary file (``… rendering the script to a
+temporary file: …``, e.g. when ``TMPDIR`` names no directory).  Such a
+failure gives that script's variables their ``--failscore`` and the
+evaluation the loss ``FAILSCORE`` (under ``FAILSCORE_GRADING`` a constant
+failure loss, not graded: :ref:`failscore_grading`), but does not abort
+the evaluation: the other scripts run, but for a cold script that reads a
+hot value the failed script did not produce (``--hotvar``); before 1.6.0
+it left nothing in the journal.  Each kind of line is
 written for the occurrences 1, 2, 4, 8, … of a run.  The LAMMPS instance
 that raised the error is discarded and created afresh for the next
 evaluation.  To read a thermo keyword after the run, list it in
@@ -1316,7 +1401,14 @@ The knobs, most important first
 
 ``FAILSCORE_GRADING ON|OFF`` (root, default ``OFF``)
    The master switch.  ``OFF`` reproduces the ungraded
-   behaviour.  Everything below only matters when this is ``ON``.
+   behaviour: a failed evaluation scores the constant ``FAILSCORE``.
+   What follows grades or gates only when this is ``ON``; under ``OFF`` a
+   simulation that fails still fails its evaluation, and so does one
+   whose ``--failvar`` cannot be read back or is not a finite number, and
+   a ``PC_FAILPROBE`` whose script fails or whose ``S`` cannot be read or
+   has no number.  The startup warning for a probe line under ``OFF``
+   says so; it said that the probe ran "as a plain diagnostic sim", but a
+   probe whose script failed failed the evaluation then too.
    Environment override: ``TADAH_FAILSCORE_GRADING=ON|OFF``.
 
 ``--failvar <name> [<scale>]`` (per ``PC_LAMMPS`` line)
@@ -1339,9 +1431,10 @@ The knobs, most important first
    ``--failvar`` on it are rejected (the probe grades failures — it must
    not shape the feasible objective).
    An ``S`` that cannot be read back after the probe's
-   script (:ref:`pc_lammps_readback`) is a failed probe, as when the script
-   fails: the evaluation is aborted and, under ``FAILSCORE_GRADING``,
-   graded band D with ``S`` unavailable.
+   script, or has no number for its value (:ref:`pc_lammps_readback`), is
+   a failed probe, as when the script fails: the evaluation is aborted
+   (under ``OFF`` too) and, under ``FAILSCORE_GRADING``, graded band D
+   with ``S`` unavailable.
 
 ``--gate <T>`` (on ``PC_FAILPROBE``)
    **The only knob that needs real care.**  If the gate can fire on a
@@ -5224,16 +5317,21 @@ can short-circuit the expensive minimisation:
    of ``examples/common/lammps/Ecoh.in``). HPO injects
    ``hot_a0`` as an ``equal``-style variable, so this is a same-style
    overwrite that LAMMPS accepts without a prior ``variable delete``.
-   A ``string``-style readback clashes with the injected variable on
-   the next iteration ("variable already exists with a different
-   style") and the injected value is then silently ignored.
+   A ``string``-style readback makes the next evaluation's injection
+   fail: LAMMPS refuses to redefine the string as an ``equal``-style
+   variable (``Cannot redefine variable hot_a0 with a different
+   style``), so the hot script does not run, its evaluation fails and the
+   journal says so (``--hotvar``, :ref:`pc_lammps_options`); the instance
+   is then discarded, and the evaluation after it starts on a fresh one.
+   Before 1.6.0 the refusal was ignored and the script ran on the value
+   its instance had kept.
 
 HPO injects ``${hot_a0}`` as an ``equal``-style variable on every call
 (``<initial>`` from ``--hotvar`` on the first call, the cached value
 thereafter), captures the script's ``${hot_a0}`` after each successful
 run, and reuses it on the next evaluation. The variable is then
-propagated as ``${hot_a0}`` into every cold (no-``--hotvar``)
-``PC_LAMMPS`` script in phase B. When ``WARM`` reads a ``pot.tadah``
+propagated into the cold (no-``--hotvar``) ``PC_LAMMPS`` scripts that
+read it (``${hot_a0}`` or ``v_hot_a0``), which run in phase B. When ``WARM`` reads a ``pot.tadah``
 whose writer dumped ``# HOT_A0 <script> <a0>`` lines, the cache is
 primed automatically; ``[HPO] WARM: primed warmstart cache with N
 HOT_A0 entry(ies)`` confirms how many lines were absorbed. The cached

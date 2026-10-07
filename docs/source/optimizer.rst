@@ -51,6 +51,14 @@ optionally ``RESTART``; :ref:`strategy_block`).  Gradient-based backends
 (``NLOPT`` ``LD_*``/``GD_*``, ``CERES``) obtain their gradient by finite
 differences and are rejected when the configuration has ``PC_LAMMPS``
 lines; ``DLIB:BFGS`` is the one gradient-based optimiser accepted there.
+An NLopt ``MLSL`` or ``AUGLAG`` is judged by its local search, whatever
+the ``D`` or ``N`` of its name: it evaluates its own points without a
+gradient, so ``GD_MLSL``, ``GD_MLSL_LDS``, ``LD_AUGLAG`` and
+``LD_AUGLAG_EQ`` with a derivative-free ``INNER`` block (``LN_BOBYQA``,
+``LN_SBPLX``, ``LN_COBYLA``, …) are accepted with ``PC_LAMMPS``; without
+one they run NLopt's default local optimiser, ``LD_MMA``, and are
+rejected with a message naming it.  Before 1.6.0 they were rejected with a
+derivative-free ``INNER`` block too.
 A failed loss at the point, or a failed evaluation in the
 finite-difference stencil of a usable point, leaves the point without a
 usable gradient, whatever ``FAILSCORE`` is (at a graded failure at the

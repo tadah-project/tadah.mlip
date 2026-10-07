@@ -91,9 +91,11 @@ not silently disappear: it fails the whole evaluation, whose loss is
 ``FAILSCORE`` whatever its other terms (the term keeps a failure value in
 ``loss.tadah``), or, with ``FAILSCORE_GRADING ON``, a *graded* failure
 loss just below ``FAILSCORE`` that tells the optimiser which way is out
-(:ref:`failscore_grading`).  Before 1.6.0 the failure value was averaged
-with the other terms, and the mean could fall below ``FAILSCORE``: a
-usable-looking loss.  A non-finite total is also clipped to
+(:ref:`failscore_grading`).  Before 1.6.0 the failure value of an
+observable, and under ``FAILSCORE_GRADING OFF`` that of a LAMMPS run or
+variable, was averaged with the other terms (under ``ON`` a LAMMPS
+failure was graded), and the mean could fall below ``0.999 ×
+FAILSCORE``: a usable-looking loss.  A non-finite total is also clipped to
 ``FAILSCORE``.
 
 The two loops

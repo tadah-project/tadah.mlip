@@ -1281,14 +1281,19 @@ not finite — is ``FAILSCORE`` in ``loss.tadah`` (its value ``NaN`` in
 ``FAILSCORE`` whatever the other terms, and under ``FAILSCORE_GRADING ON``
 a graded band-B failure measured by the failed fraction of the
 ``PC_OBSERVABLE`` terms (:ref:`failscore_grading`).  Before 1.6.0 the
-loss was the mean of ``FAILSCORE`` and the other terms, about
-``FAILSCORE`` / *n* for one failed term of *n*: below ``0.999 ×
-FAILSCORE``, a usable loss, which could become the best or reach
-``STOPVAL``; under the default ``FAILSCORE`` the other terms vanished in
-it, every finite difference across the region where the term failed was
-0, and a gradient search that started there converged on it.  Under
-``FAILSCORE_GRADING OFF`` such a search now stops at its first gradient
-(:ref:`hpo_gradient_not_finite`).
+loss was the mean of ``FAILSCORE`` and the other terms under either
+setting, about ``FAILSCORE`` / *n* for one failed term of *n* ≥ 2: below
+``0.999 × FAILSCORE``, a usable loss, which could become the best or
+reach ``STOPVAL``; under the default ``FAILSCORE`` the other terms
+vanished in it, every finite difference across the region where the term
+failed was 0, and a gradient search that started there converged on it.
+(An evaluation with no usable term, or one whose failed terms summed
+past the largest double, scored ``FAILSCORE`` then too.)  Such a search
+now stops at its first gradient: under ``FAILSCORE_GRADING OFF`` at
+once, under ``ON`` when every point of its finite-difference stencil
+fails with the same failed fraction (a flat failure region; an
+analytical gradient at a graded failure is kept;
+:ref:`hpo_gradient_not_finite`).
 
 Columns.  The *k*-th ``PC_OBSERVABLE`` line (1-based, in configuration
 order) writes the ``loss.tadah`` column ``L(<tag>)[k]`` and the
@@ -3212,10 +3217,23 @@ reads it as one.  Under ``FAILSCORE_GRADING OFF`` a search that starts
 where a ``PC_OBSERVABLE`` term fails stops at its first gradient; under
 ``ON`` its finite differences fail when the failed fraction that grades
 the failure is the same at every point of the stencil (``… a flat failure
-region``), and an analytical gradient is kept (above).  Before 1.6.0 such
-an evaluation scored the mean of its terms, which could fall below
-``0.999 × FAILSCORE`` (with a failed ``PC_OBSERVABLE`` term it always
-did): a usable loss to the rule.
+region``), and an analytical gradient is kept (above).  When the search
+so stopped is the run's only one, the run ends without a usable loss
+(status 1).  Under a ``FAILSCORE`` that does not absorb the usable terms (``1e16``
+next to terms of about 1e5) such a search used to end with a best and
+status 0 under either setting: most backends followed the gradient of
+the usable terms out of the region, and ``LD_SLSQP`` stopped at once
+(roundoff-limited) with a failed evaluation as its best.  Before 1.6.0 a
+failed ``PC_OBSERVABLE`` term, and under ``FAILSCORE_GRADING OFF`` a failed
+``PC_LAMMPS`` simulation, was averaged with the evaluation's other terms
+(under ``ON`` a failed simulation was graded), and a mean below ``0.999 ×
+FAILSCORE`` was a usable loss: with one failed observable among *n* ≥ 2
+terms it was about ``FAILSCORE`` / *n*, and with a failed simulation it
+was under ``L1``, the bounded ``TUKEY`` or a small ``--failscore``.  An
+evaluation with no usable term — a target whose only term is the failed
+observable — scored ``FAILSCORE`` then too, and so did one whose failed
+terms summed past the largest double (two of them under the default
+``FAILSCORE``).
 
 The rule has limits.  A usable point whose stencil reaches a failure has
 no gradient, so a search cannot settle within one step (``PARAM

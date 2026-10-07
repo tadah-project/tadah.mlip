@@ -87,11 +87,13 @@ with weight ``0`` contributes nothing to the sum but still counts in
 
 A term that cannot be measured — a LAMMPS run that crashed, a variable
 that could not be read, an observable whose relaxation diverged — does
-not silently disappear: it is either substituted by a failure value
-(which the loss then clips to ``FAILSCORE``) or, with
-``FAILSCORE_GRADING ON``, the whole evaluation receives a *graded*
-failure loss just below ``FAILSCORE`` that tells the optimiser which way
-is out (:ref:`failscore_grading`).  A non-finite total is also clipped to
+not silently disappear: it fails the whole evaluation, whose loss is
+``FAILSCORE`` whatever its other terms (the term keeps a failure value in
+``loss.tadah``), or, with ``FAILSCORE_GRADING ON``, a *graded* failure
+loss just below ``FAILSCORE`` that tells the optimiser which way is out
+(:ref:`failscore_grading`).  Before 1.6.0 the failure value was averaged
+with the other terms, and the mean could fall below ``FAILSCORE``: a
+usable-looking loss.  A non-finite total is also clipped to
 ``FAILSCORE``.
 
 The two loops

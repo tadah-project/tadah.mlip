@@ -2256,6 +2256,46 @@ TEST_CASE("Subcommand: refit: a configuration number out of its range is "
   CHECK(std::filesystem::exists("pot.tadah"));
 }
 
+/* ---- explain: the description of a key without a long description --- */
+
+/* Pins: `tadah explain <command>.<key>` exits 0 and prints the key's
+ * description when it has no long description, then its EXAMPLES: the
+ * refit numbers' ranges, which `tadah refit --help` points to, are shown
+ * (refit.refit_compact_seed "an integer from 0 to 4294967295",
+ * refit.refit_reach_smin "A number from 0.1 to 1", refit.output_grid_scale
+ * "a number > 0"); a key with a long description prints that, not the
+ * description (refit.add).
+ * Before the fix: only the long description was printed, so a key without
+ * one printed an empty line and its EXAMPLES (the description is not
+ * found in the output). */
+TEST_CASE("Subcommand: explain: a key without a long description prints its "
+          "description",
+          "[TadahCLI][exit-status][explain]") {
+  ScratchCwd cwd("explain_description");
+  for (const auto& [key, text] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"refit.refit_compact_seed",
+            "`tadah refit` compact mode: RNG seed for the jittered ladder "
+            "restarts (deterministic reruns), an integer from 0 to "
+            "4294967295. Default 12345."},
+           {"refit.refit_reach_smin", "A number from 0.1 to 1"},
+           {"refit.output_grid_scale", "a number > 0"},
+           {"refit.refit_tol_ambient", "A number > 0. Default 0.1."}}) {
+    const CliRun r = run_tadah({"tadah", "explain", key});
+    INFO(key << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, text));
+    CHECK(contains(r.out, "EXAMPLES:"));
+  }
+  const CliRun add = run_tadah({"tadah", "explain", "refit.add"});
+  INFO("refit.add: status " << add.status << "\n" << reported(add));
+  CHECK(add.status == 0);
+  CHECK(contains(add.out, "Insert one basis function into the curve selected "
+                          "by --func"));
+  CHECK_FALSE(contains(add.out, "`tadah refit --edit`: insert a basis "
+                                "function at this centre"));
+}
+
 /* Pins: `tadah data print -s si.cif` on diamond Si given only by its
  * space-group number (227, Si at 1/8 1/8 1/8, a = 5.431 A) exits 0 and
  * prints the structure's label with the space group the cell is built

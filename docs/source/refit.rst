@@ -113,7 +113,13 @@ The end of ``refit_opt.log`` reports a crystal self-test over
 
 ``ambient`` is :math:`a/a_0\,0.95\!-\!1.10`, ``compressed`` is
 :math:`0.75\!-\!0.95`; ``REFIT_TOL_AMBIENT`` / ``REFIT_TOL_COMPRESSED`` are the
-pass thresholds. ``cohesive delta`` is the equilibrium-energy error.
+pass thresholds. ``cohesive delta`` is the equilibrium-energy error. A fit
+that stays above them ends with a WARNING naming the keys of the fit that
+ran: ``REFIT_COMPACT_NMAX`` or ``EXPLORE MAX_ADD`` (a larger basis) after a
+compact fit, ``REFIT_MAX_ESCALATIONS`` or ``N2B``/``NRHO_BASIS``/``NF_BASIS``
+after a dense one. Before 1.6.0 a compact fit got the dense fit's advice,
+and its window report named ``REFIT_PLACEMENT`` and the dense fit's uniform
+tail basis.
 
 .. _refit_rhoform:
 
@@ -255,8 +261,17 @@ pushed past the cutoff was moved back and the coefficients re-solved, which
 could leave the curve score worse than before FUSE (0.0948 to 0.1020 on a
 test curve).
 
-Without the HPO build (no Ceres) ``REFIT_MODE compact`` falls back to the
-dense path, in the declared form.
+``REFIT_MODE compact`` needs the compact fitter of the HPO build
+(``TADAH_ENABLE_NFP`` with ``TADAH_ENABLE_CERES``). A ``tadah`` built
+without it refuses compact mode, written or the default, before it reads
+the table:
+
+.. code-block:: none
+
+   tadah refit: REFIT_MODE compact (the default) needs the compact fitter, which this tadah was built without (it needs TADAH_ENABLE_NFP and TADAH_ENABLE_CERES); set REFIT_MODE dense
+
+Before 1.6.0 it fitted the table in dense mode after a WARNING (a defaulted
+``Knot5`` basis became ``Blip``).
 
 ``refit.eam`` tabulates the fitted density above the fit window's lower
 edge; below it, the table continued from the edge, clamped at 0 under
@@ -311,6 +326,52 @@ energy metric infinite, ``OUTPUT_GRID_SCALE 0`` wrote a 2-point
 overflowed an ``int``, such as ``0.0001`` or ``1e7``),
 ``REFIT_COMPACT_OPT_EVERY 0`` and ``INSERT_TOPK 0`` became 1,
 and ``REFIT_COMPACT_SEED 3000000000``, a valid seed, failed converting.
+
+.. _refit_mode_keys:
+
+**Keys of the other mode.** ``REFIT_MODE`` is ``compact`` (the default) or
+``dense``, in any letter case. Each mode reads only some of the keys below,
+and a key that only the other mode reads is an error, before the numbers
+are checked, naming the key, the mode in effect and the mode that reads it:
+
+.. code-block:: none
+
+   tadah refit: N2B has no effect under REFIT_MODE compact (the default): only REFIT_MODE dense reads it; remove N2B, or set REFIT_MODE dense
+   tadah refit: the REFINE block has no effect under REFIT_MODE dense: only REFIT_MODE compact reads it; remove the REFINE block, or set REFIT_MODE compact
+   tadah refit: REFIT_CURVE_WEIGHTING has no effect under REFIT_OBJECTIVE energy (the default): only REFIT_OBJECTIVE curve reads it; remove REFIT_CURVE_WEIGHTING, or set REFIT_OBJECTIVE curve
+
+* Compact mode only: the keys of *Objective and curve weighting* (under
+  ``REFIT_MODE dense`` ``REFIT_OBJECTIVE curve`` is an error and ``energy``
+  is accepted) and of *Compact ladder*, and the *Stage blocks*.
+  ``REFIT_CURVE_WEIGHTING`` is read under ``REFIT_OBJECTIVE curve`` only;
+  ``REFIT_CURVE_RELAX`` and ``REFIT_CURVE_DERIV_WEIGHT`` have no effect
+  under ``energy`` but are accepted there, their values checked.
+* Dense mode only: the keys of :ref:`refit_dense` (``REFIT_LEVEL``,
+  ``N2B``, ``NRHO_BASIS``, ``NF_BASIS``, ``REFIT_MAX_ESCALATIONS``,
+  ``REFIT_PLACEMENT``, ``REFIT_CONSTRAIN_F0``).
+* Neither mode: a top-level ``OPTIMIZER`` block, the grammar before the
+  stage blocks. It is refused first, in either mode, with a text that says
+  which stage block each of its sub-blocks became (``tadah refit: a
+  top-level OPTIMIZER block is no longer supported. ...``); under
+  ``REFIT_MODE dense`` the text ends ``Under REFIT_MODE dense, which reads
+  no stage block, remove the OPTIMIZER block.``
+* Both modes: the other keys.
+
+Only the keys the configuration sets count: the defaults ``tadah`` stores
+for the keys it does not set (``REFIT_OBJECTIVE energy``,
+``REFIT_CURVE_WEIGHTING true``, ``REFIT_COMPACT_MERGE auto``,
+``REFIT_CONSTRAIN_F0 true``, ...) are not refused. Another ``REFIT_MODE``
+is an error (``tadah refit: REFIT_MODE must be 'compact' (the default) or
+'dense', got 'sparse'``). Before 1.6.0 these keys were ignored: dense mode
+never read the stage blocks (a ``REFINE`` block with ``THREADS 4`` and
+``GTOL -1``, which compact mode refuses, ran), compact mode never read the
+dense keys (``N2B 50``, ``REFIT_LEVEL accurate`` and
+``REFIT_MAX_ESCALATIONS 9`` gave the same potential as without them),
+``REFIT_CURVE_WEIGHTING`` did nothing under ``energy`` although the help
+said it was rejected there, a top-level ``OPTIMIZER`` block was ignored in
+dense mode and refused by the compact fitter only after it had read the
+table, and any other ``REFIT_MODE`` (``Dense``, ``COMPACT`` included) ran
+the dense fit after a WARNING.
 
 General and output
 ~~~~~~~~~~~~~~~~~~~
@@ -367,13 +428,16 @@ Mode and basis
      - Effect
    * - ``REFIT_MODE``
      - ``compact``
-     - ``compact`` fits a small optimised basis via the ladder; ``dense`` fits fixed grids (see :ref:`refit_dense`).
+     - ``compact`` fits a small optimised basis via the ladder; ``dense`` fits fixed grids (see :ref:`refit_dense`). In any letter case; each mode refuses the keys only the other reads (above), and a ``tadah`` built without the compact fitter refuses ``compact``.
    * - ``REFIT_BASIS``
      - ``Knot5``
      - Basis family (compact): ``Knot5`` quintic knots, ``Knot3`` cubic knots, ``KnotMix`` per-knot cubic/quintic, ``Blip``, ``Blip5``. Knot5 is smoothest per knot; Knot3 captures sharper features. Best family is element-dependent.
 
 Objective and curve weighting
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Compact mode only (``REFIT_MODE dense`` refuses these keys, and accepts
+``REFIT_OBJECTIVE energy``).
 
 .. list-table::
    :header-rows: 1
@@ -387,7 +451,7 @@ Objective and curve weighting
      - ``curve`` fits the tabulated functions (value + derivatives) with pressure weighting; ``energy`` fits the crystal energy–volume curve. Use ``curve`` for a faithful crystal from a small basis.
    * - ``REFIT_CURVE_WEIGHTING``
      - ``true``
-     - (curve) Weights :math:`\phi,\rho` fully between the equilibrium nearest-neighbour distance and the cutoff, and :math:`F` from zero to the equilibrium density, relaxing toward compression — tighter equilibrium energies for a given basis size.
+     - (curve) Weights :math:`\phi,\rho` fully between the equilibrium nearest-neighbour distance and the cutoff, and :math:`F` from zero to the equilibrium density, relaxing toward compression — tighter equilibrium energies for a given basis size. Refused under ``REFIT_OBJECTIVE energy``, written or the default (before 1.6.0 it was ignored there).
    * - ``REFIT_CURVE_RELAX``
      - ``0.05``
      - (curve, weighting on) Floor weight in the compressed region, in (0, 1] (checked in either objective); smaller focuses the fit harder on the equilibrium region.
@@ -397,6 +461,8 @@ Objective and curve weighting
 
 Compact ladder
 ~~~~~~~~~~~~~~
+
+Compact mode only (``REFIT_MODE dense`` refuses these keys).
 
 .. list-table::
    :header-rows: 1
@@ -458,14 +524,12 @@ Window and self-test
    * - ``REFIT_R_LO_FRAC``
      - ``0.20``
      - Inner radial fit bound as a fraction of the cutoff, in (0, 1); also the lower edge of the :math:`\phi/\rho` weight ramp.
-   * - ``REFIT_PLACEMENT``
-     - ``window``
-     - ``window`` places the basis on the reachable window; ``uniform`` spreads it over the full range.
 
 Stage blocks
 ~~~~~~~~~~~~
 
-Four optional multi-line blocks tune the pipeline; omit any to use defaults.
+Four optional multi-line blocks tune the pipeline of compact mode
+(``REFIT_MODE dense`` refuses them); omit any to use defaults.
 
 **INIT** declares basis placements (no optimisation), one per line:
 
@@ -821,7 +885,14 @@ Output files
 * ``refit_opt.log`` — optimisation log and crystal self-test.
 * ``refit_basis_info.dat`` — final basis: function, centre, width, coefficient, degree.
 * ``refit_curve_{phi,rho,F}.dat`` — fitted vs tabulated curves and derivatives.
-* ``refit_compare.dat``, ``refit_range_report.dat``, ``refit_ladder_trace.dat`` — energy–volume comparison, reachable window, per-rung ladder trace.
+* ``refit_compare.dat``, ``refit_ladder_trace.dat`` — energy–volume comparison, per-rung ladder trace.
+* ``refit_range_report.dat`` — each function's range and reachable window.
+  The note of its ``F`` row says what lies above the embedding window:
+  after a compact fit ``refit.eam`` carries the original table there
+  (offset-matched); the dense fit keeps a small uniform tail basis there
+  (``REFIT_PLACEMENT window``) or fits one uniform basis on the full range
+  (``REFIT_PLACEMENT uniform``). Before 1.6.0 every fit had the tail
+  basis note.
 
 .. _refit_dense:
 
@@ -829,7 +900,9 @@ Dense mode
 ----------
 
 ``REFIT_MODE dense`` fits fixed basis grids instead of the ladder; set the
-grid sizes directly. Large dense grids reach very high accuracy, but every
+grid sizes directly. The keys of this table are read by dense mode only:
+``REFIT_MODE compact`` refuses them (:ref:`Keys of the other mode
+<refit_mode_keys>`). Large dense grids reach very high accuracy, but every
 basis function becomes a search dimension in :ref:`nested fitting
 <nested_fitting>` — a high-count dense potential makes the downstream
 ``tadah hpo`` search much larger. Prefer compact mode (a small optimised basis)
@@ -864,6 +937,11 @@ when the refit will be tuned further.
      - Under ``EMBF0 FREE``: pin the raw :math:`F(0)` softly to the table
        value. No effect under the default ``EMBF0 ZERO`` (exact by
        construction).
+   * - ``REFIT_PLACEMENT``
+     - ``window``
+     - ``window`` places the basis on the reachable window; ``uniform``
+       spreads it over the full range. (The compact fit always fits on the
+       reachable windows.)
 
 Dense ``REFIT_BASIS`` families are ``Blip`` | ``Blip5`` | ``Gaussian``.
 

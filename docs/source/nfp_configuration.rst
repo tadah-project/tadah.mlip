@@ -1026,7 +1026,15 @@ whichever of them fails the simulation.  The LAMMPS message may go on with
 variable was read.  A LAMMPS error inside the
 script is journalled the same way, with its own message (``PC_LAMMPS task
 failed (bad.in, occurrence 1): ERROR: Unknown command: bogus_command 1 2
-…``); a script that times out has no message.  Each kind of line is
+…``); a script that times out has no message.  So is a task that fails
+before its script runs, for a reason that is not the candidate's: a LAMMPS
+instance that cannot be created (``PC_LAMMPS task failed (relax.in,
+occurrence 1): creating the LAMMPS instance: ERROR: …``) or a script that
+cannot be rendered to its temporary file (``… rendering the script to a
+temporary file: …``, e.g. when ``TMPDIR`` names no directory).  Such a
+failure gives that script's variables their ``--failscore`` but does not
+abort the evaluation and is not graded (:ref:`failscore_grading`); before
+1.6.0 it left nothing in the journal.  Each kind of line is
 written for the occurrences 1, 2, 4, 8, … of a run.  The LAMMPS instance
 that raised the error is discarded and created afresh for the next
 evaluation.  To read a thermo keyword after the run, list it in

@@ -138,6 +138,10 @@ Root-level loss control:
        lines capture the value in force when they are read; a line's
        own ``--failscore`` changes only the value substituted for that
        line's variables when its simulation fails.
+       An evaluation that raises an exception (its training fails, say)
+       scores ``FAILSCORE`` too: ``hpo_run.log`` gives each one a
+       ``WARNING`` with the message, and its DIAGNOSTICS count them under
+       ``Evaluations that threw``, apart from the NaN/Inf clampings.
        ``DLIB:GFS`` hands dlib a finite stand-in for a failed
        evaluation instead (:ref:`failed evaluations under DLIB:GFS
        <hpo_dlib_gfs_failures>`); the history files and the journal
@@ -4956,10 +4960,11 @@ outputs) is the run's structured journal. It opens with a banner
    -- LOSS FUNCTION --   targets, weights, FAILSCORE
    -- PROGRESS      --   timestamped events: bests, warnings, milestones,
                          feasibility-gate rejects
-   -- DIAGNOSTICS   --   NaN/Inf clampings, graded failures with the gate
-                         rejects, unusable losses (every evaluation without a
-                         usable loss) with a verdict, positive-form
-                         projections, bound-proximity analysis
+   -- DIAGNOSTICS   --   NaN/Inf clampings, evaluations that threw, graded
+                         failures with the gate rejects, unusable losses
+                         (every evaluation without a usable loss) with a
+                         verdict, positive-form projections, bound-proximity
+                         analysis
    -- PERFORMANCE   --   timing statistics
    -- RESULT        --   final status, best loss, best metrics; DM_REAM:
                          raw F(0) of the first and the best evaluation, the

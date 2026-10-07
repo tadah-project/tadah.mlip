@@ -746,9 +746,14 @@ taking the loss of an average. The forms agree for a single dataset.
 
 The run journal and potential header identify the form and the resolved
 indexed assignments. The journal's new-best ``top:`` line lists an indexed
-metric per dataset, ``ERMSE[i]`` / ``FRMSE[i]``, each its share of the average
-of the dataset losses (a dataset the metric does not measure has none), and a
-global one as ``ERMSE_global`` / ``FRMSE_global``. In ``loss.tadah`` and ``best_loss.tadah``, indexed
+metric per dataset, ``ERMSE[i]`` / ``FRMSE[i]`` (a dataset the metric does not
+measure has none), and a global one as ``ERMSE_global`` / ``FRMSE_global``.
+Like every part of that line, each is shown as its contribution to the run's
+``loss=``, the mean over the loss terms: ``ERMSE[i]`` is ``L(ERMSE)[i]``
+divided by the number of datasets and by the number of loss terms, so the
+parts of every term add up to ``loss=``, and the percentages are shares of
+it. Only with the indexed metric as the one loss term is ``ERMSE[i]`` its
+share of ``L(ERMSE)[avg]``. The line lists the five largest parts. In ``loss.tadah`` and ``best_loss.tadah``, indexed
 ``L(ERMSE)[avg]`` / ``L(FRMSE)[avg]`` columns are the mean of the corresponding
 dataset losses. For the global form they retain the loss of the average
 metric. Raw metric averages in ``stats.tadah`` and ``outvar.tadah`` are

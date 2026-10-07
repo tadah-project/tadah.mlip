@@ -2070,6 +2070,339 @@ TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment"
   CHECK(predicted_values("energy.pred").size() == 3u);
 }
 
+/* ---- the [bias] cases ----------------------------------------------------
+ *
+ * BIAS true with two species (Nb, Ta): one one-hot intercept column per ATOM
+ * species on every path. Before the fix `tadah train` gave every atom one
+ * intercept column shared by the species (DSIZE = 1 + descriptors), while
+ * pair_style tadah builds one per species, so the potential's LAMMPS
+ * energies and forces were wrong. */
+
+namespace {
+
+/* A 4-atom bcc cell (a = 3.3 A, 3.3 x 3.3 x 6.6) with the given elements,
+ * moved a little by `shift`; energy -7.6 per Nb and -8.9 per Ta plus
+ * `extra` (the fits below need determined intercepts, not physics). */
+std::string nbta_entry(const std::string& label,
+                       const std::vector<std::string>& el, double shift,
+                       double extra) {
+  const double p[4][3] = {{0.0, 0.0, 0.0},
+                          {1.65, 1.65, 1.65},
+                          {0.0, 0.0, 3.3},
+                          {1.65, 1.65, 4.95}};
+  double e = extra;
+  std::ostringstream os;
+  for (int a = 0; a < 4; ++a) {
+    e += el[a] == "Nb" ? -7.6 : -8.9;
+    os << el[a] << " " << p[a][0] + shift * (a + 1) << " "
+       << p[a][1] - 0.5 * shift * a << " " << p[a][2] + 0.3 * shift
+       << " 0 0 0\n";
+  }
+  std::ostringstream s;
+  s << label << "\n1 1 1\n" << e << " 0.0\n3.3 0 0\n0 3.3 0\n0 0 6.6\n"
+    << "0 0 0\n0 0 0\n0 0 0\n" << os.str() << "\n";
+  return s.str();
+}
+
+/* Eight cells of every Nb-Ta composition (`fixed`: all Nb2 Ta2). */
+std::string nbta_dataset(bool fixed) {
+  const std::vector<std::vector<std::string>> varied = {
+      {"Nb", "Nb", "Nb", "Nb"}, {"Nb", "Nb", "Nb", "Ta"},
+      {"Nb", "Ta", "Nb", "Ta"}, {"Nb", "Ta", "Ta", "Ta"},
+      {"Ta", "Ta", "Ta", "Ta"}, {"Ta", "Nb", "Ta", "Ta"},
+      {"Ta", "Nb", "Nb", "Ta"}, {"Nb", "Ta", "Nb", "Nb"}};
+  std::string db;
+  for (std::size_t i = 0; i < varied.size(); ++i)
+    db += nbta_entry("S" + std::to_string(i + 1),
+                     fixed ? std::vector<std::string>{"Nb", "Ta", "Ta", "Nb"}
+                           : varied[i],
+                     0.02 * double(i + 1), 0.05 * std::sin(double(i)));
+  return db;
+}
+
+/* D2_BP (3 functions, every pair), Cut_Cos 5 A, M_BLR BF_Linear, BIAS true:
+ * the keys of a training configuration and of its potential. */
+const char* const kNbTaKeys =
+    "ATOM Nb Ta\nINIT2B true\nINITMB false\nTYPE2B D2_BP 3 3 * *\n"
+    "CGRID2B 2.4 3.1 3.9\nSGRID2B 1.0 1.2 0.9\nRCTYPE2B Cut_Cos\n"
+    "RCUT2B 5.0\nFORCE false\nSTRESS false\nBIAS true\nNORM false\n"
+    "LAMBDA 0\nOALGO 1\nMODEL M_BLR BF_Linear\n";
+
+}  // namespace
+
+/* Pins: `tadah train` on Nb-Ta cells of varied composition with BIAS true
+ * writes 2 + 3 WEIGHTS (one per species' intercept, then the D2_BP
+ * weights), and `tadah predict` with that potential exits 0 and predicts
+ * every structure; with FIXINDEX it prints a WARNING that the descriptor
+ * weights start at index 3.
+ * Before the fix: 1 + 3 WEIGHTS (one intercept shared by Nb and Ta), and no
+ * WARNING. */
+TEST_CASE("Subcommand: train with BIAS true and two species writes one "
+          "weight per species' intercept",
+          "[TadahCLI][train][bias]") {
+  ScratchCwd cwd("bias_train");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  std::ofstream("config") << "DBFILE db.tadah\n" << kNbTaKeys;
+  const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                              "pot.tadah"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS").size() == 6u);  // key + 5
+  const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                              "db.tadah"});
+  INFO("predict: status " << p.status << "\n" << reported(p));
+  CHECK(p.status == 0);
+  CHECK(predicted_values("energy.pred").size() == 8u);
+
+  std::ofstream("config_fix") << "DBFILE db.tadah\n" << kNbTaKeys
+                              << "FIXINDEX 3\nFIXWEIGHT 0.05\n";
+  const CliRun f = run_tadah({"tadah", "train", "-c", "config_fix", "-o",
+                              "pot_fix.tadah"});
+  const std::string rep = reported(f);
+  INFO("FIXINDEX: status " << f.status << "\n" << rep);
+  CHECK(f.status == 0);
+  CHECK(contains(rep, "FIXINDEX with BIAS true"));
+  CHECK(contains(rep, "start at index 3"));
+}
+
+/* Pins: `tadah train` with M_BLR BF_Polynomial2, BIAS true on the Nb-Ta
+ * cells (DSIZE 5: 15 weights, the products (i,ii), i <= ii) and FIXINDEX 4
+ * prints a WARNING naming the function's intercept weights, "weights 1 (Nb)
+ * and 6 (Ta)" (the products (0,0) and (1,1)), and not the linear models'
+ * "descriptor weights start at index 3"; it trains (exit 0).
+ * Before the fix: the WARNING said "weights 1 to 2 are the per-species
+ * intercepts ... the descriptor weights start at index 3", wrong for
+ * BF_Polynomial2, whose weight 2 is the Nb x Ta product. */
+TEST_CASE("Subcommand: train warns of FIXINDEX with BIAS true naming the "
+          "intercept weights of BF_Polynomial2",
+          "[TadahCLI][train][bias]") {
+  ScratchCwd cwd("bias_poly2_fixindex");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  std::string keys = kNbTaKeys;
+  keys.replace(keys.find("MODEL M_BLR BF_Linear"), 21,
+               "MODEL M_BLR BF_Polynomial2");
+  std::ofstream("config") << "DBFILE db.tadah\n" << keys
+                          << "FIXINDEX 4\nFIXWEIGHT 0.05\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                              "pot.tadah"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 0);
+  CHECK(contains(rep, "FIXINDEX with BIAS true"));
+  CHECK(contains(rep, "weights 1 (Nb) and 6 (Ta)"));
+  CHECK_FALSE(contains(rep, "start at index 3"));
+}
+
+/* Pins: a two-species BIAS potential with one intercept column shared by
+ * the species (1 + 3 WEIGHTS, as tadah trained it before 1.6.0):
+ * `tadah predict` exits 1 without writing energy.pred, naming WEIGHTS,
+ * DSIZE, BIAS and ATOM ("has 4 WEIGHTS", "5 components (DSIZE)") and saying
+ * to retrain; `tadah train -c` with the potential itself (plus a DBFILE)
+ * retrains it into 2 + 3 WEIGHTS (exit 0).
+ * Before the fix: predict exited 0 with the shared intercept (and LAMMPS
+ * used the weights with one intercept column per species); the retrained
+ * potential had 1 + 3 WEIGHTS again. Before the one-guard rewording
+ * (review): the message said "WEIGHTS has 4 values" and "DSIZE 5". */
+TEST_CASE("Subcommand: predict refuses a two-species BIAS potential with one "
+          "shared intercept column; train -c retrains it",
+          "[TadahCLI][predict][bias]") {
+  ScratchCwd cwd("bias_legacy");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  std::ofstream("legacy.tadah") << kNbTaKeys
+                                << "WEIGHTS -8.2 0.1 -0.05 0.02\n";
+  const CliRun r = run_tadah({"tadah", "predict", "-p", "legacy.tadah", "-d",
+                              "db.tadah"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK_FALSE(std::filesystem::exists("energy.pred"));
+  CHECK(contains(rep, "has 4 WEIGHTS"));
+  CHECK(contains(rep, "5 components (DSIZE)"));
+  CHECK(contains(rep, "ATOM Nb Ta"));
+  CHECK(contains(rep, "retrain"));
+
+  std::ofstream("legacy_cfg.tadah") << slurp("legacy.tadah")
+                                    << "DBFILE db.tadah\n";
+  const CliRun t = run_tadah({"tadah", "train", "-c", "legacy_cfg.tadah",
+                              "-o", "retrained.tadah"});
+  INFO("train -c legacy: status " << t.status << "\n" << reported(t));
+  CHECK(t.status == 0);
+  REQUIRE(std::filesystem::exists("retrained.tadah"));
+  CHECK(line_tokens(slurp("retrained.tadah"), "WEIGHTS").size() == 6u);
+}
+
+/* Pins: `tadah train` refuses (exit 1, no potential) BIAS true data whose
+ * every structure has the composition Nb2 Ta2 (the intercepts cannot be
+ * determined: rank 1 of 2), naming the problem and the remedies; and NORM
+ * true with M_KRR Kern_Linear and BIAS false (exit 1, as for BF_Linear).
+ * Before the fix: both trained (exit 0): the fixed composition with one
+ * shared intercept, and the Kern_Linear NORM potential with its mean
+ * correction folded into its first descriptor weight. */
+TEST_CASE("Subcommand: train refuses intercepts the data cannot determine "
+          "and NORM with Kern_Linear without BIAS",
+          "[TadahCLI][train][bias]") {
+  ScratchCwd cwd("bias_refusals");
+  std::ofstream("fixed.tadah") << nbta_dataset(true);
+  std::ofstream("config") << "DBFILE fixed.tadah\n" << kNbTaKeys;
+  const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                              "pot.tadah"});
+  const std::string rep = reported(r);
+  INFO("fixed composition: status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  CHECK(contains(rep, "cannot determine"));
+  CHECK(contains(rep, "Nb2 Ta2"));
+  CHECK(contains(rep, "BIAS false"));
+
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  std::string keys = kNbTaKeys;
+  keys.replace(keys.find("BIAS true"), 9, "BIAS false");
+  keys.replace(keys.find("NORM false"), 10, "NORM true");
+  keys.replace(keys.find("MODEL M_BLR BF_Linear"), 21,
+               "MODEL M_KRR Kern_Linear");
+  std::ofstream("config_norm") << "DBFILE db.tadah\n" << keys;
+  const CliRun n = run_tadah({"tadah", "train", "-c", "config_norm", "-o",
+                              "pot_norm.tadah"});
+  const std::string nrep = reported(n);
+  INFO("NORM Kern_Linear: status " << n.status << "\n" << nrep);
+  CHECK(n.status == 1);
+  CHECK_FALSE(std::filesystem::exists("pot_norm.tadah"));
+  CHECK(contains(nrep, "NORM=true with MODEL=Kern_Linear requires BIAS=true"));
+}
+
+/* Pins: a linear NORM potential (M_BLR BF_Linear, BIAS true, NORM true on
+ * the Nb-Ta cells, 5 WEIGHTS) predicts the same energies whatever its NMEAN
+ * and NSTDEV hold: a linear model predicts with its converted weights. The
+ * potential with NMEAN and NSTDEV of 10 values, the trained 5 preceded by 5
+ * others (what `tadah train -c <potential>` wrote before 1.6.0: the
+ * potential's values, then the new fit's), exits 0 and writes an
+ * energy.pred identical to the trained potential's, as it did before the
+ * per-species fix.
+ * Before the fix: predict refused it, exit 1, "NORM true: NMEAN has 10
+ * values, but the descriptor has DSIZE 5 entries". */
+TEST_CASE("Subcommand: predict runs a linear NORM potential whose NMEAN and "
+          "NSTDEV a retrain appended to",
+          "[TadahCLI][predict][bias][norm]") {
+  ScratchCwd cwd("bias_norm_appended");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  std::string keys = kNbTaKeys;
+  keys.replace(keys.find("NORM false"), 10, "NORM true");
+  std::ofstream("config") << "DBFILE db.tadah\n" << keys;
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                              "pot.tadah"});
+  INFO("train: status " << t.status << "\n" << reported(t));
+  REQUIRE(t.status == 0);
+  const std::string pot = slurp("pot.tadah");
+  REQUIRE(line_tokens(pot, "NMEAN").size() == 6u);   // key + 5
+  REQUIRE(line_tokens(pot, "NSTDEV").size() == 6u);
+  // The same potential with 5 other values before each of NMEAN, NSTDEV.
+  std::istringstream in(pot);
+  std::ostringstream appended;
+  for (std::string line; std::getline(in, line);) {
+    std::istringstream ss(line);
+    std::string key;
+    ss >> key;
+    if (key == "NMEAN" || key == "NSTDEV") {
+      std::vector<std::string> v;
+      for (std::string x; ss >> x;) v.push_back(x);
+      appended << key;
+      for (const std::string& x : v) appended << " " << 1.1 * std::stod(x) + 0.01;
+      for (const std::string& x : v) appended << " " << x;
+      appended << "\n";
+    } else {
+      appended << line << "\n";
+    }
+  }
+  std::ofstream("appended.tadah") << appended.str();
+  REQUIRE(line_tokens(slurp("appended.tadah"), "NMEAN").size() == 11u);
+
+  const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                              "db.tadah", "-o", "energy_pot.pred"});
+  INFO("predict pot.tadah: status " << p.status << "\n" << reported(p));
+  REQUIRE(p.status == 0);
+  const CliRun a = run_tadah({"tadah", "predict", "-p", "appended.tadah",
+                              "-d", "db.tadah", "-o", "energy_app.pred"});
+  INFO("predict appended.tadah: status " << a.status << "\n" << reported(a));
+  CHECK(a.status == 0);
+  REQUIRE(std::filesystem::exists("energy_app.pred"));
+  CHECK(slurp("energy_app.pred") == slurp("energy_pot.pred"));
+}
+
+/* Pins: `tadah predict` refuses (exit 1, no energy.pred) a linear potential
+ * with NORM true and BIAS false, M_KRR Kern_Linear and M_BLR BF_Linear on
+ * the Nb-Ta cells (3 WEIGHTS, NMEAN and NSTDEV, as an earlier version wrote
+ * them), naming NORM true and BIAS false and saying to retrain: the
+ * conversion that wrote such weights took descriptor component 0 for an
+ * intercept, so their energies are wrong; tadah train refuses the
+ * configuration (NORM true with a linear model needs BIAS true).
+ * Before the fix: predict exited 0 and wrote the potential's wrong energies
+ * (an M_KRR Kern_Linear NORM potential of the quickstart Ta data predicted
+ * -0.44 eV/atom against -8.04 eV/atom of its NORM false fit). */
+TEST_CASE("Subcommand: predict refuses a linear potential with NORM true and "
+          "BIAS false",
+          "[TadahCLI][predict][norm]") {
+  ScratchCwd cwd("norm_no_bias");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  for (const std::string model : {"MODEL M_KRR Kern_Linear", "MODEL M_BLR BF_Linear"}) {
+    std::string keys = kNbTaKeys;
+    keys.replace(keys.find("BIAS true"), 9, "BIAS false");
+    keys.replace(keys.find("NORM false"), 10, "NORM true");
+    keys.replace(keys.find("MODEL M_BLR BF_Linear"), 21, model);
+    std::ofstream("pot.tadah") << keys << "WEIGHTS 0.19 -0.8 0.02\n"
+                               << "NMEAN 0.4 0.3 0.2\nNSTDEV 0.2 0.3 0.4\n";
+    std::filesystem::remove("energy.pred");
+    const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah"});
+    const std::string rep = reported(r);
+    INFO(model << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK_FALSE(std::filesystem::exists("energy.pred"));
+    CHECK(contains(rep, "NORM true"));
+    CHECK(contains(rep, "BIAS false"));
+    CHECK(contains(rep, "retrain"));
+  }
+}
+
+/* Pins: `tadah analysis bfunc -c <training configuration> --type 2b -r 1
+ * 5 5` plots the D2_Blip basis of a configuration with BIAS true and no
+ * ATOM (as in the shipped examples/CLI/ex_1/config.train: tadah train
+ * takes ATOM from the DBFILE): exit 0, 4 functions x 5 points, and the
+ * same output, byte for byte, as with BIAS false (the radial basis does
+ * not depend on the intercept columns).
+ * Before the fix: exit 1, "BIAS true needs ATOM: BIAS gives one intercept
+ * column per ATOM species, and the configuration lists no ATOM species"
+ * (the engine built the DC_Selector of a whole model to read the
+ * descriptor's basis); with BIAS false it plotted. */
+TEST_CASE("Subcommand: analysis bfunc plots the basis of a BIAS true "
+          "configuration without ATOM",
+          "[TadahCLI][analysis][bias]") {
+  ScratchCwd cwd("bfunc_bias_no_atom");
+  const std::string keys =
+      "DBFILE tdata.db\nINIT2B true\nMODEL M_BLR BF_Linear\n"
+      "TYPE2B D2_Blip 4 4 Ta Ta\nRCTYPE2B Cut_Cos\nRCUT2B 5.3\n"
+      "SGRID2B GEOM 4 0.1 1.0\nCGRID2B LIN 4 1.0 5.3\nLAMBDA 1e-7\n"
+      "OALGO 1\n";
+  std::ofstream("config_bias") << keys << "BIAS true\n";
+  std::ofstream("config_nobias") << keys << "BIAS false\n";
+  const CliRun f = run_tadah({"tadah", "analysis", "bfunc", "-c",
+                              "config_nobias", "--type", "2b", "-r", "1",
+                              "5", "5", "-o", "nobias.out"});
+  INFO("BIAS false: status " << f.status << "\n" << reported(f));
+  REQUIRE(f.status == 0);
+  const CliRun t = run_tadah({"tadah", "analysis", "bfunc", "-c",
+                              "config_bias", "--type", "2b", "-r", "1", "5",
+                              "5", "-o", "bias.out"});
+  INFO("BIAS true: status " << t.status << "\n" << reported(t));
+  CHECK(t.status == 0);
+  REQUIRE(std::filesystem::exists("bias.out"));
+  std::istringstream in(slurp("bias.out"));
+  std::size_t rows = 0;
+  for (std::string line; std::getline(in, line);)
+    if (line.find_first_not_of(" \t") != std::string::npos) ++rows;
+  CHECK(rows == 20u);
+  CHECK(slurp("bias.out") == slurp("nobias.out"));
+}
+
 /* Pins: `tadah --task` checks the name of a TASK line that has no key line
  * of its own: "TASK bogus" followed by "TASK train" exits 1 with 'Unknown
  * task section "BOGUS"' before any task runs, so no pot.tadah is written.
@@ -2954,6 +3287,220 @@ TEST_CASE("Subcommand: predict refuses a non-linear KRR potential whose "
     for (const std::string& what : b.second) CHECK(contains(rep, what));
     CHECK_FALSE(std::filesystem::exists("energy.pred"));
   }
+}
+
+/* ---- the [retrain] cases ----------------------------------------------
+ *
+ * `tadah train -c pot.tadah`, with a DBFILE, retrains a potential from its
+ * own file: the fit replaces what the potential holds of its own fit
+ * (WEIGHTS, a kernel's BASIS, NMEAN, NSTDEV, SIGMA), so none of it is read
+ * when the model to train is built. */
+
+namespace {
+
+/* The numbers of the line of `key` in `text` (its tokens after the key). */
+std::vector<double> line_numbers(const std::string& text,
+                                 const std::string& key) {
+  std::vector<double> v;
+  const std::vector<std::string> tok = line_tokens(text, key);
+  for (std::size_t i = 1; i < tok.size(); ++i) v.push_back(std::stod(tok[i]));
+  return v;
+}
+
+/* The potential `pot` as a training configuration of the dataset `db`: its
+ * DBFILE line (an M_BLR potential keeps the one it was trained with)
+ * replaced by `DBFILE db`. */
+std::string as_training_config(const std::string& pot, const std::string& db) {
+  return with_line(pot, "DBFILE", "") + "DBFILE " + db + "\n";
+}
+
+/* The Nb-Ta keys with D2_BP of `n` functions (3 or 4). */
+std::string nbta_keys_bp(const std::string& keys, int n) {
+  std::string k = with_line(keys, "TYPE2B", "TYPE2B D2_BP " +
+                                                std::to_string(n) + " " +
+                                                std::to_string(n) + " * *");
+  k = with_line(k, "CGRID2B",
+                n == 4 ? "CGRID2B 2.4 3.1 3.9 4.5" : "CGRID2B 2.4 3.1 3.9");
+  return with_line(k, "SGRID2B",
+                   n == 4 ? "SGRID2B 1.0 1.2 0.9 1.1" : "SGRID2B 1.0 1.2 0.9");
+}
+
+}  // namespace
+
+/* Pins: on Nb-Ta cells all of the composition Nb2 Ta2, M_KRR Kern_Quadratic
+ * implementation 2 with BIAS true (SBASIS 5, LAMBDA 1e-3) trains (exit 0:
+ * its energies-only solve is not composition-checked), and `tadah train -c`
+ * retrains it from its potential plus the DBFILE (exit 0, 5 WEIGHTS and
+ * 5 x 5 BASIS values), also from the potential of a 4-function D2_BP (BASIS
+ * vectors of 6 values) given a 3-function D2_BP (DSIZE 5: 5 x 5 BASIS
+ * values).
+ * Before the fix: both retrains exited 1, "cannot determine ... rank 1,
+ * while 2 intercepts are fitted": the check before the fit took the
+ * intercepts of the potential's basis e_0, e_1 (for the 4-function
+ * potential evaluating its 6-value vectors at the 5-entry descriptor, past
+ * its end). */
+TEST_CASE("Subcommand: train -c retrains an M_KRR implementation 2 BIAS "
+          "potential from its own file",
+          "[TadahCLI][train][bias][retrain]") {
+  ScratchCwd cwd("retrain_krr2");
+  std::ofstream("fixed.tadah") << nbta_dataset(true);
+  std::string keys = with_line(kNbTaKeys, "LAMBDA", "LAMBDA 1e-3");
+  keys = with_line(keys, "MODEL", "MODEL M_KRR Kern_Quadratic 2\nSBASIS 5");
+  auto train = [](const std::string& cfg, const std::string& out) {
+    const CliRun r = run_tadah({"tadah", "train", "-c", cfg, "-o", out});
+    INFO("train -c " << cfg << ": status " << r.status << "\n"
+                     << reported(r));
+    CHECK(r.status == 0);
+    return r.status == 0 && std::filesystem::exists(out);
+  };
+  std::ofstream("config") << "DBFILE fixed.tadah\n" << keys;
+  REQUIRE(train("config", "pot.tadah"));
+  std::ofstream("pot_cfg.tadah") << as_training_config(slurp("pot.tadah"),
+                                                      "fixed.tadah");
+  if (train("pot_cfg.tadah", "re.tadah")) {
+    CHECK(line_numbers(slurp("re.tadah"), "WEIGHTS").size() == 5u);
+    CHECK(line_numbers(slurp("re.tadah"), "BASIS").size() == 25u);
+  }
+
+  std::ofstream("config4") << "DBFILE fixed.tadah\n" << nbta_keys_bp(keys, 4);
+  REQUIRE(train("config4", "pot4.tadah"));
+  REQUIRE(line_numbers(slurp("pot4.tadah"), "BASIS").size() == 30u);
+  std::ofstream("pot4_cfg3.tadah")
+      << as_training_config(nbta_keys_bp(slurp("pot4.tadah"), 3),
+                            "fixed.tadah");
+  if (train("pot4_cfg3.tadah", "re3.tadah"))
+    CHECK(line_numbers(slurp("re3.tadah"), "BASIS").size() == 25u);
+}
+
+/* Pins: on Nb-Ta cells of varied composition, `tadah train -c` retrains an
+ * M_KRR Kern_Quadratic potential (BIAS true, SBASIS 6: 6 WEIGHTS, 6 x 5
+ * BASIS values) from its own file with SBASIS 10 and with SBASIS 7 (exit
+ * 0; 10 and 7 WEIGHTS, 10 x 5 and 7 x 5 BASIS values), and trains an M_BLR
+ * BF_Linear potential (5 WEIGHTS) given MODEL M_KRR Kern_RBF 1, MPARAMS 1.0
+ * and SBASIS 6 (exit 0, 6 WEIGHTS).
+ * Before the fix: all three exited 1 when the model was built from the
+ * potential: "the potential has 6 WEIGHTS but SBASIS 10 basis vectors
+ * (BASIS)", "BASIS has 30 values, which is not a multiple of SBASIS 7",
+ * "the potential has WEIGHTS but no basis vectors (SBASIS and BASIS)". */
+TEST_CASE("Subcommand: train -c retrains a kernel potential with another "
+          "SBASIS, and a linear potential as a kernel model",
+          "[TadahCLI][train][bias][retrain]") {
+  ScratchCwd cwd("retrain_krr_sbasis");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  const std::string quad =
+      with_line(kNbTaKeys, "MODEL", "MODEL M_KRR Kern_Quadratic 1\nSBASIS 6");
+  std::ofstream("config") << "DBFILE db.tadah\n" << quad;
+  {
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    INFO("train: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  const std::string pot = slurp("pot.tadah");
+  REQUIRE(line_numbers(pot, "WEIGHTS").size() == 6u);
+  REQUIRE(line_numbers(pot, "BASIS").size() == 30u);
+  for (int s : {10, 7}) {
+    CAPTURE(s);
+    std::ofstream("re_cfg.tadah") << as_training_config(
+        with_line(pot, "SBASIS", "SBASIS " + std::to_string(s)), "db.tadah");
+    std::filesystem::remove("re.tadah");
+    const CliRun r = run_tadah({"tadah", "train", "-c", "re_cfg.tadah", "-o",
+                                "re.tadah"});
+    INFO("status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    if (!std::filesystem::exists("re.tadah")) continue;
+    const std::string re = slurp("re.tadah");
+    CHECK(line_numbers(re, "WEIGHTS").size() == std::size_t(s));
+    CHECK(line_numbers(re, "BASIS").size() == std::size_t(5 * s));
+  }
+
+  std::ofstream("lin_cfg") << "DBFILE db.tadah\n" << kNbTaKeys;
+  {
+    const CliRun r = run_tadah({"tadah", "train", "-c", "lin_cfg", "-o",
+                                "lin.tadah"});
+    INFO("train linear: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  const std::string lin = slurp("lin.tadah");
+  REQUIRE(line_numbers(lin, "WEIGHTS").size() == 5u);
+  std::ofstream("rbf_cfg.tadah") << as_training_config(
+      with_line(lin, "MODEL", "MODEL M_KRR Kern_RBF 1\nMPARAMS 1.0\nSBASIS 6"),
+      "db.tadah");
+  const CliRun r = run_tadah({"tadah", "train", "-c", "rbf_cfg.tadah", "-o",
+                              "rbf.tadah"});
+  INFO("linear potential as Kern_RBF: status " << r.status << "\n"
+                                               << reported(r));
+  CHECK(r.status == 0);
+  if (std::filesystem::exists("rbf.tadah"))
+    CHECK(line_numbers(slurp("rbf.tadah"), "WEIGHTS").size() == 6u);
+}
+
+/* Pins: `tadah train -c` with an M_BLR BF_Linear potential fitted with
+ * OALGO 3 (BIAS true on the Nb-Ta cells, LAMBDA 0: SIGMA of 1 + 5 x 5
+ * values) and the DBFILE writes no SIGMA with OALGO 1, and with OALGO 3 the
+ * SIGMA of its own fit (1 + 5 x 5 values, equal to the potential's: the
+ * same fit of the same data), the covariance `tadah predict --error` reads.
+ * Before the fix: the OALGO 1 potential kept the old SIGMA, and with OALGO
+ * 3 the new SIGMA was appended to it (52 values: the covariance read back,
+ * by `predict --error` too, was the old one, which came first). */
+TEST_CASE("Subcommand: train -c replaces the SIGMA of an OALGO 3 potential",
+          "[TadahCLI][train][retrain]") {
+  ScratchCwd cwd("retrain_sigma");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  std::ofstream("config") << "DBFILE db.tadah\n"
+                          << with_line(kNbTaKeys, "OALGO", "OALGO 3");
+  {
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    INFO("train: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  const std::string pot = slurp("pot.tadah");
+  const std::vector<double> sigma = line_numbers(pot, "SIGMA");
+  REQUIRE(sigma.size() == 26u);
+  REQUIRE(sigma[0] == 5.0);
+  for (int oalgo : {1, 3}) {
+    CAPTURE(oalgo);
+    std::ofstream("re_cfg.tadah") << as_training_config(
+        with_line(pot, "OALGO", "OALGO " + std::to_string(oalgo)), "db.tadah");
+    const CliRun r = run_tadah({"tadah", "train", "-c", "re_cfg.tadah", "-o",
+                                "re.tadah"});
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    const std::vector<double> out = line_numbers(slurp("re.tadah"), "SIGMA");
+    if (oalgo == 1) {
+      CHECK(out.empty());
+    } else {
+      REQUIRE(out.size() == sigma.size());
+      for (std::size_t i = 0; i < out.size(); ++i)
+        CHECK(out[i] == Approx(sigma[i]).epsilon(1e-12).margin(1e-300));
+    }
+  }
+}
+
+/* Pins: `tadah train` of M_KRR Kern_Quadratic with BIAS true on the Nb-Ta
+ * cells (SBASIS 6) and FIXINDEX 3 prints the FIXINDEX WARNING naming the
+ * kernel's intercepts, "its intercepts are weights 1 (Nb) and 2 (Ta)" (the
+ * intercept vectors e_0 and e_1 its fit draws first), and trains (exit 0).
+ * Before the fix: the WARNING said "weights 1 to 2 belong to its intercept
+ * basis vectors e_0 .. e_1, one per species" (the kernel has no basis
+ * before its fit). */
+TEST_CASE("Subcommand: train warns of FIXINDEX with BIAS true naming the "
+          "intercept weights of a kernel",
+          "[TadahCLI][train][bias]") {
+  ScratchCwd cwd("bias_kernel_fixindex");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  std::ofstream("config")
+      << "DBFILE db.tadah\n"
+      << with_line(kNbTaKeys, "MODEL", "MODEL M_KRR Kern_Quadratic 1\nSBASIS 6")
+      << "FIXINDEX 3\nFIXWEIGHT 0.05\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                              "pot.tadah"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 0);
+  CHECK(contains(rep, "FIXINDEX with BIAS true"));
+  CHECK(contains(rep, "its intercepts are weights 1 (Nb) and 2 (Ta)"));
 }
 
 #ifdef TADAH_ENABLE_NFP

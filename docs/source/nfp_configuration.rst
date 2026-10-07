@@ -393,8 +393,8 @@ reference (no conversion), so the seed's recorded loss need not be
 reproduced.  A HINT is printed when a DM_REAM model under ``ZERO`` is
 trained on data without ``BIAS`` or ``ESHIFT`` (see
 :ref:`hpo_load_transforms`); prefer ``ESHIFT*``, because ``BIAS true``
-inserts intercept columns before the descriptor weights (``FIXINDEX``/
-``FIXWEIGHT`` indices shift) and disables ``EAMFAST``.  Under ``ZERO`` a
+inserts intercept columns, one per ``ATOM`` species, before the descriptor
+weights (``FIXINDEX``/``FIXWEIGHT`` indices shift) and disables ``EAMFAST``.  Under ``ZERO`` a
 combination of embedding coefficients that only shifts :math:`F` by a
 constant (available when the bumps nearly sum to a constant) no longer
 changes any energy, so the coefficients may drift along it; the raw
@@ -489,7 +489,12 @@ the target, and the remaining weights are fitted against the residual.
 The i-th ``FIXWEIGHT`` value pins the weight named by the i-th
 ``FIXINDEX`` entry; a lone key is an error, and ``NORM true`` is
 incompatible with pinning (the values would live in normalized feature
-space).  These rules need the model's weight count, so startup builds the
+space).  With ``BIAS true`` and a linear model weights 1 to :math:`N` are
+the intercepts of the :math:`N` ``ATOM`` species and the descriptor weights
+start at :math:`N + 1` (:ref:`the bias term <bias_term>`, also for the
+other models); startup prints a WARNING naming the model's intercept
+weights when ``FIXINDEX`` is used with two or more species (before 1.6.0
+a linear model's descriptor weights started at index 2).  These rules need the model's weight count, so startup builds the
 model of the ``-c`` configuration once, as every evaluation builds it; it
 does so for every run.  A configuration whose model does not build (a
 ``DIMER`` potential whose ``TYPE2B`` names element pairs, say) is refused
@@ -500,11 +505,15 @@ potential/configuration.``).  Before 1.6.0 startup printed a WARNING
 first training evaluation") or nothing, every evaluation failed, and the
 run ended "no evaluation produced a usable loss".
 The weights of ``M_KRR`` with a non-linear kernel belong to its ``SBASIS``
-basis vectors (weight 1 to the bias vector :math:`e_0`, the others to
-descriptors drawn from the training data, see
-:ref:`Non-linear models <nonlinear_models>`): startup checks ``FIXINDEX``
-against ``SBASIS``, a training ``DBFILE`` is required, and every
-evaluation trains, also when ``FIXINDEX`` pins every weight.
+basis vectors (weights 1 to :math:`n` to the intercept vectors
+:math:`e_0 \dots e_{n-1}`, one per ``ATOM`` species with ``BIAS true`` and
+:math:`e_0` alone otherwise, the others to descriptors drawn from the
+training data, see :ref:`Non-linear models <nonlinear_models>`): startup
+checks ``FIXINDEX`` against ``SBASIS``, refuses an ``SBASIS`` below
+:math:`n + 1` (every fit would refuse it), requires a training ``DBFILE``,
+and every evaluation trains, also when ``FIXINDEX`` pins every weight. The
+basis is drawn anew in every fit: the ``BASIS`` and ``WEIGHTS`` of a ``-c``
+potential are not read.
 
 **Mixed mode** — LS-fit most weights, hold one, search another.  With a
 5-weight model: weights 1–3 LS-fitted, weight 4 held at 0.75, weight 5

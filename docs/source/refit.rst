@@ -300,8 +300,9 @@ tadah 1.5.0 and earlier (dense mode then pins :math:`F(0)` softly to the
 table value, ``REFIT_CONSTRAIN_F0``); the written potential says
 ``EMBF0 FREE``. The ``refit.hpotarget`` header notes that under ``ZERO``
 absolute reference energies need ``ESHIFT_ATOM``/``ESHIFT_DBATOM``/
-``ESHIFT`` (not ``BIAS true``: its intercept column precedes the weights that
-the ``FIXINDEX``/``FIXWEIGHT`` and ``OPTIM FIXWEIGHT`` lines index).
+``ESHIFT`` (not ``BIAS true``: its intercept columns, one per ``ATOM``
+species, precede the weights that the ``FIXINDEX``/``FIXWEIGHT`` and ``OPTIM
+FIXWEIGHT`` lines index).
 
 Configuration reference
 -----------------------

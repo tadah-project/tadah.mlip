@@ -324,7 +324,9 @@ General and output
      - Effect
    * - ``EAM`` (path)
      - —
-     - Input setfl EAM file to refit (required).
+     - Input setfl EAM file to refit (required), single-element, read and
+       checked as the ``SETFL`` file of ``D2_EAM``/``DM_EAM`` is (a malformed
+       file is refused, naming the line and the field; see :ref:`SETFL`).
    * - ``RHOFORM``
      - —
      - Density form of the written potential, ``SIGNED`` | ``NONNEG`` |

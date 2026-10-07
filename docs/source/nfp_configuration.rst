@@ -142,10 +142,12 @@ Root-level loss control:
        evaluation instead (:ref:`failed evaluations under DLIB:GFS
        <hpo_dlib_gfs_failures>`); the history files and the journal
        keep the loss the evaluation reported (``FAILSCORE``, or a
-       graded failure).  With the default, the largest double, a
-       failed evaluation in a finite-difference stencil makes the
-       gradient not finite, which ends a gradient-based search
-       (:ref:`hpo_gradient_not_finite`).
+       graded failure).  At a usable point a failed evaluation in the
+       finite-difference stencil fails the gradient, whatever
+       ``FAILSCORE`` is, and a failed loss at the point fails it at
+       once, unless it is a graded failure under ``FAILSCORE_GRADING
+       ON``, whose differences are its gradient; such a point can end a
+       gradient-based search (:ref:`hpo_gradient_not_finite`).
    * - ``FAILSCORE_GRADING`` (``ON``/``OFF``)
      - Graded failure losses instead of the constant ``FAILSCORE``
        (default ``OFF``); see :ref:`failscore_grading`.
@@ -1175,7 +1177,12 @@ Operations that require a genuinely feasible sample remain stricter:
 weighting/resampling classify the entire reserved band as failed.  Thus a
 failure value cannot report convergence; PA gives a graded walker zero
 resampling weight whenever a feasible walker exists, while an all-failed
-population skips resampling and continues cooling.
+population skips resampling and continues cooling.  A gradient search
+at a graded failure takes its finite differences as they are, the graded
+slope out of the failure region, and stops there only when every
+difference is 0, as in a band that is constant; a usable point whose
+finite-difference stencil reaches a failure, graded or not, has no
+gradient (:ref:`hpo_gradient_not_finite`).
 
 The knobs, most important first
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2256,9 +2263,10 @@ one a finite number (``MAXTIME`` a positive one).
        (NLopt counted only its calls before 1.6.0, so an NLopt
        ``ANALYTICAL`` search made up to ``MAXEVAL`` losses and as many
        gradients).  A
-       gradient that is not finite — a failed evaluation in the
-       finite-difference stencil — can end the search, with its own
-       status (:ref:`hpo_gradient_not_finite`).  The
+       failed evaluation at the point or in the finite-difference
+       stencil leaves the point without a usable gradient (but for a
+       graded failure under ``FAILSCORE_GRADING ON``), which can end the
+       search, with its own status (:ref:`hpo_gradient_not_finite`).  The
        analytical modes are experimental.  Not accepted inside an
        ``INNER`` block (a startup error at its line): ``MLSL`` and
        ``AUGLAG`` hand their ``INNER`` search the gradient of their own
@@ -2405,8 +2413,10 @@ one a finite number (``MAXTIME`` a positive one).
           ``MAXEVAL``: the loss and each difference point (an analytical
           gradient counts as one).  Before 1.6.0 NLopt counted only its
           calls, the losses (see ``MAXEVAL`` above).  A
-          failed evaluation in the stencil can make the gradient not
-          finite and end the search (:ref:`hpo_gradient_not_finite`).  Analytical gradients (``GRAD_STRATEGY
+          failed evaluation at the point or in the stencil fails the
+          gradient, whatever ``FAILSCORE`` is (but for a graded failure
+          at the point under ``FAILSCORE_GRADING ON``), and can end the
+          search (:ref:`hpo_gradient_not_finite`).  Analytical gradients (``GRAD_STRATEGY
           ANALYTICAL``/``HYBRID``) are experimental; with
           ``PC_OBSERVABLE`` they are the default (:ref:`pc_observable`).
    * - ``DLIB``
@@ -2849,39 +2859,73 @@ local search takes gradients too, which it left without.
 
 .. _hpo_gradient_not_finite:
 
-Gradients that are not finite
-.............................
+Points without a usable gradient
+................................
 
 The gradient-based backends — ``DLIB:BFGS``, NLopt's ``LD_*`` and
 ``GD_*`` algorithms (for ``MLSL`` and ``AUGLAG``, their local search
 when it is one) and every CERES driver — take a finite-difference gradient (``GRAD_STRATEGY
 NUMERICAL``, the default, and the finite-difference part of ``HYBRID``)
 from the losses at a stencil of points around the current one (``PARAM
-fd_step``, ``fd_kernel``).  When an evaluation of the stencil fails — its
-loss is ``FAILSCORE`` or a graded failure, or it is not finite — the
-difference with a usable loss overflows under the default ``FAILSCORE``,
-the largest double (for any step below 1/2 in the optimiser's internal
-coordinates: half the box width under ``OPTIM_SCALE AUTO``), and the
-gradient is not finite.  A one-sided stencil near a bound, and a
-``FORWARD`` one (:ref:`hpo_fd_stencil`), take the loss at the point itself,
-so a failed evaluation there is one of its stencil's too.  Under a ``FAILSCORE`` a few orders of magnitude
-above the real losses (e.g. ``1e9``) it stays finite, dominated by the
-failure: a steep slope away from the failed point, which the search
-follows.
+fd_step``, ``fd_kernel``).  A failed evaluation — its loss is
+``FAILSCORE`` or a graded failure (at least ``0.999 × FAILSCORE``), or it
+is not finite — gives no slope, whatever ``FAILSCORE`` is: the difference
+of two failures is an exact 0, and the difference with a usable loss is as
+large as the jump to ``FAILSCORE`` (it overflows under the default, the
+largest double; under a finite ``FAILSCORE`` such as ``1e9`` it is a
+steep, finite slope).  The loss at the point decides what the gradient
+does with a failed evaluation:
 
-A gradient that is not finite ends the search where the backend cannot go
-on without it:
+* At a usable loss, the first failed evaluation of the stencil fails the
+  gradient; the stencil points after it are not evaluated.
+* At a failed loss, the gradient fails at once, before any stencil point:
+  with ``FAILSCORE_GRADING OFF``, at a loss equal to ``FAILSCORE`` (an
+  ungraded failure) and at a loss that is not finite.  A gradient search
+  that starts inside the failure region therefore stops at its first
+  gradient; it used to take the zero difference of two failures for
+  convergence.
+* At a graded failure under ``FAILSCORE_GRADING ON``
+  (:ref:`failscore_grading`) the stencil is evaluated and its differences
+  are taken as they are: the graded slope, or the jump to a usable
+  neighbour, is the direction out of the failure region.  The gradient
+  fails only when every difference is 0 (``… and every difference at it is
+  0: a flat failure region``): a saturated measure, or a band that is
+  constant without ``PC_FAILPROBE``.
+
+A one-sided stencil near a bound, and a ``FORWARD`` one
+(:ref:`hpo_fd_stencil`), take the loss at the point itself.  ``HYBRID``
+reads the loss the optimiser has just evaluated at the point; without it
+(``DLIB:BFGS`` asking for the gradient of another point), it evaluates the
+point for a one-sided or forward stencil, and under
+``FAILSCORE_GRADING ON`` also when a central stencil point failed, to tell
+a graded failure at the point from a usable loss (counted under ``HYBRID
+centre losses`` in the journal's DIAGNOSTICS); under ``OFF`` a failed
+central stencil point fails its gradient at once.
+
+The rule has limits.  A usable point whose stencil reaches a failure has
+no gradient, so a search cannot settle within one step (``PARAM
+fd_step``) of the failure region.  A loss that mixes failed and usable
+terms — the mean of terms of which one is ``FAILSCORE`` and the result
+below ``0.999 × FAILSCORE``, as with several ``PC_LAMMPS`` scripts or a
+failed ``PC_OBSERVABLE`` term without grading — is a usable loss to it:
+the run does not record which terms of an evaluation failed.  And
+``GRAD_STRATEGY ANALYTICAL``, or ``HYBRID`` with no parameter
+differenced, still gives the analytical gradient at a point whose loss
+failed.
+
+A point without a usable gradient ends the search where the backend cannot
+go on without it:
 
 * ``DLIB:BFGS`` cannot reject a point: the search ends at the first such
   gradient.
-* A local NLopt gradient search ends at such a gradient before it has had
-  a finite one — at its starting point, where it has no point to step back
-  to.  That is an ``LD_*`` algorithm without an ``INNER`` block, and an
+* A local NLopt gradient search ends at such a point before it has had a
+  usable gradient — at its starting point, where it has no point to step
+  back to.  That is an ``LD_*`` algorithm without an ``INNER`` block, and an
   ``AUGLAG`` whose local search is one — ``LD_AUGLAG``'s default
   ``LD_MMA``, or an ``LD_*`` ``INNER`` block: HPO sets ``AUGLAG`` no
   constraint, so it runs its local search once, from the starting point.
-* Otherwise NLopt and the CERES drivers reject a point whose gradient is
-  not finite (NLopt sees ``+inf``, Ceres a failed evaluation) and step
+* Otherwise NLopt and the CERES drivers reject a point without a usable
+  gradient (NLopt sees ``+inf``, Ceres a failed evaluation) and step
   back, as they do for a failed evaluation, and the search goes on.  A
   search that ends right after such a rejection ended because of it.  For
   NLopt that means no evaluation after the rejection — under ``AUGLAG``,
@@ -2901,16 +2945,23 @@ on without it:
   rest of their search.
 
 Such an ending is the search's own.  The journal has a warning that names
-the backend, the point and the stencil point that failed, and the
-``Optimiser status`` is ``STOPPED -- gradient not finite: a failed
-evaluation in the finite-difference stencil``:
+the backend and the failed evaluation — the stencil point and its loss, or
+the loss at the point — and the ``Optimiser status`` is ``STOPPED -- no
+usable gradient: a failed evaluation in the finite-difference stencil``.
+For a one-dimensional search (``OPTIM CGRID2B (2) 1.0 2.0``, ``PARAM
+fd_step 0.2``) whose evaluations fail below about 1.47 (a skip cap), from
+1.6, next to the failure region, and from 1.25, inside it:
 
 .. code-block:: none
 
-   WARNING   DLIB:BFGS stopped: gradient not finite: a failed evaluation in the finite-difference stencil (at CGRID2B[2] = 1.6, the stencil point CGRID2B[2] = 1.4 failed: loss 1.797693135e+308); best-so-far preserved
+   WARNING   DLIB:BFGS stopped: no usable gradient: a failed evaluation in the finite-difference stencil (at CGRID2B[2] = 1.6, the stencil point CGRID2B[2] = 1.4 failed: loss 1.797693135e+308); best-so-far preserved
+   WARNING   DLIB:BFGS stopped: no usable gradient: a failed evaluation in the finite-difference stencil (the loss at CGRID2B[2] = 1.25 is 1.797693135e+308); best-so-far preserved
 
-A gradient that is not finite for another reason ends the search the same
-way, with its own cause: ``the finite-difference quotient overflowed``
+The first run makes three evaluations (1.6, then the stencil 1.8 and 1.4)
+under the default ``FAILSCORE`` and under ``FAILSCORE 1e9`` alike, and
+ends with status ``0``; the second makes one, and ends without a usable
+loss.  A gradient that is not finite for another reason ends the search
+the same way, with its own cause: ``the finite-difference quotient overflowed``
 (two usable losses too far apart for the step), ``the analytical gradient
 could not be formed at this point`` or ``the analytical gradient is not
 finite at this point`` (``ANALYTICAL``, ``HYBRID``).  The evaluations are
@@ -2927,6 +2978,20 @@ start that such a gradient ended shows only in its journal warning when a
 later start runs to its own end).  A signal or an error decides the ending
 first.
 
+On v1-dev until 2026-10-07 only a loss that was not finite, or a
+difference that overflowed, failed a gradient, and the status read
+``STOPPED -- gradient not finite: …``.  The run clamps every failed
+evaluation to a finite ``FAILSCORE``, so a start inside the failure region
+got the zero difference of two failures: from 1.25 in the example above
+``DLIB:BFGS`` made 6 evaluations and ended as converged, ``LD_LBFGS``,
+``LD_TNEWTON`` and ``LD_VAR2`` ended ``SUCCESS -- generic success`` after
+3, ``LD_MMA`` and ``LD_CCSAQ`` asked for the same three points until
+``MAXEVAL``, and the CERES drivers reported ``CONVERGENCE`` at their
+first iteration; such a ``MULTISTART`` start ended without a word, and as
+the last start left the trailer ``COMPLETED``.  Under ``FAILSCORE 1e9`` the steep slope from 1.6
+led ``DLIB:BFGS`` to evaluate the upper bound 28 times in a row, 60
+evaluations in all, and the CERES drivers out of the box.
+
 Before 1.6.0 these endings were reported as ``MAXEVAL=<n> reached`` and
 ``COMPLETED`` (``DLIB:BFGS``), ``SUCCESS -- generic success``
 (``LD_LBFGS``, ``LD_TNEWTON``, ``LD_VAR1``, ``LD_VAR2``),
@@ -2941,20 +3006,20 @@ later in a search ``LD_MMA`` and ``LD_CCSAQ`` reject such a point and
 shrink their trust region, as before.
 
 A usable loss at or below ``STOPVAL`` comes before all of these: NLopt
-is given ``+inf`` for a point whose gradient is not finite, or whose
+is given ``+inf`` for a point without a usable gradient, or whose
 gradient ``MAXEVAL`` cut short, and so never tests that point's loss
 against ``STOPVAL``, as it does every loss it is given.  An NLopt search
 whose withheld loss is usable (not a failure under ``FAILSCORE``) and at
 or below ``STOPVAL`` ends there instead of stopping or going on as
-above: its status is ``STOPVAL_REACHED``, not ``STOPPED -- gradient not
-finite``, it makes no evaluation after that point (``GD_STOGO``, which
+above: its status is ``STOPVAL_REACHED``, not ``STOPPED -- no usable
+gradient``, it makes no evaluation after that point (``GD_STOGO``, which
 ignores the stop, calls on until its ``MAXEVAL``, each call refused; see
 :ref:`hpo_stop_criteria`), and the journal has no warning but an
 ``INFO`` line that says which loss and why:
 
 .. code-block:: none
 
-   INFO      NLopt finished: STOPVAL_REACHED -- objective below stopval threshold after 5 evaluation(s): the loss 24.2 is at or below STOPVAL 100, and NLopt was not given it: its gradient is not finite: a failed evaluation in the finite-difference stencil (at …)
+   INFO      NLopt finished: STOPVAL_REACHED -- objective below stopval threshold after 5 evaluation(s): the loss 24.2 is at or below STOPVAL 100, and NLopt was not given it: its point has no usable gradient: a failed evaluation in the finite-difference stencil (at …)
 
 Before 1.6.0 the search went on past that point, or ended there with
 another status.
@@ -2967,8 +3032,8 @@ Stop criteria per backend
 Each backend ends a run on the criteria it honours — ``MAXEVAL``,
 ``MAXTIME``, ``STOPVAL`` and the tolerances its stop tests read, set
 above 0 — and most also end on their own.  A tolerance that ends a
-gradient-based search right after it rejected a point whose gradient is
-not finite is reported as that rejection's ending
+gradient-based search right after it rejected a point without a usable
+gradient is reported as that rejection's ending
 (:ref:`hpo_gradient_not_finite`).  A backend with no convergence
 test and no finite schedule runs until it is interrupted when it has
 none of them, so at least one is required: a startup error names the
@@ -4595,7 +4660,7 @@ Stopping a run
 
 A run ends when the optimiser meets its stop criteria (``MAXEVAL``,
 ``STOPVAL``, a tolerance, ``MAXTIME``, the ``RESTART`` budget, …), when
-a gradient that is not finite ends a gradient-based search
+a point without a usable gradient ends a gradient-based search
 (:ref:`hpo_gradient_not_finite`), when a signal stops it, or when an
 error stops it.  ``best_pot.tadah`` holds
 the incumbent in every case (:ref:`hpo_potential_archives`) — unless no
@@ -4669,16 +4734,16 @@ no advance warning.
        by ``(N of M MULTISTART starts failed; see the WARNINGs)``, counted
        over the run.
      - Complete.
-   * - A gradient that is not finite ended the gradient-based search that
-       ended the run (:ref:`hpo_gradient_not_finite`)
+   * - A point without a usable gradient ended the gradient-based search
+       that ended the run (:ref:`hpo_gradient_not_finite`)
      - ``0`` (``1`` without a usable loss: next row)
-     - ``STOPPED -- gradient not finite: a failed evaluation in the
+     - ``STOPPED -- no usable gradient: a failed evaluation in the
        finite-difference stencil`` (or another cause, e.g. ``… the
        finite-difference quotient overflowed``)
      - Complete.
    * - Stop criteria met (the ``RESTART`` budget included), or a
-       gradient that is not finite ended the search, but no evaluation
-       produced a usable loss
+       point without a usable gradient ended the search, but no
+       evaluation produced a usable loss
      - ``1``, with ``[HPO] ERROR: no evaluation produced a usable loss;
        no best_pot.tadah was written`` on stderr (and on an ``ERROR``
        line of the journal)

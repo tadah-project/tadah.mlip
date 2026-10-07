@@ -24,15 +24,93 @@ General workflow
     family, use the meta classes ``D2_mJoin`` or ``DM_mJoin`` and list the
     components *in a block* right after the meta keyword.
 
+.. _bias_term:
+
 The bias term
 -------------
 
-The first component of the overall descriptor vector can be a constant 1
-("bias").  Add it with
+``BIAS true`` gives the model one constant energy per species: every atom's
+descriptor starts with :math:`N` one-hot intercept columns, one per ``ATOM``
+species in ``ATOM`` order (1 in the column of the atom's species, 0 in the
+others), followed by the two-body and the many-body descriptors.
 
 .. code-block:: ini
 
-   BIAS  true
+   ATOM  Nb Ta
+   BIAS  true      # descriptor: [Nb, Ta, two-body ..., many-body ...]
+
+The layout is the same on every path (``tadah train``, ``predict``,
+``hpo``, ``properties``, ``analysis`` and ``pair_style tadah``):
+
+* With a linear model (``BF_Linear``, ``Kern_Linear``) ``WEIGHTS`` 1 to
+  :math:`N` are the per-species constants, in ``ATOM`` order, and the
+  descriptor weights follow, so ``FIXINDEX`` indices of descriptor weights
+  start at :math:`N + 1`. With ``BF_Polynomial2`` the constant of species
+  :math:`k` is the product of its intercept component with itself,
+  :math:`(k,k)`: weights 1 and :math:`D + 1` for two species (:math:`D` =
+  ``DSIZE``). With a dot-product kernel (``Kern_Quadratic``, ``Kern_LQ``,
+  ``Kern_Polynomial``, ``Kern_Sigmoid``) weights 1 to :math:`N` belong to
+  the intercept basis vectors. ``tadah train`` and ``tadah hpo`` print a
+  WARNING when ``FIXINDEX`` is used with ``BIAS true`` and two or more
+  species, naming the model's intercept weights: before 1.6.0 ``BIAS true``
+  gave all species one shared intercept column (a linear model's descriptor
+  weights started at 2).
+* ``BIAS true`` requires ``ATOM``; an atom of an element ``ATOM`` does not
+  list has no intercept column and is refused.
+* The ridge (``LAMBDA``) does not penalise the intercepts, also when
+  ``FIXINDEX`` pins some of them, and penalises every other weight; ``NORM``
+  does not normalise them. ``NORM true`` with ``BF_Linear`` or ``Kern_Linear``
+  requires ``BIAS true``: the weights fitted to the normalised descriptors
+  are converted to weights of the raw descriptors, and the constant this
+  moves goes into the intercepts. A linear potential with ``NORM true`` and
+  ``BIAS false``, which earlier versions wrote, is refused when it predicts:
+  retrain it with ``NORM false`` or ``BIAS true``. Its conversion had no
+  intercept column for the constant: ``M_KRR Kern_Linear`` (until 1.6.0) and
+  ``M_BLR BF_Linear`` (up to 1.2.0) took descriptor component 0 for an
+  intercept, so the energies and forces are wrong; ``M_BLR BF_Linear`` from
+  1.3.0-beta.1 (written by ``tadah hpo`` and the API; ``tadah train``
+  refused the configuration) dropped the constant, so the energies are off
+  by the same amount for every atom and the forces are right.
+* Only energies determine the constants (their force and stress rows are
+  zero). The training structures with an energy weight (``eweight`` x
+  ``EWEIGHT`` > 0) must therefore have compositions that determine the
+  model's intercepts: data whose structures all have one composition (a
+  fixed stoichiometry, or ``Nb27 Ta27`` and ``Nb54 Ta54``), or no energy
+  weight at all, are refused before the fit, naming the species, the rank
+  found and the model's intercept weights. Use ``BIAS false``
+  (``ESHIFT_ATOM``, ``ESHIFT_DBATOM`` or ``ESHIFT`` remove a per-species
+  reference energy), add structures of other compositions (for example of
+  the pure elements, or an isolated atom of each species), or pin
+  intercepts with ``FIXINDEX``/``FIXWEIGHT`` (the weights the message
+  names). ``tadah train`` checks before it computes any descriptor, ``tadah
+  hpo`` at startup. A non-linear kernel's intercepts are those of the basis
+  its fit draws, which starts with the intercept vectors (see
+  :ref:`Non-linear models <nonlinear_models>`), whatever basis a potential
+  used as the training configuration holds: a dot-product kernel's weights
+  1 to N. A model without intercept columns (``Kern_RBF``) is not refused,
+  and neither is ``M_KRR`` implementation ``2``, whose energies-only solve
+  penalises every weight.
+* With ``BF_Polynomial2`` the products of two different intercept columns
+  are identically zero (an atom has one species): :math:`N (N - 1) / 2` of
+  its :math:`D (D + 1) / 2` weights have no data (the ridge penalises them,
+  so with ``LAMBDA > 0`` they are 0). With a non-linear KRR kernel the basis
+  starts with one intercept vector per species.
+
+A potential trained with ``BIAS true`` and two or more species by tadah
+1.5.x or earlier (or a 1.6.0 development build without per-species
+intercepts) has one intercept column shared by the species. ``pair_style
+tadah`` has used one intercept column per species since 1.3.0-beta.1, so
+with ``pair_style tadah`` 1.3.0-beta.1 and later such a potential gave wrong
+LAMMPS energies and forces (a Ta-Nb ``D2_LJ`` potential: -622.5 eV/atom in
+LAMMPS against -7.65 eV/atom from ``tadah predict``); with 1.2.0 and
+earlier, whose ``pair_style tadah`` used one shared column too, LAMMPS and
+``tadah predict`` agreed. Its weights do not fit the descriptor of this
+version: ``tadah predict`` and ``pair_style tadah`` refuse it, naming
+``WEIGHTS``, ``DSIZE``, ``BIAS`` and ``ATOM``.
+Retrain it, with its training configuration or with the potential itself
+(add a ``DBFILE`` line): ``tadah train -c pot.tadah`` replaces its
+``WEIGHTS``, ``NMEAN`` and ``NSTDEV``. Single-species potentials are not
+affected.
 
 Descriptor key syntax
 ---------------------
@@ -559,8 +637,9 @@ style prints a LAMMPS ``WARNING`` (screen and ``log.lammps``) on every
 absent: default ZERO, ...)``. Training on absolute reference energies (e.g. DFT totals) under
 ``ZERO`` needs a per-atom reference energy from ``ESHIFT``, ``ESHIFT_ATOM`` or
 ``ESHIFT_DBATOM`` (compatible with the LAMMPS ``EAMFAST`` kernel) or
-``BIAS true`` (disables ``EAMFAST``; its intercept column precedes the
-descriptor weights, so ``FIXINDEX``/``FIXWEIGHT`` indices shift). External tools that tabulate the embedding from ``WEIGHTS``
+``BIAS true`` (disables ``EAMFAST``; its intercept columns, one per ``ATOM``
+species, precede the descriptor weights, so ``FIXINDEX``/``FIXWEIGHT``
+indices shift). External tools that tabulate the embedding from ``WEIGHTS``
 (setfl converters) must tabulate :math:`F(\rho) - F(0)` unless the potential
 says ``EMBF0 FREE``.
 

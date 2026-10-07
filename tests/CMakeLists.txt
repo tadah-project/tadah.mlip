@@ -64,6 +64,14 @@ function(tadah_version_reader_test name case core regex)
 endfunction()
 tadah_version_reader_test(tadah_version_reader_fetchcontent fetchcontent
   ${_vr}/core_ok "RESULT=9\\.8\\.7\\|9\\.8\\.7-rc\\.1\n.*DEPENDS=[^\n]*core_ok/blueprint/blueprint_tadah\\.toml")
+# Pins: a blueprint whose text has unbalanced square brackets and a
+# semicolon (a key description "a number in (0, 1]", before, in and after
+# [TADAH]) gives the version of its [TADAH] table. Before the fix: the
+# reader split the file into a CMake list of lines, in which a bracket
+# joins the lines up to the matching one into one element, so [TADAH] was
+# not found ("'version = \"...\"' not found in [TADAH]").
+tadah_version_reader_test(tadah_version_reader_brackets fetchcontent
+  ${_vr}/core_brackets "RESULT=9\\.8\\.7\\|9\\.8\\.7-rc\\.1\n.*DEPENDS=[^\n]*core_brackets/blueprint/blueprint_tadah\\.toml")
 tadah_version_reader_test(tadah_version_reader_no_version fetchcontent
   ${_vr}/core_noversion "not found in \\[TADAH\\][ \n]+of[ \n]+[^\n]*core_noversion")
 tadah_version_reader_test(tadah_version_reader_no_core no_core

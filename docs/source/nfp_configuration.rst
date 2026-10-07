@@ -85,9 +85,10 @@ different loss locally, and a ``PC_OBSERVABLE`` line takes its own
 ``--loss``.  Every term is the loss of the measured value :math:`y`
 against its target :math:`t` (residual :math:`r = y - t`), multiplied by
 the term's weight; the loss of an evaluation is the mean of its terms
-(:ref:`nested_fitting`), unless one of its ``PC_LAMMPS`` simulations
-failed: such an evaluation scores ``FAILSCORE`` (see ``--failscore``,
-:ref:`pc_lammps_options`).
+(:ref:`nested_fitting`), unless one of its ``PC_LAMMPS`` simulations or
+``PC_OBSERVABLE`` terms failed: such an evaluation scores ``FAILSCORE``
+(see ``--failscore``, :ref:`pc_lammps_options`, and
+:ref:`pc_observable`).
 
 ================ ================= ==========================================================
 Name             Parameter         Term (before the weight)
@@ -134,14 +135,19 @@ Root-level loss control:
        (:ref:`hpo_stopping`).  Negative losses (negative-weight
        ``--varloss`` terms) are usable under any positive
        ``FAILSCORE``: the failures sit above every loss.
-       It is also the value a failed ``PC_OBSERVABLE`` term
-       contributes, the loss of an evaluation in which a ``PC_LAMMPS``
-       simulation failed (``--failscore``, :ref:`pc_lammps_options`),
-       and the reference for graded failures
+       It is also the value of a failed ``PC_OBSERVABLE`` term in
+       ``loss.tadah``, the loss of an evaluation in which such a term
+       (:ref:`pc_observable`) or a ``PC_LAMMPS`` simulation failed
+       (``--failscore``, :ref:`pc_lammps_options`), and the reference
+       for graded failures
        (:ref:`failscore_grading`).  ``PC_LAMMPS``
        lines capture the value in force when they are read; a line's
        own ``--failscore`` changes only the value substituted for that
        line's variables when its simulation fails.
+       An evaluation that raises an exception (its training fails, say)
+       scores ``FAILSCORE`` too: ``hpo_run.log`` gives each one a
+       ``WARNING`` with the message, and its DIAGNOSTICS count them under
+       ``Evaluations that threw``, apart from the NaN/Inf clampings.
        ``DLIB:GFS`` hands dlib a finite stand-in for a failed
        evaluation instead (:ref:`failed evaluations under DLIB:GFS
        <hpo_dlib_gfs_failures>`); the history files and the journal
@@ -393,8 +399,8 @@ reference (no conversion), so the seed's recorded loss need not be
 reproduced.  A HINT is printed when a DM_REAM model under ``ZERO`` is
 trained on data without ``BIAS`` or ``ESHIFT`` (see
 :ref:`hpo_load_transforms`); prefer ``ESHIFT*``, because ``BIAS true``
-inserts intercept columns before the descriptor weights (``FIXINDEX``/
-``FIXWEIGHT`` indices shift) and disables ``EAMFAST``.  Under ``ZERO`` a
+inserts intercept columns, one per ``ATOM`` species, before the descriptor
+weights (``FIXINDEX``/``FIXWEIGHT`` indices shift) and disables ``EAMFAST``.  Under ``ZERO`` a
 combination of embedding coefficients that only shifts :math:`F` by a
 constant (available when the bumps nearly sum to a constant) no longer
 changes any energy, so the coefficients may drift along it; the raw
@@ -489,7 +495,12 @@ the target, and the remaining weights are fitted against the residual.
 The i-th ``FIXWEIGHT`` value pins the weight named by the i-th
 ``FIXINDEX`` entry; a lone key is an error, and ``NORM true`` is
 incompatible with pinning (the values would live in normalized feature
-space).  These rules need the model's weight count, so startup builds the
+space).  With ``BIAS true`` and a linear model weights 1 to :math:`N` are
+the intercepts of the :math:`N` ``ATOM`` species and the descriptor weights
+start at :math:`N + 1` (:ref:`the bias term <bias_term>`, also for the
+other models); startup prints a WARNING naming the model's intercept
+weights when ``FIXINDEX`` is used with two or more species (before 1.6.0
+a linear model's descriptor weights started at index 2).  These rules need the model's weight count, so startup builds the
 model of the ``-c`` configuration once, as every evaluation builds it; it
 does so for every run.  A configuration whose model does not build (a
 ``DIMER`` potential whose ``TYPE2B`` names element pairs, say) is refused
@@ -500,11 +511,15 @@ potential/configuration.``).  Before 1.6.0 startup printed a WARNING
 first training evaluation") or nothing, every evaluation failed, and the
 run ended "no evaluation produced a usable loss".
 The weights of ``M_KRR`` with a non-linear kernel belong to its ``SBASIS``
-basis vectors (weight 1 to the bias vector :math:`e_0`, the others to
-descriptors drawn from the training data, see
-:ref:`Non-linear models <nonlinear_models>`): startup checks ``FIXINDEX``
-against ``SBASIS``, a training ``DBFILE`` is required, and every
-evaluation trains, also when ``FIXINDEX`` pins every weight.
+basis vectors (weights 1 to :math:`n` to the intercept vectors
+:math:`e_0 \dots e_{n-1}`, one per ``ATOM`` species with ``BIAS true`` and
+:math:`e_0` alone otherwise, the others to descriptors drawn from the
+training data, see :ref:`Non-linear models <nonlinear_models>`): startup
+checks ``FIXINDEX`` against ``SBASIS``, refuses an ``SBASIS`` below
+:math:`n + 1` (every fit would refuse it), requires a training ``DBFILE``,
+and every evaluation trains, also when ``FIXINDEX`` pins every weight. The
+basis is drawn anew in every fit: the ``BASIS`` and ``WEIGHTS`` of a ``-c``
+potential are not read.
 
 **Mixed mode** — LS-fit most weights, hold one, search another.  With a
 5-weight model: weights 1–3 LS-fitted, weight 4 held at 0.75, weight 5
@@ -667,19 +682,25 @@ and every other key it does not search), and each run starts its
 value the first run's last evaluation converged to). Run twice from one
 task file, example ``01_minimal`` (at ``MAXEVAL 3``) writes for its
 second run the ``loss.tadah``, ``outvar.tadah`` and ``best_pot.tadah`` of
-the same run made alone, but for the evaluation numbers. Two things carry over
-from the first run:
-
-* the evaluation counter: the second run's ``ITERATION`` numbers and
-  ``DUMP`` file names continue where the first run's stopped (4 to 6
-  after a run of 3 evaluations);
-* the width of the pool of worker threads that runs the ``PC_LAMMPS``
-  scripts and the training kernels (``THREADS``), which the first run
-  sets: a later run with another ``THREADS`` runs on the first run's
-  pool, while its journal reports its own value.
-
-Run each ``tadah hpo`` in a process of its own when the runs need
-different ``THREADS`` or their files must number the evaluations from 1.
+the same run made alone, but for the evaluation numbers. Each run builds
+its own pool of ``THREADS`` worker threads, which runs the ``PC_LAMMPS``
+scripts and the training kernels, and under ``PC_ISOLATION PROCESS`` its
+own worker processes, and stops them when it ends, also when it fails;
+the ``PC_ISOLATION THREAD`` LAMMPS instances end with the threads, so
+the next run creates its own. Every run used to run on the pool of the
+first run's ``THREADS`` while its journal reported its own value (under
+``PC_ISOLATION PROCESS`` a later run with a smaller ``THREADS`` failed
+its evaluations: ``PcWorkerPool::execute: bad slot``; under
+``PC_ISOLATION THREAD`` a script of the same file name and LAMMPS
+options ran on the first run's LAMMPS instance, as the first run had
+read it, so a script rewritten between the runs was not read again),
+and a program that called ``hpo_run`` again after a run that threw
+found the first run's worker processes still running
+(``pc_worker_pool_init: pool already initialized``). One thing carries over from the first run, the
+evaluation counter: the second run's ``ITERATION`` numbers and ``DUMP``
+file names continue where the first run's stopped (4 to 6 after a run of
+3 evaluations). Run each ``tadah hpo`` in a process of its own when its
+files must number the evaluations from 1.
 
 Individual validation targets and weights
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -745,7 +766,15 @@ global form for nonlinear losses such as L2: averaging losses differs from
 taking the loss of an average. The forms agree for a single dataset.
 
 The run journal and potential header identify the form and the resolved
-indexed assignments. In ``loss.tadah`` and ``best_loss.tadah``, indexed
+indexed assignments. The journal's new-best ``top:`` line lists an indexed
+metric per dataset, ``ERMSE[i]`` / ``FRMSE[i]`` (a dataset the metric does not
+measure has none), and a global one as ``ERMSE_global`` / ``FRMSE_global``.
+Like every part of that line, each is shown as its contribution to the run's
+``loss=``, the mean over the loss terms: ``ERMSE[i]`` is ``L(ERMSE)[i]``
+divided by the number of datasets and by the number of loss terms, so the
+parts of all the terms add up to ``loss=`` (the line lists the five largest)
+and the percentages are shares of it. Only with the indexed metric as the
+one loss term is ``ERMSE[i]`` its share of ``L(ERMSE)[avg]``. In ``loss.tadah`` and ``best_loss.tadah``, indexed
 ``L(ERMSE)[avg]`` / ``L(FRMSE)[avg]`` columns are the mean of the corresponding
 dataset losses. For the global form they retain the loss of the average
 metric. Raw metric averages in ``stats.tadah`` and ``outvar.tadah`` are
@@ -1289,8 +1318,26 @@ weights.  Each line is one loss term.  It cannot be combined with
        backend ``force-scaled`` needs ``GRAD_STRATEGY HYBRID`` (see
        *Gradients* below).
 
-A term whose evaluation fails (divergent relaxation, non-finite value)
-contributes ``FAILSCORE``.
+A term whose evaluation fails — a relaxed lattice constant outside the
+``--hotvar a0`` window, a divergent relaxation, a value or a loss that is
+not finite — is ``FAILSCORE`` in ``loss.tadah`` (its value ``NaN`` in
+``outvar.tadah``), and its evaluation is a failed one: the loss is
+``FAILSCORE`` whatever the other terms, and under ``FAILSCORE_GRADING ON``
+a graded band-B failure measured by the failed fraction of the
+``PC_OBSERVABLE`` terms (:ref:`failscore_grading`).  Before 1.6.0 the
+loss was the mean of ``FAILSCORE`` and the other terms under either
+setting, about ``FAILSCORE`` / *n* for one failed term of *n* ≥ 2: below
+``0.999 × FAILSCORE``, a usable loss, which could become the best or
+reach ``STOPVAL``; under the default ``FAILSCORE`` the other terms
+vanished in it, every finite difference across the region where the term
+failed was 0, and a gradient search that started there converged on it.
+(An evaluation with no usable term, or one whose failed terms summed
+past the largest double, scored ``FAILSCORE`` then too.)  Such a search
+now stops at its first gradient: under ``FAILSCORE_GRADING OFF`` at
+once, under ``ON`` when every point of its finite-difference stencil
+fails with the same failed fraction (a flat failure region; an
+analytical gradient at a graded failure is kept;
+:ref:`hpo_gradient_not_finite`).
 
 Columns.  The *k*-th ``PC_OBSERVABLE`` line (1-based, in configuration
 order) writes the ``loss.tadah`` column ``L(<tag>)[k]`` and the
@@ -1474,6 +1521,8 @@ Order of firing within one iteration
 
    feasibility gates (BUMPGATE, RHOGATE, RHOBARGATE)  →  [any fails?  → graded band D, stop]
    train/validate  →  [skip caps?  → graded band D, stop]
+   PC_OBSERVABLE terms, in place of PC_LAMMPS  →  [a term failed?  → graded band B
+                                                   by the failed fraction, stop]
    dispatch batch:  FAILPROBE first (cheapest → returns first),
                     hot scripts + independent cold scripts alongside
      ├─ probe returns S
@@ -1515,8 +1564,9 @@ windows satisfied, then feasible:
      - ``S`` (probe)
    * - B
      - run completed but failed: in-script timeout, ``--failvar > 0``,
-       unreadable/NaN outputs
-     - failvar sum + failed fraction
+       unreadable/NaN outputs; a failed ``PC_OBSERVABLE`` term
+     - failvar sum + failed fraction (of the scripts; of the
+       ``PC_OBSERVABLE`` terms)
    * - A
      - hot value outside its window
      - normalized distance to the window
@@ -1776,7 +1826,7 @@ after the band counts, and ``DIAGNOSTICS`` breaks the band-D count down::
    SUMMARY ... failed=86 (71.7%; A=0 B=0 C=0 D=86) rhogate=57 rhobargate=29
 
      Graded failures         : 86  (71.7%)
-       A=0 (hot-var out of range)  B=0 (script failed)  C=0 (did not complete)  D=86 (pot build / gated)
+       A=0 (hot-var out of range)  B=0 (script or observable failed)  C=0 (did not complete)  D=86 (pot build / gated)
        of which rho-sign gate rejects: 57 (rho_min < -tol*rho_max on the RHOGATE window, rejected before training)
        of which lattice-rhobar gate rejects: 29 (rhobar(a) not strictly decreasing, rejected before training)
 
@@ -2083,8 +2133,8 @@ candidate can make positive (``WATOM`` fixed at :math:`\le 0`, or an
 ``OPTIM WATOM`` box that does not reach above 0) is a startup error under
 either ``SEED`` mode, since every evaluation would be rejected. At startup
 every *seed* is evaluated as a candidate: the ``-c`` potential and every
-``CONFIG`` or ``WARM`` point of the resolved ``INIT`` chains (``OUTER``,
-``PRESTAGE`` and ``PRESTAGE.INNER``) and of the ``RESTART`` block's
+``CONFIG`` or ``WARM`` point of the resolved ``INIT`` chains (``OUTER`` and
+``PRESTAGE``; an ``INNER`` block takes none) and of the ``RESTART`` block's
 ``METHOD`` chain (a restart round starts from them; ``RESTART WARM
 <file>`` in the messages). A
 failing seed that the optimiser may start from stops
@@ -2488,7 +2538,9 @@ one a finite number (``MAXTIME`` a positive one).
        ``THREADS`` inside ``EXPLORE`` or ``INNER`` does not resize it.  ``THREADS 0`` is an
        error at its line in every block (``THREADS must be an integer
        from 1 to 2147483647, got '0'``); before 1.6.0 it was accepted,
-       and the pool quietly ran one worker.
+       and the pool quietly ran one worker.  Each run builds its pool
+       and stops it when it ends, so every run of a process has a pool
+       of its own ``THREADS`` (see *Two runs in one process*).
    * - ``GRAD_STRATEGY`` (string)
      - How gradient-based backends obtain gradients: ``NUMERICAL``
        (default; finite differences, see ``PARAM fd_step`` /
@@ -3204,16 +3256,36 @@ the default under ``PC_OBSERVABLE`` (:ref:`pc_observable`) — as under
 ``ANALYTICAL``.  At a graded failure under ``FAILSCORE_GRADING ON`` the
 analytical gradient is kept; it does not see the grading.
 
+An evaluation with a failed term is a failed evaluation — a failed
+``PC_LAMMPS`` simulation (``--failscore``, :ref:`pc_lammps_options`) or a
+failed ``PC_OBSERVABLE`` term (:ref:`pc_observable`) —, and the rule
+reads it as one.  Under ``FAILSCORE_GRADING OFF`` a search that starts
+where a ``PC_OBSERVABLE`` term fails stops at its first gradient; under
+``ON`` its finite differences fail when the failed fraction that grades
+the failure is the same at every point of the stencil (``… a flat failure
+region``), and an analytical gradient is kept (above).  When the search
+so stopped is the run's only one, the run ends without a usable loss
+(status 1).  Under a ``FAILSCORE`` that does not absorb the usable terms (``1e16``
+next to terms of about 1e5) such a search used to end with a best and
+status 0 under either setting: most backends followed the gradient of
+the usable terms out of the region, and ``LD_SLSQP`` stopped at once
+(roundoff-limited) with a failed evaluation as its best.  Before 1.6.0 a
+failed ``PC_OBSERVABLE`` term, and under ``FAILSCORE_GRADING OFF`` a failed
+``PC_LAMMPS`` simulation, was averaged with the evaluation's other terms
+(under ``ON`` a failed simulation was graded), and a mean below ``0.999 ×
+FAILSCORE`` was a usable loss: with one failed observable among *n* ≥ 2
+terms it was about ``FAILSCORE`` / *n*, and with a failed simulation it
+was under ``L1``, the bounded ``TUKEY`` or a small ``--failscore``.  An
+evaluation with no usable term — a target whose only term is the failed
+observable — scored ``FAILSCORE`` then too, and so did one whose failed
+terms summed past the largest double (two of them under the default
+``FAILSCORE``).
+
 The rule has limits.  A usable point whose stencil reaches a failure has
 no gradient, so a search cannot settle within one step (``PARAM
-fd_step``) of the failure region.  A loss that mixes failed and usable
-terms — the mean of terms of which one is ``FAILSCORE`` and the result
-below ``0.999 × FAILSCORE``, as with several ``PC_LAMMPS`` scripts or a
-failed ``PC_OBSERVABLE`` term without grading — is a usable loss to it:
-the run does not record which terms of an evaluation failed.  A graded
-failure next to the usable side differences the jump out of the band
-(above).  And the analytical gradient at a graded failure does not see
-the grading.
+fd_step``) of the failure region.  A graded failure next to the usable
+side differences the jump out of the band (above).  And the analytical
+gradient at a graded failure does not see the grading.
 
 A point without a usable gradient ends the search where the backend cannot
 go on without it:
@@ -3735,7 +3807,12 @@ Top-level keys inside the ``INIT`` block
    * - ``WARM_ON_MISMATCH``
      - ``warn`` / ``error`` / ``skip``
      - ``warn``
-     - What to do when ``WARM`` cannot fill every ``OPTIM`` key.
+     - What a ``WARM`` seed of this block's chain does when it cannot fill
+       every ``OPTIM`` key or lies outside the box: ``warn`` keeps it (a
+       missing key takes its ``-c`` value, a value outside the box is
+       clamped into it) with a WARNING, ``error`` stops the run at startup,
+       ``skip`` drops the point.  A ``RESTART`` block has its own
+       (:ref:`restart_decorator`).
 
 Each ``METHOD`` line is checked where it is written — a known method,
 its argument count and ``K`` — so an error names that line (``Error on
@@ -4267,6 +4344,17 @@ RESTART decorator
        are reproducible (with ``SOBOL``, block ``SEED + r`` of the
        sequence).  Without ``SEED`` each restart draws from
        ``std::random_device``.
+   * - ``WARM_ON_MISMATCH``
+     - ``warn`` / ``error`` / ``skip`` (default ``warn``)
+     - What a ``WARM`` seed of the ``METHOD`` chain does when it cannot
+       fill every ``OPTIM`` key or lies outside the box, as in the ``INIT``
+       block, at startup (``error``: a startup error) and at each restart.
+       It is the ``RESTART`` block's own: the ``INIT`` block's does not
+       apply to this chain.  A round whose chain then produces no point
+       (``skip``) starts from the previous round's points, with a WARNING
+       (``RESTART r/MAX: the METHOD chain (WARM) produced no starting
+       point; ...``).  Before 1.6.0 this setting was accepted and ignored,
+       and the ``INIT`` block's applied.
 
 The decorator is active only when **both** ``AFTER_STAGNATION`` and
 ``MAX`` are positive; with either at its default ``0`` the ``RESTART``
@@ -5060,13 +5148,16 @@ outputs) is the run's structured journal. It opens with a banner
                          ``Embedding F(0)`` (EMBF0) and the raw F(0) of -c,
                          the density report (``Density form``, ``Density
                          rho(r)``, ``Density rhobar``) of -c and each WARM seed
-   -- LOSS FUNCTION --   targets, weights, FAILSCORE
+   -- LOSS FUNCTION --   targets, weights, FAILSCORE and the failures that
+                         score it; under FAILSCORE_GRADING ON a ``Fail
+                         grading`` line names those graded instead
    -- PROGRESS      --   timestamped events: bests, warnings, milestones,
                          feasibility-gate rejects
-   -- DIAGNOSTICS   --   NaN/Inf clampings, graded failures with the gate
-                         rejects, unusable losses (every evaluation without a
-                         usable loss) with a verdict, positive-form
-                         projections, bound-proximity analysis
+   -- DIAGNOSTICS   --   NaN/Inf clampings, evaluations that threw, graded
+                         failures with the gate rejects, unusable losses
+                         (every evaluation without a usable loss) with a
+                         verdict, positive-form projections, bound-proximity
+                         analysis
    -- PERFORMANCE   --   timing statistics
    -- RESULT        --   final status, best loss, best metrics; DM_REAM:
                          raw F(0) of the first and the best evaluation, the
@@ -5513,10 +5604,22 @@ writes.
    Number of training structures (deterministic sample) the audit's
    dataset scan uses; ``0`` scans all of them.
 ``HEALTH_LOG off|summary|full`` (default ``summary``)
-   Per-evaluation health monitor of the fitted weights (non-finite
-   values, collapsed or exploding blocks).  ``summary`` rate-limits its
-   warnings, ``full`` reports every offending evaluation, ``off``
-   disables it.
+   Per-evaluation health monitor of the weights each evaluation's model
+   holds (fitted, or set from ``FIXWEIGHT``), by the blocks of its design
+   matrix: the bias column, the two-body and the many-body descriptor's
+   columns, or one block for a non-linear basis function or kernel.  It
+   warns when a weight is NaN or infinite, when every weight of a block
+   is exactly zero, when fewer than 5 % of a block's weights exceed
+   1e-15 in magnitude (a block that holds a NaN or infinite weight is
+   checked for neither: the NaN/Inf warning describes it), and when the
+   model has not as many weights as its design matrix has columns (the
+   block checks are then skipped).
+   ``summary`` gives at most one warning of each kind (per block) in 100
+   evaluations, ``full`` reports every offending evaluation, ``off``
+   disables it.  The warnings are printed on standard output
+   (``WARNING: iter_health: eval <n> ...``), not written to the
+   journal.  Before, the monitor read a design matrix that ``tadah hpo``
+   never builds, and it reported nothing.
 
 .. _hpo_env_overrides:
 
@@ -5561,7 +5664,8 @@ Marker                                                                       Mea
 ``[HPO] InitStrategy NAME produced N starting points``                        After init resolution.
 ``[HPO] WARM: loaded N parameter(s) from <file>``                             ``WARM`` read all keys.
 ``[HPO] WARM: primed warmstart cache with N HOT_A0 entry(ies)``               ``HOT_A0`` lines parsed from a ``WARM`` file.
-``[HPO] WARM: clamped dim[d] from X to Y (bounds […])``                       Warm point fell outside narrowed bounds.
+``[HPO] WARM: N parameter(s) from <file> clamped into OPTIM bounds …``       Warm point fell outside narrowed bounds (``WARM_ON_MISMATCH``
+                                                                             ``warn`` or ``skip``; ``error`` stops the run with it).
 ``[HPO] DLIB:GFS seeding with N starting points``                             Multi-seed forwarding.
 ``[HPO] GRID: MAXEVAL N < M grid points (…); evaluating the first N …``       ``TADAH:GRID`` stops its sweep after ``MAXEVAL`` points.
 ``[HPO] TADAH:RANDOM stopped: <stop> after N evaluation(s)``                 The stop that ended ``RANDOM``: ``MAXEVAL reached``, ``MAXTIME exceeded``,

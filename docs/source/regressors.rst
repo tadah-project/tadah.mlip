@@ -61,9 +61,8 @@ Non-linear models
 ``M_KRR`` with ``Kern_RBF``, ``Kern_Polynomial``, ``Kern_Quadratic``,
 ``Kern_LQ`` or ``Kern_Sigmoid``, and ``M_BLR`` with ``BF_Polynomial2``, are
 non-linear in the descriptor. They are trained, predicted, optimised by
-``tadah hpo`` and run in LAMMPS like the linear ones, except a potential
-trained with ``BIAS true`` on several species, which ``pair_style tadah``
-refuses (see **LAMMPS** below).
+``tadah hpo`` and run in LAMMPS like the linear ones (see **LAMMPS**
+below).
 
 **Kernel parameters** (``MPARAMS``): ``Kern_RBF`` takes
 :math:`\sigma`, :math:`K(\mathbf{b},\mathbf{x}) = \exp(-|\mathbf{x}-\mathbf{b}|^2/2\sigma^2)`
@@ -80,26 +79,36 @@ value that is not an integer (``2.7``) is refused naming ``MPARAMS (1)``
 
 **The basis of a kernel** (``SBASIS``, required). The atomic energy is
 :math:`E_i = \sum_j w_j K(\mathbf{b}_j, \mathbf{x}_i)` over ``SBASIS``
-basis vectors, one weight each. :math:`\mathbf{b}_0` is the bias vector
-:math:`e_0 = (1, 0, \dots, 0)`; the other ``SBASIS-1`` are atomic energy
-descriptors of the training set (with ``NORM true``, standardised), drawn
-by a fixed draw: the first ``SBASIS-1`` steps of a Fisher-Yates shuffle of
-the descriptors, in the order of the training set, driven by
-``std::mt19937_64`` with its default seed 5489. The same training set and
-``SBASIS`` give the same basis on every run and platform, so ``tadah
-train`` writes the same potential every time and the loss of ``tadah hpo``
-at a given point does not depend on the draw. ``SBASIS`` must be at least
-2 and at most the number of training atoms plus 1. (Implementation ``2``
-draws structures instead, takes the mean descriptor of each, and allows
-at most the number of training structures plus 1.) The potential records
+basis vectors, one weight each. The first :math:`n` are the intercept
+("bias") vectors :math:`e_0, \dots, e_{n-1}` (:math:`e_k` is 1 in component
+:math:`k`, 0 elsewhere): with ``BIAS true`` one per ``ATOM`` species, the
+species' intercept columns of the descriptor; with ``BIAS false``
+:math:`n = 1`, the bias vector :math:`e_0 = (1, 0, \dots, 0)`. The other
+``SBASIS-n`` are atomic energy descriptors of the training set (with
+``NORM true``, standardised), drawn by a fixed draw: the first
+``SBASIS-n`` steps of a Fisher-Yates shuffle of the descriptors, in the
+order of the training set, driven by ``std::mt19937_64`` with its default
+seed 5489. The same training set and ``SBASIS`` give the same basis on
+every run and platform, so ``tadah train`` writes the same potential every
+time and the loss of ``tadah hpo`` at a given point does not depend on the
+draw. ``SBASIS`` must be at least :math:`n + 1` (2 with one species or
+``BIAS false``) and at most the number of training atoms plus :math:`n`.
+(Implementation ``2`` draws structures instead, takes the mean descriptor
+of each, and allows at most the number of training structures plus
+:math:`n`.) The potential records
 ``SBASIS`` and the basis vectors (``BASIS``) with the weights; ``tadah
 predict``, ``tadah hpo`` and ``pair_style tadah`` refuse, naming the keys,
 a potential without them, with a number of weights other than ``SBASIS``,
-or with basis vectors of another length than the descriptor's.
+or with basis vectors of another length than the descriptor's. Training
+draws the basis anew and reads neither ``WEIGHTS`` nor ``BASIS``, so a
+potential retrains from its own file with any ``SBASIS`` (``tadah train -c
+pot.tadah`` with a ``DBFILE``).
 
 **Intercepts and the ridge.** ``LAMBDA`` penalises every weight but those
-of the model's intercept columns, the columns that are the same for every
-atom. With ``BIAS true`` (and ``ATOM``, which ``BIAS`` requires):
+of the model's intercept columns, the columns that depend on an atom only
+through its species (also when ``FIXINDEX`` pins weights). With ``BIAS
+true`` (and ``ATOM``, which ``BIAS`` requires; :math:`N` species, the
+descriptor's intercept components :math:`0 \dots N-1`):
 
 .. list-table::
    :header-rows: 1
@@ -109,11 +118,13 @@ atom. With ``BIAS true`` (and ``ATOM``, which ``BIAS`` requires):
    * - ``BF_Linear``, ``Kern_Linear``
      - the bias columns of the descriptor
    * - ``BF_Polynomial2``
-     - column 0, bias :math:`\times` bias
+     - the product :math:`(k,k)` of each intercept component with itself,
+       one per species (column 0 with one species; columns 0 and
+       :math:`D` with two)
    * - ``Kern_Quadratic``, ``Kern_LQ``, ``Kern_Polynomial``,
        ``Kern_Sigmoid``
-     - column 0, :math:`K(e_0, \mathbf{x})`, which depends on
-       :math:`\mathbf{x}` only through the bias
+     - columns 0 to :math:`N-1`, :math:`K(e_k, \mathbf{x})`, which depends
+       on :math:`\mathbf{x}` only through intercept component :math:`k`
    * - ``Kern_RBF``
      - none
 
@@ -129,18 +140,20 @@ collinear, and ``OALGO 1`` then drops the small singular values (its
 true`` standardises the descriptor components first.
 
 **LAMMPS.** ``pair_style tadah`` evaluates a non-linear potential as
-``tadah predict`` does. With ``BIAS true`` on several species (``ATOM``
-with two or more elements) tadah trains the model on a descriptor with one
-bias component shared by the species, while the descriptor of
-``pair_style tadah`` has one bias component per species: ``pair_style
-tadah`` refuses such a non-linear potential, naming the cause. Train the
-model with ``BIAS false`` to run it in LAMMPS. ``pair_style tadah`` also
-refuses a ``BF_Polynomial2`` potential without :math:`D(D+1)/2` weights for
-its :math:`D` descriptor components.
+``tadah predict`` does, also with ``BIAS true`` on several species: the
+descriptor has one intercept component per species in training and in
+``pair_style tadah`` alike (see :ref:`bias_term`). A potential trained
+before 1.6.0 with ``BIAS true`` on several species, with one bias component
+shared by the species, is refused with the instruction to retrain it.
+``pair_style tadah`` also refuses a ``BF_Polynomial2`` potential without
+:math:`D(D+1)/2` weights for its :math:`D` descriptor components, and a
+potential of any non-linear model whose ``NMEAN``/``NSTDEV`` (``NORM
+true``) or basis vectors do not fit the descriptor.
 
 **FIXINDEX/FIXWEIGHT** with a kernel pin weights of the basis vectors
-(weight 1 belongs to :math:`e_0`), which are drawn from the training
-data: a training ``DBFILE`` is required, also when every weight is pinned.
+(weights 1 to :math:`n` belong to the intercept vectors, the others to
+vectors drawn from the training data): a training ``DBFILE`` is required,
+also when every weight is pinned.
 
 **Searching MPARAMS.** A kernel reads ``MPARAMS`` when it is built, and
 ``tadah hpo`` builds the model of every evaluation from that evaluation's

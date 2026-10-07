@@ -1,0 +1,15 @@
+# Fixture: square brackets and semicolons in the text around the version,
+# as a key description has them ("a number in (0, 1]").
+[OTHER]
+description = "a number in (0, 1] of the budget"
+range = "[0, 1)"
+version = "0.0.1"
+
+[TADAH]
+name = "fixture"
+description = "in (0, 1]; [see the docs] for more"
+version = "9.8.7-rc.1"
+
+[AFTER]
+description = "(0, 1]"
+version = "0.0.2"

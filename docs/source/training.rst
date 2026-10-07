@@ -184,8 +184,9 @@ stored values.
    reference energies are absolute (e.g. DFT totals), remove the per-atom
    reference with ``ESHIFT``, ``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` (which
    keeps the LAMMPS ``EAMFAST`` kernel usable) or set ``BIAS true`` (its
-   intercept column precedes the descriptor weights, so ``FIXINDEX``/
-   ``FIXWEIGHT`` indices shift).
+   intercept columns, one per ``ATOM`` species, precede the descriptor
+   weights, so ``FIXINDEX``/``FIXWEIGHT`` indices shift; see
+   :ref:`the bias term <bias_term>`).
    ``tadah train`` prints a HINT when neither is present. A DM_REAM
    configuration must also declare its density form ``RHOFORM`` (see
    `pot.tadah format`_). See :ref:`DM_REAM <dm_ream>`.

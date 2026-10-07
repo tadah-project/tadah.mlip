@@ -14,10 +14,14 @@
 namespace {
 /* A rank that ends with an error must not leave its peers blocked in a
  * collective: MPI_Finalize would then wait for them forever and the job
- * would burn its allocation instead of exiting non-zero (a TADAH_HPO_MPI
- * rank whose ANNEAL_PT jitter probe or NOISE_CALIBRATION evaluation fails
- * leaves the others in the next gather/allreduce). Every rank that reaches
- * the end of main() enters a
+ * would burn its allocation instead of exiting non-zero. In a TADAH_HPO_MPI
+ * run that follows a failure confined to one rank outside the phases whose
+ * ending the ranks agree on (HPO run_stop.h, agree_on_rank_stop): a
+ * NOISE_CALIBRATION evaluation that fails, or that a signal stops, on one
+ * rank leaves the others in the driver's next collective. Only a rank that
+ * returns from cli.run() gets here: one that is itself blocked in a
+ * collective never does, so this cannot end such a job. Every rank that
+ * reaches the end of main() enters a
  * barrier on a communicator of its own -- so it can never be matched
  * against a collective a stuck peer sits in on MPI_COMM_WORLD. When all
  * ranks arrive (all succeeded, or all failed together: each has closed its

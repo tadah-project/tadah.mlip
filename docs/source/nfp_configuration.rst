@@ -315,6 +315,20 @@ Special cases:
   ``FIXINDEX`` or moved the data's bond length).  So is ``OPTIM OALGO
   (1)``, the training algorithm; ``OPTIM OALGO (2)``, the ``rcond`` *M*
   of options 1 and 3, is continuous and stays a search target.
+* ``OPTIM`` on a value its key takes only as an integer (every format of
+  the key gives it ``INT`` or ``UINT``: ``SBASIS``, the number of basis
+  vectors) is **rejected** at its line (``OPTIM SBASIS (1) is not a valid
+  search target: value 1 of SBASIS is an integer ...``); a candidate such
+  as 14.47 was trained as 14.  So is ``OPTIM`` on an internal key
+  (``DSIZE``, ``RCUTMAX``, ``ESTDEV``, ...), a value tadah computes itself
+  (``OPTIM ESTDEV`` failed every evaluation).
+* ``OPTIM MPARAMS`` is checked against the model's basis function or
+  kernel at startup (:ref:`nonlinear_models`): ``OPTIM MPARAMS (i)`` is
+  **rejected** on a function that reads fewer than *i* values (``BF_Linear``,
+  ``BF_Polynomial2``, ``Kern_Linear``, ``Kern_Quadratic`` and ``Kern_LQ``
+  read none; the search changed nothing), on the degree of
+  ``Kern_Polynomial`` (``MPARAMS (1)``, an integer) and on the
+  :math:`\sigma` of ``Kern_RBF`` with a box that is not positive.
 * A radial bump width — ``SGRID2B`` of a ``D2_Blip``/``D2_Blip5`` pair
   term, ``SGRIDMB`` of a DM_REAM ``Blip``/``Blip5`` density — must be
   :math:`> 0` in every ``RHOFORM``.  A bump spans :math:`[c - w/\eta,
@@ -624,11 +638,17 @@ false, and with ``MODEL M_KRR`` also when it was true; an ``M_KRR``
 dataset's stress unit, eV/Å³, written ``eV/A^3``.  Before 1.6.0 they were
 labelled ``meV/atom`` and ``GPa``, with the same values.
 
-**One run per process.** Run each ``tadah hpo`` in a process of its own.
-Two runs in one process — a ``tadah --task`` file with two ``hpo`` tasks,
-or a program that calls ``hpo_run`` twice — share each thread's cached
-trainer, so the second run fits with the first run's ``FORCE``, ``STRESS``
-and other keys it does not search.
+**Two runs in one process.** A ``tadah --task`` file with two ``hpo``
+tasks, or a program that calls ``hpo_run`` twice, runs two independent
+model searches: each evaluation builds its model from its own run's
+configuration and candidate (the second run used to train the first run's
+model, with the first run's ``FORCE``, ``STRESS``, ``LAMBDA``, row weights
+and every other key it does not search). One thing is still set once per
+process, by the first run: the width of the pool of worker threads that
+runs the ``PC_LAMMPS`` scripts and the training kernels (``THREADS``). A
+later run with another ``THREADS`` runs on the first run's pool, while its
+journal reports its own value; run ``tadah hpo`` in a process of its own
+when the runs need different ``THREADS``.
 
 Individual validation targets and weights
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1991,6 +2011,9 @@ restart.
 and the first ``OALGO`` value (``OPTIM <KEY> is not a valid search
 target: ..., structure data rather than a continuous parameter; set it in
 the -c potential/configuration.``); ``OPTIM EMBF0`` has its own message.
+So is ``OPTIM`` on an integer value (``SBASIS``) or an internal key, and
+``OPTIM MPARAMS`` on a value the model's function does not read as a
+continuous one is an error at startup (see *Special cases* above).
 
 .. _hpo_optimizer_common:
 
@@ -4867,10 +4890,6 @@ harnesses).  An invalid value is an error, not a silent fallback.
      - Replaces ``FAILSCORE_GRADING`` (:ref:`failscore_grading`).
    * - ``TADAH_BUMPGATE=CANDIDATE|STRICT``
      - Replaces ``BUMPGATE`` (:ref:`hpo_feasibility_gates`).
-   * - ``TADAH_HPO_FORCE_REBUILD`` (any value)
-     - Rebuild the per-thread trainer from scratch on every evaluation
-       instead of re-initialising the cached one (serial builds) — slower;
-       a reference for checking that re-initialisation is exact.
 
 .. _diagnostic_markers:
 

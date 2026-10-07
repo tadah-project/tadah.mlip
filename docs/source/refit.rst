@@ -291,6 +291,24 @@ the ``FIXINDEX``/``FIXWEIGHT`` and ``OPTIM FIXWEIGHT`` lines index).
 Configuration reference
 -----------------------
 
+The numbers of the configuration are read strictly, before the EAM file:
+a real number in the number grammar of the hpotarget file (decimal, no
+hexadecimal float, ``inf``, ``nan`` or number below the smallest normal
+double) and an integer as decimal digits, each within the range its key
+states in the tables below.  A configuration file must also pass the type
+check of every Tadah! configuration key, which refuses, for instance,
+``.5`` and ``+3``.  An error names the key and the token as written:
+
+.. code-block:: none
+
+   tadah refit: REFIT_TOL_AMBIENT must be a positive number, got '0'
+   tadah refit: REFIT_COMPACT_JITTERS must be an integer from 0 to 2147483646, got '3000000000'
+
+Before 1.6.0 they were read unchecked: ``REFIT_TOL_AMBIENT 0`` made the
+energy metric infinite, ``OUTPUT_GRID_SCALE 0`` wrote a 2-point
+``refit.eam``, ``REFIT_COMPACT_OPT_EVERY 0`` and ``INSERT_TOPK 0`` became 1,
+and ``REFIT_COMPACT_SEED 3000000000``, a valid seed, failed converting.
+
 General and output
 ~~~~~~~~~~~~~~~~~~~
 
@@ -322,10 +340,11 @@ General and output
      - Live, line-flushed optimisation log; the self-test is at its end.
    * - ``OUTPUT_GRID_SCALE`` (float)
      - ``1.0``
-     - Output setfl grid density relative to the input table.
+     - Output setfl grid density relative to the input table; > 0.
    * - ``OPTIM_PCT`` (float)
      - ``5.0``
-     - ±% half-width of the OPTIM bounds written into the HPO target.
+     - ±% half-width of the OPTIM bounds written into the HPO target; > 0
+       (also with ``--edit`` and ``--retarget``).
 
 Mode and basis
 ~~~~~~~~~~~~~~
@@ -362,10 +381,10 @@ Objective and curve weighting
      - (curve) Weights :math:`\phi,\rho` fully between the equilibrium nearest-neighbour distance and the cutoff, and :math:`F` from zero to the equilibrium density, relaxing toward compression — tighter equilibrium energies for a given basis size.
    * - ``REFIT_CURVE_RELAX``
      - ``0.05``
-     - (curve, weighting on) Floor weight in the compressed region, in (0, 1]; smaller focuses the fit harder on the equilibrium region.
+     - (curve, weighting on) Floor weight in the compressed region, in (0, 1] (checked in either objective); smaller focuses the fit harder on the equilibrium region.
    * - ``REFIT_CURVE_DERIV_WEIGHT``
      - ``0.0``
-     - (curve) Weight of the 1st/2nd-derivative terms relative to value. ``0`` fits values only (best crystal energies); raise to fit slope/curvature shape.
+     - (curve) Weight of the 1st/2nd-derivative terms relative to value, >= 0. ``0`` fits values only (best crystal energies); raise to fit slope/curvature shape.
 
 Compact ladder
 ~~~~~~~~~~~~~~
@@ -379,28 +398,28 @@ Compact ladder
      - Effect
    * - ``REFIT_COMPACT_NMAX``
      - ``40``
-     - Per-function basis ceiling. One value (all functions) or three ``phi rho F`` (e.g. ``35 12 35``). Higher is more flexible and slower.
+     - Per-function basis ceiling: one integer from 1 (all functions) or three ``phi rho F`` (e.g. ``35 12 35``). Higher is more flexible and slower. The sample grid of at least 4×NMAX points must fit 2147483647.
    * - ``REFIT_COMPACT_SAMPLES``
      - ``800``
-     - Sample points per function for the fit and RMSE (raised to at least 4×NMAX). More is finer and slower.
+     - Sample points per function for the fit and RMSE, from 1 (raised to at least 50 and 4×NMAX). More is finer and slower.
    * - ``REFIT_COMPACT_OPT_EVERY``
      - ``1``
-     - Run the full per-rung optimisation every K-th rung; intermediate rungs grow by insertion only. Higher is faster and coarser.
+     - Run the full per-rung optimisation every K-th rung (K from 1); intermediate rungs grow by insertion only. Higher is faster and coarser.
    * - ``REFIT_COMPACT_STALL``
      - ``12``
-     - Stop a function's ladder after this many rungs without improvement (Blip families: 6).
+     - Stop a function's ladder after this many rungs without improvement, from 1 (Blip families: 6).
    * - ``REFIT_COMPACT_INSERT_TOPK``
      - ``3``
-     - Try this many top residual peaks per rung and keep the best insertion (Blip families: 1).
+     - Try this many top residual peaks per rung and keep the best insertion, from 1 (Blip families: 1).
    * - ``REFIT_COMPACT_JITTERS``
      - ``2``
-     - Randomised restarts per rung (jitters+1 candidates); more explores the landscape harder.
+     - Randomised restarts per rung (jitters+1 candidates), from 0 to 2147483646; more explores the landscape harder.
    * - ``REFIT_COMPACT_SHARE``
      - ``0.5``
-     - Per-function share of the tolerance budget used by the rung-selection metric.
+     - Per-function share of the tolerance budget used by the rung-selection metric; > 0.
    * - ``REFIT_COMPACT_SEED``
      - ``12345``
-     - RNG seed for the jittered restarts; fixes the run for reproducibility.
+     - RNG seed for the jittered restarts, from 0 to 4294967295; fixes the run for reproducibility.
    * - ``REFIT_COMPACT_MERGE``
      - ``auto``
      - Knot coalescence guard: penalises near-coincident knot pairs during EXPLORE and merges them after REFINE, re-inserting a fresh knot at the worst residual. ``auto`` is off for ``curve`` and on for ``energy``; ``true``/``false`` force it. Knot families only.
@@ -417,19 +436,19 @@ Window and self-test
      - Effect
    * - ``REFIT_TOL_AMBIENT`` (meV/atom)
      - ``0.1``
-     - Pass threshold for the ambient band (:math:`a/a_0\,0.95\!-\!1.10`); also weights the energy-mode metric there.
+     - Pass threshold for the ambient band (:math:`a/a_0\,0.95\!-\!1.10`), > 0; also weights the energy-mode metric there.
    * - ``REFIT_TOL_COMPRESSED`` (meV/atom)
      - ``1.0``
-     - Pass threshold for the compressed band (:math:`a/a_0\,0.75\!-\!0.95`).
+     - Pass threshold for the compressed band (:math:`a/a_0\,0.75\!-\!0.95`), > 0.
    * - ``REFIT_REACH_SMIN``
      - ``0.75``
-     - Smallest :math:`a/a_0` the fit must stay faithful at; sets the reachable :math:`r`/:math:`\rho` window.
+     - Smallest :math:`a/a_0` the fit must stay faithful at, in (0, 1]; sets the reachable :math:`r`/:math:`\rho` window.
    * - ``REFIT_REACH_MARGIN``
      - ``1.25``
-     - Safety margin on the reachable :math:`F(\rho)` window.
+     - Safety margin on the reachable :math:`F(\rho)` window; > 0.
    * - ``REFIT_R_LO_FRAC``
      - ``0.20``
-     - Inner radial fit bound as a fraction of the cutoff; also the lower edge of the :math:`\phi/\rho` weight ramp.
+     - Inner radial fit bound as a fraction of the cutoff, in (0, 1); also the lower edge of the :math:`\phi/\rho` weight ramp.
    * - ``REFIT_PLACEMENT``
      - ``window``
      - ``window`` places the basis on the reachable window; ``uniform`` spreads it over the full range.
@@ -811,18 +830,18 @@ when the refit will be tuned further.
      - Preset grid density: ``coarse`` | ``balanced`` | ``fine`` | ``accurate``.
    * - ``N2B``
      - —
-     - :math:`\phi(r)` basis count.
+     - :math:`\phi(r)` basis count, from 1 to 1024 (the escalation's cap).
    * - ``NRHO_BASIS``
      - —
-     - :math:`\rho(r)` basis count. Under ``RHOFORM NONNEG``/``MONOTONE``
+     - :math:`\rho(r)` basis count, from 1 to 1024. Under ``RHOFORM NONNEG``/``MONOTONE``
        the density solve is non-negative least squares, whose cost grows
        faster with the count (see :ref:`refit_rhoform`).
    * - ``NF_BASIS``
      - —
-     - :math:`F(\rho)` basis count.
+     - :math:`F(\rho)` basis count, from 1 to 1024.
    * - ``REFIT_MAX_ESCALATIONS``
      - ``4``
-     - Automatic basis-escalation rounds while above tolerance.
+     - Automatic basis-escalation rounds while above tolerance, from 0.
    * - ``REFIT_CONSTRAIN_F0``
      - ``true``
      - Under ``EMBF0 FREE``: pin the raw :math:`F(0)` softly to the table

@@ -678,8 +678,12 @@ criterion in it would have no effect: ``MAXEVAL``/``MAXITER``,
 written, as ``LIB`` is (below).  An EXPLORE ``INNER`` block's
 ``MAXEVAL``, ``FTOL_REL`` and ``XTOL_REL`` stay accepted with ``ALGO
 NONE`` under the EXPLORE optimiser ``GN_MLSL_LDS``, whose local searches
-they also set; before 1.6.0 REFINE's were accepted under ``REFIT_OBJECTIVE
-curve`` too (the FUSE curve refine ran with them).  EXPLORE's ``INNER``
+they also set, and another stop criterion there is an error that names
+those searches as what reads them (``EXPLORE INNER: FTOL_ABS has no effect
+with ALGO NONE (no local search runs; under ALGO GN_MLSL_LDS the block sets
+MLSL's local LN_SBPLX searches, which read MAXEVAL, FTOL_REL, XTOL_REL);
+remove FTOL_ABS``); before 1.6.0 REFINE's were accepted under
+``REFIT_OBJECTIVE curve`` too (the FUSE curve refine ran with them).  EXPLORE's ``INNER``
 block configures the per-rung local search whatever the EXPLORE
 optimiser, ``UNIFORM`` included.  Before 1.6.0 these keys were accepted
 and ignored:

@@ -2647,6 +2647,69 @@ TEST_CASE("Subcommand: refit --edit and --retarget refuse a key of a refit "
   CHECK(std::filesystem::exists("pot_edited.tadah"));
 }
 
+/* Pins: a task file's global NUMERIC, which applies to every task
+ * (ALLOWED_KEYS.task's example sets "NUMERIC 14 # output precision" above
+ * the first TASK line), does not stop a --retarget task. On the outputs of
+ * a dense refit of the small Ta setfl, `tadah --task run.task` with
+ * NUMERIC 14 above an --edit TASK refit (EDIT pot.tadah, FUNC phi, ADD 2.5)
+ * and a --retarget TASK refit (RETARGET refit.hpotarget, OUTFILE
+ * rt.hpotarget) exits 0 and writes pot_edited.tadah and rt.hpotarget, the
+ * latter byte-identical to the file `tadah refit --retarget
+ * refit.hpotarget -o rt.hpotarget` writes without NUMERIC (its bounds are
+ * printed %.8e whatever NUMERIC is); a task file with NUMERIC 14 and the
+ * --retarget task alone exits 0 and writes the same rt.hpotarget, and no
+ * pot_edited.tadah.
+ * Before the fix: --retarget refused NUMERIC ("tadah refit --retarget:
+ * NUMERIC has no effect under --retarget: only a refit of an EAM file and
+ * --edit read it; remove NUMERIC"): both task files exited 1, the first
+ * after its --edit task had written pot_edited.tadah (and
+ * refit_edited.hpotarget), and neither wrote rt.hpotarget. */
+TEST_CASE("Task file: a global NUMERIC does not stop a refit --retarget "
+          "task",
+          "[TadahCLI][exit-status][task-file][refit]") {
+  ScratchCwd cwd("refit_retarget_global_numeric");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun fit = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    INFO("refit: status " << fit.status << "\n" << reported(fit));
+    REQUIRE(fit.status == 0);
+    REQUIRE(std::filesystem::exists("pot.tadah"));
+    REQUIRE(std::filesystem::exists("refit.hpotarget"));
+  }
+  std::string without;  // --retarget's file without NUMERIC
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--retarget",
+                                "refit.hpotarget", "-o", "rt.hpotarget"});
+    INFO("--retarget: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    without = slurp("rt.hpotarget");
+    REQUIRE_FALSE(without.empty());
+  }
+  const std::string retarget =
+      "TASK refit\nRETARGET refit.hpotarget\nOUTFILE rt.hpotarget\n";
+  for (const std::string& file :
+       {std::string("NUMERIC 14\n\n"
+                    "TASK refit\nEDIT pot.tadah\nFUNC phi\nADD 2.5\n\n") +
+            retarget,
+        std::string("NUMERIC 14\n\n") + retarget}) {
+    const bool edit = contains(file, "EDIT");
+    std::filesystem::remove("pot_edited.tadah");
+    std::filesystem::remove("rt.hpotarget");
+    std::ofstream("run.task") << file;
+    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+    const std::string rep = reported(r);
+    INFO("task file:\n" << file << "status " << r.status << "\n" << rep);
+    CHECK(r.status == 0);
+    CHECK_FALSE(contains(rep, "NUMERIC has no effect"));
+    CHECK(std::filesystem::exists("pot_edited.tadah") == edit);
+    CHECK(std::filesystem::exists("rt.hpotarget"));
+    CHECK(slurp("rt.hpotarget") == without);
+  }
+}
+
 /* ---- explain: a long description is printed as text ------------------ */
 
 /* Pins: `tadah explain refit.optimizer` exits 0 and prints the key's long

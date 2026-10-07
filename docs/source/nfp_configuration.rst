@@ -4973,7 +4973,9 @@ outputs) is the run's structured journal. It opens with a banner
                          ``Embedding F(0)`` (EMBF0) and the raw F(0) of -c,
                          the density report (``Density form``, ``Density
                          rho(r)``, ``Density rhobar``) of -c and each WARM seed
-   -- LOSS FUNCTION --   targets, weights, FAILSCORE
+   -- LOSS FUNCTION --   targets, weights, FAILSCORE and the failures that
+                         score it; under FAILSCORE_GRADING ON a ``Fail
+                         grading`` line names those graded instead
    -- PROGRESS      --   timestamped events: bests, warnings, milestones,
                          feasibility-gate rejects
    -- DIAGNOSTICS   --   NaN/Inf clampings, evaluations that threw, graded

@@ -144,6 +144,10 @@ Root-level loss control:
        lines capture the value in force when they are read; a line's
        own ``--failscore`` changes only the value substituted for that
        line's variables when its simulation fails.
+       An evaluation that raises an exception (its training fails, say)
+       scores ``FAILSCORE`` too: ``hpo_run.log`` gives each one a
+       ``WARNING`` with the message, and its DIAGNOSTICS count them under
+       ``Evaluations that threw``, apart from the NaN/Inf clampings.
        ``DLIB:GFS`` hands dlib a finite stand-in for a failed
        evaluation instead (:ref:`failed evaluations under DLIB:GFS
        <hpo_dlib_gfs_failures>`); the history files and the journal
@@ -762,7 +766,15 @@ global form for nonlinear losses such as L2: averaging losses differs from
 taking the loss of an average. The forms agree for a single dataset.
 
 The run journal and potential header identify the form and the resolved
-indexed assignments. In ``loss.tadah`` and ``best_loss.tadah``, indexed
+indexed assignments. The journal's new-best ``top:`` line lists an indexed
+metric per dataset, ``ERMSE[i]`` / ``FRMSE[i]`` (a dataset the metric does not
+measure has none), and a global one as ``ERMSE_global`` / ``FRMSE_global``.
+Like every part of that line, each is shown as its contribution to the run's
+``loss=``, the mean over the loss terms: ``ERMSE[i]`` is ``L(ERMSE)[i]``
+divided by the number of datasets and by the number of loss terms, so the
+parts of all the terms add up to ``loss=`` (the line lists the five largest)
+and the percentages are shares of it. Only with the indexed metric as the
+one loss term is ``ERMSE[i]`` its share of ``L(ERMSE)[avg]``. In ``loss.tadah`` and ``best_loss.tadah``, indexed
 ``L(ERMSE)[avg]`` / ``L(FRMSE)[avg]`` columns are the mean of the corresponding
 dataset losses. For the global form they retain the loss of the average
 metric. Raw metric averages in ``stats.tadah`` and ``outvar.tadah`` are
@@ -2121,8 +2133,8 @@ candidate can make positive (``WATOM`` fixed at :math:`\le 0`, or an
 ``OPTIM WATOM`` box that does not reach above 0) is a startup error under
 either ``SEED`` mode, since every evaluation would be rejected. At startup
 every *seed* is evaluated as a candidate: the ``-c`` potential and every
-``CONFIG`` or ``WARM`` point of the resolved ``INIT`` chains (``OUTER``,
-``PRESTAGE`` and ``PRESTAGE.INNER``) and of the ``RESTART`` block's
+``CONFIG`` or ``WARM`` point of the resolved ``INIT`` chains (``OUTER`` and
+``PRESTAGE``; an ``INNER`` block takes none) and of the ``RESTART`` block's
 ``METHOD`` chain (a restart round starts from them; ``RESTART WARM
 <file>`` in the messages). A
 failing seed that the optimiser may start from stops
@@ -3795,7 +3807,12 @@ Top-level keys inside the ``INIT`` block
    * - ``WARM_ON_MISMATCH``
      - ``warn`` / ``error`` / ``skip``
      - ``warn``
-     - What to do when ``WARM`` cannot fill every ``OPTIM`` key.
+     - What a ``WARM`` seed of this block's chain does when it cannot fill
+       every ``OPTIM`` key or lies outside the box: ``warn`` keeps it (a
+       missing key takes its ``-c`` value, a value outside the box is
+       clamped into it) with a WARNING, ``error`` stops the run at startup,
+       ``skip`` drops the point.  A ``RESTART`` block has its own
+       (:ref:`restart_decorator`).
 
 Each ``METHOD`` line is checked where it is written — a known method,
 its argument count and ``K`` — so an error names that line (``Error on
@@ -4327,6 +4344,17 @@ RESTART decorator
        are reproducible (with ``SOBOL``, block ``SEED + r`` of the
        sequence).  Without ``SEED`` each restart draws from
        ``std::random_device``.
+   * - ``WARM_ON_MISMATCH``
+     - ``warn`` / ``error`` / ``skip`` (default ``warn``)
+     - What a ``WARM`` seed of the ``METHOD`` chain does when it cannot
+       fill every ``OPTIM`` key or lies outside the box, as in the ``INIT``
+       block, at startup (``error``: a startup error) and at each restart.
+       It is the ``RESTART`` block's own: the ``INIT`` block's does not
+       apply to this chain.  A round whose chain then produces no point
+       (``skip``) starts from the previous round's points, with a WARNING
+       (``RESTART r/MAX: the METHOD chain (WARM) produced no starting
+       point; ...``).  Before 1.6.0 this setting was accepted and ignored,
+       and the ``INIT`` block's applied.
 
 The decorator is active only when **both** ``AFTER_STAGNATION`` and
 ``MAX`` are positive; with either at its default ``0`` the ``RESTART``
@@ -5120,13 +5148,16 @@ outputs) is the run's structured journal. It opens with a banner
                          ``Embedding F(0)`` (EMBF0) and the raw F(0) of -c,
                          the density report (``Density form``, ``Density
                          rho(r)``, ``Density rhobar``) of -c and each WARM seed
-   -- LOSS FUNCTION --   targets, weights, FAILSCORE
+   -- LOSS FUNCTION --   targets, weights, FAILSCORE and the failures that
+                         score it; under FAILSCORE_GRADING ON a ``Fail
+                         grading`` line names those graded instead
    -- PROGRESS      --   timestamped events: bests, warnings, milestones,
                          feasibility-gate rejects
-   -- DIAGNOSTICS   --   NaN/Inf clampings, graded failures with the gate
-                         rejects, unusable losses (every evaluation without a
-                         usable loss) with a verdict, positive-form
-                         projections, bound-proximity analysis
+   -- DIAGNOSTICS   --   NaN/Inf clampings, evaluations that threw, graded
+                         failures with the gate rejects, unusable losses
+                         (every evaluation without a usable loss) with a
+                         verdict, positive-form projections, bound-proximity
+                         analysis
    -- PERFORMANCE   --   timing statistics
    -- RESULT        --   final status, best loss, best metrics; DM_REAM:
                          raw F(0) of the first and the best evaluation, the
@@ -5633,7 +5664,8 @@ Marker                                                                       Mea
 ``[HPO] InitStrategy NAME produced N starting points``                        After init resolution.
 ``[HPO] WARM: loaded N parameter(s) from <file>``                             ``WARM`` read all keys.
 ``[HPO] WARM: primed warmstart cache with N HOT_A0 entry(ies)``               ``HOT_A0`` lines parsed from a ``WARM`` file.
-``[HPO] WARM: clamped dim[d] from X to Y (bounds […])``                       Warm point fell outside narrowed bounds.
+``[HPO] WARM: N parameter(s) from <file> clamped into OPTIM bounds …``       Warm point fell outside narrowed bounds (``WARM_ON_MISMATCH``
+                                                                             ``warn`` or ``skip``; ``error`` stops the run with it).
 ``[HPO] DLIB:GFS seeding with N starting points``                             Multi-seed forwarding.
 ``[HPO] GRID: MAXEVAL N < M grid points (…); evaluating the first N …``       ``TADAH:GRID`` stops its sweep after ``MAXEVAL`` points.
 ``[HPO] TADAH:RANDOM stopped: <stop> after N evaluation(s)``                 The stop that ended ``RANDOM``: ``MAXEVAL reached``, ``MAXTIME exceeded``,

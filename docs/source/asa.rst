@@ -264,7 +264,11 @@ defaults):
      - Rescale per-dimension temperatures by tangent sensitivities.
        Note: a ``FAILSCORE``-level failure DURING a tangent computation
        aborts the run with INVALID_COST_FUNCTION_DERIV (upstream
-       semantics) — set 0 for intermittently failing objectives.
+       semantics) — set 0 for intermittently failing objectives.  A
+       ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` or signal stop that falls in
+       the tangents is not such a failure: its stop line reads ``(asa
+       exit: IMMEDIATE_EXIT requested during the reanneal tangents
+       (asa_out: INVALID_COST_FUNCTION_DERIV))`` and needs no change here.
    * - ``Delta_X``
      - 0.001
      - Finite-difference step of the reanneal tangents; 0 disables
@@ -476,6 +480,23 @@ Journal output
    [12:05:15]  INFO  ASA summary: generated=173 accepted=61 host_evals=200 best=4.621547e-02 exit=IMMEDIATE_EXIT  (at-best: generated=151 accepted=54)
    [12:05:15]  INFO  ASA stopped: MAXEVAL reached after 200 host eval(s) (asa exit: IMMEDIATE_EXIT)
 
+The stop line gives the reason, the host evaluations and asa()'s exit
+code.  The reason is a stop of tadah's -- ``MAXEVAL reached``, ``MAXTIME
+exceeded``, ``STOPVAL reached``, ``shutdown requested (SIGINT)`` (or the
+signal that was received), ``RESTART stagnation stop (no new best within
+AFTER_STAGNATION evaluations)``, ``an evaluation raised an exception
+(<message>)`` -- or one of ASA's own (``Limit_Acceptances/Limit_Generated
+reached``, a parameter or the cost temperature annealed below
+``EPS_DOUBLE``, the cost plateau, too many invalid states, a host failure
+during the reanneal tangents).  The count includes the evaluation that
+raised the stagnation stop or an error (``loss.tadah`` has its row), not
+one stopped by a shutdown request, which comes before the evaluation
+starts.  A stop of tadah's that falls in the reanneal tangents gives the
+exit code ``IMMEDIATE_EXIT requested during the reanneal tangents
+(asa_out: INVALID_COST_FUNCTION_DERIV)``: ``asa_out`` names the code ASA
+returns for a failed derivative there, which the pending stop's invalid
+states look like to it.
+
 The ``generated``/``accepted`` figures are live totals; the ``at-best``
 pair repeats upstream ASA's exit convention of restoring its counters
 to their values at the moment the best state was found (it reads
@@ -532,7 +553,9 @@ Ingber's recommended tuning order (ASA-README / ASA-NOTES):
   ``Limit_Invalid_Generated_States``), but a failure inside a
   reanneal-tangent computation aborts with
   INVALID_COST_FUNCTION_DERIV — prefer ``Reanneal_Parameters 0`` or
-  ``Delta_X 0`` there.
+  ``Delta_X 0`` there.  A ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` or signal
+  stop inside the tangents reads ``IMMEDIATE_EXIT requested during the
+  reanneal tangents`` instead and needs neither.
 * Expensive re-visits (integer dimensions, coarse landscapes): enable
   the evaluation cache with ``Queue_Size`` + per-dimension
   ``Queue_Resolution``.

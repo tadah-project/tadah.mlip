@@ -3632,7 +3632,12 @@ Top-level keys inside the ``INIT`` block
    * - ``WARM_ON_MISMATCH``
      - ``warn`` / ``error`` / ``skip``
      - ``warn``
-     - What to do when ``WARM`` cannot fill every ``OPTIM`` key.
+     - What a ``WARM`` seed of this block's chain does when it cannot fill
+       every ``OPTIM`` key or lies outside the box: ``warn`` keeps it (a
+       missing key takes its ``-c`` value, a value outside the box is
+       clamped into it) with a WARNING, ``error`` stops the run at startup,
+       ``skip`` drops the point.  A ``RESTART`` block has its own
+       (:ref:`restart_decorator`).
 
 Each ``METHOD`` line is checked where it is written — a known method,
 its argument count and ``K`` — so an error names that line (``Error on
@@ -4164,6 +4169,17 @@ RESTART decorator
        are reproducible (with ``SOBOL``, block ``SEED + r`` of the
        sequence).  Without ``SEED`` each restart draws from
        ``std::random_device``.
+   * - ``WARM_ON_MISMATCH``
+     - ``warn`` / ``error`` / ``skip`` (default ``warn``)
+     - What a ``WARM`` seed of the ``METHOD`` chain does when it cannot
+       fill every ``OPTIM`` key or lies outside the box, as in the ``INIT``
+       block, at startup (``error``: a startup error) and at each restart.
+       It is the ``RESTART`` block's own: the ``INIT`` block's does not
+       apply to this chain.  A round whose chain then produces no point
+       (``skip``) starts from the previous round's points, with a WARNING
+       (``RESTART r/MAX: the METHOD chain (WARM) produced no starting
+       point; ...``).  Before 1.6.0 this setting was accepted and ignored,
+       and the ``INIT`` block's applied.
 
 The decorator is active only when **both** ``AFTER_STAGNATION`` and
 ``MAX`` are positive; with either at its default ``0`` the ``RESTART``
@@ -5454,7 +5470,8 @@ Marker                                                                       Mea
 ``[HPO] InitStrategy NAME produced N starting points``                        After init resolution.
 ``[HPO] WARM: loaded N parameter(s) from <file>``                             ``WARM`` read all keys.
 ``[HPO] WARM: primed warmstart cache with N HOT_A0 entry(ies)``               ``HOT_A0`` lines parsed from a ``WARM`` file.
-``[HPO] WARM: clamped dim[d] from X to Y (bounds […])``                       Warm point fell outside narrowed bounds.
+``[HPO] WARM: N parameter(s) from <file> clamped into OPTIM bounds …``         Warm point fell outside narrowed bounds (``WARM_ON_MISMATCH``
+                                                                             ``warn`` or ``skip``; ``error`` stops the run with it).
 ``[HPO] DLIB:GFS seeding with N starting points``                             Multi-seed forwarding.
 ``[HPO] GRID: MAXEVAL N < M grid points (…); evaluating the first N …``       ``TADAH:GRID`` stops its sweep after ``MAXEVAL`` points.
 ``[HPO] TADAH:RANDOM stopped: <stop> after N evaluation(s)``                 The stop that ended ``RANDOM``: ``MAXEVAL reached``, ``MAXTIME exceeded``,

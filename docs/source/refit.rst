@@ -296,8 +296,9 @@ a real number in the number grammar of the hpotarget file (decimal, no
 hexadecimal float, ``inf``, ``nan`` or number below the smallest normal
 double) and an integer as decimal digits, each within the range its key
 states in the tables below.  A configuration file must also pass the type
-check of every Tadah! configuration key, which refuses, for instance,
-``.5`` and ``+3``.  An error names the key and the token as written:
+check of every Tadah! configuration key, which refuses ``.5`` in every
+number and a sign (``+3``, ``-3``) in an integer (``+0.5`` is a valid real
+number).  An error names the key and the token as written:
 
 .. code-block:: none
 
@@ -398,7 +399,7 @@ Compact ladder
      - Effect
    * - ``REFIT_COMPACT_NMAX``
      - ``40``
-     - Per-function basis ceiling: one integer from 1 (all functions) or three ``phi rho F`` (e.g. ``35 12 35``). Higher is more flexible and slower. The sample grid of at least 4×NMAX points must fit 2147483647.
+     - Per-function basis ceiling: one integer from 1 (all functions) or three ``phi rho F`` (e.g. ``35 12 35``). Higher is more flexible and slower. The sample grid of at least 4×NMAX points must fit 2147483647, so the largest NMAX is at most 536870911 (checked with the other numbers, before the EAM file is read).
    * - ``REFIT_COMPACT_SAMPLES``
      - ``800``
      - Sample points per function for the fit and RMSE, from 1 (raised to at least 50 and 4×NMAX). More is finer and slower.

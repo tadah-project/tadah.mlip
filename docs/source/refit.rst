@@ -628,8 +628,8 @@ its ``ALGO`` in ``LIB``:
      - ``ALGO`` (fitter name / NLopt name)
      - ``LIB``
    * - EXPLORE
-     - ``GN_MLSL_LDS`` / ``MLSL`` / ``GN_MLSL``, ``GN_DIRECT_L`` /
-       ``DIRECT`` / ``GN_DIRECT``, ``GN_CRS2_LM`` / ``CRS2`` / ``GN_CRS2``
+     - ``GN_MLSL_LDS`` / ``MLSL``, ``GN_DIRECT_L`` / ``DIRECT``,
+       ``GN_CRS2_LM`` / ``CRS2``
      - ``NLOPT``
    * - EXPLORE
      - ``GLOBAL`` / ``DLIB_GLOBAL``
@@ -657,6 +657,18 @@ The ``ALGO`` names are the refit's own, not those of ``tadah hpo``: the
 refit's dlib global search is ``GLOBAL`` (``tadah hpo``'s ``DLIB GFS``),
 and ``LBFGS`` is dlib's L-BFGS (NLopt's is ``LD_LBFGS``; in ``tadah hpo``
 ``LBFGS`` is a ``CERES`` algorithm).
+
+The refit's ``MLSL``, ``DIRECT`` and ``CRS2`` are NLopt's ``GN_MLSL_LDS``,
+``GN_DIRECT_L`` and ``GN_CRS2_LM``.  ``GN_MLSL`` (MLSL with pseudo-random
+starts) and ``GN_DIRECT`` (DIRECT without the local bias of ``DIRECT_L``)
+are other NLopt algorithms, which ``tadah hpo`` runs as named, and
+``GN_CRS2`` is no NLopt algorithm: the refit refuses all three, with any
+``LIB``, naming the algorithm it runs.  Before 1.6.0 they ran
+``GN_MLSL_LDS``, ``GN_DIRECT_L`` and ``GN_CRS2_LM``:
+
+.. code-block:: none
+
+   EXPLORE: ALGO GN_MLSL is not run by tadah refit (NLopt's MLSL with pseudo-random starts); its MLSL is GN_MLSL_LDS: set ALGO GN_MLSL_LDS
 
 A missing ``LIB`` and one that does not match the ``ALGO`` are errors
 naming the right one.  The ``LIB`` given may be the one meant, so when the

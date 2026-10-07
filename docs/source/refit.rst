@@ -183,7 +183,11 @@ non-negative bump density without the convex lock) or ``RHOFORM SIGNED``.
 
 **Table pre-checks.** Under ``NONNEG`` and ``MONOTONE`` the tabulated
 density is checked on the radial fit window (the table nodes from the
-window's lower edge to the cutoff) before any fitting, in both modes: a
+window's lower edge, the ``fit_window_lo`` of ``refit_range_report.dat``,
+to the cutoff; never below the inner fit bound, below which no fit samples
+the table; with a steep wall the window starts above that bound, and the
+table between the two, which the dense fit solves with a small tail basis,
+is not checked) before any fitting, in both modes: a
 node value below :math:`-\mathrm{tol}` is an error (a positive-form density
 cannot be negative), and under ``MONOTONE`` so is a rise between
 neighbouring nodes above :math:`\mathrm{tol}`, with
@@ -273,10 +277,11 @@ the table:
 Before 1.6.0 it fitted the table in dense mode after a WARNING (a defaulted
 ``Knot5`` basis became ``Blip``).
 
-``refit.eam`` tabulates the fitted density above the fit window's lower
-edge; below it, the table continued from the edge, clamped at 0 under
-``NONNEG`` and ``MONOTONE``. The form's guarantees are those of the native
-density, from the lower edge out. ``tadah analysis bfunc`` plots the basis
+``refit.eam`` tabulates the fitted density from the inner fit bound up
+(the ``full_lo`` of ``refit_range_report.dat``); below it, the original
+table shifted by the constant that joins it to the fitted density there,
+clamped at 0 under ``NONNEG`` and ``MONOTONE``. The form's guarantees are
+those of the native density, from the inner fit bound out. ``tadah analysis bfunc`` plots the basis
 functions :math:`\psi_n` of a potential, not the steps :math:`S_n` of a
 ``MONOTONE`` density.
 
@@ -341,6 +346,7 @@ are checked, naming the key, the mode in effect and the mode that reads it:
    tadah refit: the REFINE block has no effect under REFIT_MODE dense: only REFIT_MODE compact reads it; remove the REFINE block, or set REFIT_MODE compact
    tadah refit: REFIT_CURVE_WEIGHTING has no effect under REFIT_OBJECTIVE energy (the default): only REFIT_OBJECTIVE curve reads it; remove REFIT_CURVE_WEIGHTING, or set REFIT_OBJECTIVE curve
    tadah refit: REFIT_CURVE_RELAX has no effect under REFIT_CURVE_WEIGHTING false: only REFIT_CURVE_WEIGHTING true (the default) reads it; remove REFIT_CURVE_RELAX, or set REFIT_CURVE_WEIGHTING true
+   tadah refit: REFIT_COMPACT_MERGE has no effect under REFIT_BASIS Blip5: only the knot families (REFIT_BASIS Knot5, the compact default, Knot3 or KnotMix) read it; remove REFIT_COMPACT_MERGE, or set REFIT_BASIS Knot5
 
 * Compact mode only: the keys of *Objective and curve weighting* (under
   ``REFIT_MODE dense`` ``REFIT_OBJECTIVE curve`` is an error and ``energy``
@@ -350,6 +356,11 @@ are checked, naming the key, the mode in effect and the mode that reads it:
   the default), before its value is checked; and ``REFIT_CURVE_RELAX``, the floor of the curve
   weighting, is read only with ``REFIT_CURVE_WEIGHTING true`` (its default),
   so it is an error with ``REFIT_CURVE_WEIGHTING false``.
+  ``REFIT_COMPACT_MERGE``, ``REFIT_COMPACT_OPT_EVERY`` and
+  ``REFIT_COMPACT_INSERT_TOPK`` are read by the knot families only (the
+  default ``Knot5``, ``Knot3``, ``KnotMix``), so each is an error with
+  ``REFIT_BASIS Blip`` or ``Blip5`` (in any spelling ``refit`` takes,
+  ``M6`` included).
 * Dense mode only: the keys of :ref:`refit_dense` (``REFIT_LEVEL``,
   ``N2B``, ``NRHO_BASIS``, ``NF_BASIS``, ``REFIT_MAX_ESCALATIONS``,
   ``REFIT_PLACEMENT``, ``REFIT_CONSTRAIN_F0``).
@@ -374,7 +385,8 @@ dense keys (``N2B 50``, ``REFIT_LEVEL accurate`` and
 ``REFIT_CURVE_WEIGHTING`` did nothing under ``energy`` although the help
 said it was rejected there, nor did ``REFIT_CURVE_RELAX`` and
 ``REFIT_CURVE_DERIV_WEIGHT`` (or ``REFIT_CURVE_RELAX`` with
-``REFIT_CURVE_WEIGHTING false``), a top-level ``OPTIMIZER`` block was ignored in
+``REFIT_CURVE_WEIGHTING false``), the knot-family keys did nothing with
+a Blip basis, a top-level ``OPTIMIZER`` block was ignored in
 dense mode and refused by the compact fitter only after it had read the
 table, and any other ``REFIT_MODE`` (``Dense``, ``COMPACT`` included) ran
 the dense fit after a WARNING.
@@ -485,13 +497,13 @@ Compact mode only (``REFIT_MODE dense`` refuses these keys).
      - Sample points per function for the fit and RMSE, from 1 (raised to at least 50 and 4×NMAX). More is finer and slower.
    * - ``REFIT_COMPACT_OPT_EVERY``
      - ``1``
-     - Run the full per-rung optimisation every K-th rung (K from 1); intermediate rungs grow by insertion only. Higher is faster and coarser.
+     - Run the full per-rung optimisation every K-th rung (K from 1); intermediate rungs grow by insertion only. Higher is faster and coarser. Knot families only: a Blip fit optimises every rung, and ``REFIT_BASIS Blip``/``Blip5`` refuses the key.
    * - ``REFIT_COMPACT_STALL``
      - ``12``
      - Stop a function's ladder after this many rungs without improvement, from 1 (Blip families: 6).
    * - ``REFIT_COMPACT_INSERT_TOPK``
      - ``3``
-     - Try this many top residual peaks per rung and keep the best insertion, from 1 (Blip families: 1).
+     - Try this many top residual peaks per rung and keep the best insertion, from 1. Knot families only: a Blip fit inserts at the curve peak, and ``REFIT_BASIS Blip``/``Blip5`` refuses the key.
    * - ``REFIT_COMPACT_JITTERS``
      - ``2``
      - Randomised restarts per rung (jitters+1 candidates), from 0 to 2147483646; more explores the landscape harder.
@@ -503,7 +515,7 @@ Compact mode only (``REFIT_MODE dense`` refuses these keys).
      - RNG seed for the jittered restarts, from 0 to 4294967295; fixes the run for reproducibility.
    * - ``REFIT_COMPACT_MERGE``
      - ``auto``
-     - Knot coalescence guard: penalises near-coincident knot pairs during EXPLORE and merges them after REFINE, re-inserting a fresh knot at the worst residual. ``auto`` is off for ``curve`` and on for ``energy``; ``true``/``false`` force it. Knot families only.
+     - Knot coalescence guard: penalises near-coincident knot pairs during EXPLORE and merges them after REFINE, re-inserting a fresh knot at the worst residual. ``auto`` is off for ``curve`` and on for ``energy``; ``true``/``false`` force it. Knot families only: a Blip fit has no knots, and ``REFIT_BASIS Blip``/``Blip5`` refuses the key.
 
 Window and self-test
 ~~~~~~~~~~~~~~~~~~~~~
@@ -529,7 +541,7 @@ Window and self-test
      - Safety margin on the reachable :math:`F(\rho)` window; > 0.
    * - ``REFIT_R_LO_FRAC``
      - ``0.20``
-     - Inner radial fit bound as a fraction of the cutoff, in (0, 1); also the lower edge of the :math:`\phi/\rho` weight ramp.
+     - Inner radial fit bound as a fraction of the cutoff, in (0, 1) (at least the table's dr; compact mode fits from max(0.8 r_reach, this bound)); also the lower edge of the :math:`\phi/\rho` weight ramp. Below the inner bound ``refit.eam`` carries the original table (*Output files*), and ``pot.tadah`` is not valid there.
 
 Stage blocks
 ~~~~~~~~~~~~
@@ -551,6 +563,9 @@ families), ``XMIN`` / ``XMAX`` (window edges; ``XMAX`` applies to ``F`` only),
 (maximum slope/curvature location). ``PIN`` freezes that centre through all
 later stages (its coefficient is still fitted). Pinning the window edges sets
 the extrapolation behaviour.
+
+``tadah explain refit.init`` and ``tadah explain refit.optimizer`` print
+the keys of the INIT and OPTIMIZER blocks below in the terminal.
 
 **EXPLORE / REFINE / FUSE** each accept ``ENABLED true|false`` (REFINE/FUSE;
 ``ENABLED false`` skips the stage) and a nested ``OPTIMIZER`` block, but not
@@ -883,7 +898,14 @@ Output files
 ------------
 
 * ``pot.tadah`` — fitted native potential.
-* ``refit.eam`` — round-trip setfl for LAMMPS.
+* ``refit.eam`` (``SETFL_OUT``) — round-trip setfl for LAMMPS: the fitted
+  functions from the inner fit bound up (the ``full_lo`` of
+  ``refit_range_report.dat``: ``REFIT_R_LO_FRAC`` × rcut, at least the
+  table's dr, in dense mode; max(0.8 × r_reach, that) in compact mode);
+  below it the original table's :math:`\phi` and :math:`\rho`, each shifted
+  by the constant that joins it to the fit there (:math:`\rho` clamped at 0
+  under ``NONNEG`` and ``MONOTONE``). ``pot.tadah`` is valid from the inner
+  fit bound out only.
 * ``refit.hpotarget`` — ``tadah hpo`` starter target.  Its ``OPTIM`` groups
   are written as ``CGRID2B``, ``SGRID2B``, ``CGRIDMB``, …, ``FIXWEIGHT``;
   ``tadah hpo`` orders the dimensions by key whatever the order of the
@@ -1085,7 +1107,10 @@ outer edge.
 
 Outputs default to ``pot_edited.tadah`` and ``refit_edited.hpotarget`` — the
 input file is never overwritten silently (an explicit ``-o`` /
-``--hpofileout`` wins; writing onto the input is refused). An output that
+``--hpofileout`` wins; writing onto the input is refused). ``--retarget``
+writes ``<input>_retargeted.hpotarget`` by default (below), so an
+``--edit`` and a ``--retarget refit.hpotarget``, two tasks of one task file
+or two commands, write different files. An output that
 cannot be written (a missing directory, a directory in its place) stops the
 command with an error naming the file, here as in every ``refit`` mode and
 in ``tadah train``. All bookkeeping
@@ -1111,8 +1136,13 @@ the comment state** — around the parameter values recovered from the existing
 bounds; everything else in the file is preserved byte-for-byte. ``--pct``
 takes a bare number (the global percentage) and/or ``KEY=N`` per-key
 overrides; ``--set 'KEY(i)=lo,hi'`` (repeatable) is applied last. Output goes
-to ``<input>_edited.hpotarget`` by default, ``-o <name>``, or back into the
-input with ``--in-place``.
+to ``<input>_retargeted.hpotarget`` by default (``refit_retargeted.hpotarget``
+for ``refit.hpotarget``; the extension and directory are the input's),
+``-o <name>``, or back into the input with ``--in-place``. Before 1.6.0 the
+default was ``<input>_edited.hpotarget``: for ``refit.hpotarget`` that is
+``refit_edited.hpotarget``, the hpotarget ``--edit`` writes, and of the two
+runs the second overwrote the first one's file (the two are searches around
+different potentials).
 
 The numbers of ``--pct`` and ``--set`` are read with the number grammar of
 the hpotarget file, which ``tadah hpo`` reads the rewritten bounds with

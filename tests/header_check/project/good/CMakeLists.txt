@@ -1,0 +1,6 @@
+add_library(dep INTERFACE)
+target_include_directories(dep INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/dep/include")
+add_library(probe STATIC probe.cpp)
+target_include_directories(probe PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(probe PUBLIC dep)
+add_subdirectory(app)

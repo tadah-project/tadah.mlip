@@ -176,6 +176,22 @@ without it (a standalone HPO build) the cases are Skipped unless
 `PROCESS` half needs `socketpair` even where `TADAH_PC_ISOLATION=THREAD` is
 set.
 
+`ctest -L headers` checks that every header compiles on its own: one entry
+per module (`tadah.core_headers`, `tadah.models_headers`, `tadah.mlip_headers`,
+`tadah.md_headers`, `tadah.lammps_headers`, `tadah.hpo_headers` and, for the
+`tadah` executable, `tadah_headers`), from cmake-tools'
+`tadah_add_header_check()`. Each header of the module's `include/` (and
+CORE's generated blueprint header) is compiled in a translation unit that
+includes it twice and nothing else, with the include directories and
+definitions a user of the library gets (for `tadah`, the executable's own):
+a header that relies on something included before it, or has no include
+guard, fails, and the output names it.
+A new header is checked without being registered. The checks are not part of
+the default build; their entries build them (`cmake --build`), on the
+machine's physical cores or on `-DTADAH_HEADER_CHECK_JOBS=<n>` processes, and
+a rerun compiles only what changed. `ctest -R tadah_header_check` tests the function
+itself. The installed tree is not checked.
+
 **Skipped, not passed.** A test that cannot run because an optional input
 is absent (an external dataset, an environment variable) must be reported
 as *Skipped*, so that a passing `ctest` means the checks ran:
@@ -261,14 +277,19 @@ python3 -m unittest discover -s Tadah.MLIP/docs/tools/tests -v
 ```
 
 The unit tests cover the input lookup (`docs/source/config/source_locator.py`),
-the `hpo.html` redirect check and the configuration-keys page generator
-(`docs/source/config/read_toml.py`). The GitLab `docs_sphinx` job runs them
+the `hpo.html` redirect check, the configuration-keys page generator
+(`docs/source/config/read_toml.py`) and the CLI page generator
+(`docs/source/cli/generate_cli.py`). The GitLab `docs_sphinx` job runs them
 and the same build, with all three variables set explicitly.
 
 The same unit tests are the CTest entry `tadah_docs_tools` (label `docs`,
 so `ctest -L docs` runs them) in every build configured with
-`-DBUILD_TESTING=ON`, which therefore needs a Python 3 interpreter. The
-cases that need `node`, `sphinx-build` or the Python modules `sphinx`,
+`-DBUILD_TESTING=ON`, which therefore needs a Python 3 interpreter. With
+`TADAH_ENABLE_NFP` it needs Python 3.11 or later: HPO's tests declare it
+(`HPO/cmake/hpo_test_python.cmake`), because their registry drift gate
+`hpo_anneal_registry_sync` reads TOML with `tomllib`, and the configure step
+stops on an older interpreter; `ctest -R hpo_test_python_minimum` checks
+that. The cases that need `node`, `sphinx-build` or the Python modules `sphinx`,
 `sphinx_rtd_theme`, `yaml` (PyYAML) or `pytomlpp` skip themselves when one
 is missing. CTest then reports the entry as *Skipped*, not *Passed*, and its
 output names the skipped cases, so a pass means every case ran.

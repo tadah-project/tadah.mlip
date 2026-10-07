@@ -170,9 +170,10 @@ add_subdirectory(catch_discovery)
 # ------------------------------------------------------------------
 # 7. Documentation build tools (docs/tools/tests)
 # ------------------------------------------------------------------
-# Unit tests of the docs input lookup (docs/source/config/source_locator.py)
-# and of the hpo.html redirect check (docs/tools/check_redirect.py). They
-# never use the network.
+# Unit tests of the docs input lookup (docs/source/config/source_locator.py),
+# of the hpo.html redirect check (docs/tools/check_redirect.py) and of the
+# configuration-keys and CLI page generators (docs/source/config/read_toml.py,
+# docs/source/cli/generate_cli.py). They never use the network.
 #
 # Some cases need node, sphinx-build or the Python modules sphinx,
 # sphinx_rtd_theme or yaml, and skip themselves when one is missing.
@@ -298,3 +299,51 @@ set_tests_properties(tadah_quickstart_reproduces_pot PROPERTIES
   LABELS examples
   TIMEOUT 600
   ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
+
+# ------------------------------------------------------------------
+# 11. Header self-containment (cmake-tools' tadah_add_header_check)
+# ------------------------------------------------------------------
+# tadah_headers (label headers): every header of include/ compiles on its
+# own and twice in a row, with the include directories, definitions and
+# options of the tadah executable. Each module checks its own library the
+# same way (<library>_headers). Before the fix: passes as well (a pin: no
+# header of include/ failed when the check was added).
+tadah_add_header_check(tadah)
+
+# The function itself: each case configures header_check/project, which
+# fetches this build's cmake-tools like every Tadah module does, and runs
+# its header checks (see header_check/check_header_check.cmake). Before
+# the fix (cmake-tools without the function): every case fails at its
+# configure step ('Unknown CMake command "tadah_add_header_check"').
+# private_entry: a header of include/ that includes a header of the second
+# HEADER_DIRS entry, a directory PRIVATE to the library (as CORE's
+# generated/ is), fails. Before that fix: it passed, because every
+# HEADER_DIRS entry was on the include path of every header's check.
+# refusals: each refusal of the function stops the configure step with its
+# message (an unexpected argument, no such target, an ALIAS or IMPORTED
+# target, HEADER_DIRS without a value, an entry that is not a directory or
+# has no header, the same relative path in two entries). Before the fix:
+# passes as well (a pin of refusals the function had from the start).
+# TADAH_HEADER_CHECK_JOBS: bad builds on one process, so its good headers
+# compile only if the build keeps going past the failed ones; good builds
+# on the physical cores (the default); refusals include a value that is
+# not a number of processes. Before that fix: the variable was not read,
+# so bad's entry ran on every physical core ('probe_headers --parallel:
+# '20', expected '1'') and compiled its good headers whether the build
+# kept going or not, and no value was refused.
+foreach(_case good bad private_dir private_entry new_header refusals)
+  add_test(NAME tadah_header_check_${_case}
+    COMMAND ${CMAKE_COMMAND}
+      -DCASE=${_case}
+      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/header_check/${_case}
+      "-DGENERATOR=${CMAKE_GENERATOR}"
+      -DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+      -DCXX=${CMAKE_CXX_COMPILER}
+      -DCTEST=${CMAKE_CTEST_COMMAND}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/header_check/check_header_check.cmake)
+  set_tests_properties(tadah_header_check_${_case} PROPERTIES
+    LABELS cmake
+    TIMEOUT 300)
+endforeach()

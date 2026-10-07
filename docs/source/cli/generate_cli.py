@@ -3,6 +3,7 @@
 
 import toml
 import os
+import textwrap
 from copy import deepcopy
 
 ###############################################################################
@@ -358,8 +359,8 @@ def create_command_block(task_obj, cmd_name):
         lines.append("")
     if task_obj.longDescription.strip():
         lines.append("**LONG DESCRIPTION**:")
-        for lln in task_obj.longDescription.strip().splitlines():
-            lines.append(f"  {lln}")
+        for lln in literal_text_lines(task_obj.longDescription):
+            lines.append(f"  {lln}" if lln else "")
         lines.append("")
 
     # Now "Options" for blueprintKeys
@@ -390,6 +391,48 @@ def create_command_block(task_obj, cmd_name):
         lines.append("")
 
     return "\n".join(lines)
+
+def literal_text_lines(text):
+    """The lines of a blueprint long_description as this page shows them.
+
+    The text is RST (the configuration-keys page renders it), but here it is
+    shown inside a command's parsed-literal block, as text: the blank lines
+    around it are left out and those inside it are empty; the indentation
+    all its lines share is removed and the rest kept, so a layout stays
+    nested; and the RST marker of a literal block, '::' closing a paragraph,
+    is shown as RST shows it: 'text::' as 'text:', 'text ::' as 'text', and
+    a paragraph of '::' alone, with the blank line after it, not at all.
+    Inside the literal block it opens (the lines indented more than that
+    paragraph, and blank lines), '::' is text.
+    """
+    lines = [ln.rstrip() for ln in textwrap.dedent(text).splitlines()]
+    while lines and not lines[0]:
+        lines.pop(0)
+    while lines and not lines[-1]:
+        lines.pop()
+    out = []
+    literal_indent = None   # indentation of the paragraph that opened one
+    skip_blank = False
+    for i, ln in enumerate(lines):
+        if skip_blank and not ln:
+            skip_blank = False
+            continue
+        skip_blank = False
+        indent = len(ln) - len(ln.lstrip())
+        if literal_indent is not None:
+            if not ln or indent > literal_indent:
+                out.append(ln)
+                continue
+            literal_indent = None
+        closes_paragraph = i + 1 == len(lines) or not lines[i + 1]
+        if closes_paragraph and ln.endswith("::"):
+            literal_indent = indent
+            if ln.strip() == "::":
+                skip_blank = True
+                continue
+            ln = ln[:-3].rstrip() if ln.endswith(" ::") else ln[:-1]
+        out.append(ln)
+    return out
 
 def build_key_info(bk: BlueprintKey):
     out = []
@@ -460,8 +503,8 @@ def build_key_info(bk: BlueprintKey):
     # long description
     if bk.longDescription:
         out.append(f"    **Description**:")
-        for lln in bk.longDescription.splitlines():
-            out.append(f"      {lln.strip()}")
+        for lln in literal_text_lines(bk.longDescription):
+            out.append(f"      {lln}" if lln else "")
 
     # examples => bullet list for non-bool
     if (not is_bool) and bk.examples:
@@ -521,9 +564,11 @@ def generate_cli_rst(tasks_map, allowed_map, output_path):
     print(f"CLI reference successfully written to {output_path}")
 
 
-toml_path = "config/blueprint_tadah.toml"
-output_path = "cli/cli_auto_gen.rst"
-os.makedirs(os.path.dirname(output_path), exist_ok=True)
+if __name__ == "__main__":
+    # conf.py runs this script from docs/source; importing it runs nothing.
+    toml_path = "config/blueprint_tadah.toml"
+    output_path = "cli/cli_auto_gen.rst"
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-allowedMap, internalMap, tasksMap, blueprintTadah = parse_blueprint(toml_path)
-generate_cli_rst(tasksMap, allowedMap, output_path)
+    allowedMap, internalMap, tasksMap, blueprintTadah = parse_blueprint(toml_path)
+    generate_cli_rst(tasksMap, allowedMap, output_path)

@@ -80,10 +80,40 @@ class ReadTomlTest(unittest.TestCase):
     def test_deprecated_key_shows_no_example(self):
         # The page must not show how to use a key it says to delete: the
         # key's empty examples list wins over the inherited TYPES examples.
+        # An example is a value of its key, shown as a line of the key (it
+        # was shown bare, "20", before the examples became values only).
         page = self.rt.render(blueprint())
         self.assertNotIn('*Example*', self.section(page, 'MBLOCK'))
-        self.assertIn('*Example* 1::\n\n       20\n',
+        self.assertIn('*Example* 1::\n\n       LAMBDA   20\n',
                       self.section(page, 'LAMBDA'))
+
+    def test_each_example_line_is_shown_once_after_its_key(self):
+        # Pins: an example is a value of its key (CORE's rule for the
+        # blueprint), and one of several lines is one value per line; the
+        # page shows each line once, as a configuration line of the key,
+        # "<KEY>   <value>", as CoreUserConfigParser lists the examples of a
+        # refused value. Blank lines and the blanks around a line are left
+        # out; examples are numbered in order.
+        # Before the fix: examples were shown as written, so a value was
+        # shown without its key ("1.0 2.0"), and an example that began with
+        # its key -- 64 in the blueprint until CORE made them values -- with
+        # it once.
+        bp = blueprint()
+        bp['TYPES']['DOUBLES'] = {'value_type': ['{DOUBLE}'],
+                                  'value_format': ['<double> ...'],
+                                  'value_N': [-2147483647],
+                                  'examples': ['2.0 -4.65 0.4']}
+        bp['ALLOWED_KEYS']['CGRID2B'] = {
+            'INHERIT': ['TYPES.DOUBLES'],
+            'description': 'Centres.',
+            'examples': ['LIN 10 0 6', '  1.0 2.0  \n\n1.5 2.5\n']}
+        sec = self.section(self.rt.render(bp), 'CGRID2B')
+        self.assertIn('   *Example* 1::\n\n       CGRID2B   LIN 10 0 6\n\n',
+                      sec)
+        self.assertIn('   *Example* 2::\n\n       CGRID2B   1.0 2.0\n'
+                      '       CGRID2B   1.5 2.5\n\n', sec)
+        self.assertNotIn('*Example* 3', sec)
+        self.assertEqual(sec.count('CGRID2B   '), 3)
 
     def test_ordinary_key_has_no_deprecation_warning(self):
         sec = self.section(self.rt.render(blueprint()), 'LAMBDA')

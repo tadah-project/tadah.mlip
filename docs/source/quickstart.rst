@@ -91,6 +91,62 @@ The output of the ``predict`` subcommand includes three files:
 - ``forces.pred``: Similar idea as above, but now forces are listed. The first row is the force on the first atom in the x-direction from the first dataset, the second row is the force on the first atom in the y-direction, and so on.
 - ``stress.pred``: The first six rows list components of the stress tensor from the first configuration, followed by six components from the second configuration, and so on. The ordering is xx, xy, xz, yy, yz, zz.
 
+.. _predict_error:
+
+Prediction errors
+^^^^^^^^^^^^^^^^^
+
+``tadah predict --error`` gives each predicted value its predictive
+standard deviation. It needs a potential trained with ``OALGO 3``, which
+writes the covariance of the weights :ref:`WCOV` and the noise variance of
+each row type :ref:`WNOISE` (see :ref:`weight_covariance`):
+
+.. math::
+
+   \sigma_i = \sqrt{\phi_i^\top \Sigma_w \phi_i + s_t^2}
+
+:math:`\phi_i` is the row of the value (its derivatives with respect to the
+weights: an energy, a force component or a stress component), built as
+``tadah predict`` evaluates the model, :math:`\Sigma_w` is ``WCOV`` and
+:math:`s_t^2` the ``WNOISE`` of the value's type. The first term is the
+variance of the predicted value, which the uncertainty of the weights gives;
+the second is the noise variance of an observation, from the fit's
+residuals. :math:`\sigma_i` is therefore the standard deviation of the
+difference between the prediction and a reference value of the kind the
+potential was fitted to. ``energy.pred``, ``forces.pred`` and
+``stress.pred`` get a fourth column with it (the energy's per atom,
+:math:`\sigma_E/N`), and ``error.pred`` lists for every structure its
+energy's :math:`\sigma_E/N` (eV/atom) and, with ``-F`` and ``-S``, the
+largest force (eV/Å) and stress (eV/Å³) :math:`\sigma` of the structure.
+
+``--error`` refuses a potential without ``WCOV`` and ``WNOISE`` and says
+why it has none: it was fitted with another ``OALGO`` (retrain it with
+``OALGO 3``) or with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``:
+retrain it with implementation 1); or, with ``OALGO 3``, it is a potential
+of Tadah! 1.0.0 to 1.5.0 (or of a 1.6.0 development build), whose ``SIGMA``
+is ignored (retrain it), its fit had no more observations than effective
+weights, so its noise variance was undefined (add data and retrain it), or
+its weights were set from ``FIXWEIGHT`` without a fit. It refuses forces
+(``-F``) or stresses (``-S``) of a potential whose fit had no force or
+stress rows with a non-zero weight, since its ``WNOISE`` has no noise
+variance of them; and, as every prediction has an energy, it refuses every
+prediction of a potential fitted without energies (``EWEIGHT 0``, or every
+structure's ``eweight`` 0: its ``WNOISE`` has no ``E``), which ``tadah
+train`` warns about when it writes it. Such a potential's ``WCOV``, and the
+standard deviations of ``--uncertainty``, are those of its fit. The noise variance is that of a
+structure of weight 1; structures with their own weights (``EWEIGHT_TEMP``,
+``WDBFILE``, data balancing) were fitted with other noise levels.
+
+.. versionchanged:: 1.6.0
+   Before 1.6.0 (and in 1.6.0 development builds before ``WCOV`` and
+   ``WNOISE``) the errors were computed from ``SIGMA``, a transposed and
+   unscaled matrix,
+   as :math:`\sqrt{\phi_i^\top \mathrm{diag}(\Sigma) \phi_i}` minus the
+   square root of the mean of that over all rows, so most of them were
+   negative and none was the standard deviation of a prediction; with
+   ``NORM true`` and a linear model the predicted values themselves were
+   off.
+
 .. _task_file:
 
 Task File

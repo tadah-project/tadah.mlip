@@ -28,7 +28,7 @@ Flag               Config key       Effect
 ``-o <file>``      ``OUTFILE``      Trained-model output file (default ``pot.tadah``).
 ``-F``             ``FORCE``        Train on forces in addition to energies (default off).
 ``-S``             ``STRESS``       Train on stresses in addition to energies (default off).
-``--uncertainty``  ``UNCERTAINTY``  Compute and write per-weight uncertainty (default off).
+``--uncertainty``  ``UNCERTAINTY``  Write every weight with its standard deviation, ``weights.tadah``; needs ``OALGO 3`` (default off).
 ``-v <0|1|2>``     ``VERBOSE``      Log level: 0 ERROR, 1 WARNING, 2 INFO (default 1).
 ================== ================ =====================================================================
 
@@ -55,8 +55,8 @@ in order:
    per-descriptor metadata for ρ-collapse and out-of-range parameter
    combinations.
 #. **Fit the regression model** declared by ``MODEL``.
-#. **Write ``pot.tadah``** (or whatever ``--outfile`` requests) and the
-   optional uncertainty file.
+#. **Write ``pot.tadah``** (or whatever ``--outfile`` requests) and, with
+   ``--uncertainty``, ``weights.tadah``.
 
 .. versionchanged:: 1.6.0
    The neighbour list holds every periodic image. Earlier versions missed
@@ -232,8 +232,8 @@ File               Contents
 ``pot.tadah``      The trained interatomic potential. Path overridable via ``--outfile`` /
                    ``OUTFILE``. This is the only required artefact and the file consumed by
                    ``tadah predict`` and the LAMMPS ``pair_style tadah``.
-``weights.tadah``  Per-weight mean and uncertainty, written only when ``--uncertainty`` /
-                   ``UNCERTAINTY true`` is set.
+``weights.tadah``  Every weight with its standard deviation, written only when
+                   ``--uncertainty`` / ``UNCERTAINTY true`` is set (``OALGO 3``).
 ================== ============================================================================
 
 A potential file that cannot be written (its directory does not exist, or
@@ -353,19 +353,85 @@ WARNING says so) and to the potentials ``tadah hpo`` writes (see
    configuration, or edited with ``tadah refit --edit``, that line counts
    as an explicit setting: delete it to get exact output again.
 
-weights.tadah format
-~~~~~~~~~~~~~~~~~~~~
+.. _weight_covariance:
 
-Written only when ``--uncertainty`` is requested. Three
-whitespace-separated columns with a single header line::
+Weight covariance and weights.tadah
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   Index   Mean weight        Uncertainty
+A fit with ``OALGO 3`` (the SVD solve) computes the covariance of its
+weights, the posterior covariance of Bayesian linear regression,
+
+.. math::
+
+   \Sigma_w = s^2 \left(\Phi^\top W \Phi + \lambda I\right)^{-1},
+   \qquad
+   s^2 = \frac{\mathrm{RSS}}{n_\mathrm{obs} - \gamma},
+   \qquad
+   \gamma = \sum_{i\ \mathrm{kept}} \frac{s_i^2}{s_i^2 + \lambda},
+
+with :math:`\Phi` the design matrix, :math:`W` the row weights
+(``eweight`` × ``EWEIGHT`` and so on), :math:`\lambda` the fit's ``LAMBDA``
+(the evidence approximation's for ``LAMBDA -1``), RSS the weighted residual
+sum of squares, :math:`n_\mathrm{obs}` the number of rows with a non-zero
+weight (the observations: structures stored with ``fweight 0`` add no force
+rows, for example) and :math:`s_i` the singular values of
+:math:`W^{1/2}\Phi`. :math:`s^2` is the noise variance of a row of unit
+weight. The solve keeps a singular direction when its :math:`s_i` is above
+``rcond`` times the largest (``rcond`` the second value of ``OALGO``,
+1e-8 by default); :math:`\gamma` sums over the kept directions, and the
+inverse is over them too: a direction the solve leaves out of the weights
+is left out of :math:`\Sigma_w` and of :math:`\gamma`, and a WARNING gives
+their number. ``pot.tadah`` gets two keys:
+
+- :ref:`WCOV`: N, then the N×N matrix :math:`\Sigma_w` column-major, in the
+  parameterisation of ``WEIGHTS`` (with ``NORM true`` and ``BF_Linear`` or
+  ``Kern_Linear`` that of the weights of the raw descriptors). A weight
+  ``FIXINDEX`` pins has no variance: its row and column are 0.
+- :ref:`WNOISE`: the noise variance of one value of each row type the fit
+  had rows of with a non-zero weight, :math:`s^2/W_t` for ``E``
+  (``EWEIGHT``), ``F`` (``FWEIGHT``) and ``S`` (``SWEIGHT``), in raw units
+  (eV², (eV/Å)², (eV/Å³)²), for a structure of weight 1. A fit without
+  energies of a non-zero weight (``EWEIGHT 0``) lists no ``E``: ``tadah
+  predict --error`` refuses such a potential, since every prediction has an
+  energy, and ``tadah train`` warns when it writes it.
+
+When the fit has no more observations than effective weights
+(:math:`n_\mathrm{obs} \le \gamma`) the noise variance is undefined: no
+``WCOV`` and ``WNOISE`` are written, and a WARNING says why. Any other
+``OALGO`` writes neither. ``tadah predict --error`` reads them (see
+:ref:`predict_error`).
+
+``--uncertainty`` writes ``weights.tadah``: every weight with its standard
+deviation, the square root of the diagonal of :math:`\Sigma_w` (0 for a
+pinned weight)::
+
+   Index   Mean weight        Std. dev.
        0   1.420421e+01       3.117841e-02
        1   2.604397e+03       4.882103e+00
        …
 
-``Index`` matches the ordering of the ``WEIGHTS`` row in
-``pot.tadah``.
+``Index`` matches the ordering of the ``WEIGHTS`` row in ``pot.tadah``.
+``--uncertainty`` is refused before training with an ``OALGO`` other than 3
+and with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``, whose solve of
+the kernel matrix computes no covariance: use implementation 1), and before
+``pot.tadah`` is written when the covariance is undefined; the message says
+why and what to change (for too few observations: add data with a non-zero
+weight).
+
+.. versionchanged:: 1.6.0
+   ``WCOV`` and ``WNOISE`` replace ``SIGMA``, which Tadah! 1.0.0 to 1.5.0
+   (and 1.6.0 development builds before this change) wrote with a
+   transposed formula
+   (:math:`V^\top R V` instead of :math:`V R V^\top`) and without
+   :math:`s^2`; it is a deprecated key now, ignored with a notice. The third
+   column of ``weights.tadah``, headed ``Uncertainty``, was its diagonal,
+   and with ``FIXINDEX`` the file had a row per free weight only. The
+   evidence approximation (``LAMBDA -1``) counts the observations alone
+   (it counted the design matrix's augmentation rows, one per weight, and
+   its rows of weight 0), so the λ and the weights of a ``LAMBDA -1`` fit
+   change: by a little when only the augmentation rows were counted, by
+   orders of magnitude in λ when the fit has many rows of weight 0 (a
+   ``FORCE true`` fit of structures stored with ``fweight 0``).
 
 Diagnostic output (verbose 2)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -582,10 +582,14 @@ and it is reported on standard error once per key and process, like a
    written to a potential).
 
 The notice comes from wherever such a potential or configuration is used
-(``tadah train``, ``predict``, ``analysis``, ``hpo`` and ``pair_style
-tadah``, which prints it on every rank), also when only the task
-configuration sets the key. Neither the log level nor ``VERBOSE 0`` hides
-it.
+(``tadah train``, ``predict``, ``analysis`` and ``hpo``), also when only the
+task configuration sets the key. Neither the log level nor ``VERBOSE 0``
+hides it. ``pair_style tadah`` writes it as a LAMMPS warning on rank 0
+instead, in ``log.lammps`` and on the screen, each time ``pair_coeff``
+loads such a potential (every LAMMPS instance of a process, such as the
+evaluations of ``tadah hpo``'s ``PC_LAMMPS``, has it in its own log)::
+
+   WARNING: pair tadah: potential 'pot.tadah': Key RHOFORM is ignored: ...
 
 **Embedding reference, EMBF0.** An isolated atom has :math:`\rho = 0`, so its
 embedding energy is :math:`F(0)`. The key ``EMBF0`` selects how :math:`F(0)`

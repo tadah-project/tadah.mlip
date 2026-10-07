@@ -773,8 +773,9 @@ Additional options
 ``--failscore <value>``
    The value substituted for each of this script's ``--varloss`` /
    ``--outvar`` variables when the simulation fails (crash, timeout,
-   out-of-window hot value, a ``--varloss``, ``--hotvar`` or
-   ``--failvar`` variable that cannot be read back, …); the substituted
+   out-of-window hot value, a hot value LAMMPS refuses to inject, a
+   ``--varloss``, ``--hotvar`` or ``--failvar`` variable that cannot be
+   read back, …); the substituted
    value then passes
    through the loss against the target like a measured one.  A finite
    number (it may be negative or ``0``: it is a variable's value, not a
@@ -859,7 +860,20 @@ such a value replaced the checked, reported limit.
    against ``[min, max]``. Validated values are cached per
    ``(script, name)`` and propagated as ``${<name>}`` into
    the cold (no-``--hotvar``) ``PC_LAMMPS`` scripts that use it, which
-   run in **phase B**.
+   run in **phase B**.  HPO injects the value as ``variable <name> equal
+   <value>`` before each script that reads it (and the warm-start seed
+   before the hot script).  LAMMPS refuses that when the name is already
+   another style in the script's LAMMPS instance — ``--invar <name>`` or
+   ``-var <name>`` on the line makes it an index-style variable — and
+   then the script does not run: it fails as a failed run does, journalled
+   with the LAMMPS message:
+
+   .. code-block:: none
+
+      PC_LAMMPS task failed (cold.in, occurrence 1): injecting `variable hot_a0 equal 3.25` before the script: ERROR: Cannot redefine variable hot_a0 with a different style (src/variable.cpp:478)
+
+   Before 1.6.0 the refusal was ignored and the script ran on the value
+   it had.
    ``<initial>`` is optional; when omitted the midpoint of
    ``[<min>, <max>]`` seeds the first iteration.  ``<min>``, ``<max>``
    and ``<initial>`` must be finite numbers: a token after ``<max>``

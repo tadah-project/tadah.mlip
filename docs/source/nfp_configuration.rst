@@ -182,9 +182,10 @@ optimiser may vary, and over what bounds:
    OPTIM <KEY> (indices) <low> <high>
 
 * ``<KEY>`` — any optimisable key from the training configuration.
-  Whether a key can be re-initialised safely is validated at startup:
-  an unsafe combination (e.g. ``RCUT2B`` with ``D2_EAM``) is a hard
-  error naming the offending key.  Keys are case-insensitive, as in the
+  A key or value that is not a search target is refused, at its line or
+  at startup, naming it (*Special cases* below: e.g. ``RCUT2B`` with
+  ``D2_EAM``, whose cutoff is its setfl file's).  Keys are
+  case-insensitive, as in the
   configuration: the key is upper-cased when the line is read, so every
   rule below applies whatever its case (``OPTIM weights`` is refused like
   ``OPTIM WEIGHTS``, ``OPTIM fixweight`` maps its indices through
@@ -318,6 +319,30 @@ Special cases:
   ``FIXINDEX`` or moved the data's bond length).  So is ``OPTIM OALGO
   (1)``, the training algorithm; ``OPTIM OALGO (2)``, the ``rcond`` *M*
   of options 1 and 3, is continuous and stays a search target.
+* ``OPTIM`` on a value its key takes only as an integer (every format of
+  the key gives it ``INT`` or ``UINT``: ``SBASIS``, the number of basis
+  vectors) is **rejected** at its line (``OPTIM SBASIS (1) is not a valid
+  search target: value 1 of SBASIS is an integer ...``); a candidate such
+  as 14.47 was trained as 14.  So is ``OPTIM`` on an internal key
+  (``DSIZE``, ``RCUTMAX``, ``ESTDEV``, ...), a value tadah computes itself
+  (``OPTIM ESTDEV`` failed every evaluation).
+* ``OPTIM MPARAMS`` is checked against the model's basis function or
+  kernel at startup (:ref:`nonlinear_models`): ``OPTIM MPARAMS (i)`` is
+  **rejected** on a function that reads fewer than *i* values (``BF_Linear``,
+  ``BF_Polynomial2``, ``Kern_Linear``, ``Kern_Quadratic`` and ``Kern_LQ``
+  read none; the search changed nothing), on the degree of
+  ``Kern_Polynomial`` (``MPARAMS (1)``, an integer) and on the
+  :math:`\sigma` of ``Kern_RBF`` with a box that is not positive.
+* ``OPTIM RCUT2B`` or ``OPTIM RCUTMB`` on the cutoff of a ``D2_EAM`` or
+  ``DM_EAM`` — inside a ``D2_mJoin`` or ``DM_mJoin``, that descriptor's
+  own value — is **rejected** at startup: the descriptor takes the cutoff
+  of its setfl file (``SETFL``) and refuses another (``OPTIM RCUT2B (1)
+  is not a valid search target: D2_EAM takes the cutoff 5.58190742024 of
+  its setfl file 'Ta.eam.alloy' (SETFL) and refuses another value ...``),
+  so every candidate but the ``-c`` value failed its evaluation.  The
+  values of the other descriptors of an mJoin stay search targets.  The
+  pre-flight audit and ``tadah analysis suggest_bounds`` do not propose
+  this cutoff either.
 * A radial bump width — ``SGRID2B`` of a ``D2_Blip``/``D2_Blip5`` pair
   term, ``SGRIDMB`` of a DM_REAM ``Blip``/``Blip5`` density — must be
   :math:`> 0` in every ``RHOFORM``.  A bump spans :math:`[c - w/\eta,
@@ -627,11 +652,30 @@ false, and with ``MODEL M_KRR`` also when it was true; an ``M_KRR``
 dataset's stress unit, eV/Å³, written ``eV/A^3``.  Before 1.6.0 they were
 labelled ``meV/atom`` and ``GPa``, with the same values.
 
-**One run per process.** Run each ``tadah hpo`` in a process of its own.
-Two runs in one process — a ``tadah --task`` file with two ``hpo`` tasks,
-or a program that calls ``hpo_run`` twice — share each thread's cached
-trainer, so the second run fits with the first run's ``FORCE``, ``STRESS``
-and other keys it does not search.
+**Two runs in one process.** A ``tadah --task`` file with two ``hpo``
+tasks, or a program that calls ``hpo_run`` twice, runs two model
+searches. Each evaluation builds its model from its own run's
+configuration and candidate (the second run used to train the first run's
+model, with the first run's ``FORCE``, ``STRESS``, ``LAMBDA``, row weights
+and every other key it does not search), and each run starts its
+``PC_LAMMPS --hotvar`` values from their ``<initial>`` values or its
+``WARM`` seeds (the second run used to start each hot script from the
+value the first run's last evaluation converged to). Run twice from one
+task file, example ``01_minimal`` (at ``MAXEVAL 3``) writes for its
+second run the ``loss.tadah``, ``outvar.tadah`` and ``best_pot.tadah`` of
+the same run made alone, but for the evaluation numbers. Two things carry over
+from the first run:
+
+* the evaluation counter: the second run's ``ITERATION`` numbers and
+  ``DUMP`` file names continue where the first run's stopped (4 to 6
+  after a run of 3 evaluations);
+* the width of the pool of worker threads that runs the ``PC_LAMMPS``
+  scripts and the training kernels (``THREADS``), which the first run
+  sets: a later run with another ``THREADS`` runs on the first run's
+  pool, while its journal reports its own value.
+
+Run each ``tadah hpo`` in a process of its own when the runs need
+different ``THREADS`` or their files must number the evaluations from 1.
 
 Individual validation targets and weights
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2077,6 +2121,10 @@ restart.
 and the first ``OALGO`` value (``OPTIM <KEY> is not a valid search
 target: ..., structure data rather than a continuous parameter; set it in
 the -c potential/configuration.``); ``OPTIM EMBF0`` has its own message.
+So is ``OPTIM`` on an integer value (``SBASIS``) or an internal key;
+``OPTIM MPARAMS`` on a value the model's function does not read as a
+continuous one, and ``OPTIM RCUT2B``/``RCUTMB`` on the setfl cutoff of a
+``D2_EAM``/``DM_EAM``, are errors at startup (see *Special cases* above).
 
 .. _hpo_optimizer_common:
 
@@ -5020,7 +5068,10 @@ propagated as ``${hot_a0}`` into every cold (no-``--hotvar``)
 ``PC_LAMMPS`` script in phase B. When ``WARM`` reads a ``pot.tadah``
 whose writer dumped ``# HOT_A0 <script> <a0>`` lines, the cache is
 primed automatically; ``[HPO] WARM: primed warmstart cache with N
-HOT_A0 entry(ies)`` confirms how many lines were absorbed.
+HOT_A0 entry(ies)`` confirms how many lines were absorbed. The cached
+values belong to the run: a second run in the same process (a task file
+with two ``hpo`` tasks) starts from ``<initial>``, or from its ``WARM``
+seed, again.
 
 Multiple ``--hotvar`` flags may be repeated on the same ``PC_LAMMPS``
 line; ``hot_a0`` is just a conventional name (any identifier works).
@@ -5211,10 +5262,6 @@ harnesses).  An invalid value is an error, not a silent fallback.
      - Replaces ``FAILSCORE_GRADING`` (:ref:`failscore_grading`).
    * - ``TADAH_BUMPGATE=CANDIDATE|STRICT``
      - Replaces ``BUMPGATE`` (:ref:`hpo_feasibility_gates`).
-   * - ``TADAH_HPO_FORCE_REBUILD`` (any value)
-     - Rebuild the per-thread trainer from scratch on every evaluation
-       instead of re-initialising the cached one (serial builds) — slower;
-       a reference for checking that re-initialisation is exact.
 
 .. _diagnostic_markers:
 

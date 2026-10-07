@@ -1337,11 +1337,14 @@ evaluation):
 
    PC_OBSERVABLE term failed (cohesive_energy[1], eval 2, occurrence 1): the relaxed lattice parameter a0 = 3.3532 is outside its --hotvar window [3, 3.35]
 
-The reason is the observable's own (for ``cohesive_energy`` also a
-relaxation that did not converge with ``--unconverged-penalty nan``), a
-value or loss that is not finite, or the message of an evaluation that
-threw.  Before, a failed term left only ``FAILSCORE`` in ``loss.tadah``
-and ``NaN`` in ``outvar.tadah``.
+The reason is the observable's own (for ``cohesive_energy`` the relaxed
+``a0`` outside its window, as above, or a relaxation that did not
+converge whose ``--unconverged force-scaled`` value, target + slope ×
+fmax, is not finite: its forces were not, or the product overflowed), a
+value or loss that is not finite (``its loss is not finite (value
+1e+300, --loss L2)``), or the message of an evaluation that threw (``its
+evaluation threw: …``).  Before, a failed term left only ``FAILSCORE``
+in ``loss.tadah`` and ``NaN`` in ``outvar.tadah``.
 
 Columns.  The *k*-th ``PC_OBSERVABLE`` line (1-based, in configuration
 order) writes the ``loss.tadah`` column ``L(<tag>)[k]`` and the

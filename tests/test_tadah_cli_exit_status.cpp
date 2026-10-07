@@ -4252,8 +4252,8 @@ TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
  * `tadah train --uncertainty` lists the weights with their standard
  * deviations (weights.tadah), `tadah predict --error` gives each value
  * its predictive standard deviation, and `tadah properties pairwise
- * --error` the energy's. SIGMA, what Tadah! 1.0.0 to 1.6.0 wrote instead,
- * is a deprecated key. */
+ * --error` the energy's. SIGMA, what Tadah! 1.0.0 to 1.5.0 and the 1.6.0
+ * development builds wrote instead, is a deprecated key. */
 
 namespace {
 
@@ -4313,7 +4313,7 @@ std::string twobody_manybody_config() {
 }  // namespace
 
 /* Pins: a potential with a SIGMA line (an OALGO 3 potential of Tadah!
- * 1.0.0 to 1.6.0) predicts: `tadah predict` exits 0 and reports the
+ * 1.0.0 to 1.5.0 or a 1.6.0 development build) predicts: `tadah predict` exits 0 and reports the
  * deprecation notice of SIGMA once ("Deprecated key SIGMA is ignored",
  * naming the transposed formula); `tadah predict --error` exits 1 saying
  * the potential has no weight covariance, naming WCOV and OALGO 3.

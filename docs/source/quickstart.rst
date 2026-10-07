@@ -91,6 +91,51 @@ The output of the ``predict`` subcommand includes three files:
 - ``forces.pred``: Similar idea as above, but now forces are listed. The first row is the force on the first atom in the x-direction from the first dataset, the second row is the force on the first atom in the y-direction, and so on.
 - ``stress.pred``: The first six rows list components of the stress tensor from the first configuration, followed by six components from the second configuration, and so on. The ordering is xx, xy, xz, yy, yz, zz.
 
+.. _predict_error:
+
+Prediction errors
+^^^^^^^^^^^^^^^^^
+
+``tadah predict --error`` gives each predicted value its predictive
+standard deviation. It needs a potential trained with ``OALGO 3``, which
+writes the covariance of the weights :ref:`WCOV` and the noise variance of
+each row type :ref:`WNOISE` (see :ref:`weight_covariance`):
+
+.. math::
+
+   \sigma_i = \sqrt{\phi_i^\top \Sigma_w \phi_i + s_t^2}
+
+:math:`\phi_i` is the row of the value (its derivatives with respect to the
+weights: an energy, a force component or a stress component), built as
+``tadah predict`` evaluates the model, :math:`\Sigma_w` is ``WCOV`` and
+:math:`s_t^2` the ``WNOISE`` of the value's type. The first term is the
+variance of the predicted value, which the uncertainty of the weights gives;
+the second is the noise variance of an observation, from the fit's
+residuals. :math:`\sigma_i` is therefore the standard deviation of the
+difference between the prediction and a reference value of the kind the
+potential was fitted to. ``energy.pred``, ``forces.pred`` and
+``stress.pred`` get a fourth column with it (the energy's per atom,
+:math:`\sigma_E/N`), and ``error.pred`` lists for every structure its
+energy's :math:`\sigma_E/N` (eV/atom) and, with ``-F`` and ``-S``, the
+largest force (eV/Å) and stress (eV/Å³) :math:`\sigma` of the structure.
+
+``--error`` refuses a potential without ``WCOV`` and ``WNOISE``: one fitted
+with another ``OALGO``, and one of Tadah! 1.0.0 to 1.5.0 (and 1.6.0
+development builds), whose ``SIGMA`` is ignored (retrain it with ``OALGO
+3``). It refuses forces (``-F``) or stresses (``-S``) of a potential whose
+fit had no force or stress rows with a non-zero weight, since its
+``WNOISE`` has no noise variance of them. The noise variance is that of a
+structure of weight 1; structures with their own weights (``EWEIGHT_TEMP``,
+``WDBFILE``, data balancing) were fitted with other noise levels.
+
+.. versionchanged:: 1.6.0
+   The errors were computed from ``SIGMA``, a transposed and unscaled matrix,
+   as :math:`\sqrt{\phi_i^\top \mathrm{diag}(\Sigma) \phi_i}` minus the
+   square root of the mean of that over all rows, so most of them were
+   negative and none was the standard deviation of a prediction; with
+   ``NORM true`` and a linear model the predicted values themselves were
+   off.
+
 .. _task_file:
 
 Task File

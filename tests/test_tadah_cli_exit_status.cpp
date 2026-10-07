@@ -30,8 +30,10 @@
 // or evaluate, naming the structure and the atoms (NNFinder's refusal). The
 // predict and train cases run in every build, the hpo case needs NFP.
 //
-// The [task-file] case runs `tadah --task` on a task file whose TASK lines
-// carry an inline comment; it runs in every build.
+// The [task-file] cases run `tadah --task` on a task file whose TASK lines
+// carry an inline comment, and on task files with a TASK line that has no
+// key line (an unknown name, GLOBAL included, is refused; a known one runs
+// on the GLOBAL keys); they run in every build.
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
@@ -2006,9 +2008,11 @@ TEST_CASE("Subcommand: analysis dataset_stats --close-contact lists the "
  * "TRAIN.#.first.task:.training"' (the words of the comment joined to the
  * task name) before any task ran, so the status and message CHECKs failed
  * and the REQUIRE on pot.tadah stopped the case. */
-TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment",
-          "[TadahCLI][exit-status][task-file]") {
-  ScratchCwd cwd("task_comment");
+namespace {
+
+/* Writes db.tadah, three Ta dimers, and config.train, a D2_BP pair
+ * potential with four basis functions trained on it (to pot.tadah). */
+void write_ta_dimer_training() {
   std::ofstream("db.tadah")
       << weighted_entry("S1", "1 1 1", "2.60 0.40 0.30", "0", "0")
       << weighted_entry("S2", "1 1 1", "3.10 0.20 0.50", "0", "0")
@@ -2019,6 +2023,14 @@ TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment"
          "SGRID2B 0.5 0.5 0.5 0.5\nRCTYPE2B Cut_Cos\nRCUT2B 4.5\n"
          "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
          "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+}
+
+}  // namespace
+
+TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment",
+          "[TadahCLI][exit-status][task-file]") {
+  ScratchCwd cwd("task_comment");
+  write_ta_dimer_training();
   std::ofstream("run.task")
       << "VERBOSE    0                  # global default\n"
          "TASK       train          # First task: training\n"
@@ -2033,6 +2045,77 @@ TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment"
   CHECK_FALSE(contains(rep, "Unknown task section"));
   REQUIRE(std::filesystem::exists("pot.tadah"));
   CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS").size() == 5u);  // key + 4
+  REQUIRE(std::filesystem::exists("energy.pred"));
+  CHECK(predicted_values("energy.pred").size() == 3u);
+}
+
+/* Pins: `tadah --task` checks the name of a TASK line that has no key line
+ * of its own: "TASK bogus" followed by "TASK train" exits 1 with 'Unknown
+ * task section "BOGUS"' before any task runs, so no pot.tadah is written.
+ * Before the fix: the keyless BOGUS section was dropped unchecked, the
+ * train task ran and the command exited 0 with pot.tadah written. */
+TEST_CASE("Task file: tadah --task refuses an unknown task name on a TASK "
+          "line without keys",
+          "[TadahCLI][exit-status][task-file]") {
+  ScratchCwd cwd("task_keyless_unknown");
+  write_ta_dimer_training();
+  std::ofstream("run.task") << "VERBOSE 0\n"
+                               "TASK bogus\n"
+                               "TASK train\n"
+                               "  CONFIG config.train\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "Unknown task section \"BOGUS\""));
+  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+}
+
+/* Pins: `tadah --task` refuses "TASK global", a task the blueprint does not
+ * define, after a predict task: exit 1 with 'Unknown task section
+ * "GLOBAL"'.
+ * Before the fix: a section named GLOBAL was never checked, so the GLOBAL
+ * task reached TaskFactory, which looked it up among the blueprint tasks
+ * and dereferenced the end iterator: a segmentation fault that ends the
+ * test process. */
+TEST_CASE("Task file: tadah --task refuses 'TASK global'",
+          "[TadahCLI][exit-status][task-file]") {
+  ScratchCwd cwd("task_global");
+  write_ta_dimer_training();
+  std::ofstream("run.task") << "TASK train\n"
+                               "  CONFIG config.train\n"
+                               "TASK global\n"
+                               "  VERBOSE 0\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "Unknown task section \"GLOBAL\""));
+  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+}
+
+/* Pins: a TASK line without key lines runs on the GLOBAL keys: a task file
+ * with DBFILE and POTENTIAL above "TASK train" (CONFIG config.train) and a
+ * last line "TASK predict" exits 0, writes pot.tadah and predicts with it
+ * from the GLOBAL DBFILE and POTENTIAL: energy.pred with one prediction per
+ * structure.
+ * Before the fix: the keyless PREDICT section was dropped, so only the
+ * training ran; the command exited 0 without energy.pred and the REQUIRE on
+ * it stopped the case. */
+TEST_CASE("Task file: a TASK line without key lines runs on the GLOBAL keys",
+          "[TadahCLI][exit-status][task-file]") {
+  ScratchCwd cwd("task_keyless_global");
+  write_ta_dimer_training();
+  std::ofstream("run.task") << "VERBOSE    0\n"
+                               "DBFILE     db.tadah\n"
+                               "POTENTIAL  pot.tadah\n"
+                               "TASK train\n"
+                               "  CONFIG config.train\n"
+                               "TASK predict\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  REQUIRE(std::filesystem::exists("pot.tadah"));
   REQUIRE(std::filesystem::exists("energy.pred"));
   CHECK(predicted_values("energy.pred").size() == 3u);
 }

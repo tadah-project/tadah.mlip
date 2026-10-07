@@ -302,8 +302,9 @@ when an MPI build of LAMMPS is simply named differently. Launch with
    points to ``TADAH_HPO_MPI``; ``OFF`` is accepted, so older presets still
    work. Its configuration keys :ref:`MPIWPCKG`, :ref:`MBLOCK` and
    :ref:`NBLOCK` are deprecated: files that contain them still load, with a
-   warning on standard error (once per key and process), and the values are
-   ignored. The ``PC_LAMMPS --ncpu`` option of
+   warning on standard error (once per key and process; ``pair_style
+   tadah`` writes it as a LAMMPS warning, in ``log.lammps``, each time it
+   loads such a potential), and the values are ignored. The ``PC_LAMMPS --ncpu`` option of
    ``tadah hpo`` was removed with it (:ref:`pc_lammps_options`).
 
 .. _installation_nfp:

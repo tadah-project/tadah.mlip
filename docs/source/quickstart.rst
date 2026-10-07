@@ -119,17 +119,28 @@ potential was fitted to. ``energy.pred``, ``forces.pred`` and
 energy's :math:`\sigma_E/N` (eV/atom) and, with ``-F`` and ``-S``, the
 largest force (eV/Å) and stress (eV/Å³) :math:`\sigma` of the structure.
 
-``--error`` refuses a potential without ``WCOV`` and ``WNOISE``: one fitted
-with another ``OALGO``, and one of Tadah! 1.0.0 to 1.5.0 (and 1.6.0
-development builds), whose ``SIGMA`` is ignored (retrain it with ``OALGO
-3``). It refuses forces (``-F``) or stresses (``-S``) of a potential whose
-fit had no force or stress rows with a non-zero weight, since its
-``WNOISE`` has no noise variance of them. The noise variance is that of a
+``--error`` refuses a potential without ``WCOV`` and ``WNOISE`` and says
+why it has none: it was fitted with another ``OALGO`` (retrain it with
+``OALGO 3``) or with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``:
+retrain it with implementation 1); or, with ``OALGO 3``, it is a potential
+of Tadah! 1.0.0 to 1.5.0 (or of a 1.6.0 development build), whose ``SIGMA``
+is ignored (retrain it), its fit had no more observations than effective
+weights, so its noise variance was undefined (add data and retrain it), or
+its weights were set from ``FIXWEIGHT`` without a fit. It refuses forces
+(``-F``) or stresses (``-S``) of a potential whose fit had no force or
+stress rows with a non-zero weight, since its ``WNOISE`` has no noise
+variance of them; and, as every prediction has an energy, it refuses every
+prediction of a potential fitted without energies (``EWEIGHT 0``, or every
+structure's ``eweight`` 0: its ``WNOISE`` has no ``E``), which ``tadah
+train`` warns about when it writes it. Such a potential's ``WCOV``, and the
+standard deviations of ``--uncertainty``, are those of its fit. The noise variance is that of a
 structure of weight 1; structures with their own weights (``EWEIGHT_TEMP``,
 ``WDBFILE``, data balancing) were fitted with other noise levels.
 
 .. versionchanged:: 1.6.0
-   The errors were computed from ``SIGMA``, a transposed and unscaled matrix,
+   Before 1.6.0 (and in 1.6.0 development builds before ``WCOV`` and
+   ``WNOISE``) the errors were computed from ``SIGMA``, a transposed and
+   unscaled matrix,
    as :math:`\sqrt{\phi_i^\top \mathrm{diag}(\Sigma) \phi_i}` minus the
    square root of the mean of that over all rows, so most of them were
    negative and none was the standard deviation of a prediction; with

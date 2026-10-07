@@ -108,9 +108,11 @@ warning per key and process to standard error
 (``WARNING: Deprecated key MBLOCK is ignored: ...``), however many lines,
 files included with CONFIG or reads of the file contain it -- the rule of
 every ignored key, :ref:`EMBF0 and RHOFORM without a DM_REAM block
-<dm_ream_only_keys>` included. VERBOSE does not silence the warning, and
-``pair_style tadah`` prints it too: in LAMMPS it appears on the terminal, not
-in ``log.lammps``, once from every MPI rank that reads the potential.
+<dm_ream_only_keys>` included. VERBOSE does not silence the warning.
+``pair_style tadah`` writes it as a LAMMPS warning on rank 0 instead, in
+``log.lammps`` and on the screen, each time ``pair_coeff`` loads such a
+potential (``WARNING: pair tadah: potential 'pot.tadah': Deprecated key
+MBLOCK is ignored: ...``).
 
 '''
 

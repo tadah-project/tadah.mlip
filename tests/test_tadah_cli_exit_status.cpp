@@ -30,8 +30,19 @@
 // or evaluate, naming the structure and the atoms (NNFinder's refusal). The
 // predict and train cases run in every build, the hpo case needs NFP.
 //
-// The [task-file] case runs `tadah --task` on a task file whose TASK lines
-// carry an inline comment; it runs in every build.
+// The [index] cases run `tadah data print`, `tadah analysis descriptor` and
+// `tadah analysis bfunc` with -i: the indices are 1-based, parsed strictly
+// and checked against the number of structures (or basis functions) before
+// anything is read; they run in every build.
+//
+// The [descriptor] case runs `tadah train` with a TYPE2B descriptor whose
+// grid keys are not set; it runs in every build.
+//
+// The [task-file] cases run `tadah --task` on a task file whose TASK lines
+// carry an inline comment, and on task files with a TASK line that has no
+// key line (an unknown name, GLOBAL included, is refused; a known one runs
+// on the GLOBAL keys), and on task files with a TASK line naming a group of
+// tasks (refused before any task runs); they run in every build.
 //
 // The [nonlinear] cases run `tadah train`, `tadah predict` (with and
 // without --error) and `tadah hpo` with every non-linear model (M_KRR
@@ -2014,9 +2025,11 @@ TEST_CASE("Subcommand: analysis dataset_stats --close-contact lists the "
  * "TRAIN.#.first.task:.training"' (the words of the comment joined to the
  * task name) before any task ran, so the status and message CHECKs failed
  * and the REQUIRE on pot.tadah stopped the case. */
-TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment",
-          "[TadahCLI][exit-status][task-file]") {
-  ScratchCwd cwd("task_comment");
+namespace {
+
+/* Writes db.tadah, three Ta dimers, and config.train, a D2_BP pair
+ * potential with four basis functions trained on it (to pot.tadah). */
+void write_ta_dimer_training() {
   std::ofstream("db.tadah")
       << weighted_entry("S1", "1 1 1", "2.60 0.40 0.30", "0", "0")
       << weighted_entry("S2", "1 1 1", "3.10 0.20 0.50", "0", "0")
@@ -2027,6 +2040,14 @@ TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment"
          "SGRID2B 0.5 0.5 0.5 0.5\nRCTYPE2B Cut_Cos\nRCUT2B 4.5\n"
          "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
          "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+}
+
+}  // namespace
+
+TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment",
+          "[TadahCLI][exit-status][task-file]") {
+  ScratchCwd cwd("task_comment");
+  write_ta_dimer_training();
   std::ofstream("run.task")
       << "VERBOSE    0                  # global default\n"
          "TASK       train          # First task: training\n"
@@ -2376,6 +2397,147 @@ TEST_CASE("Subcommand: analysis bfunc plots the basis of a BIAS true "
     if (line.find_first_not_of(" \t") != std::string::npos) ++rows;
   CHECK(rows == 20u);
   CHECK(slurp("bias.out") == slurp("nobias.out"));
+}
+
+/* Pins: `tadah --task` checks the name of a TASK line that has no key line
+ * of its own: "TASK bogus" followed by "TASK train" exits 1 with 'Unknown
+ * task section "BOGUS"' before any task runs, so no pot.tadah is written.
+ * Before the fix: the keyless BOGUS section was dropped unchecked, the
+ * train task ran and the command exited 0 with pot.tadah written. */
+TEST_CASE("Task file: tadah --task refuses an unknown task name on a TASK "
+          "line without keys",
+          "[TadahCLI][exit-status][task-file]") {
+  ScratchCwd cwd("task_keyless_unknown");
+  write_ta_dimer_training();
+  std::ofstream("run.task") << "VERBOSE 0\n"
+                               "TASK bogus\n"
+                               "TASK train\n"
+                               "  CONFIG config.train\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "Unknown task section \"BOGUS\""));
+  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+}
+
+/* Pins: `tadah --task` refuses a TASK line that names a group of tasks
+ * before any task runs: "TASK train" (CONFIG config.train) followed by "TASK
+ * data", "TASK analysis" or "TASK properties" exits 1 with 'TASK section
+ * "<NAME>" is a group of tasks, not a task', and no pot.tadah is written.
+ * Before the fix: the group names are blueprint tasks, so the check passed;
+ * the training ran (pot.tadah written) and the command then exited 1 with
+ * 'EngineFactory::create: No engine found for DATA' (ANALYSIS,
+ * PROPERTIES). */
+TEST_CASE("Task file: tadah --task refuses a TASK line naming a group of tasks "
+          "before any task runs",
+          "[TadahCLI][exit-status][task-file]") {
+  for (const std::string group : {"data", "analysis", "properties"}) {
+    INFO("TASK " << group);
+    ScratchCwd cwd("task_group_" + group);
+    write_ta_dimer_training();
+    std::ofstream("run.task") << "VERBOSE 0\n"
+                                 "TASK train\n"
+                                 "  CONFIG config.train\n"
+                                 "TASK " << group << "\n";
+    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    std::string upper = group;
+    for (char &ch : upper) ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+    CHECK(contains(rep, "TASK section \"" + upper + "\" is a group of tasks, not a task"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
+/* Pins: `tadah --task` refuses "TASK global", a task the blueprint does not
+ * define, after a predict task: exit 1 with 'Unknown task section
+ * "GLOBAL"'.
+ * Before the fix: a section named GLOBAL was never checked, so the GLOBAL
+ * task reached TaskFactory, which looked it up among the blueprint tasks
+ * and dereferenced the end iterator: a segmentation fault that ends the
+ * test process. */
+TEST_CASE("Task file: tadah --task refuses 'TASK global'",
+          "[TadahCLI][exit-status][task-file]") {
+  ScratchCwd cwd("task_global");
+  write_ta_dimer_training();
+  std::ofstream("run.task") << "TASK train\n"
+                               "  CONFIG config.train\n"
+                               "TASK global\n"
+                               "  VERBOSE 0\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "Unknown task section \"GLOBAL\""));
+  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+}
+
+/* Pins: a TASK line without key lines runs on the GLOBAL keys: a task file
+ * with DBFILE and POTENTIAL above "TASK train" (CONFIG config.train) and a
+ * last line "TASK predict" exits 0, writes pot.tadah and predicts with it
+ * from the GLOBAL DBFILE and POTENTIAL: energy.pred with one prediction per
+ * structure.
+ * Before the fix: the keyless PREDICT section was dropped, so only the
+ * training ran; the command exited 0 without energy.pred and the REQUIRE on
+ * it stopped the case. */
+TEST_CASE("Task file: a TASK line without key lines runs on the GLOBAL keys",
+          "[TadahCLI][exit-status][task-file]") {
+  ScratchCwd cwd("task_keyless_global");
+  write_ta_dimer_training();
+  std::ofstream("run.task") << "VERBOSE    0\n"
+                               "DBFILE     db.tadah\n"
+                               "POTENTIAL  pot.tadah\n"
+                               "TASK train\n"
+                               "  CONFIG config.train\n"
+                               "TASK predict\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  REQUIRE(std::filesystem::exists("pot.tadah"));
+  REQUIRE(std::filesystem::exists("energy.pred"));
+  CHECK(predicted_values("energy.pred").size() == 3u);
+}
+
+/* ---- [descriptor]: a TYPE2B line needs its list keys -------------------- */
+
+/* Pins: `tadah train` refuses a D2_BP 5 5 model without CGRID2B and
+ * SGRID2B: exit 1 naming both keys and the line,
+ *   TYPE2B D2_BP takes 5 CGRID2B values and 5 SGRID2B values, but CGRID2B
+ *   and SGRID2B are not set: TYPE2B D2_BP 5 5 * *
+ * and no potential written; with the grids the same configuration trains
+ * (exit 0).
+ * Before the fix: a segmentation fault (exit status 139 from the shell)
+ * that ends the test process. */
+TEST_CASE("Subcommand: train refuses a TYPE2B descriptor without its grid "
+          "keys, naming them",
+          "[TadahCLI][exit-status][train][descriptor]") {
+  ScratchCwd cwd("train_no_grids");
+  write_ta_dimer_training();
+  const std::string head =
+      "DBFILE db.tadah\nATOM Ta\nWATOM 73\nINIT2B true\nINITMB false\n"
+      "TYPE2B D2_BP 5 5 * *\nRCTYPE2B Cut_Cos\nRCUT2B 4.5\n"
+      "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+      "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+  std::ofstream("nogrid.train") << head;
+  const CliRun r = run_tadah({"tadah", "train", "-c", "nogrid.train", "-o",
+                              "pot.tadah"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "TYPE2B D2_BP takes 5 CGRID2B values and 5 SGRID2B "
+                      "values, but CGRID2B and SGRID2B are not set: TYPE2B "
+                      "D2_BP 5 5 * *"));
+  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+
+  std::ofstream("grid.train")
+      << head << "CGRID2B 2.5 3.0 3.5 4.0 4.5\nSGRID2B 0.5 0.5 0.5 0.5 0.5\n";
+  const CliRun g = run_tadah({"tadah", "train", "-c", "grid.train", "-o",
+                              "pot.tadah"});
+  INFO("with the grids: status " << g.status << "\n" << reported(g));
+  CHECK(g.status == 0);
+  CHECK(std::filesystem::exists("pot.tadah"));
 }
 
 /* ---- [eam]: D2_EAM and DM_EAM read the setfl file named by SETFL ------ */
@@ -2975,3 +3137,405 @@ TEST_CASE("Subcommand: hpo trains a non-linear KRR model in every evaluation",
   CHECK(losses[0] == losses[1]);
 }
 #endif  // TADAH_ENABLE_NFP
+
+/* ---- [index]: data print, analysis descriptor and analysis bfunc -i ---- */
+
+namespace {
+
+/* The labels of the structures `tadah data print` printed, in order: the
+ * third token of each "Structure  :    <label>" line. */
+std::vector<std::string> printed_labels(const std::string& out) {
+  std::vector<std::string> labels;
+  std::istringstream in(out);
+  for (std::string line; std::getline(in, line);) {
+    std::istringstream ss(line);
+    std::string key, colon, label;
+    if (ss >> key >> colon >> label && key == "Structure" && colon == ":")
+      labels.push_back(label);
+  }
+  return labels;
+}
+
+/* `tadah data print -d db.tadah -i <values...>`. */
+CliRun print_indices(const std::vector<std::string>& values) {
+  std::vector<std::string> args = {"tadah", "data", "print", "-d", "db.tadah", "-i"};
+  args.insert(args.end(), values.begin(), values.end());
+  return run_tadah(args);
+}
+
+/* Writes db.tadah, Ta dimers S1 ... S5 (5 A cubic cells), and pot.tadah,
+ * the D2_BP pair potential kPairPotential. */
+void write_descriptor_fixture() {
+  std::ofstream os("db.tadah");
+  for (int k = 1; k <= 5; ++k)
+    os << weighted_entry("S" + std::to_string(k), "1 1 1",
+                         std::to_string(2.4 + 0.2 * k) + " 0.3 0.2", "0", "0");
+  std::ofstream("pot.tadah") << kPairPotential;
+}
+
+/* `tadah analysis descriptor -d db.tadah -p pot.tadah -o d.out -i
+ * <values...>`, after removing d.out. */
+CliRun descriptor_indices(const std::vector<std::string>& values) {
+  std::filesystem::remove("d.out");
+  std::vector<std::string> args = {"tadah", "analysis", "descriptor", "-d", "db.tadah",
+                                   "-p", "pot.tadah", "-o", "d.out", "-i"};
+  args.insert(args.end(), values.begin(), values.end());
+  return run_tadah(args);
+}
+
+/* The structure labels of a descriptor output file, in order: the text
+ * after "# Structure: " on each such line. */
+std::vector<std::string> descriptor_labels(const std::string& path) {
+  std::vector<std::string> labels;
+  std::ifstream in(path);
+  const std::string head = "# Structure: ";
+  for (std::string line; std::getline(in, line);)
+    if (line.rfind(head, 0) == 0) labels.push_back(line.substr(head.size()));
+  return labels;
+}
+
+/* Writes blip.cfg: a D2_Blip model with 4 basis functions (centres 2, 3, 4
+ * and 5 A). */
+void write_bfunc_fixture() {
+  std::ofstream("blip.cfg") << "ATOM Ta\nTYPE2B D2_Blip 4 4 Ta Ta\nRCTYPE2B Cut_Cos\n"
+                               "RCUT2B 9.0\nCGRID2B 2.0 3.0 4.0 5.0\n"
+                               "SGRID2B 1.0 1.0 1.0 1.0\nMODEL M_KRR Kern_Linear\n"
+                               "INIT2B true\n";
+}
+
+/* `tadah analysis bfunc -c blip.cfg -r 1 5 4 --type 2b Y -o b.out
+ * [-i <values...>]`, after removing b.out. */
+CliRun bfunc_indices(const std::vector<std::string>& values) {
+  std::filesystem::remove("b.out");
+  std::vector<std::string> args = {"tadah", "analysis", "bfunc", "-c", "blip.cfg", "-r",
+                                   "1", "5", "4", "--type", "2b", "Y", "-o", "b.out"};
+  if (!values.empty()) {
+    args.push_back("-i");
+    args.insert(args.end(), values.begin(), values.end());
+  }
+  return run_tadah(args);
+}
+
+/* The blocks of a bfunc output file: its runs of non-blank lines. */
+std::vector<std::string> bfunc_blocks(const std::string& path) {
+  std::vector<std::string> blocks;
+  std::ifstream in(path);
+  std::string block;
+  for (std::string line; std::getline(in, line);) {
+    if (line.find_first_not_of(" \t\r") == std::string::npos) {
+      if (!block.empty()) blocks.push_back(block);
+      block.clear();
+    } else {
+      block += line + "\n";
+    }
+  }
+  if (!block.empty()) blocks.push_back(block);
+  return blocks;
+}
+
+}  // namespace
+
+/* Pins: `tadah data print -i` parses its values strictly and checks them
+ * against the 5 structures of the dataset before reading any:
+ *  - -i 4-9 exits 1 with "index 9 (in '4-9') is outside 1-5 (the dataset
+ *    has 5 structures)" and prints no structure;
+ *  - -i 5-2 exits 1 naming the descending range ("'5-2' is a descending
+ *    range"); -i 6 exits 1 naming the bound ("index 6 is outside 1-5");
+ *  - -i 1 3 (two values) is one list: exit 0, S1 and S3 printed;
+ *  - -i 3,1 prints S3 then S1 (the given order); -i 2,2 prints S2 once.
+ * Before the fix: 4-9 printed S4 and S5 with exit 0 (6-9 dropped
+ * silently), 5-2 and 6 stopped with 'No structures found in the database
+ * with the given indices.', and 1 3 was dropped as 'Non-numeric' (exit 1). */
+TEST_CASE("Subcommand: data print -i parses strictly and checks bounds first",
+          "[TadahCLI][exit-status][data][index]") {
+  ScratchCwd cwd("print_index");
+  write_numbered_dataset("db.tadah", 5);
+  const std::vector<std::pair<std::vector<std::string>, std::string>> bad = {
+      {{"4-9"}, "index 9 (in '4-9') is outside 1-5 (the dataset has 5 structures)"},
+      {{"5-2"}, "'5-2' is a descending range"},
+      {{"6"}, "index 6 is outside 1-5"}};
+  for (const auto& b : bad) {
+    INFO("-i " << b.first[0]);
+    const CliRun r = print_indices(b.first);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah data print: "));
+    CHECK(contains(rep, b.second));
+    CHECK(printed_labels(r.out).empty());
+  }
+  const std::vector<std::pair<std::vector<std::string>, std::vector<std::string>>> ok = {
+      {{"1", "3"}, numbered_labels({1, 3})},
+      {{"3,1"}, numbered_labels({3, 1})},
+      {{"2,2"}, numbered_labels({2})}};
+  for (const auto& c : ok) {
+    INFO("-i " << c.first[0] << (c.first.size() > 1 ? " " + c.first[1] : ""));
+    const CliRun r = print_indices(c.first);
+    INFO("status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(printed_labels(r.out) == c.second);
+  }
+}
+
+/* Pins: `tadah data print -i 1-10000000` on 5 structures exits 1 at once,
+ * naming index 10000000, before any structure is read.
+ * Before the fix: the range was expanded to ten million indices and each
+ * re-read the file from its start (StructureDB::add(file, i - 1) per
+ * index): the command ran for minutes (killed by the test's timeout). */
+TEST_CASE("Subcommand: data print -i refuses a range past the dataset at once",
+          "[TadahCLI][exit-status][data][index]") {
+  ScratchCwd cwd("print_index_range");
+  write_numbered_dataset("db.tadah", 5);
+  const CliRun r = print_indices({"1-10000000"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "index 10000000 (in '1-10000000') is outside 1-5"));
+}
+
+/* Pins: `tadah analysis descriptor -i` selects structures by their 1-based
+ * index in the DBFILE, S1 ... S5:
+ *  - -i 2 exits 0 and the output has structure S2 alone;
+ *  - --index 1,3,5 (the example of the command's help) has S1, S3 and S5;
+ *  - -i 6 exits 1 with "index 6 is outside 1-5 (the dataset has 5
+ *    structures)" and writes no output.
+ * Before the fix: every index above 1 was refused with 'Index out of bounds
+ * for DBFILE.' (the largest index was compared with the number of DBFILEs,
+ * 1), so -i 2 and the help's example failed; -i 6 gave the same message. */
+TEST_CASE("Subcommand: analysis descriptor -i selects structures by 1-based index",
+          "[TadahCLI][exit-status][analysis][index]") {
+  ScratchCwd cwd("descriptor_index");
+  write_descriptor_fixture();
+  {
+    const CliRun r = descriptor_indices({"2"});
+    INFO("-i 2: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(descriptor_labels("d.out") == std::vector<std::string>{"S2"});
+  }
+  {
+    std::filesystem::remove("d.out");
+    const CliRun r = run_tadah({"tadah", "analysis", "descriptor", "-d", "db.tadah", "-p",
+                                "pot.tadah", "-o", "d.out", "--index", "1,3,5"});
+    INFO("--index 1,3,5: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(descriptor_labels("d.out") == numbered_labels({1, 3, 5}));
+  }
+  {
+    const CliRun r = descriptor_indices({"6"});
+    const std::string rep = reported(r);
+    INFO("-i 6: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah analysis descriptor: index 6 is outside 1-5 (the dataset has "
+                        "5 structures)"));
+    CHECK_FALSE(std::filesystem::exists("d.out"));
+  }
+}
+
+/* Pins: `tadah analysis descriptor -i 5-2` exits 1 naming the descending
+ * range, and writes no output.
+ * Before the fix: 5-2 expanded to no index, and the largest element of the
+ * empty list was read: a segmentation fault that ends the test process. */
+TEST_CASE("Subcommand: analysis descriptor -i refuses a descending range",
+          "[TadahCLI][exit-status][analysis][index]") {
+  ScratchCwd cwd("descriptor_index_descending");
+  write_descriptor_fixture();
+  const CliRun r = descriptor_indices({"5-2"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "tadah analysis descriptor: index '5-2' is a descending range"));
+  CHECK_FALSE(std::filesystem::exists("d.out"));
+}
+
+/* Pins: `tadah analysis descriptor -i 1 3` (two values) is one list: exit
+ * 0, the output has S1 and S3.
+ * Before the fix: the values were joined into the one entry '1 3', dropped
+ * as 'Non-numeric', and the largest element of the empty list was read: a
+ * segmentation fault that ends the test process. */
+TEST_CASE("Subcommand: analysis descriptor -i takes several values as one list",
+          "[TadahCLI][exit-status][analysis][index]") {
+  ScratchCwd cwd("descriptor_index_values");
+  write_descriptor_fixture();
+  const CliRun r = descriptor_indices({"1", "3"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(descriptor_labels("d.out") == numbered_labels({1, 3}));
+}
+
+/* Pins: `tadah analysis descriptor -i 0` exits 1 with "index 0 is outside
+ * 1-5", at once.
+ * Before the fix: index 0 became StructureDB::add(file, SIZE_MAX), which
+ * skipped structures past the end of the file without end: the command hung
+ * (the test runs until CTest's timeout). */
+TEST_CASE("Subcommand: analysis descriptor -i refuses index 0",
+          "[TadahCLI][exit-status][analysis][index]") {
+  ScratchCwd cwd("descriptor_index_zero");
+  write_descriptor_fixture();
+  const CliRun r = descriptor_indices({"0"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "tadah analysis descriptor: index 0 is outside 1-5"));
+  CHECK_FALSE(std::filesystem::exists("d.out"));
+}
+
+/* Pins: `tadah analysis bfunc -i` takes basis-function indices 1 ... 4 of
+ * the D2_Blip model of blip.cfg:
+ *  - -i 0, -i 9 and -i 5-2 exit 1 naming the index or range and the 4
+ *    functions ("index 0 is outside 1-4 (the D2_Blip basis has 4
+ *    functions)", "index 9 is outside 1-4", "'5-2' is a descending range"),
+ *    and write no output;
+ *  - -i 1 3 (two values) exits 0 with exactly three blocks, functions 1 and
+ *    3 (as printed without -i) and the cutoff function.
+ * Before the fix: -i 0 exited 0 with a function built from the grid entry
+ * before the first (an out-of-bounds read), -i 9 was dropped with a WARNING
+ * and exit 0, -i 5-2 printed only the cutoff function (exit 0), and -i 1 3
+ * was dropped as 'Non-numeric', leaving only the cutoff function. */
+TEST_CASE("Subcommand: analysis bfunc -i takes basis-function indices 1..N",
+          "[TadahCLI][exit-status][analysis][index]") {
+  ScratchCwd cwd("bfunc_index");
+  write_bfunc_fixture();
+  const CliRun all = bfunc_indices({});
+  INFO("without -i: status " << all.status << "\n" << reported(all));
+  REQUIRE(all.status == 0);
+  const std::vector<std::string> every = bfunc_blocks("b.out");
+  REQUIRE(every.size() == 5u);  // 4 functions and the cutoff
+  const std::vector<std::pair<std::string, std::string>> bad = {
+      {"0", "index 0 is outside 1-4 (the D2_Blip basis has 4 functions)"},
+      {"9", "index 9 is outside 1-4"},
+      {"5-2", "'5-2' is a descending range"}};
+  for (const auto& b : bad) {
+    INFO("-i " << b.first);
+    const CliRun r = bfunc_indices({b.first});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah analysis bfunc: "));
+    CHECK(contains(rep, b.second));
+    CHECK_FALSE(std::filesystem::exists("b.out"));
+  }
+  const CliRun r = bfunc_indices({"1", "3"});
+  INFO("-i 1 3: status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  const std::vector<std::string> blocks = bfunc_blocks("b.out");
+  REQUIRE(blocks.size() == 3u);
+  CHECK(blocks[0] == every[0]);
+  CHECK(blocks[1] == every[2]);
+  CHECK(blocks[2] == every[4]);
+}
+
+/* Pins: `tadah data print -i`, `tadah analysis descriptor -i` and `tadah data
+ * write -i` count a structure without atoms (its blank line straight after
+ * the stress lines) as one structure, as `data print -d` does:
+ *  - on S1, E2 (no atoms), S3: data print -i 3 prints S3 and -i 2 prints E2
+ *    (exit 0); -i 4 exits 1 with "index 4 is outside 1-3 (the dataset has 3
+ *    structures)";
+ *  - on E1, S2: data print -i 2 prints S2 (exit 0);
+ *  - on S1, E2, S3: analysis descriptor -i 3 writes S3 alone (exit 0), -i 4
+ *    exits 1 with "index 4 is outside 1-3 (the dataset has 3 structures)";
+ *    data write -i 3 -o c.cell -f castep writes S3 (exit 0).
+ * Before the fix: the structures were counted up to the first one without
+ * atoms, so every index past it was refused with a false count ("index 3 is
+ * outside 1-1 (the dataset has 1 structures)" for S1, E2, S3; "index 2 is
+ * outside 1-0 (the dataset has 0 structures)" for E1, S2), by all three
+ * commands. */
+TEST_CASE("Subcommand: data print, analysis descriptor and data write -i count a "
+          "structure without atoms",
+          "[TadahCLI][exit-status][data][index]") {
+  ScratchCwd cwd("index_no_atoms");
+  {
+    std::ofstream os("db.tadah");
+    os << weighted_entry("S1", "1 1 1", "2.6 0.3 0.2", "0", "0") << dataset_entry("E2", {})
+       << weighted_entry("S3", "1 1 1", "3.0 0.3 0.2", "0", "0");
+  }
+  {
+    std::ofstream os("first.tadah");
+    os << dataset_entry("E1", {}) << dataset_entry("S2", {"Na 0 0 0"});
+  }
+  std::ofstream("pot.tadah") << kPairPotential;
+  const std::vector<std::pair<std::string, std::string>> printed = {{"3", "S3"}, {"2", "E2"}};
+  for (const auto& c : printed) {
+    const CliRun r = print_indices({c.first});
+    INFO("data print -i " << c.first << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(printed_labels(r.out) == std::vector<std::string>{c.second});
+  }
+  {
+    const CliRun r = print_indices({"4"});
+    const std::string rep = reported(r);
+    INFO("data print -i 4: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah data print: index 4 is outside 1-3 (the dataset has 3 "
+                        "structures)"));
+  }
+  {
+    const CliRun r =
+        run_tadah({"tadah", "data", "print", "-d", "first.tadah", "-i", "2"});
+    INFO("data print -d first.tadah -i 2: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(printed_labels(r.out) == std::vector<std::string>{"S2"});
+  }
+  {
+    const CliRun r = descriptor_indices({"3"});
+    INFO("analysis descriptor -i 3: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(descriptor_labels("d.out") == std::vector<std::string>{"S3"});
+  }
+  {
+    const CliRun r = descriptor_indices({"4"});
+    const std::string rep = reported(r);
+    INFO("analysis descriptor -i 4: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah analysis descriptor: index 4 is outside 1-3 (the dataset has "
+                        "3 structures)"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "data", "write", "-d", "db.tadah", "-i", "3", "-o",
+                                "c.cell", "-f", "castep"});
+    INFO("data write -i 3: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(slurp("c.cell"), "S3"));
+  }
+}
+
+/* Pins: `tadah data print -i` and `tadah analysis descriptor -i` read only
+ * the selected structures: with S1's atom line 'Ta 0 0 0 abc 0 0' (not a
+ * number), data print -i 2 prints S2 and analysis descriptor -i 2 writes S2
+ * alone (exit 0); data print -i 1 exits 1 naming the file, structure 1 and
+ * 'abc'.
+ * Before the fix: every structure up to the largest index was read (and
+ * kept), so -i 2 exited 1 for S1's 'abc' ("DBFILE db.tadah: structure 1:
+ * ... 'abc' is not a finite number") in both commands. */
+TEST_CASE("Subcommand: data print and analysis descriptor -i read only the selected "
+          "structures",
+          "[TadahCLI][exit-status][data][index]") {
+  ScratchCwd cwd("index_selected_only");
+  {
+    std::ofstream os("db.tadah");
+    os << "S1\n1 1 1\n-1.0\n5 0 0\n0 5 0\n0 0 5\n0 0 0\n0 0 0\n0 0 0\n"
+          "Ta 0 0 0 abc 0 0\nTa 2.6 0.3 0.2 0 0 0\n\n"
+       << weighted_entry("S2", "1 1 1", "2.8 0.3 0.2", "0", "0");
+  }
+  std::ofstream("pot.tadah") << kPairPotential;
+  {
+    const CliRun r = print_indices({"2"});
+    INFO("data print -i 2: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(printed_labels(r.out) == std::vector<std::string>{"S2"});
+  }
+  {
+    const CliRun r = descriptor_indices({"2"});
+    INFO("analysis descriptor -i 2: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(descriptor_labels("d.out") == std::vector<std::string>{"S2"});
+  }
+  {
+    const CliRun r = print_indices({"1"});
+    const std::string rep = reported(r);
+    INFO("data print -i 1: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "DBFILE db.tadah: structure 1: "));
+    CHECK(contains(rep, "'abc'"));
+    CHECK(printed_labels(r.out).empty());
+  }
+}

@@ -2335,8 +2335,10 @@ error: the ``ENDOPTIMIZER`` line for the ``STRATEGY``-level optimiser, a
 block's keys included), ``ENDEXPLORE`` for the exploration, ``ENDINNER``
 for an ``INNER`` block.  So do the startup refusals of the ``STRATEGY``
 rules (``STRATEGY TYPE MULTISTART cannot run …``, an ``INNER`` block that
-names another library) and of a phase's finite differences or
-``GRAD_STRATEGY``:
+names another library) and of a phase's finite differences or a
+``GRAD_STRATEGY`` on a phase that takes no gradient (the check of the
+``ANALYTICAL`` setup, ``OPTIMIZER block: GRAD_STRATEGY ANALYTICAL …``,
+names no line):
 
 .. code-block:: none
 
@@ -3083,20 +3085,22 @@ are exact.  It bounds the step as computed — exactly for a power-of-two
 numbers, where the stencil tests them rounded, so in a box only hundreds or
 thousands of ulps wide (possible under ``NONE``) it can refuse an
 ``fd_step`` that every point of the box would accept, by up to a few per
-cent.  The message names the phase,
+cent.  The message names the line of the phase's block and the phase,
 each such dimension with its box and a point without a stencil, the step and
 its source (``PARAM``, the default, or ``NOISE`` ``AUTO``), the largest
 ``fd_step`` that fits, and what else would do:
 
 .. code-block:: none
 
-   the STRATEGY-level optimiser DLIB:BFGS: PARAM fd_step 0.4 does not fit these OPTIM boxes: no finite-difference point is evaluated outside the box, and next to a bound the CENTRAL stencil turns one-sided and needs two steps of h = 0.4 of each box width (in-house rule) inside it; the step is not shrunk:
+   Error on line 9: the STRATEGY-level optimiser DLIB:BFGS: PARAM fd_step 0.4 does not fit these OPTIM boxes: no finite-difference point is evaluated outside the box, and next to a bound the CENTRAL stencil turns one-sided and needs two steps of h = 0.4 of each box width (in-house rule) inside it; the step is not shrunk:
      - WATOM: OPTIM box [0.1, 5] (internal [0, 1]); no stencil fits at WATOM = 1.57; fd_step up to 0.333333 fits it
      Set PARAM fd_step to at most 0.333333.
+   Line: ENDOPTIMIZER
 
-   the STRATEGY-level optimiser DLIB:BFGS: the default fd_step 1e-06 does not fit these OPTIM boxes: … needs two steps of h = max(2^-26, 1e-06 x |u|) in internal units (Ceres' rule) inside it; the step is not shrunk:
+   Error on line 8: the STRATEGY-level optimiser DLIB:BFGS: the default fd_step 1e-06 does not fit these OPTIM boxes: … needs two steps of h = max(2^-26, 1e-06 x |u|) in internal units (Ceres' rule) inside it; the step is not shrunk:
      - WATOM: OPTIM box [1, 1.000001]; no stencil fits at WATOM = 1.0000005; fd_step up to 3.33333e-07 fits it
      Set PARAM fd_step to at most 3.33333e-07; or use OPTIM_SCALE AUTO (fd_step is then a fraction of each box width).
+   Line: ENDOPTIMIZER
 
 The step is not shrunk for such a dimension: that would change what
 ``fd_step`` means there, and the noise it was chosen to step over (``NOISE``
@@ -4144,13 +4148,15 @@ family and ``ASA:ASA``.  Local optimisers (``NLOPT:LN_*``/``LD_*``,
 ``NLOPT_LD_LBFGS_NOCEDAL``) and the
 multi-seed global ``DLIB:GFS`` are accepted; ``DLIB:GFS`` consumes all points in one run.  Use ``TYPE
 PLAIN`` to run a single-seed global once.  The check is a startup
-error, raised before any data is loaded or any evaluation runs.  The
+error, raised before any data is loaded or any evaluation runs, at the
+``ENDOPTIMIZER`` line.  The
 message lists the first accepted backends in alphabetical order (the
 list depends on the libraries the build includes):
 
 .. code-block:: none
 
-   HPOEngine error: STRATEGY TYPE MULTISTART cannot run TADAH:ANNEAL: it is a global optimiser that consumes a single starting point, so restarting it from each INIT point is rejected for any N_STARTS. Use a local or multi-seed optimiser (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, DLIB:GFS, ... (23 more)), or STRATEGY TYPE PLAIN to run TADAH:ANNEAL once.
+   HPOEngine error: Error on line 13: STRATEGY TYPE MULTISTART cannot run TADAH:ANNEAL: it is a global optimiser that consumes a single starting point, so restarting it from each INIT point is rejected for any N_STARTS. Use a local or multi-seed optimiser (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, DLIB:GFS, ... (23 more)), or STRATEGY TYPE PLAIN to run TADAH:ANNEAL once.
+   Line: ENDOPTIMIZER
 
 TYPE PRESTAGE — staged global → local
 .....................................
@@ -4616,12 +4622,15 @@ Only NLopt's MLSL and AUGLAG algorithms run an ``INNER`` search, and they
 run it with NLopt, so the ``INNER`` block's ``LIB`` is ``NLOPT``.  Both
 rules are startup errors, raised before any data is loaded and naming the
 optimiser the ``INNER`` block belongs to (the ``STRATEGY``-level
-optimiser, the ``PRESTAGE`` refinement or the ``EXPLORE`` block):
+optimiser, the ``PRESTAGE`` refinement or the ``EXPLORE`` block) and the
+``INNER`` block's ``ENDINNER`` line:
 
 .. code-block:: none
 
-   HPOEngine error: DLIB:BFGS does not accept an INNER sub-optimiser (the INNER block of the STRATEGY-level optimiser): only NLopt's MLSL and AUGLAG algorithms run a local search inside their run (NLOPT:AUGLAG, NLOPT:AUGLAG_EQ, NLOPT:GD_MLSL, NLOPT:GD_MLSL_LDS, NLOPT:GN_MLSL, NLOPT:GN_MLSL_LDS, ... (6 more)); remove the INNER block or pick one of them
-   HPOEngine error: the INNER block of the STRATEGY-level optimiser names DLIB:BFGS, but NLOPT:G_MLSL_LDS runs its INNER search with NLopt: set LIB NLOPT and an NLopt ALGO (such as LN_BOBYQA) inside the INNER block
+   HPOEngine error: Error on line 10: DLIB:BFGS does not accept an INNER sub-optimiser (the INNER block of the STRATEGY-level optimiser): only NLopt's MLSL and AUGLAG algorithms run a local search inside their run (NLOPT:AUGLAG, NLOPT:AUGLAG_EQ, NLOPT:GD_MLSL, NLOPT:GD_MLSL_LDS, NLOPT:GN_MLSL, NLOPT:GN_MLSL_LDS, ... (6 more)); remove the INNER block or pick one of them
+   Line:     ENDINNER
+   HPOEngine error: Error on line 10: the INNER block of the STRATEGY-level optimiser names DLIB:BFGS, but NLOPT:G_MLSL_LDS runs its INNER search with NLopt: set LIB NLOPT and an NLopt ALGO (such as LN_BOBYQA) inside the INNER block
+   Line:     ENDINNER
 
 Before 1.6.0 the first was reported only once the host had loaded the
 data, and an ``INNER`` block with another ``LIB`` failed inside NLopt once
@@ -4634,12 +4643,16 @@ local optimiser, so they need an ``INNER`` block, and for the same reason
 an ``INNER`` block cannot name one of them (``INNER`` blocks do not
 nest); ``LN_AUGLAG``, ``LD_AUGLAG``, their ``_EQ`` forms and the
 ``GN_``/``GD_`` MLSL forms run NLopt's ``LN_COBYLA`` or ``LD_MMA``
-without one.  Both are startup errors that name the phase:
+without one.  Both are startup errors that name the phase and the line
+of its block (``ENDOPTIMIZER`` or ``ENDEXPLORE``; ``ENDINNER`` for the
+nested block):
 
 .. code-block:: none
 
-   HPOEngine error: NLOPT:AUGLAG needs an INNER block (the PRESTAGE refinement): NLopt has no default local optimiser for it; add INNER ... ENDINNER with LIB NLOPT and a local ALGO such as LN_BOBYQA, or use one of NLOPT:GD_MLSL, NLOPT:GD_MLSL_LDS, NLOPT:GN_MLSL, NLOPT:GN_MLSL_LDS, NLOPT:LD_AUGLAG, NLOPT:LD_AUGLAG_EQ, NLOPT:LN_AUGLAG, NLOPT:LN_AUGLAG_EQ, which run LD_MMA or LN_COBYLA without one
-   HPOEngine error: the INNER block of the STRATEGY-level optimiser names NLOPT:G_MLSL_LDS, which needs an INNER block of its own; INNER blocks do not nest: pick a local algorithm such as LN_BOBYQA
+   HPOEngine error: Error on line 14: NLOPT:AUGLAG needs an INNER block (the PRESTAGE refinement): NLopt has no default local optimiser for it; add INNER ... ENDINNER with LIB NLOPT and a local ALGO such as LN_BOBYQA, or use one of NLOPT:GD_MLSL, NLOPT:GD_MLSL_LDS, NLOPT:GN_MLSL, NLOPT:GN_MLSL_LDS, NLOPT:LD_AUGLAG, NLOPT:LD_AUGLAG_EQ, NLOPT:LN_AUGLAG, NLOPT:LN_AUGLAG_EQ, which run LD_MMA or LN_COBYLA without one
+   Line: ENDOPTIMIZER
+   HPOEngine error: Error on line 10: the INNER block of the STRATEGY-level optimiser names NLOPT:G_MLSL_LDS, which needs an INNER block of its own; INNER blocks do not nest: pick a local algorithm such as LN_BOBYQA
+   Line:     ENDINNER
 
 Before 1.6.0 NLopt refused the first only once the run had started
 (``local optimizer must be specified for AUGLAG``), after the data were

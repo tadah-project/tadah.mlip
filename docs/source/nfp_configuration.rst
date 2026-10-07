@@ -760,7 +760,9 @@ Additional options
    Record the variable in ``outvar.tadah`` without contributing to the
    loss.  Useful for diagnostic plots.  A diagnostic that cannot be read
    back after the script (:ref:`pc_lammps_readback`) is ``NaN`` in its
-   column, and the evaluation keeps its loss.
+   column, and the evaluation keeps its loss.  (The ``S`` of the
+   ``PC_FAILPROBE`` line is not a diagnostic: one that cannot be read
+   fails the probe.)
 
 ``--failscore <value>``
    The value substituted for each of this script's ``--varloss`` /
@@ -935,6 +937,13 @@ role, the same way under ``PC_ISOLATION THREAD`` and ``PROCESS``:
 
      PC_LAMMPS task failed (press.in, occurrence 1): reading --varloss E after the script: ERROR: Thermo keyword press in variable requires thermo to use/init press (src/thermo.cpp:1331)
 
+  So does the ``S`` of the ``PC_FAILPROBE`` line (its first ``--outvar``),
+  which grades every failure of the evaluation: an ``S`` that cannot be
+  read is a failed probe, as when the probe's script fails, so the
+  evaluation is aborted and, under ``FAILSCORE_GRADING``, graded band D
+  with ``S`` unavailable (``PC_LAMMPS task failed (probe.in, occurrence
+  1): reading PC_FAILPROBE --outvar S after the script: …``).
+
 * a variable declared only with ``--outvar`` (a diagnostic) that cannot
   be read is ``NaN`` in ``outvar.tadah``, and the evaluation keeps its
   loss:
@@ -943,8 +952,11 @@ role, the same way under ``PC_ISOLATION THREAD`` and ``PROCESS``:
 
      PC_LAMMPS --outvar is NaN (press.in, occurrence 1): reading --outvar Pend after the script: ERROR: Thermo keyword press in variable requires thermo to use/init press (src/thermo.cpp:1331)
 
-The LAMMPS message may go on with ``Last input line:`` and the script's last
-command, which ran before the variable was read.  A LAMMPS error inside the
+A variable that reads one that cannot be read (``variable Pdiff equal
+v_Pend-1.0``) raises that one's LAMMPS error, so the journal gives the cause
+whichever of them fails the simulation.  The LAMMPS message may go on with
+``Last input line:`` and the script's last command, which ran before the
+variable was read.  A LAMMPS error inside the
 script is journalled the same way, with its own message (``PC_LAMMPS task
 failed (bad.in, occurrence 1): ERROR: Unknown command: bogus_command 1 2
 …``); a script that times out has no message.  Each kind of line is
@@ -1240,7 +1252,10 @@ The knobs, most important first
    choice is the seed potential's ``S`` times a small factor).  At most
    one probe line is allowed; ``--varloss``
    on it is rejected (the probe grades failures — it must not shape the
-   feasible objective).
+   feasible objective).  An ``S`` that cannot be read back after the probe's
+   script (:ref:`pc_lammps_readback`) is a failed probe, as when the script
+   fails: the evaluation is aborted and, under ``FAILSCORE_GRADING``,
+   graded band D with ``S`` unavailable.
 
 ``--gate <T>`` (on ``PC_FAILPROBE``)
    **The only knob that needs real care.**  If the gate can fire on a

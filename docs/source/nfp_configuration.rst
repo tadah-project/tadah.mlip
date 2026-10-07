@@ -467,6 +467,12 @@ potential/configuration.``).  Before 1.6.0 startup printed a WARNING
 (with ``FIXINDEX``: "FIXINDEX bounds/coverage checks are deferred to the
 first training evaluation") or nothing, every evaluation failed, and the
 run ended "no evaluation produced a usable loss".
+The weights of ``M_KRR`` with a non-linear kernel belong to its ``SBASIS``
+basis vectors (weight 1 to the bias vector :math:`e_0`, the others to
+descriptors drawn from the training data, see
+:ref:`Non-linear models <nonlinear_models>`): startup checks ``FIXINDEX``
+against ``SBASIS``, a training ``DBFILE`` is required, and every
+evaluation trains, also when ``FIXINDEX`` pins every weight.
 
 **Mixed mode** — LS-fit most weights, hold one, search another.  With a
 5-weight model: weights 1–3 LS-fitted, weight 4 held at 0.75, weight 5

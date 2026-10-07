@@ -1327,6 +1327,22 @@ fails with the same failed fraction (a flat failure region; an
 analytical gradient at a graded failure is kept;
 :ref:`hpo_gradient_not_finite`).
 
+The journal says why a term failed, as it does for a failed
+``PC_LAMMPS`` task: a ``WARNING`` that names the term, the evaluation and
+the reason, at the first, second, fourth, eighth, … failed term of the
+run (a potential that breaks an observable breaks it at every
+evaluation):
+
+.. code-block:: none
+
+   PC_OBSERVABLE term failed (cohesive_energy[1], eval 2, occurrence 1): the relaxed lattice parameter a0 = 3.3532 is outside its --hotvar window [3, 3.35]
+
+The reason is the observable's own (for ``cohesive_energy`` also a
+relaxation that did not converge with ``--unconverged-penalty nan``), a
+value or loss that is not finite, or the message of an evaluation that
+threw.  Before, a failed term left only ``FAILSCORE`` in ``loss.tadah``
+and ``NaN`` in ``outvar.tadah``.
+
 Columns.  The *k*-th ``PC_OBSERVABLE`` line (1-based, in configuration
 order) writes the ``loss.tadah`` column ``L(<tag>)[k]`` and the
 ``outvar.tadah`` column ``<tag>[k]``, where the tag of

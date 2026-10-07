@@ -339,13 +339,16 @@ are checked, naming the key, the mode in effect and the mode that reads it:
    tadah refit: N2B has no effect under REFIT_MODE compact (the default): only REFIT_MODE dense reads it; remove N2B, or set REFIT_MODE dense
    tadah refit: the REFINE block has no effect under REFIT_MODE dense: only REFIT_MODE compact reads it; remove the REFINE block, or set REFIT_MODE compact
    tadah refit: REFIT_CURVE_WEIGHTING has no effect under REFIT_OBJECTIVE energy (the default): only REFIT_OBJECTIVE curve reads it; remove REFIT_CURVE_WEIGHTING, or set REFIT_OBJECTIVE curve
+   tadah refit: REFIT_CURVE_RELAX has no effect under REFIT_CURVE_WEIGHTING false: only REFIT_CURVE_WEIGHTING true (the default) reads it; remove REFIT_CURVE_RELAX, or set REFIT_CURVE_WEIGHTING true
 
 * Compact mode only: the keys of *Objective and curve weighting* (under
   ``REFIT_MODE dense`` ``REFIT_OBJECTIVE curve`` is an error and ``energy``
   is accepted) and of *Compact ladder*, and the *Stage blocks*.
-  ``REFIT_CURVE_WEIGHTING`` is read under ``REFIT_OBJECTIVE curve`` only;
-  ``REFIT_CURVE_RELAX`` and ``REFIT_CURVE_DERIV_WEIGHT`` have no effect
-  under ``energy`` but are accepted there, their values checked.
+  The ``REFIT_CURVE_*`` keys are read under ``REFIT_OBJECTIVE curve``
+  only, so each is an error under ``REFIT_OBJECTIVE energy`` (written or
+  the default), before its value is checked; and ``REFIT_CURVE_RELAX``, the floor of the curve
+  weighting, is read only with ``REFIT_CURVE_WEIGHTING true`` (its default),
+  so it is an error with ``REFIT_CURVE_WEIGHTING false``.
 * Dense mode only: the keys of :ref:`refit_dense` (``REFIT_LEVEL``,
   ``N2B``, ``NRHO_BASIS``, ``NF_BASIS``, ``REFIT_MAX_ESCALATIONS``,
   ``REFIT_PLACEMENT``, ``REFIT_CONSTRAIN_F0``).
@@ -368,7 +371,9 @@ never read the stage blocks (a ``REFINE`` block with ``THREADS 4`` and
 dense keys (``N2B 50``, ``REFIT_LEVEL accurate`` and
 ``REFIT_MAX_ESCALATIONS 9`` gave the same potential as without them),
 ``REFIT_CURVE_WEIGHTING`` did nothing under ``energy`` although the help
-said it was rejected there, a top-level ``OPTIMIZER`` block was ignored in
+said it was rejected there, nor did ``REFIT_CURVE_RELAX`` and
+``REFIT_CURVE_DERIV_WEIGHT`` (or ``REFIT_CURVE_RELAX`` with
+``REFIT_CURVE_WEIGHTING false``), a top-level ``OPTIMIZER`` block was ignored in
 dense mode and refused by the compact fitter only after it had read the
 table, and any other ``REFIT_MODE`` (``Dense``, ``COMPACT`` included) ran
 the dense fit after a WARNING.
@@ -454,10 +459,10 @@ Compact mode only (``REFIT_MODE dense`` refuses these keys, and accepts
      - (curve) Weights :math:`\phi,\rho` fully between the equilibrium nearest-neighbour distance and the cutoff, and :math:`F` from zero to the equilibrium density, relaxing toward compression — tighter equilibrium energies for a given basis size. Refused under ``REFIT_OBJECTIVE energy``, written or the default (before 1.6.0 it was ignored there).
    * - ``REFIT_CURVE_RELAX``
      - ``0.05``
-     - (curve, weighting on) Floor weight in the compressed region, in (0, 1] (checked in either objective); smaller focuses the fit harder on the equilibrium region.
+     - (curve, weighting on) Floor weight in the compressed region, in (0, 1]; smaller focuses the fit harder on the equilibrium region. Refused under ``REFIT_OBJECTIVE energy`` and with ``REFIT_CURVE_WEIGHTING false`` (before 1.6.0 it was ignored there).
    * - ``REFIT_CURVE_DERIV_WEIGHT``
      - ``0.0``
-     - (curve) Weight of the 1st/2nd-derivative terms relative to value, >= 0. ``0`` fits values only (best crystal energies); raise to fit slope/curvature shape.
+     - (curve) Weight of the 1st/2nd-derivative terms relative to value, >= 0. ``0`` fits values only (best crystal energies); raise to fit slope/curvature shape. Refused under ``REFIT_OBJECTIVE energy`` (before 1.6.0 it was ignored there).
 
 Compact ladder
 ~~~~~~~~~~~~~~
@@ -886,7 +891,22 @@ Output files
 * ``refit_basis_info.dat`` — final basis: function, centre, width, coefficient, degree.
 * ``refit_curve_{phi,rho,F}.dat`` — fitted vs tabulated curves and derivatives.
 * ``refit_compare.dat``, ``refit_ladder_trace.dat`` — energy–volume comparison, per-rung ladder trace.
-* ``refit_range_report.dat`` — each function's range and reachable window.
+* ``refit_range_report.dat`` — each function's range (``full_lo``,
+  ``full_hi``) and the window the fit used (``fit_window_lo``,
+  ``fit_window_hi``). For :math:`\phi` and :math:`\rho` the compact fit
+  fits on its whole range, from ``full_lo`` = max(0.8 × r_reach,
+  ``REFIT_R_LO_FRAC`` × rcut, the table's dr) to the cutoff, r_reach being
+  the nearest-neighbour distance at ``REFIT_REACH_SMIN`` (the report's
+  ``r_1nn-compressed``). The dense fit's ``full_lo`` is
+  ``REFIT_R_LO_FRAC`` × rcut (at least dr); with ``REFIT_PLACEMENT window`` its window
+  starts at the edge of a steep wall in the table, at most 0.8 × r_reach
+  and never below ``full_lo`` (``full_lo`` for a table without such a
+  wall), and a small uniform basis covers the rest down to ``full_lo``;
+  with ``REFIT_PLACEMENT uniform`` it starts at ``full_lo``.
+  ``refit_curve_{phi,rho,F}.dat`` flag the same windows (``in_window``).
+  Before 1.6.0 ``fit_window_lo`` was 0.9 × r_reach in both modes (``full_lo``
+  under ``REFIT_PLACEMENT uniform``), which is neither fit's window, and the
+  curve files flagged r >= 0.9 × r_reach.
   The note of its ``F`` row says what lies above the embedding window:
   after a compact fit ``refit.eam`` carries the original table there
   (offset-matched); the dense fit keeps a small uniform tail basis there
@@ -1006,6 +1026,30 @@ so the compensation region is then widened to :math:`[0,` largest support
 (a WARNING says so; add ``EMBF0 FREE`` to the input to edit a tadah 1.5.0 fit
 in its raw reference), and the edited potential always declares its mode.
 
+.. _refit_output_mode_keys:
+
+A configuration passed with ``-c`` to ``--edit`` or ``--retarget`` may not
+set a key that only a refit of an EAM file reads: those modes fit nothing,
+and such a key is an error, before any file is read or written, naming the
+key and what reads it:
+
+.. code-block:: none
+
+   tadah refit --edit: N2B has no effect under --edit: only a refit of an EAM file in REFIT_MODE dense reads it; remove N2B
+   tadah refit --edit: REFIT_TOL_AMBIENT has no effect under --edit: only a refit of an EAM file reads it; remove REFIT_TOL_AMBIENT
+   tadah refit --retarget: the REFINE block has no effect under --retarget: only a refit of an EAM file in REFIT_MODE compact reads it; remove the REFINE block
+
+The keys of either ``REFIT_MODE`` (``REFIT_MODE``, ``REFIT_BASIS``,
+``REFIT_TOL_*``, ``REFIT_REACH_*``, ``REFIT_R_LO_FRAC``,
+``REFIT_OBJECTIVE``, ``OUTPUT_GRID_SCALE``, ``SETFL_OUT``, ``REFIT_LOG``),
+of one mode (:ref:`Keys of the other mode <refit_mode_keys>`) and the stage
+blocks are refused this way, and so is a top-level ``OPTIMIZER`` block,
+which no mode reads; ``--retarget`` also refuses ``HPOFILEOUT``
+(``--hpofileout``) and ``NUMERIC``, which ``--edit`` reads (see
+:ref:`refit_retarget`). The defaults ``tadah`` stores for the keys the
+configuration does not set are not refused. Before 1.6.0 these keys were
+ignored.
+
 ``EMBF0`` and ``RHOFORM`` are properties of the potential. A configuration
 passed with ``-c`` may set them only to the potential's own values: a
 different value is refused before anything is written, as in ``tadah
@@ -1077,7 +1121,15 @@ must satisfy the rule the file's density form sets (below; ``tadah hpo``
 refuses such a box at startup). The file takes no ``RHOFORM`` or ``EMBF0``
 from a configuration (``-c``): an hpotarget carries no potential, so they
 would have no effect, and either is an error (``RHOFORM has no effect on
---retarget ...``); the density form is ``--rhoform``, below.
+--retarget ...``); the density form is ``--rhoform``, below. Nor does it
+take the keys of a refit of an EAM file (:ref:`as --edit does not
+<refit_output_mode_keys>`), or ``HPOFILEOUT`` and ``NUMERIC``: the
+rewritten file is ``-o`` or, with ``--in-place``, the input, and its bounds
+have 8 significant digits (``tadah refit --retarget: HPOFILEOUT has no
+effect under --retarget: only a refit of an EAM file and --edit read it;
+remove HPOFILEOUT (the file --retarget writes is -o, OUTFILE)``). Before
+1.6.0 ``--hpofileout`` was ignored, and the file was written to
+``<input>_edited.hpotarget``.
 
 Retargeting a freshly-emitted file at the same percentage reproduces it
 byte-for-byte, and any retargeted file is a fixed point of further

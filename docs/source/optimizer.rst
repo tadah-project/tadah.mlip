@@ -52,16 +52,21 @@ lines; ``DLIB:BFGS`` is the one gradient-based optimiser accepted there.
 A failed evaluation in the finite-difference stencil can make the
 gradient not finite, which can end such a search with its own status
 (:ref:`hpo_gradient_not_finite`).
-``MAXEVAL`` caps every backend's evaluations, and every evaluation
-counts: each loss and, for a gradient-based backend, each
-finite-difference point of its gradients and each analytical gradient
-(an ``INNER`` block's ``MAXEVAL`` counts the NLopt calls of each local
-search, :ref:`hpo_inner_block`).  Without it a backend runs
+``MAXEVAL`` caps one search of a backend — the run of a ``PLAIN``
+strategy, one ``RESTART`` launch, one ``MULTISTART`` start, the
+``PRESTAGE`` exploration or one refinement, so a run can make more — and
+every evaluation the search makes counts: each loss and, for a
+gradient-based backend, each finite-difference point of its gradients
+and each analytical gradient (an ``INNER`` block's ``MAXEVAL`` counts the
+NLopt calls of each local search, :ref:`hpo_inner_block`; the ``NOISE``
+block's ``CALIBRATION`` repeats and the ``INIT_JITTER AUTO`` calibration
+of ``ANNEAL_PT`` are charged to no search).  Without it a backend runs
 until its other stops or its own end it (convergence, a finite
 temperature schedule or grid, ASA's limits).  A tolerance is a stop only
 above 0, and an active ``RESTART`` (:ref:`restart_decorator`) is one
-too: once its ``MAX`` restarts are used, the next ``AFTER_STAGNATION``
-evaluations without a new best end the run.  The backends compare as
+too, except for ``GD_STOGO`` and ``GD_STOGO_RAND``: once its ``MAX``
+restarts are used, the next ``AFTER_STAGNATION`` evaluations without a
+new best end the run.  The backends compare as
 follows (:ref:`hpo_stop_criteria` has the whole table):
 
 .. list-table::
@@ -97,8 +102,8 @@ follows (:ref:`hpo_stop_criteria` has the whole table):
        DIRECT (its ``XTOL`` only once every rectangle is that small),
        CRS2, ISRES, MMA, CCSAQ and SLSQP
    * - NLopt ``GD_STOGO``, ``GD_STOGO_RAND``
-     - no: ``MAXEVAL`` or ``MAXTIME`` required (it ignores the forced
-       stop by which HPO ends a search)
+     - no: ``MAXEVAL`` required (it ignores the forced stop by which HPO
+       ends a search)
      - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
    * - NLopt ``GN_ORIG_DIRECT``, ``GN_ORIG_DIRECT_L``
      - after about 100000 evaluations

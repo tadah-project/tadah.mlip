@@ -167,10 +167,14 @@ runs the page's LAMMPS example, `in.ml`, with it.
 `ctest -L e2e` runs HPO's host end-to-end groups
 (`hpo_fixweight_e2e`, `hpo_durable_e2e`, `hpo_embf0_e2e`, `hpo_rcut_e2e`,
 `hpo_rhoform_e2e`, `hpo_rhogate_e2e`, `hpo_rhobargate_e2e`,
-`hpo_bumpgate_e2e`, `hpo_nn_e2e`, `hpo_valmetric_e2e`) and the `hpo_tadah_cli_*` cases, which run the built `tadah`: their entries
+`hpo_bumpgate_e2e`, `hpo_nn_e2e`, `hpo_valmetric_e2e`, `hpo_pc_readback_e2e`) and the `hpo_tadah_cli_*` cases, which run the built `tadah`: their entries
 set `TADAH_BINARY` to it in a build with the `tadah` target, and in one
 without it (a standalone HPO build) the cases are Skipped unless
-`TADAH_BINARY` names an executable.
+`TADAH_BINARY` names an executable. `hpo_tadah_cli_pc_readback` runs
+`tadah` under `PC_ISOLATION THREAD` and `PROCESS` and leaves
+`TADAH_PC_ISOLATION` out of its environment (it would override both), so its
+`PROCESS` half needs `socketpair` even where `TADAH_PC_ISOLATION=THREAD` is
+set.
 
 **Skipped, not passed.** A test that cannot run because an optional input
 is absent (an external dataset, an environment variable) must be reported

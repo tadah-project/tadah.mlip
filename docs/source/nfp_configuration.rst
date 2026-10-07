@@ -1980,8 +1980,8 @@ candidate can make positive (``WATOM`` fixed at :math:`\le 0`, or an
 ``OPTIM WATOM`` box that does not reach above 0) is a startup error under
 either ``SEED`` mode, since every evaluation would be rejected. At startup
 every *seed* is evaluated as a candidate: the ``-c`` potential and every
-``CONFIG`` or ``WARM`` point of the resolved ``INIT`` chains (``OUTER``,
-``PRESTAGE`` and ``PRESTAGE.INNER``) and of the ``RESTART`` block's
+``CONFIG`` or ``WARM`` point of the resolved ``INIT`` chains (``OUTER`` and
+``PRESTAGE``; an ``INNER`` block takes none) and of the ``RESTART`` block's
 ``METHOD`` chain (a restart round starts from them; ``RESTART WARM
 <file>`` in the messages). A
 failing seed that the optimiser may start from stops

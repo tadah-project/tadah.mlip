@@ -122,7 +122,9 @@ Basic rules
    after it runs on the keys above the first ``TASK`` line (for example
    ``DBFILE`` and ``POTENTIAL``). Every task name is checked, with or without
    keys, and an unknown one stops the file before any task runs
-   (``Unknown task section "BOGUS"``).
+   (``Unknown task section "BOGUS"``). So does a command that needs a
+   subcommand: ``TASK data`` is refused, ``TASK data convert`` is a task
+   (``TASK section "DATA" is a group of tasks, not a task``).
 
 #. An error in a line names the line of the file and the file, whichever
    block it is in (``Invalid value for key EMBF0 on line 6 of run.task:

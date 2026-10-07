@@ -345,7 +345,8 @@ General and output
    * - ``OPTIM_PCT`` (float)
      - ``5.0``
      - ±% half-width of the OPTIM bounds written into the HPO target; > 0
-       (also with ``--edit`` and ``--retarget``).
+       (also with ``--edit`` and ``--retarget``, checked before any file is
+       written).
 
 Mode and basis
 ~~~~~~~~~~~~~~

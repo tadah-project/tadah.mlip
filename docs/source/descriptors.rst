@@ -54,7 +54,11 @@ The layout is the same on every path (``tadah train``, ``predict``,
   not normalise them. ``NORM true`` with ``BF_Linear`` or ``Kern_Linear``
   requires ``BIAS true``: the weights fitted to the normalised descriptors
   are converted to weights of the raw descriptors, and the constant this
-  moves goes into the intercepts.
+  moves goes into the intercepts. A linear potential with ``NORM true`` and
+  ``BIAS false``, which earlier versions wrote (their conversion took
+  descriptor component 0 for an intercept, so its energies and forces are
+  wrong), is refused when it predicts: retrain it with ``NORM false`` or
+  ``BIAS true``.
 * Only energies determine the constants (their force and stress rows are
   zero). The training structures with an energy weight (``eweight`` x
   ``EWEIGHT`` > 0) must therefore have compositions that determine them:
@@ -72,11 +76,15 @@ The layout is the same on every path (``tadah train``, ``predict``,
 
 A potential trained with ``BIAS true`` and two or more species by tadah
 1.5.x or earlier (or a 1.6.0 development build without per-species
-intercepts) has one intercept column shared by the species, while
-``pair_style tadah`` used one per species: its LAMMPS energies and forces
-were wrong (a Ta-Nb ``D2_LJ`` potential: -622.5 eV/atom in LAMMPS against
--7.65 eV/atom from ``tadah predict``). ``tadah predict`` and ``pair_style
-tadah`` refuse it, naming ``WEIGHTS``, ``DSIZE``, ``BIAS`` and ``ATOM``.
+intercepts) has one intercept column shared by the species. ``pair_style
+tadah`` has used one intercept column per species since 1.3.0-beta.1, so
+with ``pair_style tadah`` 1.3.0-beta.1 and later such a potential gave wrong
+LAMMPS energies and forces (a Ta-Nb ``D2_LJ`` potential: -622.5 eV/atom in
+LAMMPS against -7.65 eV/atom from ``tadah predict``); with 1.2.0 and
+earlier, whose ``pair_style tadah`` used one shared column too, LAMMPS and
+``tadah predict`` agreed. Its weights do not fit the descriptor of this
+version: ``tadah predict`` and ``pair_style tadah`` refuse it, naming
+``WEIGHTS``, ``DSIZE``, ``BIAS`` and ``ATOM``.
 Retrain it, with its training configuration or with the potential itself
 (add a ``DBFILE`` line): ``tadah train -c pot.tadah`` replaces its
 ``WEIGHTS``, ``NMEAN`` and ``NSTDEV``. Single-species potentials are not

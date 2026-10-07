@@ -259,15 +259,18 @@ def render_key(key_name: str, entry: dict) -> str:
         out.append("\n")
 
     # ---------------------------------------------------------------------
-    # Examples
+    # Examples: each is a value of the key (CORE's rule for the blueprint),
+    # one of several lines one value per line; each line is shown as a line
+    # of the key, as CoreUserConfigParser lists the examples of a refused
+    # value.
     # ---------------------------------------------------------------------
     examples = entry.get('examples', [])
     for idx, example in enumerate(examples, start=1):
         out.append(f"   *Example* {idx}::\n\n")
-        # Re-indent every line inside a multi-line example so the
-        # literal block stays consistently indented.
-        indented = example.replace('\n', '\n       ')
-        out.append(f"       {indented}\n\n")
+        for line in example.splitlines():
+            if line.strip():
+                out.append(f"       {key_name}   {line.strip()}\n")
+        out.append("\n")
 
     # Blank line between keys
     out.append("\n")

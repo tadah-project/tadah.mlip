@@ -60,6 +60,7 @@
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
 #include <tadah.mlip/cli/tadah_cli.h>
+#include <tadah/core/key_notice.h>
 #include <tadah/core/periodic_table.h>
 #include <tadah/mlip/structure.h>
 #include <tadah/mlip/structure_db.h>
@@ -78,6 +79,7 @@
 #include <initializer_list>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -1546,17 +1548,21 @@ std::vector<double> predicted_values(const std::string& file) {
 /* Pins: `tadah predict --error` predicts the same energies, forces and
  * stresses as `tadah predict`, whatever the weights: on two structures with
  * weights `0.25 0.36 0.49` and a potential with EWEIGHT 4, FWEIGHT 9 and
- * SWEIGHT 16 (and the error matrix SIGMA = I), energy.pred, forces.pred and
- * stress.pred agree to 1e-12, and so do the -A metric lines.
+ * SWEIGHT 16 (and the weight covariance WCOV = I, WNOISE 1 for E, F and
+ * S), energy.pred, forces.pred and stress.pred agree to 1e-12, and so do
+ * the -A metric lines.
  * Before the fix: the --error path predicted from the weighted design
  * matrix, so each value was multiplied by the square root of its weight
- * times the global weight (energies by 1, forces by 1.8, stresses by 2.8). */
+ * times the global weight (energies by 1, forces by 1.8, stresses by 2.8).
+ * Before WCOV and WNOISE (the covariance was SIGMA = I in this case's
+ * potential): the potential failed to parse ("Invalid key: WCOV"). */
 TEST_CASE("Subcommand: predict --error predicts what predict predicts",
           "[TadahCLI][predict][weight0]") {
   ScratchCwd cwd("predict_error_weights");
   std::ofstream("pot.tadah") << kPairPotential
                              << "EWEIGHT     4\nFWEIGHT     9\nSWEIGHT     16\n"
-                                "SIGMA     4     1 0 0 0     0 1 0 0     0 0 1 0     0 0 0 1\n";
+                                "WCOV     4     1 0 0 0     0 1 0 0     0 0 1 0     0 0 0 1\n"
+                                "WNOISE     E 1     F 1     S 1\n";
   std::ofstream("d.tadah")
       << weighted_entry("S1", "0.25 0.36 0.49", "1.40 1.30 1.20", "0.1", "0.001")
       << weighted_entry("S3", "0.25 0.36 0.49", "1.60 1.25 1.30", "-0.1", "0.002");
@@ -3153,13 +3159,15 @@ TEST_CASE("Subcommand: train and predict work for every non-linear model",
 }
 
 /* Pins: for each non-linear model trained with OALGO 3 (which stores the
- * covariance SIGMA), with NORM false and NORM true, `tadah predict
+ * weight covariance WCOV), with NORM false and NORM true, `tadah predict
  * --error` exits 0 and predicts the energies, forces and stresses `tadah
  * predict` predicts (1e-10 relative, 1e-12 absolute; both from the same
  * weights, through the design-matrix rows and through the model).
  * Before the fix: the trainings exited 1 (the ColumnLayout check); with a
  * potential at hand, `predict --error` built the same design matrix and
- * exited 1 with that message too. */
+ * exited 1 with that message too.
+ * Before WCOV and WNOISE: the potentials had SIGMA (this case required it)
+ * and no WCOV. */
 TEST_CASE("Subcommand: predict --error predicts what predict predicts for "
           "every non-linear model",
           "[TadahCLI][predict][nonlinear]") {
@@ -3174,7 +3182,7 @@ TEST_CASE("Subcommand: predict --error predicts what predict predicts for "
                                   "pot.tadah", "-F", "-S"});
       INFO("train: status " << t.status << "\n" << reported(t));
       REQUIRE(t.status == 0);
-      REQUIRE_FALSE(line_tokens(slurp("pot.tadah"), "SIGMA").empty());
+      REQUIRE_FALSE(line_tokens(slurp("pot.tadah"), "WCOV").empty());
       std::vector<std::vector<double>> values[2];
       for (int with_error = 0; with_error < 2; ++with_error) {
         std::vector<std::string> args = {"tadah", "predict", "-p", "pot.tadah",
@@ -3436,14 +3444,19 @@ TEST_CASE("Subcommand: train -c retrains a kernel potential with another "
 }
 
 /* Pins: `tadah train -c` with an M_BLR BF_Linear potential fitted with
- * OALGO 3 (BIAS true on the Nb-Ta cells, LAMBDA 0: SIGMA of 1 + 5 x 5
- * values) and the DBFILE writes no SIGMA with OALGO 1, and with OALGO 3 the
- * SIGMA of its own fit (1 + 5 x 5 values, equal to the potential's: the
- * same fit of the same data), the covariance `tadah predict --error` reads.
- * Before the fix: the OALGO 1 potential kept the old SIGMA, and with OALGO
- * 3 the new SIGMA was appended to it (52 values: the covariance read back,
- * by `predict --error` too, was the old one, which came first). */
-TEST_CASE("Subcommand: train -c replaces the SIGMA of an OALGO 3 potential",
+ * OALGO 3 (BIAS true on the Nb-Ta cells, LAMBDA 0: WCOV of 1 + 5 x 5
+ * values, WNOISE with E) and the DBFILE writes no WCOV and no WNOISE with
+ * OALGO 1, and with OALGO 3 the WCOV and WNOISE of its own fit (1 + 5 x 5
+ * values, equal to the potential's: the same fit of the same data), the
+ * covariance `tadah predict --error` reads.
+ * Before the fix (WCOV and WNOISE; this case, then named "Subcommand: train
+ * -c replaces the SIGMA of an OALGO 3 potential", checked SIGMA): the
+ * potential had no WCOV. Before fix/hpo-trainer-reuse: the OALGO 1
+ * potential kept the old SIGMA, and with OALGO 3 the new SIGMA was
+ * appended to it (52 values: the covariance read back, by `predict
+ * --error` too, was the old one, which came first). */
+TEST_CASE("Subcommand: train -c replaces the covariance of an OALGO 3 "
+          "potential",
           "[TadahCLI][train][retrain]") {
   ScratchCwd cwd("retrain_sigma");
   std::ofstream("db.tadah") << nbta_dataset(false);
@@ -3456,9 +3469,13 @@ TEST_CASE("Subcommand: train -c replaces the SIGMA of an OALGO 3 potential",
     REQUIRE(r.status == 0);
   }
   const std::string pot = slurp("pot.tadah");
-  const std::vector<double> sigma = line_numbers(pot, "SIGMA");
+  const std::vector<double> sigma = line_numbers(pot, "WCOV");
   REQUIRE(sigma.size() == 26u);
   REQUIRE(sigma[0] == 5.0);
+  const std::vector<std::string> noise = line_tokens(pot, "WNOISE");
+  REQUIRE(noise.size() == 3u);  // WNOISE E <value>: energies only
+  CHECK(noise[1] == "E");
+  CHECK(line_tokens(pot, "SIGMA").empty());
   for (int oalgo : {1, 3}) {
     CAPTURE(oalgo);
     std::ofstream("re_cfg.tadah") << as_training_config(
@@ -3467,13 +3484,20 @@ TEST_CASE("Subcommand: train -c replaces the SIGMA of an OALGO 3 potential",
                                 "re.tadah"});
     INFO("status " << r.status << "\n" << reported(r));
     REQUIRE(r.status == 0);
-    const std::vector<double> out = line_numbers(slurp("re.tadah"), "SIGMA");
+    const std::string re = slurp("re.tadah");
+    const std::vector<double> out = line_numbers(re, "WCOV");
+    CHECK(line_tokens(re, "SIGMA").empty());
     if (oalgo == 1) {
       CHECK(out.empty());
+      CHECK(line_tokens(re, "WNOISE").empty());
     } else {
       REQUIRE(out.size() == sigma.size());
       for (std::size_t i = 0; i < out.size(); ++i)
         CHECK(out[i] == Approx(sigma[i]).epsilon(1e-12).margin(1e-300));
+      const std::vector<std::string> re_noise = line_tokens(re, "WNOISE");
+      REQUIRE(re_noise.size() == 3u);
+      CHECK(std::stod(re_noise[2]) ==
+            Approx(std::stod(noise[2])).epsilon(1e-12));
     }
   }
 }
@@ -4016,6 +4040,22 @@ std::string retrain_config(const std::string& model, const std::string& fit) {
          "MODEL " + model + "\n" + fit;
 }
 
+/* Column `col` (0-based) of every line after the header of a `tadah
+ * predict` output file with numbers in it (energy.pred, error.pred, ...). */
+std::vector<double> column_values(const std::string& file, std::size_t col) {
+  std::ifstream in(file);
+  std::vector<double> out;
+  std::string line;
+  std::getline(in, line);  // header
+  while (std::getline(in, line)) {
+    std::istringstream ls(line);
+    std::vector<std::string> tok;
+    for (std::string t; ls >> t;) tok.push_back(t);
+    if (tok.size() > col) out.push_back(std::stod(tok[col]));
+  }
+  return out;
+}
+
 /* `text` with the line of `key` replaced by `line`. */
 std::string replace_key_line(const std::string& text, const std::string& key,
                              const std::string& line) {
@@ -4033,16 +4073,20 @@ std::string replace_key_line(const std::string& text, const std::string& key,
 }  // namespace
 
 /* Pins: `tadah train -c pot1.tadah`, pot1.tadah the potential of an OALGO 3
- * fit (LAMBDA 1e-3), writes a potential with one SIGMA of N*N+1 = 17
- * values for its 4 weights, the same tokens as pot1.tadah's (the same data
- * and fit), and so does a third train from that potential; `tadah predict
- * --error` with it exits 0 and writes energy.pred.
- * Before the fix: the retrain wrote 34 SIGMA values (each fit appended its
- * SIGMA to the one of the configuration), the REQUIRE on the count stopped
- * the case; `predict --error` on that potential read 34 values into a
- * 17-value buffer (heap corruption: SIGABRT, or SIGSEGV). */
-TEST_CASE("Subcommand: train -c with an OALGO 3 potential writes the SIGMA of "
-          "its own fit",
+ * fit (LAMBDA 1e-3), writes a potential with one WCOV of N*N+1 = 17
+ * values for its 4 weights and one WNOISE (E and F), the same tokens as
+ * pot1.tadah's (the same data and fit), and so does a third train from
+ * that potential; `tadah predict --error` with it exits 0, writes
+ * energy.pred and error.pred, and every error is positive.
+ * Before the fix (WCOV and WNOISE; this case, then named "Subcommand: train
+ * -c with an OALGO 3 potential writes the SIGMA of its own fit", checked
+ * SIGMA): the potentials had no WCOV. Before fix/hpo-trainer-reuse: the
+ * retrain wrote 34 SIGMA values (each fit appended its SIGMA to the one of
+ * the configuration), the REQUIRE on the count stopped the case; `predict
+ * --error` on that potential read 34 values into a 17-value buffer (heap
+ * corruption: SIGABRT, or SIGSEGV). */
+TEST_CASE("Subcommand: train -c with an OALGO 3 potential writes the "
+          "covariance of its own fit",
           "[TadahCLI][train][retrain][sigma]") {
   ScratchCwd cwd("retrain_sigma");
   std::ofstream("db.tadah") << retrain_dataset();
@@ -4051,17 +4095,21 @@ TEST_CASE("Subcommand: train -c with an OALGO 3 potential writes the SIGMA of "
   const CliRun t1 = run_tadah({"tadah", "train", "-c", "config.train", "-o", "pot1.tadah"});
   INFO("train: status " << t1.status << "\n" << reported(t1));
   REQUIRE(t1.status == 0);
-  const auto sigma1 = line_tokens(slurp("pot1.tadah"), "SIGMA");
+  const auto sigma1 = line_tokens(slurp("pot1.tadah"), "WCOV");
   REQUIRE(sigma1.size() == 1 + 17);
+  const auto noise1 = line_tokens(slurp("pot1.tadah"), "WNOISE");
+  REQUIRE(noise1.size() == 1 + 4);
   std::string from = "pot1.tadah";
   for (const char* to : {"pot2.tadah", "pot3.tadah"}) {
     INFO("train -c " << from << " -o " << to);
     const CliRun t = run_tadah({"tadah", "train", "-c", from, "-o", to});
     INFO("status " << t.status << "\n" << reported(t));
     REQUIRE(t.status == 0);
-    const auto sigma = line_tokens(slurp(to), "SIGMA");
+    const auto sigma = line_tokens(slurp(to), "WCOV");
     REQUIRE(sigma.size() == 1 + 17);
     CHECK(sigma == sigma1);
+    CHECK(line_tokens(slurp(to), "WNOISE") == noise1);
+    CHECK(line_tokens(slurp(to), "SIGMA").empty());
     from = to;
   }
   const CliRun p = run_tadah({"tadah", "predict", "-p", "pot3.tadah", "-d", "db.tadah",
@@ -4069,16 +4117,22 @@ TEST_CASE("Subcommand: train -c with an OALGO 3 potential writes the SIGMA of "
   INFO("predict --error: status " << p.status << "\n" << reported(p));
   CHECK(p.status == 0);
   CHECK(predicted_values("energy.pred").size() == 3u);
+  const std::vector<double> err = column_values("error.pred", 1);
+  CHECK(err.size() == 3u);
+  for (double e : err) CHECK(e > 0.0);
 }
 
 /* Pins: `tadah train -c` with an OALGO 3 potential edited to OALGO 1 (a fit
- * that computes no covariance) writes a potential without SIGMA, and
- * `tadah predict --error` with it exits 1 saying the covariance was not
- * computed ("Sigma matrix is not computed").
- * Before the fix: the potential kept the 17 SIGMA values of the OALGO 3
- * fit beside the OALGO 1 weights, and predict --error exited 0 with them. */
+ * that computes no covariance) writes a potential without WCOV, WNOISE or
+ * SIGMA, and `tadah predict --error` with it exits 1 saying the potential
+ * has no weight covariance, naming WCOV and OALGO 3.
+ * Before the fix (WCOV and WNOISE; this case, then named "... writes no
+ * SIGMA", checked SIGMA and the message "Sigma matrix is not computed"):
+ * the first potential had no WCOV. Before fix/hpo-trainer-reuse: the
+ * potential kept the 17 SIGMA values of the OALGO 3 fit beside the OALGO 1
+ * weights, and predict --error exited 0 with them. */
 TEST_CASE("Subcommand: train -c with an OALGO 3 potential and OALGO 1 writes "
-          "no SIGMA",
+          "no covariance",
           "[TadahCLI][train][retrain][sigma]") {
   ScratchCwd cwd("retrain_nosigma");
   std::ofstream("db.tadah") << retrain_dataset();
@@ -4087,20 +4141,24 @@ TEST_CASE("Subcommand: train -c with an OALGO 3 potential and OALGO 1 writes "
   const CliRun t1 = run_tadah({"tadah", "train", "-c", "config.train", "-o", "pot1.tadah"});
   INFO("train: status " << t1.status << "\n" << reported(t1));
   REQUIRE(t1.status == 0);
-  REQUIRE(line_tokens(slurp("pot1.tadah"), "SIGMA").size() == 1 + 17);
+  REQUIRE(line_tokens(slurp("pot1.tadah"), "WCOV").size() == 1 + 17);
   std::ofstream("pot1_oalgo1.tadah") << replace_key_line(slurp("pot1.tadah"), "OALGO", "OALGO 1");
   const CliRun t2 = run_tadah({"tadah", "train", "-c", "pot1_oalgo1.tadah", "-o",
                                "pot2.tadah"});
   INFO("retrain: status " << t2.status << "\n" << reported(t2));
   REQUIRE(t2.status == 0);
-  CHECK(line_tokens(slurp("pot2.tadah"), "SIGMA").empty());
+  for (const char* key : {"SIGMA", "WCOV", "WNOISE"}) {
+    INFO(key);
+    CHECK(line_tokens(slurp("pot2.tadah"), key).empty());
+  }
   CHECK(line_tokens(slurp("pot2.tadah"), "WEIGHTS").size() == 1 + 4);
   const CliRun p = run_tadah({"tadah", "predict", "-p", "pot2.tadah", "-d", "db.tadah",
                               "--error"});
   const std::string rep = reported(p);
   INFO("predict --error: status " << p.status << "\n" << rep);
   CHECK(p.status == 1);
-  CHECK(contains(rep, "Sigma matrix is not computed"));
+  CHECK(contains(rep, "WCOV"));
+  CHECK(contains(rep, "OALGO 3"));
 }
 
 /* Pins: `tadah train -c potk_db.tadah`, potk_db.tadah the potential of an
@@ -4186,3 +4244,351 @@ TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
   }
 }
 #endif  // TADAH_ENABLE_NFP
+
+/* ---- [uncertainty]: the weight covariance of a potential --------------
+ *
+ * An OALGO 3 fit writes WCOV (the covariance of the WEIGHTS) and WNOISE
+ * (the noise variance of each row type the fit had) into its potential;
+ * `tadah train --uncertainty` lists the weights with their standard
+ * deviations (weights.tadah), `tadah predict --error` gives each value
+ * its predictive standard deviation, and `tadah properties pairwise
+ * --error` the energy's. SIGMA, what Tadah! 1.0.0 to 1.6.0 wrote instead,
+ * is a deprecated key. */
+
+namespace {
+
+/* The rows of weights.tadah after its header: index, weight, std. dev. */
+std::vector<std::vector<double>> weights_rows(const std::string& file) {
+  std::vector<std::vector<double>> rows;
+  std::ifstream in(file);
+  std::string line;
+  std::getline(in, line);  // header
+  while (std::getline(in, line)) {
+    std::istringstream ls(line);
+    std::vector<double> r;
+    for (double v; ls >> v;) r.push_back(v);
+    if (!r.empty()) rows.push_back(r);
+  }
+  return rows;
+}
+
+std::string first_line(const std::string& file) {
+  std::ifstream in(file);
+  std::string line;
+  std::getline(in, line);
+  return line;
+}
+
+/* The data rows of each block ("# <title>" then a header line) of a
+ * `tadah properties pairwise` output file. */
+std::map<std::string, std::vector<std::vector<double>>> pairwise_blocks(
+    const std::string& file) {
+  std::map<std::string, std::vector<std::vector<double>>> blocks;
+  std::ifstream in(file);
+  std::string title;
+  for (std::string line; std::getline(in, line);) {
+    if (line.rfind("# ", 0) == 0) {
+      if (line.find("r (") == std::string::npos) title = line.substr(2);
+      continue;
+    }
+    std::istringstream ls(line);
+    std::vector<double> r;
+    for (double v; ls >> v;) r.push_back(v);
+    if (!r.empty()) blocks[title].push_back(r);
+  }
+  return blocks;
+}
+
+/* A D2_BP pair term (4 functions, 4.5 A) and a DM_mBlipEnv embedding
+ * (5 functions, 5 A) for Ta, M_BLR BF_Linear, OALGO 3, LAMBDA 1e-3. */
+std::string twobody_manybody_config() {
+  return replace_key_line(
+             retrain_config("M_BLR BF_Linear", "LAMBDA 1e-3\nOALGO 3\n"),
+             "INITMB", "INITMB true") +
+         "TYPEMB DM_mBlipEnv 0 1 1 5 5 Ta Ta\nRCUTMB 5.0\nRCTYPEMB Cut_Cos\n"
+         "CGRIDMB 2.88\nSGRIDMB 8.0\nCEMBFUNC 0.5 0.75 1.0 1.25 1.5\n"
+         "SEMBFUNC 2.0 2.0 2.0 2.0 2.0\nRCUTENV 0.6\n";
+}
+
+}  // namespace
+
+/* Pins: a potential with a SIGMA line (an OALGO 3 potential of Tadah!
+ * 1.0.0 to 1.6.0) predicts: `tadah predict` exits 0 and reports the
+ * deprecation notice of SIGMA once ("Deprecated key SIGMA is ignored",
+ * naming the transposed formula); `tadah predict --error` exits 1 saying
+ * the potential has no weight covariance, naming WCOV and OALGO 3.
+ * Before the fix: no notice, and --error exited 0, its errors computed
+ * with the transposed and unscaled matrix. */
+TEST_CASE("Subcommand: predict refuses --error for a potential with SIGMA "
+          "only",
+          "[TadahCLI][predict][uncertainty]") {
+  ScratchCwd cwd("legacy_sigma");
+  std::ofstream("pot.tadah")
+      << kPairPotential << "OALGO     3\n"
+      << "SIGMA     4     1 0 0 0     0 1 0 0     0 0 1 0     0 0 0 1\n";
+  std::ofstream("d.tadah")
+      << weighted_entry("S1", "1 1 1", "1.40 1.30 1.20", "0.1", "0.001")
+      << weighted_entry("S2", "1 1 1", "1.60 1.25 1.30", "-0.1", "0.002");
+  const std::size_t notices =
+      tadah::core::ignored_key_reported("SIGMA") ? 0 : 1;
+  const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "d.tadah"});
+  const std::string rp = reported(p);
+  INFO("predict: status " << p.status << "\n" << rp);
+  CHECK(p.status == 0);
+  std::size_t n = 0;
+  for (std::size_t at = rp.find("Deprecated key SIGMA is ignored");
+       at != std::string::npos;
+       at = rp.find("Deprecated key SIGMA is ignored", at + 1))
+    ++n;
+  CHECK(n == notices);
+  if (notices) CHECK(contains(rp, "transposed"));
+  const CliRun e = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "d.tadah",
+                              "--error"});
+  const std::string re = reported(e);
+  INFO("predict --error: status " << e.status << "\n" << re);
+  CHECK(e.status == 1);
+  CHECK(contains(re, "WCOV"));
+  CHECK(contains(re, "OALGO 3"));
+}
+
+/* Pins: `tadah train --uncertainty` with OALGO 1 exits 1 before training,
+ * naming --uncertainty and OALGO 3, and writes neither pot.tadah nor
+ * weights.tadah.
+ * Before the fix: it trained, wrote pot.tadah and a weights.tadah with
+ * its header only (LAMBDA 1e-3: the empty covariance's diagonal), and
+ * exited 0. */
+TEST_CASE("Subcommand: train --uncertainty needs OALGO 3",
+          "[TadahCLI][train][uncertainty]") {
+  ScratchCwd cwd("uncertainty_oalgo1");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.train")
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 1e-3\nOALGO 1\n");
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                              "pot.tadah", "--uncertainty"});
+  const std::string rep = reported(t);
+  INFO("status " << t.status << "\n" << rep);
+  CHECK(t.status == 1);
+  CHECK(contains(rep, "--uncertainty"));
+  CHECK(contains(rep, "OALGO 3"));
+  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  CHECK_FALSE(std::filesystem::exists("weights.tadah"));
+}
+
+/* Pins: `tadah train --uncertainty` with OALGO 3 writes weights.tadah with
+ * the header "Index  Mean weight  Std. dev." and one row per weight: its
+ * index, the weight of pot.tadah and the square root of the diagonal of
+ * pot.tadah's WCOV (1e-12 relative); with LAMBDA 0 (4 rows), and with
+ * FIXINDEX 2 / FIXWEIGHT 0.01 and LAMBDA 1e-3 (4 rows, the pinned weight
+ * 0.01 with a standard deviation of 0, the others positive).
+ * Before the fix: LAMBDA 0 exited 1 after writing pot.tadah ("Sigma matrix
+ * is not computed."); with FIXINDEX weights.tadah had 3 rows (the free
+ * weights' covariance) and gave the pinned row a value; the column was the
+ * diagonal of SIGMA, a variance-like number without the noise scale,
+ * headed "Uncertainty". */
+TEST_CASE("Subcommand: train --uncertainty lists the standard deviation of "
+          "every weight",
+          "[TadahCLI][train][uncertainty]") {
+  ScratchCwd cwd("uncertainty_rows");
+  std::ofstream("db.tadah") << retrain_dataset();
+  for (const char* fit : {"LAMBDA 0\nOALGO 3\n",
+                          "LAMBDA 1e-3\nOALGO 3\nFIXINDEX 2\nFIXWEIGHT 0.01\n"}) {
+    INFO(fit);
+    std::filesystem::remove("weights.tadah");
+    std::ofstream("config.train") << retrain_config("M_BLR BF_Linear", fit);
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "pot.tadah", "--uncertainty"});
+    INFO("status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+    std::istringstream hs(first_line("weights.tadah"));
+    std::vector<std::string> head;
+    for (std::string w; hs >> w;) head.push_back(w);
+    CHECK(head == std::vector<std::string>{"Index", "Mean", "weight", "Std.",
+                                           "dev."});
+    const auto rows = weights_rows("weights.tadah");
+    const std::string pot = slurp("pot.tadah");
+    const std::vector<double> w = line_numbers(pot, "WEIGHTS");
+    const std::vector<double> cov = line_numbers(pot, "WCOV");
+    REQUIRE(w.size() == 4u);
+    REQUIRE(rows.size() == 4u);
+    REQUIRE(cov.size() == 17u);
+    for (std::size_t i = 0; i < 4; ++i) {
+      INFO("weight " << i);
+      REQUIRE(rows[i].size() == 3u);
+      CHECK(rows[i][0] == double(i));
+      CHECK(rows[i][1] == Approx(w[i]).epsilon(1e-12));
+      const double sd = std::sqrt(cov[1 + 4 * i + i]);
+      CHECK(rows[i][2] == Approx(sd).epsilon(1e-12).margin(1e-300));
+      if (contains(fit, "FIXINDEX") && i == 1) {
+        CHECK(rows[i][1] == 0.01);
+        CHECK(rows[i][2] == 0.0);
+      } else {
+        CHECK(rows[i][2] > 0.0);
+      }
+    }
+  }
+}
+
+/* Pins: OALGO 3 on 2 structures without forces (2 energies, the
+ * observations) for 4 weights at LAMBDA 0: the fit determines 2
+ * directions (gamma = 2), so the noise variance, and with it the weight
+ * covariance, is undefined. `tadah train --uncertainty` exits 1 before
+ * writing pot.tadah, naming --uncertainty and the 2 observations;
+ * without --uncertainty it exits 0 and writes a potential without WCOV and
+ * WNOISE, with a WARNING that no weight covariance was computed.
+ * Before the fix: --uncertainty wrote pot.tadah and then exited 1 ("Sigma
+ * matrix is not computed.", tested on LAMBDA 0); without it the potential
+ * had a SIGMA of inf and nan values (1/s^2 of the undetermined directions,
+ * s = 0) and no WARNING. */
+TEST_CASE("Subcommand: train --uncertainty refuses a fit without a noise "
+          "estimate before writing the potential",
+          "[TadahCLI][train][uncertainty]") {
+  ScratchCwd cwd("uncertainty_no_noise");
+  std::ofstream("db.tadah")
+      << weighted_entry("R1", "1 1 1", "2.60 0.40 0.30", "0.12", "0")
+      << weighted_entry("R2", "1 1 1", "3.10 0.20 0.50", "-0.07", "0");
+  std::ofstream("config.train") << replace_key_line(
+      retrain_config("M_BLR BF_Linear", "LAMBDA 0\nOALGO 3\n"), "FORCE",
+      "FORCE false");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "pot.tadah", "--uncertainty"});
+    const std::string rep = reported(t);
+    INFO("--uncertainty: status " << t.status << "\n" << rep);
+    CHECK(t.status == 1);
+    CHECK(contains(rep, "--uncertainty"));
+    CHECK(contains(rep, "2 observations"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "pot.tadah"});
+    const std::string rep = reported(t);
+    INFO("status " << t.status << "\n" << rep);
+    CHECK(t.status == 0);
+    CHECK(contains(rep, "no weight covariance"));
+    const std::string pot = slurp("pot.tadah");
+    CHECK(line_tokens(pot, "WEIGHTS").size() == 5u);
+    CHECK(line_tokens(pot, "WCOV").empty());
+    CHECK(line_tokens(pot, "WNOISE").empty());
+    CHECK(line_tokens(pot, "SIGMA").empty());
+  }
+}
+
+/* Pins: `tadah predict -F --error` with a potential whose fit had no force
+ * rows (FORCE false: its WNOISE has E only) exits 1, naming the forces and
+ * WNOISE; `tadah predict --error` (energies) with it exits 0 and every
+ * energy error is positive.
+ * Before the fix: -F --error exited 0 and printed force errors, and the
+ * energy errors of --error were negative (-92.8 eV/atom among them). */
+TEST_CASE("Subcommand: predict --error refuses forces a potential was not "
+          "fitted to",
+          "[TadahCLI][predict][uncertainty]") {
+  ScratchCwd cwd("error_unfitted_forces");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.train") << replace_key_line(
+      retrain_config("M_BLR BF_Linear", "LAMBDA 1e-3\nOALGO 3\n"), "FORCE",
+      "FORCE false");
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                              "pot.tadah"});
+  INFO("train: status " << t.status << "\n" << reported(t));
+  REQUIRE(t.status == 0);
+  const CliRun f = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                              "db.tadah", "-F", "--error"});
+  const std::string rf = reported(f);
+  INFO("predict -F --error: status " << f.status << "\n" << rf);
+  CHECK(f.status == 1);
+  CHECK(contains(rf, "forces"));
+  CHECK(contains(rf, "WNOISE"));
+  const CliRun e = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                              "db.tadah", "--error"});
+  INFO("predict --error: status " << e.status << "\n" << reported(e));
+  CHECK(e.status == 0);
+  const std::vector<double> err = column_values("error.pred", 1);
+  CHECK(err.size() == 3u);
+  for (double x : err) CHECK(x > 0.0);
+}
+
+/* Pins: `tadah properties pairwise` with a two-body plus many-body
+ * potential (D2_BP 4 + DM_mBlipEnv 5, BIAS false) reports the energy per
+ * atom in all three blocks ("Total potential", "Two-body potential",
+ * "Many-body potential", headed "Energy eV/atom"): at every distance the
+ * two-body and many-body energies add up to the total (1e-10 relative).
+ * Before the fix: the two-body and many-body blocks gave the energy of the
+ * dimer (twice the per-atom value), so they added up to twice the total. */
+TEST_CASE("Subcommand: properties pairwise gives every block's energy per "
+          "atom",
+          "[TadahCLI][properties][uncertainty]") {
+  ScratchCwd cwd("pairwise_blocks");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.train") << twobody_manybody_config();
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                              "pot.tadah"});
+  INFO("train: status " << t.status << "\n" << reported(t));
+  REQUIRE(t.status == 0);
+  const CliRun p = run_tadah({"tadah", "properties", "pairwise", "-p",
+                              "pot.tadah", "--range", "2.0", "6.0", "9",
+                              "--atompair", "Ta", "Ta", "-o", "pw.dat"});
+  INFO("pairwise: status " << p.status << "\n" << reported(p));
+  REQUIRE(p.status == 0);
+  auto blocks = pairwise_blocks("pw.dat");
+  const auto& tot = blocks["Total potential"];
+  const auto& b2 = blocks["Two-body potential"];
+  const auto& mb = blocks["Many-body potential"];
+  REQUIRE(tot.size() == 9u);
+  REQUIRE(b2.size() == 9u);
+  REQUIRE(mb.size() == 9u);
+  for (std::size_t j = 0; j < 9; ++j) {
+    INFO("r = " << tot[j][0]);
+    CHECK(b2[j][1] + mb[j][1] == Approx(tot[j][1]).epsilon(1e-10).margin(1e-14));
+  }
+}
+
+/* Pins: `tadah properties pairwise --error` with the two-body plus
+ * many-body potential (OALGO 3) exits 0 and gives every block an "Error
+ * eV/atom" column of standard deviations of the energy per atom, none
+ * negative: the total's sqrt(phi^T WCOV phi + WNOISE_E)/2, each part's
+ * sqrt(phi_p^T WCOV phi_p)/2 with phi_p the part's columns (no noise: the
+ * parts are not observations). Beyond both cutoffs (r = 5.5 and 6 A) phi
+ * is 0: the parts' errors are 0 and the total's is sqrt(WNOISE_E)/2 (1e-12
+ * relative), WNOISE_E from pot.tadah.
+ * Before the fix: exit 1, "ColumnLayout: total_cols=4 disagrees with
+ * DSIZE=9" (the parts' contexts carried the full potential's DSIZE). */
+TEST_CASE("Subcommand: properties pairwise --error on a two-body plus "
+          "many-body potential",
+          "[TadahCLI][properties][uncertainty]") {
+  ScratchCwd cwd("pairwise_error");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.train") << twobody_manybody_config();
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                              "pot.tadah"});
+  INFO("train: status " << t.status << "\n" << reported(t));
+  REQUIRE(t.status == 0);
+  const std::vector<std::string> noise = line_tokens(slurp("pot.tadah"), "WNOISE");
+  REQUIRE(noise.size() >= 3u);
+  REQUIRE(noise[1] == "E");
+  const double wnoise_e = std::stod(noise[2]);
+  const CliRun p = run_tadah({"tadah", "properties", "pairwise", "-p",
+                              "pot.tadah", "--range", "2.0", "6.0", "9",
+                              "--atompair", "Ta", "Ta", "-o", "pw.dat",
+                              "--error"});
+  INFO("pairwise --error: status " << p.status << "\n" << reported(p));
+  REQUIRE(p.status == 0);
+  auto blocks = pairwise_blocks("pw.dat");
+  for (const char* title : {"Total potential", "Two-body potential",
+                            "Many-body potential"}) {
+    INFO(title);
+    const auto& rows = blocks[title];
+    REQUIRE(rows.size() == 9u);
+    for (const auto& r : rows) {
+      INFO("r = " << r[0]);
+      REQUIRE(r.size() == 3u);
+      CHECK(r[2] >= 0.0);
+      if (r[0] > 5.25) {
+        if (std::string(title) == "Total potential")
+          CHECK(r[2] == Approx(std::sqrt(wnoise_e) / 2.0).epsilon(1e-12));
+        else
+          CHECK(r[2] == 0.0);
+      }
+    }
+  }
+}

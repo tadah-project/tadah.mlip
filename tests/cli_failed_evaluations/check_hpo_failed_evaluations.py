@@ -38,11 +38,15 @@ evaluation's row records FAILSCORE.
                finite-difference stencil of the start point is 1.8 and 1.4,
                and a skip cap fails 1.4, so the gradient is not finite (the
                default FAILSCORE, the largest double, overflows the
-               difference). The search ends there, after the same four
-               evaluations as before, with status 0 (1.6 and 1.8 are usable
-               losses) and the trailer "STOPPED -- gradient not finite: a
-               failed evaluation in the finite-difference stencil"; it used
-               to report "MAXEVAL=60 reached" and COMPLETED.
+               difference). The search ends there, after three evaluations:
+               1.6, then its gradient's stencil 1.8 and 1.4, which takes
+               the loss at 1.6 that dlib has just evaluated as its centre
+               (it evaluated 1.6 a second time before HPO's centre fix:
+               four evaluations). The run ends with status 0 (1.6 and 1.8
+               are usable losses) and the trailer "STOPPED -- gradient not
+               finite: a failed evaluation in the finite-difference
+               stencil"; it used to report "MAXEVAL=60 reached" and
+               COMPLETED.
   failscore_zero  FAILSCORE 0: a startup error at its line, status 1, no
                evaluation. With 0 there was no failure band, and a run all
                of whose evaluations failed ended COMPLETED with a
@@ -154,7 +158,7 @@ OPTIM CGRID2B (2) 1.0 2.0
 """,
     },
     "fd_straddle": {
-        "oalgo": 4, "bias": "false", "evals": 4, "usable": True,
+        "oalgo": 4, "bias": "false", "evals": 3, "usable": True,
         "kind": "fd_stop",
         "tadah_grids": ("CGRID2B 0.5 1.6", "SGRID2B 3.0 5.0", 2),
         "hpo": """OPTIMIZER
@@ -301,11 +305,10 @@ def check_files(work, case, rc, stderr, journal):
         if "MAXEVAL=60 reached" in journal:
             failures.append("the journal says MAXEVAL=60 was reached")
         xs = [float(r[-1]) for r in data_rows(work / "params.tadah")]
-        if [round(x, 12) for x in xs] != [1.6, 1.6, 1.8, 1.4]:
+        if [round(x, 12) for x in xs] != [1.6, 1.8, 1.4]:
             failures.append(f"the evaluations are {xs}, expected the start "
-                            "point 1.6 and its stencil 1.6, 1.8, 1.4")
-        if [r[-1] == FAILSCORE_ROW for r in rows] != [False, False, False,
-                                                     True]:
+                            "point 1.6 and its stencil 1.8, 1.4")
+        if [r[-1] == FAILSCORE_ROW for r in rows] != [False, False, True]:
             failures.append("only the stencil point 1.4 should fail: "
                             f"{[r[-1] for r in rows]}")
     else:

@@ -812,9 +812,12 @@ its line, naming HPO's options and, for a near miss, the closest one:
    Error on line 9: PC_LAMMPS: unknown option '--hotvars' (did you mean '--hotvar'?): HPO's options are --script, --varloss, --invar, --outvar, --failscore, --maxtime, --hotvar and --failvar; LAMMPS command-line options start with a single '-'
    Line: PC_LAMMPS --script Ecoh.in --hotvars hot_a0 2.5 4.5 3.302 --varloss Ecoh 8.10 800
 
-On a ``PC_FAILPROBE`` line the list also has ``--gate`` and ``--s0``
-(:ref:`failscore_grading`); on a ``PC_LAMMPS`` line the message names them as
-``PC_FAILPROBE`` options.  Before 1.6.0 such an option was passed to
+On a ``PC_FAILPROBE`` line the list and the closest option are those
+that line takes: ``--script``, ``--invar``, ``--outvar``,
+``--failscore``, ``--maxtime``, ``--gate`` and ``--s0``
+(:ref:`failscore_grading`), without the ``--varloss``, ``--hotvar`` and
+``--failvar`` it refuses; on a ``PC_LAMMPS`` line the message names
+``--gate`` and ``--s0`` as ``PC_FAILPROBE`` options.  Before 1.6.0 such an option was passed to
 LAMMPS with its values: every evaluation failed (``Invalid command-line
 argument: --hotvars``), and the run spent its whole budget before it
 ended with no usable loss.
@@ -1085,7 +1088,10 @@ relaxation itself adds nothing at the relaxed geometry.  In every block
 that runs an optimiser and obtains gradients — the ``STRATEGY``-level
 block and ``EXPLORE``, with a gradient-based backend (``DLIB:BFGS``,
 ``NLOPT`` ``LD_*``/``GD_*``, ``CERES``) or an ``MLSL``/``AUGLAG`` whose
-local search is one:
+local search is one (for ``MLSL`` and ``AUGLAG`` the local search alone
+decides, whatever the ``D`` or ``N`` of their name: ``GD_MLSL_LDS``
+with an ``INNER`` ``LN_BOBYQA`` takes no gradient, and before 1.6.0 an
+unset ``GRAD_STRATEGY`` resolved to ``ANALYTICAL`` there):
 
 * an unset ``GRAD_STRATEGY`` resolves to ``ANALYTICAL``, and the
   journal's OPTIMISER section says so (``GRAD_STRATEGY : ANALYTICAL
@@ -1197,9 +1203,9 @@ The knobs, most important first
    budget.  ``<v0>`` must be finite and strictly positive; it sets the
    saturation scale of the grading curve for ``S`` (default 1; a good
    choice is the seed potential's ``S`` times a small factor).  At most
-   one probe line is allowed; ``--varloss``
-   on it is rejected (the probe grades failures — it must not shape the
-   feasible objective).
+   one probe line is allowed; ``--varloss``, ``--hotvar`` and
+   ``--failvar`` on it are rejected (the probe grades failures — it must
+   not shape the feasible objective).
 
 ``--gate <T>`` (on ``PC_FAILPROBE``)
    **The only knob that needs real care.**  If the gate can fire on a
@@ -2215,7 +2221,19 @@ one a finite number (``MAXTIME`` a positive one).
        takes effect: NLOPT:LN_SBPLX takes no gradient; remove it.``);
        before 1.6.0 a derivative-free NLopt algorithm, ``TADAH:RANDOM``,
        ``TADAH:GRID`` and ``DLIB:GFS`` accepted it and ignored it.  An
-       MLSL or AUGLAG whose local search is gradient-based takes it.
+       MLSL or AUGLAG takes it when its local search is gradient-based —
+       a gradient-based ``INNER`` block, or without one the ``LD_MMA``
+       that NLopt runs for the ``GD_`` and ``LD_`` forms — and refuses it
+       otherwise, whatever the ``D`` or ``N`` of its name: MLSL and AUGLAG
+       evaluate their own points without a gradient, and an ``INNER``
+       block replaces NLopt's default local optimiser
+       (``… NLOPT:GD_MLSL_LDS takes no gradient: NLopt's MLSL and AUGLAG
+       take a gradient only for their local search, and the INNER block's
+       NLOPT:LN_BOBYQA takes none; remove it.``).  Before 1.6.0
+       ``GD_MLSL``, ``GD_MLSL_LDS``, ``LD_AUGLAG`` and ``LD_AUGLAG_EQ``
+       with a derivative-free ``INNER`` block accepted it and ignored it,
+       as they did ``PARAM fd_step``, ``fd_kernel`` and ``diff_method``
+       and ``NOISE`` ``AUTO``.
        Rejected when the configuration has ``PC_LAMMPS`` lines.  With
        ``PC_OBSERVABLE`` ``NUMERICAL`` is
        rejected in every block, ``EXPLORE`` included, and an unset
@@ -2504,7 +2522,8 @@ gradients: the ``STRATEGY``-level optimiser (each ``MULTISTART`` start),
 the ``PRESTAGE`` exploration and refinement, and an ``MLSL`` / ``AUGLAG``
 block whose local search takes gradients — NLopt differentiates that
 block's objective, so its ``INNER`` search takes the enclosing block's
-settings.  An invalid value is an error there, with the same message on
+settings; ``GD_MLSL*`` and ``LD_AUGLAG*`` with a derivative-free ``INNER``
+block take none (:ref:`GRAD_STRATEGY <hpo_optimizer_common>`).  An invalid value is an error there, with the same message on
 every backend (``PARAM fd_kernel must be inhouse or ceres (got 1)``), and so
 is one that can never take effect (``… PARAM fd_step never takes effect:
 NLOPT:LN_SBPLX takes no gradient; remove it.``): ``fd_step``, ``fd_kernel``
@@ -2749,8 +2768,8 @@ Gradients that are not finite
 .............................
 
 The gradient-based backends — ``DLIB:BFGS``, NLopt's ``LD_*`` and
-``GD_*`` algorithms (and the local search of ``MLSL`` / ``AUGLAG``) and
-every CERES driver — take a finite-difference gradient (``GRAD_STRATEGY
+``GD_*`` algorithms (for ``MLSL`` and ``AUGLAG``, their local search
+when it is one) and every CERES driver — take a finite-difference gradient (``GRAD_STRATEGY
 NUMERICAL``, the default, and the finite-difference part of ``HYBRID``)
 from the losses at a stencil of points around the current one (``PARAM
 fd_step``, ``fd_kernel``).  When an evaluation of the stencil fails — its
@@ -2947,6 +2966,13 @@ the ending its ``INNER`` search decides):
 
    HPOEngine error: the STRATEGY-level optimiser: TADAH:RANDOM does not support FTOL_REL: uniform random search has no convergence test to apply it to; stop it with MAXEVAL, MAXTIME or STOPVAL
    HPOEngine error: the STRATEGY-level optimiser: NLOPT:G_MLSL_LDS does not support FTOL_REL with an INNER block: MLSL's multistart loop tests no tolerance, and NLopt passes the block's tolerances to no INNER search; set it in the INNER block, whose local search tests it
+
+The second sends the tolerance into the ``INNER`` block only when that
+block's algorithm tests it; otherwise it names the stops that search
+honours (``…; the INNER block's NLOPT:GN_ESCH does not test it either:
+stop that search with MAXEVAL or MAXTIME in the INNER block, or MAXEVAL,
+MAXTIME or STOPVAL in the NLOPT:AUGLAG block, which NLopt hands on to
+it``).
 
 Before 1.6.0 they were accepted and did nothing: ``TADAH:RANDOM`` and
 ``TADAH:GRID`` accepted every tolerance (and ``POPULATION`` and
@@ -3872,7 +3898,8 @@ Tolerances are the other way round: the ``INNER`` block's own are its
 search's, and those of the enclosing MLSL or AUGLAG block reach no
 ``INNER`` search, so they are refused there (``NLOPT:G_MLSL_LDS does not support
 FTOL_REL with an INNER block: …; set it in the INNER block, whose local
-search tests it``).  NLopt gives an ``INNER`` search under MLSL that sets
+search tests it``, or, when the ``INNER`` algorithm does not test it
+either, the stops that search honours).  NLopt gives an ``INNER`` search under MLSL that sets
 none of ``FTOL_REL``, ``FTOL_ABS`` and ``XTOL_REL`` the tolerances
 ``FTOL_REL 1e-15`` and ``XTOL_REL 1e-7`` (``optimize.c``); before 1.6.0
 an ``XTOL_ABS`` on the MLSL block switched these off.  MLSL's own loop

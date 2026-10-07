@@ -678,19 +678,25 @@ and every other key it does not search), and each run starts its
 value the first run's last evaluation converged to). Run twice from one
 task file, example ``01_minimal`` (at ``MAXEVAL 3``) writes for its
 second run the ``loss.tadah``, ``outvar.tadah`` and ``best_pot.tadah`` of
-the same run made alone, but for the evaluation numbers. Two things carry over
-from the first run:
-
-* the evaluation counter: the second run's ``ITERATION`` numbers and
-  ``DUMP`` file names continue where the first run's stopped (4 to 6
-  after a run of 3 evaluations);
-* the width of the pool of worker threads that runs the ``PC_LAMMPS``
-  scripts and the training kernels (``THREADS``), which the first run
-  sets: a later run with another ``THREADS`` runs on the first run's
-  pool, while its journal reports its own value.
-
-Run each ``tadah hpo`` in a process of its own when the runs need
-different ``THREADS`` or their files must number the evaluations from 1.
+the same run made alone, but for the evaluation numbers. Each run builds
+its own pool of ``THREADS`` worker threads, which runs the ``PC_LAMMPS``
+scripts and the training kernels, and under ``PC_ISOLATION PROCESS`` its
+own worker processes, and stops them when it ends, also when it fails;
+the ``PC_ISOLATION THREAD`` LAMMPS instances end with the threads, so
+the next run creates its own. Every run used to run on the pool of the
+first run's ``THREADS`` while its journal reported its own value (under
+``PC_ISOLATION PROCESS`` a later run with a smaller ``THREADS`` failed
+its evaluations: ``PcWorkerPool::execute: bad slot``; under
+``PC_ISOLATION THREAD`` a script of the same file name and LAMMPS
+options ran on the first run's LAMMPS instance, as the first run had
+read it, so a script rewritten between the runs was not read again),
+and a program that called ``hpo_run`` again after a run that threw
+found the first run's worker processes still running
+(``pc_worker_pool_init: pool already initialized``). One thing carries over from the first run, the
+evaluation counter: the second run's ``ITERATION`` numbers and ``DUMP``
+file names continue where the first run's stopped (4 to 6 after a run of
+3 evaluations). Run each ``tadah hpo`` in a process of its own when its
+files must number the evaluations from 1.
 
 Individual validation targets and weights
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2520,7 +2526,9 @@ one a finite number (``MAXTIME`` a positive one).
        ``THREADS`` inside ``EXPLORE`` or ``INNER`` does not resize it.  ``THREADS 0`` is an
        error at its line in every block (``THREADS must be an integer
        from 1 to 2147483647, got '0'``); before 1.6.0 it was accepted,
-       and the pool quietly ran one worker.
+       and the pool quietly ran one worker.  Each run builds its pool
+       and stops it when it ends, so every run of a process has a pool
+       of its own ``THREADS`` (see *Two runs in one process*).
    * - ``GRAD_STRATEGY`` (string)
      - How gradient-based backends obtain gradients: ``NUMERICAL``
        (default; finite differences, see ``PARAM fd_step`` /
@@ -5565,10 +5573,22 @@ writes.
    Number of training structures (deterministic sample) the audit's
    dataset scan uses; ``0`` scans all of them.
 ``HEALTH_LOG off|summary|full`` (default ``summary``)
-   Per-evaluation health monitor of the fitted weights (non-finite
-   values, collapsed or exploding blocks).  ``summary`` rate-limits its
-   warnings, ``full`` reports every offending evaluation, ``off``
-   disables it.
+   Per-evaluation health monitor of the weights each evaluation's model
+   holds (fitted, or set from ``FIXWEIGHT``), by the blocks of its design
+   matrix: the bias column, the two-body and the many-body descriptor's
+   columns, or one block for a non-linear basis function or kernel.  It
+   warns when a weight is NaN or infinite, when every weight of a block
+   is exactly zero, when fewer than 5 % of a block's weights exceed
+   1e-15 in magnitude (a block that holds a NaN or infinite weight is
+   checked for neither: the NaN/Inf warning describes it), and when the
+   model has not as many weights as its design matrix has columns (the
+   block checks are then skipped).
+   ``summary`` gives at most one warning of each kind (per block) in 100
+   evaluations, ``full`` reports every offending evaluation, ``off``
+   disables it.  The warnings are printed on standard output
+   (``WARNING: iter_health: eval <n> ...``), not written to the
+   journal.  Before, the monitor read a design matrix that ``tadah hpo``
+   never builds, and it reported nothing.
 
 .. _hpo_env_overrides:
 

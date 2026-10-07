@@ -2143,11 +2143,13 @@ TEST_CASE("Subcommand: train with BIAS true and two species writes one "
 /* Pins: a two-species BIAS potential with one intercept column shared by
  * the species (1 + 3 WEIGHTS, as tadah trained it before 1.6.0):
  * `tadah predict` exits 1 without writing energy.pred, naming WEIGHTS,
- * DSIZE, BIAS and ATOM and saying to retrain; `tadah train -c` with the
- * potential itself (plus a DBFILE) retrains it into 2 + 3 WEIGHTS (exit 0).
+ * DSIZE, BIAS and ATOM ("has 4 WEIGHTS", "5 components (DSIZE)") and saying
+ * to retrain; `tadah train -c` with the potential itself (plus a DBFILE)
+ * retrains it into 2 + 3 WEIGHTS (exit 0).
  * Before the fix: predict exited 0 with the shared intercept (and LAMMPS
  * used the weights with one intercept column per species); the retrained
- * potential had 1 + 3 WEIGHTS again. */
+ * potential had 1 + 3 WEIGHTS again. Before the one-guard rewording
+ * (review): the message said "WEIGHTS has 4 values" and "DSIZE 5". */
 TEST_CASE("Subcommand: predict refuses a two-species BIAS potential with one "
           "shared intercept column; train -c retrains it",
           "[TadahCLI][predict][bias]") {
@@ -2161,8 +2163,8 @@ TEST_CASE("Subcommand: predict refuses a two-species BIAS potential with one "
   INFO("status " << r.status << "\n" << rep);
   CHECK(r.status == 1);
   CHECK_FALSE(std::filesystem::exists("energy.pred"));
-  CHECK(contains(rep, "WEIGHTS has 4 values"));
-  CHECK(contains(rep, "DSIZE 5"));
+  CHECK(contains(rep, "has 4 WEIGHTS"));
+  CHECK(contains(rep, "5 components (DSIZE)"));
   CHECK(contains(rep, "ATOM Nb Ta"));
   CHECK(contains(rep, "retrain"));
 
@@ -2213,6 +2215,99 @@ TEST_CASE("Subcommand: train refuses intercepts the data cannot determine "
   CHECK(n.status == 1);
   CHECK_FALSE(std::filesystem::exists("pot_norm.tadah"));
   CHECK(contains(nrep, "NORM=true with MODEL=Kern_Linear requires BIAS=true"));
+}
+
+/* Pins: a linear NORM potential (M_BLR BF_Linear, BIAS true, NORM true on
+ * the Nb-Ta cells, 5 WEIGHTS) predicts the same energies whatever its NMEAN
+ * and NSTDEV hold: a linear model predicts with its converted weights. The
+ * potential with NMEAN and NSTDEV of 10 values, the trained 5 preceded by 5
+ * others (what `tadah train -c <potential>` wrote before 1.6.0: the
+ * potential's values, then the new fit's), exits 0 and writes an
+ * energy.pred identical to the trained potential's, as it did before the
+ * per-species fix.
+ * Before the fix: predict refused it, exit 1, "NORM true: NMEAN has 10
+ * values, but the descriptor has DSIZE 5 entries". */
+TEST_CASE("Subcommand: predict runs a linear NORM potential whose NMEAN and "
+          "NSTDEV a retrain appended to",
+          "[TadahCLI][predict][bias][norm]") {
+  ScratchCwd cwd("bias_norm_appended");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  std::string keys = kNbTaKeys;
+  keys.replace(keys.find("NORM false"), 10, "NORM true");
+  std::ofstream("config") << "DBFILE db.tadah\n" << keys;
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                              "pot.tadah"});
+  INFO("train: status " << t.status << "\n" << reported(t));
+  REQUIRE(t.status == 0);
+  const std::string pot = slurp("pot.tadah");
+  REQUIRE(line_tokens(pot, "NMEAN").size() == 6u);   // key + 5
+  REQUIRE(line_tokens(pot, "NSTDEV").size() == 6u);
+  // The same potential with 5 other values before each of NMEAN, NSTDEV.
+  std::istringstream in(pot);
+  std::ostringstream appended;
+  for (std::string line; std::getline(in, line);) {
+    std::istringstream ss(line);
+    std::string key;
+    ss >> key;
+    if (key == "NMEAN" || key == "NSTDEV") {
+      std::vector<std::string> v;
+      for (std::string x; ss >> x;) v.push_back(x);
+      appended << key;
+      for (const std::string& x : v) appended << " " << 1.1 * std::stod(x) + 0.01;
+      for (const std::string& x : v) appended << " " << x;
+      appended << "\n";
+    } else {
+      appended << line << "\n";
+    }
+  }
+  std::ofstream("appended.tadah") << appended.str();
+  REQUIRE(line_tokens(slurp("appended.tadah"), "NMEAN").size() == 11u);
+
+  const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                              "db.tadah", "-o", "energy_pot.pred"});
+  INFO("predict pot.tadah: status " << p.status << "\n" << reported(p));
+  REQUIRE(p.status == 0);
+  const CliRun a = run_tadah({"tadah", "predict", "-p", "appended.tadah",
+                              "-d", "db.tadah", "-o", "energy_app.pred"});
+  INFO("predict appended.tadah: status " << a.status << "\n" << reported(a));
+  CHECK(a.status == 0);
+  REQUIRE(std::filesystem::exists("energy_app.pred"));
+  CHECK(slurp("energy_app.pred") == slurp("energy_pot.pred"));
+}
+
+/* Pins: `tadah predict` refuses (exit 1, no energy.pred) a linear potential
+ * with NORM true and BIAS false, M_KRR Kern_Linear and M_BLR BF_Linear on
+ * the Nb-Ta cells (3 WEIGHTS, NMEAN and NSTDEV, as an earlier version wrote
+ * them), naming NORM true and BIAS false and saying to retrain: the
+ * conversion that wrote such weights took descriptor component 0 for an
+ * intercept, so their energies are wrong; tadah train refuses the
+ * configuration (NORM true with a linear model needs BIAS true).
+ * Before the fix: predict exited 0 and wrote the potential's wrong energies
+ * (an M_KRR Kern_Linear NORM potential of the quickstart Ta data predicted
+ * -0.44 eV/atom against -8.04 eV/atom of its NORM false fit). */
+TEST_CASE("Subcommand: predict refuses a linear potential with NORM true and "
+          "BIAS false",
+          "[TadahCLI][predict][norm]") {
+  ScratchCwd cwd("norm_no_bias");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  for (const std::string model : {"MODEL M_KRR Kern_Linear", "MODEL M_BLR BF_Linear"}) {
+    std::string keys = kNbTaKeys;
+    keys.replace(keys.find("BIAS true"), 9, "BIAS false");
+    keys.replace(keys.find("NORM false"), 10, "NORM true");
+    keys.replace(keys.find("MODEL M_BLR BF_Linear"), 21, model);
+    std::ofstream("pot.tadah") << keys << "WEIGHTS 0.19 -0.8 0.02\n"
+                               << "NMEAN 0.4 0.3 0.2\nNSTDEV 0.2 0.3 0.4\n";
+    std::filesystem::remove("energy.pred");
+    const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah"});
+    const std::string rep = reported(r);
+    INFO(model << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK_FALSE(std::filesystem::exists("energy.pred"));
+    CHECK(contains(rep, "NORM true"));
+    CHECK(contains(rep, "BIAS false"));
+    CHECK(contains(rep, "retrain"));
+  }
 }
 
 /* ---- [eam]: D2_EAM and DM_EAM read the setfl file named by SETFL ------ */

@@ -1438,7 +1438,14 @@ there can evaluate a bound again and again, stop at once as converged, or
 leave the box (:ref:`hpo_gradient_not_finite`).  A usable point whose
 finite-difference stencil reaches a failure, graded or not, has no
 gradient.  ``GRAD_STRATEGY ANALYTICAL`` keeps its analytical gradient at
-a graded failure, which does not see the grading.
+a graded failure, which does not see the grading.  A candidate that a
+gate rejects before training (``BUMPGATE CANDIDATE``, ``RHOGATE``,
+``RHOBARGATE``) has no fit to differentiate: under ``ANALYTICAL`` it is a
+point without a usable gradient (:ref:`hpo_gradient_not_finite`), from
+which NLopt and Ceres step back, and ``HYBRID`` takes finite differences
+there.  Until 2026-10-07 such a candidate ended an ``ANALYTICAL`` run
+``FAILED -- GRAD_STRATEGY=ANALYTICAL: no analytical gradient for N
+parameters at this point``.
 
 The knobs, most important first
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3242,7 +3249,12 @@ a search that started inside the failure region took it for a slope and
 converged on ``FAILSCORE``, under ``HYBRID`` with nothing differenced —
 the default under ``PC_OBSERVABLE`` (:ref:`pc_observable`) — as under
 ``ANALYTICAL``.  At a graded failure under ``FAILSCORE_GRADING ON`` the
-analytical gradient is kept; it does not see the grading.
+analytical gradient is kept; it does not see the grading.  A candidate a
+gate rejected before training is a graded failure without a fit, and so
+without an analytical gradient: ``ANALYTICAL`` gives it none (``the
+analytical gradient could not be formed at this point``; where the point
+ends the search, below, the journal's stop line gives the gate's reject
+note), and ``HYBRID`` differences it.
 
 An evaluation with a failed term is a failed evaluation — a failed
 ``PC_LAMMPS`` simulation (``--failscore``, :ref:`pc_lammps_options`) or a

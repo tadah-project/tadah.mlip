@@ -671,10 +671,13 @@ the ``PC_ISOLATION THREAD`` LAMMPS instances end with the threads, so
 the next run creates its own. Every run used to run on the pool of the
 first run's ``THREADS`` while its journal reported its own value (under
 ``PC_ISOLATION PROCESS`` a later run with a smaller ``THREADS`` failed
-its evaluations: ``PcWorkerPool::execute: bad slot``), and a program
-that called ``hpo_run`` again after a run that threw found the first
-run's worker processes still running (``pc_worker_pool_init: pool
-already initialized``). One thing carries over from the first run, the
+its evaluations: ``PcWorkerPool::execute: bad slot``; under
+``PC_ISOLATION THREAD`` a script of the same file name and LAMMPS
+options ran on the first run's LAMMPS instance, as the first run had
+read it, so a script rewritten between the runs was not read again),
+and a program that called ``hpo_run`` again after a run that threw
+found the first run's worker processes still running
+(``pc_worker_pool_init: pool already initialized``). One thing carries over from the first run, the
 evaluation counter: the second run's ``ITERATION`` numbers and ``DUMP``
 file names continue where the first run's stopped (4 to 6 after a run of
 3 evaluations). Run each ``tadah hpo`` in a process of its own when its

@@ -4446,9 +4446,13 @@ TEST_CASE("Subcommand: train --uncertainty refuses a fit without a noise "
   std::ofstream("db.tadah")
       << weighted_entry("R1", "1 1 1", "2.60 0.40 0.30", "0.12", "0")
       << weighted_entry("R2", "1 1 1", "3.10 0.20 0.50", "-0.07", "0");
+  // VERBOSE 1: the WARNING below is a Logger WARNING (VERBOSE 0 shows
+  // errors only).
   std::ofstream("config.train") << replace_key_line(
-      retrain_config("M_BLR BF_Linear", "LAMBDA 0\nOALGO 3\n"), "FORCE",
-      "FORCE false");
+      replace_key_line(
+          retrain_config("M_BLR BF_Linear", "LAMBDA 0\nOALGO 3\n"), "FORCE",
+          "FORCE false"),
+      "VERBOSE", "VERBOSE 1");
   {
     const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
                                 "pot.tadah", "--uncertainty"});

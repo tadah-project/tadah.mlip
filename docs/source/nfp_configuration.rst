@@ -5409,8 +5409,10 @@ writes.
    columns, or one block for a non-linear basis function or kernel.  It
    warns when a weight is NaN or infinite, when every weight of a block
    is exactly zero, when fewer than 5 % of a block's weights exceed
-   1e-15 in magnitude, and when the model has not as many weights as its
-   design matrix has columns (the block checks are then skipped).
+   1e-15 in magnitude (a block that holds a NaN or infinite weight is
+   checked for neither: the NaN/Inf warning describes it), and when the
+   model has not as many weights as its design matrix has columns (the
+   block checks are then skipped).
    ``summary`` gives at most one warning of each kind (per block) in 100
    evaluations, ``full`` reports every offending evaluation, ``off``
    disables it.  The warnings are printed on standard output

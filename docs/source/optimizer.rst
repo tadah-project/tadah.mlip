@@ -49,11 +49,12 @@ optionally ``RESTART``; :ref:`strategy_block`).  Gradient-based backends
 (``NLOPT`` ``LD_*``/``GD_*``, ``CERES``) obtain their gradient by finite
 differences and are rejected when the configuration has ``PC_LAMMPS``
 lines; ``DLIB:BFGS`` is the one gradient-based optimiser accepted there.
-A failed evaluation at the point or in the finite-difference stencil
-leaves the point without a usable gradient, whatever ``FAILSCORE`` is
-(at a graded failure under ``FAILSCORE_GRADING ON`` the graded
-differences are its gradient), which can end such a search with its own
-status (:ref:`hpo_gradient_not_finite`).
+A failed loss at the point, or a failed evaluation in the
+finite-difference stencil of a usable point, leaves the point without a
+usable gradient, whatever ``FAILSCORE`` is (at a graded failure at the
+point under ``FAILSCORE_GRADING ON`` its finite differences are its
+gradient), which can end such a search with its own status
+(:ref:`hpo_gradient_not_finite`).
 ``MAXEVAL`` caps one search of a backend — the run of a ``PLAIN``
 strategy, one ``RESTART`` launch, one ``MULTISTART`` start, the
 ``PRESTAGE`` exploration or one refinement, so a run can make more — and

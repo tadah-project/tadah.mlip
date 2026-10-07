@@ -769,12 +769,18 @@ Additional options
 
 ``--outvar <name>``
    Record the variable in ``outvar.tadah`` without contributing to the
-   loss.  Useful for diagnostic plots.
+   loss.  Useful for diagnostic plots.  A diagnostic that cannot be read
+   back after the script (:ref:`pc_lammps_readback`) is ``NaN`` in its
+   column, and the evaluation keeps its loss.  (The ``S`` of the
+   ``PC_FAILPROBE`` line is not a diagnostic: one that cannot be read
+   fails the probe.)
 
 ``--failscore <value>``
    The value substituted for each of this script's ``--varloss`` /
    ``--outvar`` variables when the simulation fails (crash, timeout,
-   out-of-window hot value, …); the substituted value then passes
+   out-of-window hot value, a ``--varloss``, ``--hotvar`` or
+   ``--failvar`` variable that cannot be read back, …); the substituted
+   value then passes
    through the loss against the target like a measured one.  A finite
    number (it may be negative or ``0``: it is a variable's value, not a
    failure score).  Default: the root ``FAILSCORE`` in force
@@ -935,6 +941,69 @@ a ``PC_LAMMPS`` entry, HPO appends ``.t<worker_slot>`` per shared-pool
 slot (and the MPI rank suffix when applicable), so for example
 ``-log run.log`` becomes ``run.log.t0``, ``run.log.t1``, … on one rank.
 ``-log none`` and ``-screen none`` are left untouched.
+
+.. _pc_lammps_readback:
+
+Reading the variables back
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+HPO reads every ``--varloss``, ``--outvar``, ``--hotvar`` and
+``--failvar`` variable after the script has run, by evaluating its
+formula in LAMMPS (:ref:`hot_value_precision`).  That evaluation can raise
+a LAMMPS error the script itself never met, because the script did not use
+the variable: a thermo keyword the script's ``thermo_style`` does not
+compute (LAMMPS computes a thermo keyword only when thermo output uses it),
+a divide by zero for one candidate, a compute that is not current.  Each
+variable is read on its own, and the error is handled by the variable's
+role, the same way under ``PC_ISOLATION THREAD`` and ``PROCESS``:
+
+* a ``--varloss``, ``--hotvar`` or ``--failvar`` variable that cannot be
+  read fails its simulation, as a failed run does: the line's variables
+  take its ``--failscore``, a hot script's cold scripts do not run, and
+  the failvars still grade the failure (:ref:`failscore_grading`).  The
+  journal says, with the variable and the LAMMPS message:
+
+  .. code-block:: none
+
+     PC_LAMMPS task failed (press.in, occurrence 1): reading --varloss E after the script: ERROR: Thermo keyword press in variable requires thermo to use/init press (src/thermo.cpp:1331)
+
+  So does the ``S`` of the ``PC_FAILPROBE`` line (its first ``--outvar``),
+  which grades every failure of the evaluation: an ``S`` that cannot be
+  read is a failed probe, as when the probe's script fails, so the
+  evaluation is aborted and, under ``FAILSCORE_GRADING``, graded band D
+  with ``S`` unavailable (``PC_LAMMPS task failed (probe.in, occurrence
+  1): reading PC_FAILPROBE --outvar S after the script: …``).
+
+* a variable declared only with ``--outvar`` (a diagnostic) that cannot
+  be read is ``NaN`` in ``outvar.tadah``, and the evaluation keeps its
+  loss:
+
+  .. code-block:: none
+
+     PC_LAMMPS --outvar is NaN (press.in, occurrence 1): reading --outvar Pend after the script: ERROR: Thermo keyword press in variable requires thermo to use/init press (src/thermo.cpp:1331)
+
+A variable that reads one that cannot be read (``variable Pdiff equal
+v_Pend-1.0``) raises that one's LAMMPS error, so the journal gives the cause
+whichever of them fails the simulation.  The LAMMPS message may go on with
+``Last input line:`` and the script's last command, which ran before the
+variable was read.  A LAMMPS error inside the
+script is journalled the same way, with its own message (``PC_LAMMPS task
+failed (bad.in, occurrence 1): ERROR: Unknown command: bogus_command 1 2
+…``); a script that times out has no message.  Each kind of line is
+written for the occurrences 1, 2, 4, 8, … of a run.  The LAMMPS instance
+that raised the error is discarded and created afresh for the next
+evaluation.  To read a thermo keyword after the run, list it in
+``thermo_style`` (``thermo_style custom step pe press``), or read it
+through a compute defined before the run (``compute P all pressure
+thermo_temp``, ``variable Pend equal c_P``).
+
+Before 1.6.0 such a read-back error of a ``--varloss`` or ``--outvar``
+variable ended a ``PC_ISOLATION THREAD`` run (the only mode of the MPI
+build) with a segmentation fault, and under ``PROCESS`` failed the whole
+script, a diagnostic included, with a journal line that did not name the
+variable; a ``--hotvar`` or ``--failvar`` that could not be read was taken
+as absent (no range check or warm start, no violation), and an error
+inside the script left no journal line.
 
 .. _pc_lammps_execution:
 
@@ -1217,6 +1286,10 @@ The knobs, most important first
    one probe line is allowed; ``--varloss``, ``--hotvar`` and
    ``--failvar`` on it are rejected (the probe grades failures — it must
    not shape the feasible objective).
+   An ``S`` that cannot be read back after the probe's
+   script (:ref:`pc_lammps_readback`) is a failed probe, as when the script
+   fails: the evaluation is aborted and, under ``FAILSCORE_GRADING``,
+   graded band D with ``S`` unavailable.
 
 ``--gate <T>`` (on ``PC_FAILPROBE``)
    **The only knob that needs real care.**  If the gate can fire on a
@@ -4249,6 +4322,19 @@ File                   Columns
                        ``Ecoh[1]``; its loss column is ``L(Ecoh)[1]``).
 ``stats.tadah``        Per-validation-dataset values and their average for each enabled metric.
 =====================  =====================================================================
+
+Every row has the columns of its file's header.  A cell an evaluation did
+not compute is NaN: ``nan`` in ``loss.tadah`` and ``stats.tadah`` (as for a
+validation dataset that is not measured), ``NaN`` in ``outvar.tadah`` (as
+for a variable that cannot be read back, :ref:`pc_lammps_readback`).  That
+is so for the ``PC_LAMMPS`` and ``PC_OBSERVABLE`` columns of an evaluation
+stopped before them (``--skip-above``/``--skip-rel``, or a loss already at
+``FAILSCORE``), for every metric, ``PC_LAMMPS`` and ``PC_OBSERVABLE`` column
+of a candidate a feasibility gate rejects before training
+(:ref:`hpo_feasibility_gates`), and for the columns an evaluation ended by
+an error did not reach.  Before 1.6.0 such a row held only the cells the
+evaluation had, so its values did not line up with the header, and a gate
+reject showed its metric averages as ``0``.
 
 Cadence and formatting:
 

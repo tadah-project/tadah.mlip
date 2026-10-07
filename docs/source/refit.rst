@@ -442,7 +442,7 @@ Window and self-test
      - Pass threshold for the compressed band (:math:`a/a_0\,0.75\!-\!0.95`), > 0.
    * - ``REFIT_REACH_SMIN``
      - ``0.75``
-     - Smallest :math:`a/a_0` the fit must stay faithful at, in (0, 1]; sets the reachable :math:`r`/:math:`\rho` window.
+     - Smallest :math:`a/a_0` the fit must stay faithful at, from 0.1 to 1; sets the reachable :math:`r`/:math:`\rho` window and the span of the self-test and the E-V scans. Their neighbour lists grow as :math:`s_{\min}^{-3}` (0.01 took about a minute, 1e-6 did not finish), and the reachability probe lists neighbours only out to :math:`r_{cut}/0.1`.
    * - ``REFIT_REACH_MARGIN``
      - ``1.25``
      - Safety margin on the reachable :math:`F(\rho)` window; > 0.

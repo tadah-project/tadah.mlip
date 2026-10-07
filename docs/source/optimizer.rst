@@ -105,11 +105,17 @@ follows (:ref:`hpo_stop_criteria` has the whole table):
 
 A backend that cannot end without a stop and has none is a startup
 error before any data is loaded (``NLOPT:GN_DIRECT needs a stop: …``),
-and so is a setting a backend rejects: an attribute it does not support
-(``DLIB:GFS`` rejects the tolerances it cannot apply), or, for every
-backend but NLopt, a ``PARAM`` key it does not read, named with the keys
-it takes (``TADAH:RANDOM: unknown PARAM 'FOO' (it takes none)``;
-:ref:`nfp_manual`).
+and so is a setting a backend rejects: an attribute its run never reads
+— a tolerance it does not test (``TADAH:RANDOM does not support
+FTOL_REL: …; stop it with MAXEVAL, MAXTIME or STOPVAL``), ``POPULATION``,
+``VECTOR_ARR`` or ``SEED`` where the algorithm has none, ``GRAD_STRATEGY``
+on an optimiser that takes no gradient, ``STOPVAL`` inside an ``INNER``
+block —, an NLopt ``AUGLAG``, ``AUGLAG_EQ``, ``G_MLSL`` or ``G_MLSL_LDS``
+without an ``INNER`` block, or, for every backend but NLopt, a ``PARAM``
+key it does not read, named with the keys it takes (``TADAH:RANDOM:
+unknown PARAM 'FOO' (it takes none)``; :ref:`nfp_manual`).  Before 1.6.0
+those attributes were accepted and did nothing, and NLopt refused such an
+``AUGLAG`` or ``G_MLSL`` only once the run had started.
 
 .. toctree::
    :maxdepth: 2

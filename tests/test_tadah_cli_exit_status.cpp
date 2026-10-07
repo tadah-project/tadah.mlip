@@ -4675,6 +4675,57 @@ TEST_CASE("Subcommand: train with M_KRR Kern_Linear 2 writes descriptor "
   }
 }
 
+/* Pins: `tadah train` refuses the SBASIS of a fit that draws basis vectors
+ * before it reads the training data, exit 1 without a potential, naming the
+ * model: M_KRR Kern_Linear 2 with SBASIS 1 ("M_KRR Kern_Linear 2", "SBASIS
+ * 1", "at least 2 basis vectors", without the word "non-linear"), also with
+ * a DBFILE that does not exist (the SBASIS refusal, not the file's); M_KRR
+ * Kern_Linear 2 without SBASIS ("M_KRR Kern_Linear 2 needs SBASIS"); and
+ * M_KRR Kern_RBF 1 without SBASIS ("M_KRR Kern_RBF 1 needs SBASIS").
+ * Before the fix: SBASIS 1 was refused by the fit, after the data was read,
+ * as "a non-linear M_KRR model" (with the missing DBFILE: the file's error);
+ * without SBASIS: "Key not found in the Context object: SBASIS", for both
+ * kernels. */
+TEST_CASE("Subcommand: train refuses the SBASIS of a basis-drawing M_KRR "
+          "fit before it reads the data",
+          "[TadahCLI][train][krr][potential-content]") {
+  ScratchCwd cwd("krr_sbasis_refused");
+  std::ofstream("db.tadah") << distinct_energy_dataset();
+  const struct {
+    const char* name;
+    std::string config;
+    std::vector<std::string> named;
+  } cases[] = {
+      {"Kern_Linear 2, SBASIS 1",
+       retrain_config("M_KRR Kern_Linear 2", "SBASIS 1\nLAMBDA 0\nOALGO 1\n"),
+       {"M_KRR Kern_Linear 2", "SBASIS 1", "at least 2 basis vectors"}},
+      {"Kern_Linear 2, SBASIS 1, no such DBFILE",
+       with_line(retrain_config("M_KRR Kern_Linear 2",
+                                "SBASIS 1\nLAMBDA 0\nOALGO 1\n"),
+                 "DBFILE", "DBFILE no_such.tadah"),
+       {"M_KRR Kern_Linear 2", "SBASIS 1", "at least 2 basis vectors"}},
+      {"Kern_Linear 2, no SBASIS",
+       retrain_config("M_KRR Kern_Linear 2", "LAMBDA 0\nOALGO 1\n"),
+       {"M_KRR Kern_Linear 2 needs SBASIS"}},
+      {"Kern_RBF 1, no SBASIS",
+       retrain_config("M_KRR Kern_RBF 1", "MPARAMS 1.0\nLAMBDA 0\nOALGO 1\n"),
+       {"M_KRR Kern_RBF 1 needs SBASIS"}},
+  };
+  for (const auto& c : cases) DYNAMIC_SECTION(c.name) {
+    std::ofstream("config.train") << c.config;
+    std::filesystem::remove("pot.tadah");
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "pot.tadah"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    for (const std::string& what : c.named) CHECK(contains(rep, what));
+    CHECK_FALSE(contains(rep, "non-linear"));
+    CHECK_FALSE(contains(rep, "Key not found"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
 #ifdef TADAH_ENABLE_NFP
 /* Pins: a task file with two `TASK hpo` blocks (one evaluation each, at
  * the CONFIG seed of OPTIM CGRID2B (1); PC_ERMSE and PC_FRMSE), A with

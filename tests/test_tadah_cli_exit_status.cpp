@@ -2070,6 +2070,67 @@ TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment"
   CHECK(predicted_values("energy.pred").size() == 3u);
 }
 
+/* Pins: `tadah train` on the three Ta dimers (D2_BP, 4 weights) reads
+ * FIXINDEX given as separate values as the comma list: 'FIXINDEX 1 2 3 4'
+ * with FIXWEIGHT 14 2500 -3 0.5 (every weight pinned) exits 0 and writes
+ * exactly 'WEIGHTS 14 2500 -3 0.5'; 'FIXINDEX 1 3' (FIXWEIGHT 0.5 -0.25)
+ * writes the WEIGHTS line 'FIXINDEX 1,3' writes, weights 1 and 3 the pinned
+ * values; 'FIXINDEX 1,1' with one FIXWEIGHT value exits 1 ("FIXINDEX 1,1
+ * has 2 indices but FIXWEIGHT has 1 value") and 'FIXINDEX 3-1' exits 1
+ * naming the descending range, neither writing pot.tadah.
+ * Before the fix: the separate values were joined into one malformed
+ * segment and dropped ("Error: Non-numeric value or incorrect syntax
+ * found: 1 2 3 4", then "FIXWEIGHT and FIXINDEX differ in size: 4 and
+ * 0", exit 1), '3-1' expanded to nothing ("differ in size: 3 and 0"), and
+ * '1,1' was deduplicated with a stderr warning and trained (exit 0). */
+TEST_CASE("Subcommand: train reads FIXINDEX given as separate values as the "
+          "comma list",
+          "[TadahCLI][exit-status][train][fixindex]") {
+  ScratchCwd cwd("train_fixindex");
+  write_ta_dimer_training();
+  const std::string base = slurp("config.train");
+  auto train = [&](const std::string& name, const std::string& keys) {
+    std::ofstream(name) << base << keys;
+    std::filesystem::remove("pot.tadah");
+    return run_tadah({"tadah", "train", "-c", name, "-o", "pot.tadah"});
+  };
+  SECTION("every weight pinned") {
+    const CliRun r =
+        train("all.cfg", "FIXINDEX 1 2 3 4\nFIXWEIGHT 14 2500 -3 0.5\n");
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS") ==
+          std::vector<std::string>{"WEIGHTS", "14", "2500", "-3", "0.5"});
+  }
+  SECTION("two weights pinned, as with the comma list") {
+    const CliRun c = train("comma.cfg", "FIXINDEX 1,3\nFIXWEIGHT 0.5 -0.25\n");
+    INFO("comma: status " << c.status << "\n" << reported(c));
+    REQUIRE(c.status == 0);
+    const auto comma = line_tokens(slurp("pot.tadah"), "WEIGHTS");
+    REQUIRE(comma.size() == 5u);
+    CHECK(comma[1] == "0.5");
+    CHECK(comma[3] == "-0.25");
+    const CliRun s = train("space.cfg", "FIXINDEX 1 3\nFIXWEIGHT 0.5 -0.25\n");
+    INFO("space: status " << s.status << "\n" << reported(s));
+    REQUIRE(s.status == 0);
+    CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS") == comma);
+  }
+  SECTION("a weight named twice and a descending range are refused") {
+    const CliRun t = train("twice.cfg", "FIXINDEX 1,1\nFIXWEIGHT 0.5\n");
+    const std::string rt = reported(t);
+    INFO("twice: status " << t.status << "\n" << rt);
+    CHECK(t.status == 1);
+    CHECK(contains(rt, "FIXINDEX 1,1 has 2 indices but FIXWEIGHT has 1 value"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+    const CliRun d = train("desc.cfg", "FIXINDEX 3-1\nFIXWEIGHT 0.5 -0.25 1\n");
+    const std::string rd = reported(d);
+    INFO("descending: status " << d.status << "\n" << rd);
+    CHECK(d.status == 1);
+    CHECK(contains(rd, "FIXINDEX: index '3-1' is a descending range"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
 /* ---- the [bias] cases ----------------------------------------------------
  *
  * BIAS true with two species (Nb, Ta): one one-hot intercept column per ATOM

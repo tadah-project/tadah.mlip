@@ -260,7 +260,7 @@ The dataset has the following structure:
     <blank line>
 
 - The first line is a comment line; it will be used as a label for a structure. Do not leave a blank line.
-- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor, and (CASTEP ``.castep``, VASP ``vasprun.xml``) ``fweight`` 0 for one without forces, and says so in one INFO line, so that a ``STRESS true`` (``FORCE true``) fit ignores them instead of fitting zeros. A stress or force line that cannot be read (a value the code could not print, ``*****``; VASP OUTCAR ``in kB``, ``vasprun.xml``, CASTEP ``.castep``) gives that weight 0 too, with a WARNING naming the file and the line. Any other value a converter cannot read refuses the file, naming it and the line (or the calculation); a file that ends inside a step (a run stopped while writing it) keeps the steps before it, with a WARNING. The force and stress metrics (``tadah predict -A``, ``PC_FRMSE`` and ``PC_SRMSE`` in ``tadah hpo``) leave such a structure out too; a dataset in which every structure has that weight 0 is not measured (``nan``, left out of the average), and a run in which no dataset has the data is refused. ``tadah data balance --rescale`` keeps a weight of 0.
+- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor, and (CASTEP ``.castep``, VASP ``vasprun.xml``) ``fweight`` 0 for one without forces, and says so in one INFO line, so that a ``STRESS true`` (``FORCE true``) fit ignores them instead of fitting zeros. A stress or force line that cannot be read (a value the code could not print, ``*****``; VASP OUTCAR ``in kB``, ``vasprun.xml``, CASTEP ``.castep``) gives that weight 0 too, with a WARNING naming the file and the line. Any other value a converter cannot read refuses the file, naming it and the line (or the calculation); a file that ends inside a step (a run stopped while writing it: inside one of the step's blocks, during its SCF or between its blocks) keeps the steps before it and skips that step, with a WARNING naming the file and the step, and a ``vasprun.xml`` that ends after a complete calculation, without its closing tag, is read whole, with a WARNING that nothing was skipped. The force and stress metrics (``tadah predict -A``, ``PC_FRMSE`` and ``PC_SRMSE`` in ``tadah hpo``) leave such a structure out too; a dataset in which every structure has that weight 0 is not measured (``nan``, left out of the average), and a run in which no dataset has the data is refused. ``tadah data balance --rescale`` keeps a weight of 0.
 - The three cell lines are the lattice vectors **a**, **b** and **c**, one
   vector per line, as Cartesian components in Å (the lattice vectors are the
   *rows* of the 3×3 block). A vector is **not** written down a column.
@@ -352,8 +352,17 @@ Also see :ref:`units`.
    **Re-convert them** from the source files with ``tadah data convert``;
    neither can be repaired in place exactly (the entropy term is not
    stored). A fit with ``STRESS true`` on the old stress fitted its
-   negative. Datasets from CASTEP, from the LAMMPS examples shipped with
-   Tadah!, or written with ASE already have the tension-positive sign. The
+   negative. An MD OUTCAR with a step at 10000 K or more, converted by any
+   earlier build (the 1.6.0 development builds included), gave structures
+   that are several steps in one: VASP writes such a temperature joined to
+   its word (``(temperature10147.82 K)``), which the reader did not read,
+   so the step did not end at its ``EKIN_LAT`` line and was stored with the
+   steps after it, up to the next temperature it could read (a 6580 K run
+   of 5000 steps of 54 atoms gave 4939 structures, one of 3348 atoms: 62
+   steps in one). A structure whose atom count is a multiple of the run's
+   ``NIONS`` tells such a dataset; re-convert it too. Datasets from CASTEP,
+   from the LAMMPS examples shipped with Tadah!, or written with ASE
+   already have the tension-positive sign. The
    stress of a CASTEP ``.md`` file converted by such an earlier build still
    holds its kinetic part (about :math:`N k_B T / V`, e.g. 0.43 GPa at
    633 K for 8 Si atoms in 163 Å³); re-convert it too.

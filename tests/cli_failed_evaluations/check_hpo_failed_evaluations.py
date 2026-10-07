@@ -58,8 +58,9 @@ evaluation's row records FAILSCORE.
                CGRID2B[2] = 1.25 is 1.797693135e+308)"). No evaluation is
                usable: status 1, as for random_skip. The difference of two
                failures was an exact 0, a gradient dlib took for
-               convergence: six evaluations (1.25, 1.45, 1.05 twice) and no
-               warning.
+               convergence: six evaluations (1.25, 1.45, 1.05 twice; eight
+               before HPO's centre fix, each gradient evaluating 1.25
+               again) and no warning.
   failscore_zero  FAILSCORE 0: a startup error at its line, status 1, no
                evaluation. With 0 there was no failure band, and a run all
                of whose evaluations failed ended COMPLETED with a

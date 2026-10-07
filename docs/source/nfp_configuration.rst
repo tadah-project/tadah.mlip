@@ -2655,13 +2655,16 @@ one a finite number (``MAXTIME`` a positive one).
        differentiate: no ``PC_OBSERVABLE`` ``--loss MAPE`` or
        ``RMSLE``, and no ``--unconverged force-scaled``.  Startup
        refuses a block that sets it without them, naming the setting or
-       the line.  It still stops the run at a gradient it cannot form —
-       a parameter without an analytical derivative, a candidate
-       rejected before training, an ill-conditioned fit — where
-       ``HYBRID`` uses finite
-       differences instead.  Before 1.6.0 such a setup passed startup
-       and stopped at the first gradient with ``no registered
-       analytical derivative``.
+       the line.  It still stops the run at a parameter or a loss term
+       without an analytical derivative, where ``HYBRID`` uses finite
+       differences instead.  A point where it cannot form the gradient
+       — a candidate rejected before training, a fit whose normal
+       equations are not positive definite in the gradient's
+       implicit-function solve — has no usable gradient: the optimiser
+       steps back from it or stops there (:ref:`hpo_gradient_not_finite`),
+       and ``HYBRID`` differences every parameter there.  Before 1.6.0
+       such a setup passed startup and stopped at the first gradient
+       with ``no registered analytical derivative``.
    * - ``PARAM`` (string value)
      - Algorithm-specific key/value (e.g. ``PARAM fd_step 1e-3``).  A
        value that starts like a number must be a finite number
@@ -3316,7 +3319,20 @@ gate rejected before training is a graded failure without a fit, and so
 without an analytical gradient: ``ANALYTICAL`` gives it none (``the
 analytical gradient could not be formed at this point``; where the point
 ends the search, below, the journal's stop line gives the gate's reject
-note), and ``HYBRID`` differences it.
+note), and ``HYBRID`` differences it.  So does a point whose fit the
+analytical gradient cannot differentiate: its implicit-function solve
+factorises the normal equations of the fit, Φᵀ Φ + ``LAMBDA`` I over the
+training rows, and where they are not positive definite there (with a
+small ``LAMBDA`` the factorisation of a numerically singular matrix can
+fail where the fit's own succeeded) the journal says so in a ``WARNING``
+at the first such point and then at the 2nd, 4th, 8th, …::
+
+   WARNING   Analytical gradient could not be formed at this point (occurrence 1): the implicit-function solve has no solution at this point: the normal equations of the fit (Phi^T Phi + LAMBDA I over the training rows, LAMBDA = 0) are not positive definite in the gradient's Cholesky factorisation; GRAD_STRATEGY HYBRID takes finite differences for every parameter there, and under ANALYTICAL the point has no usable gradient
+
+Until 2026-10-07 ``ANALYTICAL`` stopped the run there (``FAILED --
+GRAD_STRATEGY=ANALYTICAL: no analytical gradient for N parameters at this
+point``), and the journal said nothing (an error of the gradient's
+computation was written at every gradient).
 
 An evaluation with a failed term is a failed evaluation — a failed
 ``PC_LAMMPS`` simulation (``--failscore``, :ref:`pc_lammps_options`) or a

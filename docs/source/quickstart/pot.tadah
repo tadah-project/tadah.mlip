@@ -1,19 +1,36 @@
-ATOM     Ta
-BIAS     false
-DIMER     false     0     false
-EWEIGHT     1.0
-FWEIGHT     1.0
-INIT2B     true
-INITMB     false
-LAMBDA     0
-MODEL     M_KRR     Kern_Linear     1
-NORM     false
-OALGO     1
-RCTYPE2B     Cut_Dummy
-RCUT2B     6.5
-SWEIGHT     1.0
-TYPE2B     D2_LJ     Ta     Ta
-UNCERTAINTY     false
-WATOM     73
-WEIGHTS     14.204213349318765225     2604.396965191186154698
+ATOM              Ta
+BIAS              false
+CEMBFUNC          0.5   0.75   1   1.25   1.5
+CGRID2B           1   2.43333333333333357   3.8666666666666667   5.29999999999999982
+CGRIDMB           2.87999999999999989
+DIMER             false   0   false
+ESHIFT_ATOM       false
+ESHIFT_DBATOM     false
+EWEIGHT           1
+FORCE             false
+FWEIGHT           1
+INIT2B            true
+INITMB            true
+LAMBDA            9.99999999999999955e-08
+LSCALE            1
+MODEL             M_KRR   Kern_Linear   1
+NORM              false
+OALGO             1
+RCTYPE2B          Cut_Cos
+RCTYPEMB          Cut_Cos
+RCUT2B            5.29999999999999982
+RCUTENV           0.599999999999999978
+RCUTMB            5
+SEMBFUNC          2   2   2   2   2
+SGRID2B           0.100000000000000033   0.21544346900318842   0.464158883361277919   0.999999999999999889
+SGRIDMB           8
+STRESS            true
+SWEIGHT           1
+TYPE2B            D2_Blip   4   4   Ta   Ta
+TYPEMB            DM_mBlipEnv   0   1   1   5   5   Ta   Ta
+UNCERTAINTY       false
+WATOM             0.308999999999999997
+WDBFILE_AUTO      0
+WEIGHTS           133.357774127816555   -123.755171524655708   -10.4804763244958963   -18.0240635733812411   -6.3685917658913116   4.13446130558423164   -8.25236089850869803   3.95181987589451467   -6.04877887227442557
+ZERO_COM_FORCE    false
 

@@ -108,9 +108,10 @@ earlier, whose ``pair_style tadah`` used one shared column too, LAMMPS and
 version: ``tadah predict`` and ``pair_style tadah`` refuse it, naming
 ``WEIGHTS``, ``DSIZE``, ``BIAS`` and ``ATOM``.
 Retrain it, with its training configuration or with the potential itself
-(add a ``DBFILE`` line): ``tadah train -c pot.tadah`` replaces its
-``WEIGHTS``, ``NMEAN`` and ``NSTDEV``. Single-species potentials are not
-affected.
+(:ref:`retrain_from_potential`: an ``M_BLR`` potential of those versions
+has its ``DBFILE`` line; add one to an ``M_KRR`` potential): ``tadah train
+-c pot.tadah`` replaces its ``WEIGHTS``, ``NMEAN`` and ``NSTDEV``.
+Single-species potentials are not affected.
 
 Descriptor key syntax
 ---------------------

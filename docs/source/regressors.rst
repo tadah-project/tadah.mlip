@@ -34,7 +34,20 @@ Quick syntax guide
 For ``M_KRR`` a third token selects the implementation: ``1`` (the
 default) fits energies, forces and stresses by least squares over the
 design matrix; ``2`` fits energies only, solving
-:math:`(K + \lambda I) w = t` on the basis vectors.
+:math:`(K + \lambda I) w = t` on the basis vectors (``SBASIS`` of them,
+drawn from the training structures, for every kernel). With ``Kern_Linear``
+the model's weights are the descriptor weights of the basis vectors,
+:math:`\sum_j w_j \mathbf{b}_j`, the same model, since the kernel is linear:
+its potential has ``DSIZE`` ``WEIGHTS`` and no ``BASIS``, as with
+implementation ``1`` (with ``NORM true`` they are converted to the raw
+descriptors, as implementation ``1``'s are).
+
+.. versionchanged:: 1.6.0
+   ``MODEL M_KRR Kern_Linear 2`` wrote the coefficients :math:`w` of its
+   basis vectors as its ``WEIGHTS``, which ``tadah predict`` and ``pair_style
+   tadah`` evaluated as descriptor weights, so its energies were wrong (the
+   1.6.0 development builds that check a potential's fit refused it unless
+   ``SBASIS`` equalled ``DSIZE``). Retrain such potentials.
 
 Examples
 ........

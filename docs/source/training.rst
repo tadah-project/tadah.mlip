@@ -277,7 +277,9 @@ Three categories of keys appear:
    geometry: descriptor type and parameters (``TYPE2B``, ``RCUT2B``,
    ``RCTYPE2B``, ``INIT2B`` / ``INITMB``, …), model choice and
    hyperparameters (``MODEL``, ``LAMBDA``, ``NORM``, ``BIAS``, …), and
-   the species list (``ATOM`` / ``WATOM``).
+   the species list (``ATOM`` / ``WATOM``), with the other keys of the
+   training configuration but ``DBFILE``: a potential does not record the
+   data it was fitted to (see :ref:`retrain_from_potential`).
 
 #. **Fitted parameters** — the row ``WEIGHTS …`` carries the learned
    coefficients :math:`\mathbf w`. The ordering matches the column
@@ -301,6 +303,52 @@ every tadah before 1.6.0); see :ref:`DM_REAM <dm_ream_rhoform>`.
 Runtime-only knobs (``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
 ``HEALTH_LOG``) are stripped before write — leaving them in the file
 would trigger "Invalid key" errors in the LAMMPS-side parser.
+
+.. _retrain_from_potential:
+
+Retraining from a potential
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A potential records the model's settings and its fit, not the training
+data: no potential that ``tadah train``, ``tadah hpo`` or ``tadah refit``
+writes has a ``DBFILE`` line, whichever the model. A potential is a
+training configuration without its datasets, so it retrains with the
+``DBFILE`` lines of the retrain added to a copy of it::
+
+   cp pot.tadah retrain.train
+   echo "DBFILE db.train" >> retrain.train
+   tadah train -c retrain.train -o pot2.tadah
+
+The fit replaces what the potential holds of its own fit (``WEIGHTS``, the
+``BASIS`` of a non-linear kernel, ``NMEAN``, ``NSTDEV``, ``SIGMA``); none of
+it is read when the model is built, so the retrain may also change, for
+example, ``SBASIS`` or the descriptor. The other keys are the configuration
+of the first fit: the same datasets give the same potential. ``WDBFILE``,
+the weight of each dataset, is one of them: list the datasets in the same
+order. With ``LAMBDA -1`` the potential records the ``ALPHA`` and ``BETA``
+the evidence approximation found (the fit's :math:`\lambda = \alpha/\beta`;
+they are the approximation's starting guesses in a configuration), so a
+retrain starts the approximation from them (on the same datasets it stops
+there, to its convergence tolerance).
+
+A ``DBFILE`` that lists one dataset file twice (the same path, two spellings
+of it, or a link to it) is refused, naming both entries, by ``tadah train``
+and, at startup, by ``tadah hpo``: each entry is a dataset, so each of its
+structures would be fitted twice. To give a dataset more weight, use
+``WDBFILE``.
+
+.. versionchanged:: 1.6.0
+   An ``M_BLR`` potential recorded the ``DBFILE`` it was trained on (an
+   ``M_KRR`` potential did not), so the retrain above listed its dataset
+   twice: every structure was fitted twice, a fixed ``LAMBDA`` acted at half
+   strength and the ``OALGO 3`` ``SIGMA`` was that of twice the data, and
+   nothing said so. An ``M_BLR`` potential written by Tadah! 1.5.x or
+   earlier, or a 1.6.0 development build, still has its ``DBFILE`` line
+   (``tadah predict`` and ``pair_style tadah`` do not read it): remove it
+   before you add the ``DBFILE`` of a retrain (the duplicated entry is
+   refused), or train from it as it is, on the dataset it names. ``M_KRR``
+   potentials did not record ``ALPHA`` and ``BETA``; they do now, as
+   ``M_BLR`` ones did.
 
 .. _pot_number_format:
 

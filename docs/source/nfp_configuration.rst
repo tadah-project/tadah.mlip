@@ -495,9 +495,10 @@ space).  ``FIXINDEX`` lists 1-based model weights, single indices, ranges
 ``a-b`` and intervals ``a-b:step``, separated by commas or spaces
 (``FIXINDEX 4 5`` and ``FIXINDEX 4,5`` are the same list), and names as
 many weights as ``FIXWEIGHT`` has values, each weight once: a descending
-range (``5-4``), a weight named twice (``4,4,5``), index 0 and a weight past
-the model's are refused at startup, naming the text (``FIXINDEX 4,4,5 names
-weight 4 twice; ...``), as ``tadah train`` refuses them.  Earlier versions
+range (``5-4``), a weight named twice (``4,4,5``, with two ``FIXWEIGHT``
+values or three), index 0 and a weight past the model's are refused at
+startup, naming the text (``FIXINDEX 4,4,5 names weight 4 twice; ...``), as
+``tadah train`` refuses them.  Earlier versions
 dropped ``FIXINDEX`` given as separate values and expanded a descending
 range to nothing, so the *Mixed mode* example below was refused with
 ``OPTIM FIXWEIGHT (5): weight 5 is not pinned by FIXINDEX (4 5)``, and

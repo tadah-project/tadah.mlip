@@ -4204,16 +4204,25 @@ from those it has, and the journal says so:
 
    PRESTAGE: 4 usable candidate(s) for TOPK 6 (the exploration made 6 evaluation(s), 2 without a usable loss); refining 4
 
-When none of its evaluations produced a usable loss, nothing is refined
-(``PRESTAGE: no evaluation of the exploration produced a usable loss (9
-evaluation(s)); nothing to refine``), and a run without a usable loss
-ends as one (``STOPPED -- no evaluation produced a usable loss``, status
-1); under ``RESTART`` an exploration that stagnated so restarts the
-``PRESTAGE`` instead.  Before, a failed point stayed among the
-candidates while fewer than ``TOPK`` usable ones existed, and the
-refinement started from it.  If the exploration made no evaluation at
-all, the refinement runs from the OPTIMIZER-level ``INIT`` points
-instead.
+If the exploration yields no candidate — none of its evaluations
+produced a usable loss, or it made none — the refinement runs from the
+OPTIMIZER-level ``INIT`` points instead (in a ``RESTART`` round, the
+round's fresh points), and the journal says why in a ``WARNING``:
+
+.. code-block:: none
+
+   PRESTAGE: no evaluation of the exploration produced a usable loss (9 evaluation(s)); refining from the OPTIMIZER-level INIT point(s) instead
+
+A search that starts there can still reach a usable loss (an exploration
+whose points a gate rejected before training, an ``INIT`` point outside
+the region the exploration sampled, a search under ``FAILSCORE_GRADING
+ON`` that walks out of a failure region); a run that finds none ends
+without a usable loss (``STOPPED -- no evaluation produced a usable
+loss``, status 1).  Until 2026-10-07 a failed point (``FAILSCORE`` or a
+graded failure, not a gate reject) stayed among the candidates while
+fewer than ``TOPK`` usable ones existed, and the refinement started from
+it; an exploration whose every evaluation had failed so was refined from
+failed points only.
 
 With ``RESTART``, stagnation during the exploration ends it early and
 hands its top-K to the refinement, whose seeds each run in a stagnation

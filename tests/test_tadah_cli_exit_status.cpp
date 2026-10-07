@@ -2093,6 +2093,62 @@ TEST_CASE("Subcommand: train builds a DM_EAM model from the SETFL file",
   }
 }
 
+/* Pins: `tadah train` refuses an EAM cutoff other than the setfl file's
+ * (4.5 A): a DM_EAM model with RCUTMB 3.5, and a D2_EAM model with RCUT2B
+ * 3.5, exit 1 naming the descriptor, the key, both values and the file,
+ *   DM_EAM: RCUTMB 3.5 differs from the cutoff 4.5 of the setfl file
+ *   'eam_small.alloy' (SETFL); set RCUTMB to the file's cutoff, 4.5.
+ * and write no potential.
+ * Before the fix: both exited 0 and wrote a potential that records the
+ * file's cutoff (RCUTMB 4.5, RCUT2B 4.5), while the weights had been fitted
+ * with the descriptor evaluated at 3.5, so `tadah predict` on that file
+ * evaluated a model that was never fitted. */
+TEST_CASE("Subcommand: train refuses an EAM cutoff other than the setfl "
+          "file's",
+          "[TadahCLI][train][eam]") {
+  ScratchCwd cwd("train_eam_cutoff");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  {
+    std::ofstream os("db.tadah");
+    os << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+       << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+       << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1);
+  }
+  for (const bool pair : {false, true}) {
+    const std::string label = pair ? "D2_EAM" : "DM_EAM";
+    const std::string key = pair ? "RCUT2B" : "RCUTMB";
+    INFO(label << " with " << key << " 3.5");
+    std::filesystem::remove("pot.tadah");
+    {
+      std::ofstream os("config");
+      os << "DBFILE db.tadah\nATOM Ta\nWATOM 1\n";
+      if (pair)
+        os << "INIT2B true\nTYPE2B D2_EAM 0 Ta Ta\n"
+              "RCTYPE2B Cut_Dummy\nRCUT2B 3.5\nINITMB false\n";
+      else
+        os << "INIT2B false\nINITMB true\nTYPEMB DM_EAM 0 Ta Ta\n"
+              "RCTYPEMB Cut_Dummy\nRCUTMB 3.5\n";
+      os << "SETFL eam_small.alloy\n"
+            "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+            "MODEL M_BLR BF_Linear\nLAMBDA 0\nOALGO 1\n";
+    }
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    const std::string rep = reported(t);
+    INFO("train status " << t.status << "\n" << rep);
+    const std::string pot = std::filesystem::exists("pot.tadah")
+                                ? slurp("pot.tadah")
+                                : std::string("(none)");
+    INFO("pot.tadah:\n" << pot);
+    CHECK(t.status == 1);
+    CHECK(contains(rep, label + ": " + key +
+                            " 3.5 differs from the cutoff 4.5 of the setfl "
+                            "file 'eam_small.alloy' (SETFL); set " + key +
+                            " to the file's cutoff, 4.5."));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
 /* Pins: `tadah data print -s si.cif` on diamond Si given only by its
  * space-group number (227, Si at 1/8 1/8 1/8, a = 5.431 A) exits 0 and
  * prints the structure's label with the space group the cell is built

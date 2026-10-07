@@ -296,3 +296,35 @@ set_tests_properties(tadah_quickstart_reproduces_pot PROPERTIES
   LABELS examples
   TIMEOUT 600
   ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
+
+# ------------------------------------------------------------------
+# 11. Header self-containment (cmake-tools' tadah_add_header_check)
+# ------------------------------------------------------------------
+# tadah_headers (label headers): every header of include/ compiles on its
+# own and twice in a row, with the include directories, definitions and
+# options of the tadah executable. Each module checks its own library the
+# same way (<library>_headers). Before the fix: passes as well (a pin: no
+# header of include/ failed when the check was added).
+tadah_add_header_check(tadah)
+
+# The function itself: each case configures header_check/project, which
+# fetches this build's cmake-tools like every Tadah module does, and runs
+# its header checks (see header_check/check_header_check.cmake). Before
+# the fix (cmake-tools without the function): every case fails at its
+# configure step ('Unknown CMake command "tadah_add_header_check"').
+foreach(_case good bad private_dir new_header)
+  add_test(NAME tadah_header_check_${_case}
+    COMMAND ${CMAKE_COMMAND}
+      -DCASE=${_case}
+      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/header_check/${_case}
+      "-DGENERATOR=${CMAKE_GENERATOR}"
+      -DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+      -DCXX=${CMAKE_CXX_COMPILER}
+      -DCTEST=${CMAKE_CTEST_COMMAND}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/header_check/check_header_check.cmake)
+  set_tests_properties(tadah_header_check_${_case} PROPERTIES
+    LABELS cmake
+    TIMEOUT 300)
+endforeach()

@@ -503,7 +503,10 @@ dropped ``FIXINDEX`` given as separate values and expanded a descending
 range to nothing, so the *Mixed mode* example below was refused with
 ``OPTIM FIXWEIGHT (5): weight 5 is not pinned by FIXINDEX (4 5)``, and
 removed a repeated weight with a warning (``4,4,5`` with two ``FIXWEIGHT``
-values was accepted).  With ``BIAS true`` and a linear model weights 1 to :math:`N` are
+values was accepted).  M_KRR implementation 2 (``MODEL M_KRR <kernel>
+2``), whose solve fits every weight at once, pins none: startup refuses
+``FIXINDEX`` and ``FIXWEIGHT`` with it (earlier versions ran the search
+with the pins ignored).  With ``BIAS true`` and a linear model weights 1 to :math:`N` are
 the intercepts of the :math:`N` ``ATOM`` species and the descriptor weights
 start at :math:`N + 1` (:ref:`the bias term <bias_term>`, also for the
 other models); startup prints a WARNING naming the model's intercept

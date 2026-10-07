@@ -33,6 +33,10 @@
 // The [task-file] case runs `tadah --task` on a task file whose TASK lines
 // carry an inline comment; it runs in every build.
 //
+// The [refit] case runs `tadah refit` (dense) with a configuration number
+// out of its range, which is refused naming the key and the token; it runs
+// in every build.
+//
 // The [nonlinear] cases run `tadah train`, `tadah predict` (with and
 // without --error) and `tadah hpo` with every non-linear model (M_KRR
 // Kern_RBF, Kern_Polynomial, Kern_Quadratic, Kern_LQ, Kern_Sigmoid; M_BLR
@@ -2202,6 +2206,54 @@ TEST_CASE("Subcommand: train refuses an EAM cutoff other than the setfl "
                             " to the file's cutoff, 4.5."));
     CHECK_FALSE(std::filesystem::exists("pot.tadah"));
   }
+}
+
+/* ---- [refit]: the configuration numbers are read strictly ------------ */
+
+/* Pins: `tadah refit -c` with a configuration number out of its range
+ * (REFIT_TOL_AMBIENT 0, OUTPUT_GRID_SCALE 0, OPTIM_PCT -5) exits 1 with a
+ * message naming the key and the token, and writes no potential; with the
+ * same configuration and REFIT_TOL_AMBIENT 0.5 it exits 0 and writes it.
+ * A dense Blip refit of the small Ta setfl, coarse, without escalation.
+ * Before the fix: the numbers were read unchecked, every run exited 0 and
+ * wrote pot.tadah (REFIT_TOL_AMBIENT 0: a self-test that could never pass;
+ * OUTPUT_GRID_SCALE 0: a 2-point refit.eam; OPTIM_PCT -5: bounds at
+ * -5 %). */
+TEST_CASE("Subcommand: refit: a configuration number out of its range is "
+          "refused with status 1",
+          "[TadahCLI][exit-status][refit]") {
+  ScratchCwd cwd("refit_numbers");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  const auto config = [](const std::string& extra) {
+    std::ofstream("config.refit")
+        << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+           "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n"
+        << extra << "\n";
+  };
+  for (const auto& [line, message] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"REFIT_TOL_AMBIENT 0",
+            "tadah refit: REFIT_TOL_AMBIENT must be a positive number, got "
+            "'0'"},
+           {"OUTPUT_GRID_SCALE 0",
+            "tadah refit: OUTPUT_GRID_SCALE must be a positive number, got "
+            "'0'"},
+           {"OPTIM_PCT -5",
+            "tadah refit: OPTIM_PCT must be a positive number, got '-5'"}}) {
+    config(line);
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    const std::string rep = reported(r);
+    INFO(line << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, message));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+    std::filesystem::remove("pot.tadah");
+  }
+  config("REFIT_TOL_AMBIENT 0.5");
+  const CliRun ok = run_tadah({"tadah", "refit", "-c", "config.refit"});
+  INFO("REFIT_TOL_AMBIENT 0.5: status " << ok.status << "\n" << reported(ok));
+  CHECK(ok.status == 0);
+  CHECK(std::filesystem::exists("pot.tadah"));
 }
 
 /* Pins: `tadah data print -s si.cif` on diamond Si given only by its

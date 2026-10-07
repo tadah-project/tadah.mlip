@@ -307,7 +307,9 @@ number).  An error names the key and the token as written:
 
 Before 1.6.0 they were read unchecked: ``REFIT_TOL_AMBIENT 0`` made the
 energy metric infinite, ``OUTPUT_GRID_SCALE 0`` wrote a 2-point
-``refit.eam``, ``REFIT_COMPACT_OPT_EVERY 0`` and ``INSERT_TOPK 0`` became 1,
+``refit.eam`` (and so did any scale whose point counts rounded below 2 or
+overflowed an ``int``, such as ``0.0001`` or ``1e7``),
+``REFIT_COMPACT_OPT_EVERY 0`` and ``INSERT_TOPK 0`` became 1,
 and ``REFIT_COMPACT_SEED 3000000000``, a valid seed, failed converting.
 
 General and output
@@ -341,7 +343,12 @@ General and output
      - Live, line-flushed optimisation log; the self-test is at its end.
    * - ``OUTPUT_GRID_SCALE`` (float)
      - ``1.0``
-     - Output setfl grid density relative to the input table; > 0.
+     - Output setfl grid density relative to the input table; > 0, and the
+       grid it gives (nr × scale and nrho × scale points, rounded) must have
+       3 to 2147483647 points per table, checked once the EAM file is read,
+       before any fitting (``tadah refit: OUTPUT_GRID_SCALE '0.0001' for
+       refit.eam: EAMSetflIO: a grid scale of 0.0001 gives nrho = 1 and
+       nr = 1 points ...``).
    * - ``OPTIM_PCT`` (float)
      - ``5.0``
      - ±% half-width of the OPTIM bounds written into the HPO target; > 0

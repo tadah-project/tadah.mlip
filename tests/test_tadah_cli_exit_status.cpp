@@ -2338,6 +2338,46 @@ TEST_CASE("Subcommand: predict refuses a linear potential with NORM true and "
   }
 }
 
+/* Pins: `tadah analysis bfunc -c <training configuration> --type 2b -r 1
+ * 5 5` plots the D2_Blip basis of a configuration with BIAS true and no
+ * ATOM (as in the shipped examples/CLI/ex_1/config.train: tadah train
+ * takes ATOM from the DBFILE): exit 0, 4 functions x 5 points, and the
+ * same output, byte for byte, as with BIAS false (the radial basis does
+ * not depend on the intercept columns).
+ * Before the fix: exit 1, "BIAS true needs ATOM: BIAS gives one intercept
+ * column per ATOM species, and the configuration lists no ATOM species"
+ * (the engine built the DC_Selector of a whole model to read the
+ * descriptor's basis); with BIAS false it plotted. */
+TEST_CASE("Subcommand: analysis bfunc plots the basis of a BIAS true "
+          "configuration without ATOM",
+          "[TadahCLI][analysis][bias]") {
+  ScratchCwd cwd("bfunc_bias_no_atom");
+  const std::string keys =
+      "DBFILE tdata.db\nINIT2B true\nMODEL M_BLR BF_Linear\n"
+      "TYPE2B D2_Blip 4 4 Ta Ta\nRCTYPE2B Cut_Cos\nRCUT2B 5.3\n"
+      "SGRID2B GEOM 4 0.1 1.0\nCGRID2B LIN 4 1.0 5.3\nLAMBDA 1e-7\n"
+      "OALGO 1\n";
+  std::ofstream("config_bias") << keys << "BIAS true\n";
+  std::ofstream("config_nobias") << keys << "BIAS false\n";
+  const CliRun f = run_tadah({"tadah", "analysis", "bfunc", "-c",
+                              "config_nobias", "--type", "2b", "-r", "1",
+                              "5", "5", "-o", "nobias.out"});
+  INFO("BIAS false: status " << f.status << "\n" << reported(f));
+  REQUIRE(f.status == 0);
+  const CliRun t = run_tadah({"tadah", "analysis", "bfunc", "-c",
+                              "config_bias", "--type", "2b", "-r", "1", "5",
+                              "5", "-o", "bias.out"});
+  INFO("BIAS true: status " << t.status << "\n" << reported(t));
+  CHECK(t.status == 0);
+  REQUIRE(std::filesystem::exists("bias.out"));
+  std::istringstream in(slurp("bias.out"));
+  std::size_t rows = 0;
+  for (std::string line; std::getline(in, line);)
+    if (line.find_first_not_of(" \t") != std::string::npos) ++rows;
+  CHECK(rows == 20u);
+  CHECK(slurp("bias.out") == slurp("nobias.out"));
+}
+
 /* ---- [eam]: D2_EAM and DM_EAM read the setfl file named by SETFL ------ */
 
 namespace {

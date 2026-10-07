@@ -2073,6 +2073,116 @@ TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment"
   CHECK(predicted_values("energy.pred").size() == 3u);
 }
 
+/* Pins: `tadah train` on the three Ta dimers (D2_BP, 4 weights) reads
+ * FIXINDEX given as separate values as the comma list: 'FIXINDEX 1 2 3 4'
+ * with FIXWEIGHT 14 2500 -3 0.5 (every weight pinned) exits 0 and writes
+ * exactly 'WEIGHTS 14 2500 -3 0.5'; 'FIXINDEX 1 3' (FIXWEIGHT 0.5 -0.25)
+ * writes the WEIGHTS line 'FIXINDEX 1,3' writes, weights 1 and 3 the pinned
+ * values; 'FIXINDEX 1,1' with one FIXWEIGHT value exits 1 ("FIXINDEX 1,1
+ * names weight 1 twice") and 'FIXINDEX 3-1' exits 1 naming the descending
+ * range, neither writing pot.tadah.
+ * Before the fix: the separate values were joined into one malformed
+ * segment and dropped ("Error: Non-numeric value or incorrect syntax
+ * found: 1 2 3 4", then "FIXWEIGHT and FIXINDEX differ in size: 4 and
+ * 0", exit 1), '3-1' expanded to nothing ("differ in size: 3 and 0"), and
+ * '1,1' was deduplicated with a stderr warning and trained (exit 0). After
+ * core::parse_fixindex first read FIXINDEX, '1,1' exited 1 with "FIXINDEX
+ * 1,1 has 2 indices but FIXWEIGHT has 1 value" (this case pinned that): it
+ * compared the count before it looked for a repeat. */
+TEST_CASE("Subcommand: train reads FIXINDEX given as separate values as the "
+          "comma list",
+          "[TadahCLI][exit-status][train][fixindex]") {
+  ScratchCwd cwd("train_fixindex");
+  write_ta_dimer_training();
+  const std::string base = slurp("config.train");
+  auto train = [&](const std::string& name, const std::string& keys) {
+    std::ofstream(name) << base << keys;
+    std::filesystem::remove("pot.tadah");
+    return run_tadah({"tadah", "train", "-c", name, "-o", "pot.tadah"});
+  };
+  SECTION("every weight pinned") {
+    const CliRun r =
+        train("all.cfg", "FIXINDEX 1 2 3 4\nFIXWEIGHT 14 2500 -3 0.5\n");
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS") ==
+          std::vector<std::string>{"WEIGHTS", "14", "2500", "-3", "0.5"});
+  }
+  SECTION("two weights pinned, as with the comma list") {
+    const CliRun c = train("comma.cfg", "FIXINDEX 1,3\nFIXWEIGHT 0.5 -0.25\n");
+    INFO("comma: status " << c.status << "\n" << reported(c));
+    REQUIRE(c.status == 0);
+    const auto comma = line_tokens(slurp("pot.tadah"), "WEIGHTS");
+    REQUIRE(comma.size() == 5u);
+    CHECK(comma[1] == "0.5");
+    CHECK(comma[3] == "-0.25");
+    const CliRun s = train("space.cfg", "FIXINDEX 1 3\nFIXWEIGHT 0.5 -0.25\n");
+    INFO("space: status " << s.status << "\n" << reported(s));
+    REQUIRE(s.status == 0);
+    CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS") == comma);
+  }
+  SECTION("a weight named twice and a descending range are refused") {
+    const CliRun t = train("twice.cfg", "FIXINDEX 1,1\nFIXWEIGHT 0.5\n");
+    const std::string rt = reported(t);
+    INFO("twice: status " << t.status << "\n" << rt);
+    CHECK(t.status == 1);
+    CHECK(contains(rt, "FIXINDEX 1,1 names weight 1 twice"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+    const CliRun d = train("desc.cfg", "FIXINDEX 3-1\nFIXWEIGHT 0.5 -0.25 1\n");
+    const std::string rd = reported(d);
+    INFO("descending: status " << d.status << "\n" << rd);
+    CHECK(d.status == 1);
+    CHECK(contains(rd, "FIXINDEX: index '3-1' is a descending range"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
+/* Pins: `tadah train` with M_KRR implementation 2 on the three Ta dimers
+ * (MODEL M_KRR Kern_Linear 2 or Kern_RBF 2 with MPARAMS 1.0, SBASIS 3)
+ * trains without FIXINDEX (exit 0, 3 weights), and refuses FIXINDEX 1 /
+ * FIXWEIGHT 14, FIXINDEX 2-1 / FIXWEIGHT 14 3 and FIXINDEX 99 / FIXWEIGHT
+ * 14 alike, exit 1 with "MODEL M_KRR <kernel> 2 cannot pin weights" and no
+ * potential: its solve, (K + LAMBDA I) w = t, fits every weight at once.
+ * Before the fix: implementation 2 never read FIXINDEX or FIXWEIGHT: each
+ * of them exited 0 and wrote the WEIGHTS of the run without them (Kern_RBF
+ * with FIXINDEX 1 gave weight 1 = 1.47e-272, not 14), copying FIXINDEX and
+ * FIXWEIGHT into the potential. */
+TEST_CASE("Subcommand: train refuses FIXINDEX with M_KRR implementation 2",
+          "[TadahCLI][exit-status][train][fixindex][krr]") {
+  ScratchCwd cwd("train_fixindex_krr2");
+  write_ta_dimer_training();
+  const std::string base = slurp("config.train");
+  const std::string blr = "MODEL M_BLR BF_Linear\n";
+  REQUIRE(base.find(blr) != std::string::npos);
+  for (const char* kern : {"Kern_Linear", "Kern_RBF"}) DYNAMIC_SECTION(kern) {
+    std::string cfg = base;
+    cfg.replace(cfg.find(blr), blr.size(),
+                std::string("MODEL M_KRR ") + kern + " 2\nSBASIS 3\n" +
+                    (std::string(kern) == "Kern_RBF" ? "MPARAMS 1.0\n" : ""));
+    auto train = [&](const std::string& name, const std::string& keys) {
+      std::ofstream(name) << cfg << keys;
+      std::filesystem::remove("pot.tadah");
+      return run_tadah({"tadah", "train", "-c", name, "-o", "pot.tadah"});
+    };
+    const CliRun plain = train("plain.cfg", "");
+    INFO("no FIXINDEX: status " << plain.status << "\n" << reported(plain));
+    REQUIRE(plain.status == 0);
+    CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS").size() == 4u);  // key + 3
+    const std::string refusal =
+        std::string("MODEL M_KRR ") + kern + " 2 cannot pin weights";
+    for (const char* keys : {"FIXINDEX 1\nFIXWEIGHT 14\n",
+                             "FIXINDEX 2-1\nFIXWEIGHT 14 3\n",
+                             "FIXINDEX 99\nFIXWEIGHT 14\n"}) {
+      const CliRun r = train("pinned.cfg", keys);
+      const std::string rep = reported(r);
+      INFO(keys << "status " << r.status << "\n" << rep);
+      CHECK(r.status == 1);
+      CHECK(contains(rep, refusal));
+      CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+    }
+  }
+}
+
 /* ---- the [bias] cases ----------------------------------------------------
  *
  * BIAS true with two species (Nb, Ta): one one-hot intercept column per ATOM

@@ -493,9 +493,24 @@ configuration* carve weights out of that LS fit: pinned columns are
 removed from the design matrix, their contribution is subtracted from
 the target, and the remaining weights are fitted against the residual.
 The i-th ``FIXWEIGHT`` value pins the weight named by the i-th
-``FIXINDEX`` entry; a lone key is an error, and ``NORM true`` is
+``FIXINDEX`` index; a lone key is an error, and ``NORM true`` is
 incompatible with pinning (the values would live in normalized feature
-space).  With ``BIAS true`` and a linear model weights 1 to :math:`N` are
+space).  ``FIXINDEX`` lists 1-based model weights, single indices, ranges
+``a-b`` and intervals ``a-b:step``, separated by commas or spaces
+(``FIXINDEX 4 5`` and ``FIXINDEX 4,5`` are the same list), and names as
+many weights as ``FIXWEIGHT`` has values, each weight once: a descending
+range (``5-4``), a weight named twice (``4,4,5``, with two ``FIXWEIGHT``
+values or three), index 0 and a weight past the model's are refused at
+startup, naming the text (``FIXINDEX 4,4,5 names weight 4 twice; ...``), as
+``tadah train`` refuses them.  Earlier versions
+dropped ``FIXINDEX`` given as separate values and expanded a descending
+range to nothing, so the *Mixed mode* example below was refused with
+``OPTIM FIXWEIGHT (5): weight 5 is not pinned by FIXINDEX (4 5)``, and
+removed a repeated weight with a warning (``4,4,5`` with two ``FIXWEIGHT``
+values was accepted).  M_KRR implementation 2 (``MODEL M_KRR <kernel>
+2``), whose solve fits every weight at once, pins none: startup refuses
+``FIXINDEX`` and ``FIXWEIGHT`` with it (earlier versions ran the search
+with the pins ignored).  With ``BIAS true`` and a linear model weights 1 to :math:`N` are
 the intercepts of the :math:`N` ``ATOM`` species and the descriptor weights
 start at :math:`N + 1` (:ref:`the bias term <bias_term>`, also for the
 other models); startup prints a WARNING naming the model's intercept
@@ -1339,6 +1354,25 @@ fails with the same failed fraction (a flat failure region; an
 analytical gradient at a graded failure is kept;
 :ref:`hpo_gradient_not_finite`).
 
+The journal says why a term failed, as it does for a failed
+``PC_LAMMPS`` task: a ``WARNING`` that names the term, the evaluation and
+the reason, at the first, second, fourth, eighth, … failed term of the
+run (a potential that breaks an observable breaks it at every
+evaluation):
+
+.. code-block:: none
+
+   PC_OBSERVABLE term failed (cohesive_energy[1], eval 2, occurrence 1): the relaxed lattice parameter a0 = 3.3532 is outside its --hotvar window [3, 3.35]
+
+The reason is the observable's own (for ``cohesive_energy`` the relaxed
+``a0`` outside its window, as above, or a relaxation that did not
+converge whose ``--unconverged force-scaled`` value, target + slope ×
+fmax, is not finite: its forces were not, or the product overflowed), a
+value or loss that is not finite (``its loss is not finite (value
+1e+300, --loss L2)``), or the message of an evaluation that threw (``its
+evaluation threw: …``).  Before, a failed term left only ``FAILSCORE``
+in ``loss.tadah`` and ``NaN`` in ``outvar.tadah``.
+
 Columns.  The *k*-th ``PC_OBSERVABLE`` line (1-based, in configuration
 order) writes the ``loss.tadah`` column ``L(<tag>)[k]`` and the
 ``outvar.tadah`` column ``<tag>[k]``, where the tag of
@@ -1450,7 +1484,14 @@ there can evaluate a bound again and again, stop at once as converged, or
 leave the box (:ref:`hpo_gradient_not_finite`).  A usable point whose
 finite-difference stencil reaches a failure, graded or not, has no
 gradient.  ``GRAD_STRATEGY ANALYTICAL`` keeps its analytical gradient at
-a graded failure, which does not see the grading.
+a graded failure, which does not see the grading.  A candidate that a
+gate rejects before training (``BUMPGATE CANDIDATE``, ``RHOGATE``,
+``RHOBARGATE``) has no fit to differentiate: under ``ANALYTICAL`` it is a
+point without a usable gradient (:ref:`hpo_gradient_not_finite`), from
+which NLopt and Ceres step back, and ``HYBRID`` takes finite differences
+there.  Until 2026-10-07 such a candidate ended an ``ANALYTICAL`` run
+``FAILED -- GRAD_STRATEGY=ANALYTICAL: no analytical gradient for N
+parameters at this point``.
 
 The knobs, most important first
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2314,11 +2355,24 @@ The backend checks run on the
 settings each phase runs with — the ``STRATEGY``-level optimiser, each
 ``MULTISTART`` start (with its ``BUDGET_PER_START`` or its share of
 ``MAXEVAL``), the ``PRESTAGE`` exploration and refinement, and every
-``INNER`` block — and the message names the phase and the key:
+``INNER`` block — and the message names the phase, the key and the line
+where the parser checks the phase's optimiser, in the form of a parse
+error: the ``ENDOPTIMIZER`` line for the ``STRATEGY``-level optimiser, a
+``MULTISTART`` start and the ``PRESTAGE`` refinement (a ``REFINE``
+block's keys included), ``ENDEXPLORE`` for the exploration, ``ENDINNER``
+for an ``INNER`` block.  So do the startup refusals of the ``STRATEGY``
+rules (``STRATEGY TYPE MULTISTART cannot run …``, an ``INNER`` block that
+names another library) and of a phase's finite differences or a
+``GRAD_STRATEGY`` on a phase that takes no gradient (the check of the
+``ANALYTICAL`` setup, ``OPTIMIZER block: GRAD_STRATEGY ANALYTICAL …``,
+names no line):
 
 .. code-block:: none
 
-   HPOEngine error: the PRESTAGE refinement: DLIB:BFGS does not support MAXTIME
+   HPOEngine error: Error on line 17: the PRESTAGE refinement: DLIB:BFGS does not support MAXTIME
+   Line: ENDOPTIMIZER
+
+Until 2026-10-07 these refusals named the phase and no line.
 
 Before 1.6.0 these backend checks ran when that optimiser started: after
 the data were loaded and any ``NOISE CALIBRATION`` evaluations, for the
@@ -2419,7 +2473,8 @@ one a finite number (``MAXTIME`` a positive one).
 
        .. code-block:: none
 
-          HPOEngine error: the STRATEGY-level optimiser: NLOPT:GN_DIRECT needs a stop: NLopt's global search has no convergence test of its own and runs until it is interrupted; set MAXEVAL, MAXTIME, STOPVAL or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS); DIRECT's XTOL_REL and XTOL_ABS end it only once every rectangle is that small, after roughly (1/XTOL_REL)^n evaluations in n dimensions
+          HPOEngine error: Error on line 9: the STRATEGY-level optimiser: NLOPT:GN_DIRECT needs a stop: NLopt's global search has no convergence test of its own and runs until it is interrupted; set MAXEVAL, MAXTIME, STOPVAL or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS); DIRECT's XTOL_REL and XTOL_ABS end it only once every rectangle is that small, after roughly (1/XTOL_REL)^n evaluations in n dimensions
+          Line: ENDOPTIMIZER
 
        ``TADAH:GRID`` stops after ``MAXEVAL`` points in the order it
        visits them (the ``INIT`` point, then the grid nodes, the first
@@ -3057,20 +3112,22 @@ are exact.  It bounds the step as computed — exactly for a power-of-two
 numbers, where the stencil tests them rounded, so in a box only hundreds or
 thousands of ulps wide (possible under ``NONE``) it can refuse an
 ``fd_step`` that every point of the box would accept, by up to a few per
-cent.  The message names the phase,
+cent.  The message names the line of the phase's block and the phase,
 each such dimension with its box and a point without a stencil, the step and
 its source (``PARAM``, the default, or ``NOISE`` ``AUTO``), the largest
 ``fd_step`` that fits, and what else would do:
 
 .. code-block:: none
 
-   the STRATEGY-level optimiser DLIB:BFGS: PARAM fd_step 0.4 does not fit these OPTIM boxes: no finite-difference point is evaluated outside the box, and next to a bound the CENTRAL stencil turns one-sided and needs two steps of h = 0.4 of each box width (in-house rule) inside it; the step is not shrunk:
+   Error on line 9: the STRATEGY-level optimiser DLIB:BFGS: PARAM fd_step 0.4 does not fit these OPTIM boxes: no finite-difference point is evaluated outside the box, and next to a bound the CENTRAL stencil turns one-sided and needs two steps of h = 0.4 of each box width (in-house rule) inside it; the step is not shrunk:
      - WATOM: OPTIM box [0.1, 5] (internal [0, 1]); no stencil fits at WATOM = 1.57; fd_step up to 0.333333 fits it
      Set PARAM fd_step to at most 0.333333.
+   Line: ENDOPTIMIZER
 
-   the STRATEGY-level optimiser DLIB:BFGS: the default fd_step 1e-06 does not fit these OPTIM boxes: … needs two steps of h = max(2^-26, 1e-06 x |u|) in internal units (Ceres' rule) inside it; the step is not shrunk:
+   Error on line 8: the STRATEGY-level optimiser DLIB:BFGS: the default fd_step 1e-06 does not fit these OPTIM boxes: … needs two steps of h = max(2^-26, 1e-06 x |u|) in internal units (Ceres' rule) inside it; the step is not shrunk:
      - WATOM: OPTIM box [1, 1.000001]; no stencil fits at WATOM = 1.0000005; fd_step up to 3.33333e-07 fits it
      Set PARAM fd_step to at most 3.33333e-07; or use OPTIM_SCALE AUTO (fd_step is then a fraction of each box width).
+   Line: ENDOPTIMIZER
 
 The step is not shrunk for such a dimension: that would change what
 ``fd_step`` means there, and the noise it was chosen to step over (``NOISE``
@@ -3254,7 +3311,12 @@ a search that started inside the failure region took it for a slope and
 converged on ``FAILSCORE``, under ``HYBRID`` with nothing differenced —
 the default under ``PC_OBSERVABLE`` (:ref:`pc_observable`) — as under
 ``ANALYTICAL``.  At a graded failure under ``FAILSCORE_GRADING ON`` the
-analytical gradient is kept; it does not see the grading.
+analytical gradient is kept; it does not see the grading.  A candidate a
+gate rejected before training is a graded failure without a fit, and so
+without an analytical gradient: ``ANALYTICAL`` gives it none (``the
+analytical gradient could not be formed at this point``; where the point
+ends the search, below, the journal's stop line gives the gate's reject
+note), and ``HYBRID`` differences it.
 
 An evaluation with a failed term is a failed evaluation — a failed
 ``PC_LAMMPS`` simulation (``--failscore``, :ref:`pc_lammps_options`) or a
@@ -3526,7 +3588,8 @@ them is enough as its stop:
 
 .. code-block:: none
 
-   HPOEngine error: the STRATEGY-level optimiser: NLOPT:GD_STOGO needs a stop: NLopt's StoGO has no convergence test of its own and ignores NLopt's forced stop, by which HPO ends a search (on a signal, an error, the RESTART stagnation stop, or a loss at or below STOPVAL that NLopt was not given): it then calls on, each call refused, and only NLopt's own evaluation count ends it promptly (MAXTIME only once the rest of its time has passed); set MAXEVAL (it honours no tolerance)
+   HPOEngine error: Error on line 10: the STRATEGY-level optimiser: NLOPT:GD_STOGO needs a stop: NLopt's StoGO has no convergence test of its own and ignores NLopt's forced stop, by which HPO ends a search (on a signal, an error, the RESTART stagnation stop, or a loss at or below STOPVAL that NLopt was not given): it then calls on, each call refused, and only NLopt's own evaluation count ends it promptly (MAXTIME only once the rest of its time has passed); set MAXEVAL (it honours no tolerance)
+   Line: ENDOPTIMIZER
 
 Before 1.6.0 ``MAXTIME``, ``STOPVAL`` or an active ``RESTART`` was
 accepted as its stop: without ``MAXEVAL``, once ``Ctrl-C``, an error or
@@ -3546,8 +3609,10 @@ decides):
 
 .. code-block:: none
 
-   HPOEngine error: the STRATEGY-level optimiser: TADAH:RANDOM does not support FTOL_REL: uniform random search has no convergence test to apply it to; stop it with MAXEVAL, MAXTIME or STOPVAL
-   HPOEngine error: the STRATEGY-level optimiser: NLOPT:G_MLSL_LDS does not support FTOL_REL with an INNER block: MLSL's multistart loop tests no tolerance, and NLopt passes the block's tolerances to no INNER search; set it in the INNER block, whose local search tests it
+   HPOEngine error: Error on line 10: the STRATEGY-level optimiser: TADAH:RANDOM does not support FTOL_REL: uniform random search has no convergence test to apply it to; stop it with MAXEVAL, MAXTIME or STOPVAL
+   Line: ENDOPTIMIZER
+   HPOEngine error: Error on line 15: the STRATEGY-level optimiser: NLOPT:G_MLSL_LDS does not support FTOL_REL with an INNER block: MLSL's multistart loop tests no tolerance, and NLopt passes the block's tolerances to no INNER search; set it in the INNER block, whose local search tests it
+   Line: ENDOPTIMIZER
 
 The second sends the tolerance into the ``INNER`` block only when that
 block's algorithm tests it; otherwise it names the stops that search
@@ -3573,7 +3638,8 @@ of those:
 
 .. code-block:: none
 
-   HPOEngine error: the STRATEGY-level optimiser: the local search of NLOPT:LD_AUGLAG (NLopt's default NLOPT:LD_MMA, as the block has no INNER block) needs a stop: without a tolerance it has no convergence test and runs until it is interrupted; set MAXEVAL, MAXTIME, STOPVAL or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the NLOPT:LD_AUGLAG block, which NLopt hands on to it
+   HPOEngine error: Error on line 9: the STRATEGY-level optimiser: the local search of NLOPT:LD_AUGLAG (NLopt's default NLOPT:LD_MMA, as the block has no INNER block) needs a stop: without a tolerance it has no convergence test and runs until it is interrupted; set MAXEVAL, MAXTIME, STOPVAL or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the NLOPT:LD_AUGLAG block, which NLopt hands on to it
+   Line: ENDOPTIMIZER
 
 The rule holds in every phase (each ``MULTISTART`` start, the
 ``PRESTAGE`` exploration and refinement), and the message names it; an
@@ -4114,13 +4180,15 @@ family and ``ASA:ASA``.  Local optimisers (``NLOPT:LN_*``/``LD_*``,
 ``NLOPT_LD_LBFGS_NOCEDAL``) and the
 multi-seed global ``DLIB:GFS`` are accepted; ``DLIB:GFS`` consumes all points in one run.  Use ``TYPE
 PLAIN`` to run a single-seed global once.  The check is a startup
-error, raised before any data is loaded or any evaluation runs.  The
+error, raised before any data is loaded or any evaluation runs, at the
+``ENDOPTIMIZER`` line.  The
 message lists the first accepted backends in alphabetical order (the
 list depends on the libraries the build includes):
 
 .. code-block:: none
 
-   HPOEngine error: STRATEGY TYPE MULTISTART cannot run TADAH:ANNEAL: it is a global optimiser that consumes a single starting point, so restarting it from each INIT point is rejected for any N_STARTS. Use a local or multi-seed optimiser (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, DLIB:GFS, ... (23 more)), or STRATEGY TYPE PLAIN to run TADAH:ANNEAL once.
+   HPOEngine error: Error on line 13: STRATEGY TYPE MULTISTART cannot run TADAH:ANNEAL: it is a global optimiser that consumes a single starting point, so restarting it from each INIT point is rejected for any N_STARTS. Use a local or multi-seed optimiser (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, DLIB:GFS, ... (23 more)), or STRATEGY TYPE PLAIN to run TADAH:ANNEAL once.
+   Line: ENDOPTIMIZER
 
 TYPE PRESTAGE — staged global → local
 .....................................
@@ -4167,9 +4235,35 @@ The ``EXPLORE`` block accepts the full driver-attribute set
 (``LIB``/``ALGO``/``MAXEVAL`` / …) and an optional ``INIT`` block; it
 inherits the search space automatically and, without its own ``INIT``
 block, starts from the OPTIMIZER-level ``INIT`` points.  Candidates are
-deduplicated so the ``TOPK`` seeds are distinct.  If the exploration
-yields no candidate, the refinement runs from the OPTIMIZER-level
-``INIT`` points instead.
+deduplicated so the ``TOPK`` seeds are distinct, and only an evaluation
+with a usable loss is a candidate: a failed one (``FAILSCORE``, a graded
+failure, :ref:`failscore_grading`) never seeds the refinement.  When the
+exploration has fewer usable points than ``TOPK``, the refinement runs
+from those it has, and the journal says so:
+
+.. code-block:: none
+
+   PRESTAGE: 4 usable candidate(s) for TOPK 6 (the exploration made 6 evaluation(s), 2 without a usable loss); refining 4
+
+If the exploration yields no candidate — none of its evaluations
+produced a usable loss, or it made none — the refinement runs from the
+OPTIMIZER-level ``INIT`` points instead (in a ``RESTART`` round, the
+round's fresh points), and the journal says why in a ``WARNING``:
+
+.. code-block:: none
+
+   PRESTAGE: no evaluation of the exploration produced a usable loss (9 evaluation(s)); refining from the OPTIMIZER-level INIT point(s) instead
+
+A search that starts there can still reach a usable loss (an exploration
+whose points a gate rejected before training, an ``INIT`` point outside
+the region the exploration sampled, a search under ``FAILSCORE_GRADING
+ON`` that walks out of a failure region); a run that finds none ends
+without a usable loss (``STOPPED -- no evaluation produced a usable
+loss``, status 1).  Until 2026-10-07 a failed point (``FAILSCORE`` or a
+graded failure, not a gate reject) stayed among the candidates while
+fewer than ``TOPK`` usable ones existed, and the refinement started from
+it; an exploration whose every evaluation had failed so was refined from
+failed points only.
 
 With ``RESTART``, stagnation during the exploration ends it early and
 hands its top-K to the refinement, whose seeds each run in a stagnation
@@ -4571,12 +4665,15 @@ Only NLopt's MLSL and AUGLAG algorithms run an ``INNER`` search, and they
 run it with NLopt, so the ``INNER`` block's ``LIB`` is ``NLOPT``.  Both
 rules are startup errors, raised before any data is loaded and naming the
 optimiser the ``INNER`` block belongs to (the ``STRATEGY``-level
-optimiser, the ``PRESTAGE`` refinement or the ``EXPLORE`` block):
+optimiser, the ``PRESTAGE`` refinement or the ``EXPLORE`` block) and the
+``INNER`` block's ``ENDINNER`` line:
 
 .. code-block:: none
 
-   HPOEngine error: DLIB:BFGS does not accept an INNER sub-optimiser (the INNER block of the STRATEGY-level optimiser): only NLopt's MLSL and AUGLAG algorithms run a local search inside their run (NLOPT:AUGLAG, NLOPT:AUGLAG_EQ, NLOPT:GD_MLSL, NLOPT:GD_MLSL_LDS, NLOPT:GN_MLSL, NLOPT:GN_MLSL_LDS, ... (6 more)); remove the INNER block or pick one of them
-   HPOEngine error: the INNER block of the STRATEGY-level optimiser names DLIB:BFGS, but NLOPT:G_MLSL_LDS runs its INNER search with NLopt: set LIB NLOPT and an NLopt ALGO (such as LN_BOBYQA) inside the INNER block
+   HPOEngine error: Error on line 10: DLIB:BFGS does not accept an INNER sub-optimiser (the INNER block of the STRATEGY-level optimiser): only NLopt's MLSL and AUGLAG algorithms run a local search inside their run (NLOPT:AUGLAG, NLOPT:AUGLAG_EQ, NLOPT:GD_MLSL, NLOPT:GD_MLSL_LDS, NLOPT:GN_MLSL, NLOPT:GN_MLSL_LDS, ... (6 more)); remove the INNER block or pick one of them
+   Line:     ENDINNER
+   HPOEngine error: Error on line 10: the INNER block of the STRATEGY-level optimiser names DLIB:BFGS, but NLOPT:G_MLSL_LDS runs its INNER search with NLopt: set LIB NLOPT and an NLopt ALGO (such as LN_BOBYQA) inside the INNER block
+   Line:     ENDINNER
 
 Before 1.6.0 the first was reported only once the host had loaded the
 data, and an ``INNER`` block with another ``LIB`` failed inside NLopt once
@@ -4589,12 +4686,16 @@ local optimiser, so they need an ``INNER`` block, and for the same reason
 an ``INNER`` block cannot name one of them (``INNER`` blocks do not
 nest); ``LN_AUGLAG``, ``LD_AUGLAG``, their ``_EQ`` forms and the
 ``GN_``/``GD_`` MLSL forms run NLopt's ``LN_COBYLA`` or ``LD_MMA``
-without one.  Both are startup errors that name the phase:
+without one.  Both are startup errors that name the phase and the line
+of its block (``ENDOPTIMIZER`` or ``ENDEXPLORE``; ``ENDINNER`` for the
+nested block):
 
 .. code-block:: none
 
-   HPOEngine error: NLOPT:AUGLAG needs an INNER block (the PRESTAGE refinement): NLopt has no default local optimiser for it; add INNER ... ENDINNER with LIB NLOPT and a local ALGO such as LN_BOBYQA, or use one of NLOPT:GD_MLSL, NLOPT:GD_MLSL_LDS, NLOPT:GN_MLSL, NLOPT:GN_MLSL_LDS, NLOPT:LD_AUGLAG, NLOPT:LD_AUGLAG_EQ, NLOPT:LN_AUGLAG, NLOPT:LN_AUGLAG_EQ, which run LD_MMA or LN_COBYLA without one
-   HPOEngine error: the INNER block of the STRATEGY-level optimiser names NLOPT:G_MLSL_LDS, which needs an INNER block of its own; INNER blocks do not nest: pick a local algorithm such as LN_BOBYQA
+   HPOEngine error: Error on line 14: NLOPT:AUGLAG needs an INNER block (the PRESTAGE refinement): NLopt has no default local optimiser for it; add INNER ... ENDINNER with LIB NLOPT and a local ALGO such as LN_BOBYQA, or use one of NLOPT:GD_MLSL, NLOPT:GD_MLSL_LDS, NLOPT:GN_MLSL, NLOPT:GN_MLSL_LDS, NLOPT:LD_AUGLAG, NLOPT:LD_AUGLAG_EQ, NLOPT:LN_AUGLAG, NLOPT:LN_AUGLAG_EQ, which run LD_MMA or LN_COBYLA without one
+   Line: ENDOPTIMIZER
+   HPOEngine error: Error on line 10: the INNER block of the STRATEGY-level optimiser names NLOPT:G_MLSL_LDS, which needs an INNER block of its own; INNER blocks do not nest: pick a local algorithm such as LN_BOBYQA
+   Line:     ENDINNER
 
 Before 1.6.0 NLopt refused the first only once the run had started
 (``local optimizer must be specified for AUGLAG``), after the data were
@@ -4651,7 +4752,8 @@ that needs a stop and has none in either block is a startup error:
 
 .. code-block:: none
 
-   HPOEngine error: the STRATEGY-level optimiser: the INNER search of NLOPT:AUGLAG (NLOPT:GN_DIRECT_L) needs a stop: NLopt's global search has no convergence test of its own and runs until it is interrupted; set MAXEVAL, MAXTIME or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the INNER block, or MAXEVAL, MAXTIME or STOPVAL in the NLOPT:AUGLAG block, which NLopt hands on to it; DIRECT's XTOL_REL and XTOL_ABS end it only once every rectangle is that small, after roughly (1/XTOL_REL)^n evaluations in n dimensions
+   HPOEngine error: Error on line 15: the STRATEGY-level optimiser: the INNER search of NLOPT:AUGLAG (NLOPT:GN_DIRECT_L) needs a stop: NLopt's global search has no convergence test of its own and runs until it is interrupted; set MAXEVAL, MAXTIME or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the INNER block, or MAXEVAL, MAXTIME or STOPVAL in the NLOPT:AUGLAG block, which NLopt hands on to it; DIRECT's XTOL_REL and XTOL_ABS end it only once every rectangle is that small, after roughly (1/XTOL_REL)^n evaluations in n dimensions
+   Line: ENDOPTIMIZER
 
 ``SEED`` is not valid inside ``INNER``.  MLSL and AUGLAG run the
 ``INNER`` search inside the enclosing block's NLopt run, and NLopt has

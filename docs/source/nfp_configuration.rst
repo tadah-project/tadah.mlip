@@ -5477,7 +5477,7 @@ Marker                                                                       Mea
 ``[HPO] InitStrategy NAME produced N starting points``                        After init resolution.
 ``[HPO] WARM: loaded N parameter(s) from <file>``                             ``WARM`` read all keys.
 ``[HPO] WARM: primed warmstart cache with N HOT_A0 entry(ies)``               ``HOT_A0`` lines parsed from a ``WARM`` file.
-``[HPO] WARM: N parameter(s) from <file> clamped into OPTIM bounds …``         Warm point fell outside narrowed bounds (``WARM_ON_MISMATCH``
+``[HPO] WARM: N parameter(s) from <file> clamped into OPTIM bounds …``       Warm point fell outside narrowed bounds (``WARM_ON_MISMATCH``
                                                                              ``warn`` or ``skip``; ``error`` stops the run with it).
 ``[HPO] DLIB:GFS seeding with N starting points``                             Multi-seed forwarding.
 ``[HPO] GRID: MAXEVAL N < M grid points (…); evaluating the first N …``       ``TADAH:GRID`` stops its sweep after ``MAXEVAL`` points.

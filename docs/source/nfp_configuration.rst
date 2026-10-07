@@ -2056,9 +2056,10 @@ one a finite number (``MAXTIME`` a positive one).
        line 8: the OPTIMIZER block names no optimiser: LIB and ALGO are not
        set``.
    * - ``ALGO`` (string)
-     - Algorithm (see table below).  ``NLOPT:LN_NEWUOA_BOUND`` is refused,
-       at the same lines, naming the phase and what to use instead (the
-       ``NLOPT`` row of the table below).
+     - Algorithm (see table below).  ``NLOPT:LN_NEWUOA_BOUND`` and
+       ``NLOPT:NLOPT_LD_LBFGS_NOCEDAL`` are refused, at the same lines,
+       naming the phase and what to use instead (the ``NLOPT`` row of the
+       table below).
    * - ``MAXEVAL`` (integer, 1 to 2\ :sup:`31` − 1)
      - Maximum number of evaluations: an integer from 1 to 2147483647,
        the ``int`` NLopt counts evaluations in.  ``0`` or a larger value
@@ -2394,6 +2395,18 @@ one a finite number (``MAXTIME`` a positive one).
        .. code-block:: none
 
           HPOEngine error: Error on line 10: the STRATEGY-level optimiser: NLOPT:LN_NEWUOA_BOUND is refused: NLopt 2.10 plans each LN_NEWUOA_BOUND step with a nested LD_MMA run that has no time limit and sees no stop request, ... Use NLOPT:LN_BOBYQA, Powell's bound-constrained successor of NEWUOA (its STEP rescales each dimension instead of setting one radius), or NLOPT:LN_NEWUOA where the search may leave the OPTIM box
+          Line: ENDOPTIMIZER
+
+       ``NLOPT_LD_LBFGS_NOCEDAL`` (NLopt's name for it) is refused in
+       every phase as well, at the same lines: NLopt 2.10 names it but
+       does not implement it, and ``nlopt_optimize()`` returns
+       ``NLOPT_INVALID_ARGS`` for it, so every run of it ended ``FAILED --
+       nlopt invalid argument`` once its setup was done.  Before 1.6.0 it
+       was accepted.  Use ``LD_LBFGS``, NLopt's L-BFGS:
+
+       .. code-block:: none
+
+          HPOEngine error: Error on line 10: the STRATEGY-level optimiser: NLOPT:NLOPT_LD_LBFGS_NOCEDAL is refused: NLopt 2.10 does not implement it (NLopt names it, but its optimiser rejects it as an invalid argument, so every run of it failed once its setup was done). Use NLOPT:LD_LBFGS, NLopt's L-BFGS
           Line: ENDOPTIMIZER
 
        .. note::
@@ -3165,9 +3178,16 @@ run that ends on its own is that status (``Optimiser status`` under
 write ``<LIB>:<ALGO>: <reason>`` with a fixed reason text, so a script
 or a fingerprint can match it; the journal's stop line gives the
 numbers: the evaluations made, and for a tolerance its value, with
-``(default)`` when its key was not set.  NLopt keeps its own result
-strings and ASA ``ASA: <reason>``; a gradient that is not finite ends
-any gradient-based search with ``STOPPED -- gradient not finite: …``
+``(default)`` when its key was not set.  A Ceres ending that has no
+such reason is named by Ceres' termination type and the head of Ceres'
+message, its words before the first ``.``, ``,`` or ``:``, a fixed text
+as well: a failure that stopped the search, the best result standing,
+reads ``STOPPED -- CERES:<ALGO>: FAILURE (<head>)``, e.g. ``STOPPED --
+CERES:STEEPEST_DESCENT: FAILURE (Numerical failure in line search)``,
+and the stop line and a WARNING give Ceres' whole message, its numbers
+included.  NLopt keeps its own result strings and ASA ``ASA:
+<reason>``; a gradient that is not finite ends any gradient-based
+search with ``STOPPED -- gradient not finite: …``
 (:ref:`hpo_gradient_not_finite`), and the ``RESTART`` budget a run with
 ``STOPPED -- stagnation: …``.
 
@@ -3213,17 +3233,31 @@ any gradient-based search with ``STOPPED -- gradient not finite: …``
        reached`` (``gradient_tolerance``, ``1e-10``), or ran out of
        iterations: ``max_iter reached``; ``MAXEVAL reached`` when an
        evaluation refused for the budget made Ceres fail; any other
-       failure (a line search that finds no valid step):
-       ``STOPPED -- CERES:<ALGO>: FAILURE (<Ceres' message>)``, the best
-       result standing
+       failure: ``STOPPED -- CERES:<ALGO>: FAILURE (<head>)``, the head
+       of Ceres' message (``Numerical failure in line search`` when a
+       line search finds no valid step), the best result standing
      - ``CERES:LBFGS stopped: FTOL_REL reached after 45 evaluation(s):
        FTOL_REL = 1e-06 (default); Ceres: Function tolerance reached. …``
-       (Ceres' message); the ``termination:`` line before it
+       (Ceres' message); a failure: ``CERES:STEEPEST_DESCENT stopped:
+       FAILURE after N evaluation(s); Ceres: Numerical failure in line
+       search, failed to find a valid step size, …``, and the WARNING
+       ``CERES:<ALGO> -- non-convergent: <message>``; the
+       ``termination:`` line before it
    * - NLopt
      - NLopt's result string: ``MAXEVAL_REACHED -- maximum evaluations
-       exhausted``, ``XTOL_REACHED -- …``, ``STOPPED -- nlopt
-       roundoff-limited (…)``, …
-     - ``NLopt finished: <result> …``
+       exhausted``, ``XTOL_REACHED -- …``, …; an algorithm that
+       terminated itself: ``STOPPED -- <what> (algorithm converged; …)``,
+       e.g. ``STOPPED -- nlopt roundoff-limited (…)``; a result that
+       masked an NLopt diagnostic: ``STOPPED -- masked <result>:
+       <diagnostic>``
+     - ``NLopt finished: <result> …`` for a result NLopt returned
+       (``NLopt finished: MAXEVAL_REACHED -- maximum evaluations
+       exhausted after N of MAXEVAL M evaluation(s)``).  An algorithm
+       that terminated itself writes no such line: the WARNING ``<what>
+       -- algorithm converged; best result preserved`` (stdout ``NLopt
+       self-terminated (<what>) -- best result preserved.``); a masked
+       diagnostic the WARNING ``<ALGO>: NLopt internal diagnostic was
+       set after N evaluation(s) -- '<diagnostic>'. …``
    * - ``ASA:ASA``
      - ``ASA: <reason>`` (``ASA: MAXEVAL reached``, …)
      - ``ASA stopped: <reason> after N host eval(s) (asa exit: …)``
@@ -3231,9 +3265,9 @@ any gradient-based search with ``STOPPED -- gradient not finite: …``
 Ceres' reason is read from its message (Ceres 2.2: ``Function tolerance
 reached``, ``Parameter tolerance reached``, ``Gradient tolerance
 reached``, ``Maximum number of iterations reached.``); a Ceres version
-that words it otherwise gives ``CERES:<ALGO>: CONVERGENCE (<message>)``
-or ``NO_CONVERGENCE (<message>)``, Ceres' own reason verbatim, and the
-unit tests that pin the wording fail.  Under ``MULTISTART`` the trailer
+that words it otherwise gives ``CERES:<ALGO>: CONVERGENCE (<head>)``
+or ``NO_CONVERGENCE (<head>)``, with the head of Ceres' message, and
+the unit tests that pin the wording fail.  Under ``MULTISTART`` the trailer
 is the last start's status and under ``PRESTAGE`` the refinement's: its
 ``MAXEVAL reached`` is that start's budget (``BUDGET_PER_START``, or its
 share of ``MAXEVAL``), not the ``STRATEGY``'s total.  A normal end
@@ -3637,8 +3671,9 @@ the next start runs (:ref:`restart_decorator`).
 *global* backend that consumes a single starting point: every NLopt
 algorithm whose name starts with ``G`` (``GN_*``, ``GD_*``,
 ``G_MLSL*``), ``TADAH:RANDOM``, ``TADAH:GRID``, the ``TADAH:ANNEAL``
-family and ``ASA:ASA``.  Local optimisers (``NLOPT:LN_*``/``LD_*``
-but the refused ``LN_NEWUOA_BOUND``, ``DLIB:BFGS``, CERES) and the
+family and ``ASA:ASA``.  Local optimisers (``NLOPT:LN_*``/``LD_*``,
+``DLIB:BFGS``, CERES; not the refused ``LN_NEWUOA_BOUND`` and
+``NLOPT_LD_LBFGS_NOCEDAL``) and the
 multi-seed global ``DLIB:GFS`` are accepted; ``DLIB:GFS`` consumes all points in one run.  Use ``TYPE
 PLAIN`` to run a single-seed global once.  The check is a startup
 error, raised before any data is loaded or any evaluation runs.  The

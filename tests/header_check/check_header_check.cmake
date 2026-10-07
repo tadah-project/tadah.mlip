@@ -24,6 +24,10 @@
 #                     probe's include/ and, with no other step, the next
 #                     `ctest -L headers` fails on exactly that header
 #
+# CASE=refusals instead configures the project once per refused call of the
+# function (REFUSAL, see project/refusals/CMakeLists.txt) and checks that the
+# configure step fails with that call's message.
+#
 #   cmake -DCASE=<case> -DTADAH_CMAKE_DIR=<cmake-tools> -DWORK_DIR=<scratch>
 #         -DGENERATOR=<CMake generator> -DMAKE_PROGRAM=<build tool>
 #         -DCXX=<C++ compiler> -DCTEST=<ctest> -P check_header_check.cmake
@@ -34,7 +38,7 @@ foreach(v CASE TADAH_CMAKE_DIR WORK_DIR GENERATOR MAKE_PROGRAM CXX CTEST)
     message(FATAL_ERROR "check_header_check.cmake: -D${v}=... is required")
   endif()
 endforeach()
-if(NOT CASE MATCHES "^(good|bad|private_dir|private_entry|new_header)$")
+if(NOT CASE MATCHES "^(good|bad|private_dir|private_entry|new_header|refusals)$")
   message(FATAL_ERROR "check_header_check.cmake: unknown CASE '${CASE}'")
 endif()
 
@@ -106,6 +110,47 @@ macro(expect_equal what got expected)
     fail("${what}: '${got}', expected '${expected}'")
   endif()
 endmacro()
+
+# 0. refusals: each refused call stops the configure step with its message
+#    (compared with the blanks and line breaks of CMake's layout collapsed).
+if(CASE STREQUAL "refusals")
+  set(fixture "${src}/refusals")
+  set(refusals unexpected_argument not_a_target alias imported no_header_dirs
+               not_a_directory no_headers same_relative_path)
+  set(message_unexpected_argument
+    "tadah_add_header_check(probe): unexpected arguments: EXTRA")
+  set(message_not_a_target
+    "tadah_add_header_check: 'no_such_target' is not a target")
+  set(message_alias
+    "tadah_add_header_check: 'probe::probe' is an imported or ALIAS target; name the target that is built here")
+  set(message_imported
+    "tadah_add_header_check: 'imported_probe' is an imported or ALIAS target; name the target that is built here")
+  set(message_no_header_dirs
+    "tadah_add_header_check(probe): HEADER_DIRS names no directory")
+  set(message_not_a_directory
+    "tadah_add_header_check(probe): HEADER_DIRS entry ${fixture}/no_such_directory is not a directory")
+  set(message_no_headers
+    "tadah_add_header_check(probe): no *.h or *.hpp file in ${fixture}/no_headers")
+  set(message_same_relative_path
+    "tadah_add_header_check(probe): probe/x.h is in more than one of the HEADER_DIRS, so #include <probe/x.h> is ambiguous")
+  foreach(r IN LISTS refusals)
+    run("configure REFUSAL=${r}" "${CMAKE_COMMAND}" --fresh -S "${src}"
+        -B "${WORK_DIR}/build_${r}" -G "${GENERATOR}"
+        "-DCMAKE_MAKE_PROGRAM=${MAKE_PROGRAM}" "-DCMAKE_CXX_COMPILER=${CXX}"
+        "-DCASE=${CASE}" "-DREFUSAL=${r}" -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+        "-DFETCHCONTENT_SOURCE_DIR_TADAH_CMAKE=${TADAH_CMAKE_DIR}")
+    string(REGEX REPLACE "[ \t\r\n]+" " " flat "${out}")
+    string(FIND "${flat}" "${message_${r}}" at)
+    if(rc EQUAL 0)
+      fail("REFUSAL=${r}: the configure step succeeded")
+    elseif(at LESS 0)
+      fail("REFUSAL=${r}: the configure step failed without '${message_${r}}'")
+    endif()
+  endforeach()
+  stop_if_failed()
+  message(STATUS "CASE=${CASE}: ok")
+  return()
+endif()
 
 # 1. Configure, build `all`, list the entries.
 run("configure" "${CMAKE_COMMAND}" --fresh -S "${src}" -B "${build}"

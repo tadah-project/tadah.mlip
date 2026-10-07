@@ -19,6 +19,8 @@
 #                probe (private_dir/): the same headers, with probe's PRIVATE
 #                include directory the second HEADER_DIRS entry, as CORE's
 #                generated/ is
+#   refusals     probe (refusals/): one call of tadah_add_header_check() that
+#                must stop the configure step, picked by REFUSAL; no tests/
 cmake_minimum_required(VERSION 3.15)
 project(tadah_header_check_case CXX)
 
@@ -41,6 +43,9 @@ elseif(CASE STREQUAL "bad" OR CASE STREQUAL "private_dir")
   set(fixture ${CASE})
 elseif(CASE STREQUAL "private_entry")
   set(fixture private_dir)
+elseif(CASE STREQUAL "refusals")
+  add_subdirectory(refusals)
+  return()
 else()
   message(FATAL_ERROR "unknown CASE '${CASE}'")
 endif()

@@ -317,7 +317,12 @@ tadah_add_header_check(tadah)
 # HEADER_DIRS entry, a directory PRIVATE to the library (as CORE's
 # generated/ is), fails. Before that fix: it passed, because every
 # HEADER_DIRS entry was on the include path of every header's check.
-foreach(_case good bad private_dir private_entry new_header)
+# refusals: each refusal of the function stops the configure step with its
+# message (an unexpected argument, no such target, an ALIAS or IMPORTED
+# target, HEADER_DIRS without a value, an entry that is not a directory or
+# has no header, the same relative path in two entries). Before the fix:
+# passes as well (a pin of refusals the function had from the start).
+foreach(_case good bad private_dir private_entry new_header refusals)
   add_test(NAME tadah_header_check_${_case}
     COMMAND ${CMAKE_COMMAND}
       -DCASE=${_case}

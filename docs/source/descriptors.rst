@@ -249,7 +249,7 @@ Two-Body
    * - ``D2_Blip``
      - Cubic B-spline (blip) radial basis
    * - ``D2_EAM``
-     - Pair-density part of the Embedded Atom Method
+     - Pair function of the Embedded Atom Method, from the setfl file ``SETFL``
    * - ``D2_MIE``
      - Mie potential with user-chosen exponents n, m
    * - ``D2_ZBL``
@@ -314,7 +314,7 @@ Many-Body
    * - ``DM_EAD``
      - Embedded Atom Descriptor with Gaussian-type orbital basis
    * - ``DM_EAM``
-     - Many-body part of the Embedded Atom Method
+     - Many-body part of the Embedded Atom Method (density and embedding function), from the same ``SETFL`` file
    * - ``DM_REAM``
      - Refittable EAM: flexible density and embedding expansions (``tadah refit``)
    * - ``DM_mRLR``

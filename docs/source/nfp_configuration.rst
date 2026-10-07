@@ -471,6 +471,12 @@ potential/configuration.``).  Before 1.6.0 startup printed a WARNING
 (with ``FIXINDEX``: "FIXINDEX bounds/coverage checks are deferred to the
 first training evaluation") or nothing, every evaluation failed, and the
 run ended "no evaluation produced a usable loss".
+The weights of ``M_KRR`` with a non-linear kernel belong to its ``SBASIS``
+basis vectors (weight 1 to the bias vector :math:`e_0`, the others to
+descriptors drawn from the training data, see
+:ref:`Non-linear models <nonlinear_models>`): startup checks ``FIXINDEX``
+against ``SBASIS``, a training ``DBFILE`` is required, and every
+evaluation trains, also when ``FIXINDEX`` pins every weight.
 
 **Mixed mode** — LS-fit most weights, hold one, search another.  With a
 5-weight model: weights 1–3 LS-fitted, weight 4 held at 0.75, weight 5
@@ -802,14 +808,33 @@ Additional options
    configuration order everywhere: in the ``outvar.tadah`` and
    ``loss.tadah`` columns, in the journal and in the potential header.
 
-Any other option on the line — a token that starts with ``-`` — is
-passed to LAMMPS as a command-line argument together with the values that
-follow it: for example ``-log run.log``, ``-screen none`` or ``-var x 1
-2`` (see :ref:`pc_lammps_result_contract` for how HPO renames ``-log`` /
-``-screen`` files per worker).  An HPO option takes only its own values:
-a value after them is an error naming the option, and so is a value
-before any option.  Before 1.6.0 it was passed to LAMMPS, and every
-evaluation failed on it:
+A token that starts with a single ``-`` is a LAMMPS option, passed to
+LAMMPS as a command-line argument together with the values that follow
+it: for example ``-log run.log``, ``-screen none`` or ``-var x 1 2`` (see
+:ref:`pc_lammps_result_contract` for how HPO renames ``-log`` /
+``-screen`` files per worker); LAMMPS judges these itself.  Every LAMMPS
+command-line option starts with a single ``-``, so an option that starts
+with ``--`` and is none of the HPO options of this section is an error at
+its line, naming HPO's options and, for a near miss, the closest one:
+
+.. code-block:: none
+
+   Error on line 9: PC_LAMMPS: unknown option '--hotvars' (did you mean '--hotvar'?): HPO's options are --script, --varloss, --invar, --outvar, --failscore, --maxtime, --hotvar and --failvar; LAMMPS command-line options start with a single '-'
+   Line: PC_LAMMPS --script Ecoh.in --hotvars hot_a0 2.5 4.5 3.302 --varloss Ecoh 8.10 800
+
+On a ``PC_FAILPROBE`` line the list and the closest option are those
+that line takes: ``--script``, ``--invar``, ``--outvar``,
+``--failscore``, ``--maxtime``, ``--gate`` and ``--s0``
+(:ref:`failscore_grading`), without the ``--varloss``, ``--hotvar`` and
+``--failvar`` it refuses; on a ``PC_LAMMPS`` line the message names
+``--gate`` and ``--s0`` as ``PC_FAILPROBE`` options.  Before 1.6.0 such an option was passed to
+LAMMPS with its values: every evaluation failed (``Invalid command-line
+argument: --hotvars``), and the run spent its whole budget before it
+ended with no usable loss.
+
+An HPO option takes only its own values: a value after them is an error
+naming the option, and so is a value before any option.  Before 1.6.0 it
+was passed to LAMMPS, and every evaluation failed on it:
 
 .. code-block:: none
 
@@ -1073,7 +1098,10 @@ relaxation itself adds nothing at the relaxed geometry.  In every block
 that runs an optimiser and obtains gradients — the ``STRATEGY``-level
 block and ``EXPLORE``, with a gradient-based backend (``DLIB:BFGS``,
 ``NLOPT`` ``LD_*``/``GD_*``, ``CERES``) or an ``MLSL``/``AUGLAG`` whose
-local search is one:
+local search is one (for ``MLSL`` and ``AUGLAG`` the local search alone
+decides, whatever the ``D`` or ``N`` of their name: ``GD_MLSL_LDS``
+with an ``INNER`` ``LN_BOBYQA`` takes no gradient, and before 1.6.0 an
+unset ``GRAD_STRATEGY`` resolved to ``ANALYTICAL`` there):
 
 * an unset ``GRAD_STRATEGY`` resolves to ``ANALYTICAL``, and the
   journal's OPTIMISER section says so (``GRAD_STRATEGY : ANALYTICAL
@@ -1185,9 +1213,9 @@ The knobs, most important first
    budget.  ``<v0>`` must be finite and strictly positive; it sets the
    saturation scale of the grading curve for ``S`` (default 1; a good
    choice is the seed potential's ``S`` times a small factor).  At most
-   one probe line is allowed; ``--varloss``
-   on it is rejected (the probe grades failures — it must not shape the
-   feasible objective).
+   one probe line is allowed; ``--varloss``, ``--hotvar`` and
+   ``--failvar`` on it are rejected (the probe grades failures — it must
+   not shape the feasible objective).
 
 ``--gate <T>`` (on ``PC_FAILPROBE``)
    **The only knob that needs real care.**  If the gate can fire on a
@@ -2032,7 +2060,9 @@ one a finite number (``MAXTIME`` a positive one).
        line 8: the OPTIMIZER block names no optimiser: LIB and ALGO are not
        set``.
    * - ``ALGO`` (string)
-     - Algorithm (see table below).
+     - Algorithm (see table below).  ``NLOPT:LN_NEWUOA_BOUND`` is refused,
+       at the same lines, naming the phase and what to use instead (the
+       ``NLOPT`` row of the table below).
    * - ``MAXEVAL`` (integer, 1 to 2\ :sup:`31` − 1)
      - Maximum number of evaluations: an integer from 1 to 2147483647,
        the ``int`` NLopt counts evaluations in.  ``0`` or a larger value
@@ -2044,6 +2074,41 @@ one a finite number (``MAXTIME`` a positive one).
        and ASA, the first starting point to ``DLIB:GFS``, an error when
        ``DLIB:BFGS`` and ``CERES`` started, nothing to ``TADAH:GRID``).
 
+       ``MAXEVAL`` bounds one optimiser search, and every evaluation the
+       search makes counts against it: each loss and, for a
+       gradient-based optimiser, each finite-difference point of its
+       gradients and each analytical gradient (``ANALYTICAL``,
+       ``HYBRID``), one evaluation each.  A search is the run of a
+       ``PLAIN`` strategy, or one ``RESTART`` launch (each has its own
+       ``MAXEVAL``, :ref:`restart_decorator`), one ``MULTISTART`` start
+       (its ``BUDGET_PER_START`` or its share of ``MAXEVAL``, ceil
+       division), the ``PRESTAGE`` exploration (its ``EXPLORE`` block's
+       ``MAXEVAL``) or one ``PRESTAGE`` refinement (its share), so a run
+       can make more than ``MAXEVAL`` evaluations.  Evaluations outside
+       a search are charged to no ``MAXEVAL`` and add to the run's total
+       too: the ``NOISE`` block's ``CALIBRATION`` repeats
+       (:ref:`hpo_noise_block`) and the ``INIT_JITTER AUTO`` calibration
+       of ``TADAH:ANNEAL_PT`` (:ref:`tadah_anneal_pt_block`).  An NLopt
+       search that its budget ends has made exactly ``MAXEVAL``
+       evaluations and reports ``MAXEVAL_REACHED`` (``STOPVAL_REACHED``
+       when the budget cut short the gradient of a loss at or below
+       ``STOPVAL``, :ref:`hpo_gradient_not_finite`); the journal says
+       ``NLopt finished: MAXEVAL_REACHED -- maximum evaluations exhausted
+       after 60 of MAXEVAL 60 evaluation(s)``.  Before 1.6.0 NLopt counted its
+       objective calls, each a loss and a whole gradient, while the
+       gradients' evaluations had a budget of their own: an NLopt
+       gradient search made up to about twice ``MAXEVAL`` evaluations
+       (``LD_MMA``: 120 for ``MAXEVAL 60``), was given ``+inf`` for the
+       points it evaluated after that budget, and could end as if it had
+       converged (``STOPPED -- nlopt failure (algorithm converged …)``)
+       or with ``SUCCESS``; ``GN_CRS2_LM``, ``GN_ORIG_DIRECT``,
+       ``GN_ORIG_DIRECT_L`` and ``AUGLAG`` made a few evaluations more
+       than ``MAXEVAL``.  The same ``MAXEVAL`` now gives an NLopt
+       gradient search fewer steps (an ``ANALYTICAL`` one about half the
+       losses); ``DLIB:BFGS`` and ``CERES`` counted this way already.  An
+       ``INNER`` block's ``MAXEVAL`` counts NLopt calls
+       (:ref:`hpo_inner_block`).
+
        Leave the key out for no evaluation limit.  The run then ends on
        the optimiser's other stops (``MAXTIME``, ``STOPVAL``, a
        tolerance), or on its own: NLopt's local algorithms, ``DLIB:BFGS``
@@ -2054,7 +2119,8 @@ one a finite number (``MAXTIME`` a positive one).
        test and no finite schedule — ``TADAH:RANDOM``, ``DLIB:GFS``,
        ``ANNEAL_PT``, NLopt's global searches and three of its gradient
        algorithms — needs a stop: ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``,
-       a tolerance it honours set above 0, or an active ``RESTART``, a
+       a tolerance it honours set above 0, or an active ``RESTART``
+       (``GD_STOGO`` and ``GD_STOGO_RAND``: ``MAXEVAL``), a
        startup error otherwise; the table of :ref:`hpo_stop_criteria` says
        which backend needs one and which stops it honours.  ``TADAH:ANNEAL`` needs ``MAXEVAL`` itself for
        its default ``CHAIN_LENGTH AUTO`` / ``NT AUTO`` (set them to run
@@ -2095,12 +2161,16 @@ one a finite number (``MAXTIME`` a positive one).
        ``CERES`` reject it.  ``TADAH:RANDOM``, ``TADAH:GRID`` and ``DLIB:GFS``
        accepted it and ignored it before 1.6.0; with ``THREADS`` > 1 the
        ``DLIB:GFS`` evaluations already running when one reaches it
-       finish.  An ``INNER`` block's ``STOPVAL`` has no effect
+       finish.  ``STOPVAL`` inside an ``INNER`` block is an error at its
+       line: NLopt replaces it with the enclosing block's
        (:ref:`hpo_inner_block`).
    * - ``FTOL_REL`` (float)
      - Relative tolerance on the loss.  A tolerance of 0 or below switches
        the test off (NLopt; the annealers' plateau rule arms only above
-       0), so it is no stop (:ref:`hpo_stop_criteria`).
+       0), so it is no stop (:ref:`hpo_stop_criteria`).  A backend whose
+       run never tests a tolerance refuses it at startup, naming the stops
+       it honours; the table of :ref:`hpo_stop_criteria` lists which
+       tolerances each one tests.
    * - ``FTOL_ABS`` (float)
      - Absolute tolerance on the loss (0 or below: off, as ``FTOL_REL``).
    * - ``XTOL_REL`` (float)
@@ -2108,7 +2178,14 @@ one a finite number (``MAXTIME`` a positive one).
    * - ``XTOL_ABS`` (float)
      - Absolute tolerance on hyperparameters (0 or below: off).
    * - ``POPULATION`` (integer)
-     - Population size for population-based algorithms.
+     - Population size of the algorithms that have one: ``TADAH:ANNEAL_PA``
+       (its walkers) and NLopt's ``GN_CRS2_LM``, ``GN_ISRES``,
+       ``GN_ESCH``, ``GD_STOGO_RAND`` and the six MLSL forms.  Every other
+       backend refuses it at startup (``NLOPT:LN_BOBYQA does not use
+       POPULATION; remove it (it is read by NLOPT:GD_MLSL, …,
+       TADAH:ANNEAL_PA)``); before 1.6.0 ``TADAH:RANDOM``, ``TADAH:GRID``,
+       ``DLIB:GFS`` and NLopt's other algorithms accepted it and ignored
+       it.
    * - ``STEP`` (float)
      - Initial step for the NLopt derivative-free algorithms, as a
        **fraction of each OPTIM dimension's (transformed) width**,
@@ -2137,8 +2214,11 @@ one a finite number (``MAXTIME`` a positive one).
    * - ``SEED`` (integer ≥ 0)
      - Random seed of stochastic optimisers (default: drawn from
        ``std::random_device``, so a run without ``SEED`` is not
-       reproducible).  ``DLIB:BFGS`` rejects it; ``DLIB:GFS`` is
-       deterministic and ignores it with a warning.  ``MULTISTART`` and
+       reproducible).  ``DLIB:BFGS``, ``CERES`` and ``TADAH:GRID``, which
+       draw no random numbers, reject it (``CERES`` and ``GRID`` accepted
+       it and ignored it before 1.6.0); ``DLIB:GFS`` is deterministic and
+       ignores it with a warning.  Every NLopt algorithm takes it, whether
+       or not it draws random numbers.  ``MULTISTART`` and
        the ``PRESTAGE`` refinement run start *i* with ``SEED + i``, and
        each ``RESTART`` round runs with a seed derived from it
        (:ref:`restart_decorator`).  Inside an ``INIT`` block the same key
@@ -2151,7 +2231,12 @@ one a finite number (``MAXTIME`` a positive one).
        MLSL/AUGLAG draw their ``INNER`` search from it
        (:ref:`hpo_inner_block`).
    * - ``VECTOR_ARR`` (integer)
-     - Storage size required by some NLOpt algorithms.
+     - Number of stored vectors of NLopt's limited-memory algorithms
+       ``LD_LBFGS``, ``LD_VAR1``, ``LD_VAR2`` and the four
+       ``LD_TNEWTON`` forms.  Every other backend refuses it at startup
+       (``… does not use VECTOR_ARR; remove it (it is read by …)``);
+       before 1.6.0 ``TADAH:RANDOM``, ``TADAH:GRID``, ``DLIB:GFS`` and
+       NLopt's other algorithms accepted it and ignored it.
    * - ``THREADS`` (integer ≥ 1)
      - Width of the shared per-rank worker pool that runs the
        ``PC_LAMMPS`` fan-out and MLIP train/predict for every backend
@@ -2170,7 +2255,11 @@ one a finite number (``MAXTIME`` a positive one).
        ``ANALYTICAL`` or ``HYBRID`` (analytical where a derivative is
        registered, finite differences elsewhere — for every parameter
        when no analytical derivative can be formed at the point; before
-       1.6.0 it returned a zero gradient there).  A
+       1.6.0 it returned a zero gradient there).  An analytical gradient
+       counts as one evaluation toward ``MAXEVAL``, with every backend
+       (NLopt counted only its calls before 1.6.0, so an NLopt
+       ``ANALYTICAL`` search made up to ``MAXEVAL`` losses and as many
+       gradients).  A
        gradient that is not finite — a failed evaluation in the
        finite-difference stencil — can end the search, with its own
        status (:ref:`hpo_gradient_not_finite`).  The
@@ -2178,8 +2267,27 @@ one a finite number (``MAXTIME`` a positive one).
        ``INNER`` block (a startup error at its line): ``MLSL`` and
        ``AUGLAG`` hand their ``INNER`` search the gradient of their own
        objective, which the enclosing block's ``GRAD_STRATEGY`` obtains
-       (:ref:`hpo_inner_block`).  Rejected when the configuration has
-       ``PC_LAMMPS`` lines.  With ``PC_OBSERVABLE`` ``NUMERICAL`` is
+       (:ref:`hpo_inner_block`).  A phase whose optimiser takes no
+       gradient refuses it at startup, as the annealers and ASA did
+       (``the STRATEGY-level optimiser NLOPT:LN_SBPLX: GRAD_STRATEGY never
+       takes effect: NLOPT:LN_SBPLX takes no gradient; remove it.``);
+       before 1.6.0 a derivative-free NLopt algorithm, ``TADAH:RANDOM``,
+       ``TADAH:GRID`` and ``DLIB:GFS`` accepted it and ignored it.  An
+       MLSL or AUGLAG takes it when its local search is gradient-based —
+       a gradient-based ``INNER`` block, or without one the ``LD_MMA``
+       that NLopt runs for the ``GD_`` and ``LD_`` forms — and refuses it
+       otherwise, whatever the ``D`` or ``N`` of its name: MLSL and AUGLAG
+       evaluate their own points without a gradient, and an ``INNER``
+       block replaces NLopt's default local optimiser
+       (``… NLOPT:GD_MLSL_LDS takes no gradient: NLopt's MLSL and AUGLAG
+       take a gradient only for their local search, and the INNER block's
+       NLOPT:LN_BOBYQA takes none; remove it.``).  Before 1.6.0
+       ``GD_MLSL``, ``GD_MLSL_LDS``, ``LD_AUGLAG`` and ``LD_AUGLAG_EQ``
+       with a derivative-free ``INNER`` block accepted it and ignored it,
+       as they did ``PARAM fd_step``, ``fd_kernel`` and ``diff_method``
+       and ``NOISE`` ``AUTO``.
+       Rejected when the configuration has ``PC_LAMMPS`` lines.  With
+       ``PC_OBSERVABLE`` ``NUMERICAL`` is
        rejected in every block, ``EXPLORE`` included, and an unset
        value resolves to ``ANALYTICAL`` in each block that runs an
        optimiser and obtains gradients: the ``STRATEGY``-level block and
@@ -2263,13 +2371,44 @@ one a finite number (``MAXTIME`` a positive one).
        gradient-based backend except ``DLIB:BFGS`` they are rejected
        when the configuration has ``PC_LAMMPS`` lines.
 
+       ``LN_NEWUOA_BOUND`` is refused in every phase (the
+       ``STRATEGY``-level optimiser, ``MULTISTART``, the ``PRESTAGE``
+       exploration and refinement, ``INNER``): at ``ENDOPTIMIZER`` for
+       the ``STRATEGY``-level optimiser, whether the ``STRATEGY`` block,
+       a ``REFINE`` block or the ``OPTIMIZER`` block itself names it, at
+       ``ENDEXPLORE`` for the exploration and at ``ENDINNER`` for an
+       ``INNER`` block.  NLopt 2.10 plans each of its steps with a
+       nested ``LD_MMA`` run that has no time limit and sees no stop
+       request, and once a non-finite value reaches its model each step
+       takes about 10–60 s without evaluating the loss.  That happens
+       after every stop ``tadah hpo`` makes through the objective
+       (Ctrl-C, SIGTERM, a ``RESTART`` stagnation stop, an error that ends
+       the run: the objective then returns ``HUGE_VAL``, NLopt's
+       convention for a forced stop) from a run's (2n+1)-th evaluation
+       on, n being the number of ``OPTIM`` dimensions (NEWUOA first
+       evaluates 2n+1 starting points, and a stop on one of the first 2n
+       returns at once), and when the loss barely changes over the trust
+       region; Ctrl-C, ``MAXTIME`` and ``RESTART`` wait that long.
+       Before 1.6.0 it was accepted.  Use ``LN_BOBYQA``, Powell's
+       bound-constrained successor of NEWUOA, whose ``STEP``
+       rescales each dimension instead of setting one radius
+       (:ref:`search_space_scaling`), or ``LN_NEWUOA`` where the search
+       may leave the ``OPTIM`` box (it ignores the bounds):
+
+       .. code-block:: none
+
+          HPOEngine error: Error on line 10: the STRATEGY-level optimiser: NLOPT:LN_NEWUOA_BOUND is refused: NLopt 2.10 plans each LN_NEWUOA_BOUND step with a nested LD_MMA run that has no time limit and sees no stop request, ... Use NLOPT:LN_BOBYQA, Powell's bound-constrained successor of NEWUOA (its STEP rescales each dimension instead of setting one radius), or NLOPT:LN_NEWUOA where the search may leave the OPTIM box
+          Line: ENDOPTIMIZER
+
        .. note::
 
           With the default ``GRAD_STRATEGY NUMERICAL`` every
           gradient-using algorithm (``LD_*``, ``GD_*``, ``DLIB:BFGS``,
           all CERES drivers) obtains its gradient by finite differences
-          (``PARAM fd_step``); for ``DLIB:BFGS`` and the CERES drivers
-          every difference evaluation counts toward ``MAXEVAL``.  A
+          (``PARAM fd_step``), and every evaluation counts toward
+          ``MAXEVAL``: the loss and each difference point (an analytical
+          gradient counts as one).  Before 1.6.0 NLopt counted only its
+          calls, the losses (see ``MAXEVAL`` above).  A
           failed evaluation in the stencil can make the gradient not
           finite and end the search (:ref:`hpo_gradient_not_finite`).  Analytical gradients (``GRAD_STRATEGY
           ANALYTICAL``/``HYBRID``) are experimental; with
@@ -2317,8 +2456,9 @@ Key                Effect
                    (default under ``OPTIM_SCALE NONE``; Ceres' rule, evaluated by Tadah and kept in
                    the box); see the ``PARAM`` row of the attribute table.
 ``diff_method``    ``0`` = CENTRAL (default), ``1`` = FORWARD (backward at the upper bound; first
-                   order, ``1 + n`` evaluations per gradient), with either rule.  ``2`` (RIDDERS) is
-                   refused: it ignored ``fd_step`` and started outside most boxes.
+                   order, ``n`` evaluations per gradient after the loss at the point), with either
+                   rule.  ``2`` (RIDDERS) is refused: it ignored ``fd_step`` and started outside
+                   most boxes.
 ``tol_gradinf``    Gradient-infinity-norm convergence tolerance (Ceres ``gradient_tolerance``,
                    default ``1e-10``).
 ``max_iter``       Override on Ceres' ``max_num_iterations``.  By default the iteration cap is set
@@ -2338,8 +2478,8 @@ CENTRAL) is correctly accounted for against the user budget.
 Any other ``PARAM`` key is rejected.  CERES also rejects ``STEP``,
 ``MAXTIME``, ``STOPVAL``, ``FTOL_ABS``/``XTOL_ABS`` (use ``FTOL_REL`` →
 ``function_tolerance`` and ``XTOL_REL`` → ``parameter_tolerance``),
-``POPULATION``, ``VECTOR_ARR``, ``THREADS``, integer dimensions and
-``INNER`` blocks.
+``POPULATION``, ``VECTOR_ARR``, ``SEED`` (accepted and ignored before
+1.6.0), ``THREADS``, integer dimensions and ``INNER`` blocks.
 
 .. _dlib_param_keys:
 
@@ -2374,11 +2514,13 @@ solver epsilon (default ``1e-3``), which ends no run.  It takes no
 ``PARAM`` and rejects ``FTOL_REL``, ``XTOL_REL`` and ``XTOL_ABS``, which
 it cannot apply (``DLIB:GFS does not support FTOL_REL: dlib's global
 search has no convergence test to apply it to; stop it with MAXEVAL,
-MAXTIME or STOPVAL``).  It has no convergence test, so one of ``MAXEVAL``,
+MAXTIME or STOPVAL``), and ``POPULATION`` and ``VECTOR_ARR``, which it
+does not use.  It has no convergence test, so one of ``MAXEVAL``,
 ``MAXTIME`` or ``STOPVAL`` is required (``DLIB:GFS needs a stop: …``).
-It is deterministic, so ``SEED`` has no effect.  Before 1.6.0 it read
-only ``MAXEVAL``, which it needed, and ignored ``MAXTIME``, ``STOPVAL``,
-the other tolerances and any ``PARAM``.
+It is deterministic, so ``SEED`` has no effect (a warning says so when
+the run starts).  Before 1.6.0 it read only ``MAXEVAL``, which it needed,
+and ignored ``MAXTIME``, ``STOPVAL``, the other tolerances,
+``POPULATION``, ``VECTOR_ARR`` and any ``PARAM``.
 
 .. _hpo_dlib_gfs_failures:
 
@@ -2464,7 +2606,8 @@ gradients: the ``STRATEGY``-level optimiser (each ``MULTISTART`` start),
 the ``PRESTAGE`` exploration and refinement, and an ``MLSL`` / ``AUGLAG``
 block whose local search takes gradients — NLopt differentiates that
 block's objective, so its ``INNER`` search takes the enclosing block's
-settings.  An invalid value is an error there, with the same message on
+settings; ``GD_MLSL*`` and ``LD_AUGLAG*`` with a derivative-free ``INNER``
+block take none (:ref:`GRAD_STRATEGY <hpo_optimizer_common>`).  An invalid value is an error there, with the same message on
 every backend (``PARAM fd_kernel must be inhouse or ceres (got 1)``), and so
 is one that can never take effect (``… PARAM fd_step never takes effect:
 NLOPT:LN_SBPLX takes no gradient; remove it.``): ``fd_step``, ``fd_kernel``
@@ -2531,15 +2674,15 @@ same:
    :header-rows: 1
    :widths: 40 30 30
 
-   * - Loss evaluations per gradient (*n* parameters, *m* differenced by ``HYBRID``)
+   * - Evaluations per gradient, after the loss at the point (*n* parameters, *m* differenced by ``HYBRID``)
      - Inside the box
      - Next to a bound
    * - ``NUMERICAL``, ``CENTRAL``, either rule
-     - 1 + 2 *n*
-     - 1 + 2 *n*
+     - 2 *n*, plus 1 when the loss at the point is not passed
+     - 2 *n*, plus 1 when the loss at the point is not passed
    * - ``NUMERICAL``, ``FORWARD``
-     - 1 + *n*
-     - 1 + *n*
+     - *n*, plus 1 when the loss at the point is not passed
+     - *n*, plus 1 when the loss at the point is not passed
    * - ``HYBRID``, ``CENTRAL``
      - 1 + 2 *m*
      - 1 + 2 *m*, plus 1 when the loss at the point is not passed
@@ -2547,19 +2690,24 @@ same:
      - 1 + *m*, plus 1 when the loss at the point is not passed
      - 1 + *m*, plus 1 when the loss at the point is not passed
 
-``NUMERICAL`` evaluates the loss at the point itself first, as it always
-has.  ``HYBRID``'s analytical pass (the 1) does not, so a one-sided or
-forward difference takes the loss the optimiser has just evaluated at
-exactly that point.  All three gradient families pass it with every
+A gradient takes the loss the optimiser has just evaluated at exactly
+its point, and does not evaluate the point again: a one-sided or forward
+difference uses that loss, a central one does not (``NUMERICAL`` only
+checks that it is finite), and ``HYBRID``'s analytical pass (the 1)
+evaluates no loss.  All three gradient families pass it with every
 gradient they ask for: the NLopt ``LD_*`` searches and the ``CERES``
 drivers evaluate the loss and the gradient together, and ``DLIB:BFGS`` asks
 for a gradient at its start, right after the loss there, and after each
 line search at the point the search ended on, the last point it evaluated
-(its line search evaluates the loss alone).  ``HYBRID`` evaluates the point
-itself only for a gradient asked for without that loss, once per gradient
-(``DIAGNOSTICS``: ``HYBRID centre losses``).  With a hot-variable warm
-start the loss the optimiser was given is the one used.  Every evaluation
-counts toward ``MAXEVAL`` as before.
+(its line search evaluates the loss alone).  A gradient evaluates the
+point itself only when it is asked for without that loss, once per
+gradient (``DIAGNOSTICS`` counts ``HYBRID``'s: ``HYBRID centre losses``).
+With a hot-variable warm start the loss the optimiser was given is the
+one used.  Every evaluation counts toward ``MAXEVAL``.  Before 1.6.0
+``NUMERICAL`` evaluated the loss at the point itself first (1 + 2 *n*
+and 1 + *n* evaluations per gradient), a second evaluation of a point
+the optimiser had just evaluated; central differences are the same bit
+for bit without it.
 
 **A box too narrow for the step** — one in which some point has no
 stencil — is refused at startup on each phase that takes finite
@@ -2709,8 +2857,8 @@ Gradients that are not finite
 .............................
 
 The gradient-based backends — ``DLIB:BFGS``, NLopt's ``LD_*`` and
-``GD_*`` algorithms (and the local search of ``MLSL`` / ``AUGLAG``) and
-every CERES driver — take a finite-difference gradient (``GRAD_STRATEGY
+``GD_*`` algorithms (for ``MLSL`` and ``AUGLAG``, their local search
+when it is one) and every CERES driver — take a finite-difference gradient (``GRAD_STRATEGY
 NUMERICAL``, the default, and the finite-difference part of ``HYBRID``)
 from the losses at a stencil of points around the current one (``PARAM
 fd_step``, ``fd_kernel``).  When an evaluation of the stencil fails — its
@@ -2742,9 +2890,10 @@ on without it:
   search that ends right after such a rejection ended because of it.  For
   NLopt that means no evaluation after the rejection — under ``AUGLAG``,
   none but the one ``AUGLAG`` makes of the point its local search
-  returned — and neither ``MAXEVAL``, ``MAXTIME`` nor ``STOPVAL``
-  reached, nor, under ``AUGLAG``, the ``MAXEVAL`` or ``MAXTIME`` of its
-  local search (which ``AUGLAG`` reports as ``FTOL_REACHED``).  NLopt's
+  returned — and neither ``MAXEVAL`` (every evaluation counted),
+  ``MAXTIME`` nor ``STOPVAL`` reached, nor, under ``AUGLAG``, the
+  ``MAXEVAL`` (its ``INNER`` block's, in NLopt calls) or ``MAXTIME`` of
+  its local search (which ``AUGLAG`` reports as ``FTOL_REACHED``).  NLopt's
   own ending is then a success code, ``roundoff-limited``, ``nlopt
   failure`` or a tolerance: an ``XTOL_REACHED`` or ``FTOL_REACHED`` there
   is the rejection's ending, reached on the steps the search took back
@@ -2795,6 +2944,25 @@ ended at once and reported ``FTOL_REACHED``.  They now stop there too;
 later in a search ``LD_MMA`` and ``LD_CCSAQ`` reject such a point and
 shrink their trust region, as before.
 
+A usable loss at or below ``STOPVAL`` comes before all of these: NLopt
+is given ``+inf`` for a point whose gradient is not finite, or whose
+gradient ``MAXEVAL`` cut short, and so never tests that point's loss
+against ``STOPVAL``, as it does every loss it is given.  An NLopt search
+whose withheld loss is usable (not a failure under ``FAILSCORE``) and at
+or below ``STOPVAL`` ends there instead of stopping or going on as
+above: its status is ``STOPVAL_REACHED``, not ``STOPPED -- gradient not
+finite``, it makes no evaluation after that point (``GD_STOGO``, which
+ignores the stop, calls on until its ``MAXEVAL``, each call refused; see
+:ref:`hpo_stop_criteria`), and the journal has no warning but an
+``INFO`` line that says which loss and why:
+
+.. code-block:: none
+
+   INFO      NLopt finished: STOPVAL_REACHED -- objective below stopval threshold after 5 evaluation(s): the loss 24.2 is at or below STOPVAL 100, and NLopt was not given it: its gradient is not finite: a failed evaluation in the finite-difference stencil (at …)
+
+Before 1.6.0 the search went on past that point, or ended there with
+another status.
+
 .. _hpo_stop_criteria:
 
 Stop criteria per backend
@@ -2811,7 +2979,8 @@ none of them, so at least one is required: a startup error names the
 backend and the stops it honours.  An active ``RESTART``
 (:ref:`restart_decorator`) counts as one: once its ``MAX`` restarts are
 used, the next ``AFTER_STAGNATION`` evaluations without a new best end
-the run, whatever the phase.  Which backend is which was measured: each
+the run, whatever the phase — but not for ``GD_STOGO`` and
+``GD_STOGO_RAND``, which need ``MAXEVAL`` (below).  Which backend is which was measured: each
 ran without a stop, on the HPO example data and on synthetic objectives,
 until it was killed or ended.
 
@@ -2854,14 +3023,19 @@ until it was killed or ended.
      - never ends: one required
      - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``FTOL_REL``, ``FTOL_ABS``,
        ``XTOL_REL``, ``XTOL_ABS``
-   * - NLopt ``GN_ESCH``, ``GN_AGS``, ``GD_STOGO``, ``GD_STOGO_RAND``
+   * - NLopt ``GN_ESCH``, ``GN_AGS``
      - never ends: one required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
+   * - NLopt ``GD_STOGO``, ``GD_STOGO_RAND``
+     - never ends, and ignores NLopt's forced stop: ``MAXEVAL``
+       required (below)
      - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
    * - NLopt ``GN_MLSL``, ``GN_MLSL_LDS``, ``GD_MLSL``, ``GD_MLSL_LDS``,
        ``G_MLSL``, ``G_MLSL_LDS``
      - never ends: one required
-     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` (its tolerances reach only its
-       local searches)
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` (the block's tolerances reach
+       only NLopt's default local optimiser, so they are accepted without
+       an ``INNER`` block and refused with one: set them in ``INNER``)
    * - NLopt ``LD_MMA``, ``LD_CCSAQ``, ``LD_SLSQP``
      - never ends (the tolerances are its only convergence test): one
        required
@@ -2874,7 +3048,8 @@ until it was killed or ended.
    * - NLopt ``AUGLAG``, ``AUGLAG_EQ``, ``LN_AUGLAG``, ``LD_AUGLAG`` and
        their ``_EQ`` forms
      - ends when its local search ends
-     - its local search's (below)
+     - its local search's (below; the block's tolerances, as for MLSL,
+       only without an ``INNER`` block)
    * - every other NLopt algorithm (``LN_*``, ``LD_LBFGS``, …)
      - converges
      - all seven
@@ -2891,14 +3066,62 @@ in every sweep, so ``XTOL`` ends it only once every rectangle is that
 small: roughly (1/``XTOL_REL``)\ :sup:`n` evaluations for *n*
 dimensions (``XTOL_REL 1e-3`` in two dimensions ran past 20000); it
 counts as a stop, and the message says what it costs.  ``CRS2`` and
-``ISRES`` test the tolerances when the best improves.  ``TADAH:RANDOM`` and ``TADAH:GRID`` accept the tolerances
-(and ``POPULATION`` and ``VECTOR_ARR``; ``GRID`` also ``SEED``) and
-ignore them, as before.  The local search of NLopt's MLSL
+``ISRES`` test the tolerances when the best improves.  ``GD_STOGO`` and
+``GD_STOGO_RAND`` need ``MAXEVAL``, in their own block or, as an
+``INNER`` search, in the enclosing one: NLopt's StoGO ignores the forced
+stop by which HPO ends a search on a signal, an error, the ``RESTART``
+stagnation stop or a loss at or below ``STOPVAL`` that NLopt was not
+given (:ref:`hpo_gradient_not_finite`).  From then on StoGO calls on, and
+HPO refuses each call without evaluating it, a few microseconds each,
+until NLopt's own evaluation count ends it; its clock would end it only
+once the rest of ``MAXTIME`` had passed.  ``MAXTIME``, ``STOPVAL`` and an
+active ``RESTART`` still end such a run when they are met, but none of
+them is enough as its stop:
+
+.. code-block:: none
+
+   HPOEngine error: the STRATEGY-level optimiser: NLOPT:GD_STOGO needs a stop: NLopt's StoGO has no convergence test of its own and ignores NLopt's forced stop, by which HPO ends a search (on a signal, an error, the RESTART stagnation stop, or a loss at or below STOPVAL that NLopt was not given): it then calls on, each call refused, and only NLopt's own evaluation count ends it promptly (MAXTIME only once the rest of its time has passed); set MAXEVAL (it honours no tolerance)
+
+Before 1.6.0 ``MAXTIME``, ``STOPVAL`` or an active ``RESTART`` was
+accepted as its stop: without ``MAXEVAL``, once ``Ctrl-C``, an error or
+the stagnation stop had stopped it, such a run never ended, or, with
+``MAXTIME``, waited out the rest of ``MAXTIME`` at 100% CPU before it
+reported.
+
+A tolerance the backend's run never tests is refused at startup, naming
+the phase and the stops the backend honours: every tolerance of
+``TADAH:RANDOM``, ``TADAH:GRID``, ``GN_ESCH``, ``GN_AGS`` and
+``GD_STOGO*``, all but ``XTOL_REL`` of ``GN_ORIG_DIRECT*``,
+``DLIB:GFS``'s ``FTOL_REL``, ``XTOL_REL`` and ``XTOL_ABS``, and every
+tolerance of an MLSL or AUGLAG block with an ``INNER`` block (NLopt
+hands them only to the default local optimiser it creates without one;
+``auglag.c`` tests them only to name the ending its ``INNER`` search
+decides):
+
+.. code-block:: none
+
+   HPOEngine error: the STRATEGY-level optimiser: TADAH:RANDOM does not support FTOL_REL: uniform random search has no convergence test to apply it to; stop it with MAXEVAL, MAXTIME or STOPVAL
+   HPOEngine error: the STRATEGY-level optimiser: NLOPT:G_MLSL_LDS does not support FTOL_REL with an INNER block: MLSL's multistart loop tests no tolerance, and NLopt passes the block's tolerances to no INNER search; set it in the INNER block, whose local search tests it
+
+The second sends the tolerance into the ``INNER`` block only when that
+block's algorithm tests it; otherwise it names the stops that search
+honours (``…; the INNER block's NLOPT:GN_ESCH does not test it either:
+stop that search with MAXEVAL or MAXTIME in the INNER block, or MAXEVAL,
+MAXTIME or STOPVAL in the NLOPT:AUGLAG block, which NLopt hands on to
+it``).
+
+Before 1.6.0 they were accepted and did nothing: ``TADAH:RANDOM`` and
+``TADAH:GRID`` accepted every tolerance (and ``POPULATION`` and
+``VECTOR_ARR``; ``GRID`` also ``SEED``, which are refused now too), the
+journal listed them among the stop criteria, and an ``AUGLAG``
+tolerance with an ``INNER`` block relabelled a run that spent its
+``MAXEVAL`` ``XTOL_REACHED``.  The local search of NLopt's MLSL
 and AUGLAG (an ``INNER`` block, or without one NLopt's default local
 optimiser, ``LN_COBYLA`` or ``LD_MMA``, which takes the block's
 tolerances) must end too: it runs with the enclosing block's ``MAXEVAL``,
 ``MAXTIME`` and ``STOPVAL`` as well as its own ``MAXEVAL``, ``MAXTIME``
-and tolerances (:ref:`hpo_inner_block`), so an ``INNER`` global search
+and tolerances (:ref:`hpo_inner_block`; its own ``MAXEVAL`` counts NLopt
+calls, the enclosing block's every evaluation), so an ``INNER`` global search
 under ``AUGLAG``, or ``LD_AUGLAG`` without an ``INNER`` block, needs one
 of those:
 
@@ -3316,9 +3539,9 @@ the next start runs (:ref:`restart_decorator`).
 *global* backend that consumes a single starting point: every NLopt
 algorithm whose name starts with ``G`` (``GN_*``, ``GD_*``,
 ``G_MLSL*``), ``TADAH:RANDOM``, ``TADAH:GRID``, the ``TADAH:ANNEAL``
-family and ``ASA:ASA``.  Local optimisers (``NLOPT:LN_*``/``LD_*``,
-``DLIB:BFGS``, CERES) and the multi-seed global ``DLIB:GFS`` are
-accepted; ``DLIB:GFS`` consumes all points in one run.  Use ``TYPE
+family and ``ASA:ASA``.  Local optimisers (``NLOPT:LN_*``/``LD_*``
+but the refused ``LN_NEWUOA_BOUND``, ``DLIB:BFGS``, CERES) and the
+multi-seed global ``DLIB:GFS`` are accepted; ``DLIB:GFS`` consumes all points in one run.  Use ``TYPE
 PLAIN`` to run a single-seed global once.  The check is a startup
 error, raised before any data is loaded or any evaluation runs.  The
 message lists the first accepted backends in alphabetical order (the
@@ -3326,7 +3549,7 @@ list depends on the libraries the build includes):
 
 .. code-block:: none
 
-   HPOEngine error: STRATEGY TYPE MULTISTART cannot run TADAH:ANNEAL: it is a global optimiser that consumes a single starting point, so restarting it from each INIT point is rejected for any N_STARTS. Use a local or multi-seed optimiser (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, DLIB:GFS, ... (24 more)), or STRATEGY TYPE PLAIN to run TADAH:ANNEAL once.
+   HPOEngine error: STRATEGY TYPE MULTISTART cannot run TADAH:ANNEAL: it is a global optimiser that consumes a single starting point, so restarting it from each INIT point is rejected for any N_STARTS. Use a local or multi-seed optimiser (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, DLIB:GFS, ... (23 more)), or STRATEGY TYPE PLAIN to run TADAH:ANNEAL once.
 
 TYPE PRESTAGE — staged global → local
 .....................................
@@ -3557,7 +3780,8 @@ block has no effect.  An active ``RESTART`` ends the run: once its
 ``MAX`` restarts are used, the next ``AFTER_STAGNATION`` evaluations
 without a new best stop it (``STOPPED -- stagnation: no new best in W
 evals after R restart(s)``), so it is the stop of a backend that needs one
-(:ref:`hpo_stop_criteria`): ``NLOPT GN_DIRECT_L`` with no stop of its
+(:ref:`hpo_stop_criteria`; not of ``GD_STOGO`` and ``GD_STOGO_RAND``,
+which need ``MAXEVAL``): ``NLOPT GN_DIRECT_L`` with no stop of its
 own under ``AFTER_STAGNATION 60`` and ``MAX 1`` ran 699 evaluations on
 the examples' data.  A ``SEED`` inside ``RESTART`` seeds its ``METHOD``
 chain: restart *r* draws its fresh points with ``SEED + r`` (with
@@ -3744,13 +3968,14 @@ local optimiser.  Configure the inner via:
    ENDSTRATEGY
 
 Only the driver-attribute keys (``LIB`` / ``ALGO`` / ``MAXEVAL`` /
-``MAXTIME`` / ``STOPVAL`` / ``FTOL_*`` / ``XTOL_*`` / ``POPULATION`` /
-``STEP`` / ``VECTOR_ARR`` / ``THREADS`` / ``PARAM``) are valid inside
-``INNER``; ``SEED`` and ``GRAD_STRATEGY`` belong to the enclosing block
-(see below).  ``LIB`` and ``ALGO`` are required, as in
-every block that names an optimiser: a missing one is an error at the
-``ENDINNER`` line that names the enclosing block (``STRATEGY``,
-``EXPLORE`` or ``REFINE``):
+``MAXTIME`` / ``FTOL_*`` / ``XTOL_*`` / ``POPULATION`` / ``STEP`` /
+``VECTOR_ARR`` / ``THREADS`` / ``PARAM``) are valid inside ``INNER``;
+``SEED``, ``GRAD_STRATEGY`` and ``STOPVAL`` belong to the enclosing block
+(see below), and the ``INNER`` search refuses, like any phase, an
+attribute its algorithm never reads (:ref:`hpo_stop_criteria`).  ``LIB``
+and ``ALGO`` are required, as in every block that names an optimiser: a
+missing one is an error at the ``ENDINNER`` line that names the
+enclosing block (``STRATEGY``, ``EXPLORE`` or ``REFINE``):
 
 .. code-block:: none
 
@@ -3773,20 +3998,74 @@ optimiser, the ``PRESTAGE`` refinement or the ``EXPLORE`` block):
 
 Before 1.6.0 the first was reported only once the host had loaded the
 data, and an ``INNER`` block with another ``LIB`` failed inside NLopt once
-the run had started (``wrong algorithm string``).  With MLSL/AUGLAG an outer ``STEP``
-overrides an ``INNER`` ``STEP`` (NLopt forwards the outer initial step
-to the local optimiser); a startup warning says so.
+the run had started (``wrong algorithm string``).  With MLSL/AUGLAG an
+outer ``STEP`` overrides an ``INNER`` ``STEP`` (NLopt forwards the outer
+initial step to the local optimiser); a startup warning says so.
+
+``AUGLAG``, ``AUGLAG_EQ``, ``G_MLSL`` and ``G_MLSL_LDS`` have no default
+local optimiser, so they need an ``INNER`` block, and for the same reason
+an ``INNER`` block cannot name one of them (``INNER`` blocks do not
+nest); ``LN_AUGLAG``, ``LD_AUGLAG``, their ``_EQ`` forms and the
+``GN_``/``GD_`` MLSL forms run NLopt's ``LN_COBYLA`` or ``LD_MMA``
+without one.  Both are startup errors that name the phase:
+
+.. code-block:: none
+
+   HPOEngine error: NLOPT:AUGLAG needs an INNER block (the PRESTAGE refinement): NLopt has no default local optimiser for it; add INNER ... ENDINNER with LIB NLOPT and a local ALGO such as LN_BOBYQA, or use one of NLOPT:GD_MLSL, NLOPT:GD_MLSL_LDS, NLOPT:GN_MLSL, NLOPT:GN_MLSL_LDS, NLOPT:LD_AUGLAG, NLOPT:LD_AUGLAG_EQ, NLOPT:LN_AUGLAG, NLOPT:LN_AUGLAG_EQ, which run LD_MMA or LN_COBYLA without one
+   HPOEngine error: the INNER block of the STRATEGY-level optimiser names NLOPT:G_MLSL_LDS, which needs an INNER block of its own; INNER blocks do not nest: pick a local algorithm such as LN_BOBYQA
+
+Before 1.6.0 NLopt refused the first only once the run had started
+(``local optimizer must be specified for AUGLAG``), after the data were
+loaded and, under ``PRESTAGE``, after the whole exploration; the second
+failed after some evaluations with only ``nlopt invalid argument``.
 
 NLopt hands each ``INNER`` search what is left of the enclosing block's
 ``MAXEVAL`` and ``MAXTIME`` when they are tighter than the ``INNER``
 block's own, and the enclosing block's ``STOPVAL`` in place of the
-``INNER`` block's, which therefore has no effect (it is accepted, as
-before).  MLSL's own loop never ends without a stop, and AUGLAG ends when
+``INNER`` block's, so ``STOPVAL`` inside ``INNER`` is an error at its
+line, like ``SEED``:
+
+.. code-block:: none
+
+   HPOEngine error: Error on line 11: STOPVAL is not accepted inside an INNER block: NLopt's MLSL and AUGLAG replace the INNER search's STOPVAL with the enclosing block's; set STOPVAL on the enclosing STRATEGY block
+   Line:       STOPVAL 0.1
+
+Before 1.6.0 it was accepted and had no effect: a ``STOPVAL`` above
+every loss did not stop the search, and the journal still listed it.
+Tolerances are the other way round: the ``INNER`` block's own are its
+search's, and those of the enclosing MLSL or AUGLAG block reach no
+``INNER`` search, so they are refused there (``NLOPT:G_MLSL_LDS does not support
+FTOL_REL with an INNER block: …; set it in the INNER block, whose local
+search tests it``, or, when the ``INNER`` algorithm does not test it
+either, the stops that search honours).  NLopt gives an ``INNER`` search under MLSL that sets
+none of ``FTOL_REL``, ``FTOL_ABS`` and ``XTOL_REL`` the tolerances
+``FTOL_REL 1e-15`` and ``XTOL_REL 1e-7`` (``optimize.c``); before 1.6.0
+an ``XTOL_ABS`` on the MLSL block switched these off.  MLSL's own loop
+never ends without a stop, and AUGLAG ends when
 its ``INNER`` search ends, so an ``INNER`` search that needs a stop
-(:ref:`hpo_stop_criteria`) takes it from either block.  AUGLAG
-evaluates the result of its ``INNER`` search once more when that search
-ends, so it can make one evaluation more than its ``MAXEVAL`` (NLopt's
-``auglag.c``):
+(:ref:`hpo_stop_criteria`) takes it from either block.
+
+The two ``MAXEVAL`` count different things.  The enclosing block's counts
+every evaluation of the run, the losses and each gradient's evaluations,
+and ends the run when it is spent.  The ``INNER`` block's counts the
+NLopt calls of each local search, as NLopt does: one call is a loss and,
+for a gradient-based local search, its gradient (2 *n* more evaluations
+with ``CENTRAL`` finite differences in *n* dimensions), and HPO cannot
+tell where one local search of MLSL ends and the next begins.  The
+journal's ``Inner stop criteria`` say so for a gradient-based ``INNER``
+search:
+
+.. code-block:: none
+
+   Inner stop criteria:
+     Max evaluations     : 10
+     (MAXEVAL here counts the NLopt calls of each local search, not its evaluations: a call evaluates the loss and its gradient; the MAXEVAL of the enclosing block counts every evaluation of the run, each loss, each finite-difference point and each analytical gradient)
+
+AUGLAG evaluates the result of its ``INNER`` search once more when that
+search ends (NLopt's ``auglag.c``); before 1.6.0 that evaluation could
+come after the enclosing block's ``MAXEVAL`` was spent, one more than
+it, and it now counts against it like any other.  An ``INNER`` search
+that needs a stop and has none in either block is a startup error:
 
 .. code-block:: none
 

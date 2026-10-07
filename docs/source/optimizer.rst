@@ -52,12 +52,21 @@ lines; ``DLIB:BFGS`` is the one gradient-based optimiser accepted there.
 A failed evaluation in the finite-difference stencil can make the
 gradient not finite, which can end such a search with its own status
 (:ref:`hpo_gradient_not_finite`).
-``MAXEVAL`` caps every backend's evaluations; without it a backend runs
+``MAXEVAL`` caps one search of a backend — the run of a ``PLAIN``
+strategy, one ``RESTART`` launch, one ``MULTISTART`` start, the
+``PRESTAGE`` exploration or one refinement, so a run can make more — and
+every evaluation the search makes counts: each loss and, for a
+gradient-based backend, each finite-difference point of its gradients
+and each analytical gradient (an ``INNER`` block's ``MAXEVAL`` counts the
+NLopt calls of each local search, :ref:`hpo_inner_block`; the ``NOISE``
+block's ``CALIBRATION`` repeats and the ``INIT_JITTER AUTO`` calibration
+of ``ANNEAL_PT`` are charged to no search).  Without it a backend runs
 until its other stops or its own end it (convergence, a finite
 temperature schedule or grid, ASA's limits).  A tolerance is a stop only
 above 0, and an active ``RESTART`` (:ref:`restart_decorator`) is one
-too: once its ``MAX`` restarts are used, the next ``AFTER_STAGNATION``
-evaluations without a new best end the run.  The backends compare as
+too, except for ``GD_STOGO`` and ``GD_STOGO_RAND``: once its ``MAX``
+restarts are used, the next ``AFTER_STAGNATION`` evaluations without a
+new best end the run.  The backends compare as
 follows (:ref:`hpo_stop_criteria` has the whole table):
 
 .. list-table::
@@ -86,12 +95,16 @@ follows (:ref:`hpo_stop_criteria` has the whole table):
      - converge
      - ``MAXEVAL`` and their tolerances
    * - NLopt global searches (``GN_DIRECT*``, ``GN_CRS2_LM``,
-       ``GN_ISRES``, ``GN_ESCH``, ``GN_AGS``, ``GD_STOGO*``, the MLSL
-       family) and ``LD_MMA``, ``LD_CCSAQ``, ``LD_SLSQP``
+       ``GN_ISRES``, ``GN_ESCH``, ``GN_AGS``, the MLSL family) and
+       ``LD_MMA``, ``LD_CCSAQ``, ``LD_SLSQP``
      - no: one stop required
      - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, and the tolerances of
        DIRECT (its ``XTOL`` only once every rectangle is that small),
        CRS2, ISRES, MMA, CCSAQ and SLSQP
+   * - NLopt ``GD_STOGO``, ``GD_STOGO_RAND``
+     - no: ``MAXEVAL`` required (it ignores the forced stop by which HPO
+       ends a search)
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
    * - NLopt ``GN_ORIG_DIRECT``, ``GN_ORIG_DIRECT_L``
      - after about 100000 evaluations
      - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``XTOL_REL``
@@ -105,11 +118,23 @@ follows (:ref:`hpo_stop_criteria` has the whole table):
 
 A backend that cannot end without a stop and has none is a startup
 error before any data is loaded (``NLOPT:GN_DIRECT needs a stop: …``),
-and so is a setting a backend rejects: an attribute it does not support
-(``DLIB:GFS`` rejects the tolerances it cannot apply), or, for every
-backend but NLopt, a ``PARAM`` key it does not read, named with the keys
-it takes (``TADAH:RANDOM: unknown PARAM 'FOO' (it takes none)``;
-:ref:`nfp_manual`).
+and so is a setting a backend rejects: an attribute its run never reads
+— a tolerance it does not test (``TADAH:RANDOM does not support
+FTOL_REL: …; stop it with MAXEVAL, MAXTIME or STOPVAL``), ``POPULATION``
+or ``VECTOR_ARR`` where the algorithm has none, ``SEED`` on
+``TADAH:GRID``, ``DLIB:BFGS`` and ``CERES``, which draw no random numbers
+(NLopt takes ``SEED`` on every algorithm, and ``DLIB:GFS`` ignores it
+with a warning), ``GRAD_STRATEGY`` on a phase that takes no gradient (a
+derivative-free optimiser, or an MLSL or AUGLAG whose local search is
+one), ``STOPVAL`` inside an ``INNER`` block —, an NLopt ``AUGLAG``,
+``AUGLAG_EQ``, ``G_MLSL`` or ``G_MLSL_LDS`` without an ``INNER`` block,
+or, for every backend but NLopt, a ``PARAM`` key it does not read, named
+with the keys it takes (``TADAH:RANDOM: unknown PARAM 'FOO' (it takes
+none)``; :ref:`nfp_manual`).  Before 1.6.0 ``TADAH:RANDOM``,
+``TADAH:GRID``, ``DLIB:GFS`` and NLopt accepted such attributes and
+ignored them, and ``CERES`` its ``SEED`` (the annealers, ``ASA`` and
+``DLIB:BFGS`` already refused theirs), and NLopt refused such an
+``AUGLAG`` or ``G_MLSL`` only once the run had started.
 
 .. toctree::
    :maxdepth: 2
@@ -231,10 +256,12 @@ box and how it consumes an initial step.
      - yes once the step vector is per-dim
      - ``rhoend = XTOL_REL * rhobeg``; BOBYQA needs ``width >= 2*step``
        (``STEP 0.5`` is capped just below)
-   * - ``NLOPT:LN_NEWUOA(_BOUND)`` / ``LN_PRAXIS``
+   * - ``NLOPT:LN_NEWUOA`` / ``LN_PRAXIS``
      - collapsed to ``min|step|``
      - no in raw units; uniform in the unit box
-     - ``LN_NEWUOA`` ignores the box entirely (startup WARNING)
+     - ``LN_NEWUOA`` ignores the box entirely (startup WARNING);
+       ``LN_NEWUOA_BOUND`` is refused (:doc:`nfp_configuration`, the
+       ``NLOPT`` row of *Algorithms by library*): use ``LN_BOBYQA``
    * - ``NLOPT:LD_MMA`` / ``LD_CCSAQ``
      - per-dim trust half-width (default ``0.5*width``)
      - default yes; an explicit ``STEP`` makes it a fraction of width

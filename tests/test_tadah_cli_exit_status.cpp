@@ -32,6 +32,13 @@
 //
 // The [task-file] case runs `tadah --task` on a task file whose TASK lines
 // carry an inline comment; it runs in every build.
+//
+// The [nonlinear] cases run `tadah train`, `tadah predict` (with and
+// without --error) and `tadah hpo` with every non-linear model (M_KRR
+// Kern_RBF, Kern_Polynomial, Kern_Quadratic, Kern_LQ, Kern_Sigmoid; M_BLR
+// BF_Polynomial2), which the design matrix's column-layout check refused
+// (RELEASE-1.6.0-FOLLOWUPS.md, "Training"), and `tadah predict` with a KRR
+// potential whose basis does not fit. The hpo case needs NFP.
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
@@ -42,6 +49,7 @@
 #include <tadah/mlip/structure_readers/vasp_poscar_reader.h>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
@@ -2206,3 +2214,601 @@ TEST_CASE("Subcommand: train refuses intercepts the data cannot determine "
   CHECK_FALSE(std::filesystem::exists("pot_norm.tadah"));
   CHECK(contains(nrep, "NORM=true with MODEL=Kern_Linear requires BIAS=true"));
 }
+
+/* ---- [eam]: D2_EAM and DM_EAM read the setfl file named by SETFL ------ */
+
+namespace {
+
+/* A single-element (Ta) setfl file with analytic tables, cutoff 4.5 A:
+ * F(rho) = -sqrt(rho) on rho in [0, 50], rho(r) = (4.5 - r)^2 and
+ * phi(r) = 0.5 (4.5 - r)^3 (z2r = r phi) below the cutoff, 0 beyond. */
+std::string small_ta_setfl() {
+  const int nrho = 501, nr = 501;
+  const double drho = 0.1, dr = 0.01, rc = 4.5;
+  std::ostringstream os;
+  os.precision(17);
+  os << "Small Ta setfl of the DM_EAM CLI test\nanalytic tables\n\n"
+     << "1 Ta\n"
+     << nrho << " " << drho << " " << nr << " " << dr << " " << rc << "\n"
+     << "73 180.95 3.304 bcc\n";
+  for (int i = 0; i < nrho; ++i) os << -std::sqrt(i * drho) << "\n";
+  for (int i = 0; i < nr; ++i) {
+    const double r = i * dr;
+    os << (r < rc ? (rc - r) * (rc - r) : 0.0) << "\n";
+  }
+  for (int i = 0; i < nr; ++i) {
+    const double r = i * dr;
+    os << (r < rc ? r * 0.5 * (rc - r) * (rc - r) * (rc - r) : 0.0) << "\n";
+  }
+  return os.str();
+}
+
+/* A two-atom bcc Ta cell with lattice parameter `a`, energy `e`, no forces. */
+std::string bcc_ta_entry(const std::string& label, double a, double e) {
+  std::ostringstream os;
+  os.precision(17);
+  os << label << "\n1 1 1\n" << e << " 0.0\n"
+     << a << " 0 0\n0 " << a << " 0\n0 0 " << a << "\n"
+     << "0 0 0\n0 0 0\n0 0 0\n"
+     << "Ta 0 0 0 0 0 0\n"
+     << "Ta " << a / 2 << " " << a / 2 << " " << a / 2 << " 0 0 0\n\n";
+  return os.str();
+}
+
+}  // namespace
+
+/* Pins: `tadah train` builds a DM_EAM model from a configuration file, the
+ * many-body block alone (INIT2B false) and with the D2_EAM pair term, both
+ * reading the one SETFL file (`TYPEMB DM_EAM 0 Ta Ta`, `TYPE2B D2_EAM 0 Ta
+ * Ta`, the cutoffs the file's 4.5 A): exit 0, and the potential carries
+ * `SETFL eam_small.alloy` and the TYPEMB (and TYPE2B) line as written;
+ * `tadah predict` loads that potential (exit 0) and writes energy.pred.
+ * Before the fix: DM_EAM read its setfl path from TYPEMB parameter 1, the
+ * placeholder the TYPEMB format requires to be an unsigned integer, so no
+ * configuration could build it: train exited 1 with "EAMSetflIO: setfl file
+ * does not exist: 0" and wrote no potential. */
+TEST_CASE("Subcommand: train builds a DM_EAM model from the SETFL file",
+          "[TadahCLI][train][eam]") {
+  ScratchCwd cwd("train_dm_eam");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  {
+    std::ofstream os("db.tadah");
+    os << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+       << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+       << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1);
+  }
+  for (const bool with_pair : {false, true}) {
+    INFO("D2_EAM pair term: " << with_pair);
+    for (const char* f : {"pot.tadah", "energy.pred"})
+      std::filesystem::remove(f);
+    {
+      std::ofstream os("config");
+      os << "DBFILE db.tadah\nATOM Ta\nWATOM 1\n";
+      if (with_pair)
+        os << "INIT2B true\nTYPE2B D2_EAM 0 Ta Ta\n"
+              "RCTYPE2B Cut_Dummy\nRCUT2B 4.5\n";
+      else
+        os << "INIT2B false\n";
+      os << "INITMB true\nTYPEMB DM_EAM 0 Ta Ta\n"
+            "RCTYPEMB Cut_Dummy\nRCUTMB 4.5\nSETFL eam_small.alloy\n"
+            "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+            "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+    }
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    INFO("train status " << t.status << "\n" << reported(t));
+    CHECK_FALSE(contains(reported(t), "setfl file does not exist"));
+    REQUIRE(t.status == 0);
+    REQUIRE(std::filesystem::exists("pot.tadah"));
+    const std::string pot = slurp("pot.tadah");
+    INFO("pot.tadah:\n" << pot);
+    CHECK(line_tokens(pot, "SETFL") ==
+          std::vector<std::string>{"SETFL", "eam_small.alloy"});
+    CHECK(line_tokens(pot, "TYPEMB") ==
+          std::vector<std::string>{"TYPEMB", "DM_EAM", "0", "Ta", "Ta"});
+    if (with_pair)
+      CHECK(line_tokens(pot, "TYPE2B") ==
+            std::vector<std::string>{"TYPE2B", "D2_EAM", "0", "Ta", "Ta"});
+
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah"});
+    INFO("predict status " << p.status << "\n" << reported(p));
+    CHECK(p.status == 0);
+    CHECK(std::filesystem::exists("energy.pred"));
+  }
+}
+
+/* Pins: `tadah train` refuses an EAM cutoff other than the setfl file's
+ * (4.5 A): a DM_EAM model with RCUTMB 3.5, and a D2_EAM model with RCUT2B
+ * 3.5, exit 1 naming the descriptor, the key, both values and the file,
+ *   DM_EAM: RCUTMB 3.5 differs from the cutoff 4.5 of the setfl file
+ *   'eam_small.alloy' (SETFL); set RCUTMB to the file's cutoff, 4.5.
+ * and write no potential.
+ * Before the fix: both exited 0 and wrote a potential that records the
+ * file's cutoff (RCUTMB 4.5, RCUT2B 4.5), while the weights had been fitted
+ * with the descriptor evaluated at 3.5, so `tadah predict` on that file
+ * evaluated a model that was never fitted. */
+TEST_CASE("Subcommand: train refuses an EAM cutoff other than the setfl "
+          "file's",
+          "[TadahCLI][train][eam]") {
+  ScratchCwd cwd("train_eam_cutoff");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  {
+    std::ofstream os("db.tadah");
+    os << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+       << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+       << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1);
+  }
+  for (const bool pair : {false, true}) {
+    const std::string label = pair ? "D2_EAM" : "DM_EAM";
+    const std::string key = pair ? "RCUT2B" : "RCUTMB";
+    INFO(label << " with " << key << " 3.5");
+    std::filesystem::remove("pot.tadah");
+    {
+      std::ofstream os("config");
+      os << "DBFILE db.tadah\nATOM Ta\nWATOM 1\n";
+      if (pair)
+        os << "INIT2B true\nTYPE2B D2_EAM 0 Ta Ta\n"
+              "RCTYPE2B Cut_Dummy\nRCUT2B 3.5\nINITMB false\n";
+      else
+        os << "INIT2B false\nINITMB true\nTYPEMB DM_EAM 0 Ta Ta\n"
+              "RCTYPEMB Cut_Dummy\nRCUTMB 3.5\n";
+      os << "SETFL eam_small.alloy\n"
+            "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+            "MODEL M_BLR BF_Linear\nLAMBDA 0\nOALGO 1\n";
+    }
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    const std::string rep = reported(t);
+    INFO("train status " << t.status << "\n" << rep);
+    const std::string pot = std::filesystem::exists("pot.tadah")
+                                ? slurp("pot.tadah")
+                                : std::string("(none)");
+    INFO("pot.tadah:\n" << pot);
+    CHECK(t.status == 1);
+    CHECK(contains(rep, label + ": " + key +
+                            " 3.5 differs from the cutoff 4.5 of the setfl "
+                            "file 'eam_small.alloy' (SETFL); set " + key +
+                            " to the file's cutoff, 4.5."));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
+/* Pins: `tadah data print -s si.cif` on diamond Si given only by its
+ * space-group number (227, Si at 1/8 1/8 1/8, a = 5.431 A) exits 0 and
+ * prints the structure's label with the space group the cell is built
+ * with, origin choice 2 (8 atoms):
+ *   Structure  :    CIF file: si.cif | Symmetry: F d -3 m:2 | Volume: ...
+ * Before the fix: the label showed the H-M text, which this CIF has not:
+ * "CIF file: si.cif | Symmetry:  | Volume: 160.191478" (an empty field). */
+TEST_CASE("Subcommand: data print -s names the space group a CIF's cell is "
+          "built with",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("print_cif_group");
+  {
+    std::ofstream os("si.cif");
+    os << "data_Si_number_only\n"
+          "_cell_length_a 5.431\n_cell_length_b 5.431\n_cell_length_c 5.431\n"
+          "_cell_angle_alpha 90\n_cell_angle_beta 90\n_cell_angle_gamma 90\n"
+          "_symmetry_Int_Tables_number 227\n"
+          "loop_\n_atom_site_label\n_atom_site_type_symbol\n"
+          "_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n"
+          "Si1 Si 0.125 0.125 0.125\n";
+  }
+  const CliRun r = run_tadah({"tadah", "data", "print", "-s", "si.cif"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  const auto structure = line_tokens(r.out, "Structure");
+  REQUIRE_FALSE(structure.empty());
+  CHECK(contains(r.out, "CIF file: si.cif | Symmetry: F d -3 m:2 | Volume: "));
+  CHECK_FALSE(contains(r.out, "Symmetry:  |"));
+  const auto atoms = line_tokens(r.out, "Atoms");
+  REQUIRE(atoms.size() >= 3);
+  CHECK(atoms[2] == "8");
+}
+
+
+/* ---- the [nonlinear] cases --------------------------------------------- */
+
+namespace {
+
+/* The non-linear models of the [nonlinear] cases: the MODEL and MPARAMS
+ * lines (MPARAMS for the scale of the descriptor below, as in MLIP's
+ * test_nonlinear_model_training.cpp). */
+struct NonlinearModel {
+  const char* model;    // the MODEL line
+  const char* mparams;  // the MPARAMS line, "" for none
+  bool kernel;          // M_KRR with SBASIS/BASIS
+};
+const NonlinearModel kNonlinearModels[] = {
+    {"MODEL M_KRR Kern_RBF 1", "MPARAMS 1.0", true},
+    {"MODEL M_KRR Kern_Polynomial 1", "MPARAMS 3 0.5 1.0", true},
+    {"MODEL M_KRR Kern_Quadratic 1", "", true},
+    {"MODEL M_KRR Kern_LQ 1", "", true},
+    {"MODEL M_KRR Kern_Sigmoid 1", "MPARAMS 0.5 -1.0", true},
+    {"MODEL M_BLR BF_Polynomial2", "", false},
+};
+
+/* One cell of the dataset below: lattice constant, shear, fractional
+ * coordinates. */
+struct CellSpec {
+  double a;
+  double s0, s1, s2;
+  std::vector<std::array<double, 3>> frac;
+};
+
+/* Six sheared, rattled Ta cells of 3 and 4 atoms (21 atoms: every atomic
+ * descriptor differs from every other) in the dataset format, with
+ * arbitrary smooth reference energies, forces and stresses. */
+std::string nonlinear_dataset() {
+  const std::vector<CellSpec> cells = {
+      {3.30, 0.05, 0.02, -0.03,
+       {{0.00, 0.01, 0.02}, {0.48, 0.52, 0.05}, {0.27, 0.55, 0.51}}},
+      {3.45, -0.04, 0.03, 0.06,
+       {{0.01, -0.02, 0.00}, {0.52, 0.47, 0.03}, {0.49, 0.02, 0.53},
+        {-0.03, 0.51, 0.48}}},
+      {3.15, 0.07, -0.05, 0.02,
+       {{0.02, -0.01, 0.00}, {0.33, 0.31, 0.36}, {0.68, 0.64, 0.70}}},
+      {3.60, 0.00, 0.08, -0.02,
+       {{0.00, 0.00, 0.03}, {0.46, 0.50, 0.01}, {0.53, 0.04, 0.47},
+        {0.02, 0.55, 0.52}}},
+      {3.22, -0.06, 0.01, 0.04,
+       {{0.01, 0.03, -0.02}, {0.51, 0.43, 0.10}, {0.22, 0.61, 0.57}}},
+      {3.52, 0.03, -0.02, -0.05,
+       {{-0.02, 0.01, 0.01}, {0.49, 0.53, -0.02}, {0.47, -0.03, 0.50},
+        {0.04, 0.48, 0.55}}},
+  };
+  std::ostringstream os;
+  os.precision(17);
+  for (std::size_t s = 0; s < cells.size(); ++s) {
+    const CellSpec& c = cells[s];
+    const double ds = static_cast<double>(s);
+    const double cell[3][3] = {{c.a, 0, 0},
+                               {c.s0 * c.a, c.a, 0},
+                               {c.s1 * c.a, c.s2 * c.a, c.a}};
+    os << "cell_" << s << "\n1.0 1.0 1.0\n"
+       << -8.1 * static_cast<double>(c.frac.size()) +
+              0.37 * std::sin(1.3 * ds + 0.2)
+       << "\n";
+    for (const auto& row : cell) os << row[0] << " " << row[1] << " " << row[2] << "\n";
+    for (int x = 0; x < 3; ++x) {
+      for (int y = 0; y < 3; ++y)
+        os << 0.02 * std::cos(0.9 * std::min(x, y) + 1.7 * std::max(x, y) + 0.5 * ds)
+           << (y < 2 ? " " : "\n");
+    }
+    for (std::size_t a = 0; a < c.frac.size(); ++a) {
+      os << "Ta";
+      for (int k = 0; k < 3; ++k)
+        os << " " << c.frac[a][0] * cell[0][k] + c.frac[a][1] * cell[1][k] +
+                         c.frac[a][2] * cell[2][k];
+      for (int k = 0; k < 3; ++k)
+        os << " " << 0.25 * std::sin(0.7 * static_cast<double>(a) + 1.1 * k + 0.3 * ds);
+      os << "\n";
+    }
+    os << "\n";
+  }
+  return os.str();
+}
+
+/* A training configuration of `m` on db.tadah: D2_Blip with 3 functions
+ * (descriptor size 3, 4 with BIAS true), Cut_Cos 5 A, SBASIS 5 for a
+ * kernel, and the `extra` lines (BIAS, NORM, LAMBDA, OALGO). */
+std::string nonlinear_config(const NonlinearModel& m, const std::string& extra) {
+  std::string c =
+      "DBFILE db.tadah\nATOM Ta\nWATOM 1\nINIT2B true\nINITMB false\n"
+      "TYPE2B D2_Blip 3 3 Ta Ta\nCGRID2B 2.8 3.5 4.2\nSGRID2B 2.0 2.0 2.0\n"
+      "RCTYPE2B Cut_Cos\nRCUT2B 5.0\nVERBOSE 0\n";
+  c += std::string(m.model) + "\n";
+  if (*m.mparams) c += std::string(m.mparams) + "\n";
+  if (m.kernel) c += "SBASIS 5\n";
+  return c + extra;
+}
+
+/* `text` with the line of `key` replaced by `line` ("" removes it). */
+std::string with_line(const std::string& text, const std::string& key,
+                      const std::string& line) {
+  std::istringstream in(text);
+  std::string out;
+  for (std::string l; std::getline(in, l);) {
+    std::istringstream ss(l);
+    std::string k;
+    ss >> k;
+    if (k == key) {
+      if (!line.empty()) out += line + "\n";
+      continue;
+    }
+    out += l + "\n";
+  }
+  return out;
+}
+
+}  // namespace
+
+/* Pins: for each non-linear model (M_KRR Kern_RBF, Kern_Polynomial,
+ * Kern_Quadratic, Kern_LQ, Kern_Sigmoid; M_BLR BF_Polynomial2) and each of
+ * BIAS false (LAMBDA 0), BIAS true with LAMBDA 1e-3 (the intercept rules of
+ * the ridge) and NORM true, `tadah train -c config -o pot.tadah -F -S`
+ * exits 0; the potential has the MODEL line, and for a kernel SBASIS 5 and
+ * 5 x 3 (5 x 4 with BIAS) BASIS values; a second training writes the same
+ * file byte for byte (the basis draw is fixed); `tadah predict -p
+ * pot.tadah -d db.tadah -F -S` exits 0 with 6 energies and 63 force
+ * components, each a number (|value| < 1e3).
+ * Before the fix: the first training (M_KRR Kern_RBF, BIAS false) exited
+ * 1 with "ColumnLayout: total_cols=3 disagrees with design-matrix width=5"
+ * and wrote no potential (the REQUIRE stops there; the check refused every
+ * non-linear model: width 6 for BF_Polynomial2, and with BIAS true
+ * total_cols=4 against 5 or 10). */
+TEST_CASE("Subcommand: train and predict work for every non-linear model",
+          "[TadahCLI][train][predict][nonlinear]") {
+  ScratchCwd cwd("nonlinear_train");
+  std::ofstream("db.tadah") << nonlinear_dataset();
+  const std::vector<std::pair<std::string, std::string>> variants = {
+      {"BIAS false", "BIAS false\nNORM false\nLAMBDA 0\nOALGO 1\n"},
+      {"BIAS true, LAMBDA 1e-3", "BIAS true\nNORM false\nLAMBDA 1e-3\nOALGO 1\n"},
+      {"NORM true", "BIAS false\nNORM true\nLAMBDA 0\nOALGO 1\n"}};
+  for (const NonlinearModel& m : kNonlinearModels) {
+    for (const auto& v : variants) {
+      INFO(m.model << ", " << v.first);
+      std::ofstream("config") << nonlinear_config(m, v.second);
+      for (const char* f : {"pot.tadah", "pot2.tadah", "energy.pred", "forces.pred"})
+        std::filesystem::remove(f);
+      const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                  "pot.tadah", "-F", "-S"});
+      INFO("train: status " << t.status << "\n" << reported(t));
+      REQUIRE(t.status == 0);
+      const std::string pot = slurp("pot.tadah");
+      std::vector<std::string> want_model;
+      {
+        std::istringstream ms(m.model);
+        for (std::string tok; ms >> tok;) want_model.push_back(tok);
+      }
+      CHECK(line_tokens(pot, "MODEL") == want_model);
+      if (m.kernel) {
+        const std::size_t dsize = v.first.rfind("BIAS true", 0) == 0 ? 4 : 3;
+        CHECK(line_tokens(pot, "SBASIS") == std::vector<std::string>{"SBASIS", "5"});
+        CHECK(line_tokens(pot, "BASIS").size() == 1 + 5 * dsize);
+      }
+      const CliRun t2 = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                   "pot2.tadah", "-F", "-S"});
+      REQUIRE(t2.status == 0);
+      CHECK(slurp("pot2.tadah") == pot);
+
+      const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                  "db.tadah", "-F", "-S"});
+      INFO("predict: status " << p.status << "\n" << reported(p));
+      REQUIRE(p.status == 0);
+      const std::vector<double> e = predicted_values("energy.pred");
+      const std::vector<double> f = predicted_values("forces.pred");
+      CHECK(e.size() == 6);
+      CHECK(f.size() == 63);
+      for (double x : e) CHECK(std::fabs(x) < 1e3);
+      for (double x : f) CHECK(std::fabs(x) < 1e3);
+    }
+  }
+}
+
+/* Pins: for each non-linear model trained with OALGO 3 (which stores the
+ * covariance SIGMA), with NORM false and NORM true, `tadah predict
+ * --error` exits 0 and predicts the energies, forces and stresses `tadah
+ * predict` predicts (1e-10 relative, 1e-12 absolute; both from the same
+ * weights, through the design-matrix rows and through the model).
+ * Before the fix: the trainings exited 1 (the ColumnLayout check); with a
+ * potential at hand, `predict --error` built the same design matrix and
+ * exited 1 with that message too. */
+TEST_CASE("Subcommand: predict --error predicts what predict predicts for "
+          "every non-linear model",
+          "[TadahCLI][predict][nonlinear]") {
+  ScratchCwd cwd("nonlinear_error");
+  std::ofstream("db.tadah") << nonlinear_dataset();
+  for (const NonlinearModel& m : kNonlinearModels) {
+    for (const char* norm : {"false", "true"}) {
+      INFO(m.model << ", NORM " << norm);
+      std::ofstream("config") << nonlinear_config(
+          m, std::string("BIAS false\nNORM ") + norm + "\nLAMBDA 0\nOALGO 3\n");
+      const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                  "pot.tadah", "-F", "-S"});
+      INFO("train: status " << t.status << "\n" << reported(t));
+      REQUIRE(t.status == 0);
+      REQUIRE_FALSE(line_tokens(slurp("pot.tadah"), "SIGMA").empty());
+      std::vector<std::vector<double>> values[2];
+      for (int with_error = 0; with_error < 2; ++with_error) {
+        std::vector<std::string> args = {"tadah", "predict", "-p", "pot.tadah",
+                                         "-d", "db.tadah", "-F", "-S"};
+        if (with_error) args.push_back("--error");
+        const CliRun r = run_tadah(args);
+        INFO("--error " << with_error << ": status " << r.status << "\n"
+                        << reported(r));
+        REQUIRE(r.status == 0);
+        for (const char* f : {"energy.pred", "forces.pred", "stress.pred"})
+          values[with_error].push_back(predicted_values(f));
+      }
+      const char* files[3] = {"energy.pred", "forces.pred", "stress.pred"};
+      for (int k = 0; k < 3; ++k) {
+        INFO(files[k]);
+        REQUIRE(values[1][k].size() == values[0][k].size());
+        REQUIRE_FALSE(values[0][k].empty());
+        for (std::size_t i = 0; i < values[0][k].size(); ++i) {
+          INFO("row " << i);
+          CHECK(values[1][k][i] ==
+                Approx(values[0][k][i]).epsilon(1e-10).margin(1e-12));
+        }
+      }
+    }
+  }
+}
+
+/* Pins: `tadah train` of M_KRR Kern_RBF with SBASIS 0 or 1 exits 1, naming
+ * SBASIS ("SBASIS 0", "at least 2"), and writes no potential.
+ * Before the fix: SBASIS 0 wrote into a basis of 0 columns (SIGSEGV, the
+ * process died); SBASIS 1 built the basis e0 alone and exited 1 with the
+ * ColumnLayout message, which names no SBASIS. */
+TEST_CASE("Subcommand: train refuses SBASIS 0 and 1 for a non-linear kernel",
+          "[TadahCLI][train][nonlinear]") {
+  ScratchCwd cwd("nonlinear_sbasis");
+  std::ofstream("db.tadah") << nonlinear_dataset();
+  for (const char* s : {"1", "0"}) {
+    INFO("SBASIS " << s);
+    std::filesystem::remove("pot.tadah");
+    std::ofstream("config") << with_line(
+        nonlinear_config(kNonlinearModels[0],
+                         "BIAS false\nNORM false\nLAMBDA 0\nOALGO 1\n"),
+        "SBASIS", std::string("SBASIS ") + s);
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah", "-F", "-S"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, std::string("SBASIS ") + s));
+    CHECK(contains(rep, "at least 2"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
+/* Pins: `tadah predict` refuses an M_KRR Kern_RBF potential (written
+ * here: SBASIS 5, descriptor size 3) whose basis does not fit, exiting 1
+ * with a message naming the keys and writing no energy.pred: without the
+ * BASIS line ("no basis vectors (SBASIS and BASIS)"); with 4 WEIGHTS ("4
+ * WEIGHTS but SBASIS 5"); with 7 BASIS values ("not a multiple of SBASIS
+ * 5"); with 5 vectors of 4 values ("basis vectors of 4 values each", "has
+ * 3 components (DSIZE)"). With 15 BASIS values and 5 WEIGHTS it predicts
+ * (a pin).
+ * Before the fix: without BASIS it exited 0 and predicted E = 0 for every
+ * structure; with 4 WEIGHTS it exited 0, having read past them; with 7
+ * values it wrote past a vector of 5 and the process aborted (a heap
+ * corruption), so the last case did not run (with vectors of 4 values
+ * every kernel evaluation reads past the descriptors). */
+TEST_CASE("Subcommand: predict refuses a non-linear KRR potential whose "
+          "basis does not fit, naming the keys",
+          "[TadahCLI][predict][nonlinear]") {
+  ScratchCwd cwd("nonlinear_basis_load");
+  std::ofstream("db.tadah") << nonlinear_dataset();
+  auto values = [](const char* key, int n, double step) {
+    std::ostringstream o;
+    o << key;
+    for (int v = 0; v < n; ++v) o << " " << step * (v + 1);
+    return o.str();
+  };
+  const std::string pot =
+      with_line(nonlinear_config(kNonlinearModels[0],
+                                 "BIAS false\nNORM false\nLAMBDA 0\nOALGO 1\n"),
+                "DBFILE", "") +
+      values("BASIS", 15, 0.1) + "\n" + values("WEIGHTS", 5, 0.5) + "\n";
+  {
+    std::ofstream("pot.tadah") << pot;
+    const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah"});
+    INFO("15 BASIS values, 5 WEIGHTS: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(predicted_values("energy.pred").size() == 6);
+  }
+  const std::vector<std::pair<std::string, std::vector<std::string>>> bad = {
+      {with_line(pot, "BASIS", ""),
+       {"no basis vectors (SBASIS and BASIS)"}},
+      {with_line(pot, "WEIGHTS", values("WEIGHTS", 4, 0.5)),
+       {"4 WEIGHTS but SBASIS 5"}},
+      {with_line(pot, "BASIS", values("BASIS", 7, 0.1)),
+       {"not a multiple of SBASIS 5"}},
+      {with_line(pot, "BASIS", values("BASIS", 20, 0.1)),
+       {"basis vectors of 4 values each", "has 3 components (DSIZE)"}}};
+  for (const auto& b : bad) {
+    INFO("expected: " << b.second.front());
+    std::ofstream("bad.tadah") << b.first;
+    std::filesystem::remove("energy.pred");
+    const CliRun r = run_tadah({"tadah", "predict", "-p", "bad.tadah", "-d",
+                                "db.tadah"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    for (const std::string& what : b.second) CHECK(contains(rep, what));
+    CHECK_FALSE(std::filesystem::exists("energy.pred"));
+  }
+}
+
+#ifdef TADAH_ENABLE_NFP
+/* Pins: `tadah hpo` with M_KRR Kern_RBF (SBASIS 5) and OPTIM WATOM (1)
+ * 0.5 2.0 (every evaluation changes the descriptors, so the cached
+ * trainer redraws the basis and refits; LN_SBPLX, MAXEVAL 3, PC_ERMSE and
+ * PC_FRMSE, the training set as validation set) exits 0 and writes
+ * best_pot.tadah with the model's MODEL, SBASIS 5 and 15 BASIS values;
+ * every evaluation has a finite ERMSE[1] in stats.tadah; the ERMSE[1] of
+ * the evaluation with the smallest TOTAL_LOSS/N (loss.tadah) equals the
+ * Energy RMSE of `tadah predict -A` with best_pot.tadah on the same set
+ * (2e-6 relative: stats.tadah and -A each print 7 significant digits), so
+ * the potential written is the model evaluated; a second run in the same
+ * process gives the same losses, column by column (the ITERATION numbers
+ * go on), as the basis draw is fixed.
+ * Before the fix: every evaluation's training threw the ColumnLayout
+ * check, no evaluation produced a loss, and the run exited 1 without
+ * best_pot.tadah. */
+TEST_CASE("Subcommand: hpo trains a non-linear KRR model in every evaluation",
+          "[TadahCLI][hpo][nonlinear]") {
+  ScratchCwd cwd("nonlinear_hpo");
+  std::ofstream("db.tadah") << nonlinear_dataset();
+  { std::ofstream os("config.val"); os << "DBFILE db.tadah\n"; }
+  std::ofstream("config.tadah") << nonlinear_config(
+      kNonlinearModels[0], "BIAS false\nNORM false\nLAMBDA 0\nOALGO 1\n"
+                           "FORCE true\nSTRESS false\n");
+  {
+    std::ofstream os("config.hpo");
+    os << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 3\nENDOPTIMIZER\n"
+          "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
+          "OPTIM WATOM (1) 0.5 2.0\n";
+  }
+  const std::vector<std::string> loss_columns = {
+      "L(ERMSE)[1]", "L(FRMSE)[1]", "TOTAL_LOSS/N"};
+  std::vector<std::vector<std::string>> losses[2];
+  for (int run = 0; run < 2; ++run) {
+    INFO("run " << run + 1);
+    for (const char* f : {"best_pot.tadah", "loss.tadah", "stats.tadah"})
+      std::filesystem::remove(f);
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                                "--hpotarget", "config.hpo",
+                                "--validation", "config.val"});
+    INFO("status " << r.status << "\n" << reported(r) << "\nhpo_run.log:\n"
+                   << (std::filesystem::exists("hpo_run.log")
+                           ? slurp("hpo_run.log")
+                           : std::string()));
+    REQUIRE(r.status == 0);
+    REQUIRE(std::filesystem::exists("best_pot.tadah"));
+    const std::string best = slurp("best_pot.tadah");
+    CHECK(line_tokens(best, "MODEL") ==
+          std::vector<std::string>{"MODEL", "M_KRR", "Kern_RBF", "1"});
+    CHECK(line_tokens(best, "SBASIS") == std::vector<std::string>{"SBASIS", "5"});
+    CHECK(line_tokens(best, "BASIS").size() == 1 + 5 * 3);
+    INFO("stats.tadah:\n" << slurp("stats.tadah") << "\nloss.tadah:\n"
+                          << slurp("loss.tadah"));
+    const auto ermse = table_column("stats.tadah", "ERMSE[1]");
+    const auto total = table_column("loss.tadah", "TOTAL_LOSS/N");
+    REQUIRE(ermse);
+    REQUIRE(total);
+    REQUIRE(ermse->size() == 3);
+    REQUIRE(total->size() == 3);
+    CHECK(table_column("stats.tadah", "#ITERATION") ==
+          table_column("loss.tadah", "#ITERATION"));
+    std::size_t ibest = 0;
+    for (std::size_t i = 0; i < 3; ++i) {
+      REQUIRE(is_finite_number((*ermse)[i]));
+      REQUIRE(is_finite_number((*total)[i]));
+      if (std::strtod((*total)[i].c_str(), nullptr) <
+          std::strtod((*total)[ibest].c_str(), nullptr))
+        ibest = i;
+    }
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "best_pot.tadah",
+                                "-d", "db.tadah", "-A"});
+    INFO("predict: status " << p.status << "\n" << reported(p));
+    REQUIRE(p.status == 0);
+    std::istringstream ml(metric_line(p.out, "Energy RMSE"));
+    std::string w1, w2;
+    double mean = 0;  // meV/atom, as stats.tadah
+    REQUIRE(ml >> w1 >> w2 >> mean);
+    CHECK(mean == Approx(std::strtod((*ermse)[ibest].c_str(), nullptr))
+                      .epsilon(2e-6));
+    for (const std::string& col : loss_columns) {
+      const auto v = table_column("loss.tadah", col);
+      REQUIRE(v);
+      losses[run].push_back(*v);
+    }
+  }
+  CHECK(losses[0] == losses[1]);
+}
+#endif  // TADAH_ENABLE_NFP

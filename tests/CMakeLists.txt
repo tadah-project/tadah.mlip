@@ -313,7 +313,11 @@ tadah_add_header_check(tadah)
 # its header checks (see header_check/check_header_check.cmake). Before
 # the fix (cmake-tools without the function): every case fails at its
 # configure step ('Unknown CMake command "tadah_add_header_check"').
-foreach(_case good bad private_dir new_header)
+# private_entry: a header of include/ that includes a header of the second
+# HEADER_DIRS entry, a directory PRIVATE to the library (as CORE's
+# generated/ is), fails. Before that fix: it passed, because every
+# HEADER_DIRS entry was on the include path of every header's check.
+foreach(_case good bad private_dir private_entry new_header)
   add_test(NAME tadah_header_check_${_case}
     COMMAND ${CMAKE_COMMAND}
       -DCASE=${_case}

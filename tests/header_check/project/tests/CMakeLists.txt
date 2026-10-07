@@ -6,6 +6,11 @@ if(CASE STREQUAL "good" OR CASE STREQUAL "new_header")
     "${PROJECT_SOURCE_DIR}/good/generated")
   tadah_add_header_check(probe_app)
   set(checks probe probe_app)
+elseif(CASE STREQUAL "private_entry")
+  tadah_add_header_check(probe HEADER_DIRS
+    "${PROJECT_SOURCE_DIR}/private_dir/include"
+    "${PROJECT_SOURCE_DIR}/private_dir/private")
+  set(checks probe)
 else()
   tadah_add_header_check(probe)
   set(checks probe)

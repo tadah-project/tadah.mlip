@@ -15,6 +15,10 @@
 #                including its header, one without an include guard (in a
 #                subdirectory)
 #   private_dir  probe: a header that needs probe's PRIVATE include directory
+#   private_entry
+#                probe (private_dir/): the same headers, with probe's PRIVATE
+#                include directory the second HEADER_DIRS entry, as CORE's
+#                generated/ is
 cmake_minimum_required(VERSION 3.15)
 project(tadah_header_check_case CXX)
 
@@ -35,6 +39,8 @@ if(CASE STREQUAL "good" OR CASE STREQUAL "new_header")
   add_compile_definitions(PROBE_DIRECTORY_DEFINITION)
 elseif(CASE STREQUAL "bad" OR CASE STREQUAL "private_dir")
   set(fixture ${CASE})
+elseif(CASE STREQUAL "private_entry")
+  set(fixture private_dir)
 else()
   message(FATAL_ERROR "unknown CASE '${CASE}'")
 endif()

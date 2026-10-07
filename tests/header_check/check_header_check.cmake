@@ -14,6 +14,12 @@
 #   CASE=private_dir  probe_headers fails on exactly the header that needs
 #                     probe's PRIVATE include directory: the headers compile
 #                     with what a consumer of the library gets
+#   CASE=private_entry
+#                     as private_dir, with that PRIVATE directory a second
+#                     HEADER_DIRS entry: its header compiles, and the header
+#                     of include/ that needs it still fails on exactly that
+#                     include: a HEADER_DIRS entry is on the include path of
+#                     its own headers only
 #   CASE=new_header   as good; then a header without a guard is added to
 #                     probe's include/ and, with no other step, the next
 #                     `ctest -L headers` fails on exactly that header
@@ -28,7 +34,7 @@ foreach(v CASE TADAH_CMAKE_DIR WORK_DIR GENERATOR MAKE_PROGRAM CXX CTEST)
     message(FATAL_ERROR "check_header_check.cmake: -D${v}=... is required")
   endif()
 endforeach()
-if(NOT CASE MATCHES "^(good|bad|private_dir|new_header)$")
+if(NOT CASE MATCHES "^(good|bad|private_dir|private_entry|new_header)$")
   message(FATAL_ERROR "check_header_check.cmake: unknown CASE '${CASE}'")
 endif()
 
@@ -155,12 +161,17 @@ elseif(CASE STREQUAL "bad")
     "probe/uses_widget.h;probe/widget.h")
   expect_equal("probe headers not compiled" "${probe_missing}"
     "probe/detail/no_guard.hpp;probe/missing_include.h")
-elseif(CASE STREQUAL "private_dir")
+elseif(CASE STREQUAL "private_dir" OR CASE STREQUAL "private_entry")
   if(rc EQUAL 0)
     fail("ctest -L headers passed")
   endif()
   expect_equal("headers with errors" "${errors}" "needs_private.h")
-  expect_equal("probe headers compiled" "${probe_built}" "probe/widget.h")
+  if(CASE STREQUAL "private_dir")
+    expect_equal("probe headers compiled" "${probe_built}" "probe/widget.h")
+  else()
+    expect_equal("probe headers compiled" "${probe_built}"
+      "probe/widget.h;probe_private.h")
+  endif()
   expect_equal("probe headers not compiled" "${probe_missing}"
     "probe/needs_private.h")
 endif()

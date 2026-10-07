@@ -2325,11 +2325,22 @@ The backend checks run on the
 settings each phase runs with — the ``STRATEGY``-level optimiser, each
 ``MULTISTART`` start (with its ``BUDGET_PER_START`` or its share of
 ``MAXEVAL``), the ``PRESTAGE`` exploration and refinement, and every
-``INNER`` block — and the message names the phase and the key:
+``INNER`` block — and the message names the phase, the key and the line
+where the parser checks the phase's optimiser, in the form of a parse
+error: the ``ENDOPTIMIZER`` line for the ``STRATEGY``-level optimiser, a
+``MULTISTART`` start and the ``PRESTAGE`` refinement (a ``REFINE``
+block's keys included), ``ENDEXPLORE`` for the exploration, ``ENDINNER``
+for an ``INNER`` block.  So do the startup refusals of the ``STRATEGY``
+rules (``STRATEGY TYPE MULTISTART cannot run …``, an ``INNER`` block that
+names another library) and of a phase's finite differences or
+``GRAD_STRATEGY``:
 
 .. code-block:: none
 
-   HPOEngine error: the PRESTAGE refinement: DLIB:BFGS does not support MAXTIME
+   HPOEngine error: Error on line 17: the PRESTAGE refinement: DLIB:BFGS does not support MAXTIME
+   Line: ENDOPTIMIZER
+
+Until 2026-10-07 these refusals named the phase and no line.
 
 Before 1.6.0 these backend checks ran when that optimiser started: after
 the data were loaded and any ``NOISE CALIBRATION`` evaluations, for the
@@ -2430,7 +2441,8 @@ one a finite number (``MAXTIME`` a positive one).
 
        .. code-block:: none
 
-          HPOEngine error: the STRATEGY-level optimiser: NLOPT:GN_DIRECT needs a stop: NLopt's global search has no convergence test of its own and runs until it is interrupted; set MAXEVAL, MAXTIME, STOPVAL or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS); DIRECT's XTOL_REL and XTOL_ABS end it only once every rectangle is that small, after roughly (1/XTOL_REL)^n evaluations in n dimensions
+          HPOEngine error: Error on line 9: the STRATEGY-level optimiser: NLOPT:GN_DIRECT needs a stop: NLopt's global search has no convergence test of its own and runs until it is interrupted; set MAXEVAL, MAXTIME, STOPVAL or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS); DIRECT's XTOL_REL and XTOL_ABS end it only once every rectangle is that small, after roughly (1/XTOL_REL)^n evaluations in n dimensions
+          Line: ENDOPTIMIZER
 
        ``TADAH:GRID`` stops after ``MAXEVAL`` points in the order it
        visits them (the ``INIT`` point, then the grid nodes, the first
@@ -3542,7 +3554,8 @@ them is enough as its stop:
 
 .. code-block:: none
 
-   HPOEngine error: the STRATEGY-level optimiser: NLOPT:GD_STOGO needs a stop: NLopt's StoGO has no convergence test of its own and ignores NLopt's forced stop, by which HPO ends a search (on a signal, an error, the RESTART stagnation stop, or a loss at or below STOPVAL that NLopt was not given): it then calls on, each call refused, and only NLopt's own evaluation count ends it promptly (MAXTIME only once the rest of its time has passed); set MAXEVAL (it honours no tolerance)
+   HPOEngine error: Error on line 10: the STRATEGY-level optimiser: NLOPT:GD_STOGO needs a stop: NLopt's StoGO has no convergence test of its own and ignores NLopt's forced stop, by which HPO ends a search (on a signal, an error, the RESTART stagnation stop, or a loss at or below STOPVAL that NLopt was not given): it then calls on, each call refused, and only NLopt's own evaluation count ends it promptly (MAXTIME only once the rest of its time has passed); set MAXEVAL (it honours no tolerance)
+   Line: ENDOPTIMIZER
 
 Before 1.6.0 ``MAXTIME``, ``STOPVAL`` or an active ``RESTART`` was
 accepted as its stop: without ``MAXEVAL``, once ``Ctrl-C``, an error or
@@ -3562,8 +3575,10 @@ decides):
 
 .. code-block:: none
 
-   HPOEngine error: the STRATEGY-level optimiser: TADAH:RANDOM does not support FTOL_REL: uniform random search has no convergence test to apply it to; stop it with MAXEVAL, MAXTIME or STOPVAL
-   HPOEngine error: the STRATEGY-level optimiser: NLOPT:G_MLSL_LDS does not support FTOL_REL with an INNER block: MLSL's multistart loop tests no tolerance, and NLopt passes the block's tolerances to no INNER search; set it in the INNER block, whose local search tests it
+   HPOEngine error: Error on line 10: the STRATEGY-level optimiser: TADAH:RANDOM does not support FTOL_REL: uniform random search has no convergence test to apply it to; stop it with MAXEVAL, MAXTIME or STOPVAL
+   Line: ENDOPTIMIZER
+   HPOEngine error: Error on line 15: the STRATEGY-level optimiser: NLOPT:G_MLSL_LDS does not support FTOL_REL with an INNER block: MLSL's multistart loop tests no tolerance, and NLopt passes the block's tolerances to no INNER search; set it in the INNER block, whose local search tests it
+   Line: ENDOPTIMIZER
 
 The second sends the tolerance into the ``INNER`` block only when that
 block's algorithm tests it; otherwise it names the stops that search
@@ -3589,7 +3604,8 @@ of those:
 
 .. code-block:: none
 
-   HPOEngine error: the STRATEGY-level optimiser: the local search of NLOPT:LD_AUGLAG (NLopt's default NLOPT:LD_MMA, as the block has no INNER block) needs a stop: without a tolerance it has no convergence test and runs until it is interrupted; set MAXEVAL, MAXTIME, STOPVAL or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the NLOPT:LD_AUGLAG block, which NLopt hands on to it
+   HPOEngine error: Error on line 9: the STRATEGY-level optimiser: the local search of NLOPT:LD_AUGLAG (NLopt's default NLOPT:LD_MMA, as the block has no INNER block) needs a stop: without a tolerance it has no convergence test and runs until it is interrupted; set MAXEVAL, MAXTIME, STOPVAL or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the NLOPT:LD_AUGLAG block, which NLopt hands on to it
+   Line: ENDOPTIMIZER
 
 The rule holds in every phase (each ``MULTISTART`` start, the
 ``PRESTAGE`` exploration and refinement), and the message names it; an
@@ -4668,7 +4684,8 @@ that needs a stop and has none in either block is a startup error:
 
 .. code-block:: none
 
-   HPOEngine error: the STRATEGY-level optimiser: the INNER search of NLOPT:AUGLAG (NLOPT:GN_DIRECT_L) needs a stop: NLopt's global search has no convergence test of its own and runs until it is interrupted; set MAXEVAL, MAXTIME or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the INNER block, or MAXEVAL, MAXTIME or STOPVAL in the NLOPT:AUGLAG block, which NLopt hands on to it; DIRECT's XTOL_REL and XTOL_ABS end it only once every rectangle is that small, after roughly (1/XTOL_REL)^n evaluations in n dimensions
+   HPOEngine error: Error on line 15: the STRATEGY-level optimiser: the INNER search of NLOPT:AUGLAG (NLOPT:GN_DIRECT_L) needs a stop: NLopt's global search has no convergence test of its own and runs until it is interrupted; set MAXEVAL, MAXTIME or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the INNER block, or MAXEVAL, MAXTIME or STOPVAL in the NLOPT:AUGLAG block, which NLopt hands on to it; DIRECT's XTOL_REL and XTOL_ABS end it only once every rectangle is that small, after roughly (1/XTOL_REL)^n evaluations in n dimensions
+   Line: ENDOPTIMIZER
 
 ``SEED`` is not valid inside ``INNER``.  MLSL and AUGLAG run the
 ``INNER`` search inside the enclosing block's NLopt run, and NLopt has

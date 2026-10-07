@@ -48,8 +48,10 @@ documented in :doc:`cli/cli`):
   ``--structure``).
 - ``tadah analysis`` — plot basis functions, cutoffs, descriptors.
 - ``tadah properties pairwise`` — pairwise energy between two atoms.
-- ``tadah explain <key>`` — print the help text for any configuration
-  key.
+- ``tadah explain <command>.<option>`` — print the help text of a command
+  or of one of its options (``tadah explain refit.refit_mode``); an option
+  the command does not have is an error. :ref:`ConfigSection` describes
+  every configuration key.
 
 .. _obtaining_tadah:
 

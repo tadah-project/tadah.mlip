@@ -2777,8 +2777,9 @@ const std::string kTopLevelOptimizerText =
  * REFIT_CURVE_* and REFIT_OBJECTIVE energy) are not taken for the
  * configuration's keys. In a build with the compact fitter (NFP and Ceres)
  * a compact configuration (the default mode; Blip5, small budgets) with
- * N2B 50, or with REFIT_CURVE_WEIGHTING false under the default
- * REFIT_OBJECTIVE energy, exits 1 naming the key, and without them exits
+ * N2B 50, or with REFIT_CURVE_WEIGHTING false or REFIT_CURVE_RELAX 0.1
+ * under the default REFIT_OBJECTIVE energy, exits 1 naming the key, and
+ * without them exits
  * 0 and writes pot.tadah (REFIT_CONSTRAIN_F0's stored default is not
  * refused); in a build without it the compact configuration exits 1:
  * "tadah refit: REFIT_MODE compact (the default) needs the compact fitter,
@@ -2800,7 +2801,9 @@ const std::string kTopLevelOptimizerText =
  * dense: only REFIT_MODE compact reads it; remove the OPTIMIZER block, or
  * set REFIT_MODE compact", whose advice leads to the migration text, and
  * under compact still read the absent EAM file first (or, without NFP and
- * Ceres, refused compact mode). */
+ * Ceres, refused compact mode). REFIT_CURVE_RELAX under energy was
+ * accepted with no effect until the curve knobs were refused there (the
+ * run exited 0 and wrote pot.tadah). */
 TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
           "with status 1",
           "[TadahCLI][exit-status][refit]") {
@@ -2874,6 +2877,11 @@ TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
             "tadah refit: REFIT_CURVE_WEIGHTING has no effect under "
             "REFIT_OBJECTIVE energy (the default): only REFIT_OBJECTIVE curve "
             "reads it; remove REFIT_CURVE_WEIGHTING, or set REFIT_OBJECTIVE "
+            "curve"},
+           {"REFIT_CURVE_RELAX 0.1",
+            "tadah refit: REFIT_CURVE_RELAX has no effect under "
+            "REFIT_OBJECTIVE energy (the default): only REFIT_OBJECTIVE curve "
+            "reads it; remove REFIT_CURVE_RELAX, or set REFIT_OBJECTIVE "
             "curve"}}) {
     const CliRun r = run(compact, extra);
     const std::string rep = reported(r);
@@ -2897,6 +2905,185 @@ TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
                       "TADAH_ENABLE_CERES); set REFIT_MODE dense"));
   CHECK_FALSE(std::filesystem::exists("pot.tadah"));
 #endif
+}
+
+/* ---- [refit]: --edit and --retarget refuse the keys of a refit ------- */
+
+/* Pins: on the potential and hpotarget of a dense refit of the small Ta
+ * setfl, `tadah refit --retarget refit.hpotarget --hpofileout
+ * new.hpotarget` exits 1 with "tadah refit --retarget: HPOFILEOUT has no
+ * effect under --retarget: only a refit of an EAM file and --edit read it;
+ * remove HPOFILEOUT (the file --retarget writes is -o, OUTFILE)" and writes
+ * neither new.hpotarget nor refit_edited.hpotarget, and `tadah refit -c
+ * edit.refit` with EDIT, FUNC, ADD and N2B 50 exits 1 with "tadah refit
+ * --edit: N2B has no effect under --edit: only a refit of an EAM file in
+ * REFIT_MODE dense reads it; remove N2B" and writes no pot_edited.tadah;
+ * without HPOFILEOUT and N2B both exit 0 and write their file, so the
+ * defaults the task factory stores for every refit (HPOFILEOUT
+ * refit.hpotarget, REFIT_OBJECTIVE energy, REFIT_CURVE_*, ...) are not
+ * refused.
+ * Before the fix: both exited 0, --retarget writing refit_edited.hpotarget
+ * (HPOFILEOUT is not read by --retarget) and --edit pot_edited.tadah as
+ * without N2B. */
+TEST_CASE("Subcommand: refit --edit and --retarget refuse a key of a refit "
+          "of an EAM file with status 1",
+          "[TadahCLI][exit-status][refit]") {
+  ScratchCwd cwd("refit_output_mode_keys");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun fit = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    INFO("refit: status " << fit.status << "\n" << reported(fit));
+    REQUIRE(fit.status == 0);
+    REQUIRE(std::filesystem::exists("pot.tadah"));
+    REQUIRE(std::filesystem::exists("refit.hpotarget"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--retarget",
+                                "refit.hpotarget", "--hpofileout",
+                                "new.hpotarget"});
+    const std::string rep = reported(r);
+    INFO("--retarget --hpofileout: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah refit --retarget: HPOFILEOUT has no effect "
+                        "under --retarget: only a refit of an EAM file and "
+                        "--edit read it; remove HPOFILEOUT (the file "
+                        "--retarget writes is -o, OUTFILE)"));
+    CHECK_FALSE(std::filesystem::exists("new.hpotarget"));
+    CHECK_FALSE(std::filesystem::exists("refit_edited.hpotarget"));
+  }
+  {
+    const CliRun r =
+        run_tadah({"tadah", "refit", "--retarget", "refit.hpotarget"});
+    INFO("--retarget: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("refit_edited.hpotarget"));
+  }
+  const std::string edit = "EDIT pot.tadah\nFUNC phi\nADD 2.5\n";
+  {
+    std::ofstream("edit.refit") << edit << "N2B 50\n";
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "edit.refit"});
+    const std::string rep = reported(r);
+    INFO("--edit with N2B: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah refit --edit: N2B has no effect under --edit: "
+                        "only a refit of an EAM file in REFIT_MODE dense "
+                        "reads it; remove N2B"));
+    CHECK_FALSE(std::filesystem::exists("pot_edited.tadah"));
+  }
+  std::ofstream("edit.refit") << edit;
+  const CliRun r = run_tadah({"tadah", "refit", "-c", "edit.refit"});
+  INFO("--edit: status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(std::filesystem::exists("pot_edited.tadah"));
+}
+
+/* Pins: a task file's global NUMERIC, which applies to every task
+ * (ALLOWED_KEYS.task's example sets "NUMERIC 14 # output precision" above
+ * the first TASK line), does not stop a --retarget task. On the outputs of
+ * a dense refit of the small Ta setfl, `tadah --task run.task` with
+ * NUMERIC 14 above an --edit TASK refit (EDIT pot.tadah, FUNC phi, ADD 2.5)
+ * and a --retarget TASK refit (RETARGET refit.hpotarget, OUTFILE
+ * rt.hpotarget) exits 0 and writes pot_edited.tadah and rt.hpotarget, the
+ * latter byte-identical to the file `tadah refit --retarget
+ * refit.hpotarget -o rt.hpotarget` writes without NUMERIC (its bounds are
+ * printed %.8e whatever NUMERIC is); a task file with NUMERIC 14 and the
+ * --retarget task alone exits 0 and writes the same rt.hpotarget, and no
+ * pot_edited.tadah.
+ * Before the fix: --retarget refused NUMERIC ("tadah refit --retarget:
+ * NUMERIC has no effect under --retarget: only a refit of an EAM file and
+ * --edit read it; remove NUMERIC"): both task files exited 1, the first
+ * after its --edit task had written pot_edited.tadah (and
+ * refit_edited.hpotarget), and neither wrote rt.hpotarget. */
+TEST_CASE("Task file: a global NUMERIC does not stop a refit --retarget "
+          "task",
+          "[TadahCLI][exit-status][task-file][refit]") {
+  ScratchCwd cwd("refit_retarget_global_numeric");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun fit = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    INFO("refit: status " << fit.status << "\n" << reported(fit));
+    REQUIRE(fit.status == 0);
+    REQUIRE(std::filesystem::exists("pot.tadah"));
+    REQUIRE(std::filesystem::exists("refit.hpotarget"));
+  }
+  std::string without;  // --retarget's file without NUMERIC
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--retarget",
+                                "refit.hpotarget", "-o", "rt.hpotarget"});
+    INFO("--retarget: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    without = slurp("rt.hpotarget");
+    REQUIRE_FALSE(without.empty());
+  }
+  const std::string retarget =
+      "TASK refit\nRETARGET refit.hpotarget\nOUTFILE rt.hpotarget\n";
+  for (const std::string& file :
+       {std::string("NUMERIC 14\n\n"
+                    "TASK refit\nEDIT pot.tadah\nFUNC phi\nADD 2.5\n\n") +
+            retarget,
+        std::string("NUMERIC 14\n\n") + retarget}) {
+    const bool edit = contains(file, "EDIT");
+    std::filesystem::remove("pot_edited.tadah");
+    std::filesystem::remove("rt.hpotarget");
+    std::ofstream("run.task") << file;
+    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+    const std::string rep = reported(r);
+    INFO("task file:\n" << file << "status " << r.status << "\n" << rep);
+    CHECK(r.status == 0);
+    CHECK_FALSE(contains(rep, "NUMERIC has no effect"));
+    CHECK(std::filesystem::exists("pot_edited.tadah") == edit);
+    CHECK(std::filesystem::exists("rt.hpotarget"));
+    CHECK(slurp("rt.hpotarget") == without);
+  }
+}
+
+/* ---- explain: a long description is printed as text ------------------ */
+
+/* Pins: `tadah explain refit.optimizer` exits 0 and prints the key's long
+ * description as text: a paragraph's closing '::' as ':' ("Written inside
+ * a stage block, for example:"), then a blank line and the literal block
+ * with its indentation ("    REFINE", "      OPTIMIZER"); no line ends with
+ * "::".
+ * Before the fix: the RST was printed as written, "Written inside a stage
+ * block, for example::". */
+TEST_CASE("Subcommand: explain: a long description is printed as text",
+          "[TadahCLI][exit-status][explain]") {
+  ScratchCwd cwd("explain_text");
+  const CliRun r = run_tadah({"tadah", "explain", "refit.optimizer"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(contains(r.out, "Written inside a stage block, for example:\n\n"
+                        "    REFINE\n      OPTIMIZER\n"));
+  CHECK_FALSE(contains(r.out, "::\n"));
+}
+
+/* Pins: `tadah explain` exits 1 for an option that names no command or no
+ * option of its command, naming what it did not find: "tadah explain: no
+ * command 'bogus'" (bogus.key), "tadah explain: refit has no option
+ * 'nosuchkey'" (refit.nosuchkey).
+ * Before the fix: bogus.key dereferenced the end of the command map and
+ * the process died of SIGSEGV; refit.nosuchkey exited 0 and printed
+ * nothing. */
+TEST_CASE("Subcommand: explain: an unknown command or option is refused "
+          "with status 1",
+          "[TadahCLI][exit-status][explain]") {
+  ScratchCwd cwd("explain_unknown");
+  for (const auto& [option, message] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"refit.nosuchkey", "tadah explain: refit has no option "
+                               "'nosuchkey'"},
+           {"bogus.key", "tadah explain: no command 'bogus'"}}) {
+    const CliRun r = run_tadah({"tadah", "explain", option});
+    INFO(option << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 1);
+    CHECK(contains(reported(r), message));
+  }
 }
 
 /* ---- explain: the description of a key without a long description --- */

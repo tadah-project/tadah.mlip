@@ -282,8 +282,12 @@ and the same build, with all three variables set explicitly.
 
 The same unit tests are the CTest entry `tadah_docs_tools` (label `docs`,
 so `ctest -L docs` runs them) in every build configured with
-`-DBUILD_TESTING=ON`, which therefore needs a Python 3 interpreter. The
-cases that need `node`, `sphinx-build` or the Python modules `sphinx`,
+`-DBUILD_TESTING=ON`, which therefore needs a Python 3 interpreter. With
+`TADAH_ENABLE_NFP` it needs Python 3.11 or later: HPO's tests declare it
+(`HPO/cmake/hpo_test_python.cmake`), because their registry drift gate
+`hpo_anneal_registry_sync` reads TOML with `tomllib`, and the configure step
+stops on an older interpreter; `ctest -R hpo_test_python_minimum` checks
+that. The cases that need `node`, `sphinx-build` or the Python modules `sphinx`,
 `sphinx_rtd_theme`, `yaml` (PyYAML) or `pytomlpp` skip themselves when one
 is missing. CTest then reports the entry as *Skipped*, not *Passed*, and its
 output names the skipped cases, so a pass means every case ran.

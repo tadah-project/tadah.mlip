@@ -196,7 +196,7 @@ Additional CMake options to consider:
 
 - ``CMAKE_INSTALL_PREFIX``: Set the install destination when ``make install`` is invoked. A common choice is ``-DCMAKE_INSTALL_PREFIX=~/.local``.
 - ``BUILD_SHARED_LIBS``: Whether to build shared or static Tadah!MLIP libraries (default: OFF).
-- ``BUILD_TESTING``: Include tests (default: OFF). Needs a Python 3 interpreter, which runs the unit tests of the documentation build tools.
+- ``BUILD_TESTING``: Include tests (default: OFF). Needs a Python 3 interpreter, which runs the unit tests of the documentation build tools; with ``TADAH_ENABLE_NFP``, Python 3.11 or later, for the Nested Fitting tests (their key-registry check reads TOML with ``tomllib``). The configure step stops when it finds no suitable interpreter.
 
 Append flags to the ``cmake`` command with the ``-D`` prefix and a value of ``ON``, ``OFF``, or a path, e.g.:
 

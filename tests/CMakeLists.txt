@@ -24,9 +24,11 @@ target_link_libraries(test_tadah
     tadah.models
     tadah.mlip)
 target_include_directories(test_tadah PRIVATE ../include)
-# test_published_potentials.cpp loads the potentials published with the docs.
+# test_published_potentials.cpp loads the potentials published with the docs;
+# test_quickstart_md.cpp runs the LAMMPS example of the Quick Start page.
 target_compile_definitions(test_tadah PRIVATE
-  TADAH_PUBLISHED_MLIPS_DIR="${PROJECT_SOURCE_DIR}/docs/source/mlips")
+  TADAH_PUBLISHED_MLIPS_DIR="${PROJECT_SOURCE_DIR}/docs/source/mlips"
+  TADAH_QUICKSTART_DIR="${PROJECT_SOURCE_DIR}/docs/source/quickstart")
 
 if(TADAH_ENABLE_NFP)
   target_link_libraries(test_tadah PRIVATE tadah.hpo tadah.lammps)
@@ -273,3 +275,24 @@ foreach(_inc IN LISTS _cli_example_includes)
     SKIP_RETURN_CODE 77
     ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
 endforeach()
+
+
+# ------------------------------------------------------------------
+# 10. The Quick Start potential (docs/source/quickstart)
+# ------------------------------------------------------------------
+# A guard against a stale shipped potential: quickstart/check_quickstart_pot.py
+# retrains docs/source/quickstart/pot.tadah, in scratch copies of the
+# directory, with `tadah train -c config.train` and with `tadah --task
+# taskfile.txt`, and checks that both potentials have the keys of the shipped
+# one and predict the same energies, forces and stresses on db.predict. (The
+# LAMMPS run of the page, in.ml, is the test_tadah case "quickstart: ...".)
+add_test(NAME tadah_quickstart_reproduces_pot
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/quickstart/check_quickstart_pot.py
+    --tadah $<TARGET_FILE:tadah>
+    --quickstart ${PROJECT_SOURCE_DIR}/docs/source/quickstart
+    --workdir ${CMAKE_CURRENT_BINARY_DIR}/quickstart_pot)
+set_tests_properties(tadah_quickstart_reproduces_pot PROPERTIES
+  LABELS examples
+  TIMEOUT 600
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)

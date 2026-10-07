@@ -467,8 +467,8 @@ above bcc. It is not a production Ta potential:
 A Lennard-Jones pair potential cannot replace it. Refitted to the same data
 (with the ``Cut_Dummy``, ``Cut_Cos`` or ``Cut_PolyS`` cutoff, to energies,
 energies and stresses, or energies, forces and stresses), ``D2_LJ`` gives a bcc
-crystal with :math:`C' < 0` (−75 to −175 GPa at its own lattice constant,
-2.93 to 3.06 Å, for each of these nine fits): it is mechanically unstable.
+crystal with :math:`C' < 0` for each of these nine fits (−78 to −178 GPa, each
+at its own lattice constant of 2.93 to 3.06 Å): it is mechanically unstable.
 
 Support for Multi-species Systems
 ---------------------------------

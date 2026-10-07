@@ -322,6 +322,13 @@ tadah_add_header_check(tadah)
 # target, HEADER_DIRS without a value, an entry that is not a directory or
 # has no header, the same relative path in two entries). Before the fix:
 # passes as well (a pin of refusals the function had from the start).
+# TADAH_HEADER_CHECK_JOBS: bad builds on one process, so its good headers
+# compile only if the build keeps going past the failed ones; good builds
+# on the physical cores (the default); refusals include a value that is
+# not a number of processes. Before that fix: the variable was not read,
+# so bad's entry ran on every physical core ('probe_headers --parallel:
+# '20', expected '1'') and compiled its good headers whether the build
+# kept going or not, and no value was refused.
 foreach(_case good bad private_dir private_entry new_header refusals)
   add_test(NAME tadah_header_check_${_case}
     COMMAND ${CMAKE_COMMAND}

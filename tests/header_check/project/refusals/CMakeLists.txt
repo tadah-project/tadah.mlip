@@ -26,6 +26,9 @@ elseif(REFUSAL STREQUAL "same_relative_path")
   tadah_add_header_check(probe HEADER_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/second")
+elseif(REFUSAL MATCHES "^jobs_")
+  # The driver sets TADAH_HEADER_CHECK_JOBS to a value that is refused.
+  tadah_add_header_check(probe)
 else()
   message(FATAL_ERROR "unknown REFUSAL '${REFUSAL}'")
 endif()

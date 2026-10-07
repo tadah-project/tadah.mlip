@@ -6,11 +6,17 @@
 #
 #   CASE=good         probe_headers and probe_app_headers pass, and every
 #                     header of the HEADER_DIRS (both of probe's; probe_app's
-#                     include/ by default) has its object file
-#   CASE=bad          probe_headers fails; the compiler errors are in exactly
-#                     the header that misses an include and the header
-#                     without a guard, the two good headers have their object
-#                     files (the build keeps going) and the bad ones none
+#                     include/ by default) has its object file; probe_headers
+#                     builds on as many processes as the machine has physical
+#                     cores (its --parallel and PROCESSORS)
+#   CASE=bad          configured with TADAH_HEADER_CHECK_JOBS=1, so that
+#                     probe_headers builds on one process (its --parallel and
+#                     PROCESSORS are 1); it fails, the compiler errors are in
+#                     exactly the header that misses an include and the
+#                     header without a guard, the two good headers have their
+#                     object files and the bad ones none: on one process the
+#                     good headers, which sort after the bad ones, are
+#                     compiled only because the build keeps going
 #   CASE=private_dir  probe_headers fails on exactly the header that needs
 #                     probe's PRIVATE include directory: the headers compile
 #                     with what a consumer of the library gets
@@ -25,8 +31,9 @@
 #                     `ctest -L headers` fails on exactly that header
 #
 # CASE=refusals instead configures the project once per refused call of the
-# function (REFUSAL, see project/refusals/CMakeLists.txt) and checks that the
-# configure step fails with that call's message.
+# function (REFUSAL, see project/refusals/CMakeLists.txt; a value of
+# TADAH_HEADER_CHECK_JOBS that is not a number of processes) and checks that
+# the configure step fails with that call's message.
 #
 #   cmake -DCASE=<case> -DTADAH_CMAKE_DIR=<cmake-tools> -DWORK_DIR=<scratch>
 #         -DGENERATOR=<CMake generator> -DMAKE_PROGRAM=<build tool>
@@ -111,12 +118,54 @@ macro(expect_equal what got expected)
   endif()
 endmacro()
 
+# The value after --parallel in the command of the CTest entry <name>, and
+# its PROCESSORS property, from `ctest --show-only=json-v1` (which leaves
+# PROCESSORS out when it is CTest's default, 1).
+function(entry_jobs name parallel_var processors_var)
+  execute_process(COMMAND "${CTEST}" --test-dir "${build}" --show-only=json-v1
+    RESULT_VARIABLE rc OUTPUT_VARIABLE json ERROR_VARIABLE err)
+  if(NOT rc EQUAL 0)
+    message(FATAL_ERROR "ctest --show-only=json-v1 failed (exit ${rc}): ${err}")
+  endif()
+  set(parallel "")
+  set(processors "")
+  string(JSON ntests LENGTH "${json}" tests)
+  math(EXPR last "${ntests} - 1")
+  foreach(i RANGE ${last})
+    string(JSON test_name GET "${json}" tests ${i} name)
+    if(NOT test_name STREQUAL name)
+      continue()
+    endif()
+    string(JSON nargs LENGTH "${json}" tests ${i} command)
+    math(EXPR last_arg "${nargs} - 2")
+    foreach(a RANGE ${last_arg})
+      string(JSON arg GET "${json}" tests ${i} command ${a})
+      if(arg STREQUAL "--parallel")
+        math(EXPR v "${a} + 1")
+        string(JSON parallel GET "${json}" tests ${i} command ${v})
+      endif()
+    endforeach()
+    set(processors 1)
+    string(JSON nprops LENGTH "${json}" tests ${i} properties)
+    math(EXPR last_prop "${nprops} - 1")
+    foreach(p RANGE ${last_prop})
+      string(JSON prop GET "${json}" tests ${i} properties ${p} name)
+      if(prop STREQUAL "PROCESSORS")
+        string(JSON processors GET "${json}" tests ${i} properties ${p} value)
+      endif()
+    endforeach()
+  endforeach()
+  set(${parallel_var} "${parallel}" PARENT_SCOPE)
+  set(${processors_var} "${processors}" PARENT_SCOPE)
+endfunction()
+
 # 0. refusals: each refused call stops the configure step with its message
 #    (compared with the blanks and line breaks of CMake's layout collapsed).
 if(CASE STREQUAL "refusals")
   set(fixture "${src}/refusals")
   set(refusals unexpected_argument not_a_target alias imported no_header_dirs
-               not_a_directory no_headers same_relative_path)
+               not_a_directory no_headers same_relative_path
+               jobs_zero jobs_text jobs_empty)
   set(message_unexpected_argument
     "tadah_add_header_check(probe): unexpected arguments: EXTRA")
   set(message_not_a_target
@@ -133,11 +182,19 @@ if(CASE STREQUAL "refusals")
     "tadah_add_header_check(probe): no *.h or *.hpp file in ${fixture}/no_headers")
   set(message_same_relative_path
     "tadah_add_header_check(probe): probe/x.h is in more than one of the HEADER_DIRS, so #include <probe/x.h> is ambiguous")
+  foreach(j zero:0 text:two empty:)
+    string(REGEX REPLACE ":.*" "" name "${j}")
+    string(REGEX REPLACE "^[^:]*:" "" value "${j}")
+    set(args_jobs_${name} "-DTADAH_HEADER_CHECK_JOBS=${value}")
+    set(message_jobs_${name}
+      "tadah_add_header_check(probe): TADAH_HEADER_CHECK_JOBS must be a whole number of processes, 1 or more, got '${value}'")
+  endforeach()
   foreach(r IN LISTS refusals)
     run("configure REFUSAL=${r}" "${CMAKE_COMMAND}" --fresh -S "${src}"
         -B "${WORK_DIR}/build_${r}" -G "${GENERATOR}"
         "-DCMAKE_MAKE_PROGRAM=${MAKE_PROGRAM}" "-DCMAKE_CXX_COMPILER=${CXX}"
-        "-DCASE=${CASE}" "-DREFUSAL=${r}" -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+        "-DCASE=${CASE}" "-DREFUSAL=${r}" ${args_${r}}
+        -DFETCHCONTENT_FULLY_DISCONNECTED=ON
         "-DFETCHCONTENT_SOURCE_DIR_TADAH_CMAKE=${TADAH_CMAKE_DIR}")
     string(REGEX REPLACE "[ \t\r\n]+" " " flat "${out}")
     string(FIND "${flat}" "${message_${r}}" at)
@@ -153,9 +210,13 @@ if(CASE STREQUAL "refusals")
 endif()
 
 # 1. Configure, build `all`, list the entries.
+set(case_args "")
+if(CASE STREQUAL "bad")
+  set(case_args -DTADAH_HEADER_CHECK_JOBS=1)
+endif()
 run("configure" "${CMAKE_COMMAND}" --fresh -S "${src}" -B "${build}"
     -G "${GENERATOR}" "-DCMAKE_MAKE_PROGRAM=${MAKE_PROGRAM}"
-    "-DCMAKE_CXX_COMPILER=${CXX}" "-DCASE=${CASE}"
+    "-DCMAKE_CXX_COMPILER=${CXX}" "-DCASE=${CASE}" ${case_args}
     -DFETCHCONTENT_FULLY_DISCONNECTED=ON
     "-DFETCHCONTENT_SOURCE_DIR_TADAH_CMAKE=${TADAH_CMAKE_DIR}")
 if(NOT rc EQUAL 0)
@@ -178,6 +239,19 @@ string(REGEX MATCHALL "Test +#[0-9]+: [^\r\n]+" listed "${out}")
 list(TRANSFORM listed REPLACE "^Test +#[0-9]+: " "")
 list(SORT listed)
 expect_equal("entries labelled headers" "${listed}" "${entries}")
+stop_if_failed()
+
+if(CASE STREQUAL "bad")
+  set(jobs 1)
+else()
+  cmake_host_system_information(RESULT jobs QUERY NUMBER_OF_PHYSICAL_CORES)
+  if(NOT jobs GREATER 0)
+    set(jobs 1)
+  endif()
+endif()
+entry_jobs(probe_headers parallel processors)
+expect_equal("probe_headers --parallel" "${parallel}" "${jobs}")
+expect_equal("probe_headers PROCESSORS" "${processors}" "${jobs}")
 stop_if_failed()
 
 # 2. Run the checks.

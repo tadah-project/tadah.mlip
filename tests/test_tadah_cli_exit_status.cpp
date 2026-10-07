@@ -30,6 +30,9 @@
 // or evaluate, naming the structure and the atoms (NNFinder's refusal). The
 // predict and train cases run in every build, the hpo case needs NFP.
 //
+// The [descriptor] case runs `tadah train` with a TYPE2B descriptor whose
+// grid keys are not set; it runs in every build.
+//
 // The [task-file] cases run `tadah --task` on a task file whose TASK lines
 // carry an inline comment, and on task files with a TASK line that has no
 // key line (an unknown name, GLOBAL included, is refused; a known one runs
@@ -2118,6 +2121,46 @@ TEST_CASE("Task file: a TASK line without key lines runs on the GLOBAL keys",
   REQUIRE(std::filesystem::exists("pot.tadah"));
   REQUIRE(std::filesystem::exists("energy.pred"));
   CHECK(predicted_values("energy.pred").size() == 3u);
+}
+
+/* ---- [descriptor]: a TYPE2B line needs its list keys -------------------- */
+
+/* Pins: `tadah train` refuses a D2_BP 5 5 model without CGRID2B and
+ * SGRID2B: exit 1 naming both keys and the line,
+ *   TYPE2B D2_BP takes 5 CGRID2B values and 5 SGRID2B values, but CGRID2B
+ *   and SGRID2B are not set: TYPE2B D2_BP 5 5 * *
+ * and no potential written; with the grids the same configuration trains
+ * (exit 0).
+ * Before the fix: a segmentation fault (exit status 139 from the shell)
+ * that ends the test process. */
+TEST_CASE("Subcommand: train refuses a TYPE2B descriptor without its grid "
+          "keys, naming them",
+          "[TadahCLI][exit-status][train][descriptor]") {
+  ScratchCwd cwd("train_no_grids");
+  write_ta_dimer_training();
+  const std::string head =
+      "DBFILE db.tadah\nATOM Ta\nWATOM 73\nINIT2B true\nINITMB false\n"
+      "TYPE2B D2_BP 5 5 * *\nRCTYPE2B Cut_Cos\nRCUT2B 4.5\n"
+      "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+      "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+  std::ofstream("nogrid.train") << head;
+  const CliRun r = run_tadah({"tadah", "train", "-c", "nogrid.train", "-o",
+                              "pot.tadah"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "TYPE2B D2_BP takes 5 CGRID2B values and 5 SGRID2B "
+                      "values, but CGRID2B and SGRID2B are not set: TYPE2B "
+                      "D2_BP 5 5 * *"));
+  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+
+  std::ofstream("grid.train")
+      << head << "CGRID2B 2.5 3.0 3.5 4.0 4.5\nSGRID2B 0.5 0.5 0.5 0.5 0.5\n";
+  const CliRun g = run_tadah({"tadah", "train", "-c", "grid.train", "-o",
+                              "pot.tadah"});
+  INFO("with the grids: status " << g.status << "\n" << reported(g));
+  CHECK(g.status == 0);
+  CHECK(std::filesystem::exists("pot.tadah"));
 }
 
 /* ---- [eam]: D2_EAM and DM_EAM read the setfl file named by SETFL ------ */

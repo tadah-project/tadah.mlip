@@ -44,9 +44,11 @@
 // on the GLOBAL keys), and on task files with a TASK line naming a group of
 // tasks (refused before any task runs); they run in every build.
 //
-// The [refit] case runs `tadah refit` (dense) with a configuration number
-// out of its range, which is refused naming the key and the token; it runs
-// in every build.
+// The [refit] cases run `tadah refit` (dense) with a configuration number
+// out of its range, which is refused naming the key and the token, and with
+// a key of the other REFIT_MODE, which is refused naming the key and the
+// mode that reads it (in dense mode in every build; in compact mode with
+// NFP and Ceres, and the refusal of compact mode without them).
 //
 // The [nonlinear] cases run `tadah train`, `tadah predict` (with and
 // without --error) and `tadah hpo` with every non-linear model (M_KRR
@@ -2416,6 +2418,112 @@ TEST_CASE("Subcommand: refit: a configuration number out of its range is "
   INFO("REFIT_TOL_AMBIENT 0.5: status " << ok.status << "\n" << reported(ok));
   CHECK(ok.status == 0);
   CHECK(std::filesystem::exists("pot.tadah"));
+}
+
+/* ---- [refit]: a key of the other REFIT_MODE is refused ---------------- */
+
+/* Pins: `tadah refit -c` refuses a key that the configuration's REFIT_MODE
+ * does not read, with status 1, a message naming the key and the mode that
+ * reads it, and no potential written: under REFIT_MODE dense (the small Ta
+ * setfl, a coarse Blip fit) REFIT_COMPACT_NMAX 3, a REFINE block (with keys
+ * the compact mode would refuse, THREADS 4 and GTOL -1: the block is
+ * refused as a whole) and REFIT_OBJECTIVE curve; the same configuration
+ * without them exits 0 and writes pot.tadah, so the blueprint defaults
+ * that the task factory stores for every refit (REFIT_COMPACT_MERGE auto,
+ * REFIT_CURVE_* and REFIT_OBJECTIVE energy) are not taken for the
+ * configuration's keys. In a build with the compact fitter (NFP and Ceres)
+ * a compact configuration (the default mode; Blip5, small budgets) with
+ * N2B 50, or with REFIT_CURVE_WEIGHTING false under the default
+ * REFIT_OBJECTIVE energy, exits 1 naming the key, and without them exits
+ * 0 and writes pot.tadah (REFIT_CONSTRAIN_F0's stored default is not
+ * refused); in a build without it the compact configuration exits 1:
+ * "tadah refit: REFIT_MODE compact (the default) needs the compact fitter,
+ * ...".
+ * Before the fix: every configuration exited 0 and wrote pot.tadah (dense
+ * mode never read the stage blocks or the compact keys, compact mode never
+ * read N2B, REFIT_CURVE_WEIGHTING was ignored under energy, and a build
+ * without the compact fitter fitted the compact configuration in dense
+ * mode after a WARNING). */
+TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
+          "with status 1",
+          "[TadahCLI][exit-status][refit]") {
+  ScratchCwd cwd("refit_mode_keys");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  const auto run = [](const std::string& config, const std::string& extra) {
+    std::filesystem::remove("pot.tadah");
+    std::ofstream("config.refit") << config << extra << "\n";
+    return run_tadah({"tadah", "refit", "-c", "config.refit"});
+  };
+  const std::string dense =
+      "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+      "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  const auto in_dense = [](const std::string& what) {
+    return "tadah refit: " + what + " has no effect under REFIT_MODE dense: "
+           "only REFIT_MODE compact reads it; remove " + what +
+           ", or set REFIT_MODE compact";
+  };
+  for (const auto& [extra, message] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"REFIT_COMPACT_NMAX 3", in_dense("REFIT_COMPACT_NMAX")},
+           {"REFINE\n  OPTIMIZER\n    LIB CERES ALGO LM MAXEVAL 5 THREADS 4 "
+            "GTOL -1\n  ENDOPTIMIZER\nENDREFINE",
+            in_dense("the REFINE block")},
+           {"REFIT_OBJECTIVE curve", in_dense("REFIT_OBJECTIVE curve")}}) {
+    const CliRun r = run(dense, extra);
+    const std::string rep = reported(r);
+    INFO(extra << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, message));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  {
+    const CliRun ok = run(dense, "");
+    INFO("dense: status " << ok.status << "\n" << reported(ok));
+    CHECK(ok.status == 0);
+    CHECK(std::filesystem::exists("pot.tadah"));
+  }
+  const std::string compact =
+      "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_BASIS Blip5\n"
+      "REFIT_COMPACT_NMAX 8\nREFIT_COMPACT_JITTERS 0\n"
+      "REFIT_COMPACT_STALL 3\nREFIT_COMPACT_SAMPLES 200\n"
+      "REFIT_TOL_AMBIENT 5\nREFIT_TOL_COMPRESSED 20\n"
+      "EXPLORE\n  OPTIMIZER\n    LIB NLOPT ALGO GN_MLSL_LDS MAXEVAL 4000\n"
+      "    INNER\n      LIB NLOPT ALGO LN_SBPLX MAXEVAL 1000\n    ENDINNER\n"
+      "  ENDOPTIMIZER\nENDEXPLORE\n";
+#if defined(TADAH_ENABLE_NFP) && defined(TADAH_USE_CERES)
+  for (const auto& [extra, message] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"N2B 50",
+            "tadah refit: N2B has no effect under REFIT_MODE compact (the "
+            "default): only REFIT_MODE dense reads it; remove N2B, or set "
+            "REFIT_MODE dense"},
+           {"REFIT_CURVE_WEIGHTING false",
+            "tadah refit: REFIT_CURVE_WEIGHTING has no effect under "
+            "REFIT_OBJECTIVE energy (the default): only REFIT_OBJECTIVE curve "
+            "reads it; remove REFIT_CURVE_WEIGHTING, or set REFIT_OBJECTIVE "
+            "curve"}}) {
+    const CliRun r = run(compact, extra);
+    const std::string rep = reported(r);
+    INFO(extra << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, message));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  const CliRun ok = run(compact, "");
+  INFO("compact: status " << ok.status << "\n" << reported(ok));
+  CHECK(ok.status == 0);
+  CHECK(std::filesystem::exists("pot.tadah"));
+#else
+  const CliRun r = run(compact, "");
+  const std::string rep = reported(r);
+  INFO("compact: status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "tadah refit: REFIT_MODE compact (the default) needs "
+                      "the compact fitter, which this tadah was built "
+                      "without (it needs TADAH_ENABLE_NFP and "
+                      "TADAH_ENABLE_CERES); set REFIT_MODE dense"));
+  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+#endif
 }
 
 /* ---- explain: the description of a key without a long description --- */

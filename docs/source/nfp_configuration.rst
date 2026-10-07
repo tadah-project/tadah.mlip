@@ -2072,7 +2072,8 @@ one a finite number (``MAXTIME`` a positive one).
        test and no finite schedule — ``TADAH:RANDOM``, ``DLIB:GFS``,
        ``ANNEAL_PT``, NLopt's global searches and three of its gradient
        algorithms — needs a stop: ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``,
-       a tolerance it honours set above 0, or an active ``RESTART``, a
+       a tolerance it honours set above 0, or an active ``RESTART``
+       (``GD_STOGO``: ``MAXEVAL`` or ``MAXTIME``), a
        startup error otherwise; the table of :ref:`hpo_stop_criteria` says
        which backend needs one and which stops it honours.  ``TADAH:ANNEAL`` needs ``MAXEVAL`` itself for
        its default ``CHAIN_LENGTH AUTO`` / ``NT AUTO`` (set them to run
@@ -2900,8 +2901,12 @@ until it was killed or ended.
      - never ends: one required
      - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``FTOL_REL``, ``FTOL_ABS``,
        ``XTOL_REL``, ``XTOL_ABS``
-   * - NLopt ``GN_ESCH``, ``GN_AGS``, ``GD_STOGO``, ``GD_STOGO_RAND``
+   * - NLopt ``GN_ESCH``, ``GN_AGS``
      - never ends: one required
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
+   * - NLopt ``GD_STOGO``, ``GD_STOGO_RAND``
+     - never ends, and ignores NLopt's forced stop: ``MAXEVAL`` or
+       ``MAXTIME`` required (below)
      - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
    * - NLopt ``GN_MLSL``, ``GN_MLSL_LDS``, ``GD_MLSL``, ``GD_MLSL_LDS``,
        ``G_MLSL``, ``G_MLSL_LDS``
@@ -2937,7 +2942,22 @@ in every sweep, so ``XTOL`` ends it only once every rectangle is that
 small: roughly (1/``XTOL_REL``)\ :sup:`n` evaluations for *n*
 dimensions (``XTOL_REL 1e-3`` in two dimensions ran past 20000); it
 counts as a stop, and the message says what it costs.  ``CRS2`` and
-``ISRES`` test the tolerances when the best improves.  ``TADAH:RANDOM`` and ``TADAH:GRID`` accept the tolerances
+``ISRES`` test the tolerances when the best improves.  ``GD_STOGO`` and
+``GD_STOGO_RAND`` need ``MAXEVAL`` or ``MAXTIME``, in their own block
+or, as an ``INNER`` search, in the enclosing one: NLopt's StoGO ignores
+the forced stop by which HPO ends a search on a signal, an error, the
+``RESTART`` stagnation stop or a loss at or below ``STOPVAL`` whose
+gradient is not finite, so from then on only NLopt's own evaluation
+count or clock ends it (HPO refuses its calls without evaluating them).
+Neither ``STOPVAL`` nor an active ``RESTART`` is a stop for it:
+
+.. code-block:: none
+
+   HPOEngine error: the STRATEGY-level optimiser: NLOPT:GD_STOGO needs a stop: NLopt's StoGO has no convergence test of its own and ignores NLopt's forced stop, by which HPO ends a search (on a signal, an error, the RESTART stagnation stop, or a loss at or below STOPVAL that NLopt was not given), so only NLopt's own evaluation count or clock ends it; set MAXEVAL or MAXTIME (it honours no tolerance)
+
+Without ``MAXEVAL`` or ``MAXTIME`` such a run did not end once
+``Ctrl-C``, an error or the stagnation stop stopped it; ``STOPVAL`` or
+an active ``RESTART`` was accepted as its stop.  ``TADAH:RANDOM`` and ``TADAH:GRID`` accept the tolerances
 (and ``POPULATION`` and ``VECTOR_ARR``; ``GRID`` also ``SEED``) and
 ignore them, as before.  The local search of NLopt's MLSL
 and AUGLAG (an ``INNER`` block, or without one NLopt's default local

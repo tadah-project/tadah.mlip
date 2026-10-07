@@ -90,12 +90,16 @@ follows (:ref:`hpo_stop_criteria` has the whole table):
      - converge
      - ``MAXEVAL`` and their tolerances
    * - NLopt global searches (``GN_DIRECT*``, ``GN_CRS2_LM``,
-       ``GN_ISRES``, ``GN_ESCH``, ``GN_AGS``, ``GD_STOGO*``, the MLSL
-       family) and ``LD_MMA``, ``LD_CCSAQ``, ``LD_SLSQP``
+       ``GN_ISRES``, ``GN_ESCH``, ``GN_AGS``, the MLSL family) and
+       ``LD_MMA``, ``LD_CCSAQ``, ``LD_SLSQP``
      - no: one stop required
      - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, and the tolerances of
        DIRECT (its ``XTOL`` only once every rectangle is that small),
        CRS2, ISRES, MMA, CCSAQ and SLSQP
+   * - NLopt ``GD_STOGO``, ``GD_STOGO_RAND``
+     - no: ``MAXEVAL`` or ``MAXTIME`` required (it ignores the forced
+       stop by which HPO ends a search)
+     - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
    * - NLopt ``GN_ORIG_DIRECT``, ``GN_ORIG_DIRECT_L``
      - after about 100000 evaluations
      - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``XTOL_REL``

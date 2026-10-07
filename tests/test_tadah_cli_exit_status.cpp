@@ -2076,13 +2076,16 @@ TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment"
  * exactly 'WEIGHTS 14 2500 -3 0.5'; 'FIXINDEX 1 3' (FIXWEIGHT 0.5 -0.25)
  * writes the WEIGHTS line 'FIXINDEX 1,3' writes, weights 1 and 3 the pinned
  * values; 'FIXINDEX 1,1' with one FIXWEIGHT value exits 1 ("FIXINDEX 1,1
- * has 2 indices but FIXWEIGHT has 1 value") and 'FIXINDEX 3-1' exits 1
- * naming the descending range, neither writing pot.tadah.
+ * names weight 1 twice") and 'FIXINDEX 3-1' exits 1 naming the descending
+ * range, neither writing pot.tadah.
  * Before the fix: the separate values were joined into one malformed
  * segment and dropped ("Error: Non-numeric value or incorrect syntax
  * found: 1 2 3 4", then "FIXWEIGHT and FIXINDEX differ in size: 4 and
  * 0", exit 1), '3-1' expanded to nothing ("differ in size: 3 and 0"), and
- * '1,1' was deduplicated with a stderr warning and trained (exit 0). */
+ * '1,1' was deduplicated with a stderr warning and trained (exit 0). After
+ * core::parse_fixindex first read FIXINDEX, '1,1' exited 1 with "FIXINDEX
+ * 1,1 has 2 indices but FIXWEIGHT has 1 value" (this case pinned that): it
+ * compared the count before it looked for a repeat. */
 TEST_CASE("Subcommand: train reads FIXINDEX given as separate values as the "
           "comma list",
           "[TadahCLI][exit-status][train][fixindex]") {
@@ -2120,7 +2123,7 @@ TEST_CASE("Subcommand: train reads FIXINDEX given as separate values as the "
     const std::string rt = reported(t);
     INFO("twice: status " << t.status << "\n" << rt);
     CHECK(t.status == 1);
-    CHECK(contains(rt, "FIXINDEX 1,1 has 2 indices but FIXWEIGHT has 1 value"));
+    CHECK(contains(rt, "FIXINDEX 1,1 names weight 1 twice"));
     CHECK_FALSE(std::filesystem::exists("pot.tadah"));
     const CliRun d = train("desc.cfg", "FIXINDEX 3-1\nFIXWEIGHT 0.5 -0.25 1\n");
     const std::string rd = reported(d);

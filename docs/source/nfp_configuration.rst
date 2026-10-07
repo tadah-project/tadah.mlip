@@ -3376,9 +3376,24 @@ go on without it:
   from the rejected point.  For Ceres it means ``FAILURE`` (``Initial
   cost and jacobian evaluation failed``, ``Numerical failure in line
   search``) right after the rejection.
-* ``MLSL`` and the global ``GD_*`` searches (``GD_STOGO``) are never
-  stopped at a rejection: a rejected local start or point leaves them the
-  rest of their search.
+* HPO does not stop ``MLSL`` and the global ``GD_*`` searches
+  (``GD_STOGO``) at a rejection: a rejected sample or local start leaves
+  them the rest of their search.  NLopt's ``MLSL`` ends its whole search,
+  though, when one of its local searches returns an error.  A local search
+  converges on the edge of the failure region, where the stencil of every
+  point below the edge reaches a failure.  There the line search of
+  ``LD_LBFGS``, ``LD_TNEWTON*``, ``LD_VAR1`` and ``LD_VAR2`` finds no usable
+  point and returns an NLopt failure, and the run ends ``STOPPED -- no
+  usable gradient: … NLopt ended right after it (nlopt failure)``, its
+  budget unspent.  In a one-dimensional search over [1, 2] (``PARAM
+  fd_step 0.2``) whose evaluations fail below 1.53, from 1.9 with
+  ``POPULATION 3``, ``MAXEVAL 400`` and an ``INNER`` block of each,
+  ``G_MLSL_LDS`` ended after 141 (``LD_LBFGS``) to 185 (``LD_TNEWTON``)
+  evaluations; with
+  ``LD_MMA`` (the default local search of the ``GD_MLSL*`` forms),
+  ``LD_CCSAQ``, ``LD_SLSQP``, ``LD_AUGLAG`` or ``LD_AUGLAG_EQ`` it reached
+  ``MAXEVAL``.  Next to a failure region, prefer those local searches under
+  ``MLSL``.
 
 Such an ending is the search's own.  The journal has a warning that names
 the backend and the failed evaluation — the stencil point and its loss, or
@@ -4325,6 +4340,10 @@ Requirements and behaviour:
   check);
 * ``MPI_THREAD_MULTIPLE`` (evaluation threads run LAMMPS concurrently);
   on Cray MPICH: ``export MPICH_MAX_THREAD_SAFETY=multiple``;
+* ``srun``, or the ``mpirun`` / ``mpiexec`` of the MPI library ``tadah``
+  links (:ref:`installation_hpo_mpi`): another MPI's launcher starts
+  independent one-rank runs, which all write the unsuffixed
+  ``hpo_run.log``;
 * the global ``REPLICAS`` (PT) or ``POPULATION`` (PA) count must be at
   least the MPI rank count;
 * the MPI C interfaces use ``int`` element counts.  PT and PA therefore
@@ -4349,10 +4368,11 @@ Requirements and behaviour:
   joined by every other rank within 30 s aborts the whole job
   (``MPI_Abort`` with its exit status; its own ``hpo_run.log.r<rank>`` is
   already closed): the missing ranks are blocked in a collective the
-  failed rank left — after a failure confined to one rank, such as a best
-  potential it could not save during an ``INIT_MODE JITTER AUTO`` probe or
-  ``NOISE_CALIBRATION`` — and would otherwise hold the allocation until it
-  ends.  Their journals then end without a RESULT section.
+  failed rank left — after a failure confined to one rank outside the
+  phases whose ending the ranks agree on (:ref:`hpo_stopping`), such as a
+  best potential it could not save during ``NOISE_CALIBRATION`` — and would
+  otherwise hold the allocation until it ends.  Their journals then end
+  without a RESULT section.
 
 ``TADAH_HPO_MPI`` is the only MPI build of Tadah!MLIP: the legacy MPI
 training build (``TADAH_BUILD_MPI``) was removed in 1.6.0, and
@@ -5453,14 +5473,28 @@ cannot be taken, say): ``FAILED -- best-potential persistence: <error>``,
 status ``1``, its retries counted in ``DIAGNOSTICS``.
 
 In a multi-rank ``ANNEAL_PT`` / ``ANNEAL_PA`` run
-(:ref:`tadah_anneal_mpi`), each rank stops on the signal it receives
-itself.  A rank that has not seen it when another rank stops ends with an
-error instead, status ``1`` and ``FAILED -- … worker failed on
-another MPI rank …`` (or ``… rank 0 aborted during … calibration`` when
-the signal arrives during the calibration); only the ranks that saw the
-signal report ``SHUTDOWN`` and ``128`` + the signal number.  Every rank
-still writes its queued rows, and ``best_pot.tadah`` holds the global
-incumbent.
+(:ref:`tadah_anneal_mpi`), a signal that one rank receives during the
+search stops every rank.  The ranks agree on how each phase of the search
+ended — rank 0's seed and ``T0`` calibrations (``ANNEAL_PT``'s calibration
+pass 2 among them), every replica or walker epoch and the ``INIT_MODE
+JITTER AUTO`` calibration — so a rank whose own evaluations all finished
+ends as the rank that stopped does: every rank reports ``SHUTDOWN`` and
+exits with ``128`` + the signal number.  A rank that received the signal itself names it
+(``SHUTDOWN (SIGTERM)``); one that did not names the rank that did
+(``SHUTDOWN (SIGTERM on MPI rank 0)``, and the journal warning
+``Shutdown requested: SIGTERM on MPI rank 0``).  Signals reach the ranks
+of a job at different moments, so a rank that a scheduler signals too can
+still report the second form, when another rank stopped first.  Every
+rank still writes its queued rows, and ``best_pot.tadah`` holds the global
+incumbent.  An error in one of those phases on one rank ends every rank
+with status ``1``: that rank with ``FAILED -- <its error>``, the others
+with ``FAILED -- … worker failed on another MPI rank during <phase>``
+(``… rank 0 aborted during … calibration`` after rank 0's calibration,
+``… the INIT_MODE JITTER AUTO calibration failed on another MPI rank``
+after that calibration).  ``NOISE_CALIBRATION``, which every rank runs on
+its own before the search, is not one of these phases: a signal or an
+error there that only some ranks see ends the job through the exit
+barrier of :ref:`tadah_anneal_mpi`.
 
 A signal or an error decides how a run ends whether or not an
 evaluation produced a usable loss: a run without one that a signal stops

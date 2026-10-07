@@ -61,7 +61,9 @@ Non-linear models
 ``M_KRR`` with ``Kern_RBF``, ``Kern_Polynomial``, ``Kern_Quadratic``,
 ``Kern_LQ`` or ``Kern_Sigmoid``, and ``M_BLR`` with ``BF_Polynomial2``, are
 non-linear in the descriptor. They are trained, predicted, optimised by
-``tadah hpo`` and run in LAMMPS like the linear ones.
+``tadah hpo`` and run in LAMMPS like the linear ones, except a potential
+trained with ``BIAS true`` on several species, which ``pair_style tadah``
+refuses (see **LAMMPS** below).
 
 **Kernel parameters** (``MPARAMS``): ``Kern_RBF`` takes
 :math:`\sigma`, :math:`K(\mathbf{b},\mathbf{x}) = \exp(-|\mathbf{x}-\mathbf{b}|^2/2\sigma^2)`
@@ -84,7 +86,8 @@ the descriptors, in the order of the training set, driven by
 train`` writes the same potential every time and the loss of ``tadah hpo``
 at a given point does not depend on the draw. ``SBASIS`` must be at least
 2 and at most the number of training atoms plus 1. (Implementation ``2``
-draws structures instead, and takes the mean descriptor of each.) The potential records
+draws structures instead, takes the mean descriptor of each, and allows
+at most the number of training structures plus 1.) The potential records
 ``SBASIS`` and the basis vectors (``BASIS``) with the weights; ``tadah
 predict``, ``tadah hpo`` and ``pair_style tadah`` refuse, naming the keys,
 a potential without them, with a number of weights other than ``SBASIS``,
@@ -120,6 +123,16 @@ width far from the spread of the descriptors, make the columns nearly
 collinear, and ``OALGO 1`` then drops the small singular values (its
 ``rcond``). Choose ``MPARAMS`` for the scale of the descriptors; ``NORM
 true`` standardises the descriptor components first.
+
+**LAMMPS.** ``pair_style tadah`` evaluates a non-linear potential as
+``tadah predict`` does. With ``BIAS true`` on several species (``ATOM``
+with two or more elements) tadah trains the model on a descriptor with one
+bias component shared by the species, while the descriptor of
+``pair_style tadah`` has one bias component per species: ``pair_style
+tadah`` refuses such a non-linear potential, naming the cause. Train the
+model with ``BIAS false`` to run it in LAMMPS. ``pair_style tadah`` also
+refuses a ``BF_Polynomial2`` potential without :math:`D(D+1)/2` weights for
+its :math:`D` descriptor components.
 
 **FIXINDEX/FIXWEIGHT** with a kernel pin weights of the basis vectors
 (weight 1 belongs to :math:`e_0`), which are drawn from the training

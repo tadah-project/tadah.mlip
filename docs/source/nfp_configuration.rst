@@ -816,7 +816,19 @@ A token that starts with a single ``-`` is a LAMMPS option, passed to
 LAMMPS as a command-line argument together with the values that follow
 it: for example ``-log run.log``, ``-screen none`` or ``-var x 1 2`` (see
 :ref:`pc_lammps_result_contract` for how HPO renames ``-log`` /
-``-screen`` files per worker); LAMMPS judges these itself.  Every LAMMPS
+``-screen`` files per worker); LAMMPS judges these itself, when the line
+is read: HPO starts a LAMMPS instance with the line's arguments to check
+the script's variables, and one LAMMPS refuses — a typo, or an option
+this LAMMPS build cannot honour, such as ``-sf omp`` without the
+``OPENMP`` package — is an error at its line, with LAMMPS' message:
+
+.. code-block:: none
+
+   Error on line 9: PC_LAMMPS: LAMMPS cannot start with this line's command-line options: ERROR: Invalid command-line argument: -sff (src/lammps.cpp:490)
+   Line: PC_LAMMPS --script Ecoh.in --varloss Ecoh 8.10 800 -sff omp
+
+Before 1.6.0 the line was accepted and every evaluation failed to create
+its LAMMPS instance, with nothing in the journal.  Every LAMMPS
 command-line option starts with a single ``-``, so an option that starts
 with ``--`` and is none of the HPO options of this section is an error at
 its line, naming HPO's options and, for a near miss, the closest one:

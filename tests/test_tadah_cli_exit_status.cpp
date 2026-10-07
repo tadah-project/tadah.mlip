@@ -2422,6 +2422,19 @@ TEST_CASE("Subcommand: refit: a configuration number out of its range is "
 
 /* ---- [refit]: a key of the other REFIT_MODE is refused ---------------- */
 
+// A top-level OPTIMIZER block of the grammar before the stage blocks, and
+// the migration text that refuses it in either REFIT_MODE.
+const std::string kTopLevelOptimizerBlock =
+    "OPTIMIZER\n  GLOBAL ALGO MLSL ENDGLOBAL\nENDOPTIMIZER";
+const std::string kTopLevelOptimizerText =
+    "tadah refit: a top-level OPTIMIZER block is no longer supported. The "
+    "stage pipeline is now INIT -> EXPLORE -> REFINE -> FUSE, each its own "
+    "block, with the OPTIMIZER block NESTED inside EXPLORE/REFINE/FUSE. "
+    "Migration: GLOBAL folded into EXPLORE rung 0 (set its global ALGO in "
+    "EXPLORE's OPTIMIZER, with an INNER local); POLISH -> REFINE; JOINT -> "
+    "FUSE. The Refitting page of the documentation has examples (Stage "
+    "blocks).";
+
 /* Pins: `tadah refit -c` refuses a key that the configuration's REFIT_MODE
  * does not read, with status 1, a message naming the key and the mode that
  * reads it, and no potential written: under REFIT_MODE dense (the small Ta
@@ -2438,12 +2451,25 @@ TEST_CASE("Subcommand: refit: a configuration number out of its range is "
  * 0 and writes pot.tadah (REFIT_CONSTRAIN_F0's stored default is not
  * refused); in a build without it the compact configuration exits 1:
  * "tadah refit: REFIT_MODE compact (the default) needs the compact fitter,
- * ...".
+ * ...". A top-level OPTIMIZER block (the grammar before the stage blocks),
+ * which neither mode reads, exits 1 with the migration text ("tadah refit:
+ * a top-level OPTIMIZER block is no longer supported. ... (Stage
+ * blocks)."), which under REFIT_MODE dense ends " Under REFIT_MODE dense,
+ * which reads no stage block, remove the OPTIMIZER block."; under compact
+ * mode, in every build, before the EAM file is read (absent here).
  * Before the fix: every configuration exited 0 and wrote pot.tadah (dense
  * mode never read the stage blocks or the compact keys, compact mode never
  * read N2B, REFIT_CURVE_WEIGHTING was ignored under energy, and a build
  * without the compact fitter fitted the compact configuration in dense
- * mode after a WARNING). */
+ * mode after a WARNING), the top-level OPTIMIZER block under dense
+ * included; under compact the block exited 1 reading the absent EAM file
+ * (with NFP and Ceres: it was refused after the table was read). The mode
+ * rule's first form refused the block under dense as a key of compact
+ * mode, "tadah refit: the OPTIMIZER block has no effect under REFIT_MODE
+ * dense: only REFIT_MODE compact reads it; remove the OPTIMIZER block, or
+ * set REFIT_MODE compact", whose advice leads to the migration text, and
+ * under compact still read the absent EAM file first (or, without NFP and
+ * Ceres, refused compact mode). */
 TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
           "with status 1",
           "[TadahCLI][exit-status][refit]") {
@@ -2468,7 +2494,11 @@ TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
            {"REFINE\n  OPTIMIZER\n    LIB CERES ALGO LM MAXEVAL 5 THREADS 4 "
             "GTOL -1\n  ENDOPTIMIZER\nENDREFINE",
             in_dense("the REFINE block")},
-           {"REFIT_OBJECTIVE curve", in_dense("REFIT_OBJECTIVE curve")}}) {
+           {"REFIT_OBJECTIVE curve", in_dense("REFIT_OBJECTIVE curve")},
+           {kTopLevelOptimizerBlock,
+            kTopLevelOptimizerText + " Under REFIT_MODE dense, which reads "
+                                     "no stage block, remove the OPTIMIZER "
+                                     "block."}}) {
     const CliRun r = run(dense, extra);
     const std::string rep = reported(r);
     INFO(extra << ": status " << r.status << "\n" << rep);
@@ -2490,6 +2520,18 @@ TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
       "EXPLORE\n  OPTIMIZER\n    LIB NLOPT ALGO GN_MLSL_LDS MAXEVAL 4000\n"
       "    INNER\n      LIB NLOPT ALGO LN_SBPLX MAXEVAL 1000\n    ENDINNER\n"
       "  ENDOPTIMIZER\nENDEXPLORE\n";
+  {
+    // compact mode, the EAM file absent: refused before it is read
+    std::string absent = compact;
+    absent.replace(0, absent.find('\n'), "EAM absent.alloy");
+    const CliRun r = run(absent, kTopLevelOptimizerBlock);
+    const std::string rep = reported(r);
+    INFO("compact, top-level OPTIMIZER: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, kTopLevelOptimizerText));
+    CHECK_FALSE(contains(rep, "Under REFIT_MODE dense"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
 #if defined(TADAH_ENABLE_NFP) && defined(TADAH_USE_CERES)
   for (const auto& [extra, message] :
        std::vector<std::pair<std::string, std::string>>{

@@ -98,8 +98,10 @@ a potential without them, with a number of weights other than ``SBASIS``,
 or with basis vectors of another length than the descriptor's.
 
 **Intercepts and the ridge.** ``LAMBDA`` penalises every weight but those
-of the model's intercept columns, the columns that are the same for every
-atom. With ``BIAS true`` (and ``ATOM``, which ``BIAS`` requires):
+of the model's intercept columns, the columns that depend on an atom only
+through its species (also when ``FIXINDEX`` pins weights). With ``BIAS
+true`` (and ``ATOM``, which ``BIAS`` requires; :math:`N` species, the
+descriptor's intercept components :math:`0 \dots N-1`):
 
 .. list-table::
    :header-rows: 1
@@ -109,11 +111,13 @@ atom. With ``BIAS true`` (and ``ATOM``, which ``BIAS`` requires):
    * - ``BF_Linear``, ``Kern_Linear``
      - the bias columns of the descriptor
    * - ``BF_Polynomial2``
-     - column 0, bias :math:`\times` bias
+     - the product :math:`(k,k)` of each intercept component with itself,
+       one per species (column 0 with one species; columns 0 and
+       :math:`D` with two)
    * - ``Kern_Quadratic``, ``Kern_LQ``, ``Kern_Polynomial``,
        ``Kern_Sigmoid``
-     - column 0, :math:`K(e_0, \mathbf{x})`, which depends on
-       :math:`\mathbf{x}` only through the bias
+     - columns 0 to :math:`N-1`, :math:`K(e_k, \mathbf{x})`, which depends
+       on :math:`\mathbf{x}` only through intercept component :math:`k`
    * - ``Kern_RBF``
      - none
 

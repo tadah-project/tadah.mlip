@@ -457,11 +457,12 @@ the target, and the remaining weights are fitted against the residual.
 The i-th ``FIXWEIGHT`` value pins the weight named by the i-th
 ``FIXINDEX`` entry; a lone key is an error, and ``NORM true`` is
 incompatible with pinning (the values would live in normalized feature
-space).  With ``BIAS true`` weights 1 to :math:`N` are the intercepts of
-the :math:`N` ``ATOM`` species and the descriptor weights start at
-:math:`N + 1` (:ref:`the bias term <bias_term>`); startup prints a WARNING
-when ``FIXINDEX`` is used with two or more species, whose descriptor
-weights started at index 2 before 1.6.0.  These rules need the model's weight count, so startup builds the
+space).  With ``BIAS true`` and a linear model weights 1 to :math:`N` are
+the intercepts of the :math:`N` ``ATOM`` species and the descriptor weights
+start at :math:`N + 1` (:ref:`the bias term <bias_term>`, also for the
+other models); startup prints a WARNING naming the model's intercept
+weights when ``FIXINDEX`` is used with two or more species (before 1.6.0
+a linear model's descriptor weights started at index 2).  These rules need the model's weight count, so startup builds the
 model of the ``-c`` configuration once, as every evaluation builds it; it
 does so for every run.  A configuration whose model does not build (a
 ``DIMER`` potential whose ``TYPE2B`` names element pairs, say) is refused

@@ -72,9 +72,10 @@ naming each dimension and the largest :math:`\Delta` that fits it.  Under
 
 .. code-block:: none
 
-   the STRATEGY-level optimiser ASA:ASA: ASA's finite-difference probes -- the reannealing and exit tangents at (1 + Delta) x, or (1 - Delta) x when that lies outside the box -- would be evaluated outside the OPTIM box of these dimensions:
+   Error on line 10: the STRATEGY-level optimiser ASA:ASA: ASA's finite-difference probes -- the reannealing and exit tangents at (1 + Delta) x, or (1 - Delta) x when that lies outside the box -- would be evaluated outside the OPTIM box of these dimensions:
      - WATOM: OPTIM box [1, 1.000001], the default Delta_X 0.001: a probe of WATOM = 1.0000005 lies outside the box; Delta_X up to 4.99999e-07 fits it
      Lower the Delta; or use OPTIM_SCALE AUTO, where every box is the unit box (the tangents fit for Delta <= 1).
+   Line: ENDOPTIMIZER
 
 Before 1.6.0 such probes were evaluated outside the box.  The check works
 on the probes as ASA computes them in double precision — the factors

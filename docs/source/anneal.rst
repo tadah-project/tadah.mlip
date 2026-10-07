@@ -178,7 +178,11 @@ schedule at a reduced starting temperature
 :math:`T_0 \cdot \texttt{REANNEAL\_SCALE}^m` for re-anneal :math:`m`,
 so leftover budget refines the region around the best point instead of expiring in a
 frozen chain. Re-annealing stops when the next start temperature could
-not complete two rungs above ``T_MIN``.
+not complete two rungs above ``T_MIN``, and the stop line then says
+``T < T_MIN``, whatever the time.  A ``MAXTIME`` that has passed when a
+schedule cools below ``T_MIN`` with a re-anneal still due ends the search
+instead of that re-anneal, ``MAXTIME exceeded`` (until 2026-10-07 such a
+search reported ``T < T_MIN`` and ``T_MIN reached``).
 
 Stops
 -----

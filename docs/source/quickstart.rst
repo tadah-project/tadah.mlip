@@ -118,6 +118,12 @@ Basic rules
 #. A task file needs at least one ``TASK`` block: ``tadah --task`` refuses a
    file without one (``the task file 'run.task' has no TASK section``).
 
+#. A ``TASK`` line needs no keys of its own: a ``TASK predict`` with no lines
+   after it runs on the keys above the first ``TASK`` line (for example
+   ``DBFILE`` and ``POTENTIAL``). Every task name is checked, with or without
+   keys, and an unknown one stops the file before any task runs
+   (``Unknown task section "BOGUS"``).
+
 #. An error in a line names the line of the file and the file, whichever
    block it is in (``Invalid value for key EMBF0 on line 6 of run.task:
    'frei' (allowed: ZERO, FREE)``).

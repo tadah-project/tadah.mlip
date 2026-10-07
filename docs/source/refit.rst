@@ -906,7 +906,8 @@ Output files
   ``refit_curve_{phi,rho,F}.dat`` flag the same windows (``in_window``).
   Before 1.6.0 ``fit_window_lo`` was 0.9 × r_reach in both modes (``full_lo``
   under ``REFIT_PLACEMENT uniform``), which is neither fit's window, and the
-  curve files flagged r >= 0.9 × r_reach.
+  curve files flagged r >= 0.9 × r_reach (under ``REFIT_PLACEMENT uniform``
+  r >= 0.15 × rcut, every row of the files, whatever ``full_lo`` was).
   The note of its ``F`` row says what lies above the embedding window:
   after a compact fit ``refit.eam`` carries the original table there
   (offset-matched); the dense fit keeps a small uniform tail basis there
@@ -1045,10 +1046,13 @@ The keys of either ``REFIT_MODE`` (``REFIT_MODE``, ``REFIT_BASIS``,
 of one mode (:ref:`Keys of the other mode <refit_mode_keys>`) and the stage
 blocks are refused this way, and so is a top-level ``OPTIMIZER`` block,
 which no mode reads; ``--retarget`` also refuses ``HPOFILEOUT``
-(``--hpofileout``) and ``NUMERIC``, which ``--edit`` reads (see
-:ref:`refit_retarget`). The defaults ``tadah`` stores for the keys the
-configuration does not set are not refused. Before 1.6.0 these keys were
-ignored.
+(``--hpofileout``), which ``--edit`` reads (see :ref:`refit_retarget`). The
+defaults ``tadah`` stores for the keys the configuration does not set are
+not refused. Before 1.6.0 these keys were ignored. ``NUMERIC``, the
+precision of the files a command writes, is no key of the refit and is not
+refused: ``--edit`` writes the potential with it, and ``--retarget`` writes
+only an hpotarget, which it does not govern (below); a task file may set it
+above its first ``TASK`` line, for every task.
 
 ``EMBF0`` and ``RHOFORM`` are properties of the potential. A configuration
 passed with ``-c`` may set them only to the potential's own values: a
@@ -1123,19 +1127,21 @@ from a configuration (``-c``): an hpotarget carries no potential, so they
 would have no effect, and either is an error (``RHOFORM has no effect on
 --retarget ...``); the density form is ``--rhoform``, below. Nor does it
 take the keys of a refit of an EAM file (:ref:`as --edit does not
-<refit_output_mode_keys>`), or ``HPOFILEOUT`` and ``NUMERIC``: the
-rewritten file is ``-o`` or, with ``--in-place``, the input, and its bounds
-have 8 significant digits (``tadah refit --retarget: HPOFILEOUT has no
-effect under --retarget: only a refit of an EAM file and --edit read it;
-remove HPOFILEOUT (the file --retarget writes is -o, OUTFILE)``). Before
-1.6.0 ``--hpofileout`` was ignored, and the file was written to
-``<input>_edited.hpotarget``.
+<refit_output_mode_keys>`), or ``HPOFILEOUT``: the rewritten file is ``-o``
+or, with ``--in-place``, the input (``tadah refit --retarget: HPOFILEOUT
+has no effect under --retarget: only a refit of an EAM file and --edit read
+it; remove HPOFILEOUT (the file --retarget writes is -o, OUTFILE)``).
+Before 1.6.0 ``--hpofileout`` was ignored, and the file was written to
+``<input>_edited.hpotarget``. ``NUMERIC`` is accepted and does not change
+the file: its bounds are printed ``%.8e`` (9 significant digits), as in
+every hpotarget ``tadah refit`` writes.
 
 Retargeting a freshly-emitted file at the same percentage reproduces it
 byte-for-byte, and any retargeted file is a fixed point of further
 retargeting at the same settings. Bound recovery is exact at the printed
-precision (8 significant digits); a hand-pruned group (deleted lines) shifts
-the group's scale floor relative to a fresh emission (warned). A line whose
+precision (``%.8e``, 9 significant digits); a hand-pruned group (deleted
+lines) shifts the group's scale floor relative to a fresh emission
+(warned). A line whose
 lower bound was clamped (the width channels, ``RCUT``, the non-negative
 amplitudes below) is recovered with the percentage of its own group comment
 (``# KEY  (+-X%``, which a per-key ``--pct`` rewrites), so repeating a

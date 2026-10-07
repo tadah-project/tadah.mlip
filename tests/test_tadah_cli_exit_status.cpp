@@ -2645,3 +2645,119 @@ TEST_CASE("Subcommand: analysis bfunc -i takes basis-function indices 1..N",
   CHECK(blocks[1] == every[2]);
   CHECK(blocks[2] == every[4]);
 }
+
+/* Pins: `tadah data print -i`, `tadah analysis descriptor -i` and `tadah data
+ * write -i` count a structure without atoms (its blank line straight after
+ * the stress lines) as one structure, as `data print -d` does:
+ *  - on S1, E2 (no atoms), S3: data print -i 3 prints S3 and -i 2 prints E2
+ *    (exit 0); -i 4 exits 1 with "index 4 is outside 1-3 (the dataset has 3
+ *    structures)";
+ *  - on E1, S2: data print -i 2 prints S2 (exit 0);
+ *  - on S1, E2, S3: analysis descriptor -i 3 writes S3 alone (exit 0), -i 4
+ *    exits 1 with "index 4 is outside 1-3 (the dataset has 3 structures)";
+ *    data write -i 3 -o c.cell -f castep writes S3 (exit 0).
+ * Before the fix: the structures were counted up to the first one without
+ * atoms, so every index past it was refused with a false count ("index 3 is
+ * outside 1-1 (the dataset has 1 structures)" for S1, E2, S3; "index 2 is
+ * outside 1-0 (the dataset has 0 structures)" for E1, S2), by all three
+ * commands. */
+TEST_CASE("Subcommand: data print, analysis descriptor and data write -i count a "
+          "structure without atoms",
+          "[TadahCLI][exit-status][data][index]") {
+  ScratchCwd cwd("index_no_atoms");
+  {
+    std::ofstream os("db.tadah");
+    os << weighted_entry("S1", "1 1 1", "2.6 0.3 0.2", "0", "0") << dataset_entry("E2", {})
+       << weighted_entry("S3", "1 1 1", "3.0 0.3 0.2", "0", "0");
+  }
+  {
+    std::ofstream os("first.tadah");
+    os << dataset_entry("E1", {}) << dataset_entry("S2", {"Na 0 0 0"});
+  }
+  std::ofstream("pot.tadah") << kPairPotential;
+  const std::vector<std::pair<std::string, std::string>> printed = {{"3", "S3"}, {"2", "E2"}};
+  for (const auto& c : printed) {
+    const CliRun r = print_indices({c.first});
+    INFO("data print -i " << c.first << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(printed_labels(r.out) == std::vector<std::string>{c.second});
+  }
+  {
+    const CliRun r = print_indices({"4"});
+    const std::string rep = reported(r);
+    INFO("data print -i 4: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah data print: index 4 is outside 1-3 (the dataset has 3 "
+                        "structures)"));
+  }
+  {
+    const CliRun r =
+        run_tadah({"tadah", "data", "print", "-d", "first.tadah", "-i", "2"});
+    INFO("data print -d first.tadah -i 2: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(printed_labels(r.out) == std::vector<std::string>{"S2"});
+  }
+  {
+    const CliRun r = descriptor_indices({"3"});
+    INFO("analysis descriptor -i 3: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(descriptor_labels("d.out") == std::vector<std::string>{"S3"});
+  }
+  {
+    const CliRun r = descriptor_indices({"4"});
+    const std::string rep = reported(r);
+    INFO("analysis descriptor -i 4: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah analysis descriptor: index 4 is outside 1-3 (the dataset has "
+                        "3 structures)"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "data", "write", "-d", "db.tadah", "-i", "3", "-o",
+                                "c.cell", "-f", "castep"});
+    INFO("data write -i 3: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(slurp("c.cell"), "S3"));
+  }
+}
+
+/* Pins: `tadah data print -i` and `tadah analysis descriptor -i` read only
+ * the selected structures: with S1's atom line 'Ta 0 0 0 abc 0 0' (not a
+ * number), data print -i 2 prints S2 and analysis descriptor -i 2 writes S2
+ * alone (exit 0); data print -i 1 exits 1 naming the file, structure 1 and
+ * 'abc'.
+ * Before the fix: every structure up to the largest index was read (and
+ * kept), so -i 2 exited 1 for S1's 'abc' ("DBFILE db.tadah: structure 1:
+ * ... 'abc' is not a finite number") in both commands. */
+TEST_CASE("Subcommand: data print and analysis descriptor -i read only the selected "
+          "structures",
+          "[TadahCLI][exit-status][data][index]") {
+  ScratchCwd cwd("index_selected_only");
+  {
+    std::ofstream os("db.tadah");
+    os << "S1\n1 1 1\n-1.0\n5 0 0\n0 5 0\n0 0 5\n0 0 0\n0 0 0\n0 0 0\n"
+          "Ta 0 0 0 abc 0 0\nTa 2.6 0.3 0.2 0 0 0\n\n"
+       << weighted_entry("S2", "1 1 1", "2.8 0.3 0.2", "0", "0");
+  }
+  std::ofstream("pot.tadah") << kPairPotential;
+  {
+    const CliRun r = print_indices({"2"});
+    INFO("data print -i 2: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(printed_labels(r.out) == std::vector<std::string>{"S2"});
+  }
+  {
+    const CliRun r = descriptor_indices({"2"});
+    INFO("analysis descriptor -i 2: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(descriptor_labels("d.out") == std::vector<std::string>{"S2"});
+  }
+  {
+    const CliRun r = print_indices({"1"});
+    const std::string rep = reported(r);
+    INFO("data print -i 1: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "DBFILE db.tadah: structure 1: "));
+    CHECK(contains(rep, "'abc'"));
+    CHECK(printed_labels(r.out).empty());
+  }
+}

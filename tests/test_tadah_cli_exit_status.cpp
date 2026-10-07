@@ -41,7 +41,8 @@
 // The [task-file] cases run `tadah --task` on a task file whose TASK lines
 // carry an inline comment, and on task files with a TASK line that has no
 // key line (an unknown name, GLOBAL included, is refused; a known one runs
-// on the GLOBAL keys); they run in every build.
+// on the GLOBAL keys), and on task files with a TASK line naming a group of
+// tasks (refused before any task runs); they run in every build.
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
@@ -2077,6 +2078,36 @@ TEST_CASE("Task file: tadah --task refuses an unknown task name on a TASK "
   CHECK(r.status == 1);
   CHECK(contains(rep, "Unknown task section \"BOGUS\""));
   CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+}
+
+/* Pins: `tadah --task` refuses a TASK line that names a group of tasks
+ * before any task runs: "TASK train" (CONFIG config.train) followed by "TASK
+ * data", "TASK analysis" or "TASK properties" exits 1 with 'TASK section
+ * "<NAME>" is a group of tasks, not a task', and no pot.tadah is written.
+ * Before the fix: the group names are blueprint tasks, so the check passed;
+ * the training ran (pot.tadah written) and the command then exited 1 with
+ * 'EngineFactory::create: No engine found for DATA' (ANALYSIS,
+ * PROPERTIES). */
+TEST_CASE("Task file: tadah --task refuses a TASK line naming a group of tasks "
+          "before any task runs",
+          "[TadahCLI][exit-status][task-file]") {
+  for (const std::string group : {"data", "analysis", "properties"}) {
+    INFO("TASK " << group);
+    ScratchCwd cwd("task_group_" + group);
+    write_ta_dimer_training();
+    std::ofstream("run.task") << "VERBOSE 0\n"
+                                 "TASK train\n"
+                                 "  CONFIG config.train\n"
+                                 "TASK " << group << "\n";
+    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    std::string upper = group;
+    for (char &ch : upper) ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+    CHECK(contains(rep, "TASK section \"" + upper + "\" is a group of tasks, not a task"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
 }
 
 /* Pins: `tadah --task` refuses "TASK global", a task the blueprint does not

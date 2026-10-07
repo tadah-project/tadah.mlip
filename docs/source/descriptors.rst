@@ -63,10 +63,14 @@ The layout is the same on every path (``tadah train``, ``predict``,
   requires ``BIAS true``: the weights fitted to the normalised descriptors
   are converted to weights of the raw descriptors, and the constant this
   moves goes into the intercepts. A linear potential with ``NORM true`` and
-  ``BIAS false``, which earlier versions wrote (their conversion took
-  descriptor component 0 for an intercept, so its energies and forces are
-  wrong), is refused when it predicts: retrain it with ``NORM false`` or
-  ``BIAS true``.
+  ``BIAS false``, which earlier versions wrote, is refused when it predicts:
+  retrain it with ``NORM false`` or ``BIAS true``. Its conversion had no
+  intercept column for the constant: ``M_KRR Kern_Linear`` (until 1.6.0) and
+  ``M_BLR BF_Linear`` (up to 1.2.0) took descriptor component 0 for an
+  intercept, so the energies and forces are wrong; ``M_BLR BF_Linear`` from
+  1.3.0-beta.1 (written by ``tadah hpo`` and the API; ``tadah train``
+  refused the configuration) dropped the constant, so the energies are off
+  by the same amount for every atom and the forces are right.
 * Only energies determine the constants (their force and stress rows are
   zero). The training structures with an energy weight (``eweight`` x
   ``EWEIGHT`` > 0) must therefore have compositions that determine the
@@ -78,7 +82,12 @@ The layout is the same on every path (``tadah train``, ``predict``,
   reference energy), add structures of other compositions (for example of
   the pure elements, or an isolated atom of each species), or pin
   intercepts with ``FIXINDEX``/``FIXWEIGHT`` (the weights the message
-  names). A model without intercept columns (``Kern_RBF``) is not refused,
+  names). ``tadah train`` checks before it computes any descriptor, ``tadah
+  hpo`` at startup. A non-linear kernel's intercepts are those of the basis
+  its fit draws, which starts with the intercept vectors (see
+  :ref:`Non-linear models <nonlinear_models>`), whatever basis a potential
+  used as the training configuration holds: a dot-product kernel's weights
+  1 to N. A model without intercept columns (``Kern_RBF``) is not refused,
   and neither is ``M_KRR`` implementation ``2``, whose energies-only solve
   penalises every weight.
 * With ``BF_Polynomial2`` the products of two different intercept columns

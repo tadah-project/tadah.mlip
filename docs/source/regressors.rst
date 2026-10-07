@@ -95,7 +95,10 @@ of each, and allows at most the number of training structures plus
 ``SBASIS`` and the basis vectors (``BASIS``) with the weights; ``tadah
 predict``, ``tadah hpo`` and ``pair_style tadah`` refuse, naming the keys,
 a potential without them, with a number of weights other than ``SBASIS``,
-or with basis vectors of another length than the descriptor's.
+or with basis vectors of another length than the descriptor's. Training
+draws the basis anew and reads neither ``WEIGHTS`` nor ``BASIS``, so a
+potential retrains from its own file with any ``SBASIS`` (``tadah train -c
+pot.tadah`` with a ``DBFILE``).
 
 **Intercepts and the ridge.** ``LAMBDA`` penalises every weight but those
 of the model's intercept columns, the columns that depend on an atom only

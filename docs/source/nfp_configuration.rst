@@ -473,11 +473,15 @@ potential/configuration.``).  Before 1.6.0 startup printed a WARNING
 first training evaluation") or nothing, every evaluation failed, and the
 run ended "no evaluation produced a usable loss".
 The weights of ``M_KRR`` with a non-linear kernel belong to its ``SBASIS``
-basis vectors (weight 1 to the bias vector :math:`e_0`, the others to
-descriptors drawn from the training data, see
-:ref:`Non-linear models <nonlinear_models>`): startup checks ``FIXINDEX``
-against ``SBASIS``, a training ``DBFILE`` is required, and every
-evaluation trains, also when ``FIXINDEX`` pins every weight.
+basis vectors (weights 1 to :math:`n` to the intercept vectors
+:math:`e_0 \dots e_{n-1}`, one per ``ATOM`` species with ``BIAS true`` and
+:math:`e_0` alone otherwise, the others to descriptors drawn from the
+training data, see :ref:`Non-linear models <nonlinear_models>`): startup
+checks ``FIXINDEX`` against ``SBASIS``, refuses an ``SBASIS`` below
+:math:`n + 1` (every fit would refuse it), requires a training ``DBFILE``,
+and every evaluation trains, also when ``FIXINDEX`` pins every weight. The
+basis is drawn anew in every fit: the ``BASIS`` and ``WEIGHTS`` of a ``-c``
+potential are not read.
 
 **Mixed mode** — LS-fit most weights, hold one, search another.  With a
 5-weight model: weights 1–3 LS-fitted, weight 4 held at 0.75, weight 5

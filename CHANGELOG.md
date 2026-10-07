@@ -26,6 +26,7 @@ versioning follows [SemVer](https://semver.org/) at the umbrella level.
 
 ### Fixed
 - `[core]` **A `CONFIG` line with an inline comment** (`CONFIG config.train   # nested config`) includes the file it names; `tadah train -c`, `tadah --task` and every other reader stopped with `Failed to open config file: config.train   `, the blanks before the `#` kept in the path. Comments on the other keys were not affected.
+- `[mlip]` **A comment on a `TASK` line of a task file** (`TASK train   # first task`) is not part of the task name; `tadah --task` stopped with `Unknown task section "TRAIN.#.first.task"`, the words of the comment joined to the name. The *Quick Start* hint that comments run to the end of the line now says that this holds on a `TASK` line too. Tests: `test_user_config_sections.cpp` (MLIP) and `Task file: tadah --task runs TASK lines that carry an inline comment` (test_tadah).
 
 ## [1.6.0] — 2026-09-25
 

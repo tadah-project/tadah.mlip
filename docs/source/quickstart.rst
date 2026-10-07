@@ -175,7 +175,8 @@ Hints
   from **1**.
 
 * Comments start with ``#`` and run to the end of the line, just like in
-  ordinary config files.
+  ordinary config files, on a ``TASK`` line too
+  (``TASK train   # first task``).
 
 .. _units:
 

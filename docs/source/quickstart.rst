@@ -273,6 +273,11 @@ The dataset has the following structure:
   machine-learned force field computed (``ML_MODE = train``; their blocks
   are marked ``ML``) are not DFT data: ``tadah data convert`` skips them
   and says so in one warning.
+- The six lines after ``ENERGY`` hold exactly three numbers each, three
+  cell lines and then three stress lines, as shown; a structure whose cell or
+  stress is written otherwise (a cell on one line of nine numbers, a fourth
+  number on a line, a blank line inside the blocks) is refused, naming the
+  file, the structure and the line.
 - Each stress tensor row contains 3 numbers: the **Cauchy stress** in
   eV Å⁻³, **positive under tension** — :math:`\sigma = \frac{1}{V}
   \frac{\partial E}{\partial \varepsilon}`, what the model predicts and

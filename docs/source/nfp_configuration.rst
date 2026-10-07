@@ -2056,7 +2056,9 @@ one a finite number (``MAXTIME`` a positive one).
        line 8: the OPTIMIZER block names no optimiser: LIB and ALGO are not
        set``.
    * - ``ALGO`` (string)
-     - Algorithm (see table below).
+     - Algorithm (see table below).  ``NLOPT:LN_NEWUOA_BOUND`` is refused,
+       at the same lines, naming the phase and what to use instead (the
+       ``NLOPT`` row of the table below).
    * - ``MAXEVAL`` (integer, 1 to 2\ :sup:`31` − 1)
      - Maximum number of evaluations: an integer from 1 to 2147483647,
        the ``int`` NLopt counts evaluations in.  ``0`` or a larger value
@@ -2364,6 +2366,35 @@ one a finite number (``MAXTIME`` a positive one).
        used by ``DLIB:BFGS`` and the Ceres drivers; like every
        gradient-based backend except ``DLIB:BFGS`` they are rejected
        when the configuration has ``PC_LAMMPS`` lines.
+
+       ``LN_NEWUOA_BOUND`` is refused in every phase (the
+       ``STRATEGY``-level optimiser, ``MULTISTART``, the ``PRESTAGE``
+       exploration and refinement, ``INNER``): at ``ENDOPTIMIZER`` for
+       the ``STRATEGY``-level optimiser, whether the ``STRATEGY`` block,
+       a ``REFINE`` block or the ``OPTIMIZER`` block itself names it, at
+       ``ENDEXPLORE`` for the exploration and at ``ENDINNER`` for an
+       ``INNER`` block.  NLopt 2.10 plans each of its steps with a
+       nested ``LD_MMA`` run that has no time limit and sees no stop
+       request, and once a non-finite value reaches its model each step
+       takes about 10–60 s without evaluating the loss.  That happens
+       after every stop ``tadah hpo`` makes through the objective
+       (Ctrl-C, SIGTERM, a ``RESTART`` stagnation stop, an error that ends
+       the run: the objective then returns ``HUGE_VAL``, NLopt's
+       convention for a forced stop) from a run's (2n+1)-th evaluation
+       on, n being the number of ``OPTIM`` dimensions (NEWUOA first
+       evaluates 2n+1 starting points, and a stop on one of the first 2n
+       returns at once), and when the loss barely changes over the trust
+       region; Ctrl-C, ``MAXTIME`` and ``RESTART`` wait that long.
+       Before 1.6.0 it was accepted.  Use ``LN_BOBYQA``, Powell's
+       bound-constrained successor of NEWUOA, whose ``STEP``
+       rescales each dimension instead of setting one radius
+       (:ref:`search_space_scaling`), or ``LN_NEWUOA`` where the search
+       may leave the ``OPTIM`` box (it ignores the bounds):
+
+       .. code-block:: none
+
+          HPOEngine error: Error on line 10: the STRATEGY-level optimiser: NLOPT:LN_NEWUOA_BOUND is refused: NLopt 2.10 plans each LN_NEWUOA_BOUND step with a nested LD_MMA run that has no time limit and sees no stop request, ... Use NLOPT:LN_BOBYQA, Powell's bound-constrained successor of NEWUOA (its STEP rescales each dimension instead of setting one radius), or NLOPT:LN_NEWUOA where the search may leave the OPTIM box
+          Line: ENDOPTIMIZER
 
        .. note::
 
@@ -3504,9 +3535,9 @@ the next start runs (:ref:`restart_decorator`).
 *global* backend that consumes a single starting point: every NLopt
 algorithm whose name starts with ``G`` (``GN_*``, ``GD_*``,
 ``G_MLSL*``), ``TADAH:RANDOM``, ``TADAH:GRID``, the ``TADAH:ANNEAL``
-family and ``ASA:ASA``.  Local optimisers (``NLOPT:LN_*``/``LD_*``,
-``DLIB:BFGS``, CERES) and the multi-seed global ``DLIB:GFS`` are
-accepted; ``DLIB:GFS`` consumes all points in one run.  Use ``TYPE
+family and ``ASA:ASA``.  Local optimisers (``NLOPT:LN_*``/``LD_*``
+but the refused ``LN_NEWUOA_BOUND``, ``DLIB:BFGS``, CERES) and the
+multi-seed global ``DLIB:GFS`` are accepted; ``DLIB:GFS`` consumes all points in one run.  Use ``TYPE
 PLAIN`` to run a single-seed global once.  The check is a startup
 error, raised before any data is loaded or any evaluation runs.  The
 message lists the first accepted backends in alphabetical order (the
@@ -3514,7 +3545,7 @@ list depends on the libraries the build includes):
 
 .. code-block:: none
 
-   HPOEngine error: STRATEGY TYPE MULTISTART cannot run TADAH:ANNEAL: it is a global optimiser that consumes a single starting point, so restarting it from each INIT point is rejected for any N_STARTS. Use a local or multi-seed optimiser (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, DLIB:GFS, ... (24 more)), or STRATEGY TYPE PLAIN to run TADAH:ANNEAL once.
+   HPOEngine error: STRATEGY TYPE MULTISTART cannot run TADAH:ANNEAL: it is a global optimiser that consumes a single starting point, so restarting it from each INIT point is rejected for any N_STARTS. Use a local or multi-seed optimiser (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, DLIB:GFS, ... (23 more)), or STRATEGY TYPE PLAIN to run TADAH:ANNEAL once.
 
 TYPE PRESTAGE — staged global → local
 .....................................

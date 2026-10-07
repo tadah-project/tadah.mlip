@@ -885,8 +885,10 @@ such a value replaced the checked, reported limit.
    ``(script, name)`` and propagated as ``${<name>}`` into
    the cold (no-``--hotvar``) ``PC_LAMMPS`` scripts that use it, which
    run in **phase B**.  HPO injects the value as ``variable <name> equal
-   <value>`` before each script that reads it (and the warm-start seed
-   before the hot script).  LAMMPS refuses that when the name is already
+   <value>`` before each cold script that reads it (``${<name>}`` or
+   ``v_<name>`` in its text, ``include`` files included; a cold script
+   gets no hot value it does not read), and the warm-start seed before
+   the hot script.  LAMMPS refuses that when the name is already
    another style in the script's LAMMPS instance — ``--invar <name>`` or
    ``-var <name>`` on the line makes it an index-style variable — and
    then the script does not run: it fails as a failed run does, journalled
@@ -897,7 +899,12 @@ such a value replaced the checked, reported limit.
       PC_LAMMPS task failed (cold.in, occurrence 1): injecting `variable hot_a0 equal 3.25` before the script: ERROR: Cannot redefine variable hot_a0 with a different style (src/variable.cpp:478)
 
    Before 1.6.0 the refusal was ignored and the script ran on the value
-   it had.
+   it had.  A cold script that reads a hot value its hot script did not
+   produce — that script's LAMMPS instance could not be created, a
+   failure that does not abort the evaluation (:ref:`pc_lammps_readback`)
+   — does not run either, and its variables take its ``--failscore``; it
+   used to run without the value, or in a cached instance on an earlier
+   evaluation's.
    ``<initial>`` is optional; when omitted the midpoint of
    ``[<min>, <max>]`` seeds the first iteration.  ``<min>``, ``<max>``
    and ``<initial>`` must be finite numbers: a token after ``<max>``
@@ -1060,7 +1067,9 @@ temporary file: …``, e.g. when ``TMPDIR`` names no directory).  Such a
 failure gives that script's variables their ``--failscore`` and the
 evaluation the loss ``FAILSCORE`` (under ``FAILSCORE_GRADING`` a constant
 failure loss, not graded: :ref:`failscore_grading`), but does not abort
-the evaluation; before 1.6.0 it left nothing in the journal.  Each kind of line is
+the evaluation: the other scripts run, but for a cold script that reads a
+hot value the failed script did not produce (``--hotvar``); before 1.6.0
+it left nothing in the journal.  Each kind of line is
 written for the occurrences 1, 2, 4, 8, … of a run.  The LAMMPS instance
 that raised the error is discarded and created afresh for the next
 evaluation.  To read a thermo keyword after the run, list it in
@@ -4981,16 +4990,21 @@ can short-circuit the expensive minimisation:
    of ``examples/common/lammps/Ecoh.in``). HPO injects
    ``hot_a0`` as an ``equal``-style variable, so this is a same-style
    overwrite that LAMMPS accepts without a prior ``variable delete``.
-   A ``string``-style readback clashes with the injected variable on
-   the next iteration ("variable already exists with a different
-   style") and the injected value is then silently ignored.
+   A ``string``-style readback makes the next evaluation's injection
+   fail: LAMMPS refuses to redefine the string as an ``equal``-style
+   variable (``Cannot redefine variable hot_a0 with a different
+   style``), so the hot script does not run, its evaluation fails and the
+   journal says so (``--hotvar``, :ref:`pc_lammps_options`); the instance
+   is then discarded, and the evaluation after it starts on a fresh one.
+   Before 1.6.0 the refusal was ignored and the script ran on the value
+   its instance had kept.
 
 HPO injects ``${hot_a0}`` as an ``equal``-style variable on every call
 (``<initial>`` from ``--hotvar`` on the first call, the cached value
 thereafter), captures the script's ``${hot_a0}`` after each successful
 run, and reuses it on the next evaluation. The variable is then
-propagated as ``${hot_a0}`` into every cold (no-``--hotvar``)
-``PC_LAMMPS`` script in phase B. When ``WARM`` reads a ``pot.tadah``
+propagated into the cold (no-``--hotvar``) ``PC_LAMMPS`` scripts that
+read it (``${hot_a0}`` or ``v_hot_a0``), which run in phase B. When ``WARM`` reads a ``pot.tadah``
 whose writer dumped ``# HOT_A0 <script> <a0>`` lines, the cache is
 primed automatically; ``[HPO] WARM: primed warmstart cache with N
 HOT_A0 entry(ies)`` confirms how many lines were absorbed.

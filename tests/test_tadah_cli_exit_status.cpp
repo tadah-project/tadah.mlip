@@ -77,6 +77,7 @@
 #include <filesystem>
 #include <set>
 #include <initializer_list>
+#include <iomanip>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -4432,13 +4433,21 @@ TEST_CASE("Subcommand: train --uncertainty lists the standard deviation of "
  * observations) for 4 weights at LAMBDA 0: the fit determines 2
  * directions (gamma = 2), so the noise variance, and with it the weight
  * covariance, is undefined. `tadah train --uncertainty` exits 1 before
- * writing pot.tadah, naming --uncertainty and the 2 observations;
- * without --uncertainty it exits 0 and writes a potential without WCOV and
- * WNOISE, with a WARNING that no weight covariance was computed.
+ * writing pot.tadah, naming --uncertainty, the 2 observations and the
+ * remedy of that reason ("add data with a non-zero weight"); without
+ * --uncertainty it exits 0 and writes a potential without WCOV and WNOISE,
+ * with a WARNING that no weight covariance was computed; `tadah predict
+ * --error` with that potential (OALGO 3) exits 1 naming WCOV and the ways
+ * an OALGO 3 potential has none (too few "observations", "SIGMA" of an
+ * earlier version, "FIXWEIGHT"), not "retrain the potential with OALGO 3".
  * Before the fix: --uncertainty wrote pot.tadah and then exited 1 ("Sigma
  * matrix is not computed.", tested on LAMBDA 0); without it the potential
  * had a SIGMA of inf and nan values (1/s^2 of the undetermined directions,
- * s = 0) and no WARNING. */
+ * s = 0) and no WARNING. Before the review fix: the --uncertainty message
+ * appended "Add observations (data with a non-zero weight)" to whatever
+ * the reason was, and predict --error said "`tadah train` writes WCOV and
+ * WNOISE for a fit with OALGO 3; retrain the potential with OALGO 3" (the
+ * same configuration retrained gives the same potential). */
 TEST_CASE("Subcommand: train --uncertainty refuses a fit without a noise "
           "estimate before writing the potential",
           "[TadahCLI][train][uncertainty]") {
@@ -4461,6 +4470,7 @@ TEST_CASE("Subcommand: train --uncertainty refuses a fit without a noise "
     CHECK(t.status == 1);
     CHECK(contains(rep, "--uncertainty"));
     CHECK(contains(rep, "2 observations"));
+    CHECK(contains(rep, "add data with a non-zero weight"));
     CHECK_FALSE(std::filesystem::exists("pot.tadah"));
   }
   {
@@ -4475,6 +4485,130 @@ TEST_CASE("Subcommand: train --uncertainty refuses a fit without a noise "
     CHECK(line_tokens(pot, "WCOV").empty());
     CHECK(line_tokens(pot, "WNOISE").empty());
     CHECK(line_tokens(pot, "SIGMA").empty());
+    CHECK(line_tokens(pot, "OALGO") == std::vector<std::string>{"OALGO", "3"});
+  }
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah", "--error"});
+    const std::string rep = reported(p);
+    INFO("predict --error: status " << p.status << "\n" << rep);
+    CHECK(p.status == 1);
+    CHECK(contains(rep, "WCOV"));
+    CHECK(contains(rep, "observations"));
+    CHECK(contains(rep, "SIGMA"));
+    CHECK(contains(rep, "FIXWEIGHT"));
+    CHECK_FALSE(contains(rep, "retrain the potential with OALGO 3"));
+  }
+}
+
+/* Pins: a fit without energies (EWEIGHT 0, FORCE true, OALGO 3, LAMBDA 0:
+ * 18 force components of 3 dimers for 4 weights) trains with
+ * --uncertainty (exit 0, weights.tadah with 4 rows), its potential has
+ * WCOV and a WNOISE with F and no E, and the training log has a WARNING
+ * naming EWEIGHT 0 and --error; `tadah predict` with it exits 0, and
+ * `tadah predict -F --error`, `tadah predict --error` and `tadah
+ * properties pairwise --error` exit 1 naming the energies, WNOISE and
+ * EWEIGHT 0 (every prediction has an energy, and the fit has no noise
+ * variance of energies), not "retrain the potential with OALGO 3" (it has
+ * OALGO 3).
+ * Before the fix: train exited 0 without the WARNING, and every --error
+ * run exited 1 with "WNOISE lists no E (energies): every prediction has an
+ * energy. `tadah train` writes WCOV and WNOISE for a fit with OALGO 3;
+ * retrain the potential with OALGO 3." (the reader refused what the writer
+ * wrote, and its remedy did not apply). */
+TEST_CASE("Subcommand: predict --error refuses a potential fitted without "
+          "energies, naming EWEIGHT 0",
+          "[TadahCLI][predict][uncertainty]") {
+  ScratchCwd cwd("error_without_energies");
+  std::ofstream("db.tadah") << retrain_dataset();
+  // VERBOSE 1: the WARNING below is a Logger WARNING.
+  std::ofstream("config.train") << replace_key_line(
+      retrain_config("M_BLR BF_Linear", "LAMBDA 0\nOALGO 3\nEWEIGHT 0\n"),
+      "VERBOSE", "VERBOSE 1");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "pot.tadah", "--uncertainty"});
+    const std::string rep = reported(t);
+    INFO("train --uncertainty: status " << t.status << "\n" << rep);
+    REQUIRE(t.status == 0);
+    CHECK(weights_rows("weights.tadah").size() == 4u);
+    CHECK(contains(rep, "WARNING"));
+    CHECK(contains(rep, "EWEIGHT 0"));
+    CHECK(contains(rep, "--error"));
+  }
+  const std::string pot = slurp("pot.tadah");
+  CHECK(line_numbers(pot, "WCOV").size() == 17u);
+  const std::vector<std::string> noise = line_tokens(pot, "WNOISE");
+  REQUIRE(noise.size() == 3u);
+  CHECK(noise[1] == "F");
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah", "-F"});
+    INFO("predict -F: status " << p.status << "\n" << reported(p));
+    CHECK(p.status == 0);
+  }
+  const std::vector<std::vector<std::string>> runs = {
+      {"tadah", "predict", "-p", "pot.tadah", "-d", "db.tadah", "-F", "--error"},
+      {"tadah", "predict", "-p", "pot.tadah", "-d", "db.tadah", "--error"},
+      {"tadah", "properties", "pairwise", "-p", "pot.tadah", "--range", "2.0",
+       "5.0", "4", "--atompair", "Ta", "Ta", "-o", "pw.dat", "--error"}};
+  for (const auto& args : runs) {
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO(args[1] << " " << args[2] << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "energies"));
+    CHECK(contains(rep, "WNOISE"));
+    CHECK(contains(rep, "EWEIGHT 0"));
+    CHECK_FALSE(contains(rep, "retrain the potential with OALGO 3"));
+  }
+}
+
+/* Pins: `tadah train --uncertainty` with M_KRR implementation 2 (MODEL
+ * M_KRR Kern_RBF 2, MPARAMS 1.0, SBASIS 3, OALGO 3, energies only) exits 1
+ * before training ("Training start" is not in the VERBOSE 2 log) and
+ * writes neither pot.tadah nor weights.tadah, naming --uncertainty,
+ * implementation 2 and the remedy "MODEL M_KRR <kernel> 1", not "Add
+ * observations"; without --uncertainty the same configuration trains
+ * (exit 0, a potential with 3 WEIGHTS and no WCOV).
+ * Before the fix: TrainEngine::validate checked only OALGO, so the whole
+ * fit ran ("Training start", the kernel matrix solved) and then exited 1:
+ * "no weight covariance: M_KRR implementation 2 ... computes no weight
+ * covariance ... Add observations (data with a non-zero weight), or train
+ * without --uncertainty." */
+TEST_CASE("Subcommand: train --uncertainty refuses M_KRR implementation 2 "
+          "before training",
+          "[TadahCLI][train][uncertainty]") {
+  ScratchCwd cwd("uncertainty_krr2");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.train") << replace_key_line(
+      replace_key_line(
+          retrain_config("M_KRR Kern_RBF 2",
+                         "LAMBDA 1e-3\nOALGO 3\nMPARAMS 1.0\nSBASIS 3\n"),
+          "FORCE", "FORCE false"),
+      "VERBOSE", "VERBOSE 2");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "pot.tadah", "--uncertainty"});
+    const std::string rep = reported(t);
+    INFO("--uncertainty: status " << t.status << "\n" << rep);
+    CHECK(t.status == 1);
+    CHECK(contains(rep, "--uncertainty"));
+    CHECK(contains(rep, "implementation 2"));
+    CHECK(contains(rep, "MODEL M_KRR <kernel> 1"));
+    CHECK_FALSE(contains(rep, "Add observations"));
+    CHECK_FALSE(contains(rep, "Training start"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+    CHECK_FALSE(std::filesystem::exists("weights.tadah"));
+  }
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "pot.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    CHECK(t.status == 0);
+    const std::string pot = slurp("pot.tadah");
+    CHECK(line_numbers(pot, "WEIGHTS").size() == 3u);
+    CHECK(line_tokens(pot, "WCOV").empty());
   }
 }
 
@@ -4547,16 +4681,61 @@ TEST_CASE("Subcommand: properties pairwise gives every block's energy per "
   }
 }
 
+namespace {
+
+/* The dimers `tadah properties pairwise --range a b n --atompair Ta Ta`
+ * evaluates, as a dataset: two Ta atoms at (0, 0, 0) and (r, 0, 0) in the
+ * cubic cell of side 4 max(b, RCUTMAX) = 24 A it uses, energy 0. */
+std::string pairwise_dimers(const std::vector<double>& r) {
+  std::ostringstream os;
+  os << std::setprecision(17);
+  for (double x : r)
+    os << "D" << x << "\n1 1 1\n0.0\n24 0 0\n0 24 0\n0 0 24\n"
+       << "0 0 0\n0 0 0\n0 0 0\nTa 0 0 0 0 0 0\nTa " << x
+       << " 0 0 0 0 0\n\n";
+  return os.str();
+}
+
+/* `pot` with the WCOV entries (a, b) of the 0-based weights a or b in
+ * [lo, hi) set to 0. */
+std::string zero_wcov_block(const std::string& pot, std::size_t lo,
+                            std::size_t hi) {
+  const std::vector<double> w = line_numbers(pot, "WCOV");
+  const std::size_t n = static_cast<std::size_t>(w.at(0));
+  REQUIRE(w.size() == 1 + n * n);
+  std::ostringstream line;
+  line << std::setprecision(17) << "WCOV " << n;
+  for (std::size_t col = 0; col < n; ++col)
+    for (std::size_t row = 0; row < n; ++row) {
+      const bool zero = (row >= lo && row < hi) || (col >= lo && col < hi);
+      line << " " << (zero ? 0.0 : w[1 + n * col + row]);
+    }
+  return replace_key_line(pot, "WCOV", line.str());
+}
+
+}  // namespace
+
 /* Pins: `tadah properties pairwise --error` with the two-body plus
- * many-body potential (OALGO 3) exits 0 and gives every block an "Error
+ * many-body potential (OALGO 3; weights 1-4 the D2_BP columns, 5-9 the
+ * DM_mBlipEnv ones, BIAS false) exits 0 and gives every block an "Error
  * eV/atom" column of standard deviations of the energy per atom, none
  * negative: the total's sqrt(phi^T WCOV phi + WNOISE_E)/2, each part's
  * sqrt(phi_p^T WCOV phi_p)/2 with phi_p the part's columns (no noise: the
- * parts are not observations). Beyond both cutoffs (r = 5.5 and 6 A) phi
- * is 0: the parts' errors are 0 and the total's is sqrt(WNOISE_E)/2 (1e-12
- * relative), WNOISE_E from pot.tadah.
+ * parts are not observations). Each is checked: (a) the total's error at
+ * every distance is the energy error per atom `tadah predict --error`
+ * gives the same dimers (error.pred, 1e-10 relative); (b) with WCOV's
+ * many-body block (rows and columns 5-9) set to 0 the many-body part's
+ * error is 0 at every distance, the two-body part's is the one of the
+ * potential (1e-10 relative) and the total's square is the two-body
+ * part's square plus WNOISE_E/4; (c) with the two-body block (1-4) set to
+ * 0, the same with the parts exchanged. Beyond both cutoffs (r = 5.5 and 6
+ * A) phi is 0: the parts' errors are 0 and the total's is sqrt(WNOISE_E)/2
+ * (1e-12 relative), WNOISE_E from pot.tadah.
  * Before the fix: exit 1, "ColumnLayout: total_cols=4 disagrees with
- * DSIZE=9" (the parts' contexts carried the full potential's DSIZE). */
+ * DSIZE=9" (the parts' contexts carried the full potential's DSIZE).
+ * (This case asserted only r >= 0 inside the cutoffs until the review of
+ * WCOV and WNOISE: a part error computed from the full descriptor, or 0,
+ * passed. Checked against such a mutation, (b) and (c) fail.) */
 TEST_CASE("Subcommand: properties pairwise --error on a two-body plus "
           "many-body potential",
           "[TadahCLI][properties][uncertainty]") {
@@ -4567,25 +4746,39 @@ TEST_CASE("Subcommand: properties pairwise --error on a two-body plus "
                               "pot.tadah"});
   INFO("train: status " << t.status << "\n" << reported(t));
   REQUIRE(t.status == 0);
-  const std::vector<std::string> noise = line_tokens(slurp("pot.tadah"), "WNOISE");
+  const std::string pot = slurp("pot.tadah");
+  REQUIRE(line_numbers(pot, "WEIGHTS").size() == 9u);
+  const std::vector<std::string> noise = line_tokens(pot, "WNOISE");
   REQUIRE(noise.size() >= 3u);
   REQUIRE(noise[1] == "E");
   const double wnoise_e = std::stod(noise[2]);
-  const CliRun p = run_tadah({"tadah", "properties", "pairwise", "-p",
-                              "pot.tadah", "--range", "2.0", "6.0", "9",
-                              "--atompair", "Ta", "Ta", "-o", "pw.dat",
-                              "--error"});
-  INFO("pairwise --error: status " << p.status << "\n" << reported(p));
-  REQUIRE(p.status == 0);
-  auto blocks = pairwise_blocks("pw.dat");
+  using Blocks = std::map<std::string, std::vector<std::vector<double>>>;
+  auto pairwise = [](const std::string& file) {
+    const CliRun p = run_tadah({"tadah", "properties", "pairwise", "-p",
+                                file, "--range", "2.0", "6.0", "9",
+                                "--atompair", "Ta", "Ta", "-o", "pw.dat",
+                                "--error"});
+    INFO("pairwise --error " << file << ": status " << p.status << "\n"
+                             << reported(p));
+    REQUIRE(p.status == 0);
+    Blocks b = pairwise_blocks("pw.dat");
+    for (const char* title : {"Total potential", "Two-body potential",
+                              "Many-body potential"}) {
+      INFO(title);
+      REQUIRE(b[title].size() == 9u);
+      for (const auto& r : b[title]) REQUIRE(r.size() == 3u);
+    }
+    return b;
+  };
+  Blocks full = pairwise("pot.tadah");
+  const auto& tot = full["Total potential"];
+  const auto& b2 = full["Two-body potential"];
+  const auto& mb = full["Many-body potential"];
   for (const char* title : {"Total potential", "Two-body potential",
                             "Many-body potential"}) {
     INFO(title);
-    const auto& rows = blocks[title];
-    REQUIRE(rows.size() == 9u);
-    for (const auto& r : rows) {
+    for (const auto& r : full[title]) {
       INFO("r = " << r[0]);
-      REQUIRE(r.size() == 3u);
       CHECK(r[2] >= 0.0);
       if (r[0] > 5.25) {
         if (std::string(title) == "Total potential")
@@ -4593,6 +4786,43 @@ TEST_CASE("Subcommand: properties pairwise --error on a two-body plus "
         else
           CHECK(r[2] == 0.0);
       }
+    }
+  }
+
+  // (a) the total against tadah predict --error on the same dimers
+  std::vector<double> rs;
+  for (const auto& r : tot) rs.push_back(r[0]);
+  std::ofstream("dimers.tadah") << pairwise_dimers(rs);
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "dimers.tadah", "--error"});
+    INFO("predict --error: status " << p.status << "\n" << reported(p));
+    REQUIRE(p.status == 0);
+    const std::vector<double> err = column_values("error.pred", 1);
+    REQUIRE(err.size() == 9u);
+    for (std::size_t j = 0; j < 9; ++j) {
+      INFO("r = " << rs[j]);
+      CHECK(tot[j][2] == Approx(err[j]).epsilon(1e-10));
+    }
+  }
+
+  // (b), (c) one part's block of WCOV set to 0
+  for (int keep_2b = 1; keep_2b >= 0; --keep_2b) {
+    INFO((keep_2b ? "many-body block of WCOV 0" : "two-body block of WCOV 0"));
+    std::ofstream("pot_zero.tadah")
+        << (keep_2b ? zero_wcov_block(pot, 4, 9) : zero_wcov_block(pot, 0, 4));
+    Blocks z = pairwise("pot_zero.tadah");
+    const auto& kept = keep_2b ? b2 : mb;
+    const auto& z_tot = z["Total potential"];
+    const auto& z_kept = z[keep_2b ? "Two-body potential" : "Many-body potential"];
+    const auto& z_zero = z[keep_2b ? "Many-body potential" : "Two-body potential"];
+    for (std::size_t j = 0; j < 9; ++j) {
+      INFO("r = " << rs[j]);
+      CHECK(z_zero[j][2] == 0.0);
+      CHECK(z_kept[j][2] == Approx(kept[j][2]).epsilon(1e-10).margin(1e-300));
+      CHECK(z_tot[j][2] * z_tot[j][2] ==
+            Approx(z_kept[j][2] * z_kept[j][2] + wnoise_e / 4.0)
+                .epsilon(1e-10));
     }
   }
 }

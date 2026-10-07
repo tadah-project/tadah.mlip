@@ -2140,6 +2140,34 @@ TEST_CASE("Subcommand: train with BIAS true and two species writes one "
   CHECK(contains(rep, "start at index 3"));
 }
 
+/* Pins: `tadah train` with M_BLR BF_Polynomial2, BIAS true on the Nb-Ta
+ * cells (DSIZE 5: 15 weights, the products (i,ii), i <= ii) and FIXINDEX 4
+ * prints a WARNING naming the function's intercept weights, "weights 1 (Nb)
+ * and 6 (Ta)" (the products (0,0) and (1,1)), and not the linear models'
+ * "descriptor weights start at index 3"; it trains (exit 0).
+ * Before the fix: the WARNING said "weights 1 to 2 are the per-species
+ * intercepts ... the descriptor weights start at index 3", wrong for
+ * BF_Polynomial2, whose weight 2 is the Nb x Ta product. */
+TEST_CASE("Subcommand: train warns of FIXINDEX with BIAS true naming the "
+          "intercept weights of BF_Polynomial2",
+          "[TadahCLI][train][bias]") {
+  ScratchCwd cwd("bias_poly2_fixindex");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  std::string keys = kNbTaKeys;
+  keys.replace(keys.find("MODEL M_BLR BF_Linear"), 21,
+               "MODEL M_BLR BF_Polynomial2");
+  std::ofstream("config") << "DBFILE db.tadah\n" << keys
+                          << "FIXINDEX 4\nFIXWEIGHT 0.05\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                              "pot.tadah"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 0);
+  CHECK(contains(rep, "FIXINDEX with BIAS true"));
+  CHECK(contains(rep, "weights 1 (Nb) and 6 (Ta)"));
+  CHECK_FALSE(contains(rep, "start at index 3"));
+}
+
 /* Pins: a two-species BIAS potential with one intercept column shared by
  * the species (1 + 3 WEIGHTS, as tadah trained it before 1.6.0):
  * `tadah predict` exits 1 without writing energy.pred, naming WEIGHTS,

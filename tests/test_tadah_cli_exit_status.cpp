@@ -29,6 +29,9 @@
 // structure with two atoms at the same position before they predict, train
 // or evaluate, naming the structure and the atoms (NNFinder's refusal). The
 // predict and train cases run in every build, the hpo case needs NFP.
+//
+// The [task-file] case runs `tadah --task` on a task file whose TASK lines
+// carry an inline comment; it runs in every build.
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
@@ -1988,4 +1991,48 @@ TEST_CASE("Subcommand: analysis dataset_stats --close-contact lists the "
   const auto r_min = stats_pair_r_min(slurp("stats.tadah"), "Ta", "Ta");
   REQUIRE(r_min);
   CHECK(*r_min == 0.0);
+}
+
+/* ---- [task-file]: `tadah --task` ------------------------------------- */
+
+/* Pins: `tadah --task` runs a task file whose TASK lines carry an inline
+ * comment, as the Quick Start's task file may ("Comments start with # and
+ * run to the end of the line"): "TASK       train          # First task:
+ * training" (after blanks) and "TASK       predict\t# Second task:
+ * prediction" (after a tab) train a D2_BP pair potential on three Ta dimers
+ * and predict with it: exit 0, pot.tadah written with its WEIGHTS, and
+ * energy.pred with one prediction per structure.
+ * Before the fix: exit 1 with 'Unknown task section
+ * "TRAIN.#.first.task:.training"' (the words of the comment joined to the
+ * task name) before any task ran, so the status and message CHECKs failed
+ * and the REQUIRE on pot.tadah stopped the case. */
+TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment",
+          "[TadahCLI][exit-status][task-file]") {
+  ScratchCwd cwd("task_comment");
+  std::ofstream("db.tadah")
+      << weighted_entry("S1", "1 1 1", "2.60 0.40 0.30", "0", "0")
+      << weighted_entry("S2", "1 1 1", "3.10 0.20 0.50", "0", "0")
+      << weighted_entry("S3", "1 1 1", "3.70 0.10 0.20", "0", "0");
+  std::ofstream("config.train")
+      << "DBFILE db.tadah\nATOM Ta\nWATOM 73\nINIT2B true\nINITMB false\n"
+         "TYPE2B D2_BP 4 4 Ta Ta\nCGRID2B 2.5 3.0 3.5 4.0\n"
+         "SGRID2B 0.5 0.5 0.5 0.5\nRCTYPE2B Cut_Cos\nRCUT2B 4.5\n"
+         "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
+         "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+  std::ofstream("run.task")
+      << "VERBOSE    0                  # global default\n"
+         "TASK       train          # First task: training\n"
+         "  CONFIG     config.train       # the training setup\n"
+         "TASK       predict\t# Second task: prediction\n"
+         "  DBFILE     db.tadah           # prediction dataset\n"
+         "  POTENTIAL  pot.tadah          # same as CLI -p/--potential\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 0);
+  CHECK_FALSE(contains(rep, "Unknown task section"));
+  REQUIRE(std::filesystem::exists("pot.tadah"));
+  CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS").size() == 5u);  // key + 4
+  REQUIRE(std::filesystem::exists("energy.pred"));
+  CHECK(predicted_values("energy.pred").size() == 3u);
 }

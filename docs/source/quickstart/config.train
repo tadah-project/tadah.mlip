@@ -1,6 +1,23 @@
-DBFILE     db.train           # Ta dataset
-INIT2B     true               # Use two-body descriptor
-RCUT2B     6.5                # Cutoff distance
-TYPE2B     D2_LJ Ta Ta        # Lennard-Jones descriptor
-RCTYPE2B   Cut_Dummy          # No cutoff function
-MODEL      M_KRR Kern_Linear  # Kernel Ridge Regression with a linear kernel
+DBFILE     db.train                 # Ta dataset: bcc Ta MD snapshots at one volume
+STRESS     true                     # fit stresses too: they bring a0 to 3.29 A
+
+INIT2B     true                     # two-body (pair) descriptor
+TYPE2B     D2_Blip 4 4 Ta Ta        # 4 blip (cubic B-spline) radial functions
+RCUT2B     5.3                      # two-body cutoff distance (A)
+RCTYPE2B   Cut_Cos                  # smooth cutoff: energy and force go to 0 at RCUT2B
+SGRID2B    GEOM 4 0.1 1.0           # blip inverse widths eta (1/A): a blip spans 4/eta
+CGRID2B    LIN 4 1.0 5.3            # blip centres (A)
+
+INITMB     true                     # many-body descriptor: an embedding F(rho)
+TYPEMB     DM_mBlipEnv 0 1 1 5 5 Ta Ta  # of a pair density rho
+RCUTMB     5.0                      # many-body cutoff distance (A)
+RCTYPEMB   Cut_Cos                  # smooth cutoff
+CGRIDMB    2.88                     # density Gaussian centre (A): bcc Ta first shell
+SGRIDMB    8.0                      # density Gaussian inverse width (1/A^2)
+CEMBFUNC   0.5 0.75 1.0 1.25 1.5    # embedding blip centres (density units)
+SEMBFUNC   2.0 2.0 2.0 2.0 2.0      # embedding blip inverse widths
+RCUTENV    0.6                      # F(rho) goes smoothly to 0 below this density
+WATOM      0.309                    # Ta weight: scales the density to about 1
+
+MODEL      M_KRR Kern_Linear        # Kernel Ridge Regression with a linear kernel
+LAMBDA     1e-7                     # regularisation

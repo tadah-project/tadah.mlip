@@ -155,7 +155,16 @@ example to the build tree, runs every `tadah` command of the README's bash
 code blocks and checks that each exits 0 and leaves its result (the
 potential of `tadah train`; a best potential and a `best_loss.tadah` row
 for `tadah hpo`). An example included in the docs is tested with no further
-registration. `ctest -L e2e` runs HPO's host end-to-end groups
+registration. The same label has `tadah_quickstart_reproduces_pot`, which
+retrains the *Quick Start* potential (`docs/source/quickstart`) with the
+page's `tadah train` and `tadah --task` commands and checks that the shipped
+`pot.tadah` is what they write (its keys, and its predictions on
+`db.predict`): after a change to `config.train`, or to the code, that changes
+the potential, regenerate `pot.tadah` with `tadah train -c config.train` in
+that directory and check the numbers the page quotes. The Catch test case
+`quickstart: in.ml with the shipped pot.tadah ...` (test_tadah, NFP builds)
+runs the page's LAMMPS example, `in.ml`, with it.
+`ctest -L e2e` runs HPO's host end-to-end groups
 (`hpo_fixweight_e2e`, `hpo_durable_e2e`, `hpo_embf0_e2e`, `hpo_rcut_e2e`,
 `hpo_rhoform_e2e`, `hpo_rhogate_e2e`, `hpo_rhobargate_e2e`,
 `hpo_bumpgate_e2e`, `hpo_nn_e2e`, `hpo_valmetric_e2e`) and the `hpo_tadah_cli_*` cases, which run the built `tadah`: their entries

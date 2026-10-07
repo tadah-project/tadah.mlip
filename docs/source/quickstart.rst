@@ -42,21 +42,32 @@ To train a model, run the following command in a terminal:
 
 - ``-v 2``: Enables verbosity INFO level, resulting in detailed output being printed to the screen during the training process.
 
-This will train a model using energies only. To also train on forces, add the ``-F`` flag; for stresses, add the ``-S`` flag, or include ``FORCE true`` and ``STRESS true`` keys in the config file.
+The example ``config.train`` below fits energies and stresses (its ``STRESS true`` key). To also fit forces, add the ``-F`` flag, or the ``FORCE true`` key; for stresses, ``-S`` does what ``STRESS true`` does. Each changes the fitted potential (see the effect of the stresses below).
 
 *Note*: Command line flags take precedence over those defined in the config file.
 
 The ``config.train`` is type of a :ref:`config_file`. Training datasets, descriptors, cutoffs, model, and all parameters are specified in the config file. The output of this command is a trained model as a ``pot.tadah`` file.
 
-:download:`Here <quickstart/config.train>` is a minimal example of the ``config.train`` file:
+:download:`Here <quickstart/config.train>` is the ``config.train`` file of this example:
 
 .. literalinclude:: quickstart/config.train
 
-The :ref:`DBFILE` key specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory. :ref:`INIT2B` controls whether the two-body descriptor is used. :ref:`TYPE2B`, :ref:`RCUT2B`, and :ref:`RCTYPE2B` refer to the two-body type, cutoff distance, and cutoff type, respectively. Finally, the regression model is selected; in this case, it is Kernel Ridge Regression with a linear kernel for simplicity.
+An example dataset can be downloaded from :download:`here <quickstart/db.train>`. The data are bcc Ta configurations from LAMMPS molecular dynamics with the Ta1_Ravelo_2013 EAM potential: energies in eV, forces in eV/Å and the virial (configurational) Cauchy stress in eV/Å³, positive under tension. All 500 structures are 54-atom cells at one volume (lattice constant 3.322 Å).
+
+The keys of the file:
+
+- :ref:`DBFILE` specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory.
+- :ref:`STRESS` ``true`` fits the stresses as well as the energies (see below).
+- The two-body (pair) block: :ref:`INIT2B` turns it on; :ref:`TYPE2B`, :ref:`RCUT2B` and :ref:`RCTYPE2B` set the descriptor (``D2_Blip``: four blip, i.e. cubic B-spline, radial functions), its cutoff distance and its cutoff function; :ref:`SGRID2B` and :ref:`CGRID2B` set the inverse widths and the centres of the blips. It is the pair block of :ref:`cli_example_1`.
+- The many-body block: :ref:`INITMB`, :ref:`TYPEMB`, :ref:`RCUTMB` and :ref:`RCTYPEMB` likewise. ``DM_mBlipEnv`` gives each atom an energy :math:`F(\rho)` of a pair density :math:`\rho` summed over its neighbours: :ref:`CGRIDMB` and :ref:`SGRIDMB` set the Gaussian that the density is built from, :ref:`CEMBFUNC` and :ref:`SEMBFUNC` the blips that :math:`F` is built from, :ref:`RCUTENV` takes :math:`F` smoothly to zero at low density, and :ref:`WATOM` scales the density of this dataset to about 1. :ref:`cli_example_3` explains these keys and how they were chosen.
+- Both blocks use the ``Cut_Cos`` cutoff (see :ref:`cutoffs`): the energy and the force of a pair go smoothly to zero at the cutoff distance, so the energy is conserved when a pair crosses it in molecular dynamics. (``Cut_Dummy`` truncates instead; it is for testing only.)
+- :ref:`MODEL` selects Kernel Ridge Regression with a linear kernel, so the energy is linear in the descriptors, and :ref:`LAMBDA` sets its regularisation.
 
 For a detailed explanation of KEYS and a general discussion about the configuration files, see :ref:`ConfigSection`.
 
-An example dataset can be downloaded from :download:`here <quickstart/db.train>`. The data are bcc Ta configurations from LAMMPS molecular dynamics with the Ta1_Ravelo_2013 EAM potential: energies in eV, forces in eV/Å and the virial (configurational) Cauchy stress in eV/Å³, positive under tension.
+Training takes about a second. On the prediction dataset below (``tadah predict -F -S -A``) the potential has an energy RMSE of 0.27 meV/atom, a force RMSE of 0.030 eV/Å and a stress RMSE of 4.3e-4 eV/Å³.
+
+**Why the stresses.** All structures of ``db.train`` have one volume, so their energies say little about how the energy changes with volume; the stresses are its derivative with respect to strain. With ``STRESS true`` the bcc lattice constant of the potential (where the stress is zero, at 0 K) is 3.294 Å, close to the 3.304 Å of the EAM potential that generated the data. Fitted to energies only it is 3.380 Å, to energies and forces 3.389 Å, and to energies, forces and stresses (``-F`` with this file) 3.354 Å. These fits give a stable bcc crystal too (:math:`C' = (C_{11}-C_{12})/2 > 0`), which conserves energy in the LAMMPS example below, but the example's lattice, 3.30 Å, then starts at a pressure of 6.8 to 10.5 GPa instead of 0.1 GPa.
 
 .. _prediction:
 
@@ -157,13 +168,15 @@ Hints
 ^^^^^
 
 * Use ``CONFIG other_file.txt`` inside a task block if you prefer to keep a
-  full training or prediction setup in a dedicated config file.
+  full training or prediction setup in a dedicated config file, as the
+  ``train`` task of the example does with ``config.train``.
 
 * Indexing of positional items (e.g. ``--index 1`` -> ``INDEX 1``) starts
   from **1**.
 
 * Comments start with ``#`` and run to the end of the line, just like in
-  ordinary config files.
+  ordinary config files, on a ``TASK`` line too
+  (``TASK train   # first task``).
 
 .. _units:
 
@@ -353,7 +366,45 @@ Symbol not in potential file: W``.
 
 See :ref:`installation_lammps` for Tadah!LAMMPS interface installation instructions.
 
-When LAMMPS loads this potential, its log contains the line
+What to expect
+^^^^^^^^^^^^^^
+
+``in.ml`` builds 250 Ta atoms (5×5×5 bcc cells) at a lattice constant of 3.30 Å,
+gives them random velocities for 1000 K and runs 1000 steps of 3 fs at constant
+energy (NVE), printing every 100 steps. With the shipped ``pot.tadah``:
+
+- the total energy (``TotEng``) stays constant to about 0.1 meV/atom (at most
+  0.08 meV/atom from its initial value in the printed rows);
+- the temperature falls from 1000 K to about 440 K: started from perfect
+  lattice positions, about half of the initial kinetic energy goes into the
+  potential energy (in a 10,000-step run it settles near 500 K);
+- the pressure starts at about 0.1 GPa;
+- the crystal stays bcc.
+
+The lattice constant in ``in.ml`` must match the potential. This potential's own
+bcc lattice constant is 3.294 Å (at 0 K); at 3.5 Å the same run starts at
+−16 GPa. A crystal far from the potential's lattice can tear apart at the
+fixed volume of an NVE run and turn the released energy into heat: the
+D2_LJ potential that this guide shipped up to Tadah! 1.6.0 has its own bcc
+lattice near 2.9 Å, and with the 3.5 Å lattice of the ``in.ml`` of that
+time it heated from 1000 K to about 8500 K. Its hard cutoff (``Cut_Dummy``)
+also let the total energy wander by about 35 meV/atom.
+
+The fast path
+^^^^^^^^^^^^^
+
+``pair_style tadah`` has a faster kernel, controlled by :ref:`EAMFAST` (on by
+default), for linear single-species potentials that collapse to scalar radial
+functions: a pure two-body potential, or a two-body block plus a ``DM_REAM``
+many-body block. The example potential has a ``DM_mBlipEnv`` many-body block,
+for which the fast path is not implemented, so ``pair_style tadah`` evaluates
+the descriptors of every atom (the generic kernel), here in about a second per
+1000 steps on one core, and its log has no fast-path line.
+
+A potential that takes the fast path states in the LAMMPS log how accurate
+it is. For example, a D2_LJ potential (``TYPE2B D2_LJ Ta Ta``, ``RCUT2B 6.5``,
+``RCTYPE2B Cut_Dummy``, ``MODEL M_KRR Kern_Linear``; the Quick Start potential
+up to Tadah! 1.6.0, which does not hold bcc Ta: see below) logs
 
 ::
 
@@ -362,8 +413,7 @@ When LAMMPS loads this potential, its log contains the line
 The potential is linear and has a single species, so ``pair_style tadah`` does not
 evaluate the descriptors for every pair of atoms: it looks the pair energy and its
 derivative up in a table of 8192 points (``nr``) between 0 and the cutoff ``RCUT2B``.
-This is the fast path controlled by :ref:`EAMFAST`. The line reports how accurate the
-table is:
+The line reports how accurate the table is:
 
 - ``table certified for r in [2.80125, 6.5]``: in this range the table gives the pair
   energy and force of the potential to a relative tolerance of ``1e-9`` (``rel tol``).
@@ -379,13 +429,47 @@ table is:
 
 So the fast path gives the same energies and forces as the full calculation
 (``EAMFAST false``) to ``1e-9`` inside the certified range and exactly below it.
-Distances are in the units of the potential (Å here). A model with an EAM-form
-many-body descriptor also reports a density (``rho``) table. The certified range is
-one interval that ends at the cutoff: for a potential with basis-function knots (for
-example Blip functions) or a switching cutoff such as ``Cut_PolyS``, a single interval
-that misses the tolerance ends it, and closer pairs are evaluated from the potential.
-If a table misses the tolerance already next to the cutoff, it has no certified range:
-the log says so and the full calculation is used.
+Distances are in the units of the potential (Å here). The range depends on the
+last digits of the weights: the line above is for the potential shipped with
+Tadah! 1.6.0, and the same potential retrained from its configuration, whose
+weights differ only in their last digits, reports ``[2.80045, 6.5]``. A model
+with a ``DM_REAM`` many-body block also reports a density (``rho``) table. The
+certified range is one interval that ends at the cutoff: for a potential with
+basis-function knots (for example Blip functions) or a switching cutoff such as
+``Cut_PolyS``, a single interval that misses the tolerance ends it, and closer
+pairs are evaluated from the potential. If a table misses the tolerance already
+next to the cutoff, it has no certified range: the log says so and the full
+calculation is used.
+
+What this example potential is and is not
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is a small model for learning the tools, fitted to thermal snapshots of
+one crystal at one volume, generated by another potential. Near the training
+volume it describes bcc Ta reasonably: lattice constant 3.294 Å (EAM: 3.304 Å),
+energy −8.102 eV/atom (EAM: −8.10 eV/atom), :math:`C' = (C_{11}-C_{12})/2`
+of 60 GPa and bulk modulus of 132 GPa at that lattice, and fcc 0.123 eV/atom
+above bcc. It is not a production Ta potential:
+
+- The repulsion of the pair term is finite: the energy of a Ta dimer is
+  12.6 eV at 0.2 Å and about 14 eV as the distance goes to zero, so atoms that
+  collide hard enough (radiation damage, shocks) pass through each other.
+- The density is built from a Gaussian of the distance centred at 2.88 Å, so
+  it falls when neighbours come much closer than that: strongly compressed bcc
+  has a spurious local energy minimum near a lattice constant of 2.25 Å
+  (−2.36 eV/atom). Expanding the crystal beyond about 3.5 Å raises the energy
+  far too fast (by 5.3 eV/atom from 3.29 Å to 3.8 Å).
+- At the 3 fs timestep of ``in.ml``, runs started at 6000 K and 10000 K do not
+  fail, but the total energy wanders by 0.70 and 1.01 meV/atom; at 1 fs, by
+  0.08 and 0.10 meV/atom. Use a smaller timestep for hot systems.
+- Other elastic constants, defects, surfaces, liquids and the melting point were
+  not checked.
+
+A Lennard-Jones pair potential cannot replace it. Refitted to the same data
+(with the ``Cut_Dummy``, ``Cut_Cos`` or ``Cut_PolyS`` cutoff, to energies,
+energies and stresses, or energies, forces and stresses), ``D2_LJ`` gives a bcc
+crystal with :math:`C' < 0` for each of these nine fits (−78 to −178 GPa, each
+at its own lattice constant of 2.93 to 3.06 Å): it is mechanically unstable.
 
 Support for Multi-species Systems
 ---------------------------------

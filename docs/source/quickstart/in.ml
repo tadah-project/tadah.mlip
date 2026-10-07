@@ -4,7 +4,10 @@ atom_style      atomic
 newton          on
 boundary        p p p
 
-lattice         bcc 3.5
+# bcc at the lattice constant of pot.tadah (3.294 A at 0 K): a crystal far
+# from the potential's own lattice starts under a large pressure and, at the
+# fixed volume of this NVE run, may tear apart.
+lattice         bcc 3.30
 region          box block 0 5 0 5 0 5
 create_box      1 box
 create_atoms    1 box

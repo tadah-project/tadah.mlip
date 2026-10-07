@@ -2471,14 +2471,24 @@ Key                Effect
 ``tol_gradinf``    Convergence tolerance on the gradient's largest component, its infinity norm
                    (Ceres ``gradient_tolerance``, default ``1e-10``): ``CERES:<ALGO>: tol_gradinf
                    reached``.
-``max_iter``       Override on Ceres' ``max_num_iterations`` (``CERES:<ALGO>: max_iter reached``).
-                   By default the iteration cap is set to a large sentinel and ``MAXEVAL`` is
-                   enforced externally on host evaluations.
-``max_ls_iter``    Maximum line-search step-size iterations.
-``max_lbfgs_rank`` (LBFGS only) limited-memory rank, default ``20``.
+``max_iter``       Override on Ceres' ``max_num_iterations``, an integer from ``0`` to ``2147483647``
+                   (``0``: the start is evaluated and the solve ends) (``CERES:<ALGO>: max_iter
+                   reached``).  By default the iteration cap is set to a large sentinel and
+                   ``MAXEVAL`` is enforced externally on host evaluations.
+``max_ls_iter``    Maximum line-search step-size iterations, an integer from ``1`` to ``2147483647``.
+``max_lbfgs_rank`` (LBFGS only) limited-memory rank, an integer from ``1`` to ``2147483647``, default
+                   ``20``.
 ``nlcg_type``      (NLCG only) variant: ``0`` = FLETCHER_REEVES (default), ``1`` = POLAK_RIBIERE,
                    ``2`` = HESTENES_STIEFEL.
 ================== =================================================================================
+
+A value outside these ranges, a fraction included, is refused at
+startup, naming it (``CERES:LBFGS requires PARAM max_ls_iter to be an
+integer from 1 to 2147483647 (Ceres' max_num_line_search_step_size_iterations),
+got 0``).  Before 1.6.0 a fraction was cut to an integer (``2.5`` ran as
+``2``), and Ceres refused ``max_iter`` below ``0`` and ``max_ls_iter``
+``0`` when the search started: the search ended at once, before any
+evaluation.
 
 The ``MAXEVAL`` cap is enforced at the host-evaluation level by an
 external counter shared with the ``GradientProvider``.  Ceres'
@@ -2490,7 +2500,13 @@ Any other ``PARAM`` key is rejected.  CERES also rejects ``STEP``,
 ``MAXTIME``, ``STOPVAL``, ``FTOL_ABS``/``XTOL_ABS`` (use ``FTOL_REL`` →
 ``function_tolerance`` and ``XTOL_REL`` → ``parameter_tolerance``),
 ``POPULATION``, ``VECTOR_ARR``, ``SEED`` (accepted and ignored before
-1.6.0), ``THREADS``, integer dimensions and ``INNER`` blocks.
+1.6.0), ``THREADS``, integer dimensions and ``INNER`` blocks, and
+``FTOL_REL`` or ``XTOL_REL`` below ``0`` (``CERES:LBFGS requires
+FTOL_REL >= 0 (Ceres' function_tolerance), got -1``), which Ceres
+refused, before 1.6.0, when the search started.  Options that Ceres
+refuses all the same are an internal error before any evaluation
+(``internal error: CERES:<ALGO>: Ceres refuses the options built from a
+validated spec: …``; please report it).
 
 .. _dlib_param_keys:
 
@@ -2523,7 +2539,10 @@ Any other ``PARAM`` key is rejected, and so are ``FTOL_REL``, ``XTOL_REL``,
 
 ``DLIB:GFS`` (dlib's ``find_min_global``) takes ``MAXEVAL``, ``MAXTIME``
 and ``STOPVAL`` — dlib's call budget, run-time limit and stop condition,
-the ``INIT`` points' evaluations counted — and ``FTOL_ABS``, dlib's
+the ``INIT`` points' evaluations counted; the run-time limit is at most
+dlib's own no-limit, 200 years (a ``MAXTIME`` beyond about 292 years, the
+nanoseconds dlib counts it in, ended the search after its ``INIT``
+points before 1.6.0) — and ``FTOL_ABS``, dlib's
 solver epsilon (default ``1e-3``), which ends no run.  It takes no
 ``PARAM`` and rejects ``FTOL_REL``, ``XTOL_REL`` and ``XTOL_ABS``, which
 it cannot apply (``DLIB:GFS does not support FTOL_REL: dlib's global

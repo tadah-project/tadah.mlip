@@ -2136,7 +2136,11 @@ TEST_CASE("Subcommand: train reads FIXINDEX given as separate values as the "
 
 /* Pins: `tadah train` with M_KRR implementation 2 on the three Ta dimers
  * (MODEL M_KRR Kern_Linear 2 or Kern_RBF 2 with MPARAMS 1.0, SBASIS 3)
- * trains without FIXINDEX (exit 0, 3 weights), and refuses FIXINDEX 1 /
+ * trains without FIXINDEX (exit 0: Kern_Linear with 4 weights, the
+ * descriptor weights of its basis vectors, DSIZE 4; Kern_RBF with 3, one
+ * per basis vector; Kern_Linear's potential had the 3 coefficients of its
+ * basis vectors until the potential-content fix, a potential `tadah
+ * predict` refused), and refuses FIXINDEX 1 /
  * FIXWEIGHT 14, FIXINDEX 2-1 / FIXWEIGHT 14 3 and FIXINDEX 99 / FIXWEIGHT
  * 14 alike, exit 1 with "MODEL M_KRR <kernel> 2 cannot pin weights" and no
  * potential: its solve, (K + LAMBDA I) w = t, fits every weight at once.
@@ -2164,7 +2168,9 @@ TEST_CASE("Subcommand: train refuses FIXINDEX with M_KRR implementation 2",
     const CliRun plain = train("plain.cfg", "");
     INFO("no FIXINDEX: status " << plain.status << "\n" << reported(plain));
     REQUIRE(plain.status == 0);
-    CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS").size() == 4u);  // key + 3
+    // key + 4 (DSIZE) for Kern_Linear, key + 3 (SBASIS) for Kern_RBF
+    CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS").size() ==
+          (std::string(kern) == "Kern_Linear" ? 5u : 4u));
     const std::string refusal =
         std::string("MODEL M_KRR ") + kern + " 2 cannot pin weights";
     for (const char* keys : {"FIXINDEX 1\nFIXWEIGHT 14\n",
@@ -3605,8 +3611,9 @@ std::vector<double> line_numbers(const std::string& text,
 }
 
 /* The potential `pot` as a training configuration of the dataset `db`: its
- * DBFILE line (an M_BLR potential keeps the one it was trained with)
- * replaced by `DBFILE db`. */
+ * DBFILE line, if it has one (a potential has none; an M_BLR potential
+ * written before the potential-content fix kept the one it was trained
+ * with), replaced by `DBFILE db`. */
 std::string as_training_config(const std::string& pot, const std::string& db) {
   return with_line(pot, "DBFILE", "") + "DBFILE " + db + "\n";
 }
@@ -4329,15 +4336,21 @@ std::string replace_key_line(const std::string& text, const std::string& key,
 
 }  // namespace
 
-/* Pins: `tadah train -c pot1.tadah`, pot1.tadah the potential of an OALGO 3
- * fit (LAMBDA 1e-3), writes a potential with one SIGMA of N*N+1 = 17
- * values for its 4 weights, the same tokens as pot1.tadah's (the same data
- * and fit), and so does a third train from that potential; `tadah predict
- * --error` with it exits 0 and writes energy.pred.
+/* Pins: `tadah train -c pot1.tadah` with the DBFILE line added (the
+ * documented route), pot1.tadah the potential of an OALGO 3 fit (LAMBDA
+ * 1e-3), writes a potential with one SIGMA of N*N+1 = 17 values for its 4
+ * weights, the same tokens as pot1.tadah's (the same data and fit), and so
+ * does a third train from that potential; `tadah predict --error` with it
+ * exits 0 and writes energy.pred.
  * Before the fix: the retrain wrote 34 SIGMA values (each fit appended its
  * SIGMA to the one of the configuration), the REQUIRE on the count stopped
  * the case; `predict --error` on that potential read 34 values into a
- * 17-value buffer (heap corruption: SIGABRT, or SIGSEGV). */
+ * 17-value buffer (heap corruption: SIGABRT, or SIGSEGV).
+ * Before the potential-content fix: the M_BLR potential kept its DBFILE
+ * line (the case trained from the potential alone), so with the DBFILE
+ * line added the configuration listed db.tadah twice and the SIGMA of the
+ * retrain was that of every structure fitted twice (CHECK sigma == sigma1
+ * failed). */
 TEST_CASE("Subcommand: train -c with an OALGO 3 potential writes the SIGMA of "
           "its own fit",
           "[TadahCLI][train][retrain][sigma]") {
@@ -4352,8 +4365,10 @@ TEST_CASE("Subcommand: train -c with an OALGO 3 potential writes the SIGMA of "
   REQUIRE(sigma1.size() == 1 + 17);
   std::string from = "pot1.tadah";
   for (const char* to : {"pot2.tadah", "pot3.tadah"}) {
-    INFO("train -c " << from << " -o " << to);
-    const CliRun t = run_tadah({"tadah", "train", "-c", from, "-o", to});
+    INFO("train -c " << from << " + DBFILE -o " << to);
+    std::ofstream("from_cfg.tadah") << slurp(from) << "DBFILE db.tadah\n";
+    const CliRun t = run_tadah({"tadah", "train", "-c", "from_cfg.tadah",
+                                "-o", to});
     INFO("status " << t.status << "\n" << reported(t));
     REQUIRE(t.status == 0);
     const auto sigma = line_tokens(slurp(to), "SIGMA");
@@ -4369,11 +4384,15 @@ TEST_CASE("Subcommand: train -c with an OALGO 3 potential writes the SIGMA of "
 }
 
 /* Pins: `tadah train -c` with an OALGO 3 potential edited to OALGO 1 (a fit
- * that computes no covariance) writes a potential without SIGMA, and
- * `tadah predict --error` with it exits 1 saying the covariance was not
- * computed ("Sigma matrix is not computed").
+ * that computes no covariance), the DBFILE line added, writes a potential
+ * without SIGMA, and `tadah predict --error` with it exits 1 saying the
+ * covariance was not computed ("Sigma matrix is not computed").
  * Before the fix: the potential kept the 17 SIGMA values of the OALGO 3
- * fit beside the OALGO 1 weights, and predict --error exited 0 with them. */
+ * fit beside the OALGO 1 weights, and predict --error exited 0 with them.
+ * Before the potential-content fix: passes as well (a pin of the route: the
+ * M_BLR potential kept its DBFILE line, the case trained from the potential
+ * alone, and with the line added db.tadah was listed twice, which these
+ * checks do not see). */
 TEST_CASE("Subcommand: train -c with an OALGO 3 potential and OALGO 1 writes "
           "no SIGMA",
           "[TadahCLI][train][retrain][sigma]") {
@@ -4385,7 +4404,9 @@ TEST_CASE("Subcommand: train -c with an OALGO 3 potential and OALGO 1 writes "
   INFO("train: status " << t1.status << "\n" << reported(t1));
   REQUIRE(t1.status == 0);
   REQUIRE(line_tokens(slurp("pot1.tadah"), "SIGMA").size() == 1 + 17);
-  std::ofstream("pot1_oalgo1.tadah") << replace_key_line(slurp("pot1.tadah"), "OALGO", "OALGO 1");
+  std::ofstream("pot1_oalgo1.tadah")
+      << replace_key_line(slurp("pot1.tadah"), "OALGO", "OALGO 1")
+      << "DBFILE db.tadah\n";
   const CliRun t2 = run_tadah({"tadah", "train", "-c", "pot1_oalgo1.tadah", "-o",
                                "pot2.tadah"});
   INFO("retrain: status " << t2.status << "\n" << reported(t2));
@@ -4423,6 +4444,235 @@ TEST_CASE("Subcommand: train -c with an M_KRR potential trains it",
   INFO("retrain: status " << t2.status << "\n" << reported(t2));
   REQUIRE(t2.status == 0);
   CHECK(line_tokens(slurp("potk2.tadah"), "WEIGHTS") == w1);
+}
+
+/* ---- [potential-content]: a potential records no training data -------- */
+
+namespace {
+
+/* The keys of a potential: the first token of every line that has one and
+ * is no comment. */
+std::set<std::string> pot_keys(const std::string& text) {
+  std::set<std::string> keys;
+  std::istringstream in(text);
+  for (std::string line; std::getline(in, line);) {
+    std::istringstream ls(line);
+    std::string k;
+    if ((ls >> k) && k[0] != '#') keys.insert(k);
+  }
+  return keys;
+}
+
+/* The numbers after `key` on its line in `text`. */
+std::vector<double> key_numbers(const std::string& text,
+                                const std::string& key) {
+  std::vector<double> v;
+  const std::vector<std::string> tok = line_tokens(text, key);
+  for (std::size_t i = 1; i < tok.size(); ++i) v.push_back(std::stod(tok[i]));
+  return v;
+}
+
+/* The three Ta dimers of retrain_dataset() with the energies -1.3, -0.9 and
+ * -0.4 eV (-0.65, -0.45 and -0.2 eV/atom). */
+std::string distinct_energy_dataset() {
+  std::string db = retrain_dataset();
+  std::size_t at = 0;
+  for (const char* e : {"-1.3", "-0.9", "-0.4"}) {
+    at = db.find("\n-1.0\n", at);
+    db.replace(at + 1, 4, e);
+    at += 1;
+  }
+  return db;
+}
+
+}  // namespace
+
+/* Pins: `tadah train` of one configuration (the three Ta dimers of the
+ * [retrain] cases, LAMBDA -1 with OALGO 3: the evidence approximation)
+ * with MODEL M_BLR BF_Linear and with M_KRR Kern_Linear writes potentials
+ * of the same keys: neither has a DBFILE line, both have ALPHA and BETA,
+ * the values the evidence approximation found (equal to 1e-10 relative,
+ * the same fit, and not the starting guesses 1), and LAMBDA -1.
+ * Before the fix: the M_BLR potential had the DBFILE, ALPHA and BETA lines
+ * (ALPHA 2.719, BETA 72.11), the M_KRR one none of the three. */
+TEST_CASE("Subcommand: train writes the same keys into M_BLR and M_KRR "
+          "potentials: no DBFILE, the ALPHA and BETA of the fit",
+          "[TadahCLI][train][retrain][potential-content]") {
+  ScratchCwd cwd("pot_content_keys");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::string pot[2];
+  const char* models[2] = {"M_BLR BF_Linear", "M_KRR Kern_Linear"};
+  for (int m = 0; m < 2; ++m) {
+    std::ofstream("config.train")
+        << retrain_config(models[m], "LAMBDA -1\nOALGO 3\n");
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "pot.tadah"});
+    INFO(models[m] << ": status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+    pot[m] = slurp("pot.tadah");
+  }
+  INFO("M_BLR potential:\n" << pot[0] << "\nM_KRR potential:\n" << pot[1]);
+  CHECK(pot_keys(pot[0]) == pot_keys(pot[1]));
+  for (const std::string& p : pot) {
+    CHECK(line_tokens(p, "DBFILE").empty());
+    CHECK(key_numbers(p, "LAMBDA") == std::vector<double>{-1.0});
+  }
+  for (const char* key : {"ALPHA", "BETA"}) {
+    INFO(key);
+    const std::vector<double> b = key_numbers(pot[0], key);
+    const std::vector<double> k = key_numbers(pot[1], key);
+    REQUIRE(b.size() == 1u);
+    REQUIRE(k.size() == 1u);
+    CHECK(k[0] == Approx(b[0]).epsilon(1e-10));
+    CHECK(b[0] != 1.0);
+  }
+}
+
+/* Pins: `tadah train -c pot.tadah` with the documented DBFILE line added,
+ * pot.tadah the potential of the three Ta dimers (LAMBDA 0.1, OALGO 1),
+ * writes the WEIGHTS of the first fit (1e-12 relative: the same data, the
+ * same fit), for MODEL M_BLR BF_Linear and M_KRR Kern_Linear alike; neither
+ * potential has a DBFILE line.
+ * Before the fix: the M_BLR potential kept its DBFILE line, so its
+ * configuration listed db.tadah twice and every structure was fitted twice
+ * (LAMBDA at half strength): the first weight was -0.2095 for -0.1884; the
+ * M_KRR case passed (a pin). */
+TEST_CASE("Subcommand: train -c retrains an M_BLR or M_KRR potential with "
+          "the DBFILE line added as it was trained",
+          "[TadahCLI][train][retrain][potential-content]") {
+  ScratchCwd cwd("pot_content_retrain");
+  std::ofstream("db.tadah") << retrain_dataset();
+  for (const char* model : {"M_BLR BF_Linear", "M_KRR Kern_Linear"})
+    DYNAMIC_SECTION(model) {
+      std::ofstream("config.train")
+          << retrain_config(model, "LAMBDA 0.1\nOALGO 1\n");
+      const CliRun t1 = run_tadah({"tadah", "train", "-c", "config.train",
+                                   "-o", "pot1.tadah"});
+      INFO("train: status " << t1.status << "\n" << reported(t1));
+      REQUIRE(t1.status == 0);
+      const std::string pot1 = slurp("pot1.tadah");
+      CHECK(line_tokens(pot1, "DBFILE").empty());
+      std::ofstream("pot1_cfg.tadah") << pot1 << "DBFILE db.tadah\n";
+      const CliRun t2 = run_tadah({"tadah", "train", "-c", "pot1_cfg.tadah",
+                                   "-o", "pot2.tadah"});
+      INFO("retrain: status " << t2.status << "\n" << reported(t2));
+      REQUIRE(t2.status == 0);
+      const std::vector<double> w1 = key_numbers(pot1, "WEIGHTS");
+      const std::vector<double> w2 = key_numbers(slurp("pot2.tadah"), "WEIGHTS");
+      REQUIRE(w1.size() == 4u);
+      REQUIRE(w2.size() == w1.size());
+      for (std::size_t i = 0; i < w1.size(); ++i) {
+        INFO("weight " << i + 1);
+        CHECK(w2[i] == Approx(w1[i]).epsilon(1e-12));
+      }
+    }
+}
+
+/* Pins: `tadah train` refuses a DBFILE that lists one dataset twice, exit 1
+ * without a potential, naming both entries: the same path on two lines
+ * ("DBFILE db.tadah" twice: "entry 1 (db.tadah) and entry 2 (db.tadah)"),
+ * two spellings of it on one line ("DBFILE db.tadah ./db.tadah": "entry 2
+ * (./db.tadah)"), and an M_BLR potential written before the potential-
+ * content fix (its own "DBFILE db.tadah" line) with the DBFILE line of the
+ * retrain added (the message says that such a potential records its
+ * DBFILE); a configuration of two different files trains (exit 0).
+ * Before the fix: each trained (exit 0), fitting every structure of
+ * db.tadah twice; the two files passed as well (a pin). */
+TEST_CASE("Subcommand: train refuses a DBFILE that lists one dataset twice",
+          "[TadahCLI][train][retrain][potential-content]") {
+  ScratchCwd cwd("pot_content_twice");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("db2.tadah") << distinct_energy_dataset();
+  const std::string keys = with_line(
+      retrain_config("M_BLR BF_Linear", "LAMBDA 0.1\nOALGO 1\n"), "DBFILE",
+      "");
+  {
+    std::ofstream("old.train") << "DBFILE db.tadah\n" << keys;
+    const CliRun r = run_tadah({"tadah", "train", "-c", "old.train", "-o",
+                                "old.tadah"});
+    INFO("train: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  // An M_BLR potential as written before the fix: with its DBFILE line.
+  const std::string legacy = as_training_config(slurp("old.tadah"), "db.tadah");
+  const struct {
+    const char* name;
+    std::string config;
+    std::vector<std::string> named;
+  } cases[] = {
+      {"two lines", "DBFILE db.tadah\nDBFILE db.tadah\n" + keys,
+       {"entry 1 (db.tadah) and entry 2 (db.tadah)"}},
+      {"two spellings", "DBFILE db.tadah ./db.tadah\n" + keys,
+       {"entry 1 (db.tadah) and entry 2 (./db.tadah)"}},
+      {"a legacy M_BLR potential plus the DBFILE of the retrain",
+       legacy + "DBFILE db.tadah\n",
+       {"entry 1 (db.tadah) and entry 2 (db.tadah)", "M_BLR potential"}},
+  };
+  for (const auto& c : cases) DYNAMIC_SECTION(c.name) {
+    std::ofstream("twice.train") << c.config;
+    std::filesystem::remove("pot.tadah");
+    const CliRun r = run_tadah({"tadah", "train", "-c", "twice.train", "-o",
+                                "pot.tadah"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "DBFILE lists one dataset twice"));
+    for (const std::string& what : c.named) CHECK(contains(rep, what));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  SECTION("two datasets") {
+    std::ofstream("two.train") << "DBFILE db.tadah db2.tadah\n" << keys;
+    const CliRun r = run_tadah({"tadah", "train", "-c", "two.train", "-o",
+                                "pot.tadah"});
+    INFO("status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("pot.tadah"));
+  }
+}
+
+/* Pins: `tadah train` with MODEL M_KRR Kern_Linear 2 on three Ta dimers of
+ * energies -1.3, -0.9 and -0.4 eV (D2_BP 4, BIAS false: DSIZE 4; LAMBDA 0)
+ * writes 4 WEIGHTS, the descriptor weights of its basis vectors, and no
+ * BASIS, with SBASIS 3 and 4 (e0 and 2 or 3 drawn dimers); `tadah predict`
+ * with the potential exits 0, and with SBASIS 4 (every dimer drawn) it
+ * predicts each dimer's energy per atom, -0.65, -0.45 and -0.2 eV, to 1e-9
+ * (the solve fits them exactly at LAMBDA 0).
+ * Before the fix: the potential's WEIGHTS were the SBASIS coefficients of
+ * the basis vectors: 3 with SBASIS 3, which `tadah predict` refused (exit
+ * 1, "has 3 WEIGHTS, but Kern_Linear needs 4 weights"), and 4 with SBASIS
+ * 4, which it took for the descriptor weights (-2.14, -2.50 and -2.30
+ * eV/atom). */
+TEST_CASE("Subcommand: train with M_KRR Kern_Linear 2 writes descriptor "
+          "weights that predict the fitted energies",
+          "[TadahCLI][train][predict][krr][potential-content]") {
+  ScratchCwd cwd("pot_content_krr2");
+  std::ofstream("db.tadah") << distinct_energy_dataset();
+  for (const char* sbasis : {"3", "4"}) DYNAMIC_SECTION("SBASIS " << sbasis) {
+    std::ofstream("config.train") << retrain_config(
+        "M_KRR Kern_Linear 2",
+        std::string("SBASIS ") + sbasis + "\nLAMBDA 0\nOALGO 1\n");
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "pot.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+    const std::string pot = slurp("pot.tadah");
+    CHECK(key_numbers(pot, "WEIGHTS").size() == 4u);
+    CHECK(line_tokens(pot, "BASIS").empty());
+    std::filesystem::remove("energy.pred");
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah"});
+    INFO("predict: status " << p.status << "\n" << reported(p));
+    CHECK(p.status == 0);
+    if (std::string(sbasis) == "4") {
+      const std::vector<double> e = predicted_values("energy.pred");
+      REQUIRE(e.size() == 3u);
+      const double want[3] = {-0.65, -0.45, -0.2};
+      for (int s = 0; s < 3; ++s) {
+        INFO("dimer " << s + 1);
+        CHECK(e[s] == Approx(want[s]).epsilon(1e-9));
+      }
+    }
+  }
 }
 
 #ifdef TADAH_ENABLE_NFP

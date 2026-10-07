@@ -276,23 +276,85 @@ node. MPI parallelism is available for hyperparameter optimisation: with
 ``-DTADAH_HPO_MPI=ON`` the ``TADAH:ANNEAL_PT`` and ``TADAH:ANNEAL_PA``
 optimisers of ``tadah hpo`` distribute their replicas over MPI ranks, which
 lets one run span several nodes. It needs ``-DTADAH_ENABLE_NFP=ON``
-(:ref:`installation_nfp`) and an MPI build of LAMMPS with ML‑TADAH:
+(:ref:`installation_nfp`) and an MPI build of LAMMPS with ML‑TADAH, both
+built with the same MPI library.
+
+**1. LAMMPS with MPI.** Configure LAMMPS with ML‑TADAH as in
+:ref:`installation_lammps`, adding ``-DBUILD_MPI=ON`` and a library name
+that contains ``mpi`` (``-DLAMMPS_MACHINE=mpi`` names it
+``liblammps_mpi.a``), and build the library target:
+
+.. code-block:: bash
+
+    cd /path/to/lammps
+    cmake -S cmake -B build-mpi \
+      -DBUILD_MPI=ON -DLAMMPS_MACHINE=mpi \
+      -DPKG_ML-TADAH=ON \
+      -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
+      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps \
+      -DTADAH_GIT_BRANCH=v1-dev
+    cmake --build build-mpi --target lammps --parallel
+
+**2. Tadah!MLIP with TADAH_HPO_MPI.** Point ``TADAH_LAMMPS_DIR`` and
+``TADAH_LAMMPS_LIB`` at that LAMMPS, and enable OpenMP:
 
 .. code-block:: bash
 
     cmake -S . -B build-mpi -C cmake/presets/tadah-linux-defaults.cmake \
         -DTADAH_ENABLE_NFP=ON \
         -DTADAH_HPO_MPI=ON \
+        -DTADAH_ENABLE_OPENMP=ON \
         -DTADAH_LAMMPS_DIR=/path/to/lammps \
-        -DTADAH_LAMMPS_LIB=/path/to/liblammps_mpi.a
+        -DTADAH_LAMMPS_LIB=/path/to/lammps/build-mpi/liblammps_mpi.a
+    cmake --build build-mpi --parallel
 
-The executable is still ``tadah`` and runs without ``mpirun`` too. The
-configure step refuses a LAMMPS library whose file name lacks ``mpi``,
-because the serial LAMMPS library carries MPI stub symbols that collide with
-a real MPI library at link time; set ``-DTADAH_HPO_MPI_SKIP_LIB_CHECK=ON``
-when an MPI build of LAMMPS is simply named differently. Launch with
-``srun`` or ``mpirun``; the requirements and an ARCHER2 job script are in
-:ref:`tadah_anneal_mpi`.
+LAMMPS builds with OpenMP when its configure finds it (``BUILD_OMP``),
+and a static LAMMPS library then calls the OpenMP runtime: without
+``-DTADAH_ENABLE_OPENMP=ON`` (the defaults preset leaves it ``OFF``)
+linking ``tadah`` fails on ``omp_get_num_threads``, ``GOMP_parallel`` and
+the like; alternatively configure LAMMPS with ``-DBUILD_OMP=OFF``. Nor
+does a static LAMMPS library bring the libraries that its packages use.
+The LAMMPS of step 1, with ML‑TADAH alone, needs none; one with
+COMPRESS needs zlib (and libzstd, when LAMMPS found it), one with GRAPHICS
+libjpeg, libpng and zlib (those it found), and one with VORONOI that
+build's own ``build-mpi/voro_build-prefix/src/voro_build/src/libvoro++.a``.
+Add them with ``TADAH_LAMMPS_LIBS``, as in the serial build (step 2 of
+:ref:`installation_nfp`), for example
+``-DTADAH_LAMMPS_LIBS="-lzstd;-lz;-lpng;-ljpeg;/path/to/lammps/build-mpi/voro_build-prefix/src/voro_build/src/libvoro++.a"``
+for all three; the link errors name the ones that are missing.
+
+The executable is still ``tadah`` and runs without ``mpirun`` too (a
+one-rank job; Open MPI then makes its session directory under ``TMPDIR``,
+which must be a writable directory). The configure step refuses a LAMMPS
+library whose file name lacks ``mpi``, because the serial LAMMPS library carries MPI stub symbols
+that collide with a real MPI library at link time; set
+``-DTADAH_HPO_MPI_SKIP_LIB_CHECK=ON`` when an MPI build of LAMMPS is simply
+named differently. The MPI library must provide ``MPI_THREAD_MULTIPLE``.
+
+**3. Launching.** Launch with ``srun`` or with the ``mpirun`` /
+``mpiexec`` of the MPI library ``tadah`` links, the one next to the
+``mpicxx`` that CMake recorded as ``MPI_CXX_COMPILER`` in
+``build-mpi/CMakeCache.txt``. A launcher of another MPI — one that comes
+first on ``PATH``, from a conda environment for example — does not start
+one job of N ranks but N independent one-rank runs, which all write the
+unsuffixed ``hpo_run.log`` and result files of a one-rank run. The
+requirements and an ARCHER2 job script are in :ref:`tadah_anneal_mpi`.
+
+**4. Testing an MPI build.** With ``-DBUILD_TESTING=ON`` the whole suite
+runs in the MPI build too (``ctest --test-dir build-mpi``): each test
+program is a one-rank MPI job. The cases of the ``PC_ISOLATION PROCESS``
+worker pool are *Skipped* there (the MPI build has ``PC_ISOLATION THREAD``
+only), as are the optional-data cases of the serial build. The multi-rank
+tests exist only in this build: ``ctest -L mpi`` runs them through
+``MPIEXEC_EXECUTABLE`` at 1, 2 and 4 ranks and needs four process slots
+(``MPIEXEC_MAX_NUMPROCS``). CMake takes the first ``mpiexec`` on ``PATH``
+for ``MPIEXEC_EXECUTABLE``, whichever MPI it belongs to; when another
+MPI's comes first, configure with ``-DMPIEXEC_EXECUTABLE=/path/to/mpiexec``,
+the launcher of step 3 (the wrong one starts one-rank jobs, and the
+multi-rank tests fail). They check the rank invariance of ``ANNEAL_PT``
+/ ``ANNEAL_PA`` (``hpo_anneal_mpi_matrix``), a signal that one rank
+receives (``hpo_mpi_signal_*``) and ``tadah hpo`` end to end on 1 and 2
+ranks (``hpo_mpi_e2e_*``). The serial build runs none of them.
 
 .. note::
 
@@ -342,6 +404,9 @@ To build Tadah!MLIP with NFP, follow these steps:
    - ``-DTADAH_LAMMPS_LIB=/full/path/to/liblammps_name.ext`` (full path to the built LAMMPS library file)
    - optionally ``-DTADAH_LAMMPS_LIBS="-lz;-lzstd"`` when linking a static LAMMPS library fails with
      undefined references to its dependencies (e.g. ``gzflush`` needs ``-lz``)
+   - ``-DTADAH_ENABLE_OPENMP=ON`` for a static LAMMPS library built with OpenMP (``BUILD_OMP``, on
+     when the LAMMPS configure finds OpenMP): it calls the OpenMP runtime, and linking otherwise
+     fails on ``omp_get_num_threads``, ``GOMP_parallel`` and the like
    - optionally ``-DTADAH_ENABLE_CERES=OFF`` to build without the Ceres Solver (``LIB CERES`` is then
      unavailable)
 

@@ -24,6 +24,7 @@
 #ifdef TADAH_ENABLE_NFP
 #include <tadah/core/periodic_table.h>
 #include <tadah/hpo/runners.h>
+#include <tadah/hpo/hpo_mpi.h>  // hpo_lammps_comm()
 
 #include <atom.h>
 #endif
@@ -170,7 +171,8 @@ TEST_CASE("quickstart: in.ml with the shipped pot.tadah conserves energy and "
 
   LammpsRunner runner;
   auto lmp = runner.create_instance(
-      0, {"lmp", "-log", log_path, "-screen", "none"});
+      tadah::hpo::hpo_lammps_comm(),
+      {"lmp", "-log", log_path, "-screen", "none"});
   REQUIRE(lmp != nullptr);
   if (!runner.run_script(lmp, script, tadah::core::Context{})) {
     lmp.reset();  // closes the log

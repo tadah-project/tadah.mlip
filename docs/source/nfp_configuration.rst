@@ -2321,20 +2321,26 @@ one a finite number (``MAXTIME`` a positive one).
        gradient-based backend except ``DLIB:BFGS`` they are rejected
        when the configuration has ``PC_LAMMPS`` lines.
 
-       ``LN_NEWUOA_BOUND`` is refused in every block (the
+       ``LN_NEWUOA_BOUND`` is refused in every phase (the
        ``STRATEGY``-level optimiser, ``MULTISTART``, the ``PRESTAGE``
-       exploration and refinement, ``INNER``), at the line that closes
-       the block naming it.  NLopt 2.10 plans each of its steps with a
+       exploration and refinement, ``INNER``): at ``ENDOPTIMIZER`` for
+       the ``STRATEGY``-level optimiser, whether the ``STRATEGY`` block,
+       a ``REFINE`` block or the ``OPTIMIZER`` block itself names it, at
+       ``ENDEXPLORE`` for the exploration and at ``ENDINNER`` for an
+       ``INNER`` block.  NLopt 2.10 plans each of its steps with a
        nested ``LD_MMA`` run that has no time limit and sees no stop
        request, and once a non-finite value reaches its model each step
        takes about 10–60 s without evaluating the loss.  That happens
        after every stop ``tadah hpo`` makes through the objective
        (Ctrl-C, SIGTERM, a ``RESTART`` stagnation stop, an error that ends
        the run: the objective then returns ``HUGE_VAL``, NLopt's
-       convention for a forced stop), and when the loss barely changes
-       over the trust region; Ctrl-C, ``MAXTIME`` and ``RESTART`` wait
-       that long.  Before 1.6.0 it was accepted.  Use ``LN_BOBYQA``,
-       Powell's bound-constrained successor of NEWUOA, whose ``STEP``
+       convention for a forced stop) from a run's (2n+1)-th evaluation
+       on, n being the number of ``OPTIM`` dimensions (NEWUOA first
+       evaluates 2n+1 starting points, and a stop on one of the first 2n
+       returns at once), and when the loss barely changes over the trust
+       region; Ctrl-C, ``MAXTIME`` and ``RESTART`` wait that long.
+       Before 1.6.0 it was accepted.  Use ``LN_BOBYQA``, Powell's
+       bound-constrained successor of NEWUOA, whose ``STEP``
        rescales each dimension instead of setting one radius
        (:ref:`search_space_scaling`), or ``LN_NEWUOA`` where the search
        may leave the ``OPTIM`` box (it ignores the bounds):

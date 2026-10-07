@@ -2036,3 +2036,195 @@ TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment"
   REQUIRE(std::filesystem::exists("energy.pred"));
   CHECK(predicted_values("energy.pred").size() == 3u);
 }
+
+/* ---- [eam]: D2_EAM and DM_EAM read the setfl file named by SETFL ------ */
+
+namespace {
+
+/* A single-element (Ta) setfl file with analytic tables, cutoff 4.5 A:
+ * F(rho) = -sqrt(rho) on rho in [0, 50], rho(r) = (4.5 - r)^2 and
+ * phi(r) = 0.5 (4.5 - r)^3 (z2r = r phi) below the cutoff, 0 beyond. */
+std::string small_ta_setfl() {
+  const int nrho = 501, nr = 501;
+  const double drho = 0.1, dr = 0.01, rc = 4.5;
+  std::ostringstream os;
+  os.precision(17);
+  os << "Small Ta setfl of the DM_EAM CLI test\nanalytic tables\n\n"
+     << "1 Ta\n"
+     << nrho << " " << drho << " " << nr << " " << dr << " " << rc << "\n"
+     << "73 180.95 3.304 bcc\n";
+  for (int i = 0; i < nrho; ++i) os << -std::sqrt(i * drho) << "\n";
+  for (int i = 0; i < nr; ++i) {
+    const double r = i * dr;
+    os << (r < rc ? (rc - r) * (rc - r) : 0.0) << "\n";
+  }
+  for (int i = 0; i < nr; ++i) {
+    const double r = i * dr;
+    os << (r < rc ? r * 0.5 * (rc - r) * (rc - r) * (rc - r) : 0.0) << "\n";
+  }
+  return os.str();
+}
+
+/* A two-atom bcc Ta cell with lattice parameter `a`, energy `e`, no forces. */
+std::string bcc_ta_entry(const std::string& label, double a, double e) {
+  std::ostringstream os;
+  os.precision(17);
+  os << label << "\n1 1 1\n" << e << " 0.0\n"
+     << a << " 0 0\n0 " << a << " 0\n0 0 " << a << "\n"
+     << "0 0 0\n0 0 0\n0 0 0\n"
+     << "Ta 0 0 0 0 0 0\n"
+     << "Ta " << a / 2 << " " << a / 2 << " " << a / 2 << " 0 0 0\n\n";
+  return os.str();
+}
+
+}  // namespace
+
+/* Pins: `tadah train` builds a DM_EAM model from a configuration file, the
+ * many-body block alone (INIT2B false) and with the D2_EAM pair term, both
+ * reading the one SETFL file (`TYPEMB DM_EAM 0 Ta Ta`, `TYPE2B D2_EAM 0 Ta
+ * Ta`, the cutoffs the file's 4.5 A): exit 0, and the potential carries
+ * `SETFL eam_small.alloy` and the TYPEMB (and TYPE2B) line as written;
+ * `tadah predict` loads that potential (exit 0) and writes energy.pred.
+ * Before the fix: DM_EAM read its setfl path from TYPEMB parameter 1, the
+ * placeholder the TYPEMB format requires to be an unsigned integer, so no
+ * configuration could build it: train exited 1 with "EAMSetflIO: setfl file
+ * does not exist: 0" and wrote no potential. */
+TEST_CASE("Subcommand: train builds a DM_EAM model from the SETFL file",
+          "[TadahCLI][train][eam]") {
+  ScratchCwd cwd("train_dm_eam");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  {
+    std::ofstream os("db.tadah");
+    os << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+       << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+       << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1);
+  }
+  for (const bool with_pair : {false, true}) {
+    INFO("D2_EAM pair term: " << with_pair);
+    for (const char* f : {"pot.tadah", "energy.pred"})
+      std::filesystem::remove(f);
+    {
+      std::ofstream os("config");
+      os << "DBFILE db.tadah\nATOM Ta\nWATOM 1\n";
+      if (with_pair)
+        os << "INIT2B true\nTYPE2B D2_EAM 0 Ta Ta\n"
+              "RCTYPE2B Cut_Dummy\nRCUT2B 4.5\n";
+      else
+        os << "INIT2B false\n";
+      os << "INITMB true\nTYPEMB DM_EAM 0 Ta Ta\n"
+            "RCTYPEMB Cut_Dummy\nRCUTMB 4.5\nSETFL eam_small.alloy\n"
+            "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+            "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+    }
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    INFO("train status " << t.status << "\n" << reported(t));
+    CHECK_FALSE(contains(reported(t), "setfl file does not exist"));
+    REQUIRE(t.status == 0);
+    REQUIRE(std::filesystem::exists("pot.tadah"));
+    const std::string pot = slurp("pot.tadah");
+    INFO("pot.tadah:\n" << pot);
+    CHECK(line_tokens(pot, "SETFL") ==
+          std::vector<std::string>{"SETFL", "eam_small.alloy"});
+    CHECK(line_tokens(pot, "TYPEMB") ==
+          std::vector<std::string>{"TYPEMB", "DM_EAM", "0", "Ta", "Ta"});
+    if (with_pair)
+      CHECK(line_tokens(pot, "TYPE2B") ==
+            std::vector<std::string>{"TYPE2B", "D2_EAM", "0", "Ta", "Ta"});
+
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah"});
+    INFO("predict status " << p.status << "\n" << reported(p));
+    CHECK(p.status == 0);
+    CHECK(std::filesystem::exists("energy.pred"));
+  }
+}
+
+/* Pins: `tadah train` refuses an EAM cutoff other than the setfl file's
+ * (4.5 A): a DM_EAM model with RCUTMB 3.5, and a D2_EAM model with RCUT2B
+ * 3.5, exit 1 naming the descriptor, the key, both values and the file,
+ *   DM_EAM: RCUTMB 3.5 differs from the cutoff 4.5 of the setfl file
+ *   'eam_small.alloy' (SETFL); set RCUTMB to the file's cutoff, 4.5.
+ * and write no potential.
+ * Before the fix: both exited 0 and wrote a potential that records the
+ * file's cutoff (RCUTMB 4.5, RCUT2B 4.5), while the weights had been fitted
+ * with the descriptor evaluated at 3.5, so `tadah predict` on that file
+ * evaluated a model that was never fitted. */
+TEST_CASE("Subcommand: train refuses an EAM cutoff other than the setfl "
+          "file's",
+          "[TadahCLI][train][eam]") {
+  ScratchCwd cwd("train_eam_cutoff");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  {
+    std::ofstream os("db.tadah");
+    os << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+       << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+       << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1);
+  }
+  for (const bool pair : {false, true}) {
+    const std::string label = pair ? "D2_EAM" : "DM_EAM";
+    const std::string key = pair ? "RCUT2B" : "RCUTMB";
+    INFO(label << " with " << key << " 3.5");
+    std::filesystem::remove("pot.tadah");
+    {
+      std::ofstream os("config");
+      os << "DBFILE db.tadah\nATOM Ta\nWATOM 1\n";
+      if (pair)
+        os << "INIT2B true\nTYPE2B D2_EAM 0 Ta Ta\n"
+              "RCTYPE2B Cut_Dummy\nRCUT2B 3.5\nINITMB false\n";
+      else
+        os << "INIT2B false\nINITMB true\nTYPEMB DM_EAM 0 Ta Ta\n"
+              "RCTYPEMB Cut_Dummy\nRCUTMB 3.5\n";
+      os << "SETFL eam_small.alloy\n"
+            "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+            "MODEL M_BLR BF_Linear\nLAMBDA 0\nOALGO 1\n";
+    }
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    const std::string rep = reported(t);
+    INFO("train status " << t.status << "\n" << rep);
+    const std::string pot = std::filesystem::exists("pot.tadah")
+                                ? slurp("pot.tadah")
+                                : std::string("(none)");
+    INFO("pot.tadah:\n" << pot);
+    CHECK(t.status == 1);
+    CHECK(contains(rep, label + ": " + key +
+                            " 3.5 differs from the cutoff 4.5 of the setfl "
+                            "file 'eam_small.alloy' (SETFL); set " + key +
+                            " to the file's cutoff, 4.5."));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
+/* Pins: `tadah data print -s si.cif` on diamond Si given only by its
+ * space-group number (227, Si at 1/8 1/8 1/8, a = 5.431 A) exits 0 and
+ * prints the structure's label with the space group the cell is built
+ * with, origin choice 2 (8 atoms):
+ *   Structure  :    CIF file: si.cif | Symmetry: F d -3 m:2 | Volume: ...
+ * Before the fix: the label showed the H-M text, which this CIF has not:
+ * "CIF file: si.cif | Symmetry:  | Volume: 160.191478" (an empty field). */
+TEST_CASE("Subcommand: data print -s names the space group a CIF's cell is "
+          "built with",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("print_cif_group");
+  {
+    std::ofstream os("si.cif");
+    os << "data_Si_number_only\n"
+          "_cell_length_a 5.431\n_cell_length_b 5.431\n_cell_length_c 5.431\n"
+          "_cell_angle_alpha 90\n_cell_angle_beta 90\n_cell_angle_gamma 90\n"
+          "_symmetry_Int_Tables_number 227\n"
+          "loop_\n_atom_site_label\n_atom_site_type_symbol\n"
+          "_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n"
+          "Si1 Si 0.125 0.125 0.125\n";
+  }
+  const CliRun r = run_tadah({"tadah", "data", "print", "-s", "si.cif"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  const auto structure = line_tokens(r.out, "Structure");
+  REQUIRE_FALSE(structure.empty());
+  CHECK(contains(r.out, "CIF file: si.cif | Symmetry: F d -3 m:2 | Volume: "));
+  CHECK_FALSE(contains(r.out, "Symmetry:  |"));
+  const auto atoms = line_tokens(r.out, "Atoms");
+  REQUIRE(atoms.size() >= 3);
+  CHECK(atoms[2] == "8");
+}

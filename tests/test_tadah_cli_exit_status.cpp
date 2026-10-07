@@ -2134,6 +2134,52 @@ TEST_CASE("Subcommand: train reads FIXINDEX given as separate values as the "
   }
 }
 
+/* Pins: `tadah train` with M_KRR implementation 2 on the three Ta dimers
+ * (MODEL M_KRR Kern_Linear 2 or Kern_RBF 2 with MPARAMS 1.0, SBASIS 3)
+ * trains without FIXINDEX (exit 0, 3 weights), and refuses FIXINDEX 1 /
+ * FIXWEIGHT 14, FIXINDEX 2-1 / FIXWEIGHT 14 3 and FIXINDEX 99 / FIXWEIGHT
+ * 14 alike, exit 1 with "MODEL M_KRR <kernel> 2 cannot pin weights" and no
+ * potential: its solve, (K + LAMBDA I) w = t, fits every weight at once.
+ * Before the fix: implementation 2 never read FIXINDEX or FIXWEIGHT: each
+ * of them exited 0 and wrote the WEIGHTS of the run without them (Kern_RBF
+ * with FIXINDEX 1 gave weight 1 = 1.47e-272, not 14), copying FIXINDEX and
+ * FIXWEIGHT into the potential. */
+TEST_CASE("Subcommand: train refuses FIXINDEX with M_KRR implementation 2",
+          "[TadahCLI][exit-status][train][fixindex][krr]") {
+  ScratchCwd cwd("train_fixindex_krr2");
+  write_ta_dimer_training();
+  const std::string base = slurp("config.train");
+  const std::string blr = "MODEL M_BLR BF_Linear\n";
+  REQUIRE(base.find(blr) != std::string::npos);
+  for (const char* kern : {"Kern_Linear", "Kern_RBF"}) DYNAMIC_SECTION(kern) {
+    std::string cfg = base;
+    cfg.replace(cfg.find(blr), blr.size(),
+                std::string("MODEL M_KRR ") + kern + " 2\nSBASIS 3\n" +
+                    (std::string(kern) == "Kern_RBF" ? "MPARAMS 1.0\n" : ""));
+    auto train = [&](const std::string& name, const std::string& keys) {
+      std::ofstream(name) << cfg << keys;
+      std::filesystem::remove("pot.tadah");
+      return run_tadah({"tadah", "train", "-c", name, "-o", "pot.tadah"});
+    };
+    const CliRun plain = train("plain.cfg", "");
+    INFO("no FIXINDEX: status " << plain.status << "\n" << reported(plain));
+    REQUIRE(plain.status == 0);
+    CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS").size() == 4u);  // key + 3
+    const std::string refusal =
+        std::string("MODEL M_KRR ") + kern + " 2 cannot pin weights";
+    for (const char* keys : {"FIXINDEX 1\nFIXWEIGHT 14\n",
+                             "FIXINDEX 2-1\nFIXWEIGHT 14 3\n",
+                             "FIXINDEX 99\nFIXWEIGHT 14\n"}) {
+      const CliRun r = train("pinned.cfg", keys);
+      const std::string rep = reported(r);
+      INFO(keys << "status " << r.status << "\n" << rep);
+      CHECK(r.status == 1);
+      CHECK(contains(rep, refusal));
+      CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+    }
+  }
+}
+
 /* ---- the [bias] cases ----------------------------------------------------
  *
  * BIAS true with two species (Nb, Ta): one one-hot intercept column per ATOM

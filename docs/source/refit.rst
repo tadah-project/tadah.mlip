@@ -652,9 +652,13 @@ Within a stage, a stop criterion that the block's ``ALGO`` does not read
 (the table above) is an error, named as written with the ``ALGO`` and the
 keys it reads; ``MAXITER`` with an ``ALGO`` that counts evaluations names
 ``MAXEVAL``, and ``FTOL_REL`` with dlib's ``LBFGS`` names ``FTOL_ABS``.
-Before 1.6.0 they were accepted, and but for ``MAXITER`` had no effect
-(``GTOL`` with ``LD_LBFGS``, ``XTOL_REL`` with an ``INNER`` dlib
-``LBFGS``):
+Before 1.6.0 they were accepted: ``XTOL_REL`` with an ``INNER`` dlib
+``LBFGS`` had no effect (but under ``GN_MLSL_LDS``, whose local searches
+it set); ``GTOL`` with an L-BFGS REFINE had none on REFINE, but under
+``REFIT_OBJECTIVE curve`` it was the gradient tolerance of the FUSE curve
+refine (above); ``MAXITER`` with an L-BFGS REFINE set its evaluation
+budget; and ``FTOL_REL`` with dlib's ``LBFGS`` was dlib's absolute stop,
+which ``FTOL_ABS`` sets now:
 
 .. code-block:: none
 

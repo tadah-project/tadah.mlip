@@ -1023,11 +1023,19 @@ Four root keys control how ``PC_LAMMPS`` scripts are executed:
    or by a crash inside LAMMPS — leaves the script it was running not
    completed (band C under ``FAILSCORE_GRADING``), and a new worker
    takes the slot's next task.  The journal names the slot and the
-   worker's pid, the pid an out-of-memory line of the kernel log names:
+   worker's pid, the pid an out-of-memory line of the kernel log names.
+   A worker killed inside its script, by the out-of-memory killer for
+   example, gives:
 
    .. code-block:: none
 
-      WARNING   pc-worker 2 (pid 41237) killed/died: RESULT recv failed: pcwire: recv failed: Connection reset by peer; wait: signal 9 (Killed); consecutive deaths: 1
+      WARNING   pc-worker 2 (pid 41237) killed/died: RESULT recv failed: pcwire: peer closed (EOF); wait: signal 9 (Killed); consecutive deaths: 1
+
+   The text after ``killed/died:`` says how ``tadah`` found the death: a
+   worker killed at its deadline gives ``task deadline expired (<N> ms)``,
+   and one that died between two tasks the error of the next task's
+   exchange (``RESULT recv failed: pcwire: recv failed: Connection reset
+   by peer``, for example).
 
 ``PC_SCRIPT_TIMEOUT <time>|off`` (default ``off``; legacy alias: root ``MAXTIME``)
    A soft wall-clock limit per script, injected as LAMMPS

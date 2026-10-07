@@ -31,7 +31,9 @@ mature third-party optimizers behind the same interface.
      - Ingber's ASA with per-parameter temperatures and reannealing.
    * - ``NLOPT``
      - global (``G_MLSL_LDS``, ``GN_DIRECT``, ...) and local
-       (``LN_BOBYQA``, ``LD_LBFGS``, ...) algorithms
+       (``LN_BOBYQA``, ``LD_LBFGS``, ...) algorithms; ``LN_NEWUOA_BOUND``
+       and ``NLOPT_LD_LBFGS_NOCEDAL`` are refused (:doc:`nfp_configuration`,
+       the ``NLOPT`` row of *Algorithms by library*)
      - Broad third-party collection; see the OPTIMIZER-block table in
        :ref:`nfp_manual`.
    * - ``DLIB``
@@ -49,8 +51,19 @@ optionally ``RESTART``; :ref:`strategy_block`).  Gradient-based backends
 (``NLOPT`` ``LD_*``/``GD_*``, ``CERES``) obtain their gradient by finite
 differences and are rejected when the configuration has ``PC_LAMMPS``
 lines; ``DLIB:BFGS`` is the one gradient-based optimiser accepted there.
-A failed evaluation in the finite-difference stencil can make the
-gradient not finite, which can end such a search with its own status
+An NLopt ``MLSL`` or ``AUGLAG`` is judged by its local search, whatever
+the ``D`` or ``N`` of its name: it evaluates its own points without a
+gradient, so ``GD_MLSL``, ``GD_MLSL_LDS``, ``LD_AUGLAG`` and
+``LD_AUGLAG_EQ`` with a derivative-free ``INNER`` block (``LN_BOBYQA``,
+``LN_SBPLX``, ``LN_COBYLA``, …) are accepted with ``PC_LAMMPS``; without
+one they run NLopt's default local optimiser, ``LD_MMA``, and are
+rejected with a message naming it.  Before 1.6.0 they were rejected with a
+derivative-free ``INNER`` block too.
+A failed loss at the point, or a failed evaluation in the
+finite-difference stencil of a usable point, leaves the point without a
+usable gradient, whatever ``FAILSCORE`` is (at a graded failure at the
+point under ``FAILSCORE_GRADING ON`` its finite differences are its
+gradient), which can end such a search with its own status
 (:ref:`hpo_gradient_not_finite`).
 ``MAXEVAL`` caps one search of a backend — the run of a ``PLAIN``
 strategy, one ``RESTART`` launch, one ``MULTISTART`` start, the

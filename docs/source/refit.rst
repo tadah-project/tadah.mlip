@@ -292,6 +292,27 @@ FIXWEIGHT`` lines index).
 Configuration reference
 -----------------------
 
+The numbers of the configuration are read strictly, before the EAM file:
+a real number in the number grammar of the hpotarget file (decimal, no
+hexadecimal float, ``inf``, ``nan`` or number below the smallest normal
+double) and an integer as decimal digits, each within the range its key
+states in the tables below.  A configuration file must also pass the type
+check of every Tadah! configuration key, which refuses ``.5`` in every
+number and a sign (``+3``, ``-3``) in an integer (``+0.5`` is a valid real
+number).  An error names the key and the token as written:
+
+.. code-block:: none
+
+   tadah refit: REFIT_TOL_AMBIENT must be a positive number, got '0'
+   tadah refit: REFIT_COMPACT_JITTERS must be an integer from 0 to 2147483646, got '3000000000'
+
+Before 1.6.0 they were read unchecked: ``REFIT_TOL_AMBIENT 0`` made the
+energy metric infinite, ``OUTPUT_GRID_SCALE 0`` wrote a 2-point
+``refit.eam`` (and so did any scale whose point counts rounded below 2 or
+overflowed an ``int``, such as ``0.0001`` or ``1e7``),
+``REFIT_COMPACT_OPT_EVERY 0`` and ``INSERT_TOPK 0`` became 1,
+and ``REFIT_COMPACT_SEED 3000000000``, a valid seed, failed converting.
+
 General and output
 ~~~~~~~~~~~~~~~~~~~
 
@@ -323,10 +344,17 @@ General and output
      - Live, line-flushed optimisation log; the self-test is at its end.
    * - ``OUTPUT_GRID_SCALE`` (float)
      - ``1.0``
-     - Output setfl grid density relative to the input table.
+     - Output setfl grid density relative to the input table; > 0, and the
+       grid it gives (nr × scale and nrho × scale points, rounded) must have
+       3 to 2147483647 points per table, checked once the EAM file is read,
+       before any fitting (``tadah refit: OUTPUT_GRID_SCALE '0.0001' for
+       refit.eam: EAMSetflIO: a grid scale of 0.0001 gives nrho = 1 and
+       nr = 1 points ...``).
    * - ``OPTIM_PCT`` (float)
      - ``5.0``
-     - ±% half-width of the OPTIM bounds written into the HPO target.
+     - ±% half-width of the OPTIM bounds written into the HPO target; > 0
+       (also with ``--edit`` and ``--retarget``, checked before any file is
+       written).
 
 Mode and basis
 ~~~~~~~~~~~~~~
@@ -363,10 +391,10 @@ Objective and curve weighting
      - (curve) Weights :math:`\phi,\rho` fully between the equilibrium nearest-neighbour distance and the cutoff, and :math:`F` from zero to the equilibrium density, relaxing toward compression — tighter equilibrium energies for a given basis size.
    * - ``REFIT_CURVE_RELAX``
      - ``0.05``
-     - (curve, weighting on) Floor weight in the compressed region, in (0, 1]; smaller focuses the fit harder on the equilibrium region.
+     - (curve, weighting on) Floor weight in the compressed region, in (0, 1] (checked in either objective); smaller focuses the fit harder on the equilibrium region.
    * - ``REFIT_CURVE_DERIV_WEIGHT``
      - ``0.0``
-     - (curve) Weight of the 1st/2nd-derivative terms relative to value. ``0`` fits values only (best crystal energies); raise to fit slope/curvature shape.
+     - (curve) Weight of the 1st/2nd-derivative terms relative to value, >= 0. ``0`` fits values only (best crystal energies); raise to fit slope/curvature shape.
 
 Compact ladder
 ~~~~~~~~~~~~~~
@@ -380,28 +408,28 @@ Compact ladder
      - Effect
    * - ``REFIT_COMPACT_NMAX``
      - ``40``
-     - Per-function basis ceiling. One value (all functions) or three ``phi rho F`` (e.g. ``35 12 35``). Higher is more flexible and slower.
+     - Per-function basis ceiling: one integer from 1 (all functions) or three ``phi rho F`` (e.g. ``35 12 35``). Higher is more flexible and slower. The sample grid of at least 4×NMAX points must fit 2147483647, so the largest NMAX is at most 536870911 (checked with the other numbers, before the EAM file is read).
    * - ``REFIT_COMPACT_SAMPLES``
      - ``800``
-     - Sample points per function for the fit and RMSE (raised to at least 4×NMAX). More is finer and slower.
+     - Sample points per function for the fit and RMSE, from 1 (raised to at least 50 and 4×NMAX). More is finer and slower.
    * - ``REFIT_COMPACT_OPT_EVERY``
      - ``1``
-     - Run the full per-rung optimisation every K-th rung; intermediate rungs grow by insertion only. Higher is faster and coarser.
+     - Run the full per-rung optimisation every K-th rung (K from 1); intermediate rungs grow by insertion only. Higher is faster and coarser.
    * - ``REFIT_COMPACT_STALL``
      - ``12``
-     - Stop a function's ladder after this many rungs without improvement (Blip families: 6).
+     - Stop a function's ladder after this many rungs without improvement, from 1 (Blip families: 6).
    * - ``REFIT_COMPACT_INSERT_TOPK``
      - ``3``
-     - Try this many top residual peaks per rung and keep the best insertion (Blip families: 1).
+     - Try this many top residual peaks per rung and keep the best insertion, from 1 (Blip families: 1).
    * - ``REFIT_COMPACT_JITTERS``
      - ``2``
-     - Randomised restarts per rung (jitters+1 candidates); more explores the landscape harder.
+     - Randomised restarts per rung (jitters+1 candidates), from 0 to 2147483646; more explores the landscape harder.
    * - ``REFIT_COMPACT_SHARE``
      - ``0.5``
-     - Per-function share of the tolerance budget used by the rung-selection metric.
+     - Per-function share of the tolerance budget used by the rung-selection metric; > 0.
    * - ``REFIT_COMPACT_SEED``
      - ``12345``
-     - RNG seed for the jittered restarts; fixes the run for reproducibility.
+     - RNG seed for the jittered restarts, from 0 to 4294967295; fixes the run for reproducibility.
    * - ``REFIT_COMPACT_MERGE``
      - ``auto``
      - Knot coalescence guard: penalises near-coincident knot pairs during EXPLORE and merges them after REFINE, re-inserting a fresh knot at the worst residual. ``auto`` is off for ``curve`` and on for ``energy``; ``true``/``false`` force it. Knot families only.
@@ -418,19 +446,19 @@ Window and self-test
      - Effect
    * - ``REFIT_TOL_AMBIENT`` (meV/atom)
      - ``0.1``
-     - Pass threshold for the ambient band (:math:`a/a_0\,0.95\!-\!1.10`); also weights the energy-mode metric there.
+     - Pass threshold for the ambient band (:math:`a/a_0\,0.95\!-\!1.10`), > 0; also weights the energy-mode metric there.
    * - ``REFIT_TOL_COMPRESSED`` (meV/atom)
      - ``1.0``
-     - Pass threshold for the compressed band (:math:`a/a_0\,0.75\!-\!0.95`).
+     - Pass threshold for the compressed band (:math:`a/a_0\,0.75\!-\!0.95`), > 0.
    * - ``REFIT_REACH_SMIN``
      - ``0.75``
-     - Smallest :math:`a/a_0` the fit must stay faithful at; sets the reachable :math:`r`/:math:`\rho` window.
+     - Smallest :math:`a/a_0` the fit must stay faithful at, from 0.1 to 1; sets the reachable :math:`r`/:math:`\rho` window and the span of the self-test and the E-V scans. Their neighbour lists grow as :math:`s_{\min}^{-3}` (0.01 took about a minute, 1e-6 did not finish), and the reachability probe lists neighbours only out to :math:`r_{cut}/0.1`.
    * - ``REFIT_REACH_MARGIN``
      - ``1.25``
-     - Safety margin on the reachable :math:`F(\rho)` window.
+     - Safety margin on the reachable :math:`F(\rho)` window; > 0.
    * - ``REFIT_R_LO_FRAC``
      - ``0.20``
-     - Inner radial fit bound as a fraction of the cutoff; also the lower edge of the :math:`\phi/\rho` weight ramp.
+     - Inner radial fit bound as a fraction of the cutoff, in (0, 1); also the lower edge of the :math:`\phi/\rho` weight ramp.
    * - ``REFIT_PLACEMENT``
      - ``window``
      - ``window`` places the basis on the reachable window; ``uniform`` spreads it over the full range.
@@ -456,7 +484,16 @@ later stages (its coefficient is still fitted). Pinning the window edges sets
 the extrapolation behaviour.
 
 **EXPLORE / REFINE / FUSE** each accept ``ENABLED true|false`` (REFINE/FUSE;
-``ENABLED false`` skips the stage) and a nested ``OPTIMIZER`` block. EXPLORE
+``ENABLED false`` skips the stage) and a nested ``OPTIMIZER`` block, but not
+both ``ENABLED false`` and an ``OPTIMIZER`` block, which would have no
+effect: that is an error (before 1.6.0 the block was ignored with a
+warning).  To keep a block and skip its stage, write ``ALGO NONE`` in it:
+
+.. code-block:: none
+
+   REFINE: ENABLED false skips the stage, so its OPTIMIZER block has no effect; remove the OPTIMIZER block, or write ALGO NONE in it instead of ENABLED false
+
+EXPLORE
 also accepts ``MAX_ADD`` (one value or three ``phi rho F``) capping the basis
 functions added in that stage: each an integer from 0 to 2147483647.  Leave
 ``MAX_ADD`` out for no cap; a negative value, which used to mean no cap, is
@@ -485,9 +522,10 @@ an error (``EXPLORE MAX_ADD must be an integer from 0 to 2147483647, got
      ENDOPTIMIZER
    ENDFUSE
 
-Legal optimisers and the stop-criteria each stage consumes (a block with
-``ALGO NONE`` or ``UNIFORM`` runs no optimiser and takes none of them,
-except those another stage reads, below):
+Legal optimisers and the stop-criteria each one reads.  A block takes
+only the stop-criteria of its ``ALGO``; a block with ``ALGO NONE`` or
+``UNIFORM`` runs no optimiser and takes none, except those another stage
+reads (below):
 
 .. list-table::
    :header-rows: 1
@@ -495,19 +533,44 @@ except those another stage reads, below):
 
    * - Stage
      - LIB / ALGO
-     - Stop-criteria used
+     - Stop-criteria read
    * - EXPLORE outer
-     - NLOPT ``GN_MLSL_LDS`` | ``GN_DIRECT_L`` | ``GN_CRS2_LM``; DLIB ``GLOBAL``; ``UNIFORM``
+     - NLOPT ``GN_MLSL_LDS`` | ``GN_DIRECT_L`` | ``GN_CRS2_LM``; DLIB ``GLOBAL``
      - ``MAXEVAL``
+   * - EXPLORE outer
+     - ``UNIFORM``
+     - none
    * - EXPLORE ``INNER``
-     - NLOPT ``LN_SBPLX`` | ``LN_NELDERMEAD`` | ``LN_BOBYQA`` | ``LN_PRAXIS`` | ``LD_LBFGS``; DLIB ``LBFGS``; ``NONE``
+     - NLOPT ``LN_SBPLX`` | ``LN_NELDERMEAD`` | ``LN_BOBYQA`` | ``LN_PRAXIS`` | ``LD_LBFGS``
      - ``MAXEVAL``, ``FTOL_REL``, ``XTOL_REL``
-   * - REFINE
-     - CERES ``LM`` | ``DOGLEG``; NLOPT ``LD_LBFGS``; DLIB ``LBFGS``; ``NONE``
+   * - EXPLORE ``INNER``
+     - DLIB ``LBFGS``
+     - ``MAXEVAL``, ``FTOL_ABS``
+   * - EXPLORE ``INNER``
+     - ``NONE``
+     - none
+   * - REFINE, FUSE
+     - CERES ``LM`` | ``DOGLEG``
      - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``, ``GTOL``
-   * - FUSE
-     - CERES ``LM`` | ``DOGLEG``; ``NONE``
-     - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``
+   * - REFINE
+     - NLOPT ``LD_LBFGS``
+     - ``MAXEVAL``, ``FTOL_REL``
+   * - REFINE
+     - DLIB ``LBFGS``
+     - ``MAXEVAL``, ``FTOL_ABS``
+   * - REFINE, FUSE
+     - ``NONE``
+     - none
+
+Under the EXPLORE optimiser ``GN_MLSL_LDS`` an ``INNER`` block also takes
+``MAXEVAL``, ``FTOL_REL`` and ``XTOL_REL`` whatever its ``ALGO``: they set
+MLSL's local ``LN_SBPLX`` searches too.  ``FTOL_ABS`` is the absolute
+change of the objective at which dlib's ``LBFGS`` stops (the name
+``tadah hpo``'s ``DLIB:BFGS`` gives it); before 1.6.0 dlib took
+``FTOL_REL`` for that absolute change, and under ``GN_MLSL_LDS`` an
+``INNER`` dlib ``LBFGS`` block's ``FTOL_REL`` set both, so such a run
+without ``FTOL_ABS`` gives different results now.  The defaults are
+unchanged (1e-13 in ``INNER``, 1e-15 in REFINE).
 
 ``MAXEVAL`` counts objective evaluations, exactly, for every NLopt and
 dlib algorithm: each call of the stage's objective, for its value or its
@@ -516,7 +579,9 @@ objective in separate calls, so its L-BFGS counts both, in the objective
 wrapper; the call past ``MAXEVAL`` ends the search at its last iterate.
 Ceres' ``LM`` and ``DOGLEG`` count their solver iterations instead
 (``max_num_iterations``), each one Jacobian evaluation and one or more
-residual evaluations; ``MAXITER``, the alias of ``MAXEVAL``, says so.
+residual evaluations; ``MAXITER``, the alias of ``MAXEVAL`` for ``LM`` and
+``DOGLEG`` only, says so (with an L-BFGS REFINE, where it set the
+evaluation budget before 1.6.0, it is an error naming ``MAXEVAL``).
 Without ``MAXEVAL`` each optimiser takes its default budget:
 
 .. list-table::
@@ -539,10 +604,12 @@ Without ``MAXEVAL`` each optimiser takes its default budget:
        ``LM`` and ``DOGLEG``
      - 50000 evaluations; 1000 iterations
    * - FUSE
-     - iterations of ``LM`` and ``DOGLEG`` over the whole stage: the joint
-       solve and the held re-run of *Compact mode* (a fallback, up to one
-       more solve per radial bump) share it; before 1.6.0 each held pass
-       had the full budget
+     - iterations of ``LM`` and ``DOGLEG``: in energy mode over the whole
+       stage, the joint solve and the held re-run of *Compact mode* (a
+       fallback, up to one more solve per radial bump) sharing it (before
+       1.6.0 each held pass had the full budget); under ``REFIT_OBJECTIVE
+       curve`` of each function's refine, so phi, rho and F each get the
+       whole budget
      - 2000
 
 Before 1.6.0 dlib ``GLOBAL`` took ``max(500, MAXEVAL/20)`` function calls,
@@ -556,35 +623,64 @@ numbers of its old iteration caps (20000 in EXPLORE ``INNER``, 50000 in
 REFINE), now counted in evaluations, at least two per L-BFGS iteration
 (its value and its gradient), so a default dlib ``LBFGS`` run whose cap
 binds stops sooner than before.
-``FTOL_REL`` on the Ceres stages is Ceres' relative function tolerance.
-Under ``REFIT_OBJECTIVE curve`` the FUSE curve refine runs with REFINE's
-``MAXEVAL``/``MAXITER``, ``FTOL_REL`` and ``GTOL`` (as Ceres iterations),
-not with FUSE's own.  The refit log states each stage's budget in its
-unit and each stage's termination with the evaluations it spent
-(``term=DLIB_GLOBAL:MAXEVAL_REACHED(3000ev)``).  A stage's
+``FTOL_REL`` on the Ceres stages is Ceres' relative function tolerance,
+and ``GTOL`` its gradient tolerance.  FUSE's settings are those of the
+joint solve and, under ``REFIT_OBJECTIVE curve``, of each function's FUSE
+refine.  Before 1.6.0 the curve FUSE refine ran with REFINE's
+``MAXEVAL``/``MAXITER`` (an L-BFGS REFINE's evaluations read as Ceres
+iterations), ``FTOL_REL`` and ``GTOL``, also with REFINE ``ENABLED
+false``, and FUSE's own had no effect; FUSE ``GTOL`` was ignored, and the
+joint solve's gradient tolerance was 1e-14, still the default.  Curve
+refits that set those keys give different results now, and so does one
+whose FUSE refine reached REFINE's default 1000 iterations (FUSE's
+default is 2000).  The refit log states each stage's budget in its unit
+and each stage's termination with the evaluations it spent
+(``term=DLIB_GLOBAL:MAXEVAL_REACHED(3000ev)``), and in curve mode each
+function's FUSE refine with its Ceres iterations
+(``FUSE[phi] curve score 0.0304 -> 0.0287 (NO_CONVERGENCE(501it, maxiter))``).  A stage's
 ``OPTIMIZER`` block takes only the keys the stage reads — ``LIB``, ``ALGO``,
 the stop-criteria of this table, and in EXPLORE the ``INNER`` block.  Any
 other optimiser attribute of :ref:`tadah hpo <nfp_manual>` (``THREADS``,
-``MAXTIME``, ``STOPVAL``, ``POPULATION``, ``STEP``, ``PARAM``, …), ``GTOL``
-in FUSE, and an ``INNER`` block in REFINE or FUSE is an error that names the
-keys the stage reads; before 1.6.0 they were accepted and did nothing:
+``MAXTIME``, ``STOPVAL``, ``POPULATION``, ``STEP``, ``PARAM``, …) and an
+``INNER`` block in REFINE or FUSE is an error that names the keys the stage
+reads; before 1.6.0 they were accepted and did nothing:
 
 .. code-block:: none
 
-   REFINE: THREADS is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL/MAXITER, FTOL_REL, GTOL)
-   EXPLORE INNER: MAXTIME is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL, FTOL_REL, XTOL_REL)
+   REFINE: THREADS is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL/MAXITER, FTOL_REL, FTOL_ABS, GTOL)
+   EXPLORE INNER: MAXTIME is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL, FTOL_REL, FTOL_ABS, XTOL_REL)
 
 ``SEED`` is rejected in every stage's ``OPTIMIZER`` block, ``INNER``
 included, with a pointer to ``REFIT_COMPACT_SEED``, which seeds the refit's
-random numbers; ``FTOL_ABS`` on REFINE and FUSE points to ``FTOL_REL``:
+random numbers; ``FTOL_ABS`` with a Ceres ``ALGO`` points to ``FTOL_REL``:
 
 .. code-block:: none
 
    EXPLORE: SEED is not accepted in a tadah refit OPTIMIZER block: the refit's random numbers come from REFIT_COMPACT_SEED; set REFIT_COMPACT_SEED in the configuration instead.
 
-Within a stage, ``GTOL`` is used by the Ceres optimisers (``LM``,
-``DOGLEG``) and ``XTOL_REL`` by the NLopt local searches; with another
-``ALGO`` of the stage they have no effect.
+Within a stage, a stop criterion that the block's ``ALGO`` does not read
+(the table above) is an error, named as written with the ``ALGO`` and the
+keys it reads; ``MAXITER`` with an ``ALGO`` that counts evaluations names
+``MAXEVAL``, and ``FTOL_REL`` with dlib's ``LBFGS`` names ``FTOL_ABS``.
+Before 1.6.0 they were accepted: ``XTOL_REL`` with an ``INNER`` dlib
+``LBFGS`` had no effect (but under ``GN_MLSL_LDS``, whose local searches
+it set); ``GTOL`` with an L-BFGS REFINE had none on REFINE, but under
+``REFIT_OBJECTIVE curve`` it was the gradient tolerance of the FUSE curve
+refine (above); ``MAXITER`` with an L-BFGS REFINE set its evaluation
+budget; and ``FTOL_REL`` with dlib's ``LBFGS`` was dlib's absolute stop,
+which ``FTOL_ABS`` sets now:
+
+.. code-block:: none
+
+   REFINE: GTOL has no effect with ALGO LD_LBFGS (it reads MAXEVAL, FTOL_REL); remove GTOL
+   EXPLORE INNER: XTOL_REL has no effect with ALGO LBFGS (it reads MAXEVAL, FTOL_ABS); remove XTOL_REL
+   REFINE: MAXITER counts Ceres iterations; ALGO LD_LBFGS counts objective evaluations: write MAXEVAL
+   REFINE: FTOL_REL has no effect with ALGO LBFGS: dlib's L-BFGS stops on an absolute change of the objective; write FTOL_ABS
+
+The ``optimiser:`` line of ``refit_opt.log`` gives each stage's settings
+as its ``ALGO`` reads them, the MLSL seed with those of its local searches
+(``EXPLORE.seed{algo=MLSL maxeval=60000 local=LN_SBPLX{maxeval=20000
+ftol_rel=1e-13 xtol_rel=1e-11}}``).
 
 Every ``OPTIMIZER`` block, and an EXPLORE ``INNER`` block, must set
 ``ALGO``.  To switch a search off, write it out: ``ALGO NONE`` in an
@@ -592,12 +688,16 @@ Every ``OPTIMIZER`` block, and an EXPLORE ``INNER`` block, must set
 skipped), and ``ALGO UNIFORM`` (or ``NONE``) for the EXPLORE optimiser (no
 global search).  A block switched off runs no optimiser, so a stop
 criterion in it would have no effect: ``MAXEVAL``/``MAXITER``,
-``FTOL_REL``, ``XTOL_REL`` and ``GTOL`` there are errors, named as
-written, as ``LIB`` is (below).  Two are read by another stage and stay
-accepted: an EXPLORE ``INNER`` block's ``MAXEVAL``, ``FTOL_REL`` and
-``XTOL_REL`` also set the local searches of the EXPLORE optimiser
-``GN_MLSL_LDS``, and REFINE's are what the FUSE curve refine runs with
-under ``REFIT_OBJECTIVE curve`` while FUSE runs.  EXPLORE's ``INNER``
+``FTOL_REL``, ``FTOL_ABS``, ``XTOL_REL`` and ``GTOL`` there are errors, named as
+written, as ``LIB`` is (below).  An EXPLORE ``INNER`` block's
+``MAXEVAL``, ``FTOL_REL`` and ``XTOL_REL`` stay accepted with ``ALGO
+NONE`` under the EXPLORE optimiser ``GN_MLSL_LDS``, whose local searches
+they also set, and another stop criterion there is an error that names
+those searches as what reads them (``EXPLORE INNER: FTOL_ABS has no effect
+with ALGO NONE (no local search runs; under ALGO GN_MLSL_LDS the block sets
+MLSL's local LN_SBPLX searches, which read MAXEVAL, FTOL_REL, XTOL_REL);
+remove FTOL_ABS``); before 1.6.0 REFINE's were accepted under
+``REFIT_OBJECTIVE curve`` too (the FUSE curve refine ran with them).  EXPLORE's ``INNER``
 block configures the per-rung local search whatever the EXPLORE
 optimiser, ``UNIFORM`` included.  Before 1.6.0 these keys were accepted
 and ignored:
@@ -629,8 +729,8 @@ its ``ALGO`` in ``LIB``:
      - ``ALGO`` (fitter name / NLopt name)
      - ``LIB``
    * - EXPLORE
-     - ``GN_MLSL_LDS`` / ``MLSL`` / ``GN_MLSL``, ``GN_DIRECT_L`` /
-       ``DIRECT`` / ``GN_DIRECT``, ``GN_CRS2_LM`` / ``CRS2`` / ``GN_CRS2``
+     - ``GN_MLSL_LDS`` / ``MLSL``, ``GN_DIRECT_L`` / ``DIRECT``,
+       ``GN_CRS2_LM`` / ``CRS2``
      - ``NLOPT``
    * - EXPLORE
      - ``GLOBAL`` / ``DLIB_GLOBAL``
@@ -659,6 +759,18 @@ refit's dlib global search is ``GLOBAL`` (``tadah hpo``'s ``DLIB GFS``),
 and ``LBFGS`` is dlib's L-BFGS (NLopt's is ``LD_LBFGS``; in ``tadah hpo``
 ``LBFGS`` is a ``CERES`` algorithm).
 
+The refit's ``MLSL``, ``DIRECT`` and ``CRS2`` are NLopt's ``GN_MLSL_LDS``,
+``GN_DIRECT_L`` and ``GN_CRS2_LM``.  ``GN_MLSL`` (MLSL with pseudo-random
+starts) and ``GN_DIRECT`` (DIRECT without the local bias of ``DIRECT_L``)
+are other NLopt algorithms, which ``tadah hpo`` runs as named, and
+``GN_CRS2`` is no NLopt algorithm: the refit refuses all three, with any
+``LIB``, naming the algorithm it runs.  Before 1.6.0 they ran
+``GN_MLSL_LDS``, ``GN_DIRECT_L`` and ``GN_CRS2_LM``:
+
+.. code-block:: none
+
+   EXPLORE: ALGO GN_MLSL is not run by tadah refit (NLopt's MLSL with pseudo-random starts); its MLSL is GN_MLSL_LDS: set ALGO GN_MLSL_LDS
+
 A missing ``LIB`` and one that does not match the ``ALGO`` are errors
 naming the right one.  The ``LIB`` given may be the one meant, so when the
 stage has algorithms of that library the message names them too.  A
@@ -683,14 +795,19 @@ and ignored it.  The numbers are read as strictly as in
 ``tadah hpo`` (:ref:`nfp_manual`): ``MAXEVAL`` and ``MAXITER`` take
 decimal digits only, from 1 to 2147483647 (the ``int`` budget the refit
 hands NLopt, dlib and Ceres; ``MAXEVAL 0`` ran Ceres with no iteration and
-NLopt without a limit), the tolerances and ``GTOL`` a finite number in
-decimal form (no hexadecimal float such as ``0x1p-40``).  Every error of a
+NLopt without a limit), the tolerances and ``GTOL`` a finite number >= 0 in
+decimal form (no hexadecimal float such as ``0x1p-40``; 0 switches the test
+off).  Before 1.6.0 a negative tolerance was accepted: Ceres refused it and
+returned without iterating, and the refit logged that as the stage's stop
+term (``refine=FAILURE(0it, Invalid configuration...)``), so REFINE or FUSE
+did nothing; NLopt switches a negative tolerance off.  Every error of a
 stage's ``OPTIMIZER`` block names the block, an ``INNER`` block's as
 ``EXPLORE INNER``:
 
 .. code-block:: none
 
    REFINE: FTOL_REL must be a finite number, got '0x1p-40'
+   REFINE: GTOL must be a number >= 0, got '-1'
    EXPLORE INNER: MAXEVAL must be an integer from 1 to 2147483647, got '4294967299'
 
 Output files
@@ -731,18 +848,18 @@ when the refit will be tuned further.
      - Preset grid density: ``coarse`` | ``balanced`` | ``fine`` | ``accurate``.
    * - ``N2B``
      - —
-     - :math:`\phi(r)` basis count.
+     - :math:`\phi(r)` basis count, from 1 to 1024 (the escalation's cap).
    * - ``NRHO_BASIS``
      - —
-     - :math:`\rho(r)` basis count. Under ``RHOFORM NONNEG``/``MONOTONE``
+     - :math:`\rho(r)` basis count, from 1 to 1024. Under ``RHOFORM NONNEG``/``MONOTONE``
        the density solve is non-negative least squares, whose cost grows
        faster with the count (see :ref:`refit_rhoform`).
    * - ``NF_BASIS``
      - —
-     - :math:`F(\rho)` basis count.
+     - :math:`F(\rho)` basis count, from 1 to 1024.
    * - ``REFIT_MAX_ESCALATIONS``
      - ``4``
-     - Automatic basis-escalation rounds while above tolerance.
+     - Automatic basis-escalation rounds while above tolerance, from 0.
    * - ``REFIT_CONSTRAIN_F0``
      - ``true``
      - Under ``EMBF0 FREE``: pin the raw :math:`F(0)` softly to the table

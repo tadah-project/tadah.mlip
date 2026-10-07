@@ -136,11 +136,14 @@ For every candidate :math:`\theta` the host
    cutoff is rejected with a failure loss before any training work;
 #. **injects the values**: a copy of the training configuration is made
    with every ``OPTIM``'d key rewritten to the candidate values (the
-   other indices of a key keep their configured values).  Each worker
-   thread keeps a cached trainer that is re-initialised with the new
-   context rather than rebuilt; for knot-family refit potentials the
-   ``RCUT`` keys are re-derived from the current knot positions
-   (:ref:`hpo_knot_rcut`);
+   other indices of a key keep their configured values); for knot-family
+   refit potentials the ``RCUT`` keys are re-derived from the current knot
+   positions (:ref:`hpo_knot_rcut`).  The model of the evaluation (its
+   descriptors, basis function or kernel, design matrix and regressor) is
+   built from that copy, so every key it reads, searched or not, is the
+   candidate's, and nothing an earlier evaluation or an earlier run
+   computed is carried over (building it costs far less than the fit; a
+   ``SETFL`` file is parsed once while its contents are unchanged);
 #. **checks the density gates** (``RHOGATE``, ``RHOBARGATE``, when
    configured) on that configuration: a DM_REAM density that fails them is
    rejected with a failure loss before any training work

@@ -44,6 +44,10 @@
 // on the GLOBAL keys), and on task files with a TASK line naming a group of
 // tasks (refused before any task runs); they run in every build.
 //
+// The [refit] case runs `tadah refit` (dense) with a configuration number
+// out of its range, which is refused naming the key and the token; it runs
+// in every build.
+//
 // The [nonlinear] cases run `tadah train`, `tadah predict` (with and
 // without --error) and `tadah hpo` with every non-linear model (M_KRR
 // Kern_RBF, Kern_Polynomial, Kern_Quadratic, Kern_LQ, Kern_Sigmoid; M_BLR
@@ -600,18 +604,16 @@ TEST_CASE("Subcommand: hpo: a best-potential persistence failure yields a non-ze
 
 /* ---- the [validation-metric] cases -------------------------------------
  *
- * Each of these cases runs `tadah hpo` in this process and relies on
- * having the process to itself, as CTest gives it: catch_discover_tests
- * registers every TEST_CASE as its own CTest entry, one test_tadah process
- * each. Two `tadah hpo` runs in one process share the per-thread trainer
- * cache (HPO_Host's tls_trainer_cache_): the second run reuses the first
- * run's trainer and rewrites only the searched parameters, so it trains
- * with the first run's FORCE/STRESS. Run together in one process (for
- * example `test_tadah "[validation-metric]"`), a case that follows another
- * `tadah hpo` run with a different training FORCE fails its best_pot.tadah
- * FORCE check. That is a recorded open issue, not a defect of these cases:
- * see RELEASE-1.6.0-FOLLOWUPS.md, "Two HPO runs in one process share the
- * thread-local trainer cache".
+ * Each of these cases runs `tadah hpo` in this process, as CTest gives it:
+ * catch_discover_tests registers every TEST_CASE as its own CTest entry,
+ * one test_tadah process each. Two `tadah hpo` runs in one process used to
+ * share the per-thread trainer cache (HPO_Host's tls_trainer_cache_): the
+ * second run reused the first run's trainer and rewrote only the searched
+ * parameters, so run together in one process (for example `test_tadah
+ * "[validation-metric]"`) a case that followed another `tadah hpo` run with
+ * a different training FORCE failed its best_pot.tadah FORCE check. Every
+ * evaluation now trains a model of its own configuration ("Task file: a
+ * second TASK hpo evaluates its own configuration" pins it).
  */
 
 /* Pins: PC_FRMSE works with FORCE false written in the -c file. Validation
@@ -2699,6 +2701,94 @@ TEST_CASE("Subcommand: train refuses an EAM cutoff other than the setfl "
   }
 }
 
+/* ---- [refit]: the configuration numbers are read strictly ------------ */
+
+/* Pins: `tadah refit -c` with a configuration number out of its range
+ * (REFIT_TOL_AMBIENT 0, OUTPUT_GRID_SCALE 0, OPTIM_PCT -5) exits 1 with a
+ * message naming the key and the token, and writes no potential; with the
+ * same configuration and REFIT_TOL_AMBIENT 0.5 it exits 0 and writes it.
+ * A dense Blip refit of the small Ta setfl, coarse, without escalation.
+ * Before the fix: the numbers were read unchecked, every run exited 0 and
+ * wrote pot.tadah (REFIT_TOL_AMBIENT 0: a self-test that could never pass;
+ * OUTPUT_GRID_SCALE 0: a 2-point refit.eam; OPTIM_PCT -5: bounds at
+ * -5 %). */
+TEST_CASE("Subcommand: refit: a configuration number out of its range is "
+          "refused with status 1",
+          "[TadahCLI][exit-status][refit]") {
+  ScratchCwd cwd("refit_numbers");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  const auto config = [](const std::string& extra) {
+    std::ofstream("config.refit")
+        << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+           "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n"
+        << extra << "\n";
+  };
+  for (const auto& [line, message] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"REFIT_TOL_AMBIENT 0",
+            "tadah refit: REFIT_TOL_AMBIENT must be a positive number, got "
+            "'0'"},
+           {"OUTPUT_GRID_SCALE 0",
+            "tadah refit: OUTPUT_GRID_SCALE must be a positive number, got "
+            "'0'"},
+           {"OPTIM_PCT -5",
+            "tadah refit: OPTIM_PCT must be a positive number, got '-5'"}}) {
+    config(line);
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    const std::string rep = reported(r);
+    INFO(line << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, message));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+    std::filesystem::remove("pot.tadah");
+  }
+  config("REFIT_TOL_AMBIENT 0.5");
+  const CliRun ok = run_tadah({"tadah", "refit", "-c", "config.refit"});
+  INFO("REFIT_TOL_AMBIENT 0.5: status " << ok.status << "\n" << reported(ok));
+  CHECK(ok.status == 0);
+  CHECK(std::filesystem::exists("pot.tadah"));
+}
+
+/* ---- explain: the description of a key without a long description --- */
+
+/* Pins: `tadah explain <command>.<key>` exits 0 and prints the key's
+ * description when it has no long description, then its EXAMPLES: the
+ * refit numbers' ranges, which `tadah refit --help` points to, are shown
+ * (refit.refit_compact_seed "an integer from 0 to 4294967295",
+ * refit.refit_reach_smin "A number from 0.1 to 1", refit.output_grid_scale
+ * "a number > 0"); a key with a long description prints that, not the
+ * description (refit.add).
+ * Before the fix: only the long description was printed, so a key without
+ * one printed an empty line and its EXAMPLES (the description is not
+ * found in the output). */
+TEST_CASE("Subcommand: explain: a key without a long description prints its "
+          "description",
+          "[TadahCLI][exit-status][explain]") {
+  ScratchCwd cwd("explain_description");
+  for (const auto& [key, text] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"refit.refit_compact_seed",
+            "`tadah refit` compact mode: RNG seed for the jittered ladder "
+            "restarts (deterministic reruns), an integer from 0 to "
+            "4294967295. Default 12345."},
+           {"refit.refit_reach_smin", "A number from 0.1 to 1"},
+           {"refit.output_grid_scale", "a number > 0"},
+           {"refit.refit_tol_ambient", "A number > 0. Default 0.1."}}) {
+    const CliRun r = run_tadah({"tadah", "explain", key});
+    INFO(key << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, text));
+    CHECK(contains(r.out, "EXAMPLES:"));
+  }
+  const CliRun add = run_tadah({"tadah", "explain", "refit.add"});
+  INFO("refit.add: status " << add.status << "\n" << reported(add));
+  CHECK(add.status == 0);
+  CHECK(contains(add.out, "Insert one basis function into the curve selected "
+                          "by --func"));
+  CHECK_FALSE(contains(add.out, "`tadah refit --edit`: insert a basis "
+                                "function at this centre"));
+}
+
 /* Pins: `tadah data print -s si.cif` on diamond Si given only by its
  * space-group number (227, Si at 1/8 1/8 1/8, a = 5.431 A) exits 0 and
  * prints the structure's label with the space group the cell is built
@@ -3753,3 +3843,196 @@ TEST_CASE("Subcommand: data print and analysis descriptor -i read only the selec
     CHECK(printed_labels(r.out).empty());
   }
 }
+
+/* ---- [retrain]: a potential used as the training configuration -------- */
+
+namespace {
+
+/* Three Ta dimers with reference forces (FORCE true: 21 rows for the 4
+ * weights of D2_BP 4). */
+std::string retrain_dataset() {
+  return weighted_entry("R1", "1 1 1", "2.60 0.40 0.30", "0.12", "0") +
+         weighted_entry("R2", "1 1 1", "3.10 0.20 0.50", "-0.07", "0") +
+         weighted_entry("R3", "1 1 1", "3.70 0.10 0.20", "0.03", "0");
+}
+
+/* The D2_BP pair configuration of the [task-file] case with FORCE true,
+ * the model `model` and the fit lines `fit`, training on db.tadah. */
+std::string retrain_config(const std::string& model, const std::string& fit) {
+  return "DBFILE db.tadah\nATOM Ta\nWATOM 73\nINIT2B true\nINITMB false\n"
+         "TYPE2B D2_BP 4 4 Ta Ta\nCGRID2B 2.5 3.0 3.5 4.0\n"
+         "SGRID2B 0.5 0.5 0.5 0.5\nRCTYPE2B Cut_Cos\nRCUT2B 4.5\n"
+         "FORCE true\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+         "MODEL " + model + "\n" + fit;
+}
+
+/* `text` with the line of `key` replaced by `line`. */
+std::string replace_key_line(const std::string& text, const std::string& key,
+                             const std::string& line) {
+  std::istringstream in(text);
+  std::ostringstream out;
+  for (std::string l; std::getline(in, l);) {
+    std::istringstream ls(l);
+    std::string k;
+    ls >> k;
+    out << (k == key ? line : l) << "\n";
+  }
+  return out.str();
+}
+
+}  // namespace
+
+/* Pins: `tadah train -c pot1.tadah`, pot1.tadah the potential of an OALGO 3
+ * fit (LAMBDA 1e-3), writes a potential with one SIGMA of N*N+1 = 17
+ * values for its 4 weights, the same tokens as pot1.tadah's (the same data
+ * and fit), and so does a third train from that potential; `tadah predict
+ * --error` with it exits 0 and writes energy.pred.
+ * Before the fix: the retrain wrote 34 SIGMA values (each fit appended its
+ * SIGMA to the one of the configuration), the REQUIRE on the count stopped
+ * the case; `predict --error` on that potential read 34 values into a
+ * 17-value buffer (heap corruption: SIGABRT, or SIGSEGV). */
+TEST_CASE("Subcommand: train -c with an OALGO 3 potential writes the SIGMA of "
+          "its own fit",
+          "[TadahCLI][train][retrain][sigma]") {
+  ScratchCwd cwd("retrain_sigma");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.train")
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 1e-3\nOALGO 3\n");
+  const CliRun t1 = run_tadah({"tadah", "train", "-c", "config.train", "-o", "pot1.tadah"});
+  INFO("train: status " << t1.status << "\n" << reported(t1));
+  REQUIRE(t1.status == 0);
+  const auto sigma1 = line_tokens(slurp("pot1.tadah"), "SIGMA");
+  REQUIRE(sigma1.size() == 1 + 17);
+  std::string from = "pot1.tadah";
+  for (const char* to : {"pot2.tadah", "pot3.tadah"}) {
+    INFO("train -c " << from << " -o " << to);
+    const CliRun t = run_tadah({"tadah", "train", "-c", from, "-o", to});
+    INFO("status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+    const auto sigma = line_tokens(slurp(to), "SIGMA");
+    REQUIRE(sigma.size() == 1 + 17);
+    CHECK(sigma == sigma1);
+    from = to;
+  }
+  const CliRun p = run_tadah({"tadah", "predict", "-p", "pot3.tadah", "-d", "db.tadah",
+                              "--error"});
+  INFO("predict --error: status " << p.status << "\n" << reported(p));
+  CHECK(p.status == 0);
+  CHECK(predicted_values("energy.pred").size() == 3u);
+}
+
+/* Pins: `tadah train -c` with an OALGO 3 potential edited to OALGO 1 (a fit
+ * that computes no covariance) writes a potential without SIGMA, and
+ * `tadah predict --error` with it exits 1 saying the covariance was not
+ * computed ("Sigma matrix is not computed").
+ * Before the fix: the potential kept the 17 SIGMA values of the OALGO 3
+ * fit beside the OALGO 1 weights, and predict --error exited 0 with them. */
+TEST_CASE("Subcommand: train -c with an OALGO 3 potential and OALGO 1 writes "
+          "no SIGMA",
+          "[TadahCLI][train][retrain][sigma]") {
+  ScratchCwd cwd("retrain_nosigma");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.train")
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 1e-3\nOALGO 3\n");
+  const CliRun t1 = run_tadah({"tadah", "train", "-c", "config.train", "-o", "pot1.tadah"});
+  INFO("train: status " << t1.status << "\n" << reported(t1));
+  REQUIRE(t1.status == 0);
+  REQUIRE(line_tokens(slurp("pot1.tadah"), "SIGMA").size() == 1 + 17);
+  std::ofstream("pot1_oalgo1.tadah") << replace_key_line(slurp("pot1.tadah"), "OALGO", "OALGO 1");
+  const CliRun t2 = run_tadah({"tadah", "train", "-c", "pot1_oalgo1.tadah", "-o",
+                               "pot2.tadah"});
+  INFO("retrain: status " << t2.status << "\n" << reported(t2));
+  REQUIRE(t2.status == 0);
+  CHECK(line_tokens(slurp("pot2.tadah"), "SIGMA").empty());
+  CHECK(line_tokens(slurp("pot2.tadah"), "WEIGHTS").size() == 1 + 4);
+  const CliRun p = run_tadah({"tadah", "predict", "-p", "pot2.tadah", "-d", "db.tadah",
+                              "--error"});
+  const std::string rep = reported(p);
+  INFO("predict --error: status " << p.status << "\n" << rep);
+  CHECK(p.status == 1);
+  CHECK(contains(rep, "Sigma matrix is not computed"));
+}
+
+/* Pins: `tadah train -c potk_db.tadah`, potk_db.tadah the potential of an
+ * M_KRR Kern_Linear fit with the DBFILE line added (an M_KRR potential is
+ * written without one), exits 0 and writes the weights of the same fit (the
+ * tokens of potk.tadah's WEIGHTS line).
+ * Before the fix: exit 1, "This object is already trained!" (the WEIGHTS of
+ * the potential marked the M_KRR model trained). */
+TEST_CASE("Subcommand: train -c with an M_KRR potential trains it",
+          "[TadahCLI][train][retrain]") {
+  ScratchCwd cwd("retrain_krr");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.train")
+      << retrain_config("M_KRR Kern_Linear", "LAMBDA 1e-3\nOALGO 1\n");
+  const CliRun t1 = run_tadah({"tadah", "train", "-c", "config.train", "-o", "potk.tadah"});
+  INFO("train: status " << t1.status << "\n" << reported(t1));
+  REQUIRE(t1.status == 0);
+  const auto w1 = line_tokens(slurp("potk.tadah"), "WEIGHTS");
+  REQUIRE(w1.size() == 1 + 4);
+  std::ofstream("potk_db.tadah") << slurp("potk.tadah") << "DBFILE db.tadah\n";
+  const CliRun t2 = run_tadah({"tadah", "train", "-c", "potk_db.tadah", "-o",
+                               "potk2.tadah"});
+  INFO("retrain: status " << t2.status << "\n" << reported(t2));
+  REQUIRE(t2.status == 0);
+  CHECK(line_tokens(slurp("potk2.tadah"), "WEIGHTS") == w1);
+}
+
+#ifdef TADAH_ENABLE_NFP
+/* Pins: a task file with two `TASK hpo` blocks (one evaluation each, at
+ * the CONFIG seed of OPTIM CGRID2B (1); PC_ERMSE and PC_FRMSE), A with
+ * LAMBDA 1e-4 and FWEIGHT 1, then B with LAMBDA 0.1 and FWEIGHT 100: exit
+ * 0, and the best_pot.tadah the second run writes is B's: LAMBDA 0.1,
+ * FWEIGHT 100, and the weights of `tadah train -c` with B's configuration
+ * (1e-10 relative: the same fit at the seed).
+ * Before the fix: the second run evaluated the first run's model (the
+ * thread's trainer of A, with only CGRID2B rewritten): best_pot.tadah had
+ * LAMBDA 1e-4, FWEIGHT 1 and A's weights. */
+TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
+          "[TadahCLI][hpo][task-file][retrain]") {
+  ScratchCwd cwd("two_hpo_tasks");
+  std::ofstream("db.tadah") << retrain_dataset();
+  { std::ofstream os("config.val"); os << "DBFILE db.tadah\n"; }
+  std::ofstream("configA.tadah")
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 1e-4\nOALGO 4\nFWEIGHT 1\n");
+  std::ofstream("configB.tadah")
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 0.1\nOALGO 4\nFWEIGHT 100\n");
+  {
+    std::ofstream os("config.hpo");
+    os << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
+          "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
+          "OPTIM CGRID2B (1) 2.3 2.7\n";
+  }
+  std::ofstream("run.task")
+      << "TASK hpo\n  CONFIG configA.tadah\n  HPOTARGET config.hpo\n"
+         "  VALIDATION config.val\n"
+         "TASK hpo\n  CONFIG configB.tadah\n  HPOTARGET config.hpo\n"
+         "  VALIDATION config.val\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  REQUIRE(std::filesystem::exists("best_pot.tadah"));
+  const std::string best = slurp("best_pot.tadah");
+  INFO("best_pot.tadah:\n" << best);
+  const auto lambda = line_tokens(best, "LAMBDA");
+  const auto fweight = line_tokens(best, "FWEIGHT");
+  REQUIRE(lambda.size() == 2);
+  REQUIRE(fweight.size() == 2);
+  CHECK(std::strtod(lambda[1].c_str(), nullptr) == 0.1);
+  CHECK(std::strtod(fweight[1].c_str(), nullptr) == 100.0);
+
+  const CliRun t = run_tadah({"tadah", "train", "-c", "configB.tadah", "-o", "potB.tadah"});
+  INFO("train B: status " << t.status << "\n" << reported(t));
+  REQUIRE(t.status == 0);
+  const auto wb = line_tokens(slurp("potB.tadah"), "WEIGHTS");
+  const auto wh = line_tokens(best, "WEIGHTS");
+  REQUIRE(wb.size() == 1 + 4);
+  REQUIRE(wh.size() == wb.size());
+  for (std::size_t i = 1; i < wb.size(); ++i) {
+    const double b = std::strtod(wb[i].c_str(), nullptr);
+    const double h = std::strtod(wh[i].c_str(), nullptr);
+    INFO("weight " << i << ": hpo " << wh[i] << ", train " << wb[i]);
+    CHECK(h == Approx(b).epsilon(1e-10));
+  }
+}
+#endif  // TADAH_ENABLE_NFP

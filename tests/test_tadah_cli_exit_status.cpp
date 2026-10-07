@@ -1989,3 +1989,106 @@ TEST_CASE("Subcommand: analysis dataset_stats --close-contact lists the "
   REQUIRE(r_min);
   CHECK(*r_min == 0.0);
 }
+
+/* ---- [eam]: D2_EAM and DM_EAM read the setfl file named by SETFL ------ */
+
+namespace {
+
+/* A single-element (Ta) setfl file with analytic tables, cutoff 4.5 A:
+ * F(rho) = -sqrt(rho) on rho in [0, 50], rho(r) = (4.5 - r)^2 and
+ * phi(r) = 0.5 (4.5 - r)^3 (z2r = r phi) below the cutoff, 0 beyond. */
+std::string small_ta_setfl() {
+  const int nrho = 501, nr = 501;
+  const double drho = 0.1, dr = 0.01, rc = 4.5;
+  std::ostringstream os;
+  os.precision(17);
+  os << "Small Ta setfl of the DM_EAM CLI test\nanalytic tables\n\n"
+     << "1 Ta\n"
+     << nrho << " " << drho << " " << nr << " " << dr << " " << rc << "\n"
+     << "73 180.95 3.304 bcc\n";
+  for (int i = 0; i < nrho; ++i) os << -std::sqrt(i * drho) << "\n";
+  for (int i = 0; i < nr; ++i) {
+    const double r = i * dr;
+    os << (r < rc ? (rc - r) * (rc - r) : 0.0) << "\n";
+  }
+  for (int i = 0; i < nr; ++i) {
+    const double r = i * dr;
+    os << (r < rc ? r * 0.5 * (rc - r) * (rc - r) * (rc - r) : 0.0) << "\n";
+  }
+  return os.str();
+}
+
+/* A two-atom bcc Ta cell with lattice parameter `a`, energy `e`, no forces. */
+std::string bcc_ta_entry(const std::string& label, double a, double e) {
+  std::ostringstream os;
+  os.precision(17);
+  os << label << "\n1 1 1\n" << e << " 0.0\n"
+     << a << " 0 0\n0 " << a << " 0\n0 0 " << a << "\n"
+     << "0 0 0\n0 0 0\n0 0 0\n"
+     << "Ta 0 0 0 0 0 0\n"
+     << "Ta " << a / 2 << " " << a / 2 << " " << a / 2 << " 0 0 0\n\n";
+  return os.str();
+}
+
+}  // namespace
+
+/* Pins: `tadah train` builds a DM_EAM model from a configuration file, the
+ * many-body block alone (INIT2B false) and with the D2_EAM pair term, both
+ * reading the one SETFL file (`TYPEMB DM_EAM 0 Ta Ta`, `TYPE2B D2_EAM 0 Ta
+ * Ta`, the cutoffs the file's 4.5 A): exit 0, and the potential carries
+ * `SETFL eam_small.alloy` and the TYPEMB (and TYPE2B) line as written;
+ * `tadah predict` loads that potential (exit 0) and writes energy.pred.
+ * Before the fix: DM_EAM read its setfl path from TYPEMB parameter 1, the
+ * placeholder the TYPEMB format requires to be an unsigned integer, so no
+ * configuration could build it: train exited 1 with "EAMSetflIO: setfl file
+ * does not exist: 0" and wrote no potential. */
+TEST_CASE("Subcommand: train builds a DM_EAM model from the SETFL file",
+          "[TadahCLI][train][eam]") {
+  ScratchCwd cwd("train_dm_eam");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  {
+    std::ofstream os("db.tadah");
+    os << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+       << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+       << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1);
+  }
+  for (const bool with_pair : {false, true}) {
+    INFO("D2_EAM pair term: " << with_pair);
+    for (const char* f : {"pot.tadah", "energy.pred"})
+      std::filesystem::remove(f);
+    {
+      std::ofstream os("config");
+      os << "DBFILE db.tadah\nATOM Ta\nWATOM 1\n";
+      if (with_pair)
+        os << "INIT2B true\nTYPE2B D2_EAM 0 Ta Ta\n"
+              "RCTYPE2B Cut_Dummy\nRCUT2B 4.5\n";
+      else
+        os << "INIT2B false\n";
+      os << "INITMB true\nTYPEMB DM_EAM 0 Ta Ta\n"
+            "RCTYPEMB Cut_Dummy\nRCUTMB 4.5\nSETFL eam_small.alloy\n"
+            "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+            "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+    }
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    INFO("train status " << t.status << "\n" << reported(t));
+    CHECK_FALSE(contains(reported(t), "setfl file does not exist"));
+    REQUIRE(t.status == 0);
+    REQUIRE(std::filesystem::exists("pot.tadah"));
+    const std::string pot = slurp("pot.tadah");
+    INFO("pot.tadah:\n" << pot);
+    CHECK(line_tokens(pot, "SETFL") ==
+          std::vector<std::string>{"SETFL", "eam_small.alloy"});
+    CHECK(line_tokens(pot, "TYPEMB") ==
+          std::vector<std::string>{"TYPEMB", "DM_EAM", "0", "Ta", "Ta"});
+    if (with_pair)
+      CHECK(line_tokens(pot, "TYPE2B") ==
+            std::vector<std::string>{"TYPE2B", "D2_EAM", "0", "Ta", "Ta"});
+
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah"});
+    INFO("predict status " << p.status << "\n" << reported(p));
+    CHECK(p.status == 0);
+    CHECK(std::filesystem::exists("energy.pred"));
+  }
+}

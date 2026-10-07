@@ -682,14 +682,19 @@ and ignored it.  The numbers are read as strictly as in
 ``tadah hpo`` (:ref:`nfp_manual`): ``MAXEVAL`` and ``MAXITER`` take
 decimal digits only, from 1 to 2147483647 (the ``int`` budget the refit
 hands NLopt, dlib and Ceres; ``MAXEVAL 0`` ran Ceres with no iteration and
-NLopt without a limit), the tolerances and ``GTOL`` a finite number in
-decimal form (no hexadecimal float such as ``0x1p-40``).  Every error of a
+NLopt without a limit), the tolerances and ``GTOL`` a finite number >= 0 in
+decimal form (no hexadecimal float such as ``0x1p-40``; 0 switches the test
+off).  Before 1.6.0 a negative tolerance was accepted: Ceres refused it and
+returned without iterating, and the refit logged that as the stage's stop
+term (``refine=FAILURE(0it, Invalid configuration...)``), so REFINE or FUSE
+did nothing; NLopt switches a negative tolerance off.  Every error of a
 stage's ``OPTIMIZER`` block names the block, an ``INNER`` block's as
 ``EXPLORE INNER``:
 
 .. code-block:: none
 
    REFINE: FTOL_REL must be a finite number, got '0x1p-40'
+   REFINE: GTOL must be a number >= 0, got '-1'
    EXPLORE INNER: MAXEVAL must be an integer from 1 to 2147483647, got '4294967299'
 
 Output files

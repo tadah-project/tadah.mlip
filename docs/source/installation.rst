@@ -276,7 +276,30 @@ node. MPI parallelism is available for hyperparameter optimisation: with
 ``-DTADAH_HPO_MPI=ON`` the ``TADAH:ANNEAL_PT`` and ``TADAH:ANNEAL_PA``
 optimisers of ``tadah hpo`` distribute their replicas over MPI ranks, which
 lets one run span several nodes. It needs ``-DTADAH_ENABLE_NFP=ON``
-(:ref:`installation_nfp`) and an MPI build of LAMMPS with ML‑TADAH:
+(:ref:`installation_nfp`) and an MPI build of LAMMPS with ML‑TADAH, both
+built with the same MPI library.
+
+**1. LAMMPS with MPI.** Configure LAMMPS with ML‑TADAH as in
+:ref:`installation_lammps`, adding ``-DBUILD_MPI=ON`` and a library name
+that contains ``mpi`` (``-DLAMMPS_MACHINE=mpi`` names it
+``liblammps_mpi.a``), and build the library target:
+
+.. code-block:: bash
+
+    cd /path/to/lammps
+    cmake -S cmake -B build-mpi \
+      -DBUILD_MPI=ON -DLAMMPS_MACHINE=mpi \
+      -DPKG_ML-TADAH=ON \
+      -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
+      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps \
+      -DTADAH_GIT_BRANCH=v1-dev
+    cmake --build build-mpi --target lammps --parallel
+
+**2. Tadah!MLIP with TADAH_HPO_MPI.** Point the NFP options at that build;
+a static LAMMPS library needs its extra link libraries in
+``TADAH_LAMMPS_LIBS`` as in the serial build (step 2 of
+:ref:`installation_nfp`), with that build's own ``libvoro++.a`` when it has
+the VORONOI package:
 
 .. code-block:: bash
 
@@ -284,15 +307,38 @@ lets one run span several nodes. It needs ``-DTADAH_ENABLE_NFP=ON``
         -DTADAH_ENABLE_NFP=ON \
         -DTADAH_HPO_MPI=ON \
         -DTADAH_LAMMPS_DIR=/path/to/lammps \
-        -DTADAH_LAMMPS_LIB=/path/to/liblammps_mpi.a
+        -DTADAH_LAMMPS_BUILD_DIR=/path/to/lammps/build-mpi \
+        -DTADAH_LAMMPS_LIB=/path/to/lammps/build-mpi/liblammps_mpi.a
+    cmake --build build-mpi --parallel
 
-The executable is still ``tadah`` and runs without ``mpirun`` too. The
-configure step refuses a LAMMPS library whose file name lacks ``mpi``,
-because the serial LAMMPS library carries MPI stub symbols that collide with
-a real MPI library at link time; set ``-DTADAH_HPO_MPI_SKIP_LIB_CHECK=ON``
-when an MPI build of LAMMPS is simply named differently. Launch with
-``srun`` or ``mpirun``; the requirements and an ARCHER2 job script are in
-:ref:`tadah_anneal_mpi`.
+The executable is still ``tadah`` and runs without ``mpirun`` too (a
+one-rank job; Open MPI then makes its session directory under ``TMPDIR``,
+which must be a writable directory). The configure step refuses a LAMMPS
+library whose file name lacks ``mpi``, because the serial LAMMPS library carries MPI stub symbols
+that collide with a real MPI library at link time; set
+``-DTADAH_HPO_MPI_SKIP_LIB_CHECK=ON`` when an MPI build of LAMMPS is simply
+named differently. The MPI library must provide ``MPI_THREAD_MULTIPLE``.
+
+**3. Launching.** Launch with ``srun`` or with the ``mpirun`` /
+``mpiexec`` of the MPI library ``tadah`` links: CMake records it as
+``MPIEXEC_EXECUTABLE`` in ``build-mpi/CMakeCache.txt``. A launcher of
+another MPI — one that comes first on ``PATH``, from a conda environment
+for example — does not start one job of N ranks but N independent one-rank
+runs, which all write the unsuffixed ``hpo_run.log`` and result files of a
+one-rank run. The requirements and an ARCHER2
+job script are in :ref:`tadah_anneal_mpi`.
+
+**4. Testing an MPI build.** With ``-DBUILD_TESTING=ON`` the whole suite
+runs in the MPI build too (``ctest --test-dir build-mpi``): each test
+program is a one-rank MPI job. The cases of the ``PC_ISOLATION PROCESS``
+worker pool are *Skipped* there (the MPI build has ``PC_ISOLATION THREAD``
+only), as are the optional-data cases of the serial build. The multi-rank
+tests exist only in this build: ``ctest -L mpi`` runs them through
+``MPIEXEC_EXECUTABLE`` at 1, 2 and 4 ranks and needs four process slots
+(``MPIEXEC_MAX_NUMPROCS``): the rank invariance of ``ANNEAL_PT`` /
+``ANNEAL_PA`` (``hpo_anneal_mpi_matrix``), a signal that one rank receives
+(``hpo_mpi_signal_*``) and ``tadah hpo`` end to end on 1 and 2 ranks
+(``hpo_mpi_e2e_*``). The serial build runs none of them.
 
 .. note::
 

@@ -174,7 +174,8 @@ without it (a standalone HPO build) the cases are Skipped unless
 `tadah` under `PC_ISOLATION THREAD` and `PROCESS` and leaves
 `TADAH_PC_ISOLATION` out of its environment (it would override both), so its
 `PROCESS` half needs `socketpair` even where `TADAH_PC_ISOLATION=THREAD` is
-set.
+set. In an MPI build it runs `THREAD` only, and `tadah` under the launcher
+of one rank (`TADAH_MPIEXEC`, see *The MPI build* below).
 
 **Skipped, not passed.** A test that cannot run because an optional input
 is absent (an external dataset, an environment variable) must be reported
@@ -207,6 +208,59 @@ cases (`TADAH_TEST_PHASEI_DB`) and `hpo_strategy_matrix`
 of its tools is missing. A build without `TADAH_ENABLE_NFP` also skips
 `tadah_cli_example_ex_2`, whose README runs `tadah hpo`. See the cmake-tools README, *Skipped tests: the
 TADAH-SKIP marker*, for the rules.
+
+**The MPI build (`TADAH_HPO_MPI`).** The registered suite above is the
+serial build's, and it runs no MPI code: the multi-rank `ANNEAL_PT` /
+`ANNEAL_PA` drivers, their agreement on a stop or an error, the `.r<rank>`
+outputs and the shared `best_pot.tadah` of a multi-rank run, and the MPI
+LAMMPS (`MPI_COMM_SELF` instances) are covered only by a build with
+`-DTADAH_HPO_MPI=ON`, which needs a LAMMPS library built with MPI and
+ML-TADAH (the docs' *Installation*, *MPI-Parallel Hyperparameter
+Optimisation*). A develop build of both, with the system MPI on `PATH`:
+
+```bash
+# LAMMPS with MPI and ML-TADAH; the library name must contain "mpi"
+cmake -S LAMMPS/cmake -B build_lammps_mpi \
+    -DBUILD_MPI=ON -DLAMMPS_MACHINE=develop_mpi \
+    -DPKG_ML-TADAH=ON -DTADAH_LAMMPS_SOURCE_DIR="$TADAH_PATH/Tadah.LAMMPS" \
+    -DCMAKE_PROJECT_INCLUDE="$TADAH_PATH/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake" \
+    -DTADAH_DEVELOP=ON
+cmake --build build_lammps_mpi --target lammps -j
+
+# Tadah with TADAH_HPO_MPI against it (a static LAMMPS: its extra link
+# libraries in TADAH_LAMMPS_LIBS, as for the serial NFP build)
+cmake -S Tadah.MLIP -B build_tadah_mpi -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON \
+    -DTADAH_ENABLE_NFP=ON -DTADAH_HPO_MPI=ON \
+    -DTADAH_LAMMPS_DIR="$TADAH_PATH/LAMMPS" \
+    -DTADAH_LAMMPS_BUILD_DIR="$TADAH_PATH/build_lammps_mpi" \
+    -DTADAH_LAMMPS_LIB="$TADAH_PATH/build_lammps_mpi/liblammps_develop_mpi.a"
+cmake --build build_tadah_mpi -j
+
+ctest --test-dir build_tadah_mpi --output-on-failure   # the whole suite
+ctest --test-dir build_tadah_mpi -L mpi                # the multi-rank tests
+```
+
+The whole suite runs in the MPI build as well, each test program a
+one-rank MPI job (test_hpo and test_tadah initialise MPI as `tadah`
+does). It Skips, besides the optional-data cases above, the seven
+`pc pool:` cases that start `PC_ISOLATION PROCESS` workers, which the MPI
+build does not have (`pc pool: in the MPI build the worker refuses to
+start` pins why). `ctest -L mpi` selects the MPI-only entries, run
+through CMake's `MPIEXEC_EXECUTABLE` and needing four process slots
+(`MPIEXEC_MAX_NUMPROCS`): `hpo_anneal_mpi_matrix` (the PT/PA trajectories,
+statuses and Corana census are the same at 1, 2 and 4 ranks),
+`hpo_mpi_signal_<scenario>` (a signal that one rank receives during
+rank 0's seed, T0 or pass-2 calibration, the `INIT_MODE JITTER AUTO`
+calibration or a replica/walker epoch ends every rank `SHUTDOWN`, 128 +
+the signal, at 1, 2 and 4 ranks) and `hpo_mpi_e2e_<case>` (`tadah hpo` on
+1 and 2 ranks: the `RESTART` and gradient-search refusals, the LAMMPS
+EAM fast kernels with the evaluated set and best the same on both, the
+`RHOGATE`/`RHOBARGATE` counts and the density report). `MPIEXEC_EXECUTABLE`
+must be the launcher of the MPI the build links (CMake finds it next to
+`mpicxx`): another MPI's `mpiexec` earlier on `PATH` (conda's MPICH, for
+example) starts independent one-rank jobs, which the multi-rank tests
+detect and fail on; configure with `-DMPIEXEC_EXECUTABLE=<path>` then.
+The MPI build is not part of the default presets.
 
 **Pitfall:** MLIP redefines `add_test()` globally (to skip Gemmi's own
 test) and forwards its arguments unquoted. In every `add_test()` that runs

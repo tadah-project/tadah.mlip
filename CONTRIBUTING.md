@@ -227,18 +227,31 @@ cmake -S LAMMPS/cmake -B build_lammps_mpi \
     -DTADAH_DEVELOP=ON
 cmake --build build_lammps_mpi --target lammps -j
 
-# Tadah with TADAH_HPO_MPI against it (a static LAMMPS: its extra link
-# libraries in TADAH_LAMMPS_LIBS, as for the serial NFP build)
+# Tadah with TADAH_HPO_MPI against it, with OpenMP (LAMMPS builds with it
+# when it finds it), and the launcher of the MPI that mpicxx belongs to
+# (MPIEXEC_EXECUTABLE, see below)
 cmake -S Tadah.MLIP -B build_tadah_mpi -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON \
-    -DTADAH_ENABLE_NFP=ON -DTADAH_HPO_MPI=ON \
+    -DTADAH_ENABLE_NFP=ON -DTADAH_HPO_MPI=ON -DTADAH_ENABLE_OPENMP=ON \
     -DTADAH_LAMMPS_DIR="$TADAH_PATH/LAMMPS" \
-    -DTADAH_LAMMPS_BUILD_DIR="$TADAH_PATH/build_lammps_mpi" \
-    -DTADAH_LAMMPS_LIB="$TADAH_PATH/build_lammps_mpi/liblammps_develop_mpi.a"
+    -DTADAH_LAMMPS_LIB="$TADAH_PATH/build_lammps_mpi/liblammps_develop_mpi.a" \
+    -DMPIEXEC_EXECUTABLE="$(dirname "$(command -v mpicxx)")/mpiexec"
 cmake --build build_tadah_mpi -j
 
 ctest --test-dir build_tadah_mpi --output-on-failure   # the whole suite
 ctest --test-dir build_tadah_mpi -L mpi                # the multi-rank tests
 ```
+
+LAMMPS builds with OpenMP when its configure finds it (`BUILD_OMP`), and
+its static library then calls the OpenMP runtime: without
+`-DTADAH_ENABLE_OPENMP=ON` linking `tadah` fails on `omp_get_num_threads`,
+`GOMP_parallel` and the like (or configure LAMMPS with `-DBUILD_OMP=OFF`).
+This LAMMPS, with ML-TADAH alone, needs nothing else. A static LAMMPS with
+more packages does not bring the libraries they use: list them in
+`TADAH_LAMMPS_LIBS` (a CMake list), as for the serial NFP build -- zlib
+(and libzstd, when LAMMPS found it) for COMPRESS, libjpeg, libpng and zlib
+for GRAPHICS (those it found), and
+`build_lammps_mpi/voro_build-prefix/src/voro_build/src/libvoro++.a` for
+VORONOI; the link errors name the ones that are missing.
 
 The whole suite runs in the MPI build as well, each test program a
 one-rank MPI job (test_hpo and test_tadah initialise MPI as `tadah`
@@ -254,13 +267,17 @@ rank 0's seed, T0 or pass-2 calibration, the `INIT_MODE JITTER AUTO`
 calibration or a replica/walker epoch ends every rank `SHUTDOWN`, 128 +
 the signal, at 1, 2 and 4 ranks) and `hpo_mpi_e2e_<case>` (`tadah hpo` on
 1 and 2 ranks: the `RESTART` and gradient-search refusals, the LAMMPS
-EAM fast kernels with the evaluated set and best the same on both, the
-`RHOGATE`/`RHOBARGATE` counts and the density report). `MPIEXEC_EXECUTABLE`
-must be the launcher of the MPI the build links (CMake finds it next to
-`mpicxx`): another MPI's `mpiexec` earlier on `PATH` (conda's MPICH, for
-example) starts independent one-rank jobs, which the multi-rank tests
-detect and fail on; configure with `-DMPIEXEC_EXECUTABLE=<path>` then.
-The MPI build is not part of the default presets.
+EAM fast kernels with the evaluated set the same on both and a global
+best that rank 1 finds and publishes, the `RHOGATE`/`RHOBARGATE` counts
+and the density report). `MPIEXEC_EXECUTABLE` must be the launcher of
+the MPI the build links. CMake's FindMPI takes the first `mpiexec` on
+`PATH` (or under `MPI_HOME`), whichever MPI it belongs to: with conda's
+MPICH ahead of the system Open MPI on `PATH` it records conda's `mpiexec`
+and still compiles with the system `mpicxx`, and that launcher starts
+independent one-rank jobs, which the multi-rank tests detect and fail
+on. Hence the `-DMPIEXEC_EXECUTABLE` above, the `mpiexec` next to
+`mpicxx`; check it in `build_tadah_mpi/CMakeCache.txt`. The MPI build is
+not part of the default presets.
 
 **Pitfall:** MLIP redefines `add_test()` globally (to skip Gemmi's own
 test) and forwards its arguments unquoted. In every `add_test()` that runs

@@ -277,8 +277,9 @@ python3 -m unittest discover -s Tadah.MLIP/docs/tools/tests -v
 ```
 
 The unit tests cover the input lookup (`docs/source/config/source_locator.py`),
-the `hpo.html` redirect check and the configuration-keys page generator
-(`docs/source/config/read_toml.py`). The GitLab `docs_sphinx` job runs them
+the `hpo.html` redirect check, the configuration-keys page generator
+(`docs/source/config/read_toml.py`) and the CLI page generator
+(`docs/source/cli/generate_cli.py`). The GitLab `docs_sphinx` job runs them
 and the same build, with all three variables set explicitly.
 
 The same unit tests are the CTest entry `tadah_docs_tools` (label `docs`,

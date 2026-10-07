@@ -2455,10 +2455,12 @@ Key                Effect
                    order, ``n`` evaluations per gradient after the loss at the point), with either
                    rule.  ``2`` (RIDDERS) is refused: it ignored ``fd_step`` and started outside
                    most boxes.
-``tol_gradinf``    Gradient-infinity-norm convergence tolerance (Ceres ``gradient_tolerance``,
-                   default ``1e-10``).
-``max_iter``       Override on Ceres' ``max_num_iterations``.  By default the iteration cap is set
-                   to a large sentinel and ``MAXEVAL`` is enforced externally on host evaluations.
+``tol_gradinf``    Convergence tolerance on the gradient's largest component, its infinity norm
+                   (Ceres ``gradient_tolerance``, default ``1e-10``): ``CERES:<ALGO>: tol_gradinf
+                   reached``.
+``max_iter``       Override on Ceres' ``max_num_iterations`` (``CERES:<ALGO>: max_iter reached``).
+                   By default the iteration cap is set to a large sentinel and ``MAXEVAL`` is
+                   enforced externally on host evaluations.
 ``max_ls_iter``    Maximum line-search step-size iterations.
 ``max_lbfgs_rank`` (LBFGS only) limited-memory rank, default ``20``.
 ``nlcg_type``      (NLCG only) variant: ``0`` = FLETCHER_REEVES (default), ``1`` = POLAK_RIBIERE,
@@ -2493,9 +2495,12 @@ Key                Effect
 ``fd_kernel``      The step rule, ``inhouse`` or ``ceres``, as for CERES above.
 ``diff_method``    ``0`` = CENTRAL (default) or ``1`` = FORWARD, as for CERES above (refused
                    before 1.6.0).
-``tol_gradinf``    Stop when the gradient's infinity norm falls below this value (> 0).  Mutually
-                   exclusive with ``FTOL_ABS``; without either the run stops when the loss decrease
-                   per iteration falls below ``FTOL_ABS = 1e-7``.
+``tol_gradinf``    Stop when the L2 norm of the gradient (dlib's ``length(g)``) falls below this
+                   value (> 0): ``DLIB:BFGS: tol_gradinf reached``.  Mutually exclusive with
+                   ``FTOL_ABS``; without either the run stops when the loss changes by less than
+                   ``FTOL_ABS = 1e-7`` from one iteration to the next: ``DLIB:BFGS: FTOL_ABS
+                   reached`` (:ref:`hpo_end_status`).  Before 1.6.0 this page and the ``ALGO``
+                   help called it the gradient's infinity norm, which is not what dlib tests.
 ================== =================================================================================
 
 Any other ``PARAM`` key is rejected, and so are ``FTOL_REL``, ``XTOL_REL``,
@@ -3135,18 +3140,115 @@ interrupted (``Ctrl-C`` leaves a valid ``best_pot.tadah``,
 :ref:`hpo_stopping`), and ``TADAH:RANDOM`` and ``DLIB:GFS`` needed
 ``MAXEVAL`` itself.  The journal says which stop ended a ``RANDOM``,
 ``GRID`` or ``GFS`` search (``TADAH:RANDOM stopped: STOPVAL reached after
-7 evaluation(s)``), and a ``MAXTIME`` or ``STOPVAL`` stop is the run's
-status (:ref:`hpo_stopping`).  ``MAXTIME`` counts only while another
-evaluation would start: a search whose last evaluation spends its
-``MAXEVAL`` or its grid ends on that (``TADAH:GRID stopped: MAXEVAL
-reached after 5 of 28 grid points``, status ``COMPLETED``), however
-long that evaluation took.  The journal's stop criteria say what ends a
+7 evaluation(s)``), and the stop is the run's status
+(``TADAH:RANDOM: STOPVAL reached``; :ref:`hpo_end_status`).  ``MAXTIME``
+counts only while another evaluation would start: a search whose last
+evaluation spends its ``MAXEVAL`` or its grid ends on that
+(``TADAH:GRID stopped: MAXEVAL reached after 5 of 28 grid points``,
+status ``TADAH:GRID: MAXEVAL reached``; it was ``COMPLETED`` before
+1.6.0), however long that evaluation took.  The journal's stop criteria say what ends a
 run that sets none of its own: its own end (``(none set -- TADAH:GRID
 ends on its own: …)``), each ``MULTISTART`` start's
 ``BUDGET_PER_START``, or the ``RESTART`` stagnation stop (``(none set --
 the RESTART stagnation stop ends NLOPT:GN_DIRECT_L: once its MAX 1
 restart(s) are used, AFTER_STAGNATION 60 evaluations without a new
 best)``).
+
+.. _hpo_end_status:
+
+How each backend reports its ending
+...................................
+
+Every optimiser run records why it ended, and the journal trailer of a
+run that ends on its own is that status (``Optimiser status`` under
+``RESULT``; :ref:`hpo_stopping`).  The TADAH, DLIB and CERES drivers
+write ``<LIB>:<ALGO>: <reason>`` with a fixed reason text, so a script
+or a fingerprint can match it; the journal's stop line gives the
+numbers: the evaluations made, and for a tolerance its value, with
+``(default)`` when its key was not set.  NLopt keeps its own result
+strings and ASA ``ASA: <reason>``; a gradient that is not finite ends
+any gradient-based search with ``STOPPED -- gradient not finite: …``
+(:ref:`hpo_gradient_not_finite`), and the ``RESTART`` budget a run with
+``STOPPED -- stagnation: …``.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 40 42
+
+   * - Backend
+     - Ending → status
+     - Journal stop line
+   * - ``TADAH:RANDOM``
+     - ``MAXEVAL reached``, ``MAXTIME exceeded``, ``STOPVAL reached``
+       (``TADAH:RANDOM: MAXEVAL reached``)
+     - ``TADAH:RANDOM stopped: <reason> after N evaluation(s)``
+   * - ``TADAH:GRID``
+     - the same, and the whole grid: ``all grid points evaluated``
+     - ``TADAH:GRID stopped: <reason> after N of M grid points``;
+       ``TADAH:GRID finished: all M grid points evaluated``
+   * - ``TADAH:ANNEAL``, ``ANNEAL_PT``, ``ANNEAL_PA``
+     - ``MAXEVAL reached`` (also during the T0 probes), ``MAXTIME
+       exceeded``, ``STOPVAL reached`` (also on a probe), ``T_MIN
+       reached`` (``ANNEAL``, ``ANNEAL_PA``), ``FTOL plateau`` (the
+       plateau rule; ``ANNEAL_PT``'s best-stall rule), ``no optimisable
+       dimensions``; a signal: ``SHUTDOWN (<signal>)``
+     - ``ANNEAL stopped: <reason> after N host eval(s) (…)``, and
+       ``ANNEAL_PT stopped: …``, ``ANNEAL_PA stopped: …``
+   * - ``DLIB:GFS``
+     - ``MAXEVAL reached``, ``MAXTIME exceeded``, ``STOPVAL reached``
+     - ``DLIB:GFS stopped: <reason> after N evaluation(s)``
+   * - ``DLIB:BFGS``
+     - ``MAXEVAL reached``; ``FTOL_ABS reached``: the loss changed by
+       less than ``FTOL_ABS`` (``1e-7`` by default) from one iteration
+       to the next; ``tol_gradinf reached``: the L2 norm of the
+       gradient fell below ``PARAM tol_gradinf``
+     - ``DLIB:BFGS -- MAXEVAL=N reached; preserving best-so-far``;
+       ``DLIB:BFGS stopped: FTOL_ABS reached after 51 evaluation(s):
+       the loss changed by less than FTOL_ABS = 1e-07 (default) from one
+       iteration to the next``
+   * - ``CERES`` (all four)
+     - Ceres' own reason when it converged: ``FTOL_REL reached``
+       (``function_tolerance``, ``1e-6`` by default), ``XTOL_REL
+       reached`` (``parameter_tolerance``, ``1e-8``), ``tol_gradinf
+       reached`` (``gradient_tolerance``, ``1e-10``), or ran out of
+       iterations: ``max_iter reached``; ``MAXEVAL reached`` when an
+       evaluation refused for the budget made Ceres fail; any other
+       failure (a line search that finds no valid step):
+       ``STOPPED -- CERES:<ALGO>: FAILURE (<Ceres' message>)``, the best
+       result standing
+     - ``CERES:LBFGS stopped: FTOL_REL reached after 45 evaluation(s):
+       FTOL_REL = 1e-06 (default); Ceres: Function tolerance reached. …``
+       (Ceres' message); the ``termination:`` line before it
+   * - NLopt
+     - NLopt's result string: ``MAXEVAL_REACHED -- maximum evaluations
+       exhausted``, ``XTOL_REACHED -- …``, ``STOPPED -- nlopt
+       roundoff-limited (…)``, …
+     - ``NLopt finished: <result> …``
+   * - ``ASA:ASA``
+     - ``ASA: <reason>`` (``ASA: MAXEVAL reached``, …)
+     - ``ASA stopped: <reason> after N host eval(s) (asa exit: …)``
+
+Ceres' reason is read from its message (Ceres 2.2: ``Function tolerance
+reached``, ``Parameter tolerance reached``, ``Gradient tolerance
+reached``, ``Maximum number of iterations reached.``); a Ceres version
+that words it otherwise gives ``CERES:<ALGO>: CONVERGENCE (<message>)``
+or ``NO_CONVERGENCE (<message>)``, Ceres' own reason verbatim, and the
+unit tests that pin the wording fail.  Under ``MULTISTART`` the trailer
+is the last start's status and under ``PRESTAGE`` the refinement's: its
+``MAXEVAL reached`` is that start's budget (``BUDGET_PER_START``, or its
+share of ``MAXEVAL``), not the ``STRATEGY``'s total.  A normal end
+without a recorded status is an internal error: the run ends ``FAILED
+-- internal error: the optimiser ended without recording why it ended``
+with exit status ``1`` (please report it).
+
+Before 1.6.0 these drivers recorded no status for most of their endings
+and the trailer read ``COMPLETED``: ``DLIB:BFGS`` for a spent
+``MAXEVAL`` and for its convergence test, which wrote no line at all,
+``DLIB:GFS``, ``TADAH:RANDOM`` and ``TADAH:GRID`` for a spent
+``MAXEVAL`` and the whole grid, the annealers for every stop
+(``STOPVAL`` and ``MAXTIME`` included), and the CERES drivers for every
+ending but a rejected gradient's, a ``FAILURE`` such as
+``STEEPEST_DESCENT``'s ``Numerical failure in line search`` included.
 
 .. _hpo_init_methods:
 
@@ -4655,15 +4757,17 @@ no advance warning.
      - History files
    * - Stop criteria met
      - ``0``
-     - The reason of the optimiser run that ended the run (under
+     - Why the optimiser run that ended the run ended (under
        ``MULTISTART`` the last successful start, under ``PRESTAGE`` the
-       refinement) where it gives one (NLopt, e.g. ``MAXEVAL_REACHED --
-       …``; ``ASA: …``; ``TADAH:RANDOM``, ``TADAH:GRID`` and ``DLIB:GFS``
-       when ``MAXTIME`` or ``STOPVAL`` ended them, e.g. ``TADAH:RANDOM:
-       STOPVAL reached``), otherwise ``COMPLETED``.  An NLopt algorithm that
-       terminated itself (``NLOPT_FAILURE`` or ``NLOPT_ROUNDOFF_LIMITED``, a
-       masked diagnostic) reads ``STOPPED -- <reason> (…)``; the best
-       result stands.  When the ``RESTART`` budget ends the run:
+       refinement; :ref:`hpo_end_status`): ``<LIB>:<ALGO>: <reason>``
+       for TADAH, DLIB and CERES (``TADAH:RANDOM: STOPVAL reached``,
+       ``DLIB:BFGS: FTOL_ABS reached``), NLopt's result (``MAXEVAL_REACHED
+       -- …``), ``ASA: …``; ``COMPLETED`` before 1.6.0 where a backend
+       gave none.  An NLopt algorithm that terminated itself
+       (``NLOPT_FAILURE`` or ``NLOPT_ROUNDOFF_LIMITED``, a masked
+       diagnostic) reads ``STOPPED -- <reason> (…)``, and a Ceres solve
+       that failed on its own ``STOPPED -- CERES:<ALGO>: FAILURE (…)``;
+       the best result stands.  When the ``RESTART`` budget ends the run:
        ``STOPPED -- stagnation: no new best in W evals after R
        restart(s)``.  Under ``MULTISTART``, when a start failed, followed
        by ``(N of M MULTISTART starts failed; see the WARNINGs)``, counted
@@ -4700,6 +4804,12 @@ no advance warning.
        failure of the run)
      - Complete, except that the lost candidate's evaluation is not the
        incumbent (below).
+   * - An optimiser that ended normally without recording why (an
+       internal error; it outranks a run without a usable loss)
+     - ``1``
+     - ``FAILED -- internal error: the optimiser ended without recording
+       why it ended``
+     - Complete.
    * - Any other error during the run: an optimiser failure, every start
        of a ``MULTISTART`` launch failing, an exception outside the
        per-evaluation ``FAILSCORE`` recovery
@@ -4764,7 +4874,10 @@ rank produced one.
 
 The run's exit status is also ``tadah``'s: a job script can tell a
 completed run (``0``) from a stopped one (``130``, ``143``, ``140``) and
-a failed one (``1``: an error, or no usable loss).
+a failed one (``1``: an error, or no usable loss).  A script should test
+the exit status, not the status text, which names why the search ended
+and changes with the backend (a script that looked for ``Optimiser
+status : COMPLETED`` no longer matches: 1.6.0 writes the reason).
 
 .. _warmstart_protocol:
 
@@ -5042,6 +5155,11 @@ Marker                                                                       Mea
 ``[HPO] TADAH:GRID stopped: <stop> after N of M grid points``                The stop that ended the sweep early; ``TADAH:GRID finished: all M
                                                                              grid points evaluated`` otherwise.
 ``[HPO] DLIB:GFS stopped: <stop> after N evaluation(s)``                     The stop that ended ``DLIB:GFS`` (``MAXEVAL``, ``MAXTIME``, ``STOPVAL``).
+``[HPO] DLIB:BFGS stopped: <reason> after N evaluation(s): <test>``          The convergence test that ended ``DLIB:BFGS`` (``FTOL_ABS reached``,
+                                                                             ``tol_gradinf reached``) and its value; a spent ``MAXEVAL`` prints
+                                                                             ``[HPO] DLIB:BFGS -- MAXEVAL=N reached; preserving best-so-far``.
+``[HPO] CERES:ALGO stopped: <reason> after N evaluation(s): <setting>; …``   Why a CERES solve ended (:ref:`hpo_end_status`), with the setting
+                                                                             and Ceres' message.
 ``[HPO] MULTISTART: running K starts (parallel=N)``                           MULTISTART fires.
 ``[HPO] MULTISTART per-start MAXEVAL = N``                                    Either from ``BUDGET_PER_START`` or split.
 ``[HPO] MULTISTART start i/K -- running inner optimiser (seed=…)``            Per-start; ``(seed=…)`` only when ``SEED`` is set.

@@ -460,7 +460,10 @@ counts per slot, total ladder flow, the final ladder (with the number
 of adaptation updates and whether it froze), the whole-run Corana
 acceptance census under ``CORANA ON``, and exactly one
 ``ANNEAL_PT stopped: <reason> after N host eval(s) (E epoch(s), R
-exchange round(s))`` line.
+exchange round(s))`` line, whose reason is also the run's status
+(``TADAH:ANNEAL_PT: MAXEVAL reached``, ``… FTOL plateau`` for the
+best-stall rule; :ref:`hpo_end_status`; ``COMPLETED`` before 1.6.0). A
+signal records none: the run's status is ``SHUTDOWN (<signal>)``.
 
 The Corana census is a per-slot distribution, because 816 dimensions ×
 16 slots cannot go in a journal::

@@ -2092,3 +2092,36 @@ TEST_CASE("Subcommand: train builds a DM_EAM model from the SETFL file",
     CHECK(std::filesystem::exists("energy.pred"));
   }
 }
+
+/* Pins: `tadah data print -s si.cif` on diamond Si given only by its
+ * space-group number (227, Si at 1/8 1/8 1/8, a = 5.431 A) exits 0 and
+ * prints the structure's label with the space group the cell is built
+ * with, origin choice 2 (8 atoms):
+ *   Structure  :    CIF file: si.cif | Symmetry: F d -3 m:2 | Volume: ...
+ * Before the fix: the label showed the H-M text, which this CIF has not:
+ * "CIF file: si.cif | Symmetry:  | Volume: 160.191478" (an empty field). */
+TEST_CASE("Subcommand: data print -s names the space group a CIF's cell is "
+          "built with",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("print_cif_group");
+  {
+    std::ofstream os("si.cif");
+    os << "data_Si_number_only\n"
+          "_cell_length_a 5.431\n_cell_length_b 5.431\n_cell_length_c 5.431\n"
+          "_cell_angle_alpha 90\n_cell_angle_beta 90\n_cell_angle_gamma 90\n"
+          "_symmetry_Int_Tables_number 227\n"
+          "loop_\n_atom_site_label\n_atom_site_type_symbol\n"
+          "_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n"
+          "Si1 Si 0.125 0.125 0.125\n";
+  }
+  const CliRun r = run_tadah({"tadah", "data", "print", "-s", "si.cif"});
+  INFO("status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  const auto structure = line_tokens(r.out, "Structure");
+  REQUIRE_FALSE(structure.empty());
+  CHECK(contains(r.out, "CIF file: si.cif | Symmetry: F d -3 m:2 | Volume: "));
+  CHECK_FALSE(contains(r.out, "Symmetry:  |"));
+  const auto atoms = line_tokens(r.out, "Atoms");
+  REQUIRE(atoms.size() >= 3);
+  CHECK(atoms[2] == "8");
+}

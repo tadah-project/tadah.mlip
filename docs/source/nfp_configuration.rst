@@ -3197,18 +3197,19 @@ run that ends on its own is that status (``Optimiser status`` under
 write ``<LIB>:<ALGO>: <reason>`` with a fixed reason text, so a script
 or a fingerprint can match it; the journal's stop line gives the
 numbers: the evaluations made, and for a tolerance its value, with
-``(default)`` when its key was not set.  A Ceres ending that has no
-such reason is named by Ceres' termination type and the head of Ceres'
-message, its words before the first ``.``, ``,`` or ``:``, a fixed text
-as well: a failure that stopped the search, the best result standing,
-reads ``STOPPED -- CERES:<ALGO>: FAILURE (<head>)``, e.g. ``STOPPED --
-CERES:STEEPEST_DESCENT: FAILURE (Numerical failure in line search)``,
-and the stop line and a WARNING give Ceres' whole message, its numbers
-included.  NLopt keeps its own result strings and ASA ``ASA:
-<reason>``; a gradient that is not finite ends any gradient-based
-search with ``STOPPED -- gradient not finite: …``
+``(default)`` when its key was not set.  NLopt keeps its own result
+strings and ASA ``ASA: <reason>``; a gradient that is not finite ends
+any gradient-based search with ``STOPPED -- gradient not finite: …``
 (:ref:`hpo_gradient_not_finite`), and the ``RESTART`` budget a run with
 ``STOPPED -- stagnation: …``.
+
+A Ceres ending that has no such reason is named by Ceres' termination
+type and the head of Ceres' message, its words before the first ``.``,
+``,`` or ``:``, a fixed text as well: a failure that stopped the search,
+the best result standing, reads ``STOPPED -- CERES:<ALGO>: FAILURE
+(<head>)``, e.g. ``STOPPED -- CERES:STEEPEST_DESCENT: FAILURE (Numerical
+failure in line search)``, and the stop line and a WARNING give Ceres'
+whole message, its numbers included.
 
 .. list-table::
    :header-rows: 1

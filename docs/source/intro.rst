@@ -51,8 +51,10 @@ documented in :doc:`cli/cli`):
 - ``tadah explain <command>.<option>`` — print the help text of a command
   or of one of its options (``tadah explain refit.refit_mode``), or of any
   configuration key, alone or after a command (``tadah explain SETFL``,
-  ``tadah explain refit.rhoform``; a command's own option comes first); a
-  name that is none of these is an error. :ref:`ConfigSection` describes
+  ``tadah explain refit.rhoform``), each name in any letter case; a
+  command's own subcommand or option comes first (``tadah explain
+  data.MERGE`` is the merge subcommand, not the ``MERGE`` key), and a name
+  that is none of these is an error. :ref:`ConfigSection` describes
   every configuration key.
 
 .. _obtaining_tadah:

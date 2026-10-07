@@ -185,7 +185,9 @@ non-negative bump density without the convex lock) or ``RHOFORM SIGNED``.
 density is checked on the radial fit window (the table nodes from the
 window's lower edge, the ``fit_window_lo`` of ``refit_range_report.dat``,
 to the cutoff; never below the inner fit bound, below which no fit samples
-the table) before any fitting, in both modes: a
+the table; with a steep wall the window starts above that bound, and the
+table between the two, which the dense fit solves with a small tail basis,
+is not checked) before any fitting, in both modes: a
 node value below :math:`-\mathrm{tol}` is an error (a positive-form density
 cannot be negative), and under ``MONOTONE`` so is a rise between
 neighbouring nodes above :math:`\mathrm{tol}`, with
@@ -561,6 +563,9 @@ families), ``XMIN`` / ``XMAX`` (window edges; ``XMAX`` applies to ``F`` only),
 (maximum slope/curvature location). ``PIN`` freezes that centre through all
 later stages (its coefficient is still fitted). Pinning the window edges sets
 the extrapolation behaviour.
+
+``tadah explain refit.init`` and ``tadah explain refit.optimizer`` print
+the keys of the INIT and OPTIMIZER blocks below in the terminal.
 
 **EXPLORE / REFINE / FUSE** each accept ``ENABLED true|false`` (REFINE/FUSE;
 ``ENABLED false`` skips the stage) and a nested ``OPTIMIZER`` block, but not

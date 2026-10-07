@@ -176,18 +176,22 @@ without it (a standalone HPO build) the cases are Skipped unless
 `PROCESS` half needs `socketpair` even where `TADAH_PC_ISOLATION=THREAD` is
 set.
 
-`ctest -L bench` runs HPO's LAMMPS-driven cases, three entries of hidden
+`ctest -L bench` runs HPO's LAMMPS-driven cases, four entries of hidden
 Catch cases (`[.][!benchmark]`): `hpo_lammps_hessian` (the Hessian of a
 relaxed 4-atom bcc Ta cell and a `pair_tadah` virial microbench),
 `hpo_phase3_pilot` (the `PC_LAMMPS` adjoint chain on real relaxations,
-against finite differences) and `hpo_bench_pair_tadah` (a `pair_tadah`
-microbench on 256 atoms). They run in the full suite, in about 9 s, on the Ta
-potential shipped with HPO's tests, `HPO/tests/data/bench_ta.tadah`: a copy
-of the *Quick Start* potential, whose header gives its provenance. When you
-regenerate that potential, the copy stays as it is. `TADAH_BENCH_POT` names
-another potential, and `TADAH_BENCH_CELL_DATA` a LAMMPS data file for the
+against finite differences), `hpo_bench_pair_tadah` (a `pair_tadah`
+microbench on 256 atoms) and `hpo_host_e2e` (`HPO_Host`'s analytical
+gradient, a `PC_LAMMPS` script among its cases). They run in the full
+suite, in about 8 s. The first three run on the Ta potential shipped with
+HPO's tests, `HPO/tests/data/bench_ta.tadah`: a copy of the *Quick Start*
+potential, whose header gives its provenance. When you regenerate that
+potential, the copy stays as it is. `TADAH_BENCH_POT` names another
+potential, and `TADAH_BENCH_CELL_DATA` a LAMMPS data file for the
 microbench's cell. A potential that cannot be read or run is a failure, not
-a skip.
+a skip; the tolerances of the cases are set for the shipped potential. The
+other hidden `[!benchmark]` case of HPO, the bump gate, runs in
+`hpo_bumpgate_e2e` (`ctest -L e2e`).
 
 `ctest -L headers` checks that every header compiles on its own: one entry
 per module (`tadah.core_headers`, `tadah.models_headers`, `tadah.mlip_headers`,

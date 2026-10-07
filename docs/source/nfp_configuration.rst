@@ -3314,9 +3314,24 @@ go on without it:
   from the rejected point.  For Ceres it means ``FAILURE`` (``Initial
   cost and jacobian evaluation failed``, ``Numerical failure in line
   search``) right after the rejection.
-* ``MLSL`` and the global ``GD_*`` searches (``GD_STOGO``) are never
-  stopped at a rejection: a rejected local start or point leaves them the
-  rest of their search.
+* HPO does not stop ``MLSL`` and the global ``GD_*`` searches
+  (``GD_STOGO``) at a rejection: a rejected sample or local start leaves
+  them the rest of their search.  NLopt's ``MLSL`` ends its whole search,
+  though, when one of its local searches returns an error.  A local search
+  converges on the edge of the failure region, where the stencil of every
+  point below the edge reaches a failure.  There the line search of
+  ``LD_LBFGS``, ``LD_TNEWTON*``, ``LD_VAR1`` and ``LD_VAR2`` finds no usable
+  point and returns an NLopt failure, and the run ends ``STOPPED -- no
+  usable gradient: … NLopt ended right after it (nlopt failure)``, its
+  budget unspent.  In a one-dimensional search over [1, 2] (``PARAM
+  fd_step 0.2``) whose evaluations fail below 1.53, from 1.9 with
+  ``POPULATION 3``, ``MAXEVAL 400`` and an ``INNER`` block of each,
+  ``G_MLSL_LDS`` ended after 141 (``LD_LBFGS``) to 185 (``LD_TNEWTON``)
+  evaluations; with
+  ``LD_MMA`` (the default local search of the ``GD_MLSL*`` forms),
+  ``LD_CCSAQ``, ``LD_SLSQP``, ``LD_AUGLAG`` or ``LD_AUGLAG_EQ`` it reached
+  ``MAXEVAL``.  Next to a failure region, prefer those local searches under
+  ``MLSL``.
 
 Such an ending is the search's own.  The journal has a warning that names
 the backend and the failed evaluation — the stencil point and its loss, or

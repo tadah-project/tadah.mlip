@@ -455,7 +455,16 @@ later stages (its coefficient is still fitted). Pinning the window edges sets
 the extrapolation behaviour.
 
 **EXPLORE / REFINE / FUSE** each accept ``ENABLED true|false`` (REFINE/FUSE;
-``ENABLED false`` skips the stage) and a nested ``OPTIMIZER`` block. EXPLORE
+``ENABLED false`` skips the stage) and a nested ``OPTIMIZER`` block, but not
+both ``ENABLED false`` and an ``OPTIMIZER`` block, which would have no
+effect: that is an error (before 1.6.0 the block was ignored with a
+warning).  To keep a block and skip its stage, write ``ALGO NONE`` in it:
+
+.. code-block:: none
+
+   REFINE: ENABLED false skips the stage, so its OPTIMIZER block has no effect; remove the OPTIMIZER block, or write ALGO NONE in it instead of ENABLED false
+
+EXPLORE
 also accepts ``MAX_ADD`` (one value or three ``phi rho F``) capping the basis
 functions added in that stage: each an integer from 0 to 2147483647.  Leave
 ``MAX_ADD`` out for no cap; a negative value, which used to mean no cap, is
@@ -484,9 +493,10 @@ an error (``EXPLORE MAX_ADD must be an integer from 0 to 2147483647, got
      ENDOPTIMIZER
    ENDFUSE
 
-Legal optimisers and the stop-criteria each stage consumes (a block with
-``ALGO NONE`` or ``UNIFORM`` runs no optimiser and takes none of them,
-except those another stage reads, below):
+Legal optimisers and the stop-criteria each one reads.  A block takes
+only the stop-criteria of its ``ALGO``; a block with ``ALGO NONE`` or
+``UNIFORM`` runs no optimiser and takes none, except those another stage
+reads (below):
 
 .. list-table::
    :header-rows: 1
@@ -494,19 +504,44 @@ except those another stage reads, below):
 
    * - Stage
      - LIB / ALGO
-     - Stop-criteria used
+     - Stop-criteria read
    * - EXPLORE outer
-     - NLOPT ``GN_MLSL_LDS`` | ``GN_DIRECT_L`` | ``GN_CRS2_LM``; DLIB ``GLOBAL``; ``UNIFORM``
+     - NLOPT ``GN_MLSL_LDS`` | ``GN_DIRECT_L`` | ``GN_CRS2_LM``; DLIB ``GLOBAL``
      - ``MAXEVAL``
+   * - EXPLORE outer
+     - ``UNIFORM``
+     - none
    * - EXPLORE ``INNER``
-     - NLOPT ``LN_SBPLX`` | ``LN_NELDERMEAD`` | ``LN_BOBYQA`` | ``LN_PRAXIS`` | ``LD_LBFGS``; DLIB ``LBFGS``; ``NONE``
+     - NLOPT ``LN_SBPLX`` | ``LN_NELDERMEAD`` | ``LN_BOBYQA`` | ``LN_PRAXIS`` | ``LD_LBFGS``
      - ``MAXEVAL``, ``FTOL_REL``, ``XTOL_REL``
+   * - EXPLORE ``INNER``
+     - DLIB ``LBFGS``
+     - ``MAXEVAL``, ``FTOL_ABS``
+   * - EXPLORE ``INNER``
+     - ``NONE``
+     - none
+   * - REFINE, FUSE
+     - CERES ``LM`` | ``DOGLEG``
+     - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``, ``GTOL``
    * - REFINE
-     - CERES ``LM`` | ``DOGLEG``; NLOPT ``LD_LBFGS``; DLIB ``LBFGS``; ``NONE``
-     - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``, ``GTOL``
-   * - FUSE
-     - CERES ``LM`` | ``DOGLEG``; ``NONE``
-     - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``, ``GTOL``
+     - NLOPT ``LD_LBFGS``
+     - ``MAXEVAL``, ``FTOL_REL``
+   * - REFINE
+     - DLIB ``LBFGS``
+     - ``MAXEVAL``, ``FTOL_ABS``
+   * - REFINE, FUSE
+     - ``NONE``
+     - none
+
+Under the EXPLORE optimiser ``GN_MLSL_LDS`` an ``INNER`` block also takes
+``MAXEVAL``, ``FTOL_REL`` and ``XTOL_REL`` whatever its ``ALGO``: they set
+MLSL's local ``LN_SBPLX`` searches too.  ``FTOL_ABS`` is the absolute
+change of the objective at which dlib's ``LBFGS`` stops (the name
+``tadah hpo``'s ``DLIB:BFGS`` gives it); before 1.6.0 dlib took
+``FTOL_REL`` for that absolute change, and under ``GN_MLSL_LDS`` an
+``INNER`` dlib ``LBFGS`` block's ``FTOL_REL`` set both, so such a run
+without ``FTOL_ABS`` gives different results now.  The defaults are
+unchanged (1e-13 in ``INNER``, 1e-15 in REFINE).
 
 ``MAXEVAL`` counts objective evaluations, exactly, for every NLopt and
 dlib algorithm: each call of the stage's objective, for its value or its
@@ -515,7 +550,9 @@ objective in separate calls, so its L-BFGS counts both, in the objective
 wrapper; the call past ``MAXEVAL`` ends the search at its last iterate.
 Ceres' ``LM`` and ``DOGLEG`` count their solver iterations instead
 (``max_num_iterations``), each one Jacobian evaluation and one or more
-residual evaluations; ``MAXITER``, the alias of ``MAXEVAL``, says so.
+residual evaluations; ``MAXITER``, the alias of ``MAXEVAL`` for ``LM`` and
+``DOGLEG`` only, says so (with an L-BFGS REFINE, where it set the
+evaluation budget before 1.6.0, it is an error naming ``MAXEVAL``).
 Without ``MAXEVAL`` each optimiser takes its default budget:
 
 .. list-table::
@@ -581,20 +618,36 @@ reads; before 1.6.0 they were accepted and did nothing:
 
 .. code-block:: none
 
-   REFINE: THREADS is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL/MAXITER, FTOL_REL, GTOL)
-   EXPLORE INNER: MAXTIME is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL, FTOL_REL, XTOL_REL)
+   REFINE: THREADS is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL/MAXITER, FTOL_REL, FTOL_ABS, GTOL)
+   EXPLORE INNER: MAXTIME is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL, FTOL_REL, FTOL_ABS, XTOL_REL)
 
 ``SEED`` is rejected in every stage's ``OPTIMIZER`` block, ``INNER``
 included, with a pointer to ``REFIT_COMPACT_SEED``, which seeds the refit's
-random numbers; ``FTOL_ABS`` on REFINE and FUSE points to ``FTOL_REL``:
+random numbers; ``FTOL_ABS`` with a Ceres ``ALGO`` points to ``FTOL_REL``:
 
 .. code-block:: none
 
    EXPLORE: SEED is not accepted in a tadah refit OPTIMIZER block: the refit's random numbers come from REFIT_COMPACT_SEED; set REFIT_COMPACT_SEED in the configuration instead.
 
-Within a stage, ``GTOL`` is used by the Ceres optimisers (``LM``,
-``DOGLEG``) and ``XTOL_REL`` by the NLopt local searches; with another
-``ALGO`` of the stage they have no effect.
+Within a stage, a stop criterion that the block's ``ALGO`` does not read
+(the table above) is an error, named as written with the ``ALGO`` and the
+keys it reads; ``MAXITER`` with an ``ALGO`` that counts evaluations names
+``MAXEVAL``, and ``FTOL_REL`` with dlib's ``LBFGS`` names ``FTOL_ABS``.
+Before 1.6.0 they were accepted, and but for ``MAXITER`` had no effect
+(``GTOL`` with ``LD_LBFGS``, ``XTOL_REL`` with an ``INNER`` dlib
+``LBFGS``):
+
+.. code-block:: none
+
+   REFINE: GTOL has no effect with ALGO LD_LBFGS (it reads MAXEVAL, FTOL_REL); remove GTOL
+   EXPLORE INNER: XTOL_REL has no effect with ALGO LBFGS (it reads MAXEVAL, FTOL_ABS); remove XTOL_REL
+   REFINE: MAXITER counts Ceres iterations; ALGO LD_LBFGS counts objective evaluations: write MAXEVAL
+   REFINE: FTOL_REL has no effect with ALGO LBFGS: dlib's L-BFGS stops on an absolute change of the objective; write FTOL_ABS
+
+The ``optimiser:`` line of ``refit_opt.log`` gives each stage's settings
+as its ``ALGO`` reads them, the MLSL seed with those of its local searches
+(``EXPLORE.seed{algo=MLSL maxeval=60000 local=LN_SBPLX{maxeval=20000
+ftol_rel=1e-13 xtol_rel=1e-11}}``).
 
 Every ``OPTIMIZER`` block, and an EXPLORE ``INNER`` block, must set
 ``ALGO``.  To switch a search off, write it out: ``ALGO NONE`` in an
@@ -602,7 +655,7 @@ Every ``OPTIMIZER`` block, and an EXPLORE ``INNER`` block, must set
 skipped), and ``ALGO UNIFORM`` (or ``NONE``) for the EXPLORE optimiser (no
 global search).  A block switched off runs no optimiser, so a stop
 criterion in it would have no effect: ``MAXEVAL``/``MAXITER``,
-``FTOL_REL``, ``XTOL_REL`` and ``GTOL`` there are errors, named as
+``FTOL_REL``, ``FTOL_ABS``, ``XTOL_REL`` and ``GTOL`` there are errors, named as
 written, as ``LIB`` is (below).  An EXPLORE ``INNER`` block's
 ``MAXEVAL``, ``FTOL_REL`` and ``XTOL_REL`` stay accepted with ``ALGO
 NONE`` under the EXPLORE optimiser ``GN_MLSL_LDS``, whose local searches

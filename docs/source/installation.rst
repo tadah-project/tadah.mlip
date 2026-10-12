@@ -561,13 +561,17 @@ finds the MPI of ``mpicxx``), build ``lmp`` and start it with the
 
 On several ranks the energies, forces, per-atom energies and the virial
 are those of the serial run up to round-off (the order in which
-contributions are summed differs), for the generic many-body kernel of,
-for example, the *Quick Start* potential, the ``EAMFAST`` kernels of a
-linear ``DM_REAM`` or pair potential, and the full-list kernel of a
-non-linear model; this was checked on 2, 4 and 8 ranks, also with
-sub-domains narrower than the cutoff. A linear model runs with ``newton
-on`` or ``off``; a non-linear one needs ``newton on``. The kernel of a
-``DIMER`` potential was not checked on several ranks.
+contributions are summed differs). This was checked on 2 and 4 ranks,
+also with sub-domains narrower than the cutoff, for the generic many-body
+kernel of, for example, the *Quick Start* potential, the ``EAMFAST``
+kernel of a linear ``DM_REAM`` potential, the full-list kernel of a
+non-linear model and the kernels of a pair potential, and on 8 ranks for
+all but the pair kernels. For a ``DIMER`` potential (*Tadah!N2*,
+:ref:`mlips`) it was checked at step 0 only, on 2 and 4 ranks; its
+dynamics on several ranks were not. A ``DIMER`` potential needs ``newton
+off``, whatever its model; any other potential runs with ``newton on`` or
+``off`` when its model is linear and needs ``newton on`` when it is
+non-linear.
 
 Runs on different numbers of ranks start from the same state only when
 the input makes them: ``create_atoms`` numbers the atoms rank by rank, and

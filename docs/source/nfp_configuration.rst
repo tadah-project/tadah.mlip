@@ -1462,17 +1462,23 @@ written in the ``INNER`` block is a startup error at its line
 ``PC_OBSERVABLE`` lines whose values it can differentiate: no
 ``--loss MAPE`` or ``RMSLE`` and no ``--unconverged force-scaled``.
 Startup refuses a setup that falls short, naming the setting or the
-line; the shared example model, for instance, uses ``OALGO 1``:
+``PC_OBSERVABLE`` term, at the line that closes the block it refuses
+(``ENDOPTIMIZER``; ``ENDEXPLORE`` for an ``EXPLORE`` block, ``EXPLORE
+block: GRAD_STRATEGY ANALYTICAL …``).  The shared example model, for
+instance, uses ``OALGO 1`` (example ``22_pc_observable``'s
+``config.hpo`` with ``common/config.tadah``):
 
 .. code-block:: none
 
-   HPOEngine error: OPTIMIZER block: GRAD_STRATEGY ANALYTICAL (resolved for PC_OBSERVABLE: the block sets no GRAD_STRATEGY) needs the analytical gradient of the loss, which this setup cannot form: OALGO is 1 (it needs OALGO 4, the Cholesky normal equations). Change that setting, or set GRAD_STRATEGY HYBRID to use finite differences where no analytical gradient is available.
+   HPOEngine error: Error on line 20: OPTIMIZER block: GRAD_STRATEGY ANALYTICAL (resolved for PC_OBSERVABLE: the block sets no GRAD_STRATEGY) needs the analytical gradient of the loss, which this setup cannot form: OALGO is 1 (it needs OALGO 4, the Cholesky normal equations). Change that setting, or set GRAD_STRATEGY HYBRID to use finite differences where no analytical gradient is available.
+   Line: ENDOPTIMIZER
 
 and a ``force-scaled`` line (a ``MAPE`` or ``RMSLE`` one alike):
 
 .. code-block:: none
 
-   HPOEngine error: OPTIMIZER block: GRAD_STRATEGY ANALYTICAL (resolved for PC_OBSERVABLE: the block sets no GRAD_STRATEGY) needs the analytical gradient of the loss, which this setup cannot form: the PC_OBSERVABLE term cohesive_energy[1]: --unconverged force-scaled reports target + slope x fmax for a relaxation that does not converge, a value without an analytical derivative. Change that setting, or set GRAD_STRATEGY HYBRID to use finite differences where no analytical gradient is available.
+   HPOEngine error: Error on line 20: OPTIMIZER block: GRAD_STRATEGY ANALYTICAL (resolved for PC_OBSERVABLE: the block sets no GRAD_STRATEGY) needs the analytical gradient of the loss, which this setup cannot form: the PC_OBSERVABLE term cohesive_energy[1]: --unconverged force-scaled reports target + slope x fmax for a relaxation that does not converge, a value without an analytical derivative. Change that setting, or set GRAD_STRATEGY HYBRID to use finite differences where no analytical gradient is available.
+   Line: ENDOPTIMIZER
 
 ``HYBRID`` takes finite differences only where the analytical gradient
 is missing: at an unconverged ``force-scaled`` relaxation, or for every
@@ -1794,7 +1800,7 @@ Born-stability hinges via finite-difference stress probes on fixed
 strained cells if shear stability matters for your fits.)  The HPO
 examples ship this probe as ``examples/common/lammps/failprobe.in``;
 example ``25_failprobe_grading`` (:ref:`hpo_examples`) runs it with
-``FAILSCORE_GRADING ON`` and a lattice window that grades six band-A
+``FAILSCORE_GRADING ON`` and a lattice window that grades eight band-A
 failures.
 
 ``--failvar`` recipes for typical scripts
@@ -2409,17 +2415,56 @@ error: the ``ENDOPTIMIZER`` line for the ``STRATEGY``-level optimiser, a
 block's keys included), ``ENDEXPLORE`` for the exploration, ``ENDINNER``
 for an ``INNER`` block.  So do the startup refusals of the ``STRATEGY``
 rules (``STRATEGY TYPE MULTISTART cannot run …``, an ``INNER`` block that
-names another library) and of a phase's finite differences or a
-``GRAD_STRATEGY`` on a phase that takes no gradient (the check of the
-``ANALYTICAL`` setup, ``OPTIMIZER block: GRAD_STRATEGY ANALYTICAL …``,
-names no line):
+names another library), of a phase's finite differences or a
+``GRAD_STRATEGY`` on a phase that takes no gradient, the check of the
+``ANALYTICAL`` setup (``OPTIMIZER block: GRAD_STRATEGY ANALYTICAL …``,
+``EXPLORE block: …``), the ``STEP`` rules (``DLIB:BFGS (OUTER) does not
+use STEP; …``, a ``STEP`` outside ``(0, 0.5]``, overrides that cover only
+some dimensions), the ``PC_OBSERVABLE`` and ``PC_LAMMPS`` gradient rules
+(``--hpotarget defines PC_LAMMPS but EXPLORE's optimiser NLOPT:LD_LBFGS
+is gradient-based. …``) and the refusal of a multi-rank launch
+(:ref:`tadah_anneal_mpi`):
 
 .. code-block:: none
 
    HPOEngine error: Error on line 17: the PRESTAGE refinement: DLIB:BFGS does not support MAXTIME
    Line: ENDOPTIMIZER
 
-Until 2026-10-07 these refusals named the phase and no line.
+Until 2026-10-07 these refusals named the phase and no line; the check of
+the ``ANALYTICAL`` setup, the ``STEP`` rules, the gradient rules and the
+multi-rank refusal named none until 2026-10-12.
+
+A refusal of an ``INIT`` or ``RESTART`` block's ``METHOD`` entry, which
+startup makes when it draws the chain after reading the file, names the
+``METHOD`` line in the same form: a ``WARM`` file that is missing or
+unreadable, a ``WARM`` seed whose ``RHOFORM`` the run refuses or that
+``WARM_ON_MISMATCH error`` refuses, a ``SOBOL`` block beyond the end of
+the sequence (until 2026-10-12 they named no line):
+
+.. code-block:: none
+
+   HPOEngine error: Error on line 3: WARM: cannot open seed file 'missing.tadah'. Provide the file (production submit scripts copy it into the run dir) or drop the WARM line to start from the in-config values.
+   Line:     METHOD WARM missing.tadah
+
+These startup refusals name no line of the file: a starting point outside
+its ``OPTIM`` box or not finite (``INIT[OUTER] starting point 1: …``),
+``FAILSCORE_GRADING ON`` without a finite positive ``FAILSCORE``, and the
+bump-support and density gates, which name their keys.
+
+A search space without an ``OPTIM`` line is refused for every phase whose
+optimiser is NLopt, DLIB or CERES, at its block's line: ``Error on line
+14: the PRESTAGE exploration (EXPLORE block): NLOPT:GN_DIRECT cannot
+optimise a zero-dimensional search space (there is no OPTIM line; …).
+Add at least one OPTIM line, or use a TADAH-native optimiser, which
+evaluates the INIT start point once.``  The ``TADAH`` optimisers evaluate
+the ``INIT`` point once; ``ASA`` refuses such a space itself (``ASA:ASA
+requires at least one OPTIM dimension``).  Until 2026-10-12 only the
+``STRATEGY``-level optimiser was checked, without a line (``No OPTIM
+line: the search space has zero dimensions, and LIB NLOPT cannot …``): an
+``EXPLORE`` block's NLopt optimiser or ``DLIB:GFS`` passed startup and
+failed in the run (``NULL args to nlopt_optimize_``, dlib's ``The vectors
+can't be empty``), and an ``EXPLORE`` block's ``DLIB:BFGS`` was refused
+as ``… requires non-empty, same-sized low/high bounds``.
 
 Before 1.6.0 these backend checks ran when that optimiser started: after
 the data were loaded and any ``NOISE CALIBRATION`` evaluations, for the
@@ -2538,8 +2583,14 @@ one a finite number (``MAXTIME`` a positive one).
        ``TADAH`` and was rejected at startup by ASA and the annealers.
        This is distinct from root-level ``PC_SCRIPT_TIMEOUT`` (whose alias
        is root-level ``MAXTIME``, a LAMMPS time spec).  No evaluation
-       starts once that many seconds have passed since the optimiser
-       started; the evaluations already running finish.
+       but the optimiser's first starts once that many seconds have
+       passed since the optimiser started; the evaluations already
+       running finish.  Every optimiser makes its first evaluation, so a
+       ``MAXTIME`` that has passed before it (``MAXTIME 1e-9``) gives one;
+       until 2026-10-12 ``ASA``, and ``DLIB:GFS`` without an ``INIT``
+       point, made none then: a ``PLAIN`` run ended ``STOPPED -- no
+       evaluation produced a usable loss`` (status 1), and a ``PRESTAGE``
+       exploration had nothing to refine.
        ``DLIB:BFGS`` and ``CERES`` reject it.  ``TADAH:RANDOM``,
        ``TADAH:GRID`` and ``DLIB:GFS`` accepted it and ignored it before
        1.6.0.
@@ -2614,11 +2665,19 @@ one a finite number (``MAXTIME`` a positive one).
        or not it draws random numbers.  ``MULTISTART`` and
        the ``PRESTAGE`` refinement run start *i* with ``SEED + i``, and
        each ``RESTART`` round runs with a seed derived from it
-       (:ref:`restart_decorator`).  Inside an ``INIT`` block the same key
-       seeds the stochastic init methods instead; of the optimisers, only
-       NLopt reads it, and only when its block has no ``SEED`` of its
-       own.  Inside a ``RESTART`` block it seeds the ``METHOD`` chain
-       that draws each restart's points (restart *r* with ``SEED + r``).
+       (:ref:`restart_decorator`).  An optimiser's random numbers are
+       its own: not those an ``INIT`` or ``RESTART`` block's ``RANDOM`` or
+       ``LHS`` method draws for the same value (before 1.6.0
+       ``TADAH:RANDOM`` and ``ASA`` drew an ``INIT`` block's generator,
+       and until 2026-10-12 a ``RESTART`` block's, whose ``SEED`` is new
+       in 1.6.0), and in the ``PRESTAGE``
+       refinement not those of the exploration for the same value
+       (until 2026-10-12 they were).  Inside an ``INIT`` block
+       the same key seeds the stochastic init methods instead; of the
+       optimisers, only NLopt reads it, and only when its block has no
+       ``SEED`` of its own.  Inside a ``RESTART`` block it seeds the
+       ``METHOD`` chain that draws each restart's points (restart *r*
+       with ``SEED + r``).
        An ``INNER`` block takes no ``SEED`` (startup error): NLopt
        has one random stream per run, seeded by the enclosing block, and
        MLSL/AUGLAG draw their ``INNER`` search from it
@@ -2704,17 +2763,20 @@ one a finite number (``MAXTIME`` a positive one).
        refuses a block that sets it without them, naming the setting or
        the line; before 1.6.0 such a setup passed startup and stopped
        at the first gradient with ``no registered analytical
-       derivative``.  It still stops the run at a gradient it cannot
-       form — a parameter without an analytical derivative, an
-       ill-conditioned fit, a loss term without an analytical
-       derivative at the point — where ``HYBRID`` uses finite
-       differences instead.  A candidate a gate rejects before training
-       (``BUMPGATE CANDIDATE``, ``RHOGATE``, ``RHOBARGATE``) has no fit
-       to differentiate: it is a point without a usable gradient
-       (:ref:`hpo_gradient_not_finite`), from which NLopt and Ceres
-       step back and go on.  Until 2026-10-07 such a
-       candidate ended the run ``FAILED -- GRAD_STRATEGY=ANALYTICAL: no
-       analytical gradient for N parameters at this point``.
+       derivative``.  It still stops the run at a parameter or a loss
+       term without an analytical derivative at the point, where
+       ``HYBRID`` uses finite differences instead.  A point where it
+       cannot form the gradient has no usable gradient
+       (:ref:`hpo_gradient_not_finite`): a candidate a gate rejects
+       before training (``BUMPGATE CANDIDATE``, ``RHOGATE``,
+       ``RHOBARGATE``), which has no fit to differentiate, or a fit
+       whose normal equations are not positive definite in the
+       gradient's implicit-function solve; NLopt and Ceres step back
+       from it and go on, or stop there, and ``HYBRID`` differences
+       every parameter there.  Until 2026-10-07 such a candidate ended
+       the run ``FAILED -- GRAD_STRATEGY=ANALYTICAL: no analytical
+       gradient for N parameters at this point``, and until 2026-10-12
+       such a fit did.
    * - ``PARAM`` (string value)
      - Algorithm-specific key/value (e.g. ``PARAM fd_step 1e-3``).  A
        value that starts like a number must be a finite number
@@ -3382,7 +3444,20 @@ fit, and so without an analytical gradient either way: ``ANALYTICAL``
 gives it none (at the loss the optimiser has just evaluated, the graded
 failure above; asked without that loss, ``the analytical gradient could
 not be formed at this point``, the stop line giving the gate's reject
-note), and ``HYBRID`` differences it.
+note), and ``HYBRID`` differences it.  So does a point whose fit the
+analytical gradient cannot differentiate: its implicit-function solve
+factorises the normal equations of the fit, Φᵀ Φ + ``LAMBDA`` I over the
+training rows, and where they are not positive definite there (with a
+small ``LAMBDA`` the factorisation of a numerically singular matrix can
+fail where the fit's own succeeded) the journal says so in a ``WARNING``
+at the first such point and then at the 2nd, 4th, 8th, …::
+
+   WARNING   Analytical gradient could not be formed at this point (occurrence 1): the implicit-function solve has no solution at this point: the normal equations of the fit (Phi^T Phi + LAMBDA I over the training rows, LAMBDA = 0) are not positive definite in the gradient's Cholesky factorisation; GRAD_STRATEGY HYBRID takes finite differences for every parameter there, and under ANALYTICAL the point has no usable gradient
+
+Until 2026-10-12 ``ANALYTICAL`` stopped the run there (``FAILED --
+GRAD_STRATEGY=ANALYTICAL: no analytical gradient for N parameters at this
+point``), and the journal said nothing (an error of the gradient's
+computation was written at every gradient).
 
 An evaluation with a failed term is a failed evaluation — a failed
 ``PC_LAMMPS`` simulation (``--failscore``, :ref:`pc_lammps_options`) or a
@@ -4329,10 +4404,10 @@ from those it has, and the journal says so:
 
    PRESTAGE: 4 usable candidate(s) for TOPK 6 (the exploration made 6 evaluation(s), 2 without a usable loss); refining 4
 
-If the exploration yields no candidate — none of its evaluations
-produced a usable loss, or it made none — the refinement runs from the
-OPTIMIZER-level ``INIT`` points instead (in a ``RESTART`` round, the
-round's fresh points), and the journal says why in a ``WARNING``:
+If the exploration yields no candidate because none of its evaluations
+produced a usable loss, the refinement runs from the OPTIMIZER-level
+``INIT`` points instead (in a ``RESTART`` round, the round's fresh
+points), and the journal says why in a ``WARNING``:
 
 .. code-block:: none
 
@@ -4343,7 +4418,16 @@ whose points a gate rejected before training, an ``INIT`` point outside
 the region the exploration sampled, a search under ``FAILSCORE_GRADING
 ON`` that walks out of a failure region); a run that finds none ends
 without a usable loss (``STOPPED -- no evaluation produced a usable
-loss``, status 1).  Until 2026-10-07 a failed point (``FAILSCORE`` or a
+loss``, status 1).  Every exploration a configuration can set evaluates at
+least one point (``MAXEVAL`` is at least 1, and every optimiser makes its
+first evaluation whatever ``MAXTIME``, the ``MAXTIME`` row), so an
+exploration that made no evaluation at all is an internal error, and the
+run ends
+``FAILED -- PRESTAGE: the exploration (EXPLORE block) LIB:ALGO returned
+without evaluating a point, …`` (status 1); until 2026-10-12 the
+refinement ran from the ``INIT`` points after a ``WARNING`` (``PRESTAGE:
+produced no candidates -- running outer optimiser as-is``), which hid
+it.  Until 2026-10-07 a failed point (``FAILSCORE`` or a
 graded failure, not a gate reject) stayed among the candidates while
 fewer than ``TOPK`` usable ones existed, and the refinement started from
 it; an exploration whose every evaluation had failed so was refined from
@@ -4404,6 +4488,10 @@ Requirements and behaviour:
   positive it fails before any evaluation, with ``multi-rank HPO does not
   support RESTART (…): stagnation is tracked per rank; run on one rank or
   remove RESTART``;
+* either refusal names the line that closes the ``OPTIMIZER`` block
+  (``Error on line N: multi-rank HPO supports only STRATEGY TYPE PLAIN
+  with LIB TADAH and ALGO ANNEAL_PT or ANNEAL_PA; got TADAH:RANDOM on 4
+  ranks`` and ``Line: ENDOPTIMIZER``);
 * an MPI-flavoured LAMMPS library (the serial archive carries MPI stub
   symbols that collide with a real MPI at link time — configure-time
   check);
@@ -4630,13 +4718,34 @@ and ``SEED 11`` in its ``RESTART`` block logs, at the first restart,
 ``RESTART 1/3 -- fresh init from SOBOL; RESTART SEED 12, SEED 43,
 EXPLORE SEED 1718``.  The seeds are separate settings: the ``RESTART``
 block's ``SEED`` draws the points, and each optimiser's own ``SEED`` its
-random numbers.  Give them different values.  The ``RANDOM`` method and
-``TADAH:RANDOM`` draw from the same generator, so with equal seeds a
-restart's fresh ``RANDOM`` point is the optimiser's first draw of the
-round, evaluated twice (with ``SEED 5`` in both blocks under ``PLAIN``,
-round *r* seeds both with ``5 + r``).  The same can happen in the first
-round when an ``INIT`` block's ``SEED`` equals the optimiser's.  An
-optimiser without ``SEED`` is unaffected.  NLopt draws from the derived seeds too, even when an
+random numbers.  Each draws a stream of its own: the starting-point
+methods (``RANDOM``, ``LHS``) of the ``INIT`` and ``RESTART`` blocks
+draw one, ``TADAH:RANDOM``, ``ASA`` and each random consumer of the
+``TADAH`` annealers (chains, temperature probes, swap coins, resampling)
+draw streams derived from their ``SEED`` with a salt of their own, and
+NLopt draws from its own generator.  So equal seeds in two kinds of block
+draw unrelated numbers: with ``SEED 5`` in the ``RESTART`` block and on
+``TADAH:RANDOM`` under ``PLAIN`` (round *r* seeds both with ``5 + r``),
+or with an ``INIT`` block's ``SEED`` equal to the optimiser's, the
+optimiser does not draw the block's points again.  Before 1.6.0
+``TADAH:RANDOM`` and ``ASA`` drew the starting-point methods' generator
+for an equal seed: with an ``INIT`` block's ``SEED`` (and ``METHOD
+RANDOM``) equal to the optimiser's, the first round's start point was
+the optimiser's first draw, evaluated twice.  The ``RESTART`` block's
+``SEED`` is new in 1.6.0 (before, a restart drew its points from
+``std::random_device``); until 2026-10-12 one equal to the optimiser's
+round seed made a restart's fresh ``RANDOM`` point the round's first
+draw.  A ``PRESTAGE`` refinement
+draws random numbers of its own: its optimiser seeds every stream (and
+NLopt its generator) with a key derived from its ``SEED``, so it does not
+draw the exploration's numbers, whatever the two ``SEED`` values and the
+seeds ``RESTART`` derives for a round (the refinement ``SEED + r·S``, the
+exploration ``EXPLORE SEED + r``, which meet for ``SEED 7`` and ``EXPLORE
+SEED 8``); the journal names the ``SEED``.  Until 2026-10-12 it drew the
+exploration's numbers for an equal seed: a ``TADAH:RANDOM`` refinement
+evaluated the exploration's draws again.  Two ``METHOD`` chains given the
+same seed draw the same points (an ``INIT`` block's ``SEED`` *s* and a
+restart round whose ``RESTART`` ``SEED + r`` is *s*).  NLopt draws from the derived seeds too, even when an
 ``INIT`` block also has a ``SEED``.  Only an NLopt optimiser without a
 ``SEED`` of its own takes its random seed from its ``INIT`` block's
 ``SEED``, which is not derived, so it repeats its random sequence in every
@@ -5924,7 +6033,8 @@ Marker                                                                       Mea
 ``[HPO] Initial step (LIB:ALGO): …``                                         NLopt run started; the effective per-dimension step is in the journal.
 ``[HPO] OPTIM_SCALE X taken from the TADAH_OPTIM_SCALE …``                    Env override of the scaling policy is active.
 ``[HPO] search space: N dim(s); OPTIM width min … max …``                     Startup width audit; a WARNING names near-pinned dims.
-``[HPO] LIB:ALGO (…) does not use STEP; …``                                    Startup rejection of a ``STEP`` the backend would ignore.
+``HPOEngine error: Error on line N: LIB:ALGO (…) does not use STEP; …``       Rejection of a ``STEP`` the backend would ignore, at the line that
+                                                                              closes its block (``Line: ENDOPTIMIZER``, ``ENDEXPLORE``, ``ENDINNER``).
 ``[HPO] DLIB:GFS: dlib applies its own ln transform to …``                     dlib's hidden log transform fires (``OPTIM_SCALE NONE`` only).
 ``[HPO] NOISE_CALIBRATION: running N evals at the seed point``                ``NOISE.CALIBRATION`` started.
 ``[HPO] ASA[Ingber ASA-30.53]: seed=… dim=…``                                 ``ASA:ASA`` entry banner with resolved options.

@@ -2387,6 +2387,91 @@ TEST_CASE("Subcommand: train refuses intercepts the data cannot determine "
   CHECK(contains(nrep, "NORM=true with MODEL=Kern_Linear requires BIAS=true"));
 }
 
+/* Pins: `tadah train` refuses FIXINDEX/FIXWEIGHT with NORM true (exit 1,
+ * no potential): the Nb-Ta cells, BIAS true, NORM true, FIXINDEX 1 /
+ * FIXWEIGHT -7.6 (the Nb intercept the composition refusal says to pin),
+ * for M_BLR BF_Linear and M_KRR Kern_Linear, naming FIXINDEX/FIXWEIGHT and
+ * NORM true, as tadah hpo refuses the same file at startup.
+ * Before the fix: both trained (exit 0), and the potential's WEIGHTS began
+ * -7.64937, not the FIXWEIGHT -7.6 it also recorded (the pinned
+ * normalised-space intercept moved by the conversion to raw-descriptor
+ * weights), with a non-zero WCOV row under --uncertainty. */
+TEST_CASE("Subcommand: train refuses FIXINDEX/FIXWEIGHT with NORM true",
+          "[TadahCLI][train][norm][fixindex]") {
+  ScratchCwd cwd("norm_fixindex");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  for (const char* model : {"MODEL M_BLR BF_Linear", "MODEL M_KRR Kern_Linear"}) {
+    INFO(model);
+    std::string keys = kNbTaKeys;
+    keys.replace(keys.find("NORM false"), 10, "NORM true");
+    keys.replace(keys.find("MODEL M_BLR BF_Linear"), 21, model);
+    std::ofstream("config") << "DBFILE db.tadah\n" << keys
+                            << "FIXINDEX 1\nFIXWEIGHT -7.6\n";
+    std::filesystem::remove("pot.tadah");
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+    CHECK(contains(rep, "FIXINDEX/FIXWEIGHT is not supported with NORM true"));
+  }
+}
+
+/* Pins: the composition refusal (every cell Nb2 Ta2, BIAS true) names the
+ * remedies its configuration can take: under NORM false BIAS false with
+ * explicit ESHIFT values or ESHIFT_ATOM, and the FIXINDEX/FIXWEIGHT pin;
+ * under NORM true neither (NORM true with BF_Linear needs BIAS true, and
+ * FIXINDEX is refused there), but NORM false; never ESHIFT_DBATOM, whose
+ * fit of the species energies is singular on such data: BIAS false with
+ * ESHIFT_DBATOM true on the same cells trains with ESHIFT 0 0 and the
+ * WARNING "normal-equations matrix is singular".
+ * Before the fix: both refusals said "Use BIAS false (ESHIFT_ATOM,
+ * ESHIFT_DBATOM or ESHIFT remove a per-species reference energy), ... or
+ * pin intercepts with FIXINDEX/FIXWEIGHT". */
+TEST_CASE("Subcommand: train's composition refusal names the remedies the "
+          "configuration can take",
+          "[TadahCLI][train][bias]") {
+  ScratchCwd cwd("bias_remedies");
+  std::ofstream("fixed.tadah") << nbta_dataset(true);
+  std::ofstream("config") << "DBFILE fixed.tadah\n" << kNbTaKeys;
+  const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                              "pot.tadah"});
+  const std::string rep = reported(r);
+  INFO("NORM false: status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "Use BIAS false with explicit ESHIFT values"));
+  CHECK(contains(rep, "ESHIFT_ATOM"));
+  CHECK(contains(rep, "pin intercepts with FIXINDEX/FIXWEIGHT"));
+  CHECK_FALSE(contains(rep, "ESHIFT_DBATOM"));
+
+  std::string keys = kNbTaKeys;
+  keys.replace(keys.find("NORM false"), 10, "NORM true");
+  std::ofstream("config_norm") << "DBFILE fixed.tadah\n" << keys;
+  const CliRun n = run_tadah({"tadah", "train", "-c", "config_norm", "-o",
+                              "pot.tadah"});
+  const std::string nrep = reported(n);
+  INFO("NORM true: status " << n.status << "\n" << nrep);
+  CHECK(n.status == 1);
+  CHECK(contains(nrep, "cannot determine"));
+  CHECK(contains(nrep, "NORM false"));
+  CHECK_FALSE(contains(nrep, "FIXINDEX"));
+  CHECK_FALSE(contains(nrep, "BIAS false"));
+  CHECK_FALSE(contains(nrep, "ESHIFT_DBATOM"));
+
+  keys = kNbTaKeys;
+  keys.replace(keys.find("BIAS true"), 9, "BIAS false\nESHIFT_DBATOM true");
+  std::ofstream("config_dbatom") << "DBFILE fixed.tadah\n" << keys;
+  const CliRun d = run_tadah({"tadah", "train", "-c", "config_dbatom", "-o",
+                              "pot_dbatom.tadah"});
+  const std::string drep = reported(d);
+  INFO("ESHIFT_DBATOM: status " << d.status << "\n" << drep);
+  CHECK(d.status == 0);
+  CHECK(contains(drep, "normal-equations matrix is singular"));
+  CHECK(line_tokens(slurp("pot_dbatom.tadah"), "ESHIFT") ==
+        std::vector<std::string>{"ESHIFT", "0", "0"});
+}
+
 /* Pins: a linear NORM potential (M_BLR BF_Linear, BIAS true, NORM true on
  * the Nb-Ta cells, 5 WEIGHTS) predicts the same energies whatever its NMEAN
  * and NSTDEV hold: a linear model predicts with its converted weights. The

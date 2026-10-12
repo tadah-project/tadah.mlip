@@ -2604,7 +2604,9 @@ one a finite number (``MAXTIME`` a positive one).
        (:ref:`restart_decorator`).  An optimiser's random numbers are
        its own: not those an ``INIT`` or ``RESTART`` block's ``RANDOM`` or
        ``LHS`` method draws for the same value (before 1.6.0
-       ``TADAH:RANDOM`` and ``ASA`` drew them).  Inside an ``INIT`` block
+       ``TADAH:RANDOM`` and ``ASA`` drew them), and in the ``PRESTAGE``
+       refinement not those of the exploration for the same value
+       (until 2026-10-12 they were).  Inside an ``INIT`` block
        the same key seeds the stochastic init methods instead; of the
        optimisers, only NLopt reads it, and only when its block has no
        ``SEED`` of its own.  Inside a ``RESTART`` block it seeds the
@@ -4622,11 +4624,17 @@ optimiser does not draw the block's points again.  Before 1.6.0
 for an equal seed: a restart's fresh ``RANDOM`` point was the
 optimiser's first draw of the round, evaluated twice, and so was the
 first round's start point when an ``INIT`` block's ``SEED`` (with
-``METHOD RANDOM``) equalled the optimiser's.  Two consumers of one kind
-given the same seed draw the same numbers: two ``METHOD`` chains (an
-``INIT`` block's ``SEED`` *s* and a restart round whose ``RESTART``
-``SEED + r`` is *s* draw the same ``RANDOM`` points), or two phases that
-run one backend with the same ``SEED``.  NLopt draws from the derived seeds too, even when an
+``METHOD RANDOM``) equalled the optimiser's.  A ``PRESTAGE`` refinement
+draws random numbers of its own: its optimiser seeds every stream (and
+NLopt its generator) with a key derived from its ``SEED``, so it does not
+draw the exploration's numbers, whatever the two ``SEED`` values and the
+seeds ``RESTART`` derives for a round (the refinement ``SEED + r·S``, the
+exploration ``EXPLORE SEED + r``, which meet for ``SEED 7`` and ``EXPLORE
+SEED 8``); the journal names the ``SEED``.  Until 2026-10-12 it drew the
+exploration's numbers for an equal seed: a ``TADAH:RANDOM`` refinement
+evaluated the exploration's draws again.  Two ``METHOD`` chains given the
+same seed draw the same points (an ``INIT`` block's ``SEED`` *s* and a
+restart round whose ``RESTART`` ``SEED + r`` is *s*).  NLopt draws from the derived seeds too, even when an
 ``INIT`` block also has a ``SEED``.  Only an NLopt optimiser without a
 ``SEED`` of its own takes its random seed from its ``INIT`` block's
 ``SEED``, which is not derived, so it repeats its random sequence in every

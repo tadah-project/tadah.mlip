@@ -40,7 +40,8 @@
 //
 // The [oalgo] cases run `tadah train` with OALGO 4 and OALGO 2 on fewer
 // data rows than weights, and on fewer non-zero data rows than weights (a
-// structure of weight 0); they run in every build.
+// structure of weight 0; a dimer's y and z force rows and an isolated
+// atom's energy, of weight 1); they run in every build.
 //
 // The [task-file] cases run `tadah --task` on a task file whose TASK lines
 // carry an inline comment, and on task files with a TASK line that has no
@@ -2673,6 +2674,16 @@ TEST_CASE("Subcommand: train refuses a TYPE2B descriptor without its grid "
 
 /* ---- [oalgo]: fewer data rows than weights ----------------------------- */
 
+namespace {
+
+/* What the OALGO 2 and 4 messages say of the zero data rows. */
+const char *const kZeroDataRows =
+    " (a data row that is zero in every column adds nothing to the rank: a "
+    "row of weight 0, or a row the descriptors make zero, such as the y and "
+    "z force rows of a linear molecule along x)";
+
+}  // namespace
+
 /* Pins: `tadah train` with M_BLR BF_Linear, TYPE2B D2_BP 3 3 (3 weights),
  * two structures and energies only (2 data rows), LAMBDA 0 and OALGO 4
  * exits 1 with "OALGO 4 (normal equations, Cholesky) cannot fit these 3
@@ -2747,11 +2758,15 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
  * weights line '0.0 1.0 1.0'), whose energy row is zero in the design
  * matrix: `tadah train` with OALGO 4 exits 1 with "OALGO 4 (normal
  * equations, Cholesky) cannot fit these 3 weights: the design matrix has 2
- * non-zero data rows of 3 (a row of weight 0 is zero) for 3 weights,
- * LAMBDA 0: fewer non-zero data rows than weights, so it does not have full
- * column rank and the least-squares weights are not unique." and the
- * remedies, and writes no potential; OALGO 2 the same with "OALGO 2
- * (DGELS, QR)"; OALGO 1 fits it (exit 0).
+ * non-zero data rows of 3 (a data row that is zero in every column adds
+ * nothing to the rank: a row of weight 0, or a row the descriptors make
+ * zero, such as the y and z force rows of a linear molecule along x) for 3
+ * weights, LAMBDA 0: fewer non-zero data rows than weights, so it does not
+ * have full column rank and the least-squares weights are not unique." and
+ * the remedies, and writes no potential; OALGO 2 the same with "OALGO 2
+ * (DGELS, QR)"; OALGO 1 fits it (exit 0). Zero rows of weight 1: the next
+ * case. (Until the zero-row wording fix the parenthesis was "(a row of
+ * weight 0 is zero)".)
  * Before the fix: the pre-check counted the zero row as data (3 data rows
  * for 3 weights) and LAPACK decided: both exited 1, OALGO 4 with "the
  * matrix Phi^T Phi of the design matrix (3 data rows for 3 weights, LAMBDA
@@ -2759,8 +2774,9 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
  * and OALGO 2 with "the design matrix (3 data rows for 3 weights, LAMBDA 0)
  * does not have full column rank: its column 3 is zero or a linear
  * combination of the columns before it, ..." (whether DPOTRF stops depends
- * on the rounding of Phi^T Phi: on the same 2 rows and a zero row
- * test_linear_regressor_messages.cpp's OALGO 4 fitted without an error). */
+ * on the rounding of Phi^T Phi: on 2 other rows, of sine values, and a
+ * zero row for 3 weights, test_linear_regressor_messages.cpp's OALGO 4
+ * fitted without an error). */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
           "rows than weights, a structure of weight 0 included",
           "[TadahCLI][exit-status][train][oalgo]") {
@@ -2795,10 +2811,11 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
       "LAMBDA 0\n";
   const std::string few =
       " cannot fit these 3 weights: the design matrix has 2 non-zero data "
-      "rows of 3 (a row of weight 0 is zero) for 3 weights, LAMBDA 0: fewer "
-      "non-zero data rows than weights, so it does not have full column rank "
-      "and the least-squares weights are not unique. Use OALGO 1 (DGELSD) or "
-      "OALGO 3 (SVD), which give the minimum-norm weights, LAMBDA > 0";
+      "rows of 3" + std::string(kZeroDataRows) + " for 3 weights, LAMBDA 0: "
+      "fewer non-zero data rows than weights, so it does not have full column "
+      "rank and the least-squares weights are not unique. Use OALGO 1 "
+      "(DGELSD) or OALGO 3 (SVD), which give the minimum-norm weights, LAMBDA "
+      "> 0";
   for (const auto& [oalgo, name] :
        {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
         {"2", "DGELS, QR"}}) {
@@ -2818,6 +2835,99 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
   INFO("OALGO 1: status " << g.status << "\n" << reported(g));
   CHECK(g.status == 0);
   CHECK(std::filesystem::exists("pot1.tadah"));
+}
+
+/* Pins: data rows that are zero with weight 1 are counted as zero, and the
+ * message does not blame weight 0 (every weights line is '1.0 1.0 1.0',
+ * EWEIGHT and FWEIGHT are 1): `tadah train` with OALGO 4 and with OALGO 2
+ * exits 1 and writes no potential,
+ *  - on a Ta dimer along x with FORCE true and TYPE2B D2_BP 4 4 (4
+ *    weights), whose y and z force rows are zero (1 energy and 6 force
+ *    rows, 3 not zero): "... cannot fit these 4 weights: the design matrix
+ *    has 3 non-zero data rows of 7 (a data row that is zero in every
+ *    column adds nothing to the rank: a row of weight 0, or a row the
+ *    descriptors make zero, such as the y and z force rows of a linear
+ *    molecule along x) for 4 weights, LAMBDA 0: fewer non-zero data rows
+ *    than weights, ...";
+ *  - on the two structures of the cases above and an isolated Ta atom (no
+ *    neighbour within RCUT2B 5 in a 30 A box), energies only, BIAS false,
+ *    D2_BP 3 3, whose energy row is zero: "... cannot fit these 3 weights:
+ *    the design matrix has 2 non-zero data rows of 3 (a data row that is
+ *    zero ...) for 3 weights, ...".
+ * Before the fix: the counts and the refusals were the same, but the
+ * parenthesis was "(a row of weight 0 is zero)", which sent the user to
+ * look for a weight 0 that none of these rows has. */
+TEST_CASE("Subcommand: train with OALGO 4 or 2 counts zero data rows of "
+          "weight 1, a dimer's y and z forces and an isolated atom's energy",
+          "[TadahCLI][exit-status][train][oalgo]") {
+  ScratchCwd cwd("train_oalgo_zero_rows_weight_one");
+  std::ofstream("dimer.tadah")
+      << "dimer\n1.0 1.0 1.0\n-1.20\n"
+         "20.0 0.0 0.0\n0.0 20.0 0.0\n0.0 0.0 20.0\n"
+         "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+         "Ta 5.0 5.0 5.0  0.31 0.0 0.0\n"
+         "Ta 7.3 5.0 5.0  -0.31 0.0 0.0\n\n";
+  std::ofstream("isolated.tadah")
+      << "s1\n1.0 1.0 1.0\n-0.30\n"
+         "3.301 0.0 0.0\n0.0 3.301 0.0\n0.0 0.0 6.602\n"
+         "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+         "Ta 0.05 -0.03 0.02  0.31 -0.12 0.05\n"
+         "Ta 1.70 1.62 1.68  -0.22 0.17 -0.09\n"
+         "Ta -0.04 0.06 3.33  0.04 0.21 -0.15\n"
+         "Ta 1.61 1.69 4.92  -0.13 -0.26 0.19\n\n"
+         "s2\n1.0 1.0 1.0\n-0.24\n"
+         "3.301 0.0 0.0\n0.0 3.301 0.0\n0.0 0.0 6.602\n"
+         "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+         "Ta 0.10 0.00 -0.05  -0.27 0.08 0.14\n"
+         "Ta 1.66 1.58 1.62  0.19 -0.23 0.06\n"
+         "Ta 0.02 -0.08 3.27  0.11 0.16 -0.21\n"
+         "Ta 1.69 1.71 5.00  -0.03 -0.01 0.01\n\n"
+         "isolated Ta atom\n1.0 1.0 1.0\n-0.01\n"
+         "30.0 0.0 0.0\n0.0 30.0 0.0\n0.0 0.0 30.0\n"
+         "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+         "Ta 0.0 0.0 0.0  0.0 0.0 0.0\n\n";
+  const std::string common =
+      "ATOM Ta\nWATOM 1\nINIT2B true\nINITMB false\nRCTYPE2B Cut_Cos\n"
+      "RCUT2B 5.0\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+      "MODEL M_BLR BF_Linear\nLAMBDA 0\n";
+  const std::string dimer =
+      "DBFILE dimer.tadah\n" + common +
+      "TYPE2B D2_BP 4 4 Ta Ta\nCGRID2B 0.3 1.0 1.8 2.5\n"
+      "SGRID2B 2.0 3.4 5.0 1.0\nFORCE true\n";
+  const std::string isolated =
+      "DBFILE isolated.tadah\n" + common +
+      "TYPE2B D2_BP 3 3 Ta Ta\nCGRID2B 0.3 1.0 1.8\nSGRID2B 2.0 3.4 5.0\n"
+      "FORCE false\n";
+  const std::string tail =
+      " LAMBDA 0: fewer non-zero data rows than weights, so it does not have "
+      "full column rank and the least-squares weights are not unique. Use "
+      "OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm "
+      "weights, LAMBDA > 0";
+  for (const auto& [oalgo, name] :
+       {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
+        {"2", "DGELS, QR"}}) {
+    for (const auto& [label, config, expected] :
+         {std::tuple<std::string, std::string, std::string>{
+              "dimer", dimer,
+              " cannot fit these 4 weights: the design matrix has 3 non-zero "
+              "data rows of 7" + std::string(kZeroDataRows) + " for 4 weights,"},
+          {"isolated", isolated,
+           " cannot fit these 3 weights: the design matrix has 2 non-zero data "
+           "rows of 3" + std::string(kZeroDataRows) + " for 3 weights,"}}) {
+      INFO(label << ", OALGO " << oalgo);
+      const std::string base = label + oalgo;
+      std::ofstream(base + ".train") << config << "OALGO " << oalgo << "\n";
+      const CliRun r = run_tadah({"tadah", "train", "-c", base + ".train",
+                                  "-o", base + ".pot"});
+      const std::string rep = reported(r);
+      INFO("status " << r.status << "\n" << rep);
+      CHECK(r.status == 1);
+      CHECK(contains(rep, "OALGO " + oalgo + " (" + name + ")" + expected +
+                              tail));
+      CHECK_FALSE(contains(rep, "weight 0 is zero"));
+      CHECK_FALSE(std::filesystem::exists(base + ".pot"));
+    }
+  }
 }
 
 /* ---- [eam]: D2_EAM and DM_EAM read the setfl file named by SETFL ------ */

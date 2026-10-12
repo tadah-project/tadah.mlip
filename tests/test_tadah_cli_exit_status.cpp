@@ -2472,6 +2472,62 @@ TEST_CASE("Subcommand: train's composition refusal names the remedies the "
         std::vector<std::string>{"ESHIFT", "0", "0"});
 }
 
+/* Pins: a potential used as the training configuration (tadah train -c,
+ * the retrain route the multi-species BIAS refusal names) does not ask for
+ * --uncertainty with the UNCERTAINTY true that tadah 1.5.x and 1.6.0
+ * development builds wrote into every potential trained with it: the
+ * two-species legacy potential (1 + 3 WEIGHTS, OALGO 1, UNCERTAINTY true)
+ * plus a DBFILE retrains (exit 0) with a WARNING naming the file and
+ * --uncertainty, writes no weights.tadah, and its potential has 2 + 3
+ * WEIGHTS and no UNCERTAINTY line; --uncertainty on the command line is
+ * still a request (exit 1, OALGO 3); and a training configuration (no
+ * WEIGHTS) with UNCERTAINTY true and OALGO 1 is refused naming the
+ * configuration file as UNCERTAINTY's source.
+ * Before the fix: the retrain exited 1, "tadah train --uncertainty needs
+ * OALGO 3 ... the configuration has OALGO 1", with no --uncertainty given,
+ * and every potential tadah train wrote had an UNCERTAINTY line. */
+TEST_CASE("Subcommand: train -c with a potential does not take its "
+          "UNCERTAINTY for --uncertainty",
+          "[TadahCLI][train][uncertainty][bias]") {
+  ScratchCwd cwd("uncertainty_legacy");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  std::ofstream("legacy_cfg.tadah") << kNbTaKeys << "UNCERTAINTY true\n"
+                                    << "WEIGHTS -8.2 0.1 -0.05 0.02\n"
+                                    << "DBFILE db.tadah\n";
+  const CliRun t = run_tadah({"tadah", "train", "-c", "legacy_cfg.tadah",
+                              "-o", "re.tadah"});
+  const std::string rep = reported(t);
+  INFO("retrain: status " << t.status << "\n" << rep);
+  CHECK(t.status == 0);
+  CHECK(contains(rep, "legacy_cfg.tadah"));
+  CHECK(contains(rep, "UNCERTAINTY true"));
+  CHECK(contains(rep, "--uncertainty"));
+  CHECK_FALSE(std::filesystem::exists("weights.tadah"));
+  REQUIRE(std::filesystem::exists("re.tadah"));
+  const std::string pot = slurp("re.tadah");
+  CHECK(line_tokens(pot, "WEIGHTS").size() == 6u);
+  CHECK(line_tokens(pot, "UNCERTAINTY").empty());
+
+  const CliRun u = run_tadah({"tadah", "train", "-c", "legacy_cfg.tadah",
+                              "-o", "re2.tadah", "--uncertainty"});
+  const std::string urep = reported(u);
+  INFO("--uncertainty: status " << u.status << "\n" << urep);
+  CHECK(u.status == 1);
+  CHECK(contains(urep, "OALGO 3"));
+  CHECK_FALSE(std::filesystem::exists("re2.tadah"));
+
+  std::ofstream("config.train") << kNbTaKeys << "UNCERTAINTY true\n"
+                                << "DBFILE db.tadah\n";
+  const CliRun c = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                              "re3.tadah"});
+  const std::string crep = reported(c);
+  INFO("configuration: status " << c.status << "\n" << crep);
+  CHECK(c.status == 1);
+  CHECK(contains(crep, "OALGO 3"));
+  CHECK(contains(crep, "configuration file config.train"));
+  CHECK_FALSE(std::filesystem::exists("re3.tadah"));
+}
+
 /* Pins: a linear NORM potential (M_BLR BF_Linear, BIAS true, NORM true on
  * the Nb-Ta cells, 5 WEIGHTS) predicts the same energies whatever its NMEAN
  * and NSTDEV hold: a linear model predicts with its converted weights. The

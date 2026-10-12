@@ -1753,7 +1753,7 @@ Born-stability hinges via finite-difference stress probes on fixed
 strained cells if shear stability matters for your fits.)  The HPO
 examples ship this probe as ``examples/common/lammps/failprobe.in``;
 example ``25_failprobe_grading`` (:ref:`hpo_examples`) runs it with
-``FAILSCORE_GRADING ON`` and a lattice window that grades six band-A
+``FAILSCORE_GRADING ON`` and a lattice window that grades eight band-A
 failures.
 
 ``--failvar`` recipes for typical scripts
@@ -2621,7 +2621,9 @@ one a finite number (``MAXTIME`` a positive one).
        (:ref:`restart_decorator`).  An optimiser's random numbers are
        its own: not those an ``INIT`` or ``RESTART`` block's ``RANDOM`` or
        ``LHS`` method draws for the same value (before 1.6.0
-       ``TADAH:RANDOM`` and ``ASA`` drew them), and in the ``PRESTAGE``
+       ``TADAH:RANDOM`` and ``ASA`` drew an ``INIT`` block's generator,
+       and until 2026-10-12 a ``RESTART`` block's, whose ``SEED`` is new
+       in 1.6.0), and in the ``PRESTAGE``
        refinement not those of the exploration for the same value
        (until 2026-10-12 they were).  Inside an ``INIT`` block
        the same key seeds the stochastic init methods instead; of the
@@ -3386,7 +3388,7 @@ at the first such point and then at the 2nd, 4th, 8th, …::
 
    WARNING   Analytical gradient could not be formed at this point (occurrence 1): the implicit-function solve has no solution at this point: the normal equations of the fit (Phi^T Phi + LAMBDA I over the training rows, LAMBDA = 0) are not positive definite in the gradient's Cholesky factorisation; GRAD_STRATEGY HYBRID takes finite differences for every parameter there, and under ANALYTICAL the point has no usable gradient
 
-Until 2026-10-07 ``ANALYTICAL`` stopped the run there (``FAILED --
+Until 2026-10-12 ``ANALYTICAL`` stopped the run there (``FAILED --
 GRAD_STRATEGY=ANALYTICAL: no analytical gradient for N parameters at this
 point``), and the journal said nothing (an error of the gradient's
 computation was written at every gradient).
@@ -4637,11 +4639,14 @@ draw unrelated numbers: with ``SEED 5`` in the ``RESTART`` block and on
 ``TADAH:RANDOM`` under ``PLAIN`` (round *r* seeds both with ``5 + r``),
 or with an ``INIT`` block's ``SEED`` equal to the optimiser's, the
 optimiser does not draw the block's points again.  Before 1.6.0
-``TADAH:RANDOM`` and ``ASA`` drew the starting-point methods' numbers
-for an equal seed: a restart's fresh ``RANDOM`` point was the
-optimiser's first draw of the round, evaluated twice, and so was the
-first round's start point when an ``INIT`` block's ``SEED`` (with
-``METHOD RANDOM``) equalled the optimiser's.  A ``PRESTAGE`` refinement
+``TADAH:RANDOM`` and ``ASA`` drew the starting-point methods' generator
+for an equal seed: with an ``INIT`` block's ``SEED`` (and ``METHOD
+RANDOM``) equal to the optimiser's, the first round's start point was
+the optimiser's first draw, evaluated twice.  The ``RESTART`` block's
+``SEED`` is new in 1.6.0 (before, a restart drew its points from
+``std::random_device``); until 2026-10-12 one equal to the optimiser's
+round seed made a restart's fresh ``RANDOM`` point the round's first
+draw.  A ``PRESTAGE`` refinement
 draws random numbers of its own: its optimiser seeds every stream (and
 NLopt its generator) with a key derived from its ``SEED``, so it does not
 draw the exploration's numbers, whatever the two ``SEED`` values and the

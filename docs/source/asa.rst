@@ -178,8 +178,12 @@ no limit).
 Seeding: ``SEED`` at OPTIMIZER/STRATEGY level seeds ASA's proposal
 stream (unset → non-reproducible ``random_device``), a stream of its own
 for that seed: not the numbers an ``INIT`` or ``RESTART`` block's
-``RANDOM`` method draws for the same value, which ASA drew before 1.6.0
-(so a run with a given ``SEED`` takes another path than it did then).  The first ``INIT``
+``RANDOM`` method draws for the same value.  Before 1.6.0 ASA drew an
+``INIT`` block's ``RANDOM`` numbers for an equal seed (so a run with a
+given ``SEED`` takes another path than it did then), and until
+2026-10-12 a ``RESTART`` block's, whose ``SEED`` is new in 1.6.0.  In a
+``PRESTAGE`` refinement ASA draws a stream of its own too, not the
+exploration's for the same seed (it did until 2026-10-12).  The first ``INIT``
 point becomes ASA's starting point and sets ``User_Initial_Parameters
 1``; without an ``INIT`` block that point is the configuration's values
 (``CONFIG``), as for every optimiser.  Only when the ``INIT`` chain yields

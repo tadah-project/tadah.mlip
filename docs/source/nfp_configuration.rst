@@ -720,11 +720,24 @@ options ran on the first run's LAMMPS instance, as the first run had
 read it, so a script rewritten between the runs was not read again),
 and a program that called ``hpo_run`` again after a run that threw
 found the first run's worker processes still running
-(``pc_worker_pool_init: pool already initialized``). One thing carries over from the first run, the
-evaluation counter: the second run's ``ITERATION`` numbers and ``DUMP``
-file names continue where the first run's stopped (4 to 6 after a run of
-3 evaluations). Run each ``tadah hpo`` in a process of its own when its
-files must number the evaluations from 1.
+(``pc_worker_pool_init: pool already initialized``). Each run's
+``hpo_run.log`` counts, times and reports that run alone: its
+DIAGNOSTICS census and verdict, PERFORMANCE timings, milestones, BEST
+lines and RESULT best, and the rate limit of its hot-variable
+``rejecting`` warnings. Until 2026-10-12 they went on from the first
+run's, so a second run that failed 4 of 4 evaluations read ``Total
+evaluations : 7``, ``Unusable losses : 4 (57.1%)``, ``[!] The majority
+of evaluations failed``, and gave the first run's best (``Best total
+loss``, ``Best ERMSE``) and its ``Best potential saved``, with no
+``best_pot.tadah`` written; a second run with a worse best had no BEST
+line and named the first run's evaluation as its best. A run without
+``WARM`` started its ``--hotvar`` values from an earlier run's ``WARM``
+seed (its ``# HOT`` lines), not from ``<initial>``. One thing carries
+over from the first run, the evaluation counter: the second run's
+``ITERATION`` numbers and ``DUMP`` file names continue where the first
+run's stopped (4 to 6 after a run of 3 evaluations), and its journal
+names its evaluations by them. Run each ``tadah hpo`` in a process of
+its own when its files must number the evaluations from 1.
 
 Individual validation targets and weights
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

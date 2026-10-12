@@ -34,7 +34,22 @@ Quick syntax guide
 For ``M_KRR`` a third token selects the implementation: ``1`` (the
 default) fits energies, forces and stresses by least squares over the
 design matrix; ``2`` fits energies only, solving
-:math:`(K + \lambda I) w = t` on the basis vectors.
+:math:`(K + \lambda I) w = t` on the basis vectors (``SBASIS`` of them,
+drawn from the training structures, for every kernel). With ``Kern_Linear``
+the model's weights are the descriptor weights of the basis vectors,
+:math:`\sum_j w_j \mathbf{b}_j`, the same model, since the kernel is linear:
+its potential has ``DSIZE`` ``WEIGHTS`` and no ``BASIS``, as with
+implementation ``1`` (with ``NORM true`` they are converted to the raw
+descriptors, as implementation ``1``'s are). So implementation ``2`` takes
+``SBASIS`` with every kernel, ``Kern_Linear`` too, with the bound of the
+basis below.
+
+.. versionchanged:: 1.6.0
+   ``MODEL M_KRR Kern_Linear 2`` wrote the coefficients :math:`w` of its
+   basis vectors as its ``WEIGHTS``, which ``tadah predict`` and ``pair_style
+   tadah`` evaluated as descriptor weights, so its energies were wrong (the
+   1.6.0 development builds that check a potential's fit refused it unless
+   ``SBASIS`` equalled ``DSIZE``). Retrain such potentials.
 
 Examples
 ........
@@ -95,7 +110,11 @@ draw. ``SBASIS`` must be at least :math:`n + 1` (2 with one species or
 ``BIAS false``) and at most the number of training atoms plus :math:`n`.
 (Implementation ``2`` draws structures instead, takes the mean descriptor
 of each, and allows at most the number of training structures plus
-:math:`n`.) The potential records
+:math:`n`.) A missing ``SBASIS``, or one below :math:`n + 1`, is refused
+naming the model (``M_KRR Kern_RBF 1: SBASIS 1: the fit needs at least 2
+basis vectors ...``): by ``tadah train`` before it reads the training data
+(with ``BIAS true`` and no ``ATOM``, once ``ATOM`` is set from the
+datasets) and by ``tadah hpo`` at startup. The potential records
 ``SBASIS`` and the basis vectors (``BASIS``) with the weights; ``tadah
 predict``, ``tadah hpo`` and ``pair_style tadah`` refuse, naming the keys,
 a potential without them, with a number of weights other than ``SBASIS``,

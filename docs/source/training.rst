@@ -169,7 +169,10 @@ precedence **explicit > ATOM > DBATOM**:
 * **ESHIFT_DBATOM** — a least-squares atomic-energy fit over the
   whole database (``min ‖y − Mβ‖²``, with ``M[i,k]`` the count of
   species ``k`` in config ``i``). Robust when the dataset has
-  compositional diversity but no isolated-atom configs.
+  compositional diversity but no isolated-atom configs. When the
+  compositions do not determine the fit (every structure of one
+  composition, say) its normal matrix is singular: every ``ESHIFT`` is
+  then 0, with a WARNING.
 
 Whichever path is used, the *resolved* per-element values are stamped
 into ``pot.tadah`` (the ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles are

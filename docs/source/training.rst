@@ -357,9 +357,9 @@ Number format
 
 Every non-integer number of a potential's key/value lines is written
 with ``NUMERIC`` **significant** digits (``printf`` ``%.{N}g``; those of
-the cutoffs and grids exactly, see below). The default, ``18``, is exact: 17 significant digits identify every double,
-so a potential reloaded from ``pot.tadah`` is bit-identical to the one in
-memory. That is why a value typed as ``5.3`` comes back as
+the cutoffs and grids exactly, see below). The default, ``18``, is exact:
+17 significant digits identify every double, so a potential reloaded from
+``pot.tadah`` is bit-identical to the one in memory. That is why a value typed as ``5.3`` comes back as
 ``5.29999999999999982`` — the exact double nearest to 5.3 — and why
 ``1.0`` is written as ``1``. Integers, names, booleans, index lists and
 grid generators (``LIN`` / ``GEOM``) are written as they are stored, so

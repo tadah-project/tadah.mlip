@@ -2482,6 +2482,19 @@ one a finite number (``MAXTIME`` a positive one).
        ``INNER`` block's ``MAXEVAL`` counts NLopt calls
        (:ref:`hpo_inner_block`).
 
+       A point the search has evaluated, asked for again (the same
+       doubles), is answered with that evaluation's loss and gradient when
+       every evaluation of the run is a function of its point, and is no
+       evaluation: ``MAXEVAL`` does not count it
+       (:ref:`hpo_repeat_points`).  NLopt counts it among its calls, which
+       its own ``MAXEVAL`` bounds, so a derivative-free NLopt search still
+       ends after ``MAXEVAL`` calls, fewer of them evaluations, and the
+       journal says how many were answered (``NLopt finished:
+       MAXEVAL_REACHED -- maximum evaluations exhausted after 45 of MAXEVAL
+       60 evaluation(s); NLopt counts its calls, and 15 of them asked again
+       for a point and were answered without an evaluation``).  Until
+       2026-10-12 every repeat was evaluated and counted.
+
        Leave the key out for no evaluation limit.  The run then ends on
        the optimiser's other stops (``MAXTIME``, ``STOPVAL``, a
        tolerance), or on its own: NLopt's local algorithms, ``DLIB:BFGS``
@@ -2927,6 +2940,13 @@ Any other ``PARAM`` key is rejected, and so are ``FTOL_REL``, ``XTOL_REL``,
 ``XTOL_ABS``, ``SEED``, ``VECTOR_ARR``, ``STEP``, ``MAXTIME``,
 ``STOPVAL``, ``POPULATION``, integer dimensions and ``INNER`` blocks.
 ``MAXEVAL`` is enforced by HPO (dlib's own stop rules count iterations).
+
+``DLIB:BFGS`` takes dlib's box-constrained BFGS steps, with two
+exceptions for a point that its step, held to the box, cannot move (an
+optimum on a bound): it does not run the line search, which could only
+evaluate the point again, and it ends the search when no step can move
+the point, ``DLIB:BFGS: no step within the OPTIM box``
+(:ref:`hpo_repeat_points`).
 
 ``DLIB:GFS`` (dlib's ``find_min_global``) takes ``MAXEVAL``, ``MAXTIME``
 and ``STOPVAL`` — dlib's call budget, run-time limit and stop condition,
@@ -3520,6 +3540,98 @@ ignores the stop, calls on until its ``MAXEVAL``, each call refused; see
 Before 1.6.0 the search went on past that point, or ended there with
 another status.
 
+.. _hpo_repeat_points:
+
+Points a search asks for again
+..............................
+
+An optimiser can ask for a point it has evaluated, the same doubles bit
+for bit: NLopt's ``LD_MMA`` and ``LD_CCSAQ`` solve their subproblem again
+with a larger trust parameter and land on the same clamped corner, and
+then ask for it once more at their next iteration; ``LN_SBPLX``,
+``LN_NELDERMEAD``, ``GN_ESCH`` and ``GN_CRS2_LM`` reflect or mutate onto
+a point they had; ``AUGLAG`` evaluates the point its local search returned
+once more; ``DLIB:BFGS``'s line-search trials are clamped onto a point of
+the box it has.  Each was a full evaluation -- a fit, and every
+``PC_LAMMPS`` script of the loss.  (``LD_SLSQP``'s steps onto a corner
+look alike in the 6-digit files, but are distinct points, 3.8e-13 apart
+in one case, and are evaluated.)
+
+Within one search -- a ``PLAIN`` run, a ``MULTISTART`` start, a
+``PRESTAGE`` phase or a ``RESTART`` round; MLSL's local searches belong
+to their MLSL run -- the NLopt and ``DLIB:BFGS`` drivers keep a record of
+each evaluation that gave a usable loss, with the gradient formed there.
+A call at a recorded point that asks for nothing the record lacks gets
+the recorded loss (and gradient): no evaluation, no row in the
+per-evaluation files, not counted in ``MAXEVAL``, which counts
+evaluations, nor in the ``RESTART`` stagnation window.  That holds only
+when every evaluation of the run is a function of its point, as the fit
+of the candidate and the validation metrics are.  A run evaluates every
+repeat again, as it did until 2026-10-12, when its loss has
+
+* a ``PC_LAMMPS`` line: its scripts run on LAMMPS instances kept from
+  one evaluation to the next, which keep what a script set there (LAMMPS
+  keeps variables across ``clear``), and each ``--hotvar`` starts from
+  the value of the best evaluation so far;
+* a ``PC_OBSERVABLE`` that carries state from one evaluation to the next:
+  ``cohesive_energy`` starts its relaxation from the lattice constant the
+  previous evaluation relaxed to;
+* a ``--skip-rel`` filter, which compares with the best value so far.
+
+A repeat is also evaluated again when its earlier evaluation failed (a
+failure can be transient) or formed no gradient that the call asks for:
+an analytical gradient differentiates the last evaluation, so it follows
+an evaluation of its point.  The journal says what happened, the first
+reuse once per search and the first repeat evaluated again once per run,
+and counts a search's reuses at 10, 100, 1000, …, which make no row:
+
+.. code-block:: none
+
+   INFO      NLOPT:LD_MMA asked again for the point of eval 6 (CGRID2B[2] = 0.1, RCUT2B = 6) and its gradient: the loss and gradient of eval 6 are reused, without an evaluation (a reuse is no evaluation, and MAXEVAL counts evaluations; DIAGNOSTICS counts reuses)
+   INFO      NLOPT:GN_CRS2_LM asked again for the point of eval 34 (RCUT2B = 4, SGRIDMB = 0.4); it is evaluated again: PC_LAMMPS: its scripts run on LAMMPS instances kept from one evaluation to the next, which keep what a script set there (LAMMPS keeps variables across clear), and each --hotvar starts from the value of the best evaluation so far
+   INFO      NLOPT:LD_MMA: 10 calls of this search have asked again for points it evaluated (the latest the point of eval 16), answered without an evaluation
+
+and DIAGNOSTICS counts them, ``Repeated points reused`` and ``Repeats
+evaluated again`` (with the reason).  NLopt counts a reused call among
+its own calls, which its copy of ``MAXEVAL`` bounds: a derivative-free
+NLopt search still ends after ``MAXEVAL`` calls -- the same search, fewer
+evaluations -- and its ``MAXEVAL_REACHED`` line says how many calls were
+answered.  A gradient search's evaluations (a loss and its stencil per
+call) end it before NLopt's count does, and a reuse leaves the budget to
+new points: such a search can get further within the same ``MAXEVAL``.
+A repeat after the budget is spent is answered too, and the search may
+then end on its own test instead of ``MAXEVAL_REACHED``.  On the
+two-dimensional Ta problem of the HPO examples (``RCUT2B`` and
+``CGRID2B (2)``, the optimum on a corner) ``LD_MMA`` and ``LD_CCSAQ`` make
+10 evaluations instead of 20, with the same ``XTOL_REACHED``, and
+``LN_SBPLX`` at ``MAXEVAL 60`` makes 45 evaluations in its 60 calls.  A
+local search held at the lower bound of an ``OPTIM_SCALE AUTO`` box, u = 0,
+where NLopt's ``XTOL_REL`` test is vacuous, asks for the bound again until
+``MAXEVAL`` or ``MAXTIME``, as it did before, when each repeat was an
+evaluation.
+
+``DLIB:BFGS`` does not evaluate the point it stands on again.  Where each
+coordinate with a step is at a bound its gradient points out of (an
+optimum on a bound), dlib's step, held to the box, does not move the
+point, and its line search evaluated the point again -- up to its 100
+iterations while the loss came back above its first value by rounding,
+as a warm-started ``PC_LAMMPS`` relaxation does (example 09 spent 28 of
+its 30 evaluations at ``RCUT2B = 6``) -- and BFGS took its gradient
+there again.  Such a line search is not run now, whatever the loss: the
+point, its loss and its gradient stand, the journal says so once per
+search (``DLIB:BFGS: the step from RCUT2B = 6 cannot move the point
+within the OPTIM box: the line search is not run, and the point, its
+loss and its gradient stand``) and DIAGNOSTICS counts them (``Line
+searches not run``).  Under ``FTOL_ABS`` the loss has not changed and the
+search ends ``DLIB:BFGS: FTOL_ABS reached``: examples 01, 05, 13 and 26
+after 9 evaluations, 09 after 3, where they spent 12 to 30.  ``PARAM
+tol_gradinf`` reads the whole gradient, which is not small at a bound,
+and ``FTOL_ABS 0`` reads no change: BFGS then falls back to its
+steepest-descent step, and when that cannot move the point either, no
+later step can, and the search ends ``DLIB:BFGS: no step within the OPTIM
+box``.  Until 2026-10-12 such a search ran to ``MAXEVAL``, and without
+``MAXEVAL`` it never ended.  Every other step is dlib's own.
+
 .. _hpo_stop_criteria:
 
 Stop criteria per backend
@@ -3769,11 +3881,17 @@ whole message, its numbers included.
      - ``MAXEVAL reached``; ``FTOL_ABS reached``: the loss changed by
        less than ``FTOL_ABS`` (``1e-7`` by default) from one iteration
        to the next; ``tol_gradinf reached``: the L2 norm of the
-       gradient fell below ``PARAM tol_gradinf``
+       gradient fell below ``PARAM tol_gradinf``; ``no step within the
+       OPTIM box``: no step can move the point (each coordinate is at a
+       bound its gradient points out of, or has a zero gradient or a step
+       below its rounding), and the stop test does not end the search
+       (``PARAM tol_gradinf``, ``FTOL_ABS 0``; :ref:`hpo_repeat_points`)
      - ``DLIB:BFGS -- MAXEVAL=N reached; preserving best-so-far``;
-       ``DLIB:BFGS stopped: FTOL_ABS reached after 51 evaluation(s):
+       ``DLIB:BFGS stopped: FTOL_ABS reached after 44 evaluation(s):
        the loss changed by less than FTOL_ABS = 1e-07 (default) from one
-       iteration to the next``
+       iteration to the next``; ``DLIB:BFGS stopped: no step within the
+       OPTIM box after 15 evaluation(s): SGRID2B[2] at its lower bound 4,
+       with a gradient that points out of the box``
    * - ``CERES`` (all four)
      - Ceres' own reason when it converged: ``FTOL_REL reached``
        (``function_tolerance``, ``1e-6`` by default), ``XTOL_REL

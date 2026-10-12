@@ -124,6 +124,9 @@ Index
      - `13_restart <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/v1-dev/examples/13_restart>`_
      - The ``RESTART`` decorator relaunches the optimiser from a fresh
        seed after ``AFTER_STAGNATION`` stalled evals, up to ``MAX`` times.
+       Here ``DLIB:BFGS`` converges on the upper bound of ``RCUT2B``
+       before the window passes, and no restart fires: ``RESTART``
+       relaunches a search that stagnates, not one that ends.
      - ``RESTART``, ``AFTER_STAGNATION``
    * - 14
      - `14_mlsl_inner <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/v1-dev/examples/14_mlsl_inner>`_

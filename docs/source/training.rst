@@ -388,10 +388,10 @@ Number format
 ~~~~~~~~~~~~~
 
 Every non-integer number of a potential's key/value lines is written
-with ``NUMERIC`` **significant** digits (``printf`` ``%.{N}g``). The
-default, ``18``, is exact: 17 significant digits identify every double,
-so a potential reloaded from ``pot.tadah`` is bit-identical to the one in
-memory. That is why a value typed as ``5.3`` comes back as
+with ``NUMERIC`` **significant** digits (``printf`` ``%.{N}g``; those of
+the cutoffs and grids exactly, see below). The default, ``18``, is exact:
+17 significant digits identify every double, so a potential reloaded from
+``pot.tadah`` is bit-identical to the one in memory. That is why a value typed as ``5.3`` comes back as
 ``5.29999999999999982`` — the exact double nearest to 5.3 — and why
 ``1.0`` is written as ``1``. Integers, names, booleans, index lists and
 grid generators (``LIN`` / ``GEOM``) are written as they are stored, so
@@ -402,6 +402,24 @@ integers are always exact. ``#`` comment lines (such as the header
 * An explicit ``NUMERIC`` below 17 is honoured (the numbers are rounded to
   that many significant digits) but ``tadah`` prints a WARNING: the
   written potential then differs slightly from the fitted one.
+* The cutoffs and the radial grids, ``RCUT2B``, ``RCUTMB``, ``CGRID2B``,
+  ``CGRIDMB``, ``SGRID2B`` and ``SGRIDMB``, are written exactly whatever
+  ``NUMERIC`` is (below 17 as the shortest text that reads back as the
+  same value: ``RCUT2B 5.58190742024`` at ``NUMERIC 6``). A load checks
+  them exactly: ``D2_EAM`` and ``DM_EAM`` refuse a cutoff other than that
+  of their setfl file, a knot channel's cutoff is its largest knot, and
+  the knot and Blip descriptors warn of a knot or a bump past the cutoff.
+  So a potential written with a low ``NUMERIC`` loads with the cutoffs and
+  grids it was fitted with; only the fitted numbers (``WEIGHTS``,
+  ``WCOV``, ``NMEAN``, ...) and the other settings are rounded. Earlier
+  versions rounded the cutoffs and grids too: such an EAM potential is
+  refused until its ``RCUT2B``/``RCUTMB`` is set to the setfl file's
+  cutoff; and the cutoff, a bump's centre and its width, each rounded on
+  its own, could put a ``Cut_Dummy`` bump that ended at or just inside the
+  cutoff past it, which every load warns of and ``tadah hpo`` refuses in
+  its ``-c`` potential (the bump-support gate, whose message names the
+  width that brings the bump inside). The configuration-keys page marks
+  these keys (*In a potential file*).
 * ``NUMERIC`` never limits the values held in memory: calculations
   always run at full double precision, whatever it is set to. Every
   ``tadah`` reader of a file ``tadah`` writes (potentials, configurations,

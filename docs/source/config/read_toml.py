@@ -202,6 +202,15 @@ def render_key(key_name: str, entry: dict) -> str:
         out.append(f"   *Max number of values*: {vals}\n")
 
     # ---------------------------------------------------------------------
+    # Written exactly into a potential (blueprint field `exact_in_potential`):
+    # a load checks the key's numbers exactly, so CORE writes them exactly
+    # whatever NUMERIC is.
+    # ---------------------------------------------------------------------
+    if entry.get('exact_in_potential'):
+        out.append("   *In a potential file*: written exactly, whatever "
+                   "NUMERIC is (a load checks it exactly)\n")
+
+    # ---------------------------------------------------------------------
     # Allowed values (blueprint field `allowed_values`): the only values of
     # a string key, matched without regard to case; CORE rejects any other
     # at its line.

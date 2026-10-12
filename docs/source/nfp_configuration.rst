@@ -5409,7 +5409,12 @@ Number format.  ``best_pot.tadah``, its rank-local mirrors and the
 :ref:`pot_number_format`: every non-integer number of the key/value
 lines is written with ``NUMERIC`` significant digits, default ``18`` —
 exact, so the file re-parses to precisely the doubles the evaluation used
-— and ``NUMERIC`` itself is never written.  A ``WARM`` restart from it
+— and ``NUMERIC`` itself is never written.  The cutoffs and radial grids
+(``RCUT2B``, ``RCUTMB``, ``CGRID2B``, ``CGRIDMB``, ``SGRID2B``,
+``SGRIDMB``) are written exactly whatever ``NUMERIC`` is, so a potential of
+a run with ``NUMERIC`` below 17 loads with the cutoffs and grids the
+evaluation used (an EAM one included, whose cutoff the setfl check compares
+exactly).  A ``WARM`` restart from it
 starts from the file's ``OPTIM`` values bit for bit when they lie inside
 the boxes (starting points are evaluated exactly, see
 :ref:`search_space_scaling`); every other key comes from the ``-c``

@@ -147,7 +147,15 @@ Root-level loss control:
        An evaluation that raises an exception (its training fails, say)
        scores ``FAILSCORE`` too: ``hpo_run.log`` gives each one a
        ``WARNING`` with the message, and its DIAGNOSTICS count them under
-       ``Evaluations that threw``, apart from the NaN/Inf clampings.
+       ``Evaluations that threw``, apart from the NaN/Inf clampings.  An
+       evaluation with a failed ``PC_LAMMPS`` simulation or
+       ``PC_OBSERVABLE`` term is a failed evaluation in the DIAGNOSTICS
+       too, never a NaN/Inf clamping, also where the mean of its
+       substituted values overflows (two failed terms, or the ``L2`` of a
+       ``--failscore`` of the largest double, under the default
+       ``FAILSCORE``); until 2026-10-12 such an evaluation was counted,
+       and warned about with bound hints, as one that produced NaN/Inf,
+       and under ``FAILSCORE_GRADING ON`` as a graded failure as well.
        ``DLIB:GFS`` hands dlib a finite stand-in for a failed
        evaluation instead (:ref:`failed evaluations under DLIB:GFS
        <hpo_dlib_gfs_failures>`); the history files and the journal
@@ -156,9 +164,10 @@ Root-level loss control:
        finite-difference stencil fails the gradient, whatever
        ``FAILSCORE`` is, and a failed loss at the point fails it at
        once under every ``GRAD_STRATEGY``, unless it is a graded failure
-       under ``FAILSCORE_GRADING ON``, whose finite differences (or
-       analytical gradient) are its gradient; such a point can end a
-       gradient-based search (:ref:`hpo_gradient_not_finite`).
+       under ``FAILSCORE_GRADING ON``, whose finite differences are its
+       gradient (``ANALYTICAL`` has none there, and ``HYBRID`` differences
+       every parameter); such a point can end a gradient-based search
+       (:ref:`hpo_gradient_not_finite`).
    * - ``FAILSCORE_GRADING`` (``ON``/``OFF``)
      - Graded failure losses instead of the constant ``FAILSCORE``
        (default ``OFF``); see :ref:`failscore_grading`.

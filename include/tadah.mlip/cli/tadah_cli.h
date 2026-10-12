@@ -19,6 +19,7 @@
 #define TADAH_MLIP_CLI_TADAH_CLI_H
 
 #include <CLI/CLI11.hpp>
+#include <ostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -165,6 +166,19 @@ private:
   size_t footer_paragraph_width = 80;
 
 };
+
+/**
+ * @brief The `tadah explain` hook of a tadah built without HPO
+ *        (TADAH_ENABLE_NFP off), which TadahCLI sets in place of HPO's
+ *        optimiser help (hpo::explain_optimiser).
+ *
+ * ALGO and LIB, in any letter case, name the optimiser of a `tadah hpo`
+ * target: it throws std::runtime_error "tadah explain: ALGO names the
+ * optimiser of a `tadah hpo` target, and this tadah is built without HPO
+ * (TADAH_ENABLE_NFP OFF): configure it with -DTADAH_ENABLE_NFP=ON". Any
+ * other name is not its own: it returns false and writes nothing.
+ */
+bool explain_without_hpo(const std::string &name, std::ostream &out);
 
 } // namespace cli
 } // namespace mlip

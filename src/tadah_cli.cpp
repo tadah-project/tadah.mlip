@@ -8,14 +8,18 @@
 #include <tadah/mlip/engines/engine_factory.h>
 #include <tadah/mlip/engines/all_engines.h>
 
+#include <tadah/mlip/engines/explain_engine.h>
+
 #ifdef TADAH_ENABLE_NFP
 #include <tadah/hpo/engines/all_engines.h>
+#include <tadah/hpo/optimizer_help.h>
 #endif
 
 #include <tadah/core/periodic_table.h>
 
 #include <boost/algorithm/string.hpp> // for boost::split
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 
 namespace tadah {
@@ -64,11 +68,25 @@ TadahCLI::TadahCLI()
   app_.footer(std::bind(&TadahCLI::handleFooterCallback, this, blueprintTadah));
 
   mlip::engines::registerAllMLIPEngines();
+  /* `tadah explain ALGO`, `tadah explain <LIB>:<ALGO>`: the optimisers of
+   * tadah hpo, which MLIP's explain command reaches through its hook. */
 #ifdef TADAH_ENABLE_NFP
   hpo::engines::registerAllHPOEngines();
+  mlip::engines::set_explain_hook(&hpo::explain_optimiser);
+#else
+  mlip::engines::set_explain_hook(&explain_without_hpo);
 #endif
 
   core::PeriodicTable::initialize();
+}
+
+bool explain_without_hpo(const std::string &name, std::ostream &) {
+  const std::string upper = boost::to_upper_copy(name);
+  if (upper != "ALGO" && upper != "LIB") return false;
+  throw std::runtime_error(
+      "tadah explain: " + name + " names the optimiser of a `tadah hpo` "
+      "target, and this tadah is built without HPO (TADAH_ENABLE_NFP OFF): "
+      "configure it with -DTADAH_ENABLE_NFP=ON");
 }
 
 int TadahCLI::run(int argc, char** argv) {

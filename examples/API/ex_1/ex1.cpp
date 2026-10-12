@@ -134,7 +134,8 @@ int main() {
   // to make predictions.
   // write_potential() writes every number with NUMERIC significant digits
   // (default 18: the file reloads bit-identically) and never writes the
-  // NUMERIC key itself. A NUMERIC below 17 loses precision, hence the warning.
+  // NUMERIC key itself. A NUMERIC below 17 loses precision, hence the warning
+  // (the cutoffs and grids, RCUT2B/RCUTMB and CGRID/SGRID, stay exact).
   std::cout << "Saving LAMMPS pot.tadah file..." << std::flush;
   Context param_file = model.get_param_file();
   const PotDigits pot_digits = resolve_pot_digits(param_file);

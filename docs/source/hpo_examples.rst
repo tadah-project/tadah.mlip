@@ -127,8 +127,12 @@ Index
        Here ``NLOPT:LN_SBPLX`` climbs to the upper bound of ``RCUT2B``
        and stays there; each of the two restarts starts from a ``RANDOM``
        point drawn with ``SEED + r`` (the ``RESTART`` block's ``SEED
-       13``), climbs back and stagnates, and the third stagnation ends the
-       run: 15 evaluations, the same in every run. (Until 2026-10-12 it
+       13``). The window counts evaluations without a new best of the
+       run: restart 1, from ``RCUT2B`` = 4.541125, is ended after 3 such
+       evaluations while its loss still falls, short of the bound;
+       restart 2, from 5.422967, reaches the bound and stagnates, and
+       the third stagnation ends the run: 15 evaluations, the same in
+       every run. (Until 2026-10-12 it
        ran ``DLIB:BFGS`` with restart points from ``std::random_device``,
        then a ``DLIB:BFGS`` search that converged before the window
        passed, so no restart fired.)

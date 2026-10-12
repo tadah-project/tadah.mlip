@@ -2579,19 +2579,22 @@ one a finite number (``MAXTIME`` a positive one).
        ``INNER`` block's ``MAXEVAL`` counts NLopt calls
        (:ref:`hpo_inner_block`).
 
-       A point the search has evaluated, asked for again (the same
-       doubles), is answered with that evaluation's loss and gradient when
-       every evaluation of the run is a function of its point, and is no
-       evaluation: HPO's count of evaluations does not count it
-       (:ref:`hpo_repeat_points`).  NLopt counts it among its calls, which
-       its own ``MAXEVAL`` bounds, so a derivative-free NLopt search still
-       ends after ``MAXEVAL`` calls, fewer of them evaluations, and so does
-       a gradient search that mostly asks again (``LD_MMA`` held at a
+       A point the run has evaluated, asked for again (the same doubles),
+       is answered with that evaluation's loss (and the gradient the
+       search formed there) when every evaluation of the run is a function
+       of its point, and is no evaluation: HPO's count of evaluations does
+       not count it (:ref:`hpo_repeat_points`).  NLopt counts it among its
+       calls, which its own ``MAXEVAL`` bounds, a call answered from an
+       earlier search's evaluation too (a ``PRESTAGE`` refinement's first
+       call at the exploration's best), so a derivative-free NLopt search
+       still ends after ``MAXEVAL`` calls, fewer of them evaluations, and so
+       does a gradient search that mostly asks again (``LD_MMA`` held at a
        bound); the journal says how many were answered (``NLopt finished:
        MAXEVAL_REACHED -- maximum evaluations exhausted after 45 of MAXEVAL
-       60 evaluation(s); NLopt counts its calls, and 15 of them asked again
-       for a point and were answered without an evaluation``).  Until
-       2026-10-12 every repeat was evaluated and counted.
+       60 evaluation(s); NLopt counts its calls, and 15 of them asked for
+       points the run had evaluated and were answered without an
+       evaluation``).  Until 2026-10-12 every repeat was evaluated and
+       counted.
 
        A gradient search evaluates the loss at its starting point and the
        gradient there before it evaluates any point it steps to: with
@@ -2610,7 +2613,7 @@ one a finite number (``MAXTIME`` a positive one).
        NLopt's default 4), and its first local search starts at one of
        these points, which the search has evaluated, and takes the
        gradient there.  Under ``GRAD_STRATEGY NUMERICAL`` the run takes
-       the loss there from the search's record
+       the loss there from the run's record
        (:ref:`hpo_repeat_points`), the centre of the finite differences,
        and evaluates only their stencil, so it needs N more evaluations
        than a local search (``GD_MLSL`` with ``INNER LD_LBFGS`` in 2-D,
@@ -2633,6 +2636,22 @@ one a finite number (``MAXTIME`` a positive one).
        A run with a ``PC_OBSERVABLE`` is ``ANALYTICAL`` (an unset
        ``GRAD_STRATEGY`` resolves to it) or ``HYBRID``.  The warning says
        what MLSL spends.  ``AUGLAG`` goes straight into its local search.
+       A search on NLopt or ``DLIB:BFGS`` that starts at a point the run
+       has evaluated takes the loss there the same way: a ``PRESTAGE``
+       refinement starts at an exploration candidate, a usable evaluation
+       of the run, so under ``NUMERICAL`` it needs 2n + 1 (``the PRESTAGE
+       refinement NLOPT:LD_LBFGS: MAXEVAL 4 takes no step: its gradient
+       search takes the loss at its starting point from the run's record
+       (no evaluation) and evaluates the gradient there (4 evaluations:
+       ...) ..., which needs MAXEVAL 5 or more``), and so does the run's
+       first search under ``NOISE CALIBRATION`` (:ref:`hpo_noise_block`),
+       whose seed point the calibration evaluated; under ``ANALYTICAL``,
+       ``HYBRID`` or a ``--skip-rel`` filter it evaluates the loss at its
+       starting point again.  The warning cannot know a start whose
+       evaluation was not usable, nor the refinement from ``INIT`` points
+       that a ``PRESTAGE`` whose exploration has no usable candidate falls
+       back on.  Until the run kept one record (2026-10-12) a refinement
+       evaluated its start again and needed 2n + 2.
        The warning covers every phase with a budget of its own: the
        ``STRATEGY``-level optimiser, each ``MULTISTART`` start (its
        ``BUDGET_PER_START`` or its share of ``MAXEVAL``), the ``PRESTAGE``
@@ -2646,7 +2665,7 @@ one a finite number (``MAXTIME`` a positive one).
        .. code-block:: none
 
           WARNING   the STRATEGY-level optimiser NLOPT:LD_LBFGS: MAXEVAL 4 takes no step: its gradient search evaluates the loss at a starting point (1 evaluation) and the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 6 or more
-          WARNING   the STRATEGY-level optimiser NLOPT:GD_MLSL: MAXEVAL 9 takes no step of a local search: MLSL evaluates its starting point and its first 4 samples without a gradient (5 evaluations; POPULATION 4, NLopt's default), then its first local search, from one of them, takes the loss there from the search's record (no evaluation) and evaluates the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 10 or more
+          WARNING   the STRATEGY-level optimiser NLOPT:GD_MLSL: MAXEVAL 9 takes no step of a local search: MLSL evaluates its starting point and its first 4 samples without a gradient (5 evaluations; POPULATION 4, NLopt's default), then its first local search, from one of them, takes the loss there from the run's record (no evaluation) and evaluates the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 10 or more
 
        Until 2026-10-12 nothing said so.
 
@@ -3823,14 +3842,19 @@ evaluates the stencil, or the point under ``ANALYTICAL`` and ``HYBRID``.
 A call that asks for a gradient the search has not formed takes, under
 ``GRAD_STRATEGY NUMERICAL`` (the default), the recorded loss as the loss
 at the point that the finite differences take, and only their stencil is
-evaluated.  The other backends (``TADAH:RANDOM``, ``TADAH:GRID``, the
+evaluated; under ``ANALYTICAL`` and ``HYBRID`` the point is evaluated
+first (below), and when ``DLIB:BFGS`` asked for its loss just before,
+answered from the record (at its start, or at the point a line search
+ends on), that evaluation answers the loss call too: the two calls are
+one evaluation, a repeat evaluated again, not a reuse.  The other backends (``TADAH:RANDOM``, ``TADAH:GRID``, the
 ``TADAH`` annealers, ``ASA``, ``CERES``, ``DLIB:GFS``) evaluate every
 point they ask for, and their evaluations go into the record.  HPO's
-count of evaluations, which ``DLIB:BFGS``'s ``MAXEVAL`` is, does not
-count a reused loss, and no search's budget counts another's
-evaluations (a ``MULTISTART`` start's ``BUDGET_PER_START``, each
-``PRESTAGE`` phase's ``MAXEVAL``); NLopt's own ``MAXEVAL`` counts the
-call (below).  The ``RESTART`` stagnation window counts each such call
+count of evaluations counts each search's own evaluations and no reused
+loss; it is what ``DLIB:BFGS``'s ``MAXEVAL`` bounds (a ``MULTISTART``
+start's ``BUDGET_PER_START``, a ``PRESTAGE`` phase's ``MAXEVAL``).
+NLopt's own ``MAXEVAL`` counts every call, one answered from an earlier
+search's evaluation too (below): an NLopt refinement whose first call is
+the exploration's best makes one evaluation fewer than its ``MAXEVAL``.  The ``RESTART`` stagnation window counts each such call
 as one evaluation without a new best: a search that only asks for points
 the run has makes no evaluation, and the window still ends or relaunches
 it.  A ``PRESTAGE`` exploration's call answered from the record offers
@@ -3850,7 +3874,11 @@ repeat again, as it did until 2026-10-12, when its loss has
   previous evaluation relaxed to;
 * a ``--skip-rel`` filter, which compares with the best value so far.
 
-A repeat is also evaluated again when its earlier evaluation failed (a
+Such a run keeps the record too: a point an earlier search of the run
+evaluated -- a ``PRESTAGE`` refinement's start, a point an earlier
+``MULTISTART`` start or ``RESTART`` round evaluated -- is a repeat
+evaluated again, counted under ``Repeats evaluated again`` and named as
+an earlier search's evaluation.  A repeat is also evaluated again when its earlier evaluation failed (a
 failure can be transient), or formed no gradient that the call asks for
 under ``GRAD_STRATEGY ANALYTICAL`` or ``HYBRID``: an analytical gradient
 differentiates the last evaluation, so it follows an evaluation of its
@@ -3863,8 +3891,9 @@ and counts a search's reuses at 10, 100, 1000, …, which make no row:
    INFO      NLOPT:LD_MMA asked again for the point of eval 6 (CGRID2B[2] = 0.1, RCUT2B = 6) and its gradient: the loss and gradient of eval 6 are reused, without an evaluation (a reuse is no evaluation: HPO's MAXEVAL does not count it, but NLopt counts it among the calls its own MAXEVAL bounds; DIAGNOSTICS counts reuses)
    INFO      NLOPT:G_MLSL_LDS asked again for the point of eval 2 (A = 0.59375, B = 0.96875) and its gradient: the loss of eval 2 is reused, without an evaluation, as the loss at the point that the gradient's finite differences take, and their stencil is evaluated (...)
    INFO      NLOPT:GN_CRS2_LM asked again for the point of eval 34 (RCUT2B = 4, SGRIDMB = 0.4); it is evaluated again: PC_LAMMPS: its scripts run on LAMMPS instances kept from one evaluation to the next, which keep what a script set there (LAMMPS keeps variables across clear), and each --hotvar starts from the value of the best evaluation so far
-   INFO      NLOPT:LD_MMA: 10 calls of this search have asked again for points the run evaluated (the latest the point of eval 16), answered without an evaluation
+   INFO      NLOPT:LD_MMA: 10 calls of this search have asked for points the run had evaluated (the latest the point of eval 16), answered without an evaluation
    INFO      DLIB:BFGS asked for the point of eval 4 (SGRID2B[2] = 4), which an earlier search of the run evaluated: the loss of eval 4 is reused, without an evaluation (...)
+   INFO      DLIB:BFGS asked for the point of eval 5 (RCUT2B = 5.376917644, SGRIDMB = 0.1563088886), which an earlier search of the run evaluated; it is evaluated again: PC_LAMMPS: ...
 
 and DIAGNOSTICS counts them, ``Repeated points reused`` and ``Repeats
 evaluated again`` (with the reason).  NLopt counts a reused call among
@@ -3958,8 +3987,10 @@ elsewhere later ends there too.  In a fuzz of 3000 ``DLIB:BFGS`` searches
 over random one- and two-dimensional losses it ended 22: the 14 that went
 round without an evaluation and never ended, 7 that ran to ``MAXEVAL
 400`` on such a plateau (now after 18 to 113 evaluations, the same best)
-and one that ended ``no step within the OPTIM box`` later (its best 1 ulp
-lower then); the other 2978 are unchanged.  An NLopt search whose calls
+and one that ended ``no step within the OPTIM box`` later (its best 2 ulp
+lower then); the other 2978 keep their evaluation counts, best and
+status (20 of them count fewer reuses: a gradient right after a reused
+loss is no second reuse).  An NLopt search whose calls
 are answered from the record still ends on NLopt's own ``MAXEVAL``,
 which counts calls; with tolerances alone, a search held at u = 0 that
 only asks again does not end (above).
@@ -5079,8 +5110,10 @@ exploration hands over to the refinement early (above), where without
 ``RESTART`` it runs to its own stop criteria.  The journal's
 ``RESTART r/MAX`` line lists the round's seeds: the seed its fresh
 points were drawn with (the block's ``SEED + r``, or the drawn *S + r*;
-none for a chain of ``CONFIG`` or ``WARM`` alone), then the optimisers'
-derived seeds.  A ``PRESTAGE`` with ``TOPK 1``,
+none for a chain of ``CONFIG`` or ``WARM`` alone without a ``SEED``,
+which draws no seed -- with one, the line names ``SEED + r``, which
+draws nothing, as the startup warning about such a ``SEED`` says), then
+the optimisers' derived seeds.  A ``PRESTAGE`` with ``TOPK 1``,
 ``SEED 42`` on its refinement, ``SEED 1717`` on its ``EXPLORE`` block
 and ``SEED 11`` in its ``RESTART`` block logs, at the first restart,
 ``RESTART 1/3 -- fresh init from SOBOL; RESTART SEED 12, SEED 43,

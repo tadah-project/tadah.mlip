@@ -38,7 +38,27 @@
 #   cmake -DCASE=<case> -DTADAH_CMAKE_DIR=<cmake-tools> -DWORK_DIR=<scratch>
 #         -DGENERATOR=<CMake generator> -DMAKE_PROGRAM=<build tool>
 #         -DCXX=<C++ compiler> -DCTEST=<ctest> -P check_header_check.cmake
-cmake_minimum_required(VERSION 3.18)
+#
+# The check needs CMake 3.19: it reads ctest's test list
+# (--show-only=json-v1, ctest 3.14) with string(JSON). The tests of a build
+# without TADAH_ENABLE_NFP accept CMake 3.16 (HPO needs 3.24; the build
+# itself 3.15), so on CMake 3.16-3.18 the script says so on one line,
+#   SKIPPED: check_header_check.cmake needs CMake 3.19 or later (string(JSON)); this is CMake <version>
+# which the entries' SKIP_REGULAR_EXPRESSION reports as Skipped, and stops.
+# -DAS_CMAKE_VERSION=<v> makes that decision as CMake <v> would, for
+# check_cmake_minimum.cmake (a running CMake cannot be made older).
+cmake_minimum_required(VERSION 3.15)
+if(DEFINED AS_CMAKE_VERSION)
+  set(_thc_cmake_version "${AS_CMAKE_VERSION}")
+else()
+  set(_thc_cmake_version "${CMAKE_VERSION}")
+endif()
+if(_thc_cmake_version VERSION_LESS 3.19)
+  message(NOTICE "SKIPPED: check_header_check.cmake needs CMake 3.19 or "
+                 "later (string(JSON)); this is CMake ${_thc_cmake_version}")
+  return()
+endif()
+cmake_minimum_required(VERSION 3.19)
 
 foreach(v CASE TADAH_CMAKE_DIR WORK_DIR GENERATOR MAKE_PROGRAM CXX CTEST)
   if(NOT DEFINED ${v} OR "${${v}}" STREQUAL "")
@@ -68,6 +88,15 @@ endmacro()
 
 function(run label)
   execute_process(COMMAND ${ARGN}
+    RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
+  message(STATUS "---- ${label} (exit ${rc}) ----\n${out}")
+  set(rc "${rc}" PARENT_SCOPE)
+  set(out "${out}" PARENT_SCOPE)
+endfunction()
+
+# ctest with its arguments, in the probe's build directory (run()'s rc, out).
+function(run_ctest label)
+  execute_process(COMMAND "${CTEST}" ${ARGN} WORKING_DIRECTORY "${build}"
     RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
   message(STATUS "---- ${label} (exit ${rc}) ----\n${out}")
   set(rc "${rc}" PARENT_SCOPE)
@@ -122,7 +151,8 @@ endmacro()
 # its PROCESSORS property, from `ctest --show-only=json-v1` (which leaves
 # PROCESSORS out when it is CTest's default, 1).
 function(entry_jobs name parallel_var processors_var)
-  execute_process(COMMAND "${CTEST}" --test-dir "${build}" --show-only=json-v1
+  execute_process(COMMAND "${CTEST}" --show-only=json-v1
+    WORKING_DIRECTORY "${build}"
     RESULT_VARIABLE rc OUTPUT_VARIABLE json ERROR_VARIABLE err)
   if(NOT rc EQUAL 0)
     message(FATAL_ERROR "ctest --show-only=json-v1 failed (exit ${rc}): ${err}")
@@ -190,7 +220,7 @@ if(CASE STREQUAL "refusals")
       "tadah_add_header_check(probe): TADAH_HEADER_CHECK_JOBS must be a whole number of processes, 1 or more, got '${value}'")
   endforeach()
   foreach(r IN LISTS refusals)
-    run("configure REFUSAL=${r}" "${CMAKE_COMMAND}" --fresh -S "${src}"
+    run("configure REFUSAL=${r}" "${CMAKE_COMMAND}" -S "${src}"
         -B "${WORK_DIR}/build_${r}" -G "${GENERATOR}"
         "-DCMAKE_MAKE_PROGRAM=${MAKE_PROGRAM}" "-DCMAKE_CXX_COMPILER=${CXX}"
         "-DCASE=${CASE}" "-DREFUSAL=${r}" ${args_${r}}
@@ -209,12 +239,13 @@ if(CASE STREQUAL "refusals")
   return()
 endif()
 
-# 1. Configure, build `all`, list the entries.
+# 1. Configure, build `all`, list the entries. (Every build directory is new:
+#    WORK_DIR was removed above.)
 set(case_args "")
 if(CASE STREQUAL "bad")
   set(case_args -DTADAH_HEADER_CHECK_JOBS=1)
 endif()
-run("configure" "${CMAKE_COMMAND}" --fresh -S "${src}" -B "${build}"
+run("configure" "${CMAKE_COMMAND}" -S "${src}" -B "${build}"
     -G "${GENERATOR}" "-DCMAKE_MAKE_PROGRAM=${MAKE_PROGRAM}"
     "-DCMAKE_CXX_COMPILER=${CXX}" "-DCASE=${CASE}" ${case_args}
     -DFETCHCONTENT_FULLY_DISCONNECTED=ON
@@ -234,7 +265,7 @@ if(CASE STREQUAL "good" OR CASE STREQUAL "new_header")
 else()
   set(entries "probe_headers")
 endif()
-run("ctest -N -L headers" "${CTEST}" --test-dir "${build}" -N -L headers)
+run_ctest("ctest -N -L headers" -N -L headers)
 string(REGEX MATCHALL "Test +#[0-9]+: [^\r\n]+" listed "${out}")
 list(TRANSFORM listed REPLACE "^Test +#[0-9]+: " "")
 list(SORT listed)
@@ -255,8 +286,7 @@ expect_equal("probe_headers PROCESSORS" "${processors}" "${jobs}")
 stop_if_failed()
 
 # 2. Run the checks.
-run("ctest -L headers" "${CTEST}" --test-dir "${build}" -L headers
-    --output-on-failure)
+run_ctest("ctest -L headers" -L headers --output-on-failure)
 error_headers(errors "${out}")
 objects(probe probe_built probe_missing)
 
@@ -302,8 +332,8 @@ if(CASE STREQUAL "new_header")
   file(WRITE "${src}/good/include/probe/added_no_guard.h"
     "// Added after the first run, without an include guard.\n"
     "namespace probe {\nstruct Added {\n  int n;\n};\n}  // namespace probe\n")
-  run("ctest -L headers after adding a header" "${CTEST}" --test-dir "${build}"
-      -L headers --output-on-failure)
+  run_ctest("ctest -L headers after adding a header" -L headers
+            --output-on-failure)
   if(rc EQUAL 0)
     fail("ctest -L headers passed with the added header")
   endif()

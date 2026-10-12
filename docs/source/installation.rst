@@ -24,7 +24,10 @@ General requirements:
   floating-point ``std::to_chars`` (GCC 11+ / libstdc++ 11+, Clang with
   libc++ 14+ or libstdc++ 11+, MSVC 2019 16.4+); Tadah! uses it to write
   numbers losslessly
-- **CMake** (3.15+)
+- **CMake** 3.15 or later; 3.24 with ``TADAH_ENABLE_NFP`` (Tadah.HPO declares
+  it) and 3.16 with ``BUILD_TESTING`` (CTest reports a skipped test through
+  the ``SKIP_REGULAR_EXPRESSION`` test property, which it has from 3.16; the
+  configure step stops on an older CMake, saying so)
 - **LAPACK**
 - **libcurl** development files (``libcurl4-openssl-dev`` on Debian and
   Ubuntu, ``libcurl-devel`` on Fedora and Red Hat): Tadah! reads structures
@@ -184,7 +187,7 @@ Customize the Tadah!MLIP build using CMake options:
 - ``TADAH_ENABLE_OPENMP``: Enable OpenMP for parallelization (default: OFF).
 - ``TADAH_MARCH_NATIVE``: Use native optimizations (default: OFF).
 - ``TADAH_ENABLE_FAST_MATH``: Enable fast math optimizations (default: OFF).
-- ``TADAH_ENABLE_NFP``: Enable Nested Fitting Procedure (default: OFF), see :ref:`installation_nfp`.
+- ``TADAH_ENABLE_NFP``: Enable Nested Fitting Procedure (default: OFF), see :ref:`installation_nfp`. A ``tadah`` built without it refuses ``tadah hpo`` and ``TASK hpo`` before any task runs, ``tadah hpo needs the Nested Fitting Procedure, which this tadah was built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see Installation)``, and its ``tadah -h`` says so on the ``hpo`` line.
 - ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIB``: Absolute path to the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIBS``: Extra link items for the LAMMPS library, as a CMake list (e.g. ``"-lz;-lzstd"``); needed mainly for a static LAMMPS library, whose own dependencies are not propagated (optional, used by ``TADAH_ENABLE_NFP``).
@@ -196,7 +199,7 @@ Additional CMake options to consider:
 
 - ``CMAKE_INSTALL_PREFIX``: Set the install destination when ``make install`` is invoked. A common choice is ``-DCMAKE_INSTALL_PREFIX=~/.local``.
 - ``BUILD_SHARED_LIBS``: Whether to build shared or static Tadah!MLIP libraries (default: OFF).
-- ``BUILD_TESTING``: Include tests (default: OFF). Needs a Python 3 interpreter, which runs the unit tests of the documentation build tools; with ``TADAH_ENABLE_NFP``, Python 3.11 or later, for the Nested Fitting tests (their key-registry check reads TOML with ``tomllib``). The configure step stops when it finds no suitable interpreter.
+- ``BUILD_TESTING``: Include tests (default: OFF). Needs CMake 3.16 or later, and a Python 3 interpreter, which runs the unit tests of the documentation build tools; with ``TADAH_ENABLE_NFP``, Python 3.11 or later, for the Nested Fitting tests (their key-registry check reads TOML with ``tomllib``). The configure step stops when it finds no suitable interpreter.
 
 Append flags to the ``cmake`` command with the ``-D`` prefix and a value of ``ON``, ``OFF``, or a path, e.g.:
 
@@ -345,8 +348,9 @@ runs in the MPI build too (``ctest --test-dir build-mpi``): each test
 program is a one-rank MPI job. The cases of the ``PC_ISOLATION PROCESS``
 worker pool are *Skipped* there (the MPI build has ``PC_ISOLATION THREAD``
 only), as are the optional-data cases of the serial build. The multi-rank
-tests exist only in this build: ``ctest -L mpi`` runs them through
-``MPIEXEC_EXECUTABLE`` at 1, 2 and 4 ranks and needs four process slots
+tests of ``tadah hpo`` exist only in this build: ``ctest -L mpi`` runs them
+through ``MPIEXEC_EXECUTABLE`` at 1, 2 and 4 ranks and needs four process
+slots
 (``MPIEXEC_MAX_NUMPROCS``). CMake takes the first ``mpiexec`` on ``PATH``
 for ``MPIEXEC_EXECUTABLE``, whichever MPI it belongs to; when another
 MPI's comes first, configure with ``-DMPIEXEC_EXECUTABLE=/path/to/mpiexec``,
@@ -354,7 +358,10 @@ the launcher of step 3 (the wrong one starts one-rank jobs, and the
 multi-rank tests fail). They check the rank invariance of ``ANNEAL_PT``
 / ``ANNEAL_PA`` (``hpo_anneal_mpi_matrix``), a signal that one rank
 receives (``hpo_mpi_signal_*``) and ``tadah hpo`` end to end on 1 and 2
-ranks (``hpo_mpi_e2e_*``). The serial build runs none of them.
+ranks (``hpo_mpi_e2e_*``). The serial build runs none of them. ``ctest -L
+mpi`` also selects the ``pair_style tadah`` entries of
+:ref:`installation_lammps_mpi`, which every NFP build has: they run an MPI
+``lmp`` of their own and are *Skipped* unless it is named.
 
 .. note::
 
@@ -522,12 +529,70 @@ Parallel builds are supported. A typical Linux choice is:
     cmake --build build --parallel $(nproc)
 
 After building, the produced LAMMPS executable from this build directory includes ML‑TADAH and supports ``pair_style tadah``.
+It is ``build/lmp``, or ``build/lmp_<machine>`` with
+``-DLAMMPS_MACHINE=<machine>`` (``lmp_serial`` in the preset example
+above); ``cmake --build build --target lmp`` builds it alone, and
+``cmake --build build --target lammps`` the library alone (what
+:ref:`installation_nfp` links).
 
 **Advanced integration options**
 
 The CMake integration also supports additional options (e.g. verbosity controls and custom style registration lists). These are documented here:
 
 - ``tadah.lammps/integration/README.md`` (in your Tadah!LAMMPS checkout)
+
+.. _installation_lammps_mpi:
+
+Running pair_style tadah on several MPI ranks
+.............................................
+
+``pair_style tadah`` runs domain-decomposed like any LAMMPS pair style.
+Configure LAMMPS with the options of Step 3 and ``-DBUILD_MPI=ON`` (CMake
+finds the MPI of ``mpicxx``), build ``lmp`` and start it with the
+``mpirun`` / ``mpiexec`` of that MPI (or ``srun``):
+
+.. code-block:: bash
+
+    cd /path/to/lammps
+    cmake -S cmake -B build-mpi -DBUILD_MPI=ON -DLAMMPS_MACHINE=mpi \
+      -DPKG_ML-TADAH=ON \
+      -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
+      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps \
+      -DTADAH_GIT_BRANCH=v1-dev
+    cmake --build build-mpi --target lmp --parallel
+    mpiexec -n 4 /path/to/lammps/build-mpi/lmp_mpi -in in.ml
+
+On several ranks the energies, forces, per-atom energies and the virial
+are those of the serial run up to round-off (the order in which
+contributions are summed differs). This was checked on 2 and 4 ranks,
+also with sub-domains narrower than the cutoff, for the generic many-body
+kernel of, for example, the *Quick Start* potential, the ``EAMFAST``
+kernel of a linear ``DM_REAM`` potential, the full-list kernel of a
+non-linear model and the kernels of a pair potential, and on 8 ranks for
+all but the pair kernels. For a ``DIMER`` potential (*Tadah!N2*,
+:ref:`mlips`) it was checked at step 0 only, on 2 and 4 ranks; its
+dynamics on several ranks were not. A ``DIMER`` potential needs ``newton
+off``, whatever its model; any other potential runs with ``newton on`` or
+``off`` when its model is linear and needs ``newton on`` when it is
+non-linear.
+
+Runs on different numbers of ranks start from the same state only when
+the input makes them: ``create_atoms`` numbers the atoms rank by rank, and
+``velocity all create ...`` with its default ``loop all`` assigns the
+velocities by atom ID, so each lattice site starts with a velocity that
+depends on the number of ranks. The trajectories then differ from the
+first step (the *Quick Start* ``in.ml`` at 1, 2 and 4 ranks: 415, 419 and
+426 K after 100 steps), though each run conserves its energy. Use ``loop
+geom`` (velocities from the positions), or start every run from one data
+file, to compare runs across rank counts: with ``loop geom`` the three
+``in.ml`` runs print the same thermo rows for all 1000 steps.
+
+The test suite checks this agreement when it is given an MPI ``lmp``
+(``tadah.lammps_mpi_*``, see ``CONTRIBUTING.md``, *Running tests*):
+configure a Tadah!MLIP build with tests and NFP (:ref:`installation_nfp`)
+with ``-DTADAH_LMP_MPI=/path/to/lammps/build-mpi/lmp_mpi`` and
+``-DTADAH_LMP_MPIEXEC=/path/to/mpiexec``, the launcher of that MPI, and
+run ``ctest -L lammps``; without them the entries are *Skipped*.
 
 Traditional make-based build
 ............................
@@ -635,7 +700,7 @@ Troubleshooting
 
 #. **CMake not found / version too old**
 
-   Ensure CMake is installed and up-to-date (3.15+). On Linux, you can often install or upgrade CMake via your package manager, or download a binary from the CMake website.
+   Ensure CMake is installed and up-to-date (3.15 or later; 3.24 with ``TADAH_ENABLE_NFP``, 3.16 with ``BUILD_TESTING``). On Linux, you can often install or upgrade CMake via your package manager, or download a binary from the CMake website.
 
 #. **Compiler not found / version too old**
 

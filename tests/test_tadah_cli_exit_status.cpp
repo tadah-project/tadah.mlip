@@ -47,7 +47,14 @@
 // carry an inline comment, and on task files with a TASK line that has no
 // key line (an unknown name, GLOBAL included, is refused; a known one runs
 // on the GLOBAL keys), and on task files with a TASK line naming a group of
-// tasks (refused before any task runs); they run in every build.
+// tasks (refused before any task runs), and on one whose TASK train and
+// predict blocks each print the settings line of their kernel; they run in
+// every build.
+//
+// The [not-built] cases run `tadah hpo`, a task file with `TASK hpo`,
+// `tadah -h`, `tadah hpo -h` and `tadah explain hpo`: a tadah built without
+// TADAH_ENABLE_NFP refuses hpo before any task runs, naming the build
+// option, and its help says so; a tadah with NFP does not.
 //
 // The [refit] cases run `tadah refit` (dense) with a configuration number
 // out of its range, which is refused naming the key and the token, and with
@@ -2082,6 +2089,57 @@ TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment"
   CHECK(predicted_values("energy.pred").size() == 3u);
 }
 
+namespace {
+
+/* The number of lines of @p text that contain @p needle. */
+std::size_t lines_with(const std::string& text, const std::string& needle) {
+  std::istringstream in(text);
+  std::size_t n = 0;
+  for (std::string line; std::getline(in, line);)
+    if (line.find(needle) != std::string::npos) ++n;
+  return n;
+}
+
+}  // namespace
+
+/* Pins: each TASK of a task file prints the settings line of the kernel it
+ * builds at VERBOSE 1 (the task file's GLOBAL VERBOSE): on the three Ta
+ * dimers with M_KRR Kern_RBF 1 (SBASIS 3), TASK train from MPARAMS 1.0
+ * (pot_a.tadah), TASK train from MPARAMS 2.0 (pot_b.tadah) and TASK
+ * predict with pot_a.tadah exit 0, and stdout has "Kern_RBF | sigma: 1 |
+ * gamma: 1" on two lines (the first training and the prediction),
+ * "Kern_RBF | sigma: 2 | gamma: 0.25" on one (the second training) and no
+ * other "Kern_RBF |" line, as the released code printed them.
+ * Before the fix: one line in all, the first training's: the line was
+ * printed by the first kernel of its kind in the process and by no later
+ * one, so the second training's settings were never printed. */
+TEST_CASE("Task file: each TASK prints the settings line of the kernel it "
+          "builds",
+          "[TadahCLI][task-file][kernel_line]") {
+  ScratchCwd cwd("task_kernel_line");
+  write_ta_dimer_training();
+  std::string base = slurp("config.train");
+  const std::string linear = "MODEL M_BLR BF_Linear\n";
+  const auto at = base.find(linear);
+  REQUIRE(at != std::string::npos);
+  base.replace(at, linear.size(), "MODEL M_KRR Kern_RBF 1\nSBASIS 3\n");
+  std::ofstream("config.a") << base << "MPARAMS 1.0\nOUTFILE pot_a.tadah\n";
+  std::ofstream("config.b") << base << "MPARAMS 2.0\nOUTFILE pot_b.tadah\n";
+  std::ofstream("run.task")
+      << "VERBOSE 1\n"
+         "TASK train\n  CONFIG config.a\n"
+         "TASK train\n  CONFIG config.b\n"
+         "TASK predict\n  DBFILE db.tadah\n  POTENTIAL pot_a.tadah\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(std::filesystem::exists("pot_a.tadah"));
+  CHECK(std::filesystem::exists("pot_b.tadah"));
+  CHECK(lines_with(r.out, "Kern_RBF | sigma: 1 | gamma: 1") == 2u);
+  CHECK(lines_with(r.out, "Kern_RBF | sigma: 2 | gamma: 0.25") == 1u);
+  CHECK(lines_with(r.out, "Kern_RBF |") == 3u);
+}
+
 /* Pins: `tadah train` on the three Ta dimers (D2_BP, 4 weights) reads
  * FIXINDEX given as separate values as the comma list: 'FIXINDEX 1 2 3 4'
  * with FIXWEIGHT 14 2500 -3 0.5 (every weight pinned) exits 0 and writes
@@ -2772,6 +2830,149 @@ TEST_CASE("Task file: a TASK line without key lines runs on the GLOBAL keys",
   REQUIRE(std::filesystem::exists("energy.pred"));
   CHECK(predicted_values("energy.pred").size() == 3u);
 }
+
+/* ---- [not-built]: tadah hpo in a tadah built without NFP -------------- */
+
+namespace {
+
+/* What a tadah built without TADAH_ENABLE_NFP says of hpo. */
+const char* const kHpoNotBuilt =
+    "tadah hpo needs the Nested Fitting Procedure, which this tadah was "
+    "built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see "
+    "Installation)";
+
+/* `text` with each run of whitespace one space (the help wraps its lines). */
+std::string one_line(const std::string& text) {
+  std::string out;
+  bool blank = false;
+  for (char ch : text) {
+    if (std::isspace(static_cast<unsigned char>(ch))) {
+      blank = true;
+      continue;
+    }
+    if (blank && !out.empty()) out += ' ';
+    blank = false;
+    out += ch;
+  }
+  return out;
+}
+
+/* The hpo target of the [not-built] cases: one OPTIM line and a loss. */
+void write_hpo_target() {
+  std::ofstream("config.hpo") << "LOSS L2\nPC_ERMSE 0 1\n"
+                                 "OPTIM CGRID2B (1) 2.3 2.7\n";
+}
+
+}  // namespace
+
+#ifndef TADAH_ENABLE_NFP
+/* Pins: in a tadah built without TADAH_ENABLE_NFP, `tadah hpo -c
+ * config.train --hpotarget config.hpo` exits 1 with "tadah hpo needs the
+ * Nested Fitting Procedure, which this tadah was built without; reconfigure
+ * with -DTADAH_ENABLE_NFP=ON (see Installation)" and writes no
+ * best_pot.tadah; a task file with "TASK train" (CONFIG config.train) and
+ * then "TASK hpo" (CONFIG config.train, HPOTARGET config.hpo) exits 1 with
+ * the same message before the training runs: no pot.tadah.
+ * Before the fix: both exited 1 with "EngineFactory::create: No engine
+ * found for HPO", and the task file's training ran first and wrote
+ * pot.tadah. */
+TEST_CASE("Subcommand: hpo in a tadah built without NFP is refused, naming "
+          "TADAH_ENABLE_NFP",
+          "[TadahCLI][exit-status][not-built]") {
+  ScratchCwd cwd("hpo_not_built");
+  write_ta_dimer_training();
+  write_hpo_target();
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.train",
+                                "--hpotarget", "config.hpo"});
+    const std::string rep = reported(r);
+    INFO("tadah hpo: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, kHpoNotBuilt));
+    CHECK_FALSE(contains(rep, "No engine found"));
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  }
+  {
+    std::ofstream("run.task") << "VERBOSE 0\n"
+                                 "TASK train\n"
+                                 "  CONFIG config.train\n"
+                                 "TASK hpo\n"
+                                 "  CONFIG config.train\n"
+                                 "  HPOTARGET config.hpo\n";
+    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+    const std::string rep = reported(r);
+    INFO("tadah --task: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, kHpoNotBuilt));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
+/* Pins: in a tadah built without TADAH_ENABLE_NFP, `tadah -h` lists hpo as
+ * "hpo Optimize the model architecture and hyperparameters. tadah hpo needs
+ * the Nested Fitting Procedure, ...; reconfigure with -DTADAH_ENABLE_NFP=ON
+ * (see Installation)." (whitespace collapsed: the listing wraps), `tadah
+ * hpo -h` has the same two sentences, and `tadah explain hpo` ends with a
+ * blank line and that message with a full stop; each exits 0.
+ * Before the fix: none of them had the message (the listing and `tadah
+ * hpo -h` said only "Optimize the model architecture and
+ * hyperparameters.", and `tadah explain hpo` described the nested fitting
+ * procedure). */
+TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo say "
+          "that a tadah built without NFP has no hpo",
+          "[TadahCLI][exit-status][not-built]") {
+  ScratchCwd cwd("hpo_not_built_help");
+  const std::string described = std::string("Optimize the model architecture "
+                                            "and hyperparameters. ") +
+                                kHpoNotBuilt + ".";
+  {
+    const CliRun r = run_tadah({"tadah", "-h"});
+    INFO("tadah -h: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(one_line(r.out), "hpo " + described));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "-h"});
+    INFO("tadah hpo -h: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(one_line(r.out), described));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "hpo"});
+    INFO("tadah explain hpo: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    std::vector<std::string> lines;
+    std::istringstream in(r.out);
+    for (std::string l; std::getline(in, l);) lines.push_back(l);
+    REQUIRE(lines.size() >= 2);
+    CHECK(lines[lines.size() - 2].empty());
+    CHECK(lines.back() == std::string(kHpoNotBuilt) + ".");
+  }
+}
+#else
+/* Pins: in a tadah built with TADAH_ENABLE_NFP, `tadah -h` lists hpo as
+ * "hpo Optimize the model architecture and hyperparameters.", and neither
+ * it, `tadah hpo -h` nor `tadah explain hpo` (each exits 0 and prints
+ * something) says "which this tadah was built without".
+ * Before the fix: passes as well (a pin: only a tadah without NFP has the
+ * message). */
+TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo of a "
+          "tadah built with NFP do not say hpo is not built",
+          "[TadahCLI][exit-status][not-built]") {
+  ScratchCwd cwd("hpo_built_help");
+  for (const auto& args : std::vector<std::vector<std::string>>{
+           {"tadah", "-h"}, {"tadah", "hpo", "-h"}, {"tadah", "explain", "hpo"}}) {
+    const CliRun r = run_tadah(args);
+    INFO(args[1] << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK_FALSE(contains(r.out, "which this tadah was built without"));
+    CHECK_FALSE(r.out.empty());
+  }
+  const CliRun h = run_tadah({"tadah", "-h"});
+  CHECK(contains(one_line(h.out),
+                 "hpo Optimize the model architecture and hyperparameters."));
+}
+#endif  // TADAH_ENABLE_NFP
 
 /* ---- [descriptor]: a TYPE2B line needs its list keys -------------------- */
 
@@ -4226,6 +4427,138 @@ TEST_CASE("Subcommand: explain: a configuration key that is no option of a "
   CHECK(key.status == 0);
   CHECK_FALSE(r.out.empty());
   CHECK(r.out == key.out);
+}
+
+/* ---- explain: the optimisers of tadah hpo ---------------------------- */
+
+/* Pins: in a build with HPO (TADAH_ENABLE_NFP), `tadah explain ALGO` (in
+ * any letter case, and LIB) exits 0 and prints the table of the optimisers
+ * a `tadah hpo` target's LIB and ALGO can name ("LIB NLOPT", its LD_LBFGS
+ * row, the refused NLOPT:LN_NEWUOA and CERES:LEVENBERG_MARQUARDT), and
+ * `tadah explain <LIB>:<ALGO>` or `<ALGO>` one optimiser's help: ld_lbfgs
+ * ("Options for NLOPT:LD_LBFGS", its stops), CERES:LBFGS (its PARAM keys
+ * and that it ignores the box), NLOPT:LN_NEWUOA (REFUSED); an unknown
+ * NLOPT:LD_FOO exits 1 naming what is wrong. A name that is no command, no
+ * configuration key and no optimiser is refused as before. Without HPO,
+ * `tadah explain ALGO` exits 1 saying that this tadah has no HPO.
+ * Before the fix: `tadah explain ALGO` and the others exited 1 with
+ * "tadah explain: no command or configuration key 'ALGO'" (and 'ld_lbfgs',
+ * ...): print_caps, the ALGO help, was reachable only from HPO's tests. */
+TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
+          "LIB:ALGO describes one",
+          "[TadahCLI][exit-status][explain][explain_algo]") {
+  ScratchCwd cwd("explain_algo");
+#ifdef TADAH_ENABLE_NFP
+  for (const char* name : {"ALGO", "algo", "LIB"}) {
+    const CliRun r = run_tadah({"tadah", "explain", name});
+    INFO(name << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "ALGO, with LIB its library, names the optimiser "
+                          "of a `tadah hpo` target"));
+    CHECK(contains(r.out, "\nLIB NLOPT\n"));
+    CHECK(contains(r.out, "\n  LD_LBFGS "));
+    CHECK(contains(r.out, "NLOPT:LN_NEWUOA,"));
+    CHECK(contains(r.out, "CERES:LEVENBERG_MARQUARDT"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "ld_lbfgs"});
+    INFO("ld_lbfgs: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(r.out.rfind("Options for NLOPT:LD_LBFGS\n", 0) == 0);
+    CHECK(contains(r.out, "Stops that end a run: MAXEVAL"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "CERES:LBFGS"});
+    INFO("CERES:LBFGS: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "Options for CERES:LBFGS\n"));
+    CHECK(contains(r.out, "PARAM tol_gradinf"));
+    CHECK(contains(r.out, "ignores the OPTIM box"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "NLOPT:LN_NEWUOA"});
+    INFO("NLOPT:LN_NEWUOA: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "Options for NLOPT:LN_NEWUOA\n   * REFUSED: "));
+    CHECK(contains(r.out, "Use NLOPT:LN_BOBYQA"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "NLOPT:LD_FOO"});
+    INFO("NLOPT:LD_FOO: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 1);
+    CHECK(contains(reported(r), "tadah explain: unknown optimiser "
+                                "NLOPT:LD_FOO: LIB NLOPT has no ALGO LD_FOO"));
+  }
+#else
+  const CliRun r = run_tadah({"tadah", "explain", "ALGO"});
+  INFO("ALGO: status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 1);
+  CHECK(contains(reported(r), "this tadah is built without HPO"));
+#endif
+  const CliRun bogus = run_tadah({"tadah", "explain", "bogus"});
+  CHECK(bogus.status == 1);
+  CHECK(contains(reported(bogus),
+                 "tadah explain: no command or configuration key 'bogus'"));
+}
+
+/* Pins: a name with two meanings prints both: `tadah explain RANDOM` (and
+ * `random`) exits 0 and prints the configuration key RANDOM's text (a data
+ * key: "Draws N distinct structures ..."), then, in a build with HPO, a
+ * blank line, "RANDOM also names an optimiser of `tadah hpo`:" (the name as
+ * written) and TADAH:RANDOM's help ("Options for TADAH:RANDOM", its stops),
+ * so `tadah explain <ALGO>`, which the optimiser table and `tadah hpo
+ * --help` point to, reaches it; `tadah explain TADAH:RANDOM` prints the
+ * optimiser's help alone. Without HPO the key's text alone.
+ * Before the fix: `tadah explain RANDOM` printed the data key's text alone
+ * (a configuration key answered first and the optimiser help was not
+ * asked), with nothing to say that TADAH:RANDOM was meant: the "also names"
+ * and "Options for TADAH:RANDOM" checks fail. */
+TEST_CASE("Subcommand: explain: a name that is a configuration key and an "
+          "optimiser prints both",
+          "[TadahCLI][exit-status][explain][explain_algo]") {
+  ScratchCwd cwd("explain_random");
+  const std::string key_text = "Draws N distinct structures from the whole "
+                               "dataset";
+  for (const char* name : {"RANDOM", "random"}) {
+    const CliRun r = run_tadah({"tadah", "explain", name});
+    INFO(name << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(r.out.rfind(key_text, 0) == 0);
+#ifdef TADAH_ENABLE_NFP
+    const std::size_t also = r.out.find(
+        "\n\n" + std::string(name) +
+        " also names an optimiser of `tadah hpo`:\nOptions for "
+        "TADAH:RANDOM\n");
+    CHECK(also != std::string::npos);
+    CHECK(contains(r.out, "Stops that end a run: MAXEVAL"));
+    CHECK(r.out.find(key_text, 1) == std::string::npos);
+#else
+    CHECK_FALSE(contains(r.out, "also names"));
+    CHECK_FALSE(contains(r.out, "Options for TADAH:RANDOM"));
+#endif
+  }
+#ifdef TADAH_ENABLE_NFP
+  const CliRun r = run_tadah({"tadah", "explain", "TADAH:RANDOM"});
+  INFO("TADAH:RANDOM: status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(r.out.rfind("Options for TADAH:RANDOM\n", 0) == 0);
+  CHECK_FALSE(contains(r.out, key_text));
+  CHECK_FALSE(contains(r.out, "also names"));
+#endif
+}
+
+/* Pins: `tadah hpo --help` names `tadah explain ALGO`, where the optimisers
+ * of a target's LIB and ALGO are listed, and `tadah explain <LIB>:<ALGO>`.
+ * Before the fix: the help said nothing of them (its long description
+ * named no optimiser), and the check fails. */
+TEST_CASE("Subcommand: hpo --help points to tadah explain ALGO",
+          "[TadahCLI][exit-status][explain][explain_algo]") {
+  ScratchCwd cwd("hpo_help_algo");
+  const CliRun r = run_tadah({"tadah", "hpo", "--help"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(contains(r.out, "tadah explain ALGO"));
+  CHECK(contains(r.out, "tadah explain <LIB>:<ALGO>"));
 }
 
 /* ---- explain: the description of a key without a long description --- */

@@ -30,7 +30,9 @@
 #  * reporter handling and a missing executable.
 #
 # Every failure is reported; the script fails at the end if there was any.
-cmake_minimum_required(VERSION 3.18)  # string(HEX)
+# 3.16: the discovery script includes cmake-tools' TadahTestSkip.cmake, whose
+# marker needs CTest's SKIP_REGULAR_EXPRESSION.
+cmake_minimum_required(VERSION 3.16)
 
 foreach(v SCRIPT CANARY LISTER WORK_DIR)
   if(NOT DEFINED ${v} OR "${${v}}" STREQUAL "")
@@ -52,6 +54,15 @@ function(cd_fail)
   math(EXPR n "${n} + 1")
   set_property(GLOBAL PROPERTY CD_NFAIL "${n}")
   message(NOTICE "FAIL: ${msg}")
+endfunction()
+
+# cd_hex(<out> <text>): the bytes of <text> in lower-case hexadecimal, as
+# the canary's --canary-names-hex prints a name (file(READ ... HEX), which
+# every CMake has; string(HEX) needs 3.18).
+function(cd_hex out text)
+  file(WRITE "${WORK_DIR}/hex.tmp" "${text}")
+  file(READ "${WORK_DIR}/hex.tmp" hex HEX)
+  set(${out} "${hex}" PARENT_SCOPE)
 endfunction()
 
 function(cd_expect_eq what actual expected)
@@ -237,7 +248,7 @@ else()
       string(SUBSTRING "${test}" ${suffix_at} -1 got_suffix)
       cd_expect_eq("canary: prefix of [${test}]" "${got_prefix}" "${cd_prefix}")
       cd_expect_eq("canary: suffix of [${test}]" "${got_suffix}" "${cd_suffix}")
-      string(HEX "${name}" name_hex)
+      cd_hex(name_hex "${name}")
       if(NOT name_hex IN_LIST canary_hex)
         cd_fail("canary: registered a name the canary does not have: [${name}]")
       elseif(name_hex IN_LIST seen_hex)

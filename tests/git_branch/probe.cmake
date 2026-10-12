@@ -5,7 +5,7 @@
 #
 #   cmake -DTADAH_CMAKE_DIR=<cmake-tools> [-DTADAH_GIT_BRANCH=<preset>]
 #         -P probe.cmake
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.15)
 
 if(NOT DEFINED TADAH_CMAKE_DIR OR "${TADAH_CMAKE_DIR}" STREQUAL "")
   message(FATAL_ERROR "probe.cmake: -DTADAH_CMAKE_DIR=... is required")

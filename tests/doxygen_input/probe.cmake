@@ -14,7 +14,7 @@
 # CTest entry matches it (or the error) with PASS_REGULAR_EXPRESSION. The
 # 'configured' case checks the Doxyfile this build configured: every INPUT
 # entry is an existing directory.
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.15)
 
 foreach(v CASE FUNCTIONS WORK_DIR)
   if(NOT DEFINED ${v} OR "${${v}}" STREQUAL "")

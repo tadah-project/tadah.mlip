@@ -140,15 +140,15 @@ docs_sphinx:
     - if: $CI_COMMIT_BRANCH
   script:
     - |
-      if ! command -v sphinx-build; then
-        python3 -m ensurepip --user --upgrade >/dev/null 2>&1 || true
-        python3 -m pip install --user -r docs/requirements.txt 2>&1 || {
-          echo "[docs_sphinx] pip module unavailable in this runner image; cannot install Sphinx requirements"
-          echo "Rebuild tadahmlip/gitlab-runner with python3-pip to enable docs builds"
-          exit 1
-        }
-      fi
-      export PATH="$HOME/.local/bin:$PATH"
+      # docs/requirements.txt, every time, into a virtual environment of the
+      # job's own: a Sphinx the runner already has is not the one the build
+      # is meant to use, and may lack the extensions the file lists.
+      python3 -m venv "$CI_PROJECT_DIR/.docs-venv" || {
+        echo "[docs_sphinx] python3 -m venv failed: the runner image needs Python's venv module (Debian/Ubuntu: python3-venv) to install docs/requirements.txt"
+        exit 1
+      }
+      . "$CI_PROJECT_DIR/.docs-venv/bin/activate"
+      python -m pip install -r docs/requirements.txt
       # Doxygen XML for breathe. TADAH_BUILD_DOCS_ONLY skips heavy library
       # probes so configure is light.
       cmake -S . -B build -DTADAH_BUILD_DOCS_ONLY=ON -DFETCHCONTENT_UPDATES_DISCONNECTED=ON

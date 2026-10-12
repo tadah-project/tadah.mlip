@@ -152,6 +152,34 @@ class ReadTomlTest(unittest.TestCase):
         self.assertNotIn('*Allowed values*', self.section(self.rt.render(bp),
                                                           'LAMBDA'))
 
+    def test_exact_in_potential_is_shown(self):
+        # blueprint field `exact_in_potential` (CORE): a key whose numbers a
+        # potential records exactly whatever NUMERIC is (the cutoff and grid
+        # keys, which a load checks exactly). The page says so after the
+        # value count; a key without the field (or with it false) says
+        # nothing. Before the fix the field was not rendered.
+        bp = blueprint()
+        bp['TYPES']['DOUBLES'] = {'value_type': ['{DOUBLE}'],
+                                  'value_format': ['<double> ...'],
+                                  'value_N': [-2147483647],
+                                  'examples': ['3.0']}
+        bp['ALLOWED_KEYS']['RCUT2B'] = {'INHERIT': ['TYPES.DOUBLES'],
+                                        'exact_in_potential': True,
+                                        'description': 'Cutoff.'}
+        bp['ALLOWED_KEYS']['WEIGHTS'] = {'INHERIT': ['TYPES.DOUBLES'],
+                                         'exact_in_potential': False,
+                                         'description': 'Weights.'}
+        page = self.rt.render(bp)
+        sec = self.section(page, 'RCUT2B')
+        self.assertIn('   *In a potential file*: written exactly, whatever '
+                      'NUMERIC is (a load checks it exactly)\n', sec)
+        self.assertLess(sec.index('*Max number of values*'),
+                        sec.index('*In a potential file*'))
+        self.assertNotIn('*In a potential file*',
+                         self.section(page, 'WEIGHTS'))
+        self.assertNotIn('*In a potential file*',
+                         self.section(page, 'LAMBDA'))
+
     def test_multiline_reason_stays_inside_the_warning(self):
         sec = self.section(
             self.rt.render(blueprint({'deprecated': 'Line one.\nLine two.'})),

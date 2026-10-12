@@ -3944,6 +3944,52 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
                  "tadah explain: no command or configuration key 'bogus'"));
 }
 
+/* Pins: a name with two meanings prints both: `tadah explain RANDOM` (and
+ * `random`) exits 0 and prints the configuration key RANDOM's text (a data
+ * key: "Draws N distinct structures ..."), then, in a build with HPO, a
+ * blank line, "RANDOM also names an optimiser of `tadah hpo`:" (the name as
+ * written) and TADAH:RANDOM's help ("Options for TADAH:RANDOM", its stops),
+ * so `tadah explain <ALGO>`, which the optimiser table and `tadah hpo
+ * --help` point to, reaches it; `tadah explain TADAH:RANDOM` prints the
+ * optimiser's help alone. Without HPO the key's text alone.
+ * Before the fix: `tadah explain RANDOM` printed the data key's text alone
+ * (a configuration key answered first and the optimiser help was not
+ * asked), with nothing to say that TADAH:RANDOM was meant: the "also names"
+ * and "Options for TADAH:RANDOM" checks fail. */
+TEST_CASE("Subcommand: explain: a name that is a configuration key and an "
+          "optimiser prints both",
+          "[TadahCLI][exit-status][explain][explain_algo]") {
+  ScratchCwd cwd("explain_random");
+  const std::string key_text = "Draws N distinct structures from the whole "
+                               "dataset";
+  for (const char* name : {"RANDOM", "random"}) {
+    const CliRun r = run_tadah({"tadah", "explain", name});
+    INFO(name << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(r.out.rfind(key_text, 0) == 0);
+#ifdef TADAH_ENABLE_NFP
+    const std::size_t also = r.out.find(
+        "\n\n" + std::string(name) +
+        " also names an optimiser of `tadah hpo`:\nOptions for "
+        "TADAH:RANDOM\n");
+    CHECK(also != std::string::npos);
+    CHECK(contains(r.out, "Stops that end a run: MAXEVAL"));
+    CHECK(r.out.find(key_text, 1) == std::string::npos);
+#else
+    CHECK_FALSE(contains(r.out, "also names"));
+    CHECK_FALSE(contains(r.out, "Options for TADAH:RANDOM"));
+#endif
+  }
+#ifdef TADAH_ENABLE_NFP
+  const CliRun r = run_tadah({"tadah", "explain", "TADAH:RANDOM"});
+  INFO("TADAH:RANDOM: status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(r.out.rfind("Options for TADAH:RANDOM\n", 0) == 0);
+  CHECK_FALSE(contains(r.out, key_text));
+  CHECK_FALSE(contains(r.out, "also names"));
+#endif
+}
+
 /* Pins: `tadah hpo --help` names `tadah explain ALGO`, where the optimisers
  * of a target's LIB and ALGO are listed, and `tadah explain <LIB>:<ALGO>`.
  * Before the fix: the help said nothing of them (its long description

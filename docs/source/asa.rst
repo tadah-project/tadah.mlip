@@ -176,8 +176,9 @@ stream (unset → non-reproducible ``random_device``).  The first ``INIT``
 point becomes ASA's starting point and sets ``User_Initial_Parameters
 1``; without an ``INIT`` block that point is the configuration's values
 (``CONFIG``), as for every optimiser.  Only when the ``INIT`` chain yields
-no point (a ``WARM`` seed file that is missing under
-``WARM_ON_MISMATCH warn`` or ``skip``) is ``User_Initial_Parameters`` 0:
+no point (a ``WARM`` seed that misses an ``OPTIM`` value or lies outside
+the box, under ``WARM_ON_MISMATCH skip``; a missing or unreadable seed
+file is an error under every policy) is ``User_Initial_Parameters`` 0:
 ASA then draws its first state at random around the OPTIM box centre,
 from its generating distribution at the initial parameter temperature,
 redrawn until it is valid; the centre itself is not evaluated.  ``PARAM

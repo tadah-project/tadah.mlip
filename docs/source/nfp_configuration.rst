@@ -2387,6 +2387,23 @@ Until 2026-10-07 these refusals named the phase and no line; the check of
 the ``ANALYTICAL`` setup, the ``STEP`` rules, the gradient rules and the
 multi-rank refusal named none until 2026-10-12.
 
+A refusal of an ``INIT`` or ``RESTART`` block's ``METHOD`` entry, which
+startup makes when it draws the chain after reading the file, names the
+``METHOD`` line in the same form: a ``WARM`` file that is missing or
+unreadable, a ``WARM`` seed whose ``RHOFORM`` the run refuses or that
+``WARM_ON_MISMATCH error`` refuses, a ``SOBOL`` block beyond the end of
+the sequence (until 2026-10-12 they named no line):
+
+.. code-block:: none
+
+   HPOEngine error: Error on line 3: WARM: cannot open seed file 'missing.tadah'. Provide the file (production submit scripts copy it into the run dir) or drop the WARM line to start from the in-config values.
+   Line:     METHOD WARM missing.tadah
+
+These startup refusals name no line of the file: a starting point outside
+its ``OPTIM`` box or not finite (``INIT[OUTER] starting point 1: …``),
+``FAILSCORE_GRADING ON`` without a finite positive ``FAILSCORE``, and the
+bump-support and density gates, which name their keys.
+
 A search space without an ``OPTIM`` line is refused for every phase whose
 optimiser is NLopt, DLIB or CERES, at its block's line: ``Error on line
 14: the PRESTAGE exploration (EXPLORE block): NLOPT:GN_DIRECT cannot

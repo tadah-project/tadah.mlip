@@ -196,9 +196,10 @@ other hidden `[!benchmark]` case of HPO, the bump gate, runs in
 `hpo_bumpgate_e2e` (`ctest -L e2e`).
 
 `ctest -L headers` checks that every header compiles on its own: one entry
-per module (`tadah.core_headers`, `tadah.models_headers`, `tadah.mlip_headers`,
-`tadah.md_headers`, `tadah.lammps_headers`, `tadah.hpo_headers` and, for the
-`tadah` executable, `tadah_headers`), from cmake-tools'
+per module the build configures (`tadah.core_headers`, `tadah.models_headers`,
+`tadah.mlip_headers` and, with `TADAH_ENABLE_NFP`, `tadah.md_headers`,
+`tadah.lammps_headers` and `tadah.hpo_headers`) and, for the `tadah`
+executable, `tadah_headers`, from cmake-tools'
 `tadah_add_header_check()`. Each header of the module's `include/` (and
 CORE's generated blueprint header) is compiled in a translation unit that
 includes it twice and nothing else, with the include directories and
@@ -209,7 +210,10 @@ A new header is checked without being registered. The checks are not part of
 the default build; their entries build them (`cmake --build`), on the
 machine's physical cores or on `-DTADAH_HEADER_CHECK_JOBS=<n>` processes, and
 a rerun compiles only what changed. `ctest -R tadah_header_check` tests the function
-itself. The installed tree is not checked.
+itself; those entries need CMake 3.19 (they read CTest's test list with
+`string(JSON)`), and on an older CMake, which a build without
+`TADAH_ENABLE_NFP` accepts (3.15), they are Skipped with a line that says
+so. The installed tree is not checked.
 
 **Skipped, not passed.** A test that cannot run because an optional input
 is absent (an external dataset, an environment variable) must be reported
@@ -240,8 +244,50 @@ the suite skips exactly the two MLIP `NNFinder: real CH4 phase-I structure`
 cases (`TADAH_TEST_PHASEI_DB`) and `hpo_strategy_matrix`
 (`TADAH_HPO_INTEGRATION_BUNDLE`); `tadah_docs_tools` is Skipped too when one
 of its tools is missing. A build without `TADAH_ENABLE_NFP` also skips
-`tadah_cli_example_ex_2`, whose README runs `tadah hpo`. See the cmake-tools README, *Skipped tests: the
-TADAH-SKIP marker*, for the rules.
+`tadah_cli_example_ex_2`, whose README runs `tadah hpo`, and the Catch case
+`quickstart: in.ml with the shipped pot.tadah conserves energy and keeps
+the bcc crystal` (`pair_style tadah` is not built); a build without
+`TADAH_ENABLE_CERES` skips `RHOFORM NONNEG/MONOTONE: one WARNING when an
+optimiser can leave the box` (its optimiser is `CERES:LBFGS`). See the
+cmake-tools README, *Skipped tests: the TADAH-SKIP marker*, for the rules.
+
+**Build configurations tested.** The suite above is that of a build with
+`TADAH_ENABLE_NFP` and `TADAH_ENABLE_CERES` (Ceres is ON by default, NFP
+OFF). The configurations without them are built and tested the same way,
+from the same sources, each in a build directory of its own:
+
+```bash
+# Without Ceres: LIB CERES is refused as not built, and tadah refit
+# refuses REFIT_MODE compact (use REFIT_MODE dense).
+cmake -S Tadah.MLIP -B build_tadah_noceres -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON \
+    -DTADAH_ENABLE_NFP=ON -DTADAH_ENABLE_CERES=OFF \
+    -DTADAH_LAMMPS_DIR=... -DTADAH_LAMMPS_LIB=...    # as for the NFP build
+# Without NFP (the default): no HPO, no LAMMPS.
+cmake -S Tadah.MLIP -B build_tadah_nonfp -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON
+
+cmake --build build_tadah_noceres -j     # and build_tadah_nonfp
+ctest --test-dir build_tadah_noceres --output-on-failure --no-tests=error
+```
+
+With an initial-cache preset (`-C <preset>`), add `-DTADAH_ENABLE_CERES=OFF`
+or `-DTADAH_ENABLE_NFP=OFF` to its command line. Each suite runs clean with
+the skips listed above. Without Ceres, the test cases that need it are not
+compiled (they are not registered, as `test_hpo` is not built without
+NFP), and those that use `LIB CERES` as an example check its refusal
+instead. Without NFP the tests of HPO, MD and Tadah.LAMMPS are not built,
+and the labels `e2e`, `bench`, `shutdown`, `statistical`, `anneal`, `slow`,
+`hpo` and `mpi` have no entry: `ctest -L e2e` there runs nothing, which
+`--no-tests=error` reports as a failure (without it CTest exits 0). Every build checks these configurations
+in part: `tadah_without_nfp_links` (label `cmake`, builds with NFP) builds
+and runs `tadah` as a build without NFP links it, and
+`hpo_configure_without_ceres` (label `cmake`) configures HPO without Ceres
+and checks that `tadah.hpo` still has Eigen. Neither compiles HPO without
+Ceres or runs the suites of the other configurations: build and test both
+after a change to the CMake files or to code under `TADAH_ENABLE_NFP` or
+`TADAH_USE_CERES`. `tadah_cmake_minimum_features` checks that no CMake file
+of Tadah.MLIP uses a command or option newer than its
+`cmake_minimum_required()` (`tests/cmake_minimum/check_cmake_features.py`
+lists them).
 
 **The MPI build (`TADAH_HPO_MPI`).** The registered suite above is the
 serial build's, and it runs no MPI code: the multi-rank `ANNEAL_PT` /

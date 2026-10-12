@@ -123,11 +123,20 @@ Index
    * - 13
      - `13_restart <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/v1-dev/examples/13_restart>`_
      - The ``RESTART`` decorator relaunches the optimiser from a fresh
-       seed after ``AFTER_STAGNATION`` stalled evals, up to ``MAX`` times.
-       Here ``DLIB:BFGS`` converges on the upper bound of ``RCUT2B``
-       before the window passes, and no restart fires: ``RESTART``
-       relaunches a search that stagnates, not one that ends.
-     - ``RESTART``, ``AFTER_STAGNATION``
+       point after ``AFTER_STAGNATION`` stalled evals, up to ``MAX`` times.
+       Here ``NLOPT:LN_SBPLX`` climbs to the upper bound of ``RCUT2B``
+       and stays there; each of the two restarts starts from a ``RANDOM``
+       point drawn with ``SEED + r`` (the ``RESTART`` block's ``SEED
+       13``). The window counts evaluations without a new best of the
+       run: restart 1, from ``RCUT2B`` = 4.541125, is ended after 3 such
+       evaluations while its loss still falls, short of the bound;
+       restart 2, from 5.422967, reaches the bound and stagnates, and
+       the third stagnation ends the run: 15 evaluations, the same in
+       every run. (Until 2026-10-12 it
+       ran ``DLIB:BFGS`` with restart points from ``std::random_device``,
+       then a ``DLIB:BFGS`` search that converged before the window
+       passed, so no restart fired.)
+     - ``RESTART``, ``AFTER_STAGNATION``, ``SEED``
    * - 14
      - `14_mlsl_inner <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/v1-dev/examples/14_mlsl_inner>`_
      - NLopt MLSL global driver with a mandatory ``INNER`` local

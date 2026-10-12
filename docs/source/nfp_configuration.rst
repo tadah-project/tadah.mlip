@@ -4293,10 +4293,10 @@ from those it has, and the journal says so:
 
    PRESTAGE: 4 usable candidate(s) for TOPK 6 (the exploration made 6 evaluation(s), 2 without a usable loss); refining 4
 
-If the exploration yields no candidate — none of its evaluations
-produced a usable loss, or it made none — the refinement runs from the
-OPTIMIZER-level ``INIT`` points instead (in a ``RESTART`` round, the
-round's fresh points), and the journal says why in a ``WARNING``:
+If the exploration yields no candidate because none of its evaluations
+produced a usable loss, the refinement runs from the OPTIMIZER-level
+``INIT`` points instead (in a ``RESTART`` round, the round's fresh
+points), and the journal says why in a ``WARNING``:
 
 .. code-block:: none
 
@@ -4307,7 +4307,15 @@ whose points a gate rejected before training, an ``INIT`` point outside
 the region the exploration sampled, a search under ``FAILSCORE_GRADING
 ON`` that walks out of a failure region); a run that finds none ends
 without a usable loss (``STOPPED -- no evaluation produced a usable
-loss``, status 1).  Until 2026-10-07 a failed point (``FAILSCORE`` or a
+loss``, status 1).  Every exploration a configuration can set evaluates at
+least one point (its ``INIT`` point, or the first point of NLopt,
+``DLIB:GFS`` and ``ASA``; ``MAXEVAL`` is at least 1), so an exploration
+that made no evaluation at all is an internal error, and the run ends
+``FAILED -- PRESTAGE: the exploration (EXPLORE block) LIB:ALGO returned
+without evaluating a point, …`` (status 1); until 2026-10-12 the
+refinement ran from the ``INIT`` points after a ``WARNING`` (``PRESTAGE:
+produced no candidates -- running outer optimiser as-is``), which hid
+it.  Until 2026-10-07 a failed point (``FAILSCORE`` or a
 graded failure, not a gate reject) stayed among the candidates while
 fewer than ``TOPK`` usable ones existed, and the refinement started from
 it; an exploration whose every evaluation had failed so was refined from

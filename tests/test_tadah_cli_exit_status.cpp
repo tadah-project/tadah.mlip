@@ -4726,6 +4726,45 @@ TEST_CASE("Subcommand: train refuses the SBASIS of a basis-drawing M_KRR "
   }
 }
 
+/* Pins: with BIAS true and no ATOM line, `tadah train` takes ATOM from the
+ * datasets (the eight Nb-Ta cells of the [bias] cases: Nb Ta, two intercept
+ * vectors) and checks the SBASIS of M_KRR Kern_Linear 2 against them before
+ * the fit: SBASIS 2 is refused, exit 1 without a potential, naming "M_KRR
+ * Kern_Linear 2: SBASIS 2", "at least 3 basis vectors" and "the 2
+ * intercept vectors", without the word "non-linear"; SBASIS 3 trains (exit
+ * 0, 5 WEIGHTS: DSIZE, 2 intercepts and the 3 D2_BP weights).
+ * Before the fix: SBASIS 2 was refused by the fit's basis draw, without the
+ * model, as "SBASIS 2: a non-linear M_KRR model needs at least 3 basis
+ * vectors"; SBASIS 3 trained as well (a pin). */
+TEST_CASE("Subcommand: train refuses the SBASIS of M_KRR Kern_Linear 2 "
+          "against the species of the datasets with BIAS true and no ATOM",
+          "[TadahCLI][train][krr][bias][potential-content]") {
+  ScratchCwd cwd("krr2_sbasis_no_atom");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  const std::string keys =
+      with_line(with_line(kNbTaKeys, "ATOM", ""), "MODEL",
+                "MODEL M_KRR Kern_Linear 2");
+  {
+    std::ofstream("config") << "DBFILE db.tadah\n" << keys << "SBASIS 2\n";
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    const std::string rep = reported(r);
+    INFO("SBASIS 2: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "M_KRR Kern_Linear 2: SBASIS 2"));
+    CHECK(contains(rep, "at least 3 basis vectors"));
+    CHECK(contains(rep, "the 2 intercept vectors"));
+    CHECK_FALSE(contains(rep, "non-linear"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  std::ofstream("config") << "DBFILE db.tadah\n" << keys << "SBASIS 3\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "config", "-o",
+                              "pot.tadah"});
+  INFO("SBASIS 3: status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS").size() == 6u);  // key + 5
+}
+
 #ifdef TADAH_ENABLE_NFP
 /* Pins: a task file with two `TASK hpo` blocks (one evaluation each, at
  * the CONFIG seed of OPTIM CGRID2B (1); PC_ERMSE and PC_FRMSE), A with

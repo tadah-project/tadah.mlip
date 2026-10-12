@@ -3399,6 +3399,122 @@ TEST_CASE("Subcommand: refit: REFIT_COMPACT_MERGE under REFIT_BASIS Blip is "
   CHECK_FALSE(std::filesystem::exists("pot.tadah"));
 }
 
+/* Pins, through tadah, on the outputs of a dense refit of the small Ta setfl
+ * copied to in.tadah and in.hpotarget: `tadah refit --edit in.tadah --func
+ * phi --add 2.5 -o pot.tadah --hpofileout refit.hpotarget` writes
+ * pot.tadah and refit.hpotarget (no pot_edited.tadah or
+ * refit_edited.hpotarget), so does a task file with those keys, and `tadah
+ * refit --retarget in.hpotarget -o pot.tadah` writes pot.tadah (no
+ * in_retargeted.hpotarget).
+ * Before the fix: an -o / --hpofileout equal to the default name counted as
+ * unset, and all three wrote the edited or retargeted default names, without
+ * a word. */
+TEST_CASE("Subcommand: refit --edit and --retarget write an explicit output "
+          "name that is the default one",
+          "[TadahCLI][exit-status][refit]") {
+  ScratchCwd cwd("refit_explicit_default_names");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun fit = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    INFO("refit: status " << fit.status << "\n" << reported(fit));
+    REQUIRE(fit.status == 0);
+  }
+  std::filesystem::rename("pot.tadah", "in.tadah");
+  std::filesystem::rename("refit.hpotarget", "in.hpotarget");
+  const auto clean = [] {
+    for (const char* f : {"pot.tadah", "refit.hpotarget", "pot_edited.tadah",
+                          "refit_edited.hpotarget", "in_retargeted.hpotarget"})
+      std::filesystem::remove(f);
+  };
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--edit", "in.tadah",
+                                "--func", "phi", "--add", "2.5", "-o",
+                                "pot.tadah", "--hpofileout",
+                                "refit.hpotarget"});
+    INFO("--edit: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("pot.tadah"));
+    CHECK(std::filesystem::exists("refit.hpotarget"));
+    CHECK_FALSE(std::filesystem::exists("pot_edited.tadah"));
+    CHECK_FALSE(std::filesystem::exists("refit_edited.hpotarget"));
+  }
+  clean();
+  {
+    std::ofstream("edit.task")
+        << "TASK refit\nEDIT in.tadah\nFUNC phi\nADD 2.5\n"
+           "OUTFILE pot.tadah\nHPOFILEOUT refit.hpotarget\n";
+    const CliRun r = run_tadah({"tadah", "--task", "edit.task"});
+    INFO("task file: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("pot.tadah"));
+    CHECK(std::filesystem::exists("refit.hpotarget"));
+    CHECK_FALSE(std::filesystem::exists("pot_edited.tadah"));
+  }
+  clean();
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--retarget",
+                                "in.hpotarget", "-o", "pot.tadah"});
+    INFO("--retarget: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("pot.tadah"));
+    CHECK_FALSE(std::filesystem::exists("in_retargeted.hpotarget"));
+  }
+}
+
+/* Pins: tadah refit refuses, with status 1 and before the EAM file is read
+ * (it does not exist), a REFIT_BASIS that names no basis family (Blipp),
+ * a REFIT_LEVEL or REFIT_PLACEMENT that is none of their values (acurate,
+ * unifrom), and REFIT_CONSTRAIN_F0 under EMBF0 ZERO (the default), each
+ * naming the key and what it takes; and fits REFIT_BASIS BLIP (the Blip
+ * family) dense without the experimental-Gaussian WARNING.
+ * Before the fix: all four ran (the EAM file read first), fitting Blip for
+ * Blipp with the Gaussian WARNING, the balanced preset for acurate, the
+ * window placement for unifrom, and REFIT_CONSTRAIN_F0 true without a word;
+ * BLIP fitted Blip with the Gaussian WARNING. */
+TEST_CASE("Subcommand: refit refuses a word key that is none of its values",
+          "[TadahCLI][exit-status][refit]") {
+  ScratchCwd cwd("refit_word_keys");
+  const std::string head =
+      "EAM absent.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n";
+  for (const auto& [lines, message] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"REFIT_BASIS Blipp\n",
+            "tadah refit: REFIT_BASIS 'Blipp' is no basis family of tadah "
+            "refit"},
+           {"REFIT_BASIS Blip\nREFIT_LEVEL acurate\n",
+            "tadah refit: REFIT_LEVEL must be 'coarse', 'balanced' (the "
+            "default), 'fine' or 'accurate' (in any letter case), got "
+            "'acurate'"},
+           {"REFIT_BASIS Blip\nREFIT_PLACEMENT unifrom\n",
+            "tadah refit: REFIT_PLACEMENT must be 'window' (the default) or "
+            "'uniform' (in any letter case), got 'unifrom'"},
+           {"REFIT_BASIS Blip\nREFIT_CONSTRAIN_F0 true\n",
+            "tadah refit: REFIT_CONSTRAIN_F0 has no effect under EMBF0 ZERO "
+            "(the default): only EMBF0 FREE reads it; remove "
+            "REFIT_CONSTRAIN_F0, or set EMBF0 FREE"}}) {
+    std::ofstream("config.refit") << head << lines;
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    const std::string rep = reported(r);
+    INFO(lines << "status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, message));
+    CHECK_FALSE(contains(rep, "absent.alloy"));
+  }
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS BLIP\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  const CliRun r = run_tadah({"tadah", "refit", "-c", "config.refit"});
+  const std::string rep = reported(r);
+  INFO("BLIP: status " << r.status << "\n" << rep);
+  CHECK(r.status == 0);
+  CHECK_FALSE(contains(rep, "EXPERIMENTAL"));
+  CHECK(contains(slurp("pot.tadah"), "D2_Blip"));
+}
+
 /* ---- explain: a long description is printed as text ------------------ */
 
 /* Pins: `tadah explain refit.optimizer` exits 0 and prints the key's long

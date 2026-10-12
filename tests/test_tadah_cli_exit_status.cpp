@@ -3106,7 +3106,9 @@ TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
  * new.hpotarget` exits 1 with "tadah refit --retarget: HPOFILEOUT has no
  * effect under --retarget: only a refit of an EAM file and --edit read it;
  * remove HPOFILEOUT (the file --retarget writes is -o, OUTFILE)" and writes
- * neither new.hpotarget nor refit_edited.hpotarget, and `tadah refit -c
+ * neither new.hpotarget nor refit_retargeted.hpotarget (its default name;
+ * refit_edited.hpotarget until the --retarget default was
+ * <input>_retargeted), and `tadah refit -c
  * edit.refit` with EDIT, FUNC, ADD and N2B 50 exits 1 with "tadah refit
  * --edit: N2B has no effect under --edit: only a refit of an EAM file in
  * REFIT_MODE dense reads it; remove N2B" and writes no pot_edited.tadah;
@@ -3144,14 +3146,14 @@ TEST_CASE("Subcommand: refit --edit and --retarget refuse a key of a refit "
                         "--edit read it; remove HPOFILEOUT (the file "
                         "--retarget writes is -o, OUTFILE)"));
     CHECK_FALSE(std::filesystem::exists("new.hpotarget"));
-    CHECK_FALSE(std::filesystem::exists("refit_edited.hpotarget"));
+    CHECK_FALSE(std::filesystem::exists("refit_retargeted.hpotarget"));
   }
   {
     const CliRun r =
         run_tadah({"tadah", "refit", "--retarget", "refit.hpotarget"});
     INFO("--retarget: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
-    CHECK(std::filesystem::exists("refit_edited.hpotarget"));
+    CHECK(std::filesystem::exists("refit_retargeted.hpotarget"));
   }
   const std::string edit = "EDIT pot.tadah\nFUNC phi\nADD 2.5\n";
   {
@@ -3235,6 +3237,102 @@ TEST_CASE("Task file: a global NUMERIC does not stop a refit --retarget "
   }
 }
 
+/* Pins: the --edit and --retarget TASK refit of one task file write
+ * different default hpotargets, so neither overwrites the other's. On the
+ * outputs of a dense refit of the small Ta setfl (pot.tadah,
+ * refit.hpotarget), `tadah --task run.task` with an --edit TASK refit
+ * (EDIT pot.tadah, FUNC phi, ADD 2.5) and a --retarget TASK refit
+ * (RETARGET refit.hpotarget, PCT 10), in either order, exits 0 and leaves
+ * refit_edited.hpotarget byte-identical to the file `tadah refit --edit
+ * pot.tadah --func phi --add 2.5` writes alone, and
+ * refit_retargeted.hpotarget byte-identical to the file `tadah refit
+ * --retarget refit.hpotarget --pct 10 -o alone.hpotarget` writes.
+ * Before the fix: --retarget's default was <input>_edited<ext>, the --edit
+ * default refit_edited.hpotarget for this input, so the second task
+ * overwrote the first task's file (exit 0): refit_edited.hpotarget was the
+ * --retarget file with the --edit task first and the --edit file with it
+ * second, and refit_retargeted.hpotarget was never written. */
+TEST_CASE("Task file: refit --edit and --retarget tasks write different "
+          "default hpotargets",
+          "[TadahCLI][exit-status][task-file][refit]") {
+  ScratchCwd cwd("refit_edit_retarget_outputs");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun fit = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    INFO("refit: status " << fit.status << "\n" << reported(fit));
+    REQUIRE(fit.status == 0);
+    REQUIRE(std::filesystem::exists("pot.tadah"));
+    REQUIRE(std::filesystem::exists("refit.hpotarget"));
+  }
+  std::string edit_alone, retarget_alone;
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--edit", "pot.tadah",
+                                "--func", "phi", "--add", "2.5"});
+    INFO("--edit: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    edit_alone = slurp("refit_edited.hpotarget");
+    REQUIRE_FALSE(edit_alone.empty());
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--retarget",
+                                "refit.hpotarget", "--pct", "10", "-o",
+                                "alone.hpotarget"});
+    INFO("--retarget: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    retarget_alone = slurp("alone.hpotarget");
+    REQUIRE_FALSE(retarget_alone.empty());
+  }
+  REQUIRE(edit_alone != retarget_alone);
+  const std::string edit =
+      "TASK refit\nEDIT pot.tadah\nFUNC phi\nADD 2.5\n\n";
+  const std::string retarget =
+      "TASK refit\nRETARGET refit.hpotarget\nPCT 10\n\n";
+  for (const std::string& file : {edit + retarget, retarget + edit}) {
+    for (const char* f : {"pot_edited.tadah", "refit_edited.hpotarget",
+                          "refit_retargeted.hpotarget"})
+      std::filesystem::remove(f);
+    std::ofstream("run.task") << file;
+    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+    INFO("task file:\n" << file << "status " << r.status << "\n"
+                        << reported(r));
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("pot_edited.tadah"));
+    CHECK(slurp("refit_edited.hpotarget") == edit_alone);
+    CHECK(slurp("refit_retargeted.hpotarget") == retarget_alone);
+  }
+}
+
+/* Pins: `tadah refit -c` with REFIT_BASIS Blip in compact mode (the
+ * default) and REFIT_COMPACT_MERGE true exits 1 with "tadah refit:
+ * REFIT_COMPACT_MERGE has no effect under REFIT_BASIS Blip: only the knot
+ * families (REFIT_BASIS Knot5, the compact default, Knot3 or KnotMix) read
+ * it; remove REFIT_COMPACT_MERGE, or set REFIT_BASIS Knot5", before the
+ * EAM file is read (absent here), in every build.
+ * Before the fix: the key passed the mode rule, so the run went on and
+ * exited 1 for another reason: reading the absent EAM file in a build
+ * with the compact fitter, refusing compact mode in one without it. */
+TEST_CASE("Subcommand: refit: REFIT_COMPACT_MERGE under REFIT_BASIS Blip is "
+          "refused with status 1",
+          "[TadahCLI][exit-status][refit]") {
+  ScratchCwd cwd("refit_merge_blip");
+  std::ofstream("config.refit")
+      << "EAM absent.alloy\nRHOFORM SIGNED\nREFIT_BASIS Blip\n"
+         "REFIT_COMPACT_MERGE true\n";
+  const CliRun r = run_tadah({"tadah", "refit", "-c", "config.refit"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "tadah refit: REFIT_COMPACT_MERGE has no effect under "
+                      "REFIT_BASIS Blip: only the knot families (REFIT_BASIS "
+                      "Knot5, the compact default, Knot3 or KnotMix) read "
+                      "it; remove REFIT_COMPACT_MERGE, or set REFIT_BASIS "
+                      "Knot5"));
+  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+}
+
 /* ---- explain: a long description is printed as text ------------------ */
 
 /* Pins: `tadah explain refit.optimizer` exits 0 and prints the key's long
@@ -3255,13 +3353,17 @@ TEST_CASE("Subcommand: explain: a long description is printed as text",
   CHECK_FALSE(contains(r.out, "::\n"));
 }
 
-/* Pins: `tadah explain` exits 1 for an option that names no command or no
- * option of its command, naming what it did not find: "tadah explain: no
- * command 'bogus'" (bogus.key), "tadah explain: refit has no option
- * 'nosuchkey'" (refit.nosuchkey).
+/* Pins: `tadah explain` exits 1 for an option that names no command, no
+ * option of its command and no configuration key, naming what it did not
+ * find: "tadah explain: no command 'bogus'" (bogus.key: a dotted option
+ * starts with a command), "tadah explain: refit has no option 'nosuchkey',
+ * and it is no configuration key" (refit.nosuchkey), "tadah explain: no
+ * command or configuration key 'bogus'" (bogus). (Until `tadah explain`
+ * read the configuration keys, refit.nosuchkey's message ended at
+ * 'nosuchkey' and bogus's was "tadah explain: no command 'bogus'".)
  * Before the fix: bogus.key dereferenced the end of the command map and
- * the process died of SIGSEGV; refit.nosuchkey exited 0 and printed
- * nothing. */
+ * the process died of SIGSEGV; refit.nosuchkey and bogus exited 0 and
+ * printed nothing. */
 TEST_CASE("Subcommand: explain: an unknown command or option is refused "
           "with status 1",
           "[TadahCLI][exit-status][explain]") {
@@ -3269,13 +3371,54 @@ TEST_CASE("Subcommand: explain: an unknown command or option is refused "
   for (const auto& [option, message] :
        std::vector<std::pair<std::string, std::string>>{
            {"refit.nosuchkey", "tadah explain: refit has no option "
-                               "'nosuchkey'"},
+                               "'nosuchkey', and it is no configuration "
+                               "key"},
+           {"bogus", "tadah explain: no command or configuration key "
+                     "'bogus'"},
            {"bogus.key", "tadah explain: no command 'bogus'"}}) {
     const CliRun r = run_tadah({"tadah", "explain", option});
     INFO(option << ": status " << r.status << "\n" << reported(r));
     CHECK(r.status == 1);
     CHECK(contains(reported(r), message));
   }
+}
+
+/* Pins: `tadah explain <KEY>` and `tadah explain <command>.<KEY>` exit 0
+ * and print a configuration key that is no option of a command: `tadah
+ * explain SETFL` its long description as text ("A configuration with both
+ * descriptors and one setfl file:", a blank line, "    INIT2B    true"),
+ * `tadah explain TYPE2B` its examples of several lines with each line
+ * indented ("EXAMPLES: \n  D2_LJ Kr Kr\n  D2_mJoin\n  D2_MIE 11 6 Ti
+ * Ti\n"), `tadah explain refit.rhoform` RHOFORM's text, as `tadah
+ * explain RHOFORM` does (`tadah refit --help` names RHOFORM).
+ * Before the fix: the three exited 1, "tadah explain: no command 'SETFL'",
+ * "... 'TYPE2B'" and "tadah explain: refit has no option 'rhoform'". */
+TEST_CASE("Subcommand: explain: a configuration key that is no option of a "
+          "command is explained",
+          "[TadahCLI][exit-status][explain]") {
+  ScratchCwd cwd("explain_config_keys");
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "SETFL"});
+    INFO("SETFL: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "A configuration with both descriptors and one "
+                          "setfl file:\n\n    INIT2B    true\n"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "TYPE2B"});
+    INFO("TYPE2B: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "EXAMPLES: \n  D2_LJ Kr Kr\n  D2_mJoin\n"
+                          "  D2_MIE 11 6 Ti Ti\n"));
+  }
+  const CliRun r = run_tadah({"tadah", "explain", "refit.rhoform"});
+  INFO("refit.rhoform: status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  const CliRun key = run_tadah({"tadah", "explain", "RHOFORM"});
+  INFO("RHOFORM: status " << key.status << "\n" << reported(key));
+  CHECK(key.status == 0);
+  CHECK_FALSE(r.out.empty());
+  CHECK(r.out == key.out);
 }
 
 /* ---- explain: the description of a key without a long description --- */

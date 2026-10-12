@@ -49,6 +49,11 @@
 // on the GLOBAL keys), and on task files with a TASK line naming a group of
 // tasks (refused before any task runs); they run in every build.
 //
+// The [not-built] cases run `tadah hpo`, a task file with `TASK hpo`,
+// `tadah -h`, `tadah hpo -h` and `tadah explain hpo`: a tadah built without
+// TADAH_ENABLE_NFP refuses hpo before any task runs, naming the build
+// option, and its help says so; a tadah with NFP does not.
+//
 // The [refit] cases run `tadah refit` (dense) with a configuration number
 // out of its range, which is refused naming the key and the token, and with
 // a key of the other REFIT_MODE, which is refused naming the key and the
@@ -2772,6 +2777,149 @@ TEST_CASE("Task file: a TASK line without key lines runs on the GLOBAL keys",
   REQUIRE(std::filesystem::exists("energy.pred"));
   CHECK(predicted_values("energy.pred").size() == 3u);
 }
+
+/* ---- [not-built]: tadah hpo in a tadah built without NFP -------------- */
+
+namespace {
+
+/* What a tadah built without TADAH_ENABLE_NFP says of hpo. */
+const char* const kHpoNotBuilt =
+    "tadah hpo needs the Nested Fitting Procedure, which this tadah was "
+    "built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see "
+    "Installation)";
+
+/* `text` with each run of whitespace one space (the help wraps its lines). */
+std::string one_line(const std::string& text) {
+  std::string out;
+  bool blank = false;
+  for (char ch : text) {
+    if (std::isspace(static_cast<unsigned char>(ch))) {
+      blank = true;
+      continue;
+    }
+    if (blank && !out.empty()) out += ' ';
+    blank = false;
+    out += ch;
+  }
+  return out;
+}
+
+/* The hpo target of the [not-built] cases: one OPTIM line and a loss. */
+void write_hpo_target() {
+  std::ofstream("config.hpo") << "LOSS L2\nPC_ERMSE 0 1\n"
+                                 "OPTIM CGRID2B (1) 2.3 2.7\n";
+}
+
+}  // namespace
+
+#ifndef TADAH_ENABLE_NFP
+/* Pins: in a tadah built without TADAH_ENABLE_NFP, `tadah hpo -c
+ * config.train --hpotarget config.hpo` exits 1 with "tadah hpo needs the
+ * Nested Fitting Procedure, which this tadah was built without; reconfigure
+ * with -DTADAH_ENABLE_NFP=ON (see Installation)" and writes no
+ * best_pot.tadah; a task file with "TASK train" (CONFIG config.train) and
+ * then "TASK hpo" (CONFIG config.train, HPOTARGET config.hpo) exits 1 with
+ * the same message before the training runs: no pot.tadah.
+ * Before the fix: both exited 1 with "EngineFactory::create: No engine
+ * found for HPO", and the task file's training ran first and wrote
+ * pot.tadah. */
+TEST_CASE("Subcommand: hpo in a tadah built without NFP is refused, naming "
+          "TADAH_ENABLE_NFP",
+          "[TadahCLI][exit-status][not-built]") {
+  ScratchCwd cwd("hpo_not_built");
+  write_ta_dimer_training();
+  write_hpo_target();
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.train",
+                                "--hpotarget", "config.hpo"});
+    const std::string rep = reported(r);
+    INFO("tadah hpo: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, kHpoNotBuilt));
+    CHECK_FALSE(contains(rep, "No engine found"));
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  }
+  {
+    std::ofstream("run.task") << "VERBOSE 0\n"
+                                 "TASK train\n"
+                                 "  CONFIG config.train\n"
+                                 "TASK hpo\n"
+                                 "  CONFIG config.train\n"
+                                 "  HPOTARGET config.hpo\n";
+    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+    const std::string rep = reported(r);
+    INFO("tadah --task: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, kHpoNotBuilt));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
+/* Pins: in a tadah built without TADAH_ENABLE_NFP, `tadah -h` lists hpo as
+ * "hpo Optimize the model architecture and hyperparameters. tadah hpo needs
+ * the Nested Fitting Procedure, ...; reconfigure with -DTADAH_ENABLE_NFP=ON
+ * (see Installation)." (whitespace collapsed: the listing wraps), `tadah
+ * hpo -h` has the same two sentences, and `tadah explain hpo` ends with a
+ * blank line and that message with a full stop; each exits 0.
+ * Before the fix: none of them had the message (the listing and `tadah
+ * hpo -h` said only "Optimize the model architecture and
+ * hyperparameters.", and `tadah explain hpo` described the nested fitting
+ * procedure). */
+TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo say "
+          "that a tadah built without NFP has no hpo",
+          "[TadahCLI][exit-status][not-built]") {
+  ScratchCwd cwd("hpo_not_built_help");
+  const std::string described = std::string("Optimize the model architecture "
+                                            "and hyperparameters. ") +
+                                kHpoNotBuilt + ".";
+  {
+    const CliRun r = run_tadah({"tadah", "-h"});
+    INFO("tadah -h: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(one_line(r.out), "hpo " + described));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "-h"});
+    INFO("tadah hpo -h: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(one_line(r.out), described));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "hpo"});
+    INFO("tadah explain hpo: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    std::vector<std::string> lines;
+    std::istringstream in(r.out);
+    for (std::string l; std::getline(in, l);) lines.push_back(l);
+    REQUIRE(lines.size() >= 2);
+    CHECK(lines[lines.size() - 2].empty());
+    CHECK(lines.back() == std::string(kHpoNotBuilt) + ".");
+  }
+}
+#else
+/* Pins: in a tadah built with TADAH_ENABLE_NFP, `tadah -h` lists hpo as
+ * "hpo Optimize the model architecture and hyperparameters.", and neither
+ * it, `tadah hpo -h` nor `tadah explain hpo` (each exits 0 and prints
+ * something) says "which this tadah was built without".
+ * Before the fix: passes as well (a pin: only a tadah without NFP has the
+ * message). */
+TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo of a "
+          "tadah built with NFP do not say hpo is not built",
+          "[TadahCLI][exit-status][not-built]") {
+  ScratchCwd cwd("hpo_built_help");
+  for (const auto& args : std::vector<std::vector<std::string>>{
+           {"tadah", "-h"}, {"tadah", "hpo", "-h"}, {"tadah", "explain", "hpo"}}) {
+    const CliRun r = run_tadah(args);
+    INFO(args[1] << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK_FALSE(contains(r.out, "which this tadah was built without"));
+    CHECK_FALSE(r.out.empty());
+  }
+  const CliRun h = run_tadah({"tadah", "-h"});
+  CHECK(contains(one_line(h.out),
+                 "hpo Optimize the model architecture and hyperparameters."));
+}
+#endif  // TADAH_ENABLE_NFP
 
 /* ---- [descriptor]: a TYPE2B line needs its list keys -------------------- */
 

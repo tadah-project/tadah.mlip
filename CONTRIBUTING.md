@@ -170,12 +170,13 @@ runs the page's LAMMPS example, `in.ml`, with it.
 `hpo_bumpgate_e2e`, `hpo_nn_e2e`, `hpo_valmetric_e2e`, `hpo_pc_readback_e2e`, `hpo_trainer_e2e`, `hpo_hotvar_e2e`) and the `hpo_tadah_cli_*` cases, which run the built `tadah`: their entries
 set `TADAH_BINARY` to it in a build with the `tadah` target, and in one
 without it (a standalone HPO build) the cases are Skipped unless
-`TADAH_BINARY` names an executable. `hpo_tadah_cli_pc_readback` runs
-`tadah` under `PC_ISOLATION THREAD` and `PROCESS` and leaves
-`TADAH_PC_ISOLATION` out of its environment (it would override both), so its
-`PROCESS` half needs `socketpair` even where `TADAH_PC_ISOLATION=THREAD` is
-set. In an MPI build it runs `THREAD` only, and `tadah` under the launcher
-of one rank (`TADAH_MPIEXEC`, see *The MPI build* below).
+`TADAH_BINARY` names an executable. `hpo_tadah_cli_pc_readback` and
+`hpo_tadah_cli_pc_lammps_verbose` run `tadah` under `PC_ISOLATION THREAD`
+and `PROCESS` and leave `TADAH_PC_ISOLATION` out of its environment (it
+would override both), so their `PROCESS` half needs `socketpair` even where
+`TADAH_PC_ISOLATION=THREAD` is set. In an MPI build they run `THREAD` only,
+and `tadah` under the launcher of one rank (`TADAH_MPIEXEC`, see *The MPI
+build* below).
 
 `ctest -L bench` runs HPO's LAMMPS-driven cases, four entries of hidden
 Catch cases (`[.][!benchmark]`): `hpo_lammps_hessian` (the Hessian of a

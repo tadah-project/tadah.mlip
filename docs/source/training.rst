@@ -303,9 +303,18 @@ default: a DM_REAM training configuration without it stops before any
 fitting with the migration message (``RHOFORM SIGNED`` is the density of
 every tadah before 1.6.0); see :ref:`DM_REAM <dm_ream_rhoform>`.
 
-Runtime-only knobs (``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
-``HEALTH_LOG``) are stripped before write — leaving them in the file
-would trigger "Invalid key" errors in the LAMMPS-side parser.
+These settings of the run are not written: ``VERBOSE``, ``NUMERIC``,
+``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE`` and ``HEALTH_LOG``, and the
+``HPOTARGET`` and ``VALIDATION`` of a ``tadah hpo`` run (which a
+``best_pot.tadah`` of an earlier version, used as the configuration,
+carried). A potential records the model's settings and its fit; one that
+has these lines still loads. ``tadah predict`` and ``pair_style tadah`` read
+none of them except ``VERBOSE``: parsing a file with a ``VERBOSE`` line sets
+the Tadah log level of the process (``pair_style tadah`` in LAMMPS, a
+retrain with ``tadah train -c`` without ``-v``), and the model built from
+the file takes that verbosity (a kernel such as ``Kern_RBF`` prints its
+parameters when it is built at ``VERBOSE`` 1 or more, the default of a file
+without the line).
 
 .. _retrain_from_potential:
 
@@ -321,6 +330,24 @@ training configuration without its datasets, so it retrains with the
    cp pot.tadah retrain.train
    echo "DBFILE db.train" >> retrain.train
    tadah train -c retrain.train -o pot2.tadah
+
+Without the ``DBFILE`` line ``tadah train`` refuses the configuration
+before it reads anything::
+
+   The training configuration has no DBFILE: tadah train fits the datasets
+   it lists. A potential records no DBFILE (no potential tadah writes has
+   one): to train from one, add a DBFILE line to a copy of it (the Training
+   page of the documentation, Retraining from a potential).
+
+``tadah hpo`` runs without a training ``DBFILE`` only when ``FIXINDEX`` and
+``FIXWEIGHT`` pin every weight (:ref:`hpo_fixweight`). Its refusals of a
+``-c`` configuration without one end with the same advice where the weights
+cannot be determined (no ``FIXINDEX``/``FIXWEIGHT``, pins that do not cover
+every weight, a basis drawn from the training data) and where ``ATOM`` is
+missing. With every weight pinned, ``GRAD_STRATEGY ANALYTICAL`` is refused
+for the missing ``DBFILE`` with the advice to set ``GRAD_STRATEGY HYBRID``
+instead: with a ``DBFILE`` line the pins would be refused next (``FIXINDEX
+pins model weights``).
 
 The fit replaces what the potential holds of its own fit (``WEIGHTS``, the
 ``BASIS`` of a non-linear kernel, ``NMEAN``, ``NSTDEV``, ``SIGMA``); none of
@@ -351,7 +378,9 @@ structures would be fitted twice. To give a dataset more weight, use
    before you add the ``DBFILE`` of a retrain (the duplicated entry is
    refused), or train from it as it is, on the dataset it names. ``M_KRR``
    potentials did not record ``ALPHA`` and ``BETA``; they do now, as
-   ``M_BLR`` ones did.
+   ``M_BLR`` ones did. ``tadah train`` with a configuration without
+   ``DBFILE`` (an ``M_KRR`` potential as it is) stopped with ``Key not found
+   in the Context object: DBFILE``.
 
 .. _pot_number_format:
 

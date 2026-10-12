@@ -456,7 +456,8 @@ many-body cutoff ``RCTYPEMB``, :math:`\psi_n` the basis function of centre
    * - ``SIGNED``
      - :math:`W f_c(r) \sum_n a_n\,\psi_n(r)`, amplitudes of any sign
      - None: :math:`\rho` can go negative (in the tail, say). This is the
-       density of every tadah before 1.6.0, bit for bit.
+       density of every tadah before 1.6.0, bit for bit when built with the
+       same compiler flags (see below).
    * - ``NONNEG``
      - :math:`W \max(f_c(r),0) \sum_n a_n\,\psi_n(r)`, every
        :math:`a_n \ge 0`
@@ -474,8 +475,17 @@ many-body cutoff ``RCTYPEMB``, :math:`\psi_n` the basis function of centre
 On a density that is valid under both (every amplitude :math:`\ge 0`),
 ``NONNEG`` is bit-identical to ``SIGNED`` wherever :math:`f_c \ge 0`; the two
 differ only where the cutoff dips below 0 (``Cut_Poly`` and ``Cut_PolyS``, by
-about ``-2.7e-15`` near ``RCUTMB``). The key is global: every DM_REAM block,
-including the children of a ``DM_mJoin``, uses the same form. Values are
+about ``-2.7e-15`` near ``RCUTMB``). ``SIGNED`` evaluates the sums of the
+earlier density with the same code and compiler flags (Tadah.MODELS' own),
+so a build gives the density an earlier version built the same way gave, bit
+for bit: with the flags of the presets (no ``-march=native``, no
+``-ffast-math``), LTO and a ``tadah`` built with ``TADAH_MARCH_NATIVE``
+included, the tests check it against values recorded from tadah before 1.6.0.
+A Tadah.MODELS compiled for the build machine (``-march=native`` in
+``CMAKE_CXX_FLAGS``) lets the compiler fuse multiply-adds, as it did in the
+earlier version; with link-time optimisation as well, the two can then differ
+by rounding errors. The key is global: every DM_REAM block, including the
+children of a ``DM_mJoin``, uses the same form. Values are
 case-insensitive and written in upper case; any other value is an error at
 its line of the configuration or potential file (``Invalid value for key
 RHOFORM on line 24 of pot.tadah: 'SQUARE' (allowed: SIGNED, NONNEG,

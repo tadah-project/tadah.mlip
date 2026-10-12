@@ -69,12 +69,16 @@ TadahCLI::TadahCLI()
 
   mlip::engines::registerAllMLIPEngines();
   /* `tadah explain ALGO`, `tadah explain <LIB>:<ALGO>`: the optimisers of
-   * tadah hpo, which MLIP's explain command reaches through its hook. */
+   * tadah hpo, which MLIP's explain command reaches through its hook; a
+   * name that is also a command or configuration key (RANDOM) prints that
+   * text first. */
 #ifdef TADAH_ENABLE_NFP
   hpo::engines::registerAllHPOEngines();
-  mlip::engines::set_explain_hook(&hpo::explain_optimiser);
+  mlip::engines::set_explain_hook(&hpo::explain_optimiser,
+                                  "an optimiser of `tadah hpo`");
 #else
-  mlip::engines::set_explain_hook(&explain_without_hpo);
+  mlip::engines::set_explain_hook(&explain_without_hpo,
+                                  "an optimiser of `tadah hpo`");
 #endif
 
   core::PeriodicTable::initialize();

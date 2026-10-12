@@ -747,7 +747,8 @@ found the first run's worker processes still running
 ``hpo_run.log`` counts, times and reports that run alone: its
 DIAGNOSTICS census and verdict, PERFORMANCE timings, milestones, BEST
 lines and RESULT best, and the rate limit of its hot-variable
-``rejecting`` warnings. Until 2026-10-12 they went on from the first
+``rejecting`` warnings, and at ``VERBOSE`` 1 or more each run prints the
+settings line of its own ``-c`` model's kernel. Until 2026-10-12 they went on from the first
 run's, so a second run that failed 4 of 4 evaluations read ``Total
 evaluations : 7``, ``Unusable losses : 4 (57.1%)``, ``[!] The majority
 of evaluations failed``, and gave the first run's best (``Best total
@@ -6047,3 +6048,12 @@ Marker                                                                       Mea
 ``[HPO] ERROR: no evaluation produced a usable loss; …``                     stderr: the run ends with status ``1`` and no ``best_pot.tadah``
                                                                              (:ref:`hpo_stopping`).
 ============================================================================ ============================================================
+
+At ``VERBOSE`` 1 or more a run also prints the settings line of its kernel
+(``Kern_RBF | sigma: 1 | gamma: 1``; ``Kern_Polynomial``, ``Kern_Sigmoid``,
+``Kern_Quadratic``, ``Kern_LQ``) once, for the ``-c`` model at startup, not
+for the model of every evaluation or the potential each ``PC_LAMMPS`` script
+runs; the ``PC_ISOLATION PROCESS`` workers print none. With ``OPTIM
+MPARAMS`` the line gives the ``-c`` settings (``params.tadah`` has each
+evaluation's), and a second run in the process prints its own
+(:ref:`two runs in one process <hpo_two_runs_one_process>`).

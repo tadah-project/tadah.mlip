@@ -2671,17 +2671,19 @@ TEST_CASE("Subcommand: train refuses a TYPE2B descriptor without its grid "
 
 namespace {
 
-/* A single-element (Ta) setfl file with analytic tables, cutoff 4.5 A:
- * F(rho) = -sqrt(rho) on rho in [0, 50], rho(r) = (4.5 - r)^2 and
- * phi(r) = 0.5 (4.5 - r)^3 (z2r = r phi) below the cutoff, 0 beyond. */
-std::string small_ta_setfl() {
+/* A single-element (Ta) setfl file with analytic tables, cutoff `rc_text`
+ * (4.5 A unless given), rc: F(rho) = -sqrt(rho) on rho in [0, 50],
+ * rho(r) = (rc - r)^2 and phi(r) = 0.5 (rc - r)^3 (z2r = r phi) below the
+ * cutoff, 0 beyond (tables to 5 A). */
+std::string small_ta_setfl(const std::string& rc_text = "4.5") {
   const int nrho = 501, nr = 501;
-  const double drho = 0.1, dr = 0.01, rc = 4.5;
+  const double drho = 0.1, dr = 0.01, rc = std::stod(rc_text);
   std::ostringstream os;
   os.precision(17);
   os << "Small Ta setfl of the DM_EAM CLI test\nanalytic tables\n\n"
      << "1 Ta\n"
-     << nrho << " " << drho << " " << nr << " " << dr << " " << rc << "\n"
+     << nrho << " " << drho << " " << nr << " " << dr << " " << rc_text
+     << "\n"
      << "73 180.95 3.304 bcc\n";
   for (int i = 0; i < nrho; ++i) os << -std::sqrt(i * drho) << "\n";
   for (int i = 0; i < nr; ++i) {
@@ -2825,6 +2827,244 @@ TEST_CASE("Subcommand: train refuses an EAM cutoff other than the setfl "
     CHECK_FALSE(std::filesystem::exists("pot.tadah"));
   }
 }
+
+namespace {
+
+/* The significant digits of a decimal token (leading zeros, sign, point
+ * and exponent do not count). */
+std::size_t significant_digits(const std::string& tok) {
+  const std::string mant = tok.substr(0, tok.find_first_of("eE"));
+  std::size_t n = 0;
+  bool lead = true;
+  for (const char ch : mant) {
+    if (ch < '0' || ch > '9') continue;
+    if (lead && ch == '0') continue;
+    lead = false;
+    ++n;
+  }
+  return n;
+}
+
+/* The NUMERIC EAM case of `label`: its configuration lines (the setfl
+ * file eam_rc.alloy) and the line of the cutoff key it writes. */
+struct NumericEamCase {
+  const char* label;
+  const char* config;
+  const char* key;
+  std::vector<std::string> cutoff_line;
+};
+
+}  // namespace
+
+/* Pins: `tadah train` with NUMERIC 6 and with NUMERIC 3 of a model that
+ * reads the setfl file eam_rc.alloy, whose cutoff is 4.51234567891 (12
+ * significant digits), writes the cutoff exactly and `tadah predict` loads
+ * the potential (exit 0, energy.pred written): D2_EAM ('RCUT2B
+ * 4.51234567891'), DM_EAM ('RCUTMB 4.51234567891') and a D2_mJoin of D2_BP
+ * and D2_EAM ('RCUT2B 4.123456789 4.51234567891', the D2_BP cutoff exact
+ * too), each WEIGHTS value with at most NUMERIC significant digits (the
+ * rounding NUMERIC asks for).
+ * Before the fix: train wrote the cutoff rounded ('RCUT2B 4.51235',
+ * 'RCUT2B 4.51' at NUMERIC 3; the mJoin line '4.12346 4.51235'), with only
+ * the general NUMERIC warning, and predict exited 1 on the potential train
+ * had just written: 'D2_EAM: RCUT2B 4.51235 differs from the cutoff
+ * 4.51234567891 of the setfl file 'eam_rc.alloy' (SETFL); set RCUT2B to the
+ * file's cutoff, 4.51234567891.' */
+TEST_CASE("Subcommand: train with NUMERIC below 17 writes the EAM cutoff "
+          "exactly and predict loads the potential",
+          "[TadahCLI][train][eam][numeric]") {
+  ScratchCwd cwd("train_eam_numeric");
+  { std::ofstream os("eam_rc.alloy"); os << small_ta_setfl("4.51234567891"); }
+  {
+    std::ofstream os("db.tadah");
+    os << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+       << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+       << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1);
+  }
+  const std::vector<NumericEamCase> cases = {
+      {"D2_EAM",
+       "INIT2B true\nTYPE2B D2_EAM 0 Ta Ta\nRCTYPE2B Cut_Dummy\n"
+       "RCUT2B 4.51234567891\nINITMB false\n",
+       "RCUT2B", {"RCUT2B", "4.51234567891"}},
+      {"DM_EAM",
+       "INIT2B false\nINITMB true\nTYPEMB DM_EAM 0 Ta Ta\n"
+       "RCTYPEMB Cut_Dummy\nRCUTMB 4.51234567891\n",
+       "RCUTMB", {"RCUTMB", "4.51234567891"}},
+      {"D2_mJoin D2_BP + D2_EAM",
+       "INIT2B true\nTYPE2B D2_mJoin\nTYPE2B D2_BP 2 2 Ta Ta\n"
+       "TYPE2B D2_EAM 0 Ta Ta\nRCTYPE2B Cut_Cos Cut_Dummy\n"
+       "RCUT2B 4.123456789 4.51234567891\nCGRID2B 2.6 3.3\n"
+       "SGRID2B 1.0 1.0\nINITMB false\n",
+       "RCUT2B", {"RCUT2B", "4.123456789", "4.51234567891"}}};
+  for (const NumericEamCase& tc : cases) {
+    for (const int numeric : {6, 3}) {
+      INFO(tc.label << ", NUMERIC " << numeric);
+      for (const char* f : {"pot.tadah", "energy.pred"})
+        std::filesystem::remove(f);
+      {
+        std::ofstream os("config");
+        os << "DBFILE db.tadah\nATOM Ta\nWATOM 1\n" << tc.config
+           << "SETFL eam_rc.alloy\nNUMERIC " << numeric << "\n"
+           << "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
+              "VERBOSE 0\nMODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+      }
+      const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                  "pot.tadah"});
+      INFO("train status " << t.status << "\n" << reported(t));
+      REQUIRE(t.status == 0);
+      REQUIRE(std::filesystem::exists("pot.tadah"));
+      const std::string pot = slurp("pot.tadah");
+      INFO("pot.tadah:\n" << pot);
+      CHECK(line_tokens(pot, tc.key) == tc.cutoff_line);
+      const std::vector<std::string> w = line_tokens(pot, "WEIGHTS");
+      REQUIRE(w.size() > 1);
+      for (std::size_t i = 1; i < w.size(); ++i)
+        CHECK(significant_digits(w[i]) <= static_cast<std::size_t>(numeric));
+
+      const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah",
+                                  "-d", "db.tadah"});
+      INFO("predict status " << p.status << "\n" << reported(p));
+      CHECK_FALSE(contains(reported(p), "differs from the cutoff"));
+      CHECK(p.status == 0);
+      CHECK(std::filesystem::exists("energy.pred"));
+    }
+  }
+}
+
+/* Pins: `tadah train` of a D2_Blip model with NUMERIC 6 and NUMERIC 3 writes
+ * its cutoff and grids exactly, 'RCUT2B 5.123456789', 'CGRID2B 2.81234567
+ * 3.51234567 4.21234567', 'SGRID2B 2.0123456789 2 2' (the shortest text
+ * that reads back as the configured value), every WEIGHTS value with at
+ * most NUMERIC significant digits and at least one with exactly NUMERIC
+ * (they are fitted numbers), and `tadah predict` loads the potential.
+ * Before the fix: the cutoff and grids were rounded like the weights
+ * ('RCUT2B 5.12346', 'CGRID2B 2.81235 3.51235 4.21235', 'SGRID2B 2.01235 2
+ * 2' at NUMERIC 6), so the potential described another descriptor than the
+ * one its weights were fitted with. The weights' rounding passes as well (a
+ * pin: NUMERIC still rounds them). */
+TEST_CASE("Subcommand: train with NUMERIC below 17 rounds the weights and "
+          "writes the cutoff and grids exactly",
+          "[TadahCLI][train][numeric]") {
+  ScratchCwd cwd("train_blip_numeric");
+  {
+    std::ofstream os("db.tadah");
+    os << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+       << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+       << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1)
+       << bcc_ta_entry("bcc-Ta-3.40", 3.40, -15.9);
+  }
+  for (const int numeric : {6, 3}) {
+    INFO("NUMERIC " << numeric);
+    for (const char* f : {"pot.tadah", "energy.pred"})
+      std::filesystem::remove(f);
+    {
+      std::ofstream os("config");
+      os << "DBFILE db.tadah\nATOM Ta\nWATOM 1\nINIT2B true\nINITMB false\n"
+            "TYPE2B D2_Blip 3 3 Ta Ta\nRCTYPE2B Cut_Cos\n"
+            "RCUT2B 5.123456789\nCGRID2B 2.81234567 3.51234567 4.21234567\n"
+            "SGRID2B 2.0123456789 2.0 2.0\n"
+         << "NUMERIC " << numeric << "\n"
+         << "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
+            "VERBOSE 0\nMODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+    }
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot.tadah"});
+    INFO("train status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+    const std::string pot = slurp("pot.tadah");
+    INFO("pot.tadah:\n" << pot);
+    CHECK(line_tokens(pot, "RCUT2B") ==
+          std::vector<std::string>{"RCUT2B", "5.123456789"});
+    CHECK(line_tokens(pot, "CGRID2B") ==
+          std::vector<std::string>{"CGRID2B", "2.81234567", "3.51234567",
+                                   "4.21234567"});
+    CHECK(line_tokens(pot, "SGRID2B") ==
+          std::vector<std::string>{"SGRID2B", "2.0123456789", "2", "2"});
+    const std::vector<std::string> w = line_tokens(pot, "WEIGHTS");
+    REQUIRE(w.size() == 4);
+    std::size_t most = 0;
+    for (std::size_t i = 1; i < w.size(); ++i) {
+      CHECK(significant_digits(w[i]) <= static_cast<std::size_t>(numeric));
+      most = std::max(most, significant_digits(w[i]));
+    }
+    CHECK(most == static_cast<std::size_t>(numeric));
+
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah"});
+    INFO("predict status " << p.status << "\n" << reported(p));
+    CHECK(p.status == 0);
+    CHECK(std::filesystem::exists("energy.pred"));
+  }
+}
+
+#ifdef TADAH_ENABLE_NFP
+/* Pins: `tadah hpo` with NUMERIC 6 in its -c configuration (a D2_mJoin of
+ * D2_BP, OPTIM CGRID2B (1), and D2_EAM of the setfl cutoff 4.51234567891;
+ * DUMP 1 and BDUMP 1) writes best_pot.tadah and the archives
+ * dumps/pot_<N>.tadah and bdumps/best_pot_<N>.tadah with 'RCUT2B 4.123456789
+ * 4.51234567891', and `tadah predict` loads best_pot.tadah and the first
+ * archive of each directory (exit 0).
+ * Before the fix: they recorded 'RCUT2B 4.12346 4.51235', and predict
+ * exited 1 on each: 'D2_EAM: RCUT2B 4.51235 differs from the cutoff
+ * 4.51234567891 of the setfl file ...'. */
+TEST_CASE("Subcommand: hpo with NUMERIC below 17 writes potentials whose "
+          "EAM cutoff predict accepts",
+          "[TadahCLI][hpo][eam][numeric]") {
+  ScratchCwd cwd("hpo_eam_numeric");
+  { std::ofstream os("eam_rc.alloy"); os << small_ta_setfl("4.51234567891"); }
+  {
+    std::ofstream os("db.tadah");
+    os << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+       << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+       << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1)
+       << bcc_ta_entry("bcc-Ta-3.40", 3.40, -15.9);
+  }
+  { std::ofstream os("config.val"); os << "DBFILE db.tadah\n"; }
+  {
+    std::ofstream os("config.tadah");
+    os << "DBFILE db.tadah\nATOM Ta\nWATOM 1\nINIT2B true\n"
+          "TYPE2B D2_mJoin\nTYPE2B D2_BP 2 2 Ta Ta\nTYPE2B D2_EAM 0 Ta Ta\n"
+          "RCTYPE2B Cut_Cos Cut_Dummy\nRCUT2B 4.123456789 4.51234567891\n"
+          "CGRID2B 2.6 3.3\nSGRID2B 1.0 1.0\nINITMB false\n"
+          "SETFL eam_rc.alloy\nNUMERIC 6\n"
+          "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+          "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+  }
+  {
+    std::ofstream os("config.hpo");
+    os << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 3\nENDOPTIMIZER\n"
+          "LOSS L2\nPC_ERMSE 0 1\nOPTIM CGRID2B (1) 2.2 3.0\n"
+          "DUMP 1 dumps\nBDUMP 1 bdumps\n";
+  }
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                              "--hpotarget", "config.hpo",
+                              "--validation", "config.val"});
+  INFO("hpo status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  std::vector<std::string> pots = {"best_pot.tadah"};
+  for (const char* dir : {"dumps", "bdumps"}) {
+    std::vector<std::string> files;
+    for (const auto& e : std::filesystem::directory_iterator(dir))
+      files.push_back(e.path().string());
+    std::sort(files.begin(), files.end());
+    INFO(dir);
+    REQUIRE_FALSE(files.empty());
+    pots.push_back(files.front());
+  }
+  for (const std::string& pot_file : pots) {
+    INFO(pot_file);
+    const std::string pot = slurp(pot_file);
+    INFO(pot);
+    CHECK(line_tokens(pot, "RCUT2B") ==
+          std::vector<std::string>{"RCUT2B", "4.123456789", "4.51234567891"});
+    const CliRun p = run_tadah({"tadah", "predict", "-p", pot_file, "-d",
+                                "db.tadah"});
+    INFO("predict status " << p.status << "\n" << reported(p));
+    CHECK_FALSE(contains(reported(p), "differs from the cutoff"));
+    CHECK(p.status == 0);
+  }
+}
+#endif  // TADAH_ENABLE_NFP
 
 /* ---- [refit]: the configuration numbers are read strictly ------------ */
 

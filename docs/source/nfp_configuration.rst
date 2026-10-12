@@ -1483,8 +1483,10 @@ steep as that jump, not the band's own slope, and a search that starts
 there can evaluate a bound again and again, stop at once as converged, or
 leave the box (:ref:`hpo_gradient_not_finite`).  A usable point whose
 finite-difference stencil reaches a failure, graded or not, has no
-gradient.  ``GRAD_STRATEGY ANALYTICAL`` keeps its analytical gradient at
-a graded failure, which does not see the grading.  A candidate that a
+gradient.  The analytical gradient does not see the grading, so at a
+graded failure ``GRAD_STRATEGY ANALYTICAL`` has no usable gradient and
+``HYBRID`` takes finite differences of every parameter
+(:ref:`hpo_gradient_not_finite`).  A candidate that a
 gate rejects before training (``BUMPGATE CANDIDATE``, ``RHOGATE``,
 ``RHOBARGATE``) has no fit to differentiate: under ``ANALYTICAL`` it is a
 point without a usable gradient (:ref:`hpo_gradient_not_finite`), from
@@ -3308,14 +3310,27 @@ and no analytical gradient is formed.  The analytical gradient at a failed
 point is that of the loss before the failure (under a skip cap the
 uncapped loss), small but not 0, while the optimiser sees ``FAILSCORE``;
 a search that started inside the failure region took it for a slope and
-converged on ``FAILSCORE``, under ``HYBRID`` with nothing differenced —
-the default under ``PC_OBSERVABLE`` (:ref:`pc_observable`) — as under
-``ANALYTICAL``.  At a graded failure under ``FAILSCORE_GRADING ON`` the
-analytical gradient is kept; it does not see the grading.  A candidate a
-gate rejected before training is a graded failure without a fit, and so
-without an analytical gradient: ``ANALYTICAL`` gives it none (``the
-analytical gradient could not be formed at this point``; where the point
-ends the search, below, the journal's stop line gives the gate's reject
+converged on ``FAILSCORE``, under ``ANALYTICAL`` — the default under
+``PC_OBSERVABLE`` (:ref:`pc_observable`) — as under ``HYBRID`` with
+nothing differenced.  Nor does the analytical gradient see the grading of
+a graded failure under ``FAILSCORE_GRADING ON``, whose loss the failure's
+band measure sets, not the loss terms: there ``ANALYTICAL`` fails the
+gradient at once as well (``a failed evaluation at the point (the loss at
+RCUT2B = 5.2 is 9.99375e+15: a graded failure, whose grading the
+analytical gradient does not see; GRAD_STRATEGY HYBRID takes finite
+differences there)``), and ``HYBRID`` forms no analytical gradient and
+differences every parameter, which gives the graded slope, or the flat
+failure region above.  Until 2026-10-12 both kept the analytical gradient
+there, the gradient of the terms that did not fail: on a trained
+``OALGO 4`` model whose ``PC_OBSERVABLE`` term fails over the whole box,
+a search under the default strategy ended as converged on the graded loss
+(``DLIB:BFGS`` ``FTOL_ABS reached`` after 4 evaluations, ``LD_LBFGS``
+``algorithm converged`` after 12, ``CERES:LBFGS`` leaving the box).  A
+candidate a gate rejected before training is a graded failure without a
+fit, and so without an analytical gradient either way: ``ANALYTICAL``
+gives it none (at the loss the optimiser has just evaluated, the graded
+failure above; asked without that loss, ``the analytical gradient could
+not be formed at this point``, the stop line giving the gate's reject
 note), and ``HYBRID`` differences it.
 
 An evaluation with a failed term is a failed evaluation — a failed
@@ -3325,7 +3340,7 @@ reads it as one.  Under ``FAILSCORE_GRADING OFF`` a search that starts
 where a ``PC_OBSERVABLE`` term fails stops at its first gradient; under
 ``ON`` its finite differences fail when the failed fraction that grades
 the failure is the same at every point of the stencil (``… a flat failure
-region``), and an analytical gradient is kept (above).  When the search
+region``), and under ``ANALYTICAL`` it stops at once (above).  When the search
 so stopped is the run's only one, the run ends without a usable loss
 (status 1).  Under a ``FAILSCORE`` that does not absorb the usable terms (``1e16``
 next to terms of about 1e5) such a search used to end with a best and
@@ -3346,8 +3361,11 @@ terms summed past the largest double (two of them under the default
 The rule has limits.  A usable point whose stencil reaches a failure has
 no gradient, so a search cannot settle within one step (``PARAM
 fd_step``) of the failure region.  A graded failure next to the usable
-side differences the jump out of the band (above).  And the analytical
-gradient at a graded failure does not see the grading.
+side differences the jump out of the band (above).  And a gradient asked
+for without the loss at its point (``DLIB:BFGS`` for a point other than
+its last evaluation) cannot tell a failed point: ``ANALYTICAL``, and
+``HYBRID`` for what it does not difference, give the analytical gradient
+there.
 
 A point without a usable gradient ends the search where the backend cannot
 go on without it:

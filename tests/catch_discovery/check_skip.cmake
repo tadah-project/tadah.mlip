@@ -93,7 +93,8 @@ endfunction()
 # Run CTest in DIR and check the status CTest reports for every case.
 function(cs_expect_statuses dir what)
   execute_process(
-    COMMAND "${CTEST}" --test-dir "${dir}" --no-tests=error
+    COMMAND "${CTEST}" --no-tests=error
+    WORKING_DIRECTORY "${dir}"
     RESULT_VARIABLE rc
     OUTPUT_VARIABLE out
     ERROR_VARIABLE out

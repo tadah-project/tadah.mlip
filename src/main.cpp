@@ -76,11 +76,16 @@ void exit_handshake(int ret)
  * exceptions from tasks surface as a clean one-line ERROR instead of a
  * std::terminate core dump.
  */
-/* PC_ISOLATION worker-process entry (HPO/src/pc_worker_main.cpp). Declared
- * here directly (not via header) to keep main.cpp's include surface minimal. */
+#ifdef TADAH_ENABLE_NFP
+/* PC_ISOLATION worker-process entry (HPO/src/pc_worker_main.cpp), in the
+ * HPO library: a tadah built without TADAH_ENABLE_NFP has no HPO and no
+ * PC_LAMMPS workers. Declared here directly (not via header) to keep
+ * main.cpp's include surface minimal. */
 namespace tadah { namespace hpo { int pc_worker_main(int argc, char** argv); } }
+#endif
 
 int main(int argc, char** argv) {
+#ifdef TADAH_ENABLE_NFP
   /* PC_ISOLATION: a re-exec'd pc_lammps worker child. MUST be intercepted
    * before ANY other init -- in particular before MPI_Init_thread (a
    * fork+exec'd child of an MPI parent must never touch MPI; the
@@ -89,6 +94,7 @@ int main(int argc, char** argv) {
    * socket is inherited on fd 3. */
   if (argc >= 2 && std::strcmp(argv[1], "--tadah-pc-worker") == 0)
     return tadah::hpo::pc_worker_main(argc, argv);
+#endif
 
 #ifdef TADAH_HPO_MPI
   /* The HPO parallel-annealing drivers (TADAH:ANNEAL_PT / ANNEAL_PA)

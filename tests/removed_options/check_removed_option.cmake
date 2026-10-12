@@ -49,8 +49,9 @@ else()
   message(FATAL_ERROR "check_removed_option.cmake: unknown CASE '${CASE}'")
 endif()
 
+# WORK_DIR was removed above: the build directory is new.
 execute_process(
-  COMMAND "${CMAKE_COMMAND}" --fresh ${extra}
+  COMMAND "${CMAKE_COMMAND}" ${extra}
           -S "${CMAKE_CURRENT_LIST_DIR}/project" -B "${WORK_DIR}/build"
           -G "${GENERATOR}" "-DCMAKE_MAKE_PROGRAM=${MAKE_PROGRAM}"
           "-DCMAKE_CXX_COMPILER=${CXX}"

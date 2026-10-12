@@ -50,16 +50,18 @@ set_tests_properties(tadah_version_matches_blueprint PROPERTIES
 # cmake-tools' reader: found through FetchContent'd CORE, [TADAH]-scoped,
 # registered as a configure dependency; a missing blueprint or version
 # line is a configure error (no 0.0.0 default).
+# Each case configures version_reader/project in a new build directory
+# (version_reader/check_version_reader.cmake removes the last run's).
 FetchContent_GetProperties(tadah_cmake)
 set(_vr ${CMAKE_CURRENT_SOURCE_DIR}/version_reader)
 function(tadah_version_reader_test name case core regex)
   add_test(NAME ${name}
-    COMMAND ${CMAKE_COMMAND} --fresh
-      -S ${_vr}/project -B ${CMAKE_CURRENT_BINARY_DIR}/version_reader/${name}
+    COMMAND ${CMAKE_COMMAND}
       -DCASE=${case}
       -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
-      -DFETCHCONTENT_FULLY_DISCONNECTED=ON
-      "-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${core}")
+      "-DCORE=${core}"
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/version_reader/${name}
+      -P ${_vr}/check_version_reader.cmake)
   set_tests_properties(${name} PROPERTIES PASS_REGULAR_EXPRESSION "${regex}")
 endfunction()
 tadah_version_reader_test(tadah_version_reader_fetchcontent fetchcontent
@@ -340,6 +342,10 @@ tadah_add_header_check(tadah)
 # so bad's entry ran on every physical core ('probe_headers --parallel:
 # '20', expected '1'') and compiled its good headers whether the build
 # kept going or not, and no value was refused.
+# The script needs CMake 3.19 (string(JSON)); on an older one, which this
+# build accepts, it prints "SKIPPED: check_header_check.cmake needs CMake
+# 3.19 or later (string(JSON)); this is CMake <v>" and the entries are
+# Skipped (see tadah_header_check_cmake_* below).
 foreach(_case good bad private_dir private_entry new_header refusals)
   add_test(NAME tadah_header_check_${_case}
     COMMAND ${CMAKE_COMMAND}
@@ -353,7 +359,9 @@ foreach(_case good bad private_dir private_entry new_header refusals)
       -P ${CMAKE_CURRENT_SOURCE_DIR}/header_check/check_header_check.cmake)
   set_tests_properties(tadah_header_check_${_case} PROPERTIES
     LABELS cmake
-    TIMEOUT 300)
+    TIMEOUT 300
+    SKIP_REGULAR_EXPRESSION
+      "(^|\n)SKIPPED: check_header_check\\.cmake needs CMake ")
 endforeach()
 
 # The CMake that header_check/check_header_check.cmake needs: string(JSON),

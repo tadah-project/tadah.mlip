@@ -755,8 +755,9 @@ loss``, ``Best ERMSE``) and its ``Best potential saved``, with no
 ``best_pot.tadah`` written; a second run with a worse best had no BEST
 line and named the first run's evaluation as its best. A run without
 ``WARM`` started its ``--hotvar`` values from an earlier run's ``WARM``
-seed (its ``# HOT`` lines), not from ``<initial>``. One thing carries
-over from the first run, the evaluation counter: the second run's
+seed (its ``# HOT`` lines), not from ``<initial>``. At ``VERBOSE`` 1 or
+more each run prints the settings line of its own ``-c`` model's kernel
+once. One thing carries over from the first run, the evaluation counter: the second run's
 ``ITERATION`` numbers and ``DUMP`` file names continue where the first
 run's stopped (4 to 6 after a run of 3 evaluations), and its journal
 names its evaluations by them. Run each ``tadah hpo`` in a process of
@@ -6344,3 +6345,12 @@ Marker                                                                       Mea
 ``[HPO] ERROR: no evaluation produced a usable loss; …``                     stderr: the run ends with status ``1`` and no ``best_pot.tadah``
                                                                              (:ref:`hpo_stopping`).
 ============================================================================ ============================================================
+
+At ``VERBOSE`` 1 or more a run also prints the settings line of its kernel
+(``Kern_RBF | sigma: 1 | gamma: 1``; ``Kern_Polynomial``, ``Kern_Sigmoid``,
+``Kern_Quadratic``, ``Kern_LQ``) once, for the ``-c`` model at startup, not
+for the model of every evaluation or the potential each ``PC_LAMMPS`` script
+runs; the ``PC_ISOLATION PROCESS`` workers print none. With ``OPTIM
+MPARAMS`` the line gives the ``-c`` settings (``params.tadah`` has each
+evaluation's), and a second run in the process prints its own
+(:ref:`two runs in one process <hpo_two_runs_one_process>`).

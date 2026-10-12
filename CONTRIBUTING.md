@@ -470,7 +470,10 @@ The unit tests cover the input lookup (`docs/source/config/source_locator.py`),
 the `hpo.html` redirect check, the configuration-keys page generator
 (`docs/source/config/read_toml.py`) and the CLI page generator
 (`docs/source/cli/generate_cli.py`). The GitLab `docs_sphinx` job runs them
-and the same build, with all three variables set explicitly.
+and the same build, with all three variables set explicitly, in a virtual
+environment of its own into which it installs `docs/requirements.txt` every
+time (`python3 -m venv`: the runner image needs Python's `venv` module), so a
+Sphinx the runner has is not used (`docs/tools/tests/test_ci_docs_job.py`).
 
 The same unit tests are the CTest entry `tadah_docs_tools` (label `docs`,
 so `ctest -L docs` runs them) in every build configured with

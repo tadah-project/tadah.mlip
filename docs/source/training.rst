@@ -313,8 +313,11 @@ none of them except ``VERBOSE``: parsing a file with a ``VERBOSE`` line sets
 the Tadah log level of the process (``pair_style tadah`` in LAMMPS, a
 retrain with ``tadah train -c`` without ``-v``), and the model built from
 the file takes that verbosity (a kernel such as ``Kern_RBF`` prints its
-parameters when it is built at ``VERBOSE`` 1 or more, the default of a file
-without the line).
+parameters, ``Kern_RBF | sigma: 1 | gamma: 1``, when it is built at
+``VERBOSE`` 1 or more, the default of a file without the line: for every
+model that ``tadah train``, ``tadah predict``, ``pair_style tadah`` or a
+task of a task file builds; a ``tadah hpo`` run prints it once, for its
+``-c`` model, though it builds a model for every evaluation).
 
 .. _retrain_from_potential:
 

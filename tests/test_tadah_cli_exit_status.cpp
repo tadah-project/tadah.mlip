@@ -2997,6 +2997,122 @@ TEST_CASE("Subcommand: train with NUMERIC below 17 rounds the weights and "
   }
 }
 
+namespace {
+
+/* A bump case of the NUMERIC test below: its descriptor lines and the key
+ * lines the potential must carry exactly. */
+struct NumericBumpCase {
+  const char* label;
+  const char* config;
+  std::vector<std::vector<std::string>> exact_lines;
+};
+
+}  // namespace
+
+/* Pins: `tadah train` with NUMERIC 6 and NUMERIC 3 of a model with one bump
+ * under a Cut_Dummy cutoff writes the cutoff and the bump's centre and width
+ * exactly, so the bump support c + w/eta of the potential stays within the
+ * cutoff, as in the fitted model: `tadah predict` loads the potential
+ * without the bump-support WARNING ('has support reaching'), and, in an NFP
+ * build, `tadah hpo` with the potential plus a DBFILE line as its -c
+ * configuration passes the startup bump-support gate (exit 0, no 'bump-
+ * support gate'). The cases: a D2_Blip bump inside the cutoff (RCUT2B
+ * 4.9964, CGRID2B 1.9951, SGRID2B 0.6664: c + 2/eta = 4.99630), a D2_Blip5
+ * bump that reaches the cutoff (RCUT2B 5.5549999, CGRID2B 3.3350001,
+ * SGRID2B 1.351351473094727 = 3/(RCUT2B - CGRID2B), a bump at the edge as
+ * tadah hpo's gate and refit --edit allow it), and a DM_REAM Blip density
+ * bump inside the cutoff (the D2_Blip numbers on RCUTMB, CGRIDMB and
+ * SGRIDMB).
+ * Before the fix: each number was rounded on its own, which keeps the order
+ * of the cutoff and the knots but not c + w/eta <= RCUT. At NUMERIC 3 the
+ * potentials recorded 'RCUT2B 5', 'CGRID2B 2', 'SGRID2B 0.666' (reach
+ * 5.003003), 'RCUT2B 5.55', 'CGRID2B 3.34', 'SGRID2B 1.35' (reach 5.562222)
+ * and 'RCUTMB 5', 'CGRIDMB 2', 'SGRIDMB 0.666'; predict printed 'WARNING:
+ * D2_Blip: bump 1 of CGRID2B (centre 2.000000, eta 0.666000) has support
+ * reaching 5.003003, past RCUT2B = 5.000000 ...', and the D2_Blip5 and
+ * DM_REAM ones; and hpo exited 1: 'bump-support gate: ... CGRID2B bump 1
+ * (centre 2, eta 0.666) reaches 5.003, past RCUT2B = 5 ...'. At NUMERIC 6
+ * the D2_Blip and DM_REAM lines (five digits) were written as they are (a
+ * pin), and the D2_Blip5 ones were rounded ('RCUT2B 5.555', 'CGRID2B
+ * 3.335', 'SGRID2B 1.35135') with a reach of 5.555002, within the
+ * tolerance of the checks (no WARNING, hpo exit 0). */
+TEST_CASE("Subcommand: a Cut_Dummy bump that train writes with NUMERIC "
+          "below 17 stays inside the cutoff for predict and hpo",
+          "[TadahCLI][train][numeric][bump]") {
+  const std::vector<NumericBumpCase> cases = {
+      {"D2_Blip, a bump inside RCUT2B",
+       "INIT2B true\nINITMB false\nTYPE2B D2_Blip 1 1 Ta Ta\n"
+       "RCTYPE2B Cut_Dummy\nRCUT2B 4.9964\nCGRID2B 1.9951\nSGRID2B 0.6664\n",
+       {{"RCUT2B", "4.9964"}, {"CGRID2B", "1.9951"}, {"SGRID2B", "0.6664"}}},
+      {"D2_Blip5, a bump reaching RCUT2B",
+       "INIT2B true\nINITMB false\nTYPE2B D2_Blip5 1 1 Ta Ta\n"
+       "RCTYPE2B Cut_Dummy\nRCUT2B 5.5549999\nCGRID2B 3.3350001\n"
+       "SGRID2B 1.351351473094727\n",
+       {{"RCUT2B", "5.5549999"},
+        {"CGRID2B", "3.3350001"},
+        {"SGRID2B", "1.351351473094727"}}},
+      {"DM_REAM Blip density, a bump inside RCUTMB",
+       "INIT2B false\nINITMB true\nTYPEMB DM_REAM 0 1 1 1 2 2 0 0 Ta Ta\n"
+       "RCTYPEMB Cut_Dummy\nRCUTMB 4.9964\nCGRIDMB 1.9951\nSGRIDMB 0.6664\n"
+       "AMPGRIDMB 1\nRHOFORM SIGNED\nCEMBFUNC 0 1\nSEMBFUNC 1 1\n",
+       {{"RCUTMB", "4.9964"}, {"CGRIDMB", "1.9951"}, {"SGRIDMB", "0.6664"}}}};
+  for (std::size_t i = 0; i < cases.size(); ++i) {
+    const NumericBumpCase& tc = cases[i];
+    for (const int numeric : {6, 3}) {
+      INFO(tc.label << ", NUMERIC " << numeric);
+      ScratchCwd cwd("train_bump_numeric_" + std::to_string(i) + "_" +
+                     std::to_string(numeric));
+      {
+        std::ofstream os("db.tadah");
+        os << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+           << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+           << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1)
+           << bcc_ta_entry("bcc-Ta-3.40", 3.40, -15.9);
+      }
+      {
+        std::ofstream os("config");
+        os << "DBFILE db.tadah\nATOM Ta\nWATOM 1\n" << tc.config
+           << "NUMERIC " << numeric << "\n"
+           << "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
+              "VERBOSE 0\nMODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+      }
+      const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                  "pot.tadah"});
+      INFO("train status " << t.status << "\n" << reported(t));
+      REQUIRE(t.status == 0);
+      const std::string pot = slurp("pot.tadah");
+      INFO("pot.tadah:\n" << pot);
+      for (const std::vector<std::string>& line : tc.exact_lines)
+        CHECK(line_tokens(pot, line.front()) == line);
+
+      const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah",
+                                  "-d", "db.tadah"});
+      INFO("predict status " << p.status << "\n" << reported(p));
+      CHECK_FALSE(contains(reported(p), "has support reaching"));
+      CHECK(p.status == 0);
+      CHECK(std::filesystem::exists("energy.pred"));
+
+#ifdef TADAH_ENABLE_NFP
+      { std::ofstream os("seed.tadah"); os << pot << "DBFILE db.tadah\n"; }
+      { std::ofstream os("config.val"); os << "DBFILE db.tadah\n"; }
+      {
+        std::ofstream os("config.hpo");
+        os << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 2\n"
+              "ENDOPTIMIZER\nLOSS L2\nPC_ERMSE 0 1\n"
+              "OPTIM LAMBDA (1) 1e-4 1e-2\n";
+      }
+      const CliRun h = run_tadah({"tadah", "hpo", "-c", "seed.tadah",
+                                  "--hpotarget", "config.hpo",
+                                  "--validation", "config.val"});
+      INFO("hpo status " << h.status << "\n" << reported(h));
+      CHECK_FALSE(contains(reported(h), "bump-support gate"));
+      CHECK_FALSE(contains(reported(h), "has support reaching"));
+      CHECK(h.status == 0);
+#endif  // TADAH_ENABLE_NFP
+    }
+  }
+}
+
 #ifdef TADAH_ENABLE_NFP
 /* Pins: `tadah hpo` with NUMERIC 6 in its -c configuration (a D2_mJoin of
  * D2_BP, OPTIM CGRID2B (1), and D2_EAM of the setfl cutoff 4.51234567891;

@@ -411,13 +411,15 @@ set_tests_properties(tadah_cmake_minimum_features PROPERTIES
 # it with tadah.mlip alone. tadah_without_nfp_links builds the second from
 # the first's sources (without_nfp/CMakeLists.txt: tadah_without_nfp, not
 # part of `all`) and runs it (without_nfp/check_without_nfp.cmake):
-# `--version` prints the version, and `--tadah-pc-worker`, the PC_ISOLATION
-# worker entry, is an unknown argument. In a build without NFP the tadah
-# target is that executable (tadah_version_matches_blueprint runs it).
+# `--version` prints the version, `--tadah-pc-worker`, the PC_ISOLATION
+# worker entry, is an unknown argument, and `tadah hpo` is refused naming
+# TADAH_ENABLE_NFP. In a build without NFP the tadah target is that
+# executable (tadah_version_matches_blueprint runs it).
 # Before the fix: main() called tadah::hpo::pc_worker_main in every build,
 # so the link failed ("undefined reference to
 # `tadah::hpo::pc_worker_main(int, char**)'") and a build without NFP had
-# no tadah.
+# no tadah. Before the build matrix review: `tadah hpo` said
+# "EngineFactory::create: No engine found for HPO".
 if(TADAH_ENABLE_NFP)
   add_subdirectory(without_nfp)
   cmake_host_system_information(RESULT _wn_jobs QUERY NUMBER_OF_PHYSICAL_CORES)
@@ -431,6 +433,7 @@ if(TADAH_ENABLE_NFP)
       -DJOBS=${_wn_jobs}
       -DEXE=$<TARGET_FILE:tadah_without_nfp>
       -DVERSION=${TADAH_VERSION_FULL}
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/without_nfp/work
       -P ${CMAKE_CURRENT_SOURCE_DIR}/without_nfp/check_without_nfp.cmake)
   # It builds in this build tree, as the header checks do: one at a time.
   set_tests_properties(tadah_without_nfp_links PROPERTIES

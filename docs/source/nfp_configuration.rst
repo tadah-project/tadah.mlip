@@ -534,7 +534,10 @@ checks ``FIXINDEX`` against ``SBASIS``, refuses an ``SBASIS`` below
 :math:`n + 1` (every fit would refuse it), requires a training ``DBFILE``,
 and every evaluation trains, also when ``FIXINDEX`` pins every weight. The
 basis is drawn anew in every fit: the ``BASIS`` and ``WEIGHTS`` of a ``-c``
-potential are not read.
+potential are not read.  ``M_KRR Kern_Linear 2`` draws ``SBASIS`` basis
+vectors for its solve too (its weights are the ``DSIZE`` descriptor weights
+they make): startup refuses its ``SBASIS`` below :math:`n + 1`, or none,
+naming ``M_KRR Kern_Linear 2``.
 
 **Mixed mode** — LS-fit most weights, hold one, search another.  With a
 5-weight model: weights 1–3 LS-fitted, weight 4 held at 0.75, weight 5
@@ -5064,9 +5067,12 @@ criteria, a signal, an error or ``SIGKILL`` (:ref:`hpo_stopping`).  The
 one exception is the error that ends a run when ``best_pot.tadah``
 cannot be saved: the evaluation whose potential could not be saved has
 its ``loss.tadah`` row, but ``best_pot.tadah`` and ``best_params.tadah``
-keep the previous incumbent.  ``best_pot.tadah`` carries the complete
-configuration, its header names the evaluation that produced it, and it
-is the authoritative record of the result.
+keep the previous incumbent.  ``best_pot.tadah`` carries the
+configuration of the evaluation that produced it except the training
+datasets: like every potential it has no ``DBFILE`` line
+(:ref:`retrain_from_potential`), and its header names the evaluation and
+the training and validation datasets.  It is the authoritative record of
+the result.
 ``best_params.tadah`` and the other history files are appended by the
 result writer in ``QFLUSH`` batches, so while the run is going they
 trail ``best_pot.tadah`` by the rows still queued.  Every ending except
@@ -5203,7 +5209,11 @@ Practical tips
   match the order of your ``OPTIM`` lines; read
   the columns by their ``KEY[n]`` labels.  To reproduce a candidate,
   use the potential itself (``best_pot.tadah`` or a ``DUMP``/``BDUMP``
-  archive), which carries the full configuration.
+  archive): it carries the candidate's configuration except the training
+  datasets.  Add the ``DBFILE`` lines of the run's ``-c`` configuration
+  (``best_pot.tadah``'s header names the datasets; the compact header of
+  an archive does not) to a copy of it and train it with ``tadah train
+  -c`` (:ref:`retrain_from_potential`).
 
 .. _hpo_stopping:
 

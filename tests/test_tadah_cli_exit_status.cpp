@@ -3872,6 +3872,92 @@ TEST_CASE("Subcommand: explain: a configuration key that is no option of a "
   CHECK(r.out == key.out);
 }
 
+/* ---- explain: the optimisers of tadah hpo ---------------------------- */
+
+/* Pins: in a build with HPO (TADAH_ENABLE_NFP), `tadah explain ALGO` (in
+ * any letter case, and LIB) exits 0 and prints the table of the optimisers
+ * a `tadah hpo` target's LIB and ALGO can name ("LIB NLOPT", its LD_LBFGS
+ * row, the refused NLOPT:LN_NEWUOA and CERES:LEVENBERG_MARQUARDT), and
+ * `tadah explain <LIB>:<ALGO>` or `<ALGO>` one optimiser's help: ld_lbfgs
+ * ("Options for NLOPT:LD_LBFGS", its stops), CERES:LBFGS (its PARAM keys
+ * and that it ignores the box), NLOPT:LN_NEWUOA (REFUSED); an unknown
+ * NLOPT:LD_FOO exits 1 naming what is wrong. A name that is no command, no
+ * configuration key and no optimiser is refused as before. Without HPO,
+ * `tadah explain ALGO` exits 1 saying that this tadah has no HPO.
+ * Before the fix: `tadah explain ALGO` and the others exited 1 with
+ * "tadah explain: no command or configuration key 'ALGO'" (and 'ld_lbfgs',
+ * ...): print_caps, the ALGO help, was reachable only from HPO's tests. */
+TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
+          "LIB:ALGO describes one",
+          "[TadahCLI][exit-status][explain][explain_algo]") {
+  ScratchCwd cwd("explain_algo");
+#ifdef TADAH_ENABLE_NFP
+  for (const char* name : {"ALGO", "algo", "LIB"}) {
+    const CliRun r = run_tadah({"tadah", "explain", name});
+    INFO(name << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "ALGO, with LIB its library, names the optimiser "
+                          "of a `tadah hpo` target"));
+    CHECK(contains(r.out, "\nLIB NLOPT\n"));
+    CHECK(contains(r.out, "\n  LD_LBFGS "));
+    CHECK(contains(r.out, "NLOPT:LN_NEWUOA,"));
+    CHECK(contains(r.out, "CERES:LEVENBERG_MARQUARDT"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "ld_lbfgs"});
+    INFO("ld_lbfgs: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(r.out.rfind("Options for NLOPT:LD_LBFGS\n", 0) == 0);
+    CHECK(contains(r.out, "Stops that end a run: MAXEVAL"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "CERES:LBFGS"});
+    INFO("CERES:LBFGS: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "Options for CERES:LBFGS\n"));
+    CHECK(contains(r.out, "PARAM tol_gradinf"));
+    CHECK(contains(r.out, "ignores the OPTIM box"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "NLOPT:LN_NEWUOA"});
+    INFO("NLOPT:LN_NEWUOA: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "Options for NLOPT:LN_NEWUOA\n   * REFUSED: "));
+    CHECK(contains(r.out, "Use NLOPT:LN_BOBYQA"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "NLOPT:LD_FOO"});
+    INFO("NLOPT:LD_FOO: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 1);
+    CHECK(contains(reported(r), "tadah explain: unknown optimiser "
+                                "NLOPT:LD_FOO: LIB NLOPT has no ALGO LD_FOO"));
+  }
+#else
+  const CliRun r = run_tadah({"tadah", "explain", "ALGO"});
+  INFO("ALGO: status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 1);
+  CHECK(contains(reported(r), "this tadah is built without HPO"));
+#endif
+  const CliRun bogus = run_tadah({"tadah", "explain", "bogus"});
+  CHECK(bogus.status == 1);
+  CHECK(contains(reported(bogus),
+                 "tadah explain: no command or configuration key 'bogus'"));
+}
+
+/* Pins: `tadah hpo --help` names `tadah explain ALGO`, where the optimisers
+ * of a target's LIB and ALGO are listed, and `tadah explain <LIB>:<ALGO>`.
+ * Before the fix: the help said nothing of them (its long description
+ * named no optimiser), and the check fails. */
+TEST_CASE("Subcommand: hpo --help points to tadah explain ALGO",
+          "[TadahCLI][exit-status][explain][explain_algo]") {
+  ScratchCwd cwd("hpo_help_algo");
+  const CliRun r = run_tadah({"tadah", "hpo", "--help"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(contains(r.out, "tadah explain ALGO"));
+  CHECK(contains(r.out, "tadah explain <LIB>:<ALGO>"));
+}
+
 /* ---- explain: the description of a key without a long description --- */
 
 /* Pins: `tadah explain <command>.<key>` exits 0 and prints the key's

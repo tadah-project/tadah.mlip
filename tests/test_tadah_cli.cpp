@@ -216,3 +216,33 @@ TEST_CASE("Subcommand: predict: forces vanish on perfect 2-atom bcc cells "
     CHECK(e[k] == Approx(e[2 + k]).epsilon(1e-10));
   }
 }
+
+/* Pins: the explain hook of a tadah built without HPO (TadahCLI sets it
+ * when TADAH_ENABLE_NFP is off): ALGO and LIB, in any letter case, the keys
+ * that name a `tadah hpo` optimiser, are an error that says this tadah has
+ * no HPO and how to build one ("tadah explain: ALGO names the optimiser of
+ * a `tadah hpo` target, and this tadah is built without HPO
+ * (TADAH_ENABLE_NFP OFF): configure it with -DTADAH_ENABLE_NFP=ON"); any
+ * other name is not its own (false, nothing written). A build with HPO
+ * sets HPO's optimiser help instead (test_tadah_cli_exit_status.cpp).
+ * Before the fix: none compiles (explain_without_hpo does not exist), and
+ * such a tadah said "tadah explain: no command or configuration key
+ * 'ALGO'". */
+TEST_CASE("explain_without_hpo: ALGO and LIB say that this tadah has no HPO",
+          "[TadahCLI][explain]") {
+  for (const char* name : {"ALGO", "algo", "LIB"}) {
+    INFO(name);
+    std::ostringstream out;
+    CHECK_THROWS_WITH(
+        explain_without_hpo(name, out),
+        Catch::StartsWith(std::string("tadah explain: ") + name +
+                          " names the optimiser of a `tadah hpo` target, and "
+                          "this tadah is built without HPO (TADAH_ENABLE_NFP "
+                          "OFF): configure it with -DTADAH_ENABLE_NFP=ON"));
+    CHECK(out.str().empty());
+  }
+  std::ostringstream out;
+  CHECK_FALSE(explain_without_hpo("LD_LBFGS", out));
+  CHECK_FALSE(explain_without_hpo("bogus", out));
+  CHECK(out.str().empty());
+}

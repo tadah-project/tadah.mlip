@@ -2519,8 +2519,14 @@ one a finite number (``MAXTIME`` a positive one).
        ``TADAH`` and was rejected at startup by ASA and the annealers.
        This is distinct from root-level ``PC_SCRIPT_TIMEOUT`` (whose alias
        is root-level ``MAXTIME``, a LAMMPS time spec).  No evaluation
-       starts once that many seconds have passed since the optimiser
-       started; the evaluations already running finish.
+       but the optimiser's first starts once that many seconds have
+       passed since the optimiser started; the evaluations already
+       running finish.  Every optimiser makes its first evaluation, so a
+       ``MAXTIME`` that has passed before it (``MAXTIME 1e-9``) gives one;
+       until 2026-10-12 ``ASA``, and ``DLIB:GFS`` without an ``INIT``
+       point, made none then: a ``PLAIN`` run ended ``STOPPED -- no
+       evaluation produced a usable loss`` (status 1), and a ``PRESTAGE``
+       exploration had nothing to refine.
        ``DLIB:BFGS`` and ``CERES`` reject it.  ``TADAH:RANDOM``,
        ``TADAH:GRID`` and ``DLIB:GFS`` accepted it and ignored it before
        1.6.0.
@@ -4308,9 +4314,10 @@ the region the exploration sampled, a search under ``FAILSCORE_GRADING
 ON`` that walks out of a failure region); a run that finds none ends
 without a usable loss (``STOPPED -- no evaluation produced a usable
 loss``, status 1).  Every exploration a configuration can set evaluates at
-least one point (its ``INIT`` point, or the first point of NLopt,
-``DLIB:GFS`` and ``ASA``; ``MAXEVAL`` is at least 1), so an exploration
-that made no evaluation at all is an internal error, and the run ends
+least one point (``MAXEVAL`` is at least 1, and every optimiser makes its
+first evaluation whatever ``MAXTIME``, the ``MAXTIME`` row), so an
+exploration that made no evaluation at all is an internal error, and the
+run ends
 ``FAILED -- PRESTAGE: the exploration (EXPLORE block) LIB:ALGO returned
 without evaluating a point, …`` (status 1); until 2026-10-12 the
 refinement ran from the ``INIT`` points after a ``WARNING`` (``PRESTAGE:

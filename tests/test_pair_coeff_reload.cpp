@@ -22,7 +22,10 @@
 //       kernel;
 //   D   ATOM Ta Nb with one D2_LJ block for Ta-Ta pairs only (the weights of
 //       B): a pure two-body potential of two elements, collapsed to a pair
-//       table for the element of the one LAMMPS type.
+//       table for the element of the one LAMMPS type;
+//   E   the descriptors of A with MODEL M_BLR BF_Polynomial2 (Tadah.LAMMPS's
+//       tests_data/pots/ta_poly2_blip_env.tadah): a non-linear model, the
+//       full-list kernel (compute_2b_mb_full).
 // The cell: 54 atoms of bcc Ta at 3.30 A (3x3x3 cells), every atom moved by
 // up to 0.05 A (displace_atoms, a fixed seed); with two LAMMPS types, the
 // atoms of even ID are type 2.
@@ -129,6 +132,60 @@ const char* const kLjTaNb =
     "TYPE2B     D2_LJ     Ta     Ta\n"
     "WATOM     73     41\n"
     "WEIGHTS     14.204213349318765225     2604.396965191186154698\n";
+
+/* E: the descriptors of A, M_BLR BF_Polynomial2. */
+const char* const kPoly2Ta =
+    "ATOM           Ta\n"
+    "BIAS           false\n"
+    "CEMBFUNC       0.5   0.75   1   1.25   1.5\n"
+    "CGRID2B        1   2.43333333333333357   3.8666666666666667   "
+    "5.29999999999999982\n"
+    "CGRIDMB        2.87999999999999989\n"
+    "DIMER          false   0   false\n"
+    "ESHIFT_ATOM    false\n"
+    "ESHIFT_DBATOM  false\n"
+    "EWEIGHT        1\n"
+    "FORCE          false\n"
+    "FWEIGHT        1\n"
+    "INIT2B         true\n"
+    "INITMB         true\n"
+    "LAMBDA         9.99999999999999955e-07\n"
+    "LSCALE         1\n"
+    "MODEL          M_BLR   BF_Polynomial2\n"
+    "NORM           false\n"
+    "OALGO          1\n"
+    "RCTYPE2B       Cut_Cos\n"
+    "RCTYPEMB       Cut_Cos\n"
+    "RCUT2B         5.29999999999999982\n"
+    "RCUTENV        0.599999999999999978\n"
+    "RCUTMB         5\n"
+    "SEMBFUNC       2   2   2   2   2\n"
+    "SGRID2B        0.100000000000000033   0.21544346900318842   "
+    "0.464158883361277919   0.999999999999999889\n"
+    "SGRIDMB        8\n"
+    "STRESS         true\n"
+    "SWEIGHT        1\n"
+    "TYPE2B         D2_Blip   4   4   Ta   Ta\n"
+    "TYPEMB         DM_mBlipEnv   0   1   1   5   5   Ta   Ta\n"
+    "WATOM          0.308999999999999997\n"
+    "WDBFILE_AUTO   0\n"
+    "WEIGHTS        35.6589071552540062   3.66711246876482999   "
+    "14.9821352083998462   -12.4461670658942953   14.060495641135903   "
+    "27.9792881344421716   30.3471487066385563   15.9190005053368999   "
+    "6.12829099592373083   -29.3880382421684416   -20.744416849726278   "
+    "-16.4494268799491081   -15.175935537523813   -28.2283761585886346   "
+    "-28.4440519312849673   -19.3570852772099649   -5.57760681970864169   "
+    "9.21625647879266552   9.04338740218760329   -10.3591861183464697   "
+    "-6.53965411235208727   -4.34017711925866401   -6.94451471019293542   "
+    "-6.43237890112177002   10.906007073899481   1.86438238966215297   "
+    "-0.100395027583860208   -2.76981440226984965   1.01810964978230811   "
+    "4.78557005401223812   2.65269873759534658   -3.399949756931961   "
+    "-3.84867454231402339   3.76349850002657149   1.45800417715656239   "
+    "2.67600202037784918   2.04035500797920477   1.19021697509395263   "
+    "-0.826996247584006028   -1.78279673009389872   "
+    "-2.02101303656082765   5.40584654332275161   -0.845723481246445252   "
+    "3.79298054776447202   -6.06431610500038332\n"
+    "ZERO_COM_FORCE false\n";
 
 /* A potential file written for the test case, removed however it ends. */
 struct PotFile {
@@ -550,14 +607,22 @@ TEST_CASE("pair_style tadah: a driver's load() is adopted by EXTERN only",
 #endif
 }
 
-/* Pins: two potential objects of A staged in turn for the same pair style
- * (no clear between them, as in a cached LAMMPS instance whose script does
- * not start with clear): each pair_coeff * * EXTERN Ta, run 0 gives A's
- * energy (to 1e-12). The generic many-body kernel grows the descriptor
- * arrays of the potential it evaluates.
- * Before the fix: the kernel grew them only when atom->nmax exceeded a
+/* Pins: two potential objects staged in turn for the same pair style (no
+ * clear between them, as in a cached LAMMPS instance whose script does not
+ * start with clear): each pair_coeff * * EXTERN Ta, run 0 gives the energy
+ * of a fresh instance given that potential (to 1e-12), for A (linear: the
+ * generic many-body kernel, compute_2b_mb_half) and for E (non-linear: the
+ * full-list kernel, compute_2b_mb_full); the files E, A, E in turn in one
+ * pair style give E's, A's and E's energies (to 1e-12; E and A differ by
+ * 0.125 eV). Each kernel sizes the descriptor arrays of the potential it
+ * evaluates.
+ * Before the fix: both kernels grew them only when atom->nmax exceeded a
  * count of the pair style, so the second object's arrays stayed empty and
- * the second run 0 wrote through them: SIGSEGV. */
+ * its run 0 wrote through them: SIGSEGV in compute_2b_mb_half (A) and in
+ * compute_2b_mb_full (E). With that rule put back in compute_2b_mb_full
+ * alone, every other case of this file passes, and the second E object, and
+ * the second E file, die with SIGSEGV. (1.6.0 did not read the second
+ * file: the files E, A, E gave E's energy three times.) */
 TEST_CASE("pair_style tadah: a second potential object in the same pair "
           "style gets its own descriptor arrays",
           "[pair_coeff][lammps][extern]") {
@@ -566,15 +631,53 @@ TEST_CASE("pair_style tadah: a second potential object in the same pair "
 #else
   tadah::core::PeriodicTable::initialize();
   LAMMPS_NS::PairTadah::clear_staged_extern();
-  const Energy ea = fresh_extern(kQuickstartPot, "Ta");
-  LMPPtr lmp = make_instance();
-  make_cell(lmp, 1);
-  for (int k = 0; k < 2; ++k) {
-    StagedSlot slot(std::make_shared<tadah::LammpsTadah>(parse(kQuickstartPot)));
-    ok(lmp, "pair_coeff * * EXTERN Ta");
-    const Energy e = run0(lmp);
-    INFO("object " << k << ": " << e << "; A: " << ea);
-    CHECK(same(e, ea));
+  const PotFile e_file("poly2", kPoly2Ta);
+
+  SECTION("two staged objects of A: the generic many-body kernel") {
+    const Energy ea = fresh_extern(kQuickstartPot, "Ta");
+    LMPPtr lmp = make_instance();
+    make_cell(lmp, 1);
+    for (int k = 0; k < 2; ++k) {
+      StagedSlot slot(
+          std::make_shared<tadah::LammpsTadah>(parse(kQuickstartPot)));
+      ok(lmp, "pair_coeff * * EXTERN Ta");
+      const Energy e = run0(lmp);
+      INFO("object " << k << ": " << e << "; A: " << ea);
+      CHECK(same(e, ea));
+    }
+  }
+  SECTION("two staged objects of E: the full-list kernel") {
+    const Energy ee = fresh_extern(e_file.path, "Ta");
+    LMPPtr lmp = make_instance();
+    make_cell(lmp, 1);
+    for (int k = 0; k < 2; ++k) {
+      StagedSlot slot(std::make_shared<tadah::LammpsTadah>(parse(e_file.path)));
+      ok(lmp, "pair_coeff * * EXTERN Ta");
+      REQUIRE_FALSE(pair_of(lmp)->lammps_tadah()->linear);
+      const Energy e = run0(lmp);
+      INFO("object " << k << ": " << e << "; E: " << ee);
+      CHECK(same(e, ee));
+    }
+  }
+  SECTION("the files E, A, E: both kernels") {
+    const Energy ee = fresh_file(e_file.path, "Ta", 1);
+    const Energy ea = fresh_file(kQuickstartPot, "Ta", 1);
+    INFO("E: " << ee << "; A: " << ea);
+    REQUIRE_FALSE(same(ee, ea));
+    LMPPtr lmp = make_instance();
+    make_cell(lmp, 1);
+    ok(lmp, "pair_coeff * * " + e_file.path + " Ta");
+    const Energy first = run0(lmp);
+    INFO("E: " << first);
+    CHECK(same(first, ee));
+    ok(lmp, "pair_coeff * * " + kQuickstartPot + " Ta");
+    const Energy second = run0(lmp);
+    INFO("then A: " << second);
+    CHECK(same(second, ea));
+    ok(lmp, "pair_coeff * * " + e_file.path + " Ta");
+    const Energy third = run0(lmp);
+    INFO("then E: " << third);
+    CHECK(same(third, ee));
   }
 #endif
 }
@@ -684,6 +787,119 @@ TEST_CASE("pair_style tadah: a pair_coeff whose file does not load leaves "
     const std::string run = exec(lmp, "run 0 post no");
     INFO("run 0: '" << run << "'");
     CHECK(run.find(kNoPotential) != std::string::npos);
+  }
+#endif
+}
+
+/* Pins: a pair_coeff that pair_style tadah refuses before it reads a file
+ * leaves the pair style without a potential, as one whose file does not
+ * load (the case above). After pair_coeff * * A Ta and run 0 (one LAMMPS
+ * type), each line below is a LAMMPS error, the pair style then holds no
+ * potential (lammps_tadah() is null) and run 0 is a LAMMPS error:
+ *   pair_coeff * * B Ta Ta (two elements) and pair_coeff * * B (none):
+ *     "Number of element to type mappings does not match number of atom
+ *      types", then run 0: "pair_style tadah has no potential: ...";
+ *   pair_coeff * * (no file): "Pair style tadah requires a potential file:
+ *     pair_coeff * * <file> <elements...>", then the same run 0 error;
+ *   pair_coeff * * B NULL (no type mapped): "Incorrect args for pair
+ *     coefficients", then run 0: "All pair coeffs are not set" (LAMMPS
+ *     checks the types before the pair style);
+ * and a pair_coeff * * B Ta after each runs B (B's energy, to 1e-12).
+ * A driver's potential (PairTadah::load(B)) and pair_coeff * * EXTERN Ta Ta:
+ * the count error, then run 0: "pair_style tadah has no potential: ...",
+ * and pair_coeff * * EXTERN Ta: "pair_coeff * * EXTERN: no staged or
+ * pre-loaded Tadah potential" (the driver must give it again with load()).
+ * A line LAMMPS refuses before it calls the pair style, pair_coeff 1 1 B Ta
+ * ("Pair_coeff must start with * * for pair style tadah"), leaves A: run 0
+ * gives A's energy (a pin: it passed before the fix as well).
+ * Before the fix: each refused line left the potential the pair style held
+ * (the error came from coeff()'s argument check or from
+ * Pair::map_element2type, before the file was read): lammps_tadah() was A,
+ * and run 0 ran A without an error (-437.004 eV) after the lines with two
+ * elements, no element and no file (after the NULL line LAMMPS refused
+ * run 0, as it does now); after the EXTERN line the pair style
+ * kept the driver's B, run 0 gave B's energy (-223.940 eV) and the next
+ * pair_coeff * * EXTERN Ta adopted B again. (1.6.0 also kept A at the
+ * pair_coeff * * B Ta after each line: the first case of this file.) */
+TEST_CASE("pair_style tadah: a pair_coeff refused before its file is read "
+          "leaves no potential",
+          "[pair_coeff][lammps]") {
+#ifndef TADAH_ENABLE_NFP
+  TADAH_SKIP("pair_style tadah is not built (TADAH_ENABLE_NFP OFF)");
+#else
+  tadah::core::PeriodicTable::initialize();
+  LAMMPS_NS::PairTadah::clear_staged_extern();
+  const PotFile b("lj", kLjTa);
+  const Energy ea = fresh_file(kQuickstartPot, "Ta", 1);
+  const Energy eb = fresh_file(b.path, "Ta", 1);
+  require_distinct(ea, eb);
+  const std::string count_error =
+      "Number of element to type mappings does not match number of atom "
+      "types";
+
+  struct Refused {
+    std::string what;       // the section
+    std::string line;       // after pair_coeff * * A Ta and run 0
+    std::string error;      // of the line
+    std::string run_error;  // of the run 0 after it
+  };
+  const std::vector<Refused> refused = {
+      {"two elements", "pair_coeff * * " + b.path + " Ta Ta", count_error,
+       kNoPotential},
+      {"no element", "pair_coeff * * " + b.path, count_error, kNoPotential},
+      {"no file", "pair_coeff * *",
+       "Pair style tadah requires a potential file: pair_coeff * * <file> "
+       "<elements...>",
+       kNoPotential},
+      {"no type mapped", "pair_coeff * * " + b.path + " NULL",
+       "Incorrect args for pair coefficients", "All pair coeffs are not set"},
+  };
+  for (const Refused& r : refused) {
+    SECTION(r.what) {
+      LMPPtr lmp = make_instance();
+      make_cell(lmp, 1);
+      ok(lmp, "pair_coeff * * " + kQuickstartPot + " Ta");
+      CHECK(same(run0(lmp), ea));
+      const std::string what = exec(lmp, r.line);
+      INFO(r.line << ": '" << what << "'");
+      CHECK(what.find(r.error) != std::string::npos);
+      CHECK(pair_of(lmp)->lammps_tadah() == nullptr);
+      const std::string run = exec(lmp, "run 0 post no");
+      INFO("run 0: '" << run << "'");
+      CHECK(run.find(r.run_error) != std::string::npos);
+      ok(lmp, "pair_coeff * * " + b.path + " Ta");
+      CHECK(same(run0(lmp), eb));
+    }
+  }
+  SECTION("a driver's potential and an EXTERN line with two elements") {
+    LMPPtr lmp = make_instance();
+    make_cell(lmp, 1);
+    REQUIRE(pair_of(lmp)->load(parse(b.path)));
+    ok(lmp, "pair_coeff * * EXTERN Ta");
+    CHECK(same(run0(lmp), eb));
+    const std::string what = exec(lmp, "pair_coeff * * EXTERN Ta Ta");
+    INFO("pair_coeff * * EXTERN Ta Ta: '" << what << "'");
+    CHECK(what.find(count_error) != std::string::npos);
+    CHECK(pair_of(lmp)->lammps_tadah() == nullptr);
+    const std::string run = exec(lmp, "run 0 post no");
+    INFO("run 0: '" << run << "'");
+    CHECK(run.find(kNoPotential) != std::string::npos);
+    const std::string again = exec(lmp, "pair_coeff * * EXTERN Ta");
+    INFO("pair_coeff * * EXTERN Ta: '" << again << "'");
+    CHECK(again.find("pair_coeff * * EXTERN: no staged or pre-loaded Tadah "
+                     "potential") != std::string::npos);
+  }
+  SECTION("a line LAMMPS refuses before the pair style (a pin)") {
+    LMPPtr lmp = make_instance();
+    make_cell(lmp, 1);
+    ok(lmp, "pair_coeff * * " + kQuickstartPot + " Ta");
+    CHECK(same(run0(lmp), ea));
+    const std::string what = exec(lmp, "pair_coeff 1 1 " + b.path + " Ta");
+    INFO("pair_coeff 1 1 " << b.path << " Ta: '" << what << "'");
+    CHECK(what.find("Pair_coeff must start with * * for pair style tadah") !=
+          std::string::npos);
+    REQUIRE(pair_of(lmp)->lammps_tadah() != nullptr);
+    CHECK(same(run0(lmp), ea));
   }
 #endif
 }

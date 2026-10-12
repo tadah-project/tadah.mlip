@@ -2578,12 +2578,21 @@ one a finite number (``MAXTIME`` a positive one).
        ``GRAD_STRATEGY NUMERICAL`` 1 + 2n evaluations in n dimensions
        (central differences; 1 + n with ``PARAM diff_method 1``), with
        ``ANALYTICAL`` 1 + 1, with ``HYBRID`` at least 1 + 1 (and the
-       stencil of each parameter it differences).  A smaller budget ends
-       the search where it started, ``MAXEVAL_REACHED``, so startup warns,
-       naming what the gradient costs and the budget that evaluates a
-       first step (``MAXEVAL`` 2n + 2 or more for central differences); it
-       is a WARNING, not an error, as such a probe of the start can be
-       deliberate.  It covers every phase with a budget of its own: the
+       stencil of each parameter it differences).  A budget of that or
+       less (``MAXEVAL`` 1 + 2n or less for central differences, 2 or
+       less under ``ANALYTICAL``) ends the search where it started,
+       ``MAXEVAL_REACHED``, so startup warns, naming what the gradient
+       costs and the budget that evaluates a first step (``MAXEVAL`` 2n +
+       2 or more for central differences); it is a WARNING, not an error,
+       as such a probe of the start can be deliberate.  An MLSL whose
+       local search takes gradients first evaluates its starting point
+       and its first N samples without a gradient (N its ``POPULATION``,
+       NLopt's default 4), and its first local search starts at one of
+       these points and evaluates the loss there again, so it needs N + 1
+       more evaluations (``GD_MLSL`` with ``INNER LD_LBFGS`` in 2-D:
+       ``MAXEVAL`` 10 or less lets no local search step); its warning says
+       what MLSL spends.  ``AUGLAG`` goes straight into its local search.
+       The warning covers every phase with a budget of its own: the
        ``STRATEGY``-level optimiser, each ``MULTISTART`` start (its
        ``BUDGET_PER_START`` or its share of ``MAXEVAL``), the ``PRESTAGE``
        exploration and refinement (with ``TOPK`` > 1 its share), and an
@@ -2593,6 +2602,7 @@ one a finite number (``MAXTIME`` a positive one).
        .. code-block:: none
 
           WARNING   the STRATEGY-level optimiser NLOPT:LD_LBFGS: MAXEVAL 4 takes no step: its gradient search evaluates the loss at a starting point (1 evaluation) and the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 6 or more
+          WARNING   the STRATEGY-level optimiser NLOPT:GD_MLSL: MAXEVAL 10 takes no step of a local search: MLSL evaluates its starting point and its first 4 samples without a gradient (5 evaluations; POPULATION 4, NLopt's default), then its first local search, from one of them, evaluates the loss there again (1 evaluation) and the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 11 or more
 
        Until 2026-10-12 nothing said so.
 

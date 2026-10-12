@@ -2647,21 +2647,46 @@ one a finite number (``MAXTIME`` a positive one).
        ``GRAD_STRATEGY`` resolves to it) or ``HYBRID``.  The warning says
        what MLSL spends.  ``AUGLAG`` goes straight into its local search.
        A search on NLopt or ``DLIB:BFGS`` that starts at a point the run
-       has evaluated takes the loss there the same way: a ``PRESTAGE``
-       refinement starts at an exploration candidate, a usable evaluation
-       of the run, so under ``NUMERICAL`` it needs 2n + 1 (``the PRESTAGE
-       refinement NLOPT:LD_LBFGS: MAXEVAL 4 takes no step: its gradient
-       search takes the loss at its starting point from the run's record
-       (no evaluation) and evaluates the gradient there (4 evaluations:
-       ...) ..., which needs MAXEVAL 5 or more``), and so does the run's
-       first search under ``NOISE CALIBRATION`` (:ref:`hpo_noise_block`),
-       whose seed point the calibration evaluated; under ``ANALYTICAL``,
-       ``HYBRID`` or a ``--skip-rel`` filter it evaluates the loss at its
-       starting point again.  The warning cannot know a start whose
-       evaluation was not usable, nor the refinement from ``INIT`` points
-       that a ``PRESTAGE`` whose exploration has no usable candidate falls
-       back on.  Until the run kept one record (2026-10-12) a refinement
-       evaluated its start again and needed 2n + 2.
+       has evaluated, and asks for that point first, takes the loss there
+       the same way: a ``PRESTAGE`` refinement starts at an exploration
+       candidate, a usable evaluation of the run, so under ``NUMERICAL``
+       it needs 2n + 1 (``the PRESTAGE refinement NLOPT:LD_LBFGS: MAXEVAL
+       4 takes no step: its gradient search takes the loss at its
+       starting point from the run's record (no evaluation) and evaluates
+       the gradient there (4 evaluations: ...) ..., which needs MAXEVAL 5
+       or more``), and so does the run's first search under ``NOISE
+       CALIBRATION`` (:ref:`hpo_noise_block`) -- ``PLAIN``, the first
+       ``MULTISTART`` start, a ``PRESTAGE`` exploration --, whose seed
+       point the calibration evaluated; under ``ANALYTICAL``, ``HYBRID``
+       or a ``--skip-rel`` filter it evaluates the loss at its starting
+       point again.  The later ``MULTISTART`` starts begin at ``INIT``
+       points the run has not evaluated and need 2n + 2, so where the
+       budgets differ the first start is warned apart (``the first
+       MULTISTART start NLOPT:LD_LBFGS: BUDGET_PER_START 4 takes no step:
+       ... which needs BUDGET_PER_START 5 or more`` and ``each MULTISTART
+       start after the first NLOPT:LD_LBFGS: BUDGET_PER_START 4 takes no
+       step: ... which needs BUDGET_PER_START 6 or more``).  NLopt's StoGO
+       (``GD_STOGO``, ``GD_STOGO_RAND``) does not start at the point it is
+       given: its first point is the centre of its box, where it takes its
+       first gradient, so wherever its phase starts it needs 2n + 2
+       (``the PRESTAGE refinement NLOPT:GD_STOGO: MAXEVAL 5 takes no step:
+       its gradient search, which does not start at the point it is
+       given, evaluates the loss at a point of its own (1 evaluation) and
+       the gradient there (...) ..., which needs MAXEVAL 6 or more``), and
+       so does an ``AUGLAG`` or MLSL whose ``INNER`` search is StoGO.  (A
+       StoGO refinement does not look at its candidate.)  The warning
+       cannot know a start whose evaluation was not usable, nor the
+       refinement from ``INIT`` points that a ``PRESTAGE`` whose
+       exploration has no usable candidate falls back on, nor whether the
+       centre StoGO starts at is a point the run has evaluated (the
+       configuration's point is, when it lies at the centre of the box and
+       a calibration or an exploration evaluated it), which it counts as
+       an evaluation.  Until the run kept one record (2026-10-12) a
+       refinement evaluated its start again and needed 2n + 2; until
+       2026-10-13 a StoGO refinement or calibrated StoGO search was taken
+       to start at its candidate or seed point, one evaluation short, and
+       one ``each MULTISTART start`` WARNING claimed the first start
+       too.
        The warning covers every phase with a budget of its own: the
        ``STRATEGY``-level optimiser, each ``MULTISTART`` start (its
        ``BUDGET_PER_START`` or its share of ``MAXEVAL``), the ``PRESTAGE``

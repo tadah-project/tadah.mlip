@@ -2567,11 +2567,15 @@ one a finite number (``MAXTIME`` a positive one).
        or not it draws random numbers.  ``MULTISTART`` and
        the ``PRESTAGE`` refinement run start *i* with ``SEED + i``, and
        each ``RESTART`` round runs with a seed derived from it
-       (:ref:`restart_decorator`).  Inside an ``INIT`` block the same key
-       seeds the stochastic init methods instead; of the optimisers, only
-       NLopt reads it, and only when its block has no ``SEED`` of its
-       own.  Inside a ``RESTART`` block it seeds the ``METHOD`` chain
-       that draws each restart's points (restart *r* with ``SEED + r``).
+       (:ref:`restart_decorator`).  An optimiser's random numbers are
+       its own: not those an ``INIT`` or ``RESTART`` block's ``RANDOM`` or
+       ``LHS`` method draws for the same value (before 1.6.0
+       ``TADAH:RANDOM`` and ``ASA`` drew them).  Inside an ``INIT`` block
+       the same key seeds the stochastic init methods instead; of the
+       optimisers, only NLopt reads it, and only when its block has no
+       ``SEED`` of its own.  Inside a ``RESTART`` block it seeds the
+       ``METHOD`` chain that draws each restart's points (restart *r*
+       with ``SEED + r``).
        An ``INNER`` block takes no ``SEED`` (startup error): NLopt
        has one random stream per run, seeded by the enclosing block, and
        MLSL/AUGLAG draw their ``INNER`` search from it
@@ -4557,13 +4561,25 @@ and ``SEED 11`` in its ``RESTART`` block logs, at the first restart,
 ``RESTART 1/3 -- fresh init from SOBOL; RESTART SEED 12, SEED 43,
 EXPLORE SEED 1718``.  The seeds are separate settings: the ``RESTART``
 block's ``SEED`` draws the points, and each optimiser's own ``SEED`` its
-random numbers.  Give them different values.  The ``RANDOM`` method and
-``TADAH:RANDOM`` draw from the same generator, so with equal seeds a
-restart's fresh ``RANDOM`` point is the optimiser's first draw of the
-round, evaluated twice (with ``SEED 5`` in both blocks under ``PLAIN``,
-round *r* seeds both with ``5 + r``).  The same can happen in the first
-round when an ``INIT`` block's ``SEED`` equals the optimiser's.  An
-optimiser without ``SEED`` is unaffected.  NLopt draws from the derived seeds too, even when an
+random numbers.  Each draws a stream of its own: the starting-point
+methods (``RANDOM``, ``LHS``) of the ``INIT`` and ``RESTART`` blocks
+draw one, ``TADAH:RANDOM``, ``ASA`` and each random consumer of the
+``TADAH`` annealers (chains, temperature probes, swap coins, resampling)
+draw streams derived from their ``SEED`` with a salt of their own, and
+NLopt draws from its own generator.  So equal seeds in two kinds of block
+draw unrelated numbers: with ``SEED 5`` in the ``RESTART`` block and on
+``TADAH:RANDOM`` under ``PLAIN`` (round *r* seeds both with ``5 + r``),
+or with an ``INIT`` block's ``SEED`` equal to the optimiser's, the
+optimiser does not draw the block's points again.  Before 1.6.0
+``TADAH:RANDOM`` and ``ASA`` drew the starting-point methods' numbers
+for an equal seed: a restart's fresh ``RANDOM`` point was the
+optimiser's first draw of the round, evaluated twice, and so was the
+first round's start point when an ``INIT`` block's ``SEED`` (with
+``METHOD RANDOM``) equalled the optimiser's.  Two consumers of one kind
+given the same seed draw the same numbers: two ``METHOD`` chains (an
+``INIT`` block's ``SEED`` *s* and a restart round whose ``RESTART``
+``SEED + r`` is *s* draw the same ``RANDOM`` points), or two phases that
+run one backend with the same ``SEED``.  NLopt draws from the derived seeds too, even when an
 ``INIT`` block also has a ``SEED``.  Only an NLopt optimiser without a
 ``SEED`` of its own takes its random seed from its ``INIT`` block's
 ``SEED``, which is not derived, so it repeats its random sequence in every

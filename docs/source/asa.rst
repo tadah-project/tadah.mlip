@@ -172,7 +172,10 @@ evaluation limit: ASA's own limits are its stops (``Limit_Generated``
 no limit).
 
 Seeding: ``SEED`` at OPTIMIZER/STRATEGY level seeds ASA's proposal
-stream (unset → non-reproducible ``random_device``).  The first ``INIT``
+stream (unset → non-reproducible ``random_device``), a stream of its own
+for that seed: not the numbers an ``INIT`` or ``RESTART`` block's
+``RANDOM`` method draws for the same value, which ASA drew before 1.6.0
+(so a run with a given ``SEED`` takes another path than it did then).  The first ``INIT``
 point becomes ASA's starting point and sets ``User_Initial_Parameters
 1``; without an ``INIT`` block that point is the configuration's values
 (``CONFIG``), as for every optimiser.  Only when the ``INIT`` chain yields

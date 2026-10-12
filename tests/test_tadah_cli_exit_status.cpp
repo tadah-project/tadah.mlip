@@ -38,8 +38,9 @@
 // The [descriptor] case runs `tadah train` with a TYPE2B descriptor whose
 // grid keys are not set; it runs in every build.
 //
-// The [oalgo] case runs `tadah train` with OALGO 4 and OALGO 2 on fewer
-// data rows than weights; it runs in every build.
+// The [oalgo] cases run `tadah train` with OALGO 4 and OALGO 2 on fewer
+// data rows than weights, and on fewer non-zero data rows than weights (a
+// structure of weight 0); they run in every build.
 //
 // The [task-file] cases run `tadah --task` on a task file whose TASK lines
 // carry an inline comment, and on task files with a TASK line that has no
@@ -2715,6 +2716,83 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
       "full column rank and the least-squares weights are not unique. Use "
       "OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm "
       "weights, LAMBDA > 0";
+  for (const auto& [oalgo, name] :
+       {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
+        {"2", "DGELS, QR"}}) {
+    INFO("OALGO " << oalgo);
+    std::ofstream("c" + oalgo + ".train") << head << "OALGO " << oalgo << "\n";
+    const CliRun r = run_tadah({"tadah", "train", "-c", "c" + oalgo + ".train",
+                                "-o", "pot" + oalgo + ".tadah"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "OALGO " + oalgo + " (" + name + ")" + few));
+    CHECK_FALSE(std::filesystem::exists("pot" + oalgo + ".tadah"));
+  }
+  std::ofstream("c1.train") << head << "OALGO 1\n";
+  const CliRun g = run_tadah({"tadah", "train", "-c", "c1.train", "-o",
+                              "pot1.tadah"});
+  INFO("OALGO 1: status " << g.status << "\n" << reported(g));
+  CHECK(g.status == 0);
+  CHECK(std::filesystem::exists("pot1.tadah"));
+}
+
+/* Pins: the case above with a third structure of energy weight 0 (its
+ * weights line '0.0 1.0 1.0'), whose energy row is zero in the design
+ * matrix: `tadah train` with OALGO 4 exits 1 with "OALGO 4 (normal
+ * equations, Cholesky) cannot fit these 3 weights: the design matrix has 2
+ * non-zero data rows of 3 (a row of weight 0 is zero) for 3 weights,
+ * LAMBDA 0: fewer non-zero data rows than weights, so it does not have full
+ * column rank and the least-squares weights are not unique." and the
+ * remedies, and writes no potential; OALGO 2 the same with "OALGO 2
+ * (DGELS, QR)"; OALGO 1 fits it (exit 0).
+ * Before the fix: the pre-check counted the zero row as data (3 data rows
+ * for 3 weights) and LAPACK decided: both exited 1, OALGO 4 with "the
+ * matrix Phi^T Phi of the design matrix (3 data rows for 3 weights, LAMBDA
+ * 0) is not positive definite (its leading minor of order 3 is not), ..."
+ * and OALGO 2 with "the design matrix (3 data rows for 3 weights, LAMBDA 0)
+ * does not have full column rank: its column 3 is zero or a linear
+ * combination of the columns before it, ..." (whether DPOTRF stops depends
+ * on the rounding of Phi^T Phi: on the same 2 rows and a zero row
+ * test_linear_regressor_messages.cpp's OALGO 4 fitted without an error). */
+TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
+          "rows than weights, a structure of weight 0 included",
+          "[TadahCLI][exit-status][train][oalgo]") {
+  ScratchCwd cwd("train_oalgo_weight_zero_rows");
+  std::ofstream("db.tadah")
+      << "s1\n1.0 1.0 1.0\n-0.30\n"
+         "3.301 0.0 0.0\n0.0 3.301 0.0\n0.0 0.0 6.602\n"
+         "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+         "Ta 0.05 -0.03 0.02  0.31 -0.12 0.05\n"
+         "Ta 1.70 1.62 1.68  -0.22 0.17 -0.09\n"
+         "Ta -0.04 0.06 3.33  0.04 0.21 -0.15\n"
+         "Ta 1.61 1.69 4.92  -0.13 -0.26 0.19\n\n"
+         "s2\n1.0 1.0 1.0\n-0.24\n"
+         "3.301 0.0 0.0\n0.0 3.301 0.0\n0.0 0.0 6.602\n"
+         "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+         "Ta 0.10 0.00 -0.05  -0.27 0.08 0.14\n"
+         "Ta 1.66 1.58 1.62  0.19 -0.23 0.06\n"
+         "Ta 0.02 -0.08 3.27  0.11 0.16 -0.21\n"
+         "Ta 1.69 1.71 5.00  -0.03 -0.01 0.01\n\n"
+         "s3\n0.0 1.0 1.0\n-0.27\n"
+         "3.301 0.0 0.0\n0.0 3.301 0.0\n0.0 0.0 6.602\n"
+         "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+         "Ta 0.00 0.04 0.03  0.12 -0.05 0.07\n"
+         "Ta 1.64 1.66 1.70  -0.11 0.09 -0.02\n"
+         "Ta 0.06 -0.02 3.30  0.03 0.10 -0.08\n"
+         "Ta 1.66 1.63 4.96  -0.05 -0.12 0.06\n\n";
+  const std::string head =
+      "DBFILE db.tadah\nATOM Ta\nWATOM 1\nINIT2B true\nINITMB false\n"
+      "TYPE2B D2_BP 3 3 Ta Ta\nCGRID2B 0.3 1.0 1.8\nSGRID2B 2.0 3.4 5.0\n"
+      "RCTYPE2B Cut_Cos\nRCUT2B 5.0\nFORCE false\nSTRESS false\n"
+      "BIAS false\nNORM false\nVERBOSE 0\nMODEL M_BLR BF_Linear\n"
+      "LAMBDA 0\n";
+  const std::string few =
+      " cannot fit these 3 weights: the design matrix has 2 non-zero data "
+      "rows of 3 (a row of weight 0 is zero) for 3 weights, LAMBDA 0: fewer "
+      "non-zero data rows than weights, so it does not have full column rank "
+      "and the least-squares weights are not unique. Use OALGO 1 (DGELSD) or "
+      "OALGO 3 (SVD), which give the minimum-norm weights, LAMBDA > 0";
   for (const auto& [oalgo, name] :
        {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
         {"2", "DGELS, QR"}}) {

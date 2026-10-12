@@ -59,8 +59,14 @@ The layout is the same on every path (``tadah train``, ``predict``,
   list has no intercept column and is refused.
 * The ridge (``LAMBDA``) does not penalise the intercepts, also when
   ``FIXINDEX`` pins some of them, and penalises every other weight; ``NORM``
-  does not normalise them. ``NORM true`` with ``BF_Linear`` or ``Kern_Linear``
-  requires ``BIAS true``: the weights fitted to the normalised descriptors
+  does not normalise them. ``FIXINDEX``/``FIXWEIGHT`` is refused with ``NORM
+  true`` (``tadah train`` and ``tadah hpo``): the fit would pin weights of
+  the normalised descriptors, and their conversion to weights of the raw
+  descriptors moves them, so the potential would hold neither the
+  ``FIXWEIGHT`` values it records nor a zero covariance for them (until
+  2026-10-12 ``tadah train`` fitted such a configuration: a pinned ``Nb``
+  intercept of -7.6 was written as -7.649). ``NORM true`` with ``BF_Linear``
+  or ``Kern_Linear`` requires ``BIAS true``: the weights fitted to the normalised descriptors
   are converted to weights of the raw descriptors, and the constant this
   moves goes into the intercepts. A linear potential with ``NORM true`` and
   ``BIAS false``, which earlier versions wrote, is refused when it predicts:
@@ -77,13 +83,21 @@ The layout is the same on every path (``tadah train``, ``predict``,
   model's intercepts: data whose structures all have one composition (a
   fixed stoichiometry, or ``Nb27 Ta27`` and ``Nb54 Ta54``), or no energy
   weight at all, are refused before the fit, naming the species, the rank
-  found and the model's intercept weights. Use ``BIAS false``
-  (``ESHIFT_ATOM``, ``ESHIFT_DBATOM`` or ``ESHIFT`` remove a per-species
-  reference energy), add structures of other compositions (for example of
-  the pure elements, or an isolated atom of each species), or pin
-  intercepts with ``FIXINDEX``/``FIXWEIGHT`` (the weights the message
-  names). ``tadah train`` checks before it computes any descriptor, ``tadah
-  hpo`` at startup. A non-linear kernel's intercepts are those of the basis
+  found and the model's intercept weights, and the remedies the
+  configuration can take: under ``NORM false`` use ``BIAS false`` with
+  explicit ``ESHIFT`` values (a per-species reference energy, such as the
+  isolated atom's) or ``ESHIFT_ATOM`` (isolated-atom structures in the
+  data), add structures of other compositions (for example of the pure
+  elements, or an isolated atom of each species), or pin intercepts with
+  ``FIXINDEX``/``FIXWEIGHT`` (the weights the message names); under ``NORM
+  true``, where a linear model needs ``BIAS true`` and ``FIXINDEX`` is
+  refused, add structures of other compositions or set ``NORM false``.
+  ``ESHIFT_DBATOM`` is no remedy: its least-squares fit of the species
+  energies is singular on such data and sets every ``ESHIFT`` to 0 (with a
+  WARNING), so the constant goes into the descriptor weights. Until
+  2026-10-12 every refusal named ``ESHIFT_DBATOM``, ``BIAS false`` and the
+  pin, under ``NORM true`` too. ``tadah train`` checks before it computes
+  any descriptor, ``tadah hpo`` at startup. A non-linear kernel's intercepts are those of the basis
   its fit draws, which starts with the intercept vectors (see
   :ref:`Non-linear models <nonlinear_models>`), whatever basis a potential
   used as the training configuration holds: a dot-product kernel's weights

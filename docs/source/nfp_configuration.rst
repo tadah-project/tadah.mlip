@@ -5185,12 +5185,13 @@ cannot be saved: the evaluation whose potential could not be saved has
 its ``loss.tadah`` row, but ``best_pot.tadah`` and ``best_params.tadah``
 keep the previous incumbent.  ``best_pot.tadah`` carries the
 configuration of the evaluation that produced it except the training
-datasets and the inputs of the run: like every potential it has no
+datasets and these settings of the run: like every potential it has no
 ``DBFILE`` line (:ref:`retrain_from_potential`), and no ``HPOTARGET``,
 ``VALIDATION`` or ``VERBOSE`` line (the ``--hpotarget``, ``--validation``
 and ``-v`` of the run; the journal's FILES section names the hpotarget and
 validation files), and its header names the evaluation and the training and
-validation datasets.  It is the authoritative record of the result.
+validation datasets.  Inside the run the potential the ``PC_LAMMPS``
+scripts run is built at the run's ``VERBOSE``.  It is the authoritative record of the result.
 In earlier versions it had the three lines, so used as the ``-c``
 configuration of a later run without ``--validation`` it validated on the
 file its ``VALIDATION`` line named.
@@ -5331,8 +5332,8 @@ Practical tips
   the columns by their ``KEY[n]`` labels.  To reproduce a candidate,
   use the potential itself (``best_pot.tadah`` or a ``DUMP``/``BDUMP``
   archive): it carries the candidate's configuration except the training
-  datasets and the run's inputs (``HPOTARGET``, ``VALIDATION``,
-  ``VERBOSE``).  Add the ``DBFILE`` lines of the run's ``-c`` configuration
+  datasets and the run's ``HPOTARGET``, ``VALIDATION`` and ``VERBOSE``.
+  Add the ``DBFILE`` lines of the run's ``-c`` configuration
   (``best_pot.tadah``'s header names the datasets; the compact header of
   an archive does not) to a copy of it and train it with ``tadah train
   -c`` (:ref:`retrain_from_potential`).

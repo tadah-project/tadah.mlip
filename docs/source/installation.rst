@@ -345,8 +345,9 @@ runs in the MPI build too (``ctest --test-dir build-mpi``): each test
 program is a one-rank MPI job. The cases of the ``PC_ISOLATION PROCESS``
 worker pool are *Skipped* there (the MPI build has ``PC_ISOLATION THREAD``
 only), as are the optional-data cases of the serial build. The multi-rank
-tests exist only in this build: ``ctest -L mpi`` runs them through
-``MPIEXEC_EXECUTABLE`` at 1, 2 and 4 ranks and needs four process slots
+tests of ``tadah hpo`` exist only in this build: ``ctest -L mpi`` runs them
+through ``MPIEXEC_EXECUTABLE`` at 1, 2 and 4 ranks and needs four process
+slots
 (``MPIEXEC_MAX_NUMPROCS``). CMake takes the first ``mpiexec`` on ``PATH``
 for ``MPIEXEC_EXECUTABLE``, whichever MPI it belongs to; when another
 MPI's comes first, configure with ``-DMPIEXEC_EXECUTABLE=/path/to/mpiexec``,
@@ -354,7 +355,10 @@ the launcher of step 3 (the wrong one starts one-rank jobs, and the
 multi-rank tests fail). They check the rank invariance of ``ANNEAL_PT``
 / ``ANNEAL_PA`` (``hpo_anneal_mpi_matrix``), a signal that one rank
 receives (``hpo_mpi_signal_*``) and ``tadah hpo`` end to end on 1 and 2
-ranks (``hpo_mpi_e2e_*``). The serial build runs none of them.
+ranks (``hpo_mpi_e2e_*``). The serial build runs none of them. ``ctest -L
+mpi`` also selects the ``pair_style tadah`` entries of
+:ref:`installation_lammps_mpi`, which every NFP build has: they run an MPI
+``lmp`` of their own and are *Skipped* unless it is named.
 
 .. note::
 
@@ -522,12 +526,66 @@ Parallel builds are supported. A typical Linux choice is:
     cmake --build build --parallel $(nproc)
 
 After building, the produced LAMMPS executable from this build directory includes ML‑TADAH and supports ``pair_style tadah``.
+It is ``build/lmp``, or ``build/lmp_<machine>`` with
+``-DLAMMPS_MACHINE=<machine>`` (``lmp_serial`` in the preset example
+above); ``cmake --build build --target lmp`` builds it alone, and
+``cmake --build build --target lammps`` the library alone (what
+:ref:`installation_nfp` links).
 
 **Advanced integration options**
 
 The CMake integration also supports additional options (e.g. verbosity controls and custom style registration lists). These are documented here:
 
 - ``tadah.lammps/integration/README.md`` (in your Tadah!LAMMPS checkout)
+
+.. _installation_lammps_mpi:
+
+Running pair_style tadah on several MPI ranks
+.............................................
+
+``pair_style tadah`` runs domain-decomposed like any LAMMPS pair style.
+Configure LAMMPS with the options of Step 3 and ``-DBUILD_MPI=ON`` (CMake
+finds the MPI of ``mpicxx``), build ``lmp`` and start it with the
+``mpirun`` / ``mpiexec`` of that MPI (or ``srun``):
+
+.. code-block:: bash
+
+    cd /path/to/lammps
+    cmake -S cmake -B build-mpi -DBUILD_MPI=ON -DLAMMPS_MACHINE=mpi \
+      -DPKG_ML-TADAH=ON \
+      -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
+      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps \
+      -DTADAH_GIT_BRANCH=v1-dev
+    cmake --build build-mpi --target lmp --parallel
+    mpiexec -n 4 /path/to/lammps/build-mpi/lmp_mpi -in in.ml
+
+On several ranks the energies, forces, per-atom energies and the virial
+are those of the serial run up to round-off (the order in which
+contributions are summed differs), for the generic many-body kernel of,
+for example, the *Quick Start* potential, the ``EAMFAST`` kernels of a
+linear ``DM_REAM`` or pair potential, and the full-list kernel of a
+non-linear model; this was checked on 2, 4 and 8 ranks, also with
+sub-domains narrower than the cutoff. A linear model runs with ``newton
+on`` or ``off``; a non-linear one needs ``newton on``. The kernel of a
+``DIMER`` potential was not checked on several ranks.
+
+Runs on different numbers of ranks start from the same state only when
+the input makes them: ``create_atoms`` numbers the atoms rank by rank, and
+``velocity all create ...`` with its default ``loop all`` assigns the
+velocities by atom ID, so each lattice site starts with a velocity that
+depends on the number of ranks. The trajectories then differ from the
+first step (the *Quick Start* ``in.ml`` at 1, 2 and 4 ranks: 415, 419 and
+426 K after 100 steps), though each run conserves its energy. Use ``loop
+geom`` (velocities from the positions), or start every run from one data
+file, to compare runs across rank counts: with ``loop geom`` the three
+``in.ml`` runs print the same thermo rows for all 1000 steps.
+
+The test suite checks this agreement when it is given an MPI ``lmp``
+(``tadah.lammps_mpi_*``, see ``CONTRIBUTING.md``, *Running tests*):
+configure a Tadah!MLIP build with tests and NFP (:ref:`installation_nfp`)
+with ``-DTADAH_LMP_MPI=/path/to/lammps/build-mpi/lmp_mpi`` and
+``-DTADAH_LMP_MPIEXEC=/path/to/mpiexec``, the launcher of that MPI, and
+run ``ctest -L lammps``; without them the entries are *Skipped*.
 
 Traditional make-based build
 ............................

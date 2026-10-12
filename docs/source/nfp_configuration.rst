@@ -2607,21 +2607,37 @@ one a finite number (``MAXTIME`` a positive one).
        local search takes gradients first evaluates its starting point
        and its first N samples without a gradient (N its ``POPULATION``,
        NLopt's default 4), and its first local search starts at one of
-       these points and evaluates the loss there again, so it needs N + 1
-       more evaluations (``GD_MLSL`` with ``INNER LD_LBFGS`` in 2-D:
-       ``MAXEVAL`` 10 or less lets no local search step); its warning says
-       what MLSL spends.  ``AUGLAG`` goes straight into its local search.
+       these points, which the search has evaluated.  When the run
+       answers a point asked for again from the search's record
+       (:ref:`hpo_repeat_points`: no ``PC_OBSERVABLE`` that carries state
+       and no ``--skip-rel`` filter; a run with ``PC_LAMMPS`` refuses such
+       an MLSL) and ``GRAD_STRATEGY`` is
+       ``NUMERICAL``, the loss there is the recorded one, the centre of
+       the finite differences, and only their stencil is evaluated, so it
+       needs N more evaluations (``GD_MLSL`` with ``INNER LD_LBFGS`` in
+       2-D: ``MAXEVAL`` 9 or less lets no local search step).  Otherwise
+       -- such a ``PC_OBSERVABLE`` or filter, or ``ANALYTICAL`` or
+       ``HYBRID``, whose gradient follows an evaluation of its point -- it
+       evaluates the loss there again, N + 1 more (``MAXEVAL`` 10 or
+       less: ``... then its first local search, from one of them,
+       evaluates the loss there again (1 evaluation) and the gradient
+       there (...) ..., which needs MAXEVAL 11 or more``).  The warning
+       says what MLSL spends.  ``AUGLAG`` goes straight into its local
+       search.
        The warning covers every phase with a budget of its own: the
        ``STRATEGY``-level optimiser, each ``MULTISTART`` start (its
        ``BUDGET_PER_START`` or its share of ``MAXEVAL``), the ``PRESTAGE``
        exploration and refinement (with ``TOPK`` > 1 its share), and an
        ``INNER`` block whose local search takes gradients and whose
-       ``MAXEVAL``, in NLopt calls, is 1:
+       ``MAXEVAL``, in NLopt calls, is 1 (each call asks for the loss and
+       the gradient at a point; under an MLSL whose run answers the loss
+       at its local starts from the record, such a call evaluates the
+       gradient alone):
 
        .. code-block:: none
 
           WARNING   the STRATEGY-level optimiser NLOPT:LD_LBFGS: MAXEVAL 4 takes no step: its gradient search evaluates the loss at a starting point (1 evaluation) and the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 6 or more
-          WARNING   the STRATEGY-level optimiser NLOPT:GD_MLSL: MAXEVAL 10 takes no step of a local search: MLSL evaluates its starting point and its first 4 samples without a gradient (5 evaluations; POPULATION 4, NLopt's default), then its first local search, from one of them, evaluates the loss there again (1 evaluation) and the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 11 or more
+          WARNING   the STRATEGY-level optimiser NLOPT:GD_MLSL: MAXEVAL 9 takes no step of a local search: MLSL evaluates its starting point and its first 4 samples without a gradient (5 evaluations; POPULATION 4, NLopt's default), then its first local search, from one of them, takes the loss there from the search's record (no evaluation) and evaluates the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 10 or more
 
        Until 2026-10-12 nothing said so.
 

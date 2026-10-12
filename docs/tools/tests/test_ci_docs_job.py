@@ -1,12 +1,15 @@
 """Tests for the GitLab docs_sphinx job (.gitlab-ci.yml).
 
 The job must install docs/requirements.txt every time, into an environment
-of its own, and build with that environment's sphinx-build: a runner that
-already has some Sphinx would otherwise build with it and without the
-extensions the requirements list. The job's script, read from
+of its own, and build with the sphinx-build that installation provides: a
+runner that already has some Sphinx would otherwise build with it and
+without the extensions the requirements list. The job's script, read from
 .gitlab-ci.yml, runs here with stub commands first on PATH (python3, cmake,
 git and the runner's own sphinx-build), each logging how it was called;
-nothing is installed or downloaded.
+nothing is installed or downloaded. The python3 stub models what pip does
+on a runner: `python3 -m pip install --user -r FILE` puts a sphinx-build in
+$HOME/.local/bin, and the python of a `python3 -m venv DIR` environment puts
+one in DIR/bin.
 
 Run: python3 -m unittest discover -s docs/tools/tests -v
 """
@@ -34,11 +37,18 @@ def write_exe(path, body):
     os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR)
 
 
-# The python3 of the runner. `-m venv DIR` makes an environment whose python
-# installs a sphinx-build of its own when asked to install the requirements
-# (unless VENV_FAILS is set); everything else is only logged.
+# The python3 of the runner. `-m pip install --user -r FILE` installs a
+# sphinx-build into $HOME/.local/bin, as pip does; `-m venv DIR` makes an
+# environment whose python installs a sphinx-build of its own when asked to
+# install the requirements (unless VENV_FAILS is set); everything else is
+# only logged.
 PYTHON3 = r'''
 echo "python3 $*" >> "$LOG"
+if [ "$1 $2 $3 $4 $5" = "-m pip install --user -r" ]; then
+  mkdir -p "$HOME/.local/bin"
+  printf '#!/bin/bash\necho "user-sphinx-build $*" >> "$LOG"\n' > "$HOME/.local/bin/sphinx-build"
+  chmod +x "$HOME/.local/bin/sphinx-build"
+fi
 if [ "$1" = "-m" ] && [ "$2" = "venv" ]; then
   [ -n "$VENV_FAILS" ] && exit 1
   dir="$3"
@@ -66,6 +76,28 @@ GIT = r'''
 echo "git $*" >> "$LOG"
 if [ "$1" = "clone" ]; then mkdir -p "${@: -1}"; fi
 '''
+
+# The build the job must run, with a sphinx-build its installation of the
+# requirements provided ('user-' or 'venv-', the stubs above), never the
+# runner's ('runner-').
+BUILD = 'sphinx-build -W --keep-going -b html docs/source docs/build/html'
+
+
+def installs(calls):
+    """The logged installations of docs/requirements.txt."""
+    return [c for c in calls
+            if 'pip install' in c and '-r docs/requirements.txt' in c]
+
+
+def builds(calls):
+    """The logged sphinx-build runs."""
+    return [c for c in calls if 'sphinx-build ' in c]
+
+
+def installed_build(call):
+    """Whether @p call is the build run with a sphinx-build the
+    installation of the requirements provided."""
+    return call in ('user-' + BUILD, 'venv-' + BUILD)
 
 
 @unittest.skipIf(not have('yaml'), 'PyYAML is not installed')
@@ -119,42 +151,57 @@ class DocsSphinxJobTest(unittest.TestCase):
         return proc, calls
 
     def test_requirements_installed_when_the_runner_has_sphinx(self):
+        # Pins: on a runner with a sphinx-build of its own the job exits 0,
+        # installs docs/requirements.txt, and builds once, with the
+        # sphinx-build that installation provided, not the runner's.
+        # Before the fix: fails: the job installed nothing when the runner
+        # had a sphinx-build (`if ! command -v sphinx-build`), and built with
+        # the runner's ('runner-sphinx-build ...').
         proc, calls = self.run_job(runner_sphinx=True)
         report = proc.stdout + proc.stderr + '\n'.join(calls)
         self.assertEqual(proc.returncode, 0, report)
-        self.assertIn('venv-python -m pip install -r docs/requirements.txt',
-                      calls, report)
-        builds = [c for c in calls if 'sphinx-build ' in c]
-        self.assertEqual(
-            builds,
-            ['venv-sphinx-build -W --keep-going -b html docs/source '
-             'docs/build/html'], report)
+        self.assertTrue(installs(calls), report)
+        self.assertEqual(len(builds(calls)), 1, report)
+        self.assertTrue(installed_build(builds(calls)[0]), report)
 
     def test_requirements_installed_when_the_runner_has_no_sphinx(self):
+        # Pins: on a runner without a sphinx-build the job exits 0, installs
+        # docs/requirements.txt and builds once, with the sphinx-build that
+        # installation provided.
+        # Before the fix: passes as well (a pin): the job installed the
+        # requirements with `pip install --user` and found their
+        # sphinx-build in $HOME/.local/bin.
         proc, calls = self.run_job(runner_sphinx=False)
         report = proc.stdout + proc.stderr + '\n'.join(calls)
         self.assertEqual(proc.returncode, 0, report)
-        self.assertIn('venv-python -m pip install -r docs/requirements.txt',
-                      calls, report)
-        self.assertIn('venv-sphinx-build -W --keep-going -b html docs/source '
-                      'docs/build/html', calls, report)
+        self.assertTrue(installs(calls), report)
+        self.assertEqual(len(builds(calls)), 1, report)
+        self.assertTrue(installed_build(builds(calls)[0]), report)
 
-    def test_the_environment_is_installed_before_the_build(self):
+    def test_the_requirements_are_installed_before_the_build(self):
+        # Pins: on a runner with a sphinx-build of its own, docs/requirements.txt
+        # is installed before the job's first cmake (the Doxygen step and the
+        # build both run with what it installs).
+        # Before the fix: fails: nothing was installed on such a runner.
         proc, calls = self.run_job(runner_sphinx=True)
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        install = calls.index(
-            'venv-python -m pip install -r docs/requirements.txt')
+        report = proc.stderr + '\n'.join(calls)
+        self.assertEqual(proc.returncode, 0, report)
+        self.assertTrue(installs(calls), report)
+        install = calls.index(installs(calls)[0])
         first_cmake = next(i for i, c in enumerate(calls)
                            if c.startswith('cmake '))
-        self.assertLess(install, first_cmake, '\n'.join(calls))
+        self.assertLess(install, first_cmake, report)
 
     def test_no_venv_fails_the_job_naming_it(self):
+        # Pins: when python3 cannot make the job's virtual environment (an
+        # image without Python's venv module), the job exits non-zero naming
+        # python3-venv, and runs no sphinx-build.
+        # Before the fix: fails: the job made no environment; on a runner with
+        # a sphinx-build it built with that one and exited 0.
         proc, calls = self.run_job(runner_sphinx=True, venv_fails=True)
         self.assertNotEqual(proc.returncode, 0, '\n'.join(calls))
         self.assertIn('python3-venv', proc.stdout + proc.stderr)
-        self.assertFalse([c for c in calls if 'sphinx-build ' in c],
-                         '\n'.join(calls))
-
+        self.assertFalse(builds(calls), '\n'.join(calls))
 
 if __name__ == '__main__':
     unittest.main()

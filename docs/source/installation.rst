@@ -24,7 +24,10 @@ General requirements:
   floating-point ``std::to_chars`` (GCC 11+ / libstdc++ 11+, Clang with
   libc++ 14+ or libstdc++ 11+, MSVC 2019 16.4+); Tadah! uses it to write
   numbers losslessly
-- **CMake** (3.15+)
+- **CMake** 3.15 or later; 3.24 with ``TADAH_ENABLE_NFP`` (Tadah.HPO declares
+  it) and 3.16 with ``BUILD_TESTING`` (CTest reports a skipped test through
+  the ``SKIP_REGULAR_EXPRESSION`` test property, which it has from 3.16; the
+  configure step stops on an older CMake, saying so)
 - **LAPACK**
 - **libcurl** development files (``libcurl4-openssl-dev`` on Debian and
   Ubuntu, ``libcurl-devel`` on Fedora and Red Hat): Tadah! reads structures
@@ -184,7 +187,7 @@ Customize the Tadah!MLIP build using CMake options:
 - ``TADAH_ENABLE_OPENMP``: Enable OpenMP for parallelization (default: OFF).
 - ``TADAH_MARCH_NATIVE``: Use native optimizations (default: OFF).
 - ``TADAH_ENABLE_FAST_MATH``: Enable fast math optimizations (default: OFF).
-- ``TADAH_ENABLE_NFP``: Enable Nested Fitting Procedure (default: OFF), see :ref:`installation_nfp`.
+- ``TADAH_ENABLE_NFP``: Enable Nested Fitting Procedure (default: OFF), see :ref:`installation_nfp`. A ``tadah`` built without it refuses ``tadah hpo`` and ``TASK hpo`` before any task runs, ``tadah hpo needs the Nested Fitting Procedure, which this tadah was built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see Installation)``, and its ``tadah -h`` says so on the ``hpo`` line.
 - ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIB``: Absolute path to the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIBS``: Extra link items for the LAMMPS library, as a CMake list (e.g. ``"-lz;-lzstd"``); needed mainly for a static LAMMPS library, whose own dependencies are not propagated (optional, used by ``TADAH_ENABLE_NFP``).
@@ -196,7 +199,7 @@ Additional CMake options to consider:
 
 - ``CMAKE_INSTALL_PREFIX``: Set the install destination when ``make install`` is invoked. A common choice is ``-DCMAKE_INSTALL_PREFIX=~/.local``.
 - ``BUILD_SHARED_LIBS``: Whether to build shared or static Tadah!MLIP libraries (default: OFF).
-- ``BUILD_TESTING``: Include tests (default: OFF). Needs a Python 3 interpreter, which runs the unit tests of the documentation build tools; with ``TADAH_ENABLE_NFP``, Python 3.11 or later, for the Nested Fitting tests (their key-registry check reads TOML with ``tomllib``). The configure step stops when it finds no suitable interpreter.
+- ``BUILD_TESTING``: Include tests (default: OFF). Needs CMake 3.16 or later, and a Python 3 interpreter, which runs the unit tests of the documentation build tools; with ``TADAH_ENABLE_NFP``, Python 3.11 or later, for the Nested Fitting tests (their key-registry check reads TOML with ``tomllib``). The configure step stops when it finds no suitable interpreter.
 
 Append flags to the ``cmake`` command with the ``-D`` prefix and a value of ``ON``, ``OFF``, or a path, e.g.:
 
@@ -635,7 +638,7 @@ Troubleshooting
 
 #. **CMake not found / version too old**
 
-   Ensure CMake is installed and up-to-date (3.15+). On Linux, you can often install or upgrade CMake via your package manager, or download a binary from the CMake website.
+   Ensure CMake is installed and up-to-date (3.15 or later; 3.24 with ``TADAH_ENABLE_NFP``, 3.16 with ``BUILD_TESTING``). On Linux, you can often install or upgrade CMake via your package manager, or download a binary from the CMake website.
 
 #. **Compiler not found / version too old**
 

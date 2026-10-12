@@ -211,9 +211,9 @@ the default build; their entries build them (`cmake --build`), on the
 machine's physical cores or on `-DTADAH_HEADER_CHECK_JOBS=<n>` processes, and
 a rerun compiles only what changed. `ctest -R tadah_header_check` tests the function
 itself; those entries need CMake 3.19 (they read CTest's test list with
-`string(JSON)`), and on an older CMake, which a build without
-`TADAH_ENABLE_NFP` accepts (3.15), they are Skipped with a line that says
-so. The installed tree is not checked.
+`string(JSON)`), and on CMake 3.16-3.18, which the tests of a build without
+`TADAH_ENABLE_NFP` accept, they are Skipped with a line that says so. The
+installed tree is not checked.
 
 **Skipped, not passed.** A test that cannot run because an optional input
 is absent (an external dataset, an environment variable) must be reported
@@ -271,23 +271,38 @@ ctest --test-dir build_tadah_noceres --output-on-failure --no-tests=error
 
 With an initial-cache preset (`-C <preset>`), add `-DTADAH_ENABLE_CERES=OFF`
 or `-DTADAH_ENABLE_NFP=OFF` to its command line. Each suite runs clean with
-the skips listed above. Without Ceres, the test cases that need it are not
-compiled (they are not registered, as `test_hpo` is not built without
+the skips listed above (on CMake 3.16-3.18 also the six
+`tadah_header_check_*` entries are Skipped).
+The tests need CMake 3.16 in every configuration: CTest reports a skipped
+test through the `SKIP_REGULAR_EXPRESSION` test property, which it has from
+3.16 and ignores before (reporting the test Passed), so cmake-tools'
+`include(Catch)` stops an older CMake at the configure step, saying so; the
+build without tests accepts 3.15, and one with NFP needs 3.24 (HPO). A build
+without NFP refuses `tadah hpo` and `TASK hpo` before any task runs, naming
+`TADAH_ENABLE_NFP`, and its `tadah -h` says so on the `hpo` line; the
+`[not-built]` cases of test_tadah check it there.
+Without Ceres, the test cases that need it are not compiled (they are not registered, as `test_hpo` is not built without
 NFP), and those that use `LIB CERES` as an example check its refusal
 instead. Without NFP the tests of HPO, MD and Tadah.LAMMPS are not built,
 and the labels `e2e`, `bench`, `shutdown`, `statistical`, `anneal`, `slow`,
 `hpo` and `mpi` have no entry: `ctest -L e2e` there runs nothing, which
 `--no-tests=error` reports as a failure (without it CTest exits 0). Every build checks these configurations
 in part: `tadah_without_nfp_links` (label `cmake`, builds with NFP) builds
-and runs `tadah` as a build without NFP links it, and
-`hpo_configure_without_ceres` (label `cmake`) configures HPO without Ceres
-and checks that `tadah.hpo` still has Eigen. Neither compiles HPO without
+and runs `tadah` as a build without NFP links it (`tadah hpo` is refused
+naming `TADAH_ENABLE_NFP`), and `hpo_configure_without_ceres` (label
+`cmake`) configures HPO without Ceres, from the build's own cache and the
+sources of its dependencies, and checks that `tadah.hpo` still has Eigen
+(`hpo_configure_without_ceres_preset` checks that a configure from that
+cache sees what the build saw). Neither compiles HPO without
 Ceres or runs the suites of the other configurations: build and test both
 after a change to the CMake files or to code under `TADAH_ENABLE_NFP` or
 `TADAH_USE_CERES`. `tadah_cmake_minimum_features` checks that no CMake file
-of Tadah.MLIP uses a command or option newer than its
+of Tadah.MLIP uses a command, option or test property newer than its
 `cmake_minimum_required()` (`tests/cmake_minimum/check_cmake_features.py`
-lists them).
+lists them), and that no file under `tests/` declares first more than the
+tests' minimum, 3.16 (`tests/CMakeLists.txt`): a script whose body needs
+more checks the version first and skips, saying why, as the header check
+does.
 
 **The MPI build (`TADAH_HPO_MPI`).** The registered suite above is the
 serial build's, and it runs no MPI code: the multi-rank `ANNEAL_PT` /

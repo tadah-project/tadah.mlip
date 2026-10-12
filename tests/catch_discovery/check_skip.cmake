@@ -27,7 +27,8 @@
 #    exits with 1 and writes no marker line.
 #
 # Every failure is reported; the script fails at the end if there was any.
-cmake_minimum_required(VERSION 3.18)
+# 3.16: the marker is CTest's SKIP_REGULAR_EXPRESSION test property.
+cmake_minimum_required(VERSION 3.16)
 
 foreach(v SCRIPT SKIP_CANARY CTEST WORK_DIR)
   if(NOT DEFINED ${v} OR "${${v}}" STREQUAL "")
@@ -93,7 +94,8 @@ endfunction()
 # Run CTest in DIR and check the status CTest reports for every case.
 function(cs_expect_statuses dir what)
   execute_process(
-    COMMAND "${CTEST}" --test-dir "${dir}" --no-tests=error
+    COMMAND "${CTEST}"
+    WORKING_DIRECTORY "${dir}"
     RESULT_VARIABLE rc
     OUTPUT_VARIABLE out
     ERROR_VARIABLE out

@@ -35,6 +35,14 @@ if(TADAH_ENABLE_NFP)
 endif()
 
 include(Catch)
+# The tests need CMake 3.16: CTest reports a native skip (TADAH_SKIP, the
+# skipped tests below) through the SKIP_REGULAR_EXPRESSION test property,
+# which it has from 3.16 and ignores before, reporting the test Passed.
+# include(Catch) above already stops on an older CMake, saying so
+# (cmake-tools testing/TadahTestSkip.cmake); the build without tests
+# accepts the umbrella's 3.15. The scripts these tests run declare at most
+# this (tadah_cmake_minimum_features).
+cmake_minimum_required(VERSION 3.16)
 catch_discover_tests(test_tadah)
 
 
@@ -50,16 +58,18 @@ set_tests_properties(tadah_version_matches_blueprint PROPERTIES
 # cmake-tools' reader: found through FetchContent'd CORE, [TADAH]-scoped,
 # registered as a configure dependency; a missing blueprint or version
 # line is a configure error (no 0.0.0 default).
+# Each case configures version_reader/project in a new build directory
+# (version_reader/check_version_reader.cmake removes the last run's).
 FetchContent_GetProperties(tadah_cmake)
 set(_vr ${CMAKE_CURRENT_SOURCE_DIR}/version_reader)
 function(tadah_version_reader_test name case core regex)
   add_test(NAME ${name}
-    COMMAND ${CMAKE_COMMAND} --fresh
-      -S ${_vr}/project -B ${CMAKE_CURRENT_BINARY_DIR}/version_reader/${name}
+    COMMAND ${CMAKE_COMMAND}
       -DCASE=${case}
       -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
-      -DFETCHCONTENT_FULLY_DISCONNECTED=ON
-      "-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${core}")
+      "-DCORE=${core}"
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/version_reader/${name}
+      -P ${_vr}/check_version_reader.cmake)
   set_tests_properties(${name} PROPERTIES PASS_REGULAR_EXPRESSION "${regex}")
 endfunction()
 tadah_version_reader_test(tadah_version_reader_fetchcontent fetchcontent
@@ -363,6 +373,10 @@ tadah_add_header_check(tadah)
 # so bad's entry ran on every physical core ('probe_headers --parallel:
 # '20', expected '1'') and compiled its good headers whether the build
 # kept going or not, and no value was refused.
+# The script needs CMake 3.19 (string(JSON)); on CMake 3.16-3.18, which
+# these tests accept, it prints "SKIPPED: check_header_check.cmake needs
+# CMake 3.19 or later (string(JSON)); this is CMake <v>" and the entries are
+# Skipped (see tadah_header_check_cmake_* below).
 foreach(_case good bad private_dir private_entry new_header refusals)
   add_test(NAME tadah_header_check_${_case}
     COMMAND ${CMAKE_COMMAND}
@@ -376,5 +390,96 @@ foreach(_case good bad private_dir private_entry new_header refusals)
       -P ${CMAKE_CURRENT_SOURCE_DIR}/header_check/check_header_check.cmake)
   set_tests_properties(tadah_header_check_${_case} PROPERTIES
     LABELS cmake
-    TIMEOUT 300)
+    TIMEOUT 300
+    SKIP_REGULAR_EXPRESSION
+      "(^|\n)SKIPPED: check_header_check\\.cmake needs CMake ")
 endforeach()
+
+# The CMake that header_check/check_header_check.cmake needs: string(JSON),
+# CMake 3.19, while these tests accept 3.16. tadah_header_check_cmake_old
+# and _minimum run the script as CMake 3.18.4 and 3.15, and 3.19 and
+# 3.24.2, would (its -DAS_CMAKE_VERSION; header_check/check_cmake_minimum.cmake):
+# below 3.19 it prints exactly "SKIPPED: check_header_check.cmake needs
+# CMake 3.19 or later (string(JSON)); this is CMake <v>" and exits 0, from
+# 3.19 on it goes on to its argument checks. Before the fix: _old fails
+# (the script ignored AS_CMAKE_VERSION and went on, failing at its
+# argument check; on a real CMake 3.18-3.23 it failed on --fresh,
+# --test-dir or string(JSON)); _minimum passes as well (a pin).
+foreach(_case old minimum)
+  add_test(NAME tadah_header_check_cmake_${_case}
+    COMMAND ${CMAKE_COMMAND}
+      -DCASE=${_case}
+      -DSCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/header_check/check_header_check.cmake
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/header_check/check_cmake_minimum.cmake)
+  set_tests_properties(tadah_header_check_cmake_${_case} PROPERTIES
+    LABELS cmake
+    TIMEOUT 60)
+endforeach()
+
+# tadah_cmake_minimum_features: no CMake file of Tadah.MLIP (CMakeLists.txt,
+# cmake/, tests/) uses a command, sub-command, command-line option or test
+# property newer than the cmake_minimum_required() that governs it, its own
+# or that of the nearest CMakeLists.txt above it, and none declares first a
+# minimum above that of what runs it: the tests' (this file's) for a file
+# under tests/, the umbrella's for the others
+# (cmake_minimum/check_cmake_features.py, which has the table of features
+# and versions). Before the fix: 17 uses -- tests/CMakeLists.txt (cmake
+# --fresh, 3.24, in the umbrella's 3.15), header_check/check_header_check.cmake
+# (--fresh, ctest --test-dir 3.20, string(JSON) 3.19, in its 3.18),
+# removed_options/check_removed_option.cmake (--fresh) and
+# catch_discovery/check_skip.cmake (--test-dir), both 3.18. Before the build
+# matrix review: 9 -- this file's two SKIP_REGULAR_EXPRESSION (3.16) under the
+# umbrella's 3.15, and seven scripts that declare 3.18 above it
+# (catch_discovery/check_discovery.cmake, check_module.cmake,
+# check_skip.cmake, doxygen_input/probe.cmake,
+# git_branch/check_git_branch.cmake, git_branch/probe.cmake,
+# removed_options/check_removed_option.cmake), which stopped on CMake
+# 3.15-3.17 ("CMake 3.18 or higher is required").
+add_test(NAME tadah_cmake_minimum_features
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake_minimum/check_cmake_features.py
+    ${PROJECT_SOURCE_DIR})
+set_tests_properties(tadah_cmake_minimum_features PROPERTIES
+  LABELS cmake
+  TIMEOUT 60
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
+
+# ------------------------------------------------------------------
+# 12. The tadah executable without TADAH_ENABLE_NFP
+# ------------------------------------------------------------------
+# A build with NFP links tadah with HPO; the default build (NFP OFF) links
+# it with tadah.mlip alone. tadah_without_nfp_links builds the second from
+# the first's sources (without_nfp/CMakeLists.txt: tadah_without_nfp, not
+# part of `all`) and runs it (without_nfp/check_without_nfp.cmake):
+# `--version` prints the version, `--tadah-pc-worker`, the PC_ISOLATION
+# worker entry, is an unknown argument, and `tadah hpo` is refused naming
+# TADAH_ENABLE_NFP. In a build without NFP the tadah target is that
+# executable (tadah_version_matches_blueprint runs it).
+# Before the fix: main() called tadah::hpo::pc_worker_main in every build,
+# so the link failed ("undefined reference to
+# `tadah::hpo::pc_worker_main(int, char**)'") and a build without NFP had
+# no tadah. Before the build matrix review: `tadah hpo` said
+# "EngineFactory::create: No engine found for HPO".
+if(TADAH_ENABLE_NFP)
+  add_subdirectory(without_nfp)
+  cmake_host_system_information(RESULT _wn_jobs QUERY NUMBER_OF_PHYSICAL_CORES)
+  if(NOT _wn_jobs GREATER 0)
+    set(_wn_jobs 1)
+  endif()
+  add_test(NAME tadah_without_nfp_links
+    COMMAND ${CMAKE_COMMAND}
+      -DBUILD_DIR=${CMAKE_BINARY_DIR}
+      -DCONFIG=$<CONFIG>
+      -DJOBS=${_wn_jobs}
+      -DEXE=$<TARGET_FILE:tadah_without_nfp>
+      -DVERSION=${TADAH_VERSION_FULL}
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/without_nfp/work
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/without_nfp/check_without_nfp.cmake)
+  # It builds in this build tree, as the header checks do: one at a time.
+  set_tests_properties(tadah_without_nfp_links PROPERTIES
+    LABELS cmake
+    TIMEOUT 900
+    PROCESSORS ${_wn_jobs}
+    RESOURCE_LOCK tadah_header_check)
+endif()

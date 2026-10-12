@@ -19,7 +19,9 @@
 #         -DWORK_DIR=<scratch dir> -DGENERATOR=<CMake generator>
 #         -DMAKE_PROGRAM=<build tool> -DCXX=<C++ compiler>
 #         -P check_module.cmake
-cmake_minimum_required(VERSION 3.18)
+# 3.16: module_project includes cmake-tools' Catch.cmake, whose TADAH-SKIP
+# marker needs CTest's SKIP_REGULAR_EXPRESSION.
+cmake_minimum_required(VERSION 3.16)
 
 foreach(v TADAH_CMAKE_DIR LISTER_SOURCE WORK_DIR GENERATOR MAKE_PROGRAM CXX)
   if(NOT DEFINED ${v} OR "${${v}}" STREQUAL "")

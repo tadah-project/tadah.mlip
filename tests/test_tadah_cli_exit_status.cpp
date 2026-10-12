@@ -5676,12 +5676,15 @@ TEST_CASE("Subcommand: train -c of a potential without a DBFILE line is "
 namespace {
 
 /* Writes, in the working directory, db.tadah (the three Ta dimers),
- * config.val (DBFILE db.tadah), config.tadah (M_BLR BF_Linear on db.tadah)
- * and config.hpo (one evaluation, LN_SBPLX at the CONFIG seed of OPTIM
- * CGRID2B (1); PC_ERMSE). */
+ * val.tadah (the same three under another name: a header names the
+ * validation dataset apart from the training one), config.val (DBFILE
+ * val.tadah), config.tadah (M_BLR BF_Linear on db.tadah) and config.hpo
+ * (one evaluation, LN_SBPLX at the CONFIG seed of OPTIM CGRID2B (1);
+ * PC_ERMSE). */
 void write_hpo_potential_fixture() {
   std::ofstream("db.tadah") << retrain_dataset();
-  std::ofstream("config.val") << "DBFILE db.tadah\n";
+  std::ofstream("val.tadah") << retrain_dataset();
+  std::ofstream("config.val") << "DBFILE val.tadah\n";
   std::ofstream("config.tadah")
       << retrain_config("M_BLR BF_Linear", "LAMBDA 0.1\nOALGO 4\n");
   std::ofstream("config.hpo")
@@ -5741,13 +5744,18 @@ TEST_CASE("Subcommand: hpo -c of a potential without a DBFILE line says "
 /* Pins: the best_pot.tadah of `tadah hpo -c config.tadah --hpotarget
  * config.hpo --validation config.val -v 1` (one evaluation) has no
  * HPOTARGET, VALIDATION or VERBOSE line and still its MODEL and WEIGHTS,
- * and its header still names the validation dataset (db.tadah); `tadah
- * hpo -c seed.tadah --hpotarget config.hpo`, seed.tadah being that
- * best_pot.tadah with the DBFILE line added and no --validation given,
- * exits 1, refusing PC_ERMSE "but no --validation file was given".
+ * and its header still names the validation dataset: the line after the
+ * header's "#   Validation " line is "#   [1] 3 structs, ..." ending in
+ * " val.tadah" (the training dataset is db.tadah); `tadah hpo -c
+ * seed.tadah --hpotarget config.hpo`, seed.tadah being that best_pot.tadah
+ * with the DBFILE line added and no --validation given, exits 1, refusing
+ * PC_ERMSE "but no --validation file was given".
  * Before the fix: best_pot.tadah had the lines "HPOTARGET config.hpo",
  * "VALIDATION config.val" and "VERBOSE 1", and the second run validated on
- * the config.val its seed named, which no --validation asked for (exit 0). */
+ * the config.val its seed named, which no --validation asked for (exit 0).
+ * The header's validation dataset passes before the fix as well (a pin);
+ * the case checked only that best_pot.tadah has "Validation" and
+ * "db.tadah", which the training dataset's line has. */
 TEST_CASE("Subcommand: hpo writes no HPOTARGET, VALIDATION or VERBOSE into "
           "best_pot.tadah, and a seed potential names no validation file",
           "[TadahCLI][hpo][potential-content]") {
@@ -5770,8 +5778,27 @@ TEST_CASE("Subcommand: hpo writes no HPOTARGET, VALIDATION or VERBOSE into "
   CHECK(line_tokens(best, "MODEL") ==
         std::vector<std::string>{"MODEL", "M_BLR", "BF_Linear"});
   CHECK(line_tokens(best, "WEIGHTS").size() == 1 + 4);
-  CHECK(contains(best, "Validation"));
-  CHECK(contains(best, "db.tadah"));
+  {
+    std::istringstream in(best);
+    std::string line, after_validation;
+    bool seen = false;
+    while (std::getline(in, line)) {
+      if (seen) {
+        after_validation = line;
+        break;
+      }
+      seen = line.rfind("#   Validation ", 0) == 0;
+    }
+    INFO("the line after the header's Validation line: " << after_validation);
+    CHECK(seen);
+    CHECK(after_validation.rfind("#   [1] 3 structs, ", 0) == 0);
+    const std::string tail = " val.tadah";
+    const bool names_val =
+        after_validation.size() > tail.size() &&
+        after_validation.compare(after_validation.size() - tail.size(),
+                                 tail.size(), tail) == 0;
+    CHECK(names_val);
+  }
 
   std::filesystem::rename("best_pot.tadah", "first_best.tadah");
   std::ofstream("seed.tadah")

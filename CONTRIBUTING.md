@@ -195,6 +195,41 @@ a skip; the tolerances of the cases are set for the shipped potential. The
 other hidden `[!benchmark]` case of HPO, the bump gate, runs in
 `hpo_bumpgate_e2e` (`ctest -L e2e`).
 
+`ctest -L lammps` runs `pair_style tadah` domain-decomposed, as users run
+it (`mpirun lmp`), in an NFP build: Tadah.LAMMPS's `tadah.lammps_mpi_<case>`
+entries (`tests/mpi/check_pair_tadah_mpi.py`, labels `mpi` and `lammps`)
+run an `lmp` built with `-DBUILD_MPI=ON` and ML-TADAH under the launcher of
+its MPI on 1, 2 and 4 ranks, and on 4 ranks in a `4 1 1` grid whose
+sub-domains are narrower than the ghost cutoff, and compare every run by
+atom id with a reference run: the forces, per-atom energies and virials,
+the energy and the pressure tensor at step 0, and the positions,
+velocities and energy after 100 NVE steps agree to round-off (the script
+states each tolerance and why). The cases are `quickstart` (the *Quick
+Start* potential: the generic many-body kernel, newton on and off),
+`two_species`, `dm_ream` (D2_Knot5 + DM_REAM: the `EAMFAST` kernel and,
+with `EAMFAST false`, the generic one), `nonlinear` (M_BLR BF_Polynomial2:
+the full-list kernel) and `pair_2b`. The executables are built outside
+Tadah! (the docs' *Installation*, *Running pair_style tadah on several MPI
+ranks*) and named at configure time:
+
+```bash
+cmake -S Tadah.MLIP -B build ... \
+    -DTADAH_LMP_MPI=/path/to/lammps/build-mpi/lmp_mpi \
+    -DTADAH_LMP_MPIEXEC=/usr/bin/mpiexec \
+    -DTADAH_LMP_SERIAL=/path/to/lammps/build/lmp_serial   # optional
+ctest --test-dir build -L lammps --output-on-failure
+```
+
+`TADAH_LMP_MPIEXEC` is the launcher of the MPI that `TADAH_LMP_MPI` is
+built with (another one starts one-rank jobs, which the entries detect and
+fail on); `TADAH_LMP_MPIEXEC_PREFLAGS` adds flags before `-n` (for example
+`--oversubscribe` on a machine with fewer than four slots). The reference
+run is the serial `lmp` of `TADAH_LMP_SERIAL` when it is set, else the MPI
+`lmp` on one rank. Without `TADAH_LMP_MPI` or `TADAH_LMP_MPIEXEC` the
+entries are *Skipped* (exit code 77), naming what is missing; a variable
+that names no executable is a failure. They run in the serial build as well
+as in the MPI build: the executables they drive are LAMMPS', not Tadah's.
+
 `ctest -L headers` checks that every header compiles on its own: one entry
 per module (`tadah.core_headers`, `tadah.models_headers`, `tadah.mlip_headers`,
 `tadah.md_headers`, `tadah.lammps_headers`, `tadah.hpo_headers` and, for the
@@ -238,7 +273,10 @@ The CTest summary lists skipped entries under "The following tests did not
 run". With the documentation tools installed and without the optional data,
 the suite skips exactly the two MLIP `NNFinder: real CH4 phase-I structure`
 cases (`TADAH_TEST_PHASEI_DB`) and `hpo_strategy_matrix`
-(`TADAH_HPO_INTEGRATION_BUNDLE`); `tadah_docs_tools` is Skipped too when one
+(`TADAH_HPO_INTEGRATION_BUNDLE`), and in a build with `TADAH_ENABLE_NFP` the
+five `tadah.lammps_mpi_*` entries unless `TADAH_LMP_MPI` and
+`TADAH_LMP_MPIEXEC` name an MPI `lmp` and its launcher (`ctest -L lammps`
+above); `tadah_docs_tools` is Skipped too when one
 of its tools is missing. A build without `TADAH_ENABLE_NFP` also skips
 `tadah_cli_example_ex_2`, whose README runs `tadah hpo`. See the cmake-tools README, *Skipped tests: the
 TADAH-SKIP marker*, for the rules.
@@ -292,7 +330,9 @@ one-rank MPI job (test_hpo and test_tadah initialise MPI as `tadah`
 does). It Skips, besides the optional-data cases above, the seven
 `pc pool:` cases that start `PC_ISOLATION PROCESS` workers, which the MPI
 build does not have (`pc pool: in the MPI build the worker refuses to
-start` pins why). `ctest -L mpi` selects the MPI-only entries, run
+start` pins why). `ctest -L mpi` selects the multi-rank entries: the
+`tadah.lammps_mpi_*` entries of every NFP build (`ctest -L lammps` above,
+which run their own `lmp` and launcher) and the MPI-only entries, run
 through CMake's `MPIEXEC_EXECUTABLE` and needing four process slots
 (`MPIEXEC_MAX_NUMPROCS`): `hpo_anneal_mpi_matrix` (the PT/PA trajectories,
 statuses and Corana census are the same at 1, 2 and 4 ranks),

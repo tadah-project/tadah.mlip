@@ -456,8 +456,8 @@ many-body cutoff ``RCTYPEMB``, :math:`\psi_n` the basis function of centre
    * - ``SIGNED``
      - :math:`W f_c(r) \sum_n a_n\,\psi_n(r)`, amplitudes of any sign
      - None: :math:`\rho` can go negative (in the tail, say). This is the
-       density of every tadah before 1.6.0, bit for bit when built with the
-       same compiler flags (see below).
+       density of every tadah before 1.6.0, bit for bit when Tadah.MODELS
+       is compiled without fused multiply-adds (see below).
    * - ``NONNEG``
      - :math:`W \max(f_c(r),0) \sum_n a_n\,\psi_n(r)`, every
        :math:`a_n \ge 0`
@@ -476,15 +476,21 @@ On a density that is valid under both (every amplitude :math:`\ge 0`),
 ``NONNEG`` is bit-identical to ``SIGNED`` wherever :math:`f_c \ge 0`; the two
 differ only where the cutoff dips below 0 (``Cut_Poly`` and ``Cut_PolyS``, by
 about ``-2.7e-15`` near ``RCUTMB``). ``SIGNED`` evaluates the sums of the
-earlier density with the same code and compiler flags (Tadah.MODELS' own),
-so a build gives the density an earlier version built the same way gave, bit
-for bit: with the flags of the presets (no ``-march=native``, no
-``-ffast-math``), LTO and a ``tadah`` built with ``TADAH_MARCH_NATIVE``
-included, the tests check it against values recorded from tadah before 1.6.0.
-A Tadah.MODELS compiled for the build machine (``-march=native`` in
-``CMAKE_CXX_FLAGS``) lets the compiler fuse multiply-adds, as it did in the
-earlier version; with link-time optimisation as well, the two can then differ
-by rounding errors. The key is global: every DM_REAM block, including the
+earlier density with the same code, compiled with Tadah.MODELS' own flags.
+In a Tadah.MODELS compiled without fused multiply-adds (FMA), as with the
+flags of the presets on x86-64 (no ``-march=native``, no ``-ffast-math``;
+LTO and a ``tadah`` built with ``TADAH_MARCH_NATIVE`` included), a build
+gives the density of tadah before 1.6.0 bit for bit, which the tests check
+against values recorded from it, and the other evaluators of the density
+agree with the descriptor: bit for bit the density gates and reports of
+``tadah hpo`` and ``tadah refit --edit``, within one unit in the last place
+the density ``tadah refit`` fits. A Tadah.MODELS
+compiled for a machine with FMA instructions (``-march=native`` in
+``CMAKE_CXX_FLAGS`` on a recent x86-64, or an AArch64 machine, where the
+compilers fuse multiply-adds at their default flags) gives these to
+rounding errors only: the density can differ from the recorded values and
+from an earlier version built the same way (with link-time optimisation),
+and its evaluators from each other. The key is global: every DM_REAM block, including the
 children of a ``DM_mJoin``, uses the same form. Values are
 case-insensitive and written in upper case; any other value is an error at
 its line of the configuration or potential file (``Invalid value for key
@@ -571,7 +577,8 @@ refused with::
    integrated bump, a_n >= 0: rho >= 0 and non-increasing by construction).
 
 The key is new in tadah 1.6.0: add ``RHOFORM SIGNED`` to a potential written
-before 1.6.0 to use it unchanged (bit for bit). ``tadah predict``, ``tadah analysis
+before 1.6.0 to use it unchanged (bit for bit in a Tadah.MODELS compiled
+without fused multiply-adds, see above). ``tadah predict``, ``tadah analysis
 descriptor``, ``tadah analysis bfunc`` and ``tadah properties pairwise`` refuse a key-less DM_REAM
 potential even when the task configuration sets ``RHOFORM`` (the form
 belongs to the potential, whose amplitudes were fitted in it), and a task

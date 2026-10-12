@@ -355,3 +355,79 @@ foreach(_case good bad private_dir private_entry new_header refusals)
     LABELS cmake
     TIMEOUT 300)
 endforeach()
+
+# The CMake that header_check/check_header_check.cmake needs: string(JSON),
+# CMake 3.19, while this build accepts 3.15. tadah_header_check_cmake_old
+# and _minimum run the script as CMake 3.18.4 and 3.15, and 3.19 and
+# 3.24.2, would (its -DAS_CMAKE_VERSION; header_check/check_cmake_minimum.cmake):
+# below 3.19 it prints exactly "SKIPPED: check_header_check.cmake needs
+# CMake 3.19 or later (string(JSON)); this is CMake <v>" and exits 0, from
+# 3.19 on it goes on to its argument checks. Before the fix: _old fails
+# (the script ignored AS_CMAKE_VERSION and went on, failing at its
+# argument check; on a real CMake 3.18-3.23 it failed on --fresh,
+# --test-dir or string(JSON)); _minimum passes as well (a pin).
+foreach(_case old minimum)
+  add_test(NAME tadah_header_check_cmake_${_case}
+    COMMAND ${CMAKE_COMMAND}
+      -DCASE=${_case}
+      -DSCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/header_check/check_header_check.cmake
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/header_check/check_cmake_minimum.cmake)
+  set_tests_properties(tadah_header_check_cmake_${_case} PROPERTIES
+    LABELS cmake
+    TIMEOUT 60)
+endforeach()
+
+# tadah_cmake_minimum_features: no CMake file of Tadah.MLIP (CMakeLists.txt,
+# cmake/, tests/) uses a command, sub-command or command-line option newer
+# than the cmake_minimum_required() that governs it, its own or that of the
+# nearest CMakeLists.txt above it (cmake_minimum/check_cmake_features.py,
+# which has the table of features and versions). Before the fix: 17 uses --
+# tests/CMakeLists.txt (cmake --fresh, 3.24, in the umbrella's 3.15),
+# header_check/check_header_check.cmake (--fresh, ctest --test-dir 3.20,
+# string(JSON) 3.19, in its 3.18), removed_options/check_removed_option.cmake
+# (--fresh) and catch_discovery/check_skip.cmake (--test-dir), both 3.18.
+add_test(NAME tadah_cmake_minimum_features
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake_minimum/check_cmake_features.py
+    ${PROJECT_SOURCE_DIR})
+set_tests_properties(tadah_cmake_minimum_features PROPERTIES
+  LABELS cmake
+  TIMEOUT 60
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
+
+# ------------------------------------------------------------------
+# 12. The tadah executable without TADAH_ENABLE_NFP
+# ------------------------------------------------------------------
+# A build with NFP links tadah with HPO; the default build (NFP OFF) links
+# it with tadah.mlip alone. tadah_without_nfp_links builds the second from
+# the first's sources (without_nfp/CMakeLists.txt: tadah_without_nfp, not
+# part of `all`) and runs it (without_nfp/check_without_nfp.cmake):
+# `--version` prints the version, and `--tadah-pc-worker`, the PC_ISOLATION
+# worker entry, is an unknown argument. In a build without NFP the tadah
+# target is that executable (tadah_version_matches_blueprint runs it).
+# Before the fix: main() called tadah::hpo::pc_worker_main in every build,
+# so the link failed ("undefined reference to
+# `tadah::hpo::pc_worker_main(int, char**)'") and a build without NFP had
+# no tadah.
+if(TADAH_ENABLE_NFP)
+  add_subdirectory(without_nfp)
+  cmake_host_system_information(RESULT _wn_jobs QUERY NUMBER_OF_PHYSICAL_CORES)
+  if(NOT _wn_jobs GREATER 0)
+    set(_wn_jobs 1)
+  endif()
+  add_test(NAME tadah_without_nfp_links
+    COMMAND ${CMAKE_COMMAND}
+      -DBUILD_DIR=${CMAKE_BINARY_DIR}
+      -DCONFIG=$<CONFIG>
+      -DJOBS=${_wn_jobs}
+      -DEXE=$<TARGET_FILE:tadah_without_nfp>
+      -DVERSION=${TADAH_VERSION_FULL}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/without_nfp/check_without_nfp.cmake)
+  # It builds in this build tree, as the header checks do: one at a time.
+  set_tests_properties(tadah_without_nfp_links PROPERTIES
+    LABELS cmake
+    TIMEOUT 900
+    PROCESSORS ${_wn_jobs}
+    RESOURCE_LOCK tadah_header_check)
+endif()

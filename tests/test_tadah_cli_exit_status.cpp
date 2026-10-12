@@ -5605,3 +5605,232 @@ TEST_CASE("Subcommand: properties pairwise --error on a two-body plus "
     }
   }
 }
+
+/* ---- [hygiene-batch2]: a potential as a configuration; validation files --
+ *
+ * A potential records the model's settings and its fit, neither the
+ * training data (no DBFILE) nor the inputs of the run that wrote it (no
+ * HPOTARGET, VALIDATION or VERBOSE). */
+
+namespace {
+
+/* The advice every refusal of a configuration without a training DBFILE
+ * ends with. */
+const char* const kNoDatasetsAdvice =
+    "A potential records no DBFILE (no potential tadah writes has one): to "
+    "train from one, add a DBFILE line to a copy of it (the Training page of "
+    "the documentation, Retraining from a potential).";
+
+}  // namespace
+
+/* Pins: `tadah train -c pot.tadah`, with the potential tadah train wrote
+ * from the three Ta dimers (M_BLR BF_Linear and M_KRR Kern_Linear; it has
+ * no DBFILE line), exits 1 without writing re.tadah, saying "The training
+ * configuration has no DBFILE: tadah train fits the datasets it lists." and
+ * the advice ("A potential records no DBFILE ... add a DBFILE line to a
+ * copy of it (the Training page of the documentation, Retraining from a
+ * potential)."), and no "Key not found"; with the DBFILE line added it
+ * trains (exit 0; a pin of the documented route).
+ * Before the fix: exit 1 with "Key not found in the Context object:
+ * DBFILE" (and the Logger's "Context::operator() -> Key not found:
+ * DBFILE"), naming neither potentials nor the retrain. */
+TEST_CASE("Subcommand: train -c of a potential without a DBFILE line is "
+          "refused, pointing to the retrain route",
+          "[TadahCLI][train][retrain][potential-content]") {
+  for (const char* model : {"M_BLR BF_Linear", "M_KRR Kern_Linear"})
+    DYNAMIC_SECTION(model) {
+      ScratchCwd cwd("retrain_no_dbfile");
+      std::ofstream("db.tadah") << retrain_dataset();
+      std::ofstream("config")
+          << retrain_config(model, "LAMBDA 0.1\nOALGO 1\n");
+      {
+        const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                    "pot.tadah"});
+        INFO("train: status " << t.status << "\n" << reported(t));
+        REQUIRE(t.status == 0);
+      }
+      REQUIRE(line_tokens(slurp("pot.tadah"), "DBFILE").empty());
+      const CliRun r = run_tadah({"tadah", "train", "-c", "pot.tadah", "-o",
+                                  "re.tadah"});
+      const std::string rep = reported(r);
+      INFO("train -c pot.tadah: status " << r.status << "\n" << rep);
+      CHECK(r.status == 1);
+      CHECK(contains(rep, "The training configuration has no DBFILE: tadah "
+                          "train fits the datasets it lists."));
+      CHECK(contains(rep, kNoDatasetsAdvice));
+      CHECK_FALSE(contains(rep, "Key not found"));
+      CHECK_FALSE(std::filesystem::exists("re.tadah"));
+
+      std::ofstream("re_cfg.tadah")
+          << as_training_config(slurp("pot.tadah"), "db.tadah");
+      const CliRun ok = run_tadah({"tadah", "train", "-c", "re_cfg.tadah",
+                                   "-o", "re.tadah"});
+      INFO("with the DBFILE line: status " << ok.status << "\n"
+                                            << reported(ok));
+      CHECK(ok.status == 0);
+      CHECK(std::filesystem::exists("re.tadah"));
+    }
+}
+
+#ifdef TADAH_ENABLE_NFP
+namespace {
+
+/* Writes, in the working directory, db.tadah (the three Ta dimers),
+ * config.val (DBFILE db.tadah), config.tadah (M_BLR BF_Linear on db.tadah)
+ * and config.hpo (one evaluation, LN_SBPLX at the CONFIG seed of OPTIM
+ * CGRID2B (1); PC_ERMSE). */
+void write_hpo_potential_fixture() {
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.val") << "DBFILE db.tadah\n";
+  std::ofstream("config.tadah")
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 0.1\nOALGO 4\n");
+  std::ofstream("config.hpo")
+      << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
+         "LOSS L2\nPC_ERMSE 0 1\nOPTIM CGRID2B (1) 2.3 2.7\n";
+}
+
+}  // namespace
+
+/* Pins: `tadah hpo -c pot.tadah` with the potential tadah train wrote from
+ * config.tadah (no DBFILE line, no FIXINDEX) exits 1 without
+ * best_pot.tadah, refusing "No training DBFILE and no FIXINDEX/FIXWEIGHT:
+ * the model weights cannot be determined" and ending with the advice ("A
+ * potential records no DBFILE ... Retraining from a potential)."); the
+ * potential without its ATOM line is refused "the ATOM key is required",
+ * with the same advice.
+ * Before the fix: both refusals ended with their own remedy ("... or pin
+ * every weight with FIXINDEX/FIXWEIGHT.", "(e.g. 'ATOM Ta')."), without the
+ * advice. */
+TEST_CASE("Subcommand: hpo -c of a potential without a DBFILE line says "
+          "that a potential records none",
+          "[TadahCLI][hpo][retrain][potential-content]") {
+  ScratchCwd cwd("hpo_pot_no_dbfile");
+  write_hpo_potential_fixture();
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
+                                "pot.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  struct Case {
+    const char* name;
+    std::string pot;
+    const char* reason;
+  };
+  const Case cases[] = {
+      {"the potential", slurp("pot.tadah"),
+       "No training DBFILE and no FIXINDEX/FIXWEIGHT: the model weights "
+       "cannot be determined"},
+      {"the potential without ATOM", with_line(slurp("pot.tadah"), "ATOM", ""),
+       "the ATOM key is required"},
+  };
+  for (const Case& c : cases) DYNAMIC_SECTION(c.name) {
+    std::ofstream("seed.tadah") << c.pot;
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "seed.tadah",
+                                "--hpotarget", "config.hpo", "--validation",
+                                "config.val"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, c.reason));
+    CHECK(contains(rep, kNoDatasetsAdvice));
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  }
+}
+
+/* Pins: the best_pot.tadah of `tadah hpo -c config.tadah --hpotarget
+ * config.hpo --validation config.val -v 1` (one evaluation) has no
+ * HPOTARGET, VALIDATION or VERBOSE line and still its MODEL and WEIGHTS,
+ * and its header still names the validation dataset (db.tadah); `tadah
+ * hpo -c seed.tadah --hpotarget config.hpo`, seed.tadah being that
+ * best_pot.tadah with the DBFILE line added and no --validation given,
+ * exits 1, refusing PC_ERMSE "but no --validation file was given".
+ * Before the fix: best_pot.tadah had the lines "HPOTARGET config.hpo",
+ * "VALIDATION config.val" and "VERBOSE 1", and the second run validated on
+ * the config.val its seed named, which no --validation asked for (exit 0). */
+TEST_CASE("Subcommand: hpo writes no HPOTARGET, VALIDATION or VERBOSE into "
+          "best_pot.tadah, and a seed potential names no validation file",
+          "[TadahCLI][hpo][potential-content]") {
+  ScratchCwd cwd("hpo_pot_run_inputs");
+  write_hpo_potential_fixture();
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                                "--hpotarget", "config.hpo", "--validation",
+                                "config.val", "-v", "1"});
+    INFO("hpo: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  REQUIRE(std::filesystem::exists("best_pot.tadah"));
+  const std::string best = slurp("best_pot.tadah");
+  INFO("best_pot.tadah:\n" << best);
+  for (const char* key : {"HPOTARGET", "VALIDATION", "VERBOSE", "DBFILE"}) {
+    INFO("key " << key);
+    CHECK(line_tokens(best, key).empty());
+  }
+  CHECK(line_tokens(best, "MODEL") ==
+        std::vector<std::string>{"MODEL", "M_BLR", "BF_Linear"});
+  CHECK(line_tokens(best, "WEIGHTS").size() == 1 + 4);
+  CHECK(contains(best, "Validation"));
+  CHECK(contains(best, "db.tadah"));
+
+  std::filesystem::rename("best_pot.tadah", "first_best.tadah");
+  std::ofstream("seed.tadah")
+      << as_training_config(slurp("first_best.tadah"), "db.tadah");
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "seed.tadah",
+                              "--hpotarget", "config.hpo"});
+  const std::string rep = reported(r);
+  INFO("hpo -c seed.tadah: status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "but no --validation file was given"));
+  CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+}
+
+/* Pins: `tadah hpo` with a --validation file whose DBFILE lists one dataset
+ * twice -- "DBFILE db.tadah" and "DBFILE ./db.tadah" -- exits 1 without
+ * best_pot.tadah, refusing it naming the file (config.val), "DBFILE lists
+ * one dataset twice" and both entries ("entry 1 (db.tadah) and entry 2
+ * (./db.tadah)").
+ * Before the fix: exit 0; every validation metric took the dataset twice
+ * into its average over the validation datasets. */
+TEST_CASE("Subcommand: hpo refuses a validation DBFILE that lists one "
+          "dataset twice",
+          "[TadahCLI][hpo][validation_file]") {
+  ScratchCwd cwd("hpo_val_twice");
+  write_hpo_potential_fixture();
+  std::ofstream("config.val") << "DBFILE db.tadah\nDBFILE ./db.tadah\n";
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                              "--hpotarget", "config.hpo", "--validation",
+                              "config.val"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "config.val"));
+  CHECK(contains(rep, "DBFILE lists one dataset twice"));
+  CHECK(contains(rep, "entry 1 (db.tadah) and entry 2 (./db.tadah)"));
+  CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+}
+
+/* Pins: `tadah hpo ... --validation a.val b.val` (two validation files, of
+ * the same dataset) exits 1 without best_pot.tadah, refusing "--validation
+ * (VALIDATION) takes one validation configuration file" and naming both
+ * ("a.val b.val").
+ * Before the fix: exit 0; the run validated on a.val and b.val was not
+ * read. */
+TEST_CASE("Subcommand: hpo --validation takes one file",
+          "[TadahCLI][hpo][validation_file]") {
+  ScratchCwd cwd("hpo_two_val_files");
+  write_hpo_potential_fixture();
+  std::ofstream("a.val") << "DBFILE db.tadah\n";
+  std::ofstream("b.val") << "DBFILE db.tadah\n";
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                              "--hpotarget", "config.hpo", "--validation",
+                              "a.val", "b.val"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "--validation (VALIDATION) takes one validation "
+                      "configuration file"));
+  CHECK(contains(rep, "a.val b.val"));
+  CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+}
+#endif  // TADAH_ENABLE_NFP

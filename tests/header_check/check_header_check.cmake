@@ -40,9 +40,9 @@
 #         -DCXX=<C++ compiler> -DCTEST=<ctest> -P check_header_check.cmake
 #
 # The check needs CMake 3.19: it reads ctest's test list
-# (--show-only=json-v1, ctest 3.14) with string(JSON). The umbrella build
-# accepts CMake 3.15 (a build without TADAH_ENABLE_NFP; HPO needs 3.24), so
-# on an older CMake the script says so on one line,
+# (--show-only=json-v1, ctest 3.14) with string(JSON). The tests of a build
+# without TADAH_ENABLE_NFP accept CMake 3.16 (HPO needs 3.24; the build
+# itself 3.15), so on CMake 3.16-3.18 the script says so on one line,
 #   SKIPPED: check_header_check.cmake needs CMake 3.19 or later (string(JSON)); this is CMake <version>
 # which the entries' SKIP_REGULAR_EXPRESSION reports as Skipped, and stops.
 # -DAS_CMAKE_VERSION=<v> makes that decision as CMake <v> would, for

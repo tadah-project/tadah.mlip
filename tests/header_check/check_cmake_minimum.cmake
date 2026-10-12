@@ -1,13 +1,14 @@
 # Check of check_header_check.cmake's CMake guard. The script reads ctest's
-# test list with string(JSON), which CMake has from 3.19, while the umbrella
-# build accepts CMake 3.15 (a build without TADAH_ENABLE_NFP; HPO needs
-# 3.24). On an older CMake the script reports a skip and stops, instead of
-# failing on a command it does not know. A running CMake cannot be made
+# test list with string(JSON), which CMake has from 3.19, while the tests of
+# a build without TADAH_ENABLE_NFP accept CMake 3.16 (HPO needs 3.24; the
+# build itself 3.15). On an older CMake the script reports a skip and stops,
+# instead of failing on a command it does not know. A running CMake cannot be made
 # older (-DCMAKE_VERSION=... does not change CMAKE_VERSION): the script's
 # -DAS_CMAKE_VERSION=<v> makes its guard decide as CMake <v> would, and this
 # check runs it with no other argument:
 #
-#   CASE=old      AS_CMAKE_VERSION 3.18.4 and 3.15 (the umbrella's minimum):
+#   CASE=old      AS_CMAKE_VERSION 3.18.4 and 3.15 (the umbrella's minimum;
+#                 its tests stop earlier there, in cmake-tools' Catch.cmake):
 #                 exit 0, and the output is exactly the line
 #                 "SKIPPED: check_header_check.cmake needs CMake 3.19 or
 #                 later (string(JSON)); this is CMake <v>": the script

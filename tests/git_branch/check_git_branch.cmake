@@ -23,7 +23,7 @@
 # has no git step. Every case but the -D preset also runs built_branch()
 # (built_branch.py) under the case's environment and checks it against the
 # ref CMake took from a variable, or against no ref when CMake asked git.
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.15)
 
 foreach(v CASE TADAH_CMAKE_DIR WORK_DIR GIT PYTHON LOCATOR_DIR)
   if(NOT DEFINED ${v} OR "${${v}}" STREQUAL "")

@@ -14,7 +14,7 @@
 #   cmake -DCASE=<case> -DTADAH_CMAKE_DIR=<cmake-tools> -DWORK_DIR=<scratch>
 #         -DGENERATOR=<CMake generator> -DMAKE_PROGRAM=<build tool>
 #         -DCXX=<C++ compiler> -P check_removed_option.cmake
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.15)
 
 foreach(v CASE TADAH_CMAKE_DIR WORK_DIR GENERATOR MAKE_PROGRAM CXX)
   if(NOT DEFINED ${v} OR "${${v}}" STREQUAL "")

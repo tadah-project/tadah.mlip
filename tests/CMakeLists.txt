@@ -35,6 +35,14 @@ if(TADAH_ENABLE_NFP)
 endif()
 
 include(Catch)
+# The tests need CMake 3.16: CTest reports a native skip (TADAH_SKIP, the
+# skipped tests below) through the SKIP_REGULAR_EXPRESSION test property,
+# which it has from 3.16 and ignores before, reporting the test Passed.
+# include(Catch) above already stops on an older CMake, saying so
+# (cmake-tools testing/TadahTestSkip.cmake); the build without tests
+# accepts the umbrella's 3.15. The scripts these tests run declare at most
+# this (tadah_cmake_minimum_features).
+cmake_minimum_required(VERSION 3.16)
 catch_discover_tests(test_tadah)
 
 
@@ -342,9 +350,9 @@ tadah_add_header_check(tadah)
 # so bad's entry ran on every physical core ('probe_headers --parallel:
 # '20', expected '1'') and compiled its good headers whether the build
 # kept going or not, and no value was refused.
-# The script needs CMake 3.19 (string(JSON)); on an older one, which this
-# build accepts, it prints "SKIPPED: check_header_check.cmake needs CMake
-# 3.19 or later (string(JSON)); this is CMake <v>" and the entries are
+# The script needs CMake 3.19 (string(JSON)); on CMake 3.16-3.18, which
+# these tests accept, it prints "SKIPPED: check_header_check.cmake needs
+# CMake 3.19 or later (string(JSON)); this is CMake <v>" and the entries are
 # Skipped (see tadah_header_check_cmake_* below).
 foreach(_case good bad private_dir private_entry new_header refusals)
   add_test(NAME tadah_header_check_${_case}
@@ -365,7 +373,7 @@ foreach(_case good bad private_dir private_entry new_header refusals)
 endforeach()
 
 # The CMake that header_check/check_header_check.cmake needs: string(JSON),
-# CMake 3.19, while this build accepts 3.15. tadah_header_check_cmake_old
+# CMake 3.19, while these tests accept 3.16. tadah_header_check_cmake_old
 # and _minimum run the script as CMake 3.18.4 and 3.15, and 3.19 and
 # 3.24.2, would (its -DAS_CMAKE_VERSION; header_check/check_cmake_minimum.cmake):
 # below 3.19 it prints exactly "SKIPPED: check_header_check.cmake needs

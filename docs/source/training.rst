@@ -411,6 +411,14 @@ pinned weight)::
        …
 
 ``Index`` matches the ordering of the ``WEIGHTS`` row in ``pot.tadah``.
+``UNCERTAINTY`` is a switch of the run, not part of the model: a potential
+does not record it. A potential given as the configuration (``tadah train
+-c pot.tadah``, with a ``DBFILE`` line added) does not ask for
+``weights.tadah`` with an ``UNCERTAINTY true`` line, which tadah 1.5.x and
+1.6.0 development builds wrote into every potential trained with
+``--uncertainty``: a WARNING names the file, and ``--uncertainty`` asks for
+it. ``UNCERTAINTY true`` in a training configuration or a task file is a
+request, and a refusal names where it came from.
 ``--uncertainty`` is refused before training with an ``OALGO`` other than 3
 and with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``, whose solve of
 the kernel matrix computes no covariance: use implementation 1), and before

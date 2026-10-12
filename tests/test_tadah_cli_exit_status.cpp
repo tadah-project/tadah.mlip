@@ -47,7 +47,9 @@
 // carry an inline comment, and on task files with a TASK line that has no
 // key line (an unknown name, GLOBAL included, is refused; a known one runs
 // on the GLOBAL keys), and on task files with a TASK line naming a group of
-// tasks (refused before any task runs); they run in every build.
+// tasks (refused before any task runs), and on one whose TASK train and
+// predict blocks each print the settings line of their kernel; they run in
+// every build.
 //
 // The [refit] cases run `tadah refit` (dense) with a configuration number
 // out of its range, which is refused naming the key and the token, and with
@@ -2080,6 +2082,57 @@ TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment"
   CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS").size() == 5u);  // key + 4
   REQUIRE(std::filesystem::exists("energy.pred"));
   CHECK(predicted_values("energy.pred").size() == 3u);
+}
+
+namespace {
+
+/* The number of lines of @p text that contain @p needle. */
+std::size_t lines_with(const std::string& text, const std::string& needle) {
+  std::istringstream in(text);
+  std::size_t n = 0;
+  for (std::string line; std::getline(in, line);)
+    if (line.find(needle) != std::string::npos) ++n;
+  return n;
+}
+
+}  // namespace
+
+/* Pins: each TASK of a task file prints the settings line of the kernel it
+ * builds at VERBOSE 1 (the task file's GLOBAL VERBOSE): on the three Ta
+ * dimers with M_KRR Kern_RBF 1 (SBASIS 3), TASK train from MPARAMS 1.0
+ * (pot_a.tadah), TASK train from MPARAMS 2.0 (pot_b.tadah) and TASK
+ * predict with pot_a.tadah exit 0, and stdout has "Kern_RBF | sigma: 1 |
+ * gamma: 1" on two lines (the first training and the prediction),
+ * "Kern_RBF | sigma: 2 | gamma: 0.25" on one (the second training) and no
+ * other "Kern_RBF |" line, as the released code printed them.
+ * Before the fix: one line in all, the first training's: the line was
+ * printed by the first kernel of its kind in the process and by no later
+ * one, so the second training's settings were never printed. */
+TEST_CASE("Task file: each TASK prints the settings line of the kernel it "
+          "builds",
+          "[TadahCLI][task-file][kernel_line]") {
+  ScratchCwd cwd("task_kernel_line");
+  write_ta_dimer_training();
+  std::string base = slurp("config.train");
+  const std::string linear = "MODEL M_BLR BF_Linear\n";
+  const auto at = base.find(linear);
+  REQUIRE(at != std::string::npos);
+  base.replace(at, linear.size(), "MODEL M_KRR Kern_RBF 1\nSBASIS 3\n");
+  std::ofstream("config.a") << base << "MPARAMS 1.0\nOUTFILE pot_a.tadah\n";
+  std::ofstream("config.b") << base << "MPARAMS 2.0\nOUTFILE pot_b.tadah\n";
+  std::ofstream("run.task")
+      << "VERBOSE 1\n"
+         "TASK train\n  CONFIG config.a\n"
+         "TASK train\n  CONFIG config.b\n"
+         "TASK predict\n  DBFILE db.tadah\n  POTENTIAL pot_a.tadah\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(std::filesystem::exists("pot_a.tadah"));
+  CHECK(std::filesystem::exists("pot_b.tadah"));
+  CHECK(lines_with(r.out, "Kern_RBF | sigma: 1 | gamma: 1") == 2u);
+  CHECK(lines_with(r.out, "Kern_RBF | sigma: 2 | gamma: 0.25") == 1u);
+  CHECK(lines_with(r.out, "Kern_RBF |") == 3u);
 }
 
 /* Pins: `tadah train` on the three Ta dimers (D2_BP, 4 weights) reads

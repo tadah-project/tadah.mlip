@@ -382,8 +382,12 @@ integers are always exact. ``#`` comment lines (such as the header
   ``WCOV``, ``NMEAN``, ...) and the other settings are rounded. Earlier
   versions rounded the cutoffs and grids too: such an EAM potential is
   refused until its ``RCUT2B``/``RCUTMB`` is set to the setfl file's
-  cutoff. The configuration-keys page marks these keys
-  (*In a potential file*).
+  cutoff; and the cutoff, a bump's centre and its width, each rounded on
+  its own, could put a ``Cut_Dummy`` bump that ended at or just inside the
+  cutoff past it, which every load warns of and ``tadah hpo`` refuses in
+  its ``-c`` potential (the bump-support gate, whose message names the
+  width that brings the bump inside). The configuration-keys page marks
+  these keys (*In a potential file*).
 * ``NUMERIC`` never limits the values held in memory: calculations
   always run at full double precision, whatever it is set to. Every
   ``tadah`` reader of a file ``tadah`` writes (potentials, configurations,

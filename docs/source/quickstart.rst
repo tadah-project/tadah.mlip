@@ -442,6 +442,24 @@ cannot be loaded, or an element it does not have, stops LAMMPS with an
 ``ERROR: pair_coeff: failed to initialise Tadah potential 'pot.tadah':
 Symbol not in potential file: W``.
 
+Each ``pair_coeff`` line reads the file it names, so one script can run
+several potentials: a later ``pair_coeff * * other.tadah ELEMENT1 ...``
+(with or without ``pair_style tadah`` again, which keeps the pair style)
+replaces the potential, and the runs after it use ``other.tadah``, whose
+notices and fast-path line (below) it logs. A ``pair_coeff`` that
+``pair_style tadah`` refuses (a file it cannot load, an element the
+potential does not have, a number of elements other than the number of
+atom types, no file) leaves the pair style without a potential: LAMMPS
+stops at its ``ERROR``, and a program that drives LAMMPS as a library (the
+LAMMPS Python module) and goes on after that error gets ``ERROR:
+pair_style tadah has no potential: ...`` from its next ``run``. A line
+LAMMPS refuses before it reaches the pair style, such as ``pair_coeff 1 1
+other.tadah ELEMENT1`` (``ERROR: Pair_coeff must start with * * for pair
+style tadah``), changes nothing: the pair style keeps what it held.
+Tadah! 1.6.0 and earlier read only the first file a pair style was
+given: a later ``pair_coeff`` went on with that potential without a
+message, under the notices of the new file.
+
 See :ref:`installation_lammps` for Tadah!LAMMPS interface installation instructions.
 
 What to expect

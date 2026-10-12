@@ -208,9 +208,11 @@ states each tolerance and why). The cases are `quickstart` (the *Quick
 Start* potential: the generic many-body kernel, newton on and off),
 `two_species`, `dm_ream` (D2_Knot5 + DM_REAM: the `EAMFAST` kernel and,
 with `EAMFAST false`, the generic one), `nonlinear` (M_BLR BF_Polynomial2:
-the full-list kernel) and `pair_2b`. The executables are built outside
-Tadah! (the docs' *Installation*, *Running pair_style tadah on several MPI
-ranks*) and named at configure time:
+the full-list kernel), `pair_2b` and `dimer` (the published Tadah!N2
+`DIMER` potential on 512 N2 molecules, newton off: step 0 only, and the
+per-atom energies sum to the energy in every run). The executables are
+built outside Tadah! (the docs' *Installation*, *Running pair_style tadah
+on several MPI ranks*) and named at configure time:
 
 ```bash
 cmake -S Tadah.MLIP -B build ... \
@@ -278,7 +280,7 @@ run". With the documentation tools installed and without the optional data,
 the suite skips exactly the two MLIP `NNFinder: real CH4 phase-I structure`
 cases (`TADAH_TEST_PHASEI_DB`) and `hpo_strategy_matrix`
 (`TADAH_HPO_INTEGRATION_BUNDLE`), and in a build with `TADAH_ENABLE_NFP` the
-five `tadah.lammps_mpi_*` entries unless `TADAH_LMP_MPI` and
+six `tadah.lammps_mpi_*` entries unless `TADAH_LMP_MPI` and
 `TADAH_LMP_MPIEXEC` name an MPI `lmp` and its launcher (`ctest -L lammps`
 above); `tadah_docs_tools` is Skipped too when one
 of its tools is missing. A build without `TADAH_ENABLE_NFP` also skips

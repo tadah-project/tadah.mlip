@@ -862,6 +862,16 @@ script's own ``clear`` directive resets simulation state between runs,
 so existing scripts work unmodified).  Each ``--varloss`` variable is one
 term of the loss (:ref:`nested_fitting`).
 
+The script gives LAMMPS the trial potential with ``pair_style tadah`` and
+``pair_coeff * * EXTERN <elements>``: every ``EXTERN`` line of the run
+adopts that evaluation's trial potential.  A ``pair_coeff * * <file>
+<elements>`` line loads that file instead (a fixed potential, for example
+a reference to compare with), and an ``EXTERN`` line after it adopts the
+trial potential again.  In Tadah! 1.6.0 and earlier a pair style that held
+a potential did not read the file of a later ``pair_coeff``: a
+``pair_coeff * * <file>`` after an ``EXTERN`` line, with no ``clear``
+between them, ran the trial potential.
+
 ``PC_LAMMPS`` and ``PC_OBSERVABLE`` are mutually exclusive: an HPO
 configuration may use one or the other, not both.  ``PC_LAMMPS`` also
 rejects every gradient-based optimiser except ``DLIB:BFGS``

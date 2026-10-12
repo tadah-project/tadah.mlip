@@ -139,8 +139,10 @@ Root-level loss control:
        It is also the value of a failed ``PC_OBSERVABLE`` term in
        ``loss.tadah``, the loss of an evaluation in which such a term
        (:ref:`pc_observable`) or a ``PC_LAMMPS`` simulation failed
-       (``--failscore``, :ref:`pc_lammps_options`), and the reference
-       for graded failures
+       (``--failscore``, :ref:`pc_lammps_options`; under
+       ``FAILSCORE_GRADING ON`` such an evaluation scores a graded loss
+       in ``[0.999 × FAILSCORE, FAILSCORE)`` instead), and the
+       reference for graded failures
        (:ref:`failscore_grading`).  ``PC_LAMMPS``
        lines capture the value in force when they are read; a line's
        own ``--failscore`` changes only the value substituted for that
@@ -687,6 +689,8 @@ false, and with ``MODEL M_KRR`` also when it was true; an ``M_KRR``
 dataset's stress unit, eV/Å³, written ``eV/A^3``.  Before 1.6.0 they were
 labelled ``meV/atom`` and ``GPa``, with the same values.
 
+.. _hpo_two_runs_one_process:
+
 **Two runs in one process.** A ``tadah --task`` file with two ``hpo``
 tasks, or a program that calls ``hpo_run`` twice, runs two model
 searches. Each evaluation builds its model from its own run's
@@ -695,7 +699,8 @@ model, with the first run's ``FORCE``, ``STRESS``, ``LAMBDA``, row weights
 and every other key it does not search), and each run starts its
 ``PC_LAMMPS --hotvar`` values from their ``<initial>`` values or its
 ``WARM`` seeds (the second run used to start each hot script from the
-value the first run's last evaluation converged to). Run twice from one
+value the first run's last evaluation converged to), unless an earlier
+run of the process read a ``WARM`` seed (below). Run twice from one
 task file, example ``01_minimal`` (at ``MAXEVAL 3``) writes for its
 second run the ``loss.tadah``, ``outvar.tadah`` and ``best_pot.tadah`` of
 the same run made alone, but for the evaluation numbers. Each run builds
@@ -712,11 +717,30 @@ options ran on the first run's LAMMPS instance, as the first run had
 read it, so a script rewritten between the runs was not read again),
 and a program that called ``hpo_run`` again after a run that threw
 found the first run's worker processes still running
-(``pc_worker_pool_init: pool already initialized``). One thing carries over from the first run, the
-evaluation counter: the second run's ``ITERATION`` numbers and ``DUMP``
-file names continue where the first run's stopped (4 to 6 after a run of
-3 evaluations). Run each ``tadah hpo`` in a process of its own when its
-files must number the evaluations from 1.
+(``pc_worker_pool_init: pool already initialized``). Three things
+still carry over from an earlier run:
+
+* the evaluation counter: the second run's ``ITERATION`` numbers and
+  ``DUMP`` file names continue where the first run's stopped (4 to 6
+  after a run of 3 evaluations);
+* the ``# HOT`` values of an earlier run's ``WARM`` seed file: a later
+  run that reads no ``WARM`` seed with a value for the same script and
+  variable starts that ``--hotvar`` value of each of its chains from the
+  seed's value, not from its ``<initial>`` value, so its files can differ
+  from those of the run made alone;
+* the journal's tallies: the second run's ``hpo_run.log`` counts the
+  earlier runs' evaluations in its DIAGNOSTICS and PERFORMANCE
+  (``Total evaluations``, the NaN/Inf clampings, the evaluations that
+  threw, the graded failures and gate rejects, the eval latencies), as
+  does the ``total rejects=N`` of its gate notes and of its ``--hotvar``
+  ``rejecting`` warnings; it writes a ``BEST`` line only for a loss below the best of
+  every earlier run, and its RESULT gives the best loss, evaluation
+  and metrics of an earlier run when it found none below it, while its own
+  ``best_pot.tadah`` holds its own best.
+
+Run each ``tadah hpo`` in a process of its own when its files must
+number the evaluations from 1, or its journal and its hot values must be
+those of the run alone.
 
 Individual validation targets and weights
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2656,13 +2680,19 @@ one a finite number (``MAXTIME`` a positive one).
        differentiate: no ``PC_OBSERVABLE`` ``--loss MAPE`` or
        ``RMSLE``, and no ``--unconverged force-scaled``.  Startup
        refuses a block that sets it without them, naming the setting or
-       the line.  It still stops the run at a gradient it cannot form —
-       a parameter without an analytical derivative, a candidate
-       rejected before training, an ill-conditioned fit — where
-       ``HYBRID`` uses finite
-       differences instead.  Before 1.6.0 such a setup passed startup
-       and stopped at the first gradient with ``no registered
-       analytical derivative``.
+       the line; before 1.6.0 such a setup passed startup and stopped
+       at the first gradient with ``no registered analytical
+       derivative``.  It still stops the run at a gradient it cannot
+       form — a parameter without an analytical derivative, an
+       ill-conditioned fit, a loss term without an analytical
+       derivative at the point — where ``HYBRID`` uses finite
+       differences instead.  A candidate a gate rejects before training
+       (``BUMPGATE CANDIDATE``, ``RHOGATE``, ``RHOBARGATE``) has no fit
+       to differentiate: it is a point without a usable gradient
+       (:ref:`hpo_gradient_not_finite`), from which NLopt and Ceres
+       step back and go on.  Until 2026-10-07 such a
+       candidate ended the run ``FAILED -- GRAD_STRATEGY=ANALYTICAL: no
+       analytical gradient for N parameters at this point``.
    * - ``PARAM`` (string value)
      - Algorithm-specific key/value (e.g. ``PARAM fd_step 1e-3``).  A
        value that starts like a number must be a finite number
@@ -5577,12 +5607,16 @@ thereafter), captures the script's ``${hot_a0}`` after each successful
 run, and reuses it on the next evaluation. The variable is then
 propagated into the cold (no-``--hotvar``) ``PC_LAMMPS`` scripts that
 read it (``${hot_a0}`` or ``v_hot_a0``), which run in phase B. When ``WARM`` reads a ``pot.tadah``
-whose writer dumped ``# HOT_A0 <script> <a0>`` lines, the cache is
-primed automatically; ``[HPO] WARM: primed warmstart cache with N
-HOT_A0 entry(ies)`` confirms how many lines were absorbed. The cached
-values belong to the run: a second run in the same process (a task file
-with two ``hpo`` tasks) starts from ``<initial>``, or from its ``WARM``
-seed, again.
+whose writer dumped ``# HOT <script> <name> <value>`` lines (or the
+legacy ``# HOT_A0 <script> <a0>``), the cache is primed automatically;
+``[HPO] WARM: primed warmstart cache with N HOT entry(ies) from
+<file>`` confirms how many lines were absorbed. The values each
+evaluation hands to the next belong to the run: a second run in the
+same process (a task file with two ``hpo`` tasks) starts from
+``<initial>``, or from its ``WARM`` seed, again. A ``WARM`` seed's values
+do not: a later run that reads no ``WARM`` seed with a value for the
+same script and variable starts from an earlier run's seed value
+(:ref:`two runs in one process <hpo_two_runs_one_process>`).
 
 Multiple ``--hotvar`` flags may be repeated on the same ``PC_LAMMPS``
 line; ``hot_a0`` is just a conventional name (any identifier works).

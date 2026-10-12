@@ -188,7 +188,7 @@ Customize the Tadah!MLIP build using CMake options:
 - ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIB``: Absolute path to the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIBS``: Extra link items for the LAMMPS library, as a CMake list (e.g. ``"-lz;-lzstd"``); needed mainly for a static LAMMPS library, whose own dependencies are not propagated (optional, used by ``TADAH_ENABLE_NFP``).
-- ``TADAH_ENABLE_CERES``: Build the Ceres Solver optimiser family of ``tadah hpo`` (``LIB CERES``) (default: ON; only relevant with ``TADAH_ENABLE_NFP``). ``PARAM fd_kernel ceres``, Ceres' finite-difference step rule, does not need it: Tadah evaluates that rule itself (before 1.6.0 it ran inside Ceres and needed this option).
+- ``TADAH_ENABLE_CERES``: Build the Ceres Solver optimiser family of ``tadah hpo`` (``LIB CERES``) (default: ON; only relevant with ``TADAH_ENABLE_NFP``). ``PARAM fd_kernel ceres``, Ceres' finite-difference step rule, does not need it: Tadah evaluates that rule itself (before 1.6.0 it ran inside Ceres and needed this option). The compact fit of ``tadah refit`` does need it: without it ``tadah refit`` refuses ``REFIT_MODE compact``, the default, so a refit configuration of such a build sets ``REFIT_MODE dense``.
 - ``TADAH_GIT_BRANCH``: The git branch or tag the Tadah! modules are fetched at (detected when not given, see :ref:`installation_git_branch`; pass it for a release source tarball, e.g. ``v1.6.0``).
 - ``TADAH_HPO_MPI``: Distribute the replicas of the ``TADAH:ANNEAL_PT`` / ``TADAH:ANNEAL_PA`` optimisers of ``tadah hpo`` over MPI ranks (default: OFF; only relevant with ``TADAH_ENABLE_NFP``; needs an MPI build of LAMMPS), see :ref:`installation_hpo_mpi`.
 
@@ -408,7 +408,8 @@ To build Tadah!MLIP with NFP, follow these steps:
      when the LAMMPS configure finds OpenMP): it calls the OpenMP runtime, and linking otherwise
      fails on ``omp_get_num_threads``, ``GOMP_parallel`` and the like
    - optionally ``-DTADAH_ENABLE_CERES=OFF`` to build without the Ceres Solver (``LIB CERES`` is then
-     unavailable)
+     unavailable, and so is ``tadah refit``'s compact fit: such a build refuses ``REFIT_MODE compact``,
+     the default, and needs ``REFIT_MODE dense``)
 
 
 .. _installation_lammps:

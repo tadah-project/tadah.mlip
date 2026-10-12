@@ -1178,14 +1178,18 @@ simulation (``exp(1000)`` is ``inf`` in LAMMPS), whatever
    PC_LAMMPS task failed (hot.in, occurrence 1): reading --hotvar hot_a0 after the script: its value 'abc' is not a number
    PC_LAMMPS task failed (relax.in, occurrence 1): reading --failvar viol after the script: its value 'inf' is not a finite number
 
-The line names every variable of the task at fault, the first first -- the
-``--varloss`` variables, then the hot and the fail variables, each with its
-LAMMPS message or why it has no number, joined with ``;`` -- so a script
-with several bad variables is put right in one run (``PC_LAMMPS task
-failed (hot.in, occurrence 1): reading --hotvar hot_a0 after the script:
-its value '3.25abc' is not a number; reading --hotvar hot_b after the
-script: its value 'xyz' is not a number``).  Until 2026-10-12 only the
-first was named.
+The line names every variable of the task at fault, whether reading it
+raised a LAMMPS error or its value has no number, each with its LAMMPS
+message or why it has no number, joined with ``;``, in one order: the
+``--varloss`` variables (or the ``PC_FAILPROBE`` ``S``), then the
+``--hotvar``, then the ``--failvar`` variables, each group in the line's
+order.  So a script with several bad variables is put right in one run:
+
+.. code-block:: none
+
+   PC_LAMMPS task failed (rb.in, occurrence 1): reading --varloss E after the script: its value 'abc' is not a number; reading --failvar F1 after the script: ERROR on proc 0: Variable F1: Divide by 0 in variable formula (src/variable.cpp:2567); reading --failvar F2 after the script: its value 'xyz' is not a number
+
+Until 2026-10-12 only the first was named.
 
 Before 1.6.0 such a value was skipped: a ``--varloss`` one added
 ``FAILSCORE`` to the mean of the evaluation's terms, which with other terms

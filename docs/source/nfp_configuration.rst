@@ -562,7 +562,13 @@ searched by the optimiser:
 **All-fixed polish** — the ``tadah refit`` workload.  ``FIXINDEX`` covers
 every weight, so the LS solve is vacuous and skipped (including the
 per-evaluation design-matrix build); the optimiser searches the
-coefficients directly:
+coefficients directly.  Under ``OALGO 3`` each evaluation still fits:
+an ``OALGO 3`` fit with every weight pinned gives the potential a zero
+``WCOV`` and the ``WNOISE`` of the pinned weights' residuals on the
+training data, as ``tadah train`` writes them, so ``tadah predict
+--error`` can use a ``best_pot.tadah`` (the noise alone); until 2026-10-12
+the evaluation skipped the fit there too, and the potential had neither,
+while a non-linear ``M_KRR`` kernel, whose basis the fit draws, had both:
 
 .. code-block:: none
 

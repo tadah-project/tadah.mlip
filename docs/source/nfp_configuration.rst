@@ -1417,17 +1417,23 @@ written in the ``INNER`` block is a startup error at its line
 ``PC_OBSERVABLE`` lines whose values it can differentiate: no
 ``--loss MAPE`` or ``RMSLE`` and no ``--unconverged force-scaled``.
 Startup refuses a setup that falls short, naming the setting or the
-line; the shared example model, for instance, uses ``OALGO 1``:
+``PC_OBSERVABLE`` term, at the line that closes the block it refuses
+(``ENDOPTIMIZER``; ``ENDEXPLORE`` for an ``EXPLORE`` block, ``EXPLORE
+block: GRAD_STRATEGY ANALYTICAL …``).  The shared example model, for
+instance, uses ``OALGO 1`` (example ``22_pc_observable``'s
+``config.hpo`` with ``common/config.tadah``):
 
 .. code-block:: none
 
-   HPOEngine error: OPTIMIZER block: GRAD_STRATEGY ANALYTICAL (resolved for PC_OBSERVABLE: the block sets no GRAD_STRATEGY) needs the analytical gradient of the loss, which this setup cannot form: OALGO is 1 (it needs OALGO 4, the Cholesky normal equations). Change that setting, or set GRAD_STRATEGY HYBRID to use finite differences where no analytical gradient is available.
+   HPOEngine error: Error on line 20: OPTIMIZER block: GRAD_STRATEGY ANALYTICAL (resolved for PC_OBSERVABLE: the block sets no GRAD_STRATEGY) needs the analytical gradient of the loss, which this setup cannot form: OALGO is 1 (it needs OALGO 4, the Cholesky normal equations). Change that setting, or set GRAD_STRATEGY HYBRID to use finite differences where no analytical gradient is available.
+   Line: ENDOPTIMIZER
 
 and a ``force-scaled`` line (a ``MAPE`` or ``RMSLE`` one alike):
 
 .. code-block:: none
 
-   HPOEngine error: OPTIMIZER block: GRAD_STRATEGY ANALYTICAL (resolved for PC_OBSERVABLE: the block sets no GRAD_STRATEGY) needs the analytical gradient of the loss, which this setup cannot form: the PC_OBSERVABLE term cohesive_energy[1]: --unconverged force-scaled reports target + slope x fmax for a relaxation that does not converge, a value without an analytical derivative. Change that setting, or set GRAD_STRATEGY HYBRID to use finite differences where no analytical gradient is available.
+   HPOEngine error: Error on line 20: OPTIMIZER block: GRAD_STRATEGY ANALYTICAL (resolved for PC_OBSERVABLE: the block sets no GRAD_STRATEGY) needs the analytical gradient of the loss, which this setup cannot form: the PC_OBSERVABLE term cohesive_energy[1]: --unconverged force-scaled reports target + slope x fmax for a relaxation that does not converge, a value without an analytical derivative. Change that setting, or set GRAD_STRATEGY HYBRID to use finite differences where no analytical gradient is available.
+   Line: ENDOPTIMIZER
 
 ``HYBRID`` takes finite differences only where the analytical gradient
 is missing: at an unconverged ``force-scaled`` relaxation, or for every
@@ -2362,17 +2368,39 @@ error: the ``ENDOPTIMIZER`` line for the ``STRATEGY``-level optimiser, a
 block's keys included), ``ENDEXPLORE`` for the exploration, ``ENDINNER``
 for an ``INNER`` block.  So do the startup refusals of the ``STRATEGY``
 rules (``STRATEGY TYPE MULTISTART cannot run …``, an ``INNER`` block that
-names another library) and of a phase's finite differences or a
-``GRAD_STRATEGY`` on a phase that takes no gradient (the check of the
-``ANALYTICAL`` setup, ``OPTIMIZER block: GRAD_STRATEGY ANALYTICAL …``,
-names no line):
+names another library), of a phase's finite differences or a
+``GRAD_STRATEGY`` on a phase that takes no gradient, the check of the
+``ANALYTICAL`` setup (``OPTIMIZER block: GRAD_STRATEGY ANALYTICAL …``,
+``EXPLORE block: …``), the ``STEP`` rules (``DLIB:BFGS (OUTER) does not
+use STEP; …``, a ``STEP`` outside ``(0, 0.5]``, overrides that cover only
+some dimensions), the ``PC_OBSERVABLE`` and ``PC_LAMMPS`` gradient rules
+(``--hpotarget defines PC_LAMMPS but EXPLORE's optimiser NLOPT:LD_LBFGS
+is gradient-based. …``) and the refusal of a multi-rank launch
+(:ref:`tadah_anneal_mpi`):
 
 .. code-block:: none
 
    HPOEngine error: Error on line 17: the PRESTAGE refinement: DLIB:BFGS does not support MAXTIME
    Line: ENDOPTIMIZER
 
-Until 2026-10-07 these refusals named the phase and no line.
+Until 2026-10-07 these refusals named the phase and no line; the check of
+the ``ANALYTICAL`` setup, the ``STEP`` rules, the gradient rules and the
+multi-rank refusal named none until 2026-10-12.
+
+A search space without an ``OPTIM`` line is refused for every phase whose
+optimiser is NLopt, DLIB or CERES, at its block's line: ``Error on line
+14: the PRESTAGE exploration (EXPLORE block): NLOPT:GN_DIRECT cannot
+optimise a zero-dimensional search space (there is no OPTIM line; …).
+Add at least one OPTIM line, or use a TADAH-native optimiser, which
+evaluates the INIT start point once.``  The ``TADAH`` optimisers evaluate
+the ``INIT`` point once; ``ASA`` refuses such a space itself (``ASA:ASA
+requires at least one OPTIM dimension``).  Until 2026-10-12 only the
+``STRATEGY``-level optimiser was checked, without a line (``No OPTIM
+line: the search space has zero dimensions, and LIB NLOPT cannot …``): an
+``EXPLORE`` block's NLopt optimiser or ``DLIB:GFS`` passed startup and
+failed in the run (``NULL args to nlopt_optimize_``, dlib's ``The vectors
+can't be empty``), and an ``EXPLORE`` block's ``DLIB:BFGS`` was refused
+as ``… requires non-empty, same-sized low/high bounds``.
 
 Before 1.6.0 these backend checks ran when that optimiser started: after
 the data were loaded and any ``NOISE CALIBRATION`` evaluations, for the
@@ -4340,6 +4368,10 @@ Requirements and behaviour:
   positive it fails before any evaluation, with ``multi-rank HPO does not
   support RESTART (…): stagnation is tracked per rank; run on one rank or
   remove RESTART``;
+* either refusal names the line that closes the ``OPTIMIZER`` block
+  (``Error on line N: multi-rank HPO supports only STRATEGY TYPE PLAIN
+  with LIB TADAH and ALGO ANNEAL_PT or ANNEAL_PA; got TADAH:RANDOM on 4
+  ranks`` and ``Line: ENDOPTIMIZER``);
 * an MPI-flavoured LAMMPS library (the serial archive carries MPI stub
   symbols that collide with a real MPI at link time — configure-time
   check);
@@ -5834,7 +5866,8 @@ Marker                                                                       Mea
 ``[HPO] Initial step (LIB:ALGO): …``                                         NLopt run started; the effective per-dimension step is in the journal.
 ``[HPO] OPTIM_SCALE X taken from the TADAH_OPTIM_SCALE …``                    Env override of the scaling policy is active.
 ``[HPO] search space: N dim(s); OPTIM width min … max …``                     Startup width audit; a WARNING names near-pinned dims.
-``[HPO] LIB:ALGO (…) does not use STEP; …``                                    Startup rejection of a ``STEP`` the backend would ignore.
+``HPOEngine error: Error on line N: LIB:ALGO (…) does not use STEP; …``       Rejection of a ``STEP`` the backend would ignore, at the line that
+                                                                              closes its block (``Line: ENDOPTIMIZER``, ``ENDEXPLORE``, ``ENDINNER``).
 ``[HPO] DLIB:GFS: dlib applies its own ln transform to …``                     dlib's hidden log transform fires (``OPTIM_SCALE NONE`` only).
 ``[HPO] NOISE_CALIBRATION: running N evals at the seed point``                ``NOISE.CALIBRATION`` started.
 ``[HPO] ASA[Ingber ASA-30.53]: seed=… dim=…``                                 ``ASA:ASA`` entry banner with resolved options.

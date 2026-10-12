@@ -1178,6 +1178,19 @@ simulation (``exp(1000)`` is ``inf`` in LAMMPS), whatever
    PC_LAMMPS task failed (hot.in, occurrence 1): reading --hotvar hot_a0 after the script: its value 'abc' is not a number
    PC_LAMMPS task failed (relax.in, occurrence 1): reading --failvar viol after the script: its value 'inf' is not a finite number
 
+The line names every variable of the task at fault, whether reading it
+raised a LAMMPS error or its value has no number, each with its LAMMPS
+message or why it has no number, joined with ``;``, in one order: the
+``--varloss`` variables (or the ``PC_FAILPROBE`` ``S``), then the
+``--hotvar``, then the ``--failvar`` variables, each group in the line's
+order.  So a script with several bad variables is put right in one run:
+
+.. code-block:: none
+
+   PC_LAMMPS task failed (rb.in, occurrence 1): reading --varloss E after the script: its value 'abc' is not a number; reading --failvar F1 after the script: ERROR on proc 0: Variable F1: Divide by 0 in variable formula (src/variable.cpp:2567); reading --failvar F2 after the script: its value 'xyz' is not a number
+
+Until 2026-10-12 only the first was named.
+
 Before 1.6.0 such a value was skipped: a ``--varloss`` one added
 ``FAILSCORE`` to the mean of the evaluation's terms, which with other terms
 fell below ``0.999 × FAILSCORE`` and counted as a feasible loss; a hot
@@ -2338,8 +2351,9 @@ space is restricted:
   0, ...`` when there was one. A phase whose optimiser ignores the bounds
   gets one startup WARNING when ``AMPGRIDMB`` is ``OPTIM``'d, naming each
   such phase, as the other startup checks do (``CERES``
-  ``LBFGS``/``WOLFE``/``NLCG``/``STEEPEST_DESCENT``, ``NLOPT LN_NEWUOA``:
-  ``RHOFORM NONNEG: the PRESTAGE refinement CERES:LBFGS (ignores the OPTIM
+  ``LBFGS``/``WOLFE``/``NLCG``/``STEEPEST_DESCENT``, the only backends
+  that ignore the bounds; ``NLOPT LN_NEWUOA`` did too, until it was
+  refused: ``RHOFORM NONNEG: the PRESTAGE refinement CERES:LBFGS (ignores the OPTIM
   bounds) can evaluate AMPGRIDMB amplitudes outside the non-negative OPTIM
   box ...``). It also named a phase that took ``NUMERICAL`` gradients with
   Ceres' finite-difference kernel; that kernel keeps to the box now. A zero
@@ -2494,12 +2508,30 @@ one a finite number (``MAXTIME`` a positive one).
        an error naming the block, reported at the line that closes it
        (``ENDOPTIMIZER``, ``ENDEXPLORE``, ``ENDINNER``), e.g. ``Error on
        line 8: the OPTIMIZER block names no optimiser: LIB and ALGO are not
-       set``.
+       set``.  So is a ``LIB`` HPO does not have, at the same lines
+       (``... unknown optimiser FOO:BFGS: there is no LIB FOO (LIB is ASA,
+       CERES, DLIB, NLOPT or TADAH); `tadah explain ALGO` lists the
+       optimisers``).
    * - ``ALGO`` (string)
-     - Algorithm (see table below).  ``NLOPT:LN_NEWUOA_BOUND`` and
-       ``NLOPT:NLOPT_LD_LBFGS_NOCEDAL`` are refused, at the same lines,
-       naming the phase and what to use instead (the ``NLOPT`` row of the
-       table below).
+     - Algorithm (see table below; ``tadah explain ALGO`` lists the
+       optimisers of the build by library, and ``tadah explain
+       <LIB>:<ALGO>``, or ``tadah explain <ALGO>``, prints one's stops,
+       ``PARAM`` keys and ``STEP`` use, after the text of a command or
+       configuration key of the same name: ``tadah explain RANDOM``).  ``NLOPT:LN_NEWUOA``,
+       ``NLOPT:LN_NEWUOA_BOUND``, ``NLOPT:NLOPT_LD_LBFGS_NOCEDAL`` and the
+       Ceres least-squares solvers ``CERES:LEVENBERG_MARQUARDT``,
+       ``DOGLEG`` and ``SUBSPACE_DOGLEG`` are refused, at the same lines,
+       naming the phase and what to use instead (the ``NLOPT`` and
+       ``CERES`` rows of the table below).  An ``ALGO`` its ``LIB`` does
+       not have is an error at the same lines, naming what is wrong:
+
+       .. code-block:: none
+
+          HPOEngine error: Error on line 10: the STRATEGY-level optimiser: unknown optimiser NLOPT:LD_FOO: LIB NLOPT has no ALGO LD_FOO; `tadah explain ALGO` lists the optimisers
+          Line: ENDOPTIMIZER
+
+       Until 2026-10-12 it was ``unknown optimizer NLOPT:LD_FOO (not
+       registered in optimizer_caps)``, with no line.
    * - ``MAXEVAL`` (integer, 1 to 2\ :sup:`31` − 1)
      - Maximum number of evaluations: an integer from 1 to 2147483647,
        the ``int`` NLopt counts evaluations in.  ``0`` or a larger value
@@ -2559,6 +2591,39 @@ one a finite number (``MAXTIME`` a positive one).
        60 evaluation(s); NLopt counts its calls, and 15 of them asked again
        for a point and were answered without an evaluation``).  Until
        2026-10-12 every repeat was evaluated and counted.
+
+       A gradient search evaluates the loss at its starting point and the
+       gradient there before it evaluates any point it steps to: with
+       ``GRAD_STRATEGY NUMERICAL`` 1 + 2n evaluations in n dimensions
+       (central differences; 1 + n with ``PARAM diff_method 1``), with
+       ``ANALYTICAL`` 1 + 1, with ``HYBRID`` at least 1 + 1 (and the
+       stencil of each parameter it differences).  A budget of that or
+       less (``MAXEVAL`` 1 + 2n or less for central differences, 2 or
+       less under ``ANALYTICAL``) ends the search where it started,
+       ``MAXEVAL_REACHED``, so startup warns, naming what the gradient
+       costs and the budget that evaluates a first step (``MAXEVAL`` 2n +
+       2 or more for central differences); it is a WARNING, not an error,
+       as such a probe of the start can be deliberate.  An MLSL whose
+       local search takes gradients first evaluates its starting point
+       and its first N samples without a gradient (N its ``POPULATION``,
+       NLopt's default 4), and its first local search starts at one of
+       these points and evaluates the loss there again, so it needs N + 1
+       more evaluations (``GD_MLSL`` with ``INNER LD_LBFGS`` in 2-D:
+       ``MAXEVAL`` 10 or less lets no local search step); its warning says
+       what MLSL spends.  ``AUGLAG`` goes straight into its local search.
+       The warning covers every phase with a budget of its own: the
+       ``STRATEGY``-level optimiser, each ``MULTISTART`` start (its
+       ``BUDGET_PER_START`` or its share of ``MAXEVAL``), the ``PRESTAGE``
+       exploration and refinement (with ``TOPK`` > 1 its share), and an
+       ``INNER`` block whose local search takes gradients and whose
+       ``MAXEVAL``, in NLopt calls, is 1:
+
+       .. code-block:: none
+
+          WARNING   the STRATEGY-level optimiser NLOPT:LD_LBFGS: MAXEVAL 4 takes no step: its gradient search evaluates the loss at a starting point (1 evaluation) and the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 6 or more
+          WARNING   the STRATEGY-level optimiser NLOPT:GD_MLSL: MAXEVAL 10 takes no step of a local search: MLSL evaluates its starting point and its first 4 samples without a gradient (5 evaluations; POPULATION 4, NLopt's default), then its first local search, from one of them, evaluates the loss there again (1 evaluation) and the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 11 or more
+
+       Until 2026-10-12 nothing said so.
 
        Leave the key out for no evaluation limit.  The run then ends on
        the optimiser's other stops (``MAXTIME``, ``STOPVAL``, a
@@ -2816,6 +2881,17 @@ one a finite number (``MAXTIME`` a positive one).
        ``inhouse`` was ignored under ``NONE``, and ``fd_kernel ceres``
        needed a build with ``TADAH_ENABLE_CERES``.
 
+``tadah explain ALGO`` prints the optimisers of the build by library
+(whether each is global or local, gradient-based or derivative-free,
+whether it needs a stop or ignores the ``OPTIM`` box) and the refused
+ones; ``tadah explain <LIB>:<ALGO>``, or ``tadah explain <ALGO>``, prints
+one's stops, ``PARAM`` keys and ``STEP`` use, or why it is refused
+(``tadah explain CERES:LBFGS``, ``tadah explain ld_lbfgs``).  An ``ALGO``
+that is also the name of a command or configuration key prints that text
+first, then the optimiser's: ``tadah explain RANDOM`` prints the data key
+``RANDOM``, then ``RANDOM also names an optimiser of `tadah hpo`:`` and
+the help of ``TADAH:RANDOM``.
+
 .. list-table:: Algorithms by library
    :header-rows: 1
    :widths: 12 88
@@ -2873,12 +2949,30 @@ one a finite number (``MAXTIME`` a positive one).
        Before 1.6.0 it was accepted.  Use ``LN_BOBYQA``, Powell's
        bound-constrained successor of NEWUOA, whose ``STEP``
        rescales each dimension instead of setting one radius
-       (:ref:`search_space_scaling`), or ``LN_NEWUOA`` where the search
-       may leave the ``OPTIM`` box (it ignores the bounds):
+       (:ref:`search_space_scaling`):
 
        .. code-block:: none
 
-          HPOEngine error: Error on line 10: the STRATEGY-level optimiser: NLOPT:LN_NEWUOA_BOUND is refused: NLopt 2.10 plans each LN_NEWUOA_BOUND step with a nested LD_MMA run that has no time limit and sees no stop request, ... Use NLOPT:LN_BOBYQA, Powell's bound-constrained successor of NEWUOA (its STEP rescales each dimension instead of setting one radius), or NLOPT:LN_NEWUOA where the search may leave the OPTIM box
+          HPOEngine error: Error on line 10: the STRATEGY-level optimiser: NLOPT:LN_NEWUOA_BOUND is refused: NLopt 2.10 plans each LN_NEWUOA_BOUND step with a nested LD_MMA run that has no time limit and sees no stop request, ... Use NLOPT:LN_BOBYQA, Powell's bound-constrained successor of NEWUOA (its STEP rescales each dimension instead of setting one radius)
+          Line: ENDOPTIMIZER
+
+       Until 2026-10-12 the refusal also offered ``LN_NEWUOA`` where the
+       search may leave the box.  ``LN_NEWUOA`` is refused as well, in
+       every phase and at the same lines, naming ``LN_BOBYQA``: NLopt 2.10
+       runs it without the ``OPTIM`` box (``optimize.c`` calls NEWUOA with
+       no bounds), so its evaluations leave the box and the best potential
+       can lie outside the bounds the configuration sets, and it needs two
+       ``OPTIM`` dimensions or more.  Until 2026-10-12 it was accepted with
+       a startup WARNING: a 2-D run of ``MAXEVAL 25`` made 20 evaluations
+       outside the box and wrote a ``best_pot.tadah`` with ``RCUT2B``
+       8.11 for an ``OPTIM`` box of [4, 6], and a 1-D run passed startup
+       and ended ``FAILED -- dimension 1 must be >= 2`` after no
+       evaluation (owner decision taken in MK's absence, 2026-10-12: the
+       box is the configuration's contract):
+
+       .. code-block:: none
+
+          HPOEngine error: Error on line 10: the STRATEGY-level optimiser: NLOPT:LN_NEWUOA is refused: NLopt 2.10 runs LN_NEWUOA without the OPTIM box (optimize.c calls NEWUOA with lb = ub = NULL), so its evaluations leave the box and the best potential can lie outside the bounds the configuration sets (a 2-D run made 20 of its 25 evaluations outside the box, and its best was one of them); it also needs two OPTIM dimensions or more. Use NLOPT:LN_BOBYQA, Powell's bound-constrained successor of NEWUOA (its STEP rescales each dimension instead of setting one radius)
           Line: ENDOPTIMIZER
 
        ``NLOPT_LD_LBFGS_NOCEDAL`` (NLopt's name for it) is refused in
@@ -2921,11 +3015,22 @@ one a finite number (``MAXTIME`` a positive one).
        use Ceres' ``GradientProblemSolver`` with a finite-difference
        gradient (``PARAM fd_step``, ``fd_kernel``, ``diff_method``;
        :ref:`hpo_fd_stencil`).  They need a build with ``TADAH_ENABLE_CERES``
-       (the default) and are rejected with ``PC_LAMMPS``.  The Ceres NLLS
-       family (``LEVENBERG_MARQUARDT``, ``DOGLEG``, ``SUBSPACE_DOGLEG``)
-       is **deferred** — mathematically degenerate over a scalar HPO
-       loss; it will be enabled in a later phase together with
-       residual-mode loss exposure. Ceres optimisers do **not** enforce
+       (the default) and are rejected with ``PC_LAMMPS``.  Ceres'
+       least-squares solvers (``LEVENBERG_MARQUARDT``, ``DOGLEG``,
+       ``SUBSPACE_DOGLEG``) are refused, in every phase and at the line
+       that closes the block, naming the four above: they minimise a sum
+       of squared residuals, with their derivatives, and are degenerate
+       over the one scalar loss HPO gives an optimiser.  Until 2026-10-12
+       the run stopped with ``unknown optimizer
+       CERES:LEVENBERG_MARQUARDT (not registered in optimizer_caps)``,
+       with no line and no alternatives:
+
+       .. code-block:: none
+
+          HPOEngine error: Error on line 10: the STRATEGY-level optimiser: CERES:LEVENBERG_MARQUARDT is refused: HPO does not run Ceres' least-squares Solver (LEVENBERG_MARQUARDT, DOGLEG, SUBSPACE_DOGLEG): it minimises a sum of squared residuals with their derivatives, and HPO gives an optimiser one scalar loss, over which these methods degenerate. Use CERES:LBFGS, CERES:WOLFE, CERES:NLCG or CERES:STEEPEST_DESCENT, Ceres' line-search solvers of a scalar loss
+          Line: ENDOPTIMIZER
+
+       Ceres optimisers do **not** enforce
        box constraints: their iterates can leave the ``OPTIM`` box and be
        evaluated there — warned about at startup and at the first such
        evaluation, and counted in ``DIAGNOSTICS``; such a point can become
@@ -3273,7 +3378,8 @@ The step is not shrunk for such a dimension: that would change what
 internal width is then its number of e-foldings.
 
 **A point outside the box** is evaluated only when an optimiser that ignores
-the bounds — the ``CERES`` drivers and NLopt ``LN_NEWUOA`` — puts one there,
+the bounds — the ``CERES`` drivers (NLopt ``LN_NEWUOA``, which did too, is
+refused) — puts one there,
 or hands one to a ``PRESTAGE`` refinement.  Finite differences never do, nor,
 with the bundled ASA, do ASA's probes (:ref:`asa_optimizer`).  A gradient at
 such a point is differenced towards the box, one-sided (``FORWARD``: the one
@@ -3285,7 +3391,7 @@ first:
 
 .. code-block:: none
 
-   WARNING   eval 5: CGRID2B[2] = 3 lies outside its OPTIM box [1, 2] and is evaluated there: finite differences keep to the box, and a point proposed within rounding of a bound is evaluated on it, so an optimiser that ignores the bounds (CERES:*, NLopt LN_NEWUOA), or a start it handed on, stepped outside it; the loss of such a point can become the best. DIAGNOSTICS counts every evaluation outside the box
+   WARNING   eval 5: CGRID2B[2] = 3 lies outside its OPTIM box [1, 2] and is evaluated there: finite differences keep to the box, and a point proposed within rounding of a bound is evaluated on it, so an optimiser that ignores the bounds (CERES:*), or a start it handed on, stepped outside it; the loss of such a point can become the best. DIAGNOSTICS counts every evaluation outside the box
 
 **A point within rounding of a bound.** A coordinate proposed outside its
 box by no more than rounding is evaluated on the bound instead, recorded
@@ -5704,12 +5810,32 @@ recorded, and the optimiser and strategy stop with them — later
 ``MULTISTART`` starts, ``RESTART`` rounds and the ``PRESTAGE``
 refinement do not run, and a signal during ``NOISE_CALIBRATION`` ends the
 calibration.  The queued rows are then written to the history files and
-the journal is closed.  A second signal does not interrupt that
-shutdown; ``kill -9`` (``SIGKILL``) ends the process at once.  The
+the journal is closed.  The first signal of each kind is announced at
+once on standard error, as the evaluations in progress can take long to
+finish (a LAMMPS run, a slow fit):
+
+.. code-block:: none
+
+   tadah: SIGINT received: stopping once the work in progress can stop and save its results; a second SIGINT (Ctrl-C) ends tadah at once, and what is not yet written is lost
+
+A second ``SIGINT``, or a second ``SIGTERM``, ends the process at once,
+killed by the signal (``tadah: second SIGINT: ending at once``; a shell
+reports status 130 or 143), as ``kill -9`` (``SIGKILL``) would:
+``best_pot.tadah`` keeps the last best it saved, the history files can lack
+the rows still queued, and the journal has no ``RESULT`` section.  Signals
+of different kinds do not escalate, so the stop the first one asked for
+goes on: SLURM's ``SIGTERM`` at the time limit after its ``SIGUSR2``
+warning, an MPI launcher's ``SIGTERM`` after a terminal's ``SIGINT``; nor
+does a second ``SIGUSR2``.  Until 2026-10-12 a second signal did nothing,
+and only ``kill -9`` ended a run waiting for a long evaluation.  The
 ``PC_ISOLATION PROCESS`` worker processes ignore all three signals, so a
 signal sent to the whole process group or job step (Ctrl-C in a
 terminal, ``kill -<signal> -<pgid>``, a signal SLURM sends to a job step)
-does not kill the evaluations they are running.
+does not kill the evaluations they are running; they die with ``tadah``,
+so a second signal ends them too.  In a multi-rank run
+(:ref:`tadah_anneal_mpi`) a second signal ends the rank that receives it,
+and the MPI launcher ends the others (Open MPI's ``mpiexec`` reports the
+rank killed by the signal and exits with 130).
 
 **Batch jobs.** SLURM's ``--signal=[B:]USR2@<seconds>`` sends ``SIGUSR2``
 that many seconds before the time limit.  With ``B:`` it signals only
@@ -5780,6 +5906,11 @@ no advance warning.
      - ``SHUTDOWN (SIGINT)``, ``SHUTDOWN (SIGTERM)``,
        ``SHUTDOWN (SIGUSR2)``
      - Complete.
+   * - A second ``SIGINT``, or a second ``SIGTERM``
+     - killed by the signal: a shell reports ``130``, ``143``
+     - none (the journal has no ``RESULT`` section)
+     - ``best_pot.tadah`` holds the last best saved; the history files
+       can lack the rows still queued, as after ``SIGKILL``.
    * - A new best could not be saved (:ref:`hpo_potential_archives`),
        also when the run then ended on a stop criterion, the ``RESTART``
        budget, a signal (its retries after the signal used up their

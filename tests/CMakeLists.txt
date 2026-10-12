@@ -210,6 +210,13 @@ set_tests_properties(tadah_docs_tools PROPERTIES
 # LAMMPS, no network), signals it once evaluations are on disk, and checks
 # the exit status (130 SIGINT, 143 SIGTERM, 140 SIGUSR2), the journal
 # trailer, best_pot.tadah and loss.tadah.
+#
+# cli_signal/check_hpo_second_signal.py signals `tadah hpo` twice while a
+# PC_LAMMPS script's long `run` is in progress: the first signal is
+# announced and the evaluation goes on, the second ends tadah at once,
+# killed by it, and under PC_ISOLATION PROCESS its workers with it. Before
+# the fix: nothing announced, and the second signal did not end it (the
+# check kills it after 20 s). The MPI build has no PROCESS workers.
 if(TADAH_ENABLE_NFP)
   foreach(_sig SIGINT SIGTERM SIGUSR2)
     add_test(NAME tadah_hpo_exit_status_${_sig}
@@ -220,6 +227,22 @@ if(TADAH_ENABLE_NFP)
       LABELS "hpo;shutdown"
       TIMEOUT 300
       ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+  endforeach()
+  set(_second_signal_modes THREAD)
+  if(NOT TADAH_HPO_MPI)
+    list(APPEND _second_signal_modes PROCESS)
+  endif()
+  foreach(_sig SIGINT SIGTERM)
+    foreach(_mode IN LISTS _second_signal_modes)
+      add_test(NAME tadah_hpo_second_signal_${_sig}_${_mode}
+        COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/cli_signal/check_hpo_second_signal.py
+          --tadah $<TARGET_FILE:tadah> --signal ${_sig} --isolation ${_mode})
+      set_tests_properties(tadah_hpo_second_signal_${_sig}_${_mode} PROPERTIES
+        LABELS "hpo;shutdown"
+        TIMEOUT 300
+        ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+    endforeach()
   endforeach()
 endif()
 

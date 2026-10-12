@@ -1,26 +1,42 @@
 #!/usr/bin/env python3
-"""No CMake file of Tadah.MLIP uses a command newer than its minimum.
+"""No CMake file of Tadah.MLIP needs a CMake newer than the one it runs on.
 
     check_cmake_features.py <Tadah.MLIP source directory>
 
 Every CMake file of the umbrella project -- CMakeLists.txt, cmake/*.cmake,
-and under tests/ every CMakeLists.txt, *.cmake and *.cmake.in -- runs on the
-CMake its minimum admits: the version of its own cmake_minimum_required()
-(the highest, when it has several: a script may check the version before it
-declares the one its body needs), else that of the nearest CMakeLists.txt in
-its directory or above it that has one (Tadah.MLIP/CMakeLists.txt: 3.15). A
-command, sub-command or command-line option that CMake added later fails
-there, and the failure does not say why ("Unknown argument --fresh"). The
-table below lists those of them, with the version that added them; a use in
-a comment does not count, nor does a command named inside a quoted argument
-(a message's text); a command-line option counts quoted or not. Keyword
-arguments that an older CMake does not read are not listed
-(FetchContent_Declare's DOWNLOAD_EXTRACT_TIMESTAMP, 3.24: the projects here
-always give the source directory, FETCHCONTENT_SOURCE_DIR_<name>, so
-nothing reads it).
+and under tests/ every CMakeLists.txt, *.cmake and *.cmake.in -- is checked
+for two things.
+
+1. It uses nothing newer than its minimum: the version of its own
+   cmake_minimum_required() (the highest, when it has several: a script may
+   check the version before it declares the one its body needs), else that
+   of the nearest CMakeLists.txt in its directory or above it that has one
+   (Tadah.MLIP/CMakeLists.txt: 3.15; tests/CMakeLists.txt: 3.16). A command,
+   sub-command, command-line option or test property that CMake added later
+   fails there, or is ignored, and nothing says why ("Unknown argument
+   --fresh"; a SKIP_REGULAR_EXPRESSION that CTest 3.15 ignores reports a
+   skipped test Passed). The table below lists those of them, with the
+   version that added them; a use in a comment does not count, nor does a
+   command or property named inside a quoted argument (a message's text); a
+   command-line option counts quoted or not. Keyword arguments that an older
+   CMake does not read are not listed (FetchContent_Declare's
+   DOWNLOAD_EXTRACT_TIMESTAMP, 3.24: the projects here always give the
+   source directory, FETCHCONTENT_SOURCE_DIR_<name>, so nothing reads it).
+
+2. It accepts the CMake of what runs it: its first cmake_minimum_required()
+   is at most the tests' minimum (that of tests/CMakeLists.txt) for a file
+   under tests/, and at most the umbrella's for the others
+   (tests/CMakeLists.txt itself declares the tests' minimum, and the
+   umbrella the build's). A file that declares more stops on a CMake its
+   build accepts ("CMake 3.18 or higher is required"), which does not say
+   why; a script whose body needs more declares the CMake of what runs it
+   first, checks the version and says why it skips or stops, and declares
+   the version its body needs after that (header_check/check_header_check.cmake).
 
 Each use above the file's minimum is reported as
-``<path>:<line>: <feature> needs CMake <v>; the file's minimum is <m> (<from>)``
+``<path>:<line>: <feature> needs CMake <v>; the file's minimum is <m> (<from>)``,
+each first declaration above what runs the file as
+``<path>:<line>: cmake_minimum_required(VERSION <v>) is above the <m> of <from>``,
 and the exit status is 1; otherwise the files checked are counted and the
 status is 0 (a run that finds no file fails).
 """
@@ -57,6 +73,16 @@ FEATURES = [
     (r"-E\s+rm\b", (3, 17), "cmake -E rm"),
     (r"-E\s+cat\b", (3, 18), "cmake -E cat"),
     (r"-E\s+(true|false)\b", (3, 16), "cmake -E true/false"),
+    (r"\bSKIP_REGULAR_EXPRESSION\b", (3, 16), "test property SKIP_REGULAR_EXPRESSION"),
+    (r"\bRESOURCE_GROUPS\b", (3, 16), "test property RESOURCE_GROUPS"),
+    (r"--log-level\b", (3, 16), "cmake --log-level"),
+    (r"\bCMAKE_CURRENT_FUNCTION(_LIST_DIR|_LIST_FILE|_LIST_LINE)?\b", (3, 17),
+     "CMAKE_CURRENT_FUNCTION*"),
+    (r"--repeat\b", (3, 17), "ctest --repeat"),
+    (r"\bECHO_(OUTPUT|ERROR)_VARIABLE\b", (3, 18), "execute_process(ECHO_*_VARIABLE)"),
+    (r"\bCOMPARE\s+NATURAL\b", (3, 18), "list(SORT COMPARE NATURAL)"),
+    (r"--stop-on-failure\b", (3, 18), "ctest --stop-on-failure"),
+    (r"-E\s+create_hardlink\b", (3, 19), "cmake -E create_hardlink"),
 ]
 
 MINIMUM = re.compile(r"\bcmake_minimum_required\s*\(\s*VERSION\s+([0-9]+(?:\.[0-9]+)*)")
@@ -100,14 +126,21 @@ def shown(v):
     return ".".join(str(x) for x in v)
 
 
-def own_minimum(path):
-    """The highest cmake_minimum_required() VERSION of the file, or None."""
+def declarations(path):
+    """The (line number, version) of each cmake_minimum_required() of the
+    file, in order."""
     found = []
     with open(path, encoding="utf-8") as f:
-        for line in f:
+        for number, line in enumerate(f, start=1):
             m = MINIMUM.search(code_of(line))
             if m:
-                found.append(version(m.group(1)))
+                found.append((number, version(m.group(1))))
+    return found
+
+
+def own_minimum(path):
+    """The highest cmake_minimum_required() VERSION of the file, or None."""
+    found = [v for _, v in declarations(path)]
     return max(found) if found else None
 
 
@@ -123,9 +156,12 @@ def cmake_files(root):
     return sorted(set(files))
 
 
-def governing_minimum(path, root):
-    """(version, the file that declares it) for `path`."""
-    own = own_minimum(path)
+def governing_minimum(path, root, own_first=True):
+    """(version, the file that declares it) for `path`: its own minimum,
+    else (or with own_first False, always) that of the nearest
+    CMakeLists.txt in its directory or above it, other than itself, that
+    declares one."""
+    own = own_minimum(path) if own_first else None
     if own is not None:
         return own, path
     d = os.path.dirname(path)
@@ -142,6 +178,23 @@ def governing_minimum(path, root):
                      "governs " + path)
 
 
+def runner_minimum(path, root):
+    """(version, the file that declares it) of what runs `path`: the tests'
+    minimum (tests/CMakeLists.txt's, else the umbrella's) for a file under
+    tests/; the umbrella's for the others; None for the two files that
+    declare these, the umbrella's CMakeLists.txt and tests/CMakeLists.txt."""
+    umbrella = os.path.join(root, "CMakeLists.txt")
+    tests_dir = os.path.join(root, "tests")
+    tests_lists = os.path.join(tests_dir, "CMakeLists.txt")
+    for declaring in (umbrella, tests_lists):
+        if os.path.isfile(declaring) and os.path.samefile(path, declaring):
+            return None
+    if os.path.isfile(tests_lists) and \
+            os.path.commonpath([path, tests_dir]) == tests_dir:
+        return governing_minimum(tests_lists, root)
+    return governing_minimum(umbrella, root)
+
+
 def main():
     if len(sys.argv) != 2:
         raise SystemExit("usage: check_cmake_features.py <Tadah.MLIP source directory>")
@@ -155,6 +208,13 @@ def main():
         minimum, origin = governing_minimum(path, root)
         rel = os.path.relpath(path, root)
         source = os.path.relpath(origin, root)
+        runner = runner_minimum(path, root)
+        decls = declarations(path)
+        if runner is not None and decls and decls[0][1] > runner[0]:
+            problems.append(
+                "%s:%d: cmake_minimum_required(VERSION %s) is above the %s of %s"
+                % (rel, decls[0][0], shown(decls[0][1]), shown(runner[0]),
+                   os.path.relpath(runner[1], root)))
         with open(path, encoding="utf-8") as f:
             for number, line in enumerate(f, start=1):
                 code = code_of(line)
@@ -169,9 +229,11 @@ def main():
     for p in problems:
         print(p)
     if problems:
-        print("FAIL: %d use(s) of CMake newer than the file's minimum" % len(problems))
+        print("FAIL: %d use(s) of CMake newer than the file's minimum, or "
+              "declaration(s) above what runs the file" % len(problems))
         return 1
-    print("checked %d CMake files: none uses CMake newer than its minimum" % len(files))
+    print("checked %d CMake files: none uses CMake newer than its minimum, "
+          "and none declares more than what runs it" % len(files))
     return 0
 
 

@@ -386,14 +386,24 @@ foreach(_case old minimum)
 endforeach()
 
 # tadah_cmake_minimum_features: no CMake file of Tadah.MLIP (CMakeLists.txt,
-# cmake/, tests/) uses a command, sub-command or command-line option newer
-# than the cmake_minimum_required() that governs it, its own or that of the
-# nearest CMakeLists.txt above it (cmake_minimum/check_cmake_features.py,
-# which has the table of features and versions). Before the fix: 17 uses --
-# tests/CMakeLists.txt (cmake --fresh, 3.24, in the umbrella's 3.15),
-# header_check/check_header_check.cmake (--fresh, ctest --test-dir 3.20,
-# string(JSON) 3.19, in its 3.18), removed_options/check_removed_option.cmake
-# (--fresh) and catch_discovery/check_skip.cmake (--test-dir), both 3.18.
+# cmake/, tests/) uses a command, sub-command, command-line option or test
+# property newer than the cmake_minimum_required() that governs it, its own
+# or that of the nearest CMakeLists.txt above it, and none declares first a
+# minimum above that of what runs it: the tests' (this file's) for a file
+# under tests/, the umbrella's for the others
+# (cmake_minimum/check_cmake_features.py, which has the table of features
+# and versions). Before the fix: 17 uses -- tests/CMakeLists.txt (cmake
+# --fresh, 3.24, in the umbrella's 3.15), header_check/check_header_check.cmake
+# (--fresh, ctest --test-dir 3.20, string(JSON) 3.19, in its 3.18),
+# removed_options/check_removed_option.cmake (--fresh) and
+# catch_discovery/check_skip.cmake (--test-dir), both 3.18. Before the build
+# matrix review: 9 -- this file's two SKIP_REGULAR_EXPRESSION (3.16) under the
+# umbrella's 3.15, and seven scripts that declare 3.18 above it
+# (catch_discovery/check_discovery.cmake, check_module.cmake,
+# check_skip.cmake, doxygen_input/probe.cmake,
+# git_branch/check_git_branch.cmake, git_branch/probe.cmake,
+# removed_options/check_removed_option.cmake), which stopped on CMake
+# 3.15-3.17 ("CMake 3.18 or higher is required").
 add_test(NAME tadah_cmake_minimum_features
   COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake_minimum/check_cmake_features.py

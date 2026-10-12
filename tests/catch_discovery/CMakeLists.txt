@@ -61,3 +61,20 @@ add_test(NAME tadah_catch_skip_marker
     -DCTEST=${CMAKE_CTEST_COMMAND}
     -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/skip_check
     -P ${CMAKE_CURRENT_SOURCE_DIR}/check_skip.cmake)
+
+# The CMake the TADAH-SKIP marker needs (testing/TadahTestSkip.cmake): CTest
+# has the SKIP_REGULAR_EXPRESSION test property from 3.16 and ignores it
+# before, reporting a skipped test Passed. Included as CMake 3.15.7 would
+# include it, the module stops with an error naming CMake 3.16 and
+# -DBUILD_TESTING=OFF; as 3.16.0 and as this CMake it defines the marker's
+# regular expression (see check_skip_minimum.cmake). Before the fix: as
+# 3.15.7 the module was included (exit 0), so on CMake 3.15 every native
+# skip of the suites was reported Passed.
+add_test(NAME tadah_catch_skip_cmake_minimum
+  COMMAND ${CMAKE_COMMAND}
+    -DMODULE=${_TADAH_CMAKE_TOOLS_DIR}/testing/TadahTestSkip.cmake
+    -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/skip_minimum
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/check_skip_minimum.cmake)
+set_tests_properties(tadah_catch_skip_cmake_minimum PROPERTIES
+  LABELS cmake
+  TIMEOUT 60)

@@ -86,9 +86,10 @@ different loss locally, and a ``PC_OBSERVABLE`` line takes its own
 against its target :math:`t` (residual :math:`r = y - t`), multiplied by
 the term's weight; the loss of an evaluation is the mean of its terms
 (:ref:`nested_fitting`), unless one of its ``PC_LAMMPS`` simulations or
-``PC_OBSERVABLE`` terms failed: such an evaluation scores ``FAILSCORE``
-(see ``--failscore``, :ref:`pc_lammps_options`, and
-:ref:`pc_observable`).
+``PC_OBSERVABLE`` terms failed: such an evaluation scores ``FAILSCORE``,
+or under ``FAILSCORE_GRADING ON`` a graded loss in the failure band below
+it (see ``--failscore``, :ref:`pc_lammps_options`, :ref:`pc_observable`
+and :ref:`failscore_grading`).
 
 ================ ================= ==========================================================
 Name             Parameter         Term (before the weight)
@@ -5586,8 +5587,8 @@ seed, again.
 Multiple ``--hotvar`` flags may be repeated on the same ``PC_LAMMPS``
 line; ``hot_a0`` is just a conventional name (any identifier works).
 Per-line environment variables (``TADAH_HPO_HOT_A0_DEFAULT``,
-``TADAH_HPO_A0_MIN``, ``TADAH_HPO_A0_MAX``) were removed in this
-release; the per-line ``--hotvar`` flag replaces all three.
+``TADAH_HPO_A0_MIN``, ``TADAH_HPO_A0_MAX``) were removed in
+1.3.0-beta.1; the per-line ``--hotvar`` flag replaces all three.
 
 .. _hot_value_precision:
 
@@ -5656,7 +5657,7 @@ has produced an unphysical potential:
   update the cache).
 
 The ``TADAH_HPO_BAD_POT_ERMSE_MEV`` / ``_REL`` environment
-variables were removed in this release; use
+variables were removed in 1.3.0-beta.1; use
 ``PC_ERMSE … --skip-above <cap>`` / ``--skip-rel <ratio>`` instead.
 
 .. _performance_parallelism:
@@ -5742,8 +5743,9 @@ writes.
 ``HEALTH_LOG off|summary|full`` (default ``summary``)
    Per-evaluation health monitor of the weights each evaluation's model
    holds (fitted, or set from ``FIXWEIGHT``), by the blocks of its design
-   matrix: the bias column, the two-body and the many-body descriptor's
-   columns, or one block for a non-linear basis function or kernel.  It
+   matrix: the bias columns (one intercept per ``ATOM`` species), the
+   two-body and the many-body descriptor's columns, or one block for a
+   non-linear basis function or kernel.  It
    warns when a weight is NaN or infinite, when every weight of a block
    is exactly zero, when fewer than 5 % of a block's weights exceed
    1e-15 in magnitude (a block that holds a NaN or infinite weight is

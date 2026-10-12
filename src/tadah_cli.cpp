@@ -33,6 +33,22 @@ TadahCLI::TadahCLI()
   app_.formatter(myFormatter);
 
   app_.require_subcommand(0,0); // 0 or more subcommands are required, no max limit
+
+  // The engines first: a subcommand whose engine this tadah was built
+  // without says so in its description (registerModules).
+  mlip::engines::registerAllMLIPEngines();
+#ifdef TADAH_ENABLE_NFP
+  hpo::engines::registerAllHPOEngines();
+#else
+  // HPO's engines are in the HPO library, which only a build with
+  // TADAH_ENABLE_NFP has: tadah hpo (and TASK hpo) is refused before any
+  // task runs, with what to do (Scheduler::execute).
+  mlip::engines::EngineFactory::registerNotBuilt("HPO",
+      "tadah hpo needs the Nested Fitting Procedure, which this tadah was "
+      "built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see "
+      "Installation)");
+#endif
+
   registerModules();
   registerRequired();
   registerNeeds();
@@ -62,11 +78,6 @@ TadahCLI::TadahCLI()
   app_.immediate_callback(true);
   app_.callback(std::bind(&TadahCLI::handleCmdCallback, this, "tadah"));
   app_.footer(std::bind(&TadahCLI::handleFooterCallback, this, blueprintTadah));
-
-  mlip::engines::registerAllMLIPEngines();
-#ifdef TADAH_ENABLE_NFP
-  hpo::engines::registerAllHPOEngines();
-#endif
 
   core::PeriodicTable::initialize();
 }
@@ -132,13 +143,18 @@ void TadahCLI::registerModules() {
   for (const auto &pair : tasksMap) {
     const std::string blueprintName = pair.first;   // e.g. "DATA.split"
     const tadah::core::BlueprintTask &bpTask = pair.second;
+    // A command this tadah was built without says so after what it does.
+    std::string description = bpTask.description;
+    const std::string notBuilt =
+        mlip::engines::EngineFactory::notBuiltMessage(blueprintName);
+    if (!notBuilt.empty()) description += " " + notBuilt + ".";
 
     std::vector<std::string> tokens;
     boost::split(tokens, blueprintName, boost::is_any_of("."));
 
     // If only one token => first-level command
     if (tokens.size() == 1) {
-      CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]), bpTask.description);
+      CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]), description);
       addCmdOptions(parent, bpTask);  // question is how to store??
       std::string ldesc = core::wrapText(bpTask.longDescription, description_paragraph_width,true, "");
       ldesc.pop_back(); // remove last \n
@@ -151,7 +167,7 @@ void TadahCLI::registerModules() {
     // If two tokens => first-level + subcommand
     else if (tokens.size() == 2) {
       CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]));
-      CLI::App *child  = parent->add_subcommand(core::to_lower(tokens[1]), bpTask.description);
+      CLI::App *child  = parent->add_subcommand(core::to_lower(tokens[1]), description);
       addCmdOptions(child, bpTask);
       std::string ldesc = core::wrapText(bpTask.longDescription, description_paragraph_width,true, "");
       ldesc.pop_back(); // remove last \n

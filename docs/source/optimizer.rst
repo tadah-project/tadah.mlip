@@ -269,11 +269,11 @@ box and how it consumes an initial step.
      - yes once the step vector is per-dim
      - ``rhoend = XTOL_REL * rhobeg``; BOBYQA needs ``width >= 2*step``
        (``STEP 0.5`` is capped just below)
-   * - ``NLOPT:LN_NEWUOA`` / ``LN_PRAXIS``
+   * - ``NLOPT:LN_PRAXIS``
      - collapsed to ``min|step|``
      - no in raw units; uniform in the unit box
-     - ``LN_NEWUOA`` ignores the box entirely (startup WARNING);
-       ``LN_NEWUOA_BOUND`` is refused (:doc:`nfp_configuration`, the
+     - ``LN_NEWUOA``, which ignores the box entirely, and
+       ``LN_NEWUOA_BOUND`` are refused (:doc:`nfp_configuration`, the
        ``NLOPT`` row of *Algorithms by library*): use ``LN_BOBYQA``
    * - ``NLOPT:LD_MMA`` / ``LD_CCSAQ``
      - per-dim trust half-width (default ``0.5*width``)

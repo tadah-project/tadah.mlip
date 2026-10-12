@@ -169,7 +169,10 @@ precedence **explicit > ATOM > DBATOM**:
 * **ESHIFT_DBATOM** — a least-squares atomic-energy fit over the
   whole database (``min ‖y − Mβ‖²``, with ``M[i,k]`` the count of
   species ``k`` in config ``i``). Robust when the dataset has
-  compositional diversity but no isolated-atom configs.
+  compositional diversity but no isolated-atom configs. When the
+  compositions do not determine the fit (every structure of one
+  composition, say) its normal matrix is singular: every ``ESHIFT`` is
+  then 0, with a WARNING.
 
 Whichever path is used, the *resolved* per-element values are stamped
 into ``pot.tadah`` (the ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles are
@@ -459,6 +462,14 @@ pinned weight)::
        …
 
 ``Index`` matches the ordering of the ``WEIGHTS`` row in ``pot.tadah``.
+``UNCERTAINTY`` is a switch of the run, not part of the model: a potential
+does not record it. A potential given as the configuration (``tadah train
+-c pot.tadah``, with a ``DBFILE`` line added) does not ask for
+``weights.tadah`` with an ``UNCERTAINTY true`` line, which tadah 1.5.x and
+1.6.0 development builds wrote into every potential trained with
+``--uncertainty``: a WARNING names the file, and ``--uncertainty`` asks for
+it. ``UNCERTAINTY true`` in a training configuration or a task file is a
+request, and a refusal names where it came from.
 ``--uncertainty`` is refused before training with an ``OALGO`` other than 3
 and with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``, whose solve of
 the kernel matrix computes no covariance: use implementation 1), and before

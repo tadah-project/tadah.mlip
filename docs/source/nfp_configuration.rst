@@ -150,7 +150,15 @@ Root-level loss control:
        An evaluation that raises an exception (its training fails, say)
        scores ``FAILSCORE`` too: ``hpo_run.log`` gives each one a
        ``WARNING`` with the message, and its DIAGNOSTICS count them under
-       ``Evaluations that threw``, apart from the NaN/Inf clampings.
+       ``Evaluations that threw``, apart from the NaN/Inf clampings.  An
+       evaluation with a failed ``PC_LAMMPS`` simulation or
+       ``PC_OBSERVABLE`` term is a failed evaluation in the DIAGNOSTICS
+       too, never a NaN/Inf clamping, also where the mean of its
+       substituted values overflows (two failed terms, or the ``L2`` of a
+       ``--failscore`` of the largest double, under the default
+       ``FAILSCORE``); until 2026-10-12 such an evaluation was counted,
+       and warned about with bound hints, as one that produced NaN/Inf,
+       and under ``FAILSCORE_GRADING ON`` as a graded failure as well.
        ``DLIB:GFS`` hands dlib a finite stand-in for a failed
        evaluation instead (:ref:`failed evaluations under DLIB:GFS
        <hpo_dlib_gfs_failures>`); the history files and the journal
@@ -159,9 +167,10 @@ Root-level loss control:
        finite-difference stencil fails the gradient, whatever
        ``FAILSCORE`` is, and a failed loss at the point fails it at
        once under every ``GRAD_STRATEGY``, unless it is a graded failure
-       under ``FAILSCORE_GRADING ON``, whose finite differences (or
-       analytical gradient) are its gradient; such a point can end a
-       gradient-based search (:ref:`hpo_gradient_not_finite`).
+       under ``FAILSCORE_GRADING ON``, whose finite differences are its
+       gradient (``ANALYTICAL`` has none there, and ``HYBRID`` differences
+       every parameter); such a point can end a gradient-based search
+       (:ref:`hpo_gradient_not_finite`).
    * - ``FAILSCORE_GRADING`` (``ON``/``OFF``)
      - Graded failure losses instead of the constant ``FAILSCORE``
        (default ``OFF``); see :ref:`failscore_grading`.
@@ -559,7 +568,13 @@ searched by the optimiser:
 **All-fixed polish** — the ``tadah refit`` workload.  ``FIXINDEX`` covers
 every weight, so the LS solve is vacuous and skipped (including the
 per-evaluation design-matrix build); the optimiser searches the
-coefficients directly:
+coefficients directly.  Under ``OALGO 3`` each evaluation still fits:
+an ``OALGO 3`` fit with every weight pinned gives the potential a zero
+``WCOV`` and the ``WNOISE`` of the pinned weights' residuals on the
+training data, as ``tadah train`` writes them, so ``tadah predict
+--error`` can use a ``best_pot.tadah`` (the noise alone); until 2026-10-12
+the evaluation skipped the fit there too, and the potential had neither,
+while a non-linear ``M_KRR`` kernel, whose basis the fit draws, had both:
 
 .. code-block:: none
 
@@ -702,8 +717,7 @@ model, with the first run's ``FORCE``, ``STRESS``, ``LAMBDA``, row weights
 and every other key it does not search), and each run starts its
 ``PC_LAMMPS --hotvar`` values from their ``<initial>`` values or its
 ``WARM`` seeds (the second run used to start each hot script from the
-value the first run's last evaluation converged to), unless an earlier
-run of the process read a ``WARM`` seed (below). Run twice from one
+value the first run's last evaluation converged to). Run twice from one
 task file, example ``01_minimal`` (at ``MAXEVAL 3``) writes for its
 second run the ``loss.tadah``, ``outvar.tadah`` and ``best_pot.tadah`` of
 the same run made alone, but for the evaluation numbers. Each run builds
@@ -720,30 +734,24 @@ options ran on the first run's LAMMPS instance, as the first run had
 read it, so a script rewritten between the runs was not read again),
 and a program that called ``hpo_run`` again after a run that threw
 found the first run's worker processes still running
-(``pc_worker_pool_init: pool already initialized``). Three things
-still carry over from an earlier run:
-
-* the evaluation counter: the second run's ``ITERATION`` numbers and
-  ``DUMP`` file names continue where the first run's stopped (4 to 6
-  after a run of 3 evaluations);
-* the ``# HOT`` values of an earlier run's ``WARM`` seed file: a later
-  run that reads no ``WARM`` seed with a value for the same script and
-  variable starts that ``--hotvar`` value of each of its chains from the
-  seed's value, not from its ``<initial>`` value, so its files can differ
-  from those of the run made alone;
-* the journal's tallies: the second run's ``hpo_run.log`` counts the
-  earlier runs' evaluations in its DIAGNOSTICS and PERFORMANCE
-  (``Total evaluations``, the NaN/Inf clampings, the evaluations that
-  threw, the graded failures and gate rejects, the eval latencies), as
-  does the ``total rejects=N`` of its gate notes and of its ``--hotvar``
-  ``rejecting`` warnings; it writes a ``BEST`` line only for a loss below the best of
-  every earlier run, and its RESULT gives the best loss, evaluation
-  and metrics of an earlier run when it found none below it, while its own
-  ``best_pot.tadah`` holds its own best.
-
-Run each ``tadah hpo`` in a process of its own when its files must
-number the evaluations from 1, or its journal and its hot values must be
-those of the run alone.
+(``pc_worker_pool_init: pool already initialized``). Each run's
+``hpo_run.log`` counts, times and reports that run alone: its
+DIAGNOSTICS census and verdict, PERFORMANCE timings, milestones, BEST
+lines and RESULT best, and the rate limit of its hot-variable
+``rejecting`` warnings. Until 2026-10-12 they went on from the first
+run's, so a second run that failed 4 of 4 evaluations read ``Total
+evaluations : 7``, ``Unusable losses : 4 (57.1%)``, ``[!] The majority
+of evaluations failed``, and gave the first run's best (``Best total
+loss``, ``Best ERMSE``) and its ``Best potential saved``, with no
+``best_pot.tadah`` written; a second run with a worse best had no BEST
+line and named the first run's evaluation as its best. A run without
+``WARM`` started its ``--hotvar`` values from an earlier run's ``WARM``
+seed (its ``# HOT`` lines), not from ``<initial>``. One thing carries
+over from the first run, the evaluation counter: the second run's
+``ITERATION`` numbers and ``DUMP`` file names continue where the first
+run's stopped (4 to 6 after a run of 3 evaluations), and its journal
+names its evaluations by them. Run each ``tadah hpo`` in a process of
+its own when its files must number the evaluations from 1.
 
 Individual validation targets and weights
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1511,8 +1519,10 @@ steep as that jump, not the band's own slope, and a search that starts
 there can evaluate a bound again and again, stop at once as converged, or
 leave the box (:ref:`hpo_gradient_not_finite`).  A usable point whose
 finite-difference stencil reaches a failure, graded or not, has no
-gradient.  ``GRAD_STRATEGY ANALYTICAL`` keeps its analytical gradient at
-a graded failure, which does not see the grading.  A candidate that a
+gradient.  The analytical gradient does not see the grading, so at a
+graded failure ``GRAD_STRATEGY ANALYTICAL`` has no usable gradient and
+``HYBRID`` takes finite differences of every parameter
+(:ref:`hpo_gradient_not_finite`).  A candidate that a
 gate rejects before training (``BUMPGATE CANDIDATE``, ``RHOGATE``,
 ``RHOBARGATE``) has no fit to differentiate: under ``ANALYTICAL`` it is a
 point without a usable gradient (:ref:`hpo_gradient_not_finite`), from
@@ -3342,14 +3352,27 @@ and no analytical gradient is formed.  The analytical gradient at a failed
 point is that of the loss before the failure (under a skip cap the
 uncapped loss), small but not 0, while the optimiser sees ``FAILSCORE``;
 a search that started inside the failure region took it for a slope and
-converged on ``FAILSCORE``, under ``HYBRID`` with nothing differenced —
-the default under ``PC_OBSERVABLE`` (:ref:`pc_observable`) — as under
-``ANALYTICAL``.  At a graded failure under ``FAILSCORE_GRADING ON`` the
-analytical gradient is kept; it does not see the grading.  A candidate a
-gate rejected before training is a graded failure without a fit, and so
-without an analytical gradient: ``ANALYTICAL`` gives it none (``the
-analytical gradient could not be formed at this point``; where the point
-ends the search, below, the journal's stop line gives the gate's reject
+converged on ``FAILSCORE``, under ``ANALYTICAL`` — the default under
+``PC_OBSERVABLE`` (:ref:`pc_observable`) — as under ``HYBRID`` with
+nothing differenced.  Nor does the analytical gradient see the grading of
+a graded failure under ``FAILSCORE_GRADING ON``, whose loss the failure's
+band measure sets, not the loss terms: there ``ANALYTICAL`` fails the
+gradient at once as well (``a failed evaluation at the point (the loss at
+RCUT2B = 5.2 is 9.99375e+15: a graded failure, whose grading the
+analytical gradient does not see; GRAD_STRATEGY HYBRID takes finite
+differences there)``), and ``HYBRID`` forms no analytical gradient and
+differences every parameter, which gives the graded slope, or the flat
+failure region above.  Until 2026-10-12 both kept the analytical gradient
+there, the gradient of the terms that did not fail: on a trained
+``OALGO 4`` model whose ``PC_OBSERVABLE`` term fails over the whole box,
+a search under the default strategy ended as converged on the graded loss
+(``DLIB:BFGS`` ``FTOL_ABS reached`` after 4 evaluations, ``LD_LBFGS``
+``algorithm converged`` after 12, ``CERES:LBFGS`` leaving the box).  A
+candidate a gate rejected before training is a graded failure without a
+fit, and so without an analytical gradient either way: ``ANALYTICAL``
+gives it none (at the loss the optimiser has just evaluated, the graded
+failure above; asked without that loss, ``the analytical gradient could
+not be formed at this point``, the stop line giving the gate's reject
 note), and ``HYBRID`` differences it.
 
 An evaluation with a failed term is a failed evaluation — a failed
@@ -3359,7 +3382,7 @@ reads it as one.  Under ``FAILSCORE_GRADING OFF`` a search that starts
 where a ``PC_OBSERVABLE`` term fails stops at its first gradient; under
 ``ON`` its finite differences fail when the failed fraction that grades
 the failure is the same at every point of the stencil (``… a flat failure
-region``), and an analytical gradient is kept (above).  When the search
+region``), and under ``ANALYTICAL`` it stops at once (above).  When the search
 so stopped is the run's only one, the run ends without a usable loss
 (status 1).  Under a ``FAILSCORE`` that does not absorb the usable terms (``1e16``
 next to terms of about 1e5) such a search used to end with a best and
@@ -3380,8 +3403,11 @@ terms summed past the largest double (two of them under the default
 The rule has limits.  A usable point whose stencil reaches a failure has
 no gradient, so a search cannot settle within one step (``PARAM
 fd_step``) of the failure region.  A graded failure next to the usable
-side differences the jump out of the band (above).  And the analytical
-gradient at a graded failure does not see the grading.
+side differences the jump out of the band (above).  And a gradient asked
+for without the loss at its point (``DLIB:BFGS`` for a point other than
+its last evaluation) cannot tell a failed point: ``ANALYTICAL``, and
+``HYBRID`` for what it does not difference, give the analytical gradient
+there.
 
 A point without a usable gradient ends the search where the backend cannot
 go on without it:

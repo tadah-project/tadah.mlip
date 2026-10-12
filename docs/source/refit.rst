@@ -363,7 +363,13 @@ are checked, naming the key, the mode in effect and the mode that reads it:
   ``M6`` included).
 * Dense mode only: the keys of :ref:`refit_dense` (``REFIT_LEVEL``,
   ``N2B``, ``NRHO_BASIS``, ``NF_BASIS``, ``REFIT_MAX_ESCALATIONS``,
-  ``REFIT_PLACEMENT``, ``REFIT_CONSTRAIN_F0``).
+  ``REFIT_PLACEMENT``, ``REFIT_CONSTRAIN_F0``). ``REFIT_CONSTRAIN_F0``,
+  the :math:`F(0)` pin of an ``EMBF0 FREE`` fit, is read only under
+  ``EMBF0 FREE``, so it is an error under ``EMBF0 ZERO`` (written or the
+  default), true or false: ``tadah refit: REFIT_CONSTRAIN_F0 has no effect
+  under EMBF0 ZERO (the default): only EMBF0 FREE reads it; remove
+  REFIT_CONSTRAIN_F0, or set EMBF0 FREE`` (until 2026-10-12 ``true`` was
+  accepted without a word and ``false`` with a WARNING).
 * Neither mode: a top-level ``OPTIMIZER`` block, the grammar before the
   stage blocks. It is refused first, in either mode, with a text that says
   which stage block each of its sub-blocks became (``tadah refit: a
@@ -377,7 +383,19 @@ for the keys it does not set (``REFIT_OBJECTIVE energy``,
 ``REFIT_CURVE_WEIGHTING true``, ``REFIT_COMPACT_MERGE auto``,
 ``REFIT_CONSTRAIN_F0 true``, ...) are not refused. Another ``REFIT_MODE``
 is an error (``tadah refit: REFIT_MODE must be 'compact' (the default) or
-'dense', got 'sparse'``). Before 1.6.0 these keys were ignored: dense mode
+'dense', got 'sparse'``), and so is, before the EAM file is read, a
+``REFIT_BASIS`` that names no family (``tadah refit: REFIT_BASIS 'Blipp' is
+no basis family of tadah refit: Blip (Blip, BLIP, blip), Blip5 (...), ...``;
+``BLIP`` is ``Blip``, as ``BLIP5`` and ``KNOT5`` are theirs), a
+``REFIT_LEVEL`` other than ``coarse``, ``balanced``, ``fine`` or
+``accurate``, and a ``REFIT_PLACEMENT`` other than ``window`` or
+``uniform``, both read in any letter case (``tadah refit: REFIT_LEVEL must
+be 'coarse', 'balanced' (the default), 'fine' or 'accurate' (in any letter
+case), got 'acurate'``). Until 2026-10-12 an unknown ``REFIT_BASIS``
+(``Blipp``, ``BLIP``) fitted ``Blip`` while a WARNING called it the
+experimental Gaussian basis, another ``REFIT_LEVEL`` (``Fine``,
+``acurate``) the ``balanced`` preset, and another ``REFIT_PLACEMENT``
+(``Uniform``) the window placement. Before 1.6.0 these keys were ignored: dense mode
 never read the stage blocks (a ``REFINE`` block with ``THREADS 4`` and
 ``GTOL -1``, which compact mode refuses, ran), compact mode never read the
 dense keys (``N2B 50``, ``REFIT_LEVEL accurate`` and
@@ -963,7 +981,8 @@ when the refit will be tuned further.
      - Effect
    * - ``REFIT_LEVEL``
      - ``balanced``
-     - Preset grid density: ``coarse`` | ``balanced`` | ``fine`` | ``accurate``.
+     - Preset grid density: ``coarse`` | ``balanced`` | ``fine`` | ``accurate``,
+       in any letter case; another value is an error.
    * - ``N2B``
      - —
      - :math:`\phi(r)` basis count, from 1 to 1024 (the escalation's cap).
@@ -981,15 +1000,17 @@ when the refit will be tuned further.
    * - ``REFIT_CONSTRAIN_F0``
      - ``true``
      - Under ``EMBF0 FREE``: pin the raw :math:`F(0)` softly to the table
-       value. No effect under the default ``EMBF0 ZERO`` (exact by
-       construction).
+       value. An error under the default ``EMBF0 ZERO``, where
+       :math:`F(0) = 0` by construction.
    * - ``REFIT_PLACEMENT``
      - ``window``
      - ``window`` places the basis on the reachable window; ``uniform``
-       spreads it over the full range. (The compact fit always fits on the
-       reachable windows.)
+       spreads it over the full range; in any letter case, another value
+       is an error. (The compact fit always fits on the reachable windows.)
 
-Dense ``REFIT_BASIS`` families are ``Blip`` | ``Blip5`` | ``Gaussian``.
+Dense ``REFIT_BASIS`` families are ``Blip`` | ``Blip5`` | ``Gaussian``
+(``Gaussian``, ``gaussian``, ``BP``, ``D2_BP``: experimental, with a
+WARNING); a spelling of no family is an error.
 
 .. _refit_edit:
 
@@ -1109,7 +1130,11 @@ outer edge.
 
 Outputs default to ``pot_edited.tadah`` and ``refit_edited.hpotarget`` — the
 input file is never overwritten silently (an explicit ``-o`` /
-``--hpofileout`` wins; writing onto the input is refused). ``--retarget``
+``--hpofileout`` wins, on the command line or in a configuration or task
+file, whatever its name: ``-o pot.tadah`` writes ``pot.tadah``; writing onto
+the input is refused). Until 2026-10-12 a name equal to the default of a
+refit (``pot.tadah``, ``refit.hpotarget``) counted as unset, and the edited
+names were written instead, without a word. ``--retarget``
 writes ``<input>_retargeted.hpotarget`` by default (below), so an
 ``--edit`` and a ``--retarget refit.hpotarget``, two tasks of one task file
 or two commands, write different files. An output that
@@ -1140,7 +1165,9 @@ takes a bare number (the global percentage) and/or ``KEY=N`` per-key
 overrides; ``--set 'KEY(i)=lo,hi'`` (repeatable) is applied last. Output goes
 to ``<input>_retargeted.hpotarget`` by default (``refit_retargeted.hpotarget``
 for ``refit.hpotarget``; the extension and directory are the input's),
-``-o <name>``, or back into the input with ``--in-place``. Before 1.6.0 the
+``-o <name>`` (any name, ``pot.tadah`` included), or back into the input
+with ``--in-place``, which an ``OUTFILE`` set in a configuration or task file
+contradicts as ``-o`` does (refused). Before 1.6.0 the
 default was ``<input>_edited.hpotarget``: for ``refit.hpotarget`` that is
 ``refit_edited.hpotarget``, the hpotarget ``--edit`` writes, and of the two
 runs the second overwrote the first one's file (the two are searches around

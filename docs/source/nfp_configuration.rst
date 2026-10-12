@@ -2516,7 +2516,8 @@ one a finite number (``MAXTIME`` a positive one).
      - Algorithm (see table below; ``tadah explain ALGO`` lists the
        optimisers of the build by library, and ``tadah explain
        <LIB>:<ALGO>``, or ``tadah explain <ALGO>``, prints one's stops,
-       ``PARAM`` keys and ``STEP`` use).  ``NLOPT:LN_NEWUOA``,
+       ``PARAM`` keys and ``STEP`` use, after the text of a command or
+       configuration key of the same name: ``tadah explain RANDOM``).  ``NLOPT:LN_NEWUOA``,
        ``NLOPT:LN_NEWUOA_BOUND``, ``NLOPT:NLOPT_LD_LBFGS_NOCEDAL`` and the
        Ceres least-squares solvers ``CERES:LEVENBERG_MARQUARDT``,
        ``DOGLEG`` and ``SUBSPACE_DOGLEG`` are refused, at the same lines,
@@ -2871,7 +2872,11 @@ one a finite number (``MAXTIME`` a positive one).
 whether it needs a stop or ignores the ``OPTIM`` box) and the refused
 ones; ``tadah explain <LIB>:<ALGO>``, or ``tadah explain <ALGO>``, prints
 one's stops, ``PARAM`` keys and ``STEP`` use, or why it is refused
-(``tadah explain CERES:LBFGS``, ``tadah explain ld_lbfgs``).
+(``tadah explain CERES:LBFGS``, ``tadah explain ld_lbfgs``).  An ``ALGO``
+that is also the name of a command or configuration key prints that text
+first, then the optimiser's: ``tadah explain RANDOM`` prints the data key
+``RANDOM``, then ``RANDOM also names an optimiser of `tadah hpo`:`` and
+the help of ``TADAH:RANDOM``.
 
 .. list-table:: Algorithms by library
    :header-rows: 1

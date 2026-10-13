@@ -284,9 +284,16 @@ six `tadah.lammps_mpi_*` entries unless `TADAH_LMP_MPI` and
 `TADAH_LMP_MPIEXEC` name an MPI `lmp` and its launcher (`ctest -L lammps`
 above); `tadah_docs_tools` is Skipped too when one
 of its tools is missing. A build without `TADAH_ENABLE_NFP` also skips
-`tadah_cli_example_ex_2`, whose README runs `tadah hpo`, and the Catch case
-`quickstart: in.ml with the shipped pot.tadah conserves energy and keeps
-the bcc crystal` (`pair_style tadah` is not built); a build without
+`tadah_cli_example_ex_2`, whose README runs `tadah hpo`, and every Catch
+case of test_tadah that runs `pair_style tadah`, which is not built there
+(each says `pair_style tadah is not built (TADAH_ENABLE_NFP OFF)`): the
+*Quick Start* case `quickstart: in.ml with the shipped pot.tadah conserves
+energy and keeps the bcc crystal`, the eleven `pair_style tadah: ...` cases
+of `tests/test_pair_coeff_reload.cpp` (`a second pair_coeff loads its
+potential file` and the others) and the two of `tests/test_dimer_pe_atom.cpp`
+(`... the per-atom energies of a DIMER potential sum to its energy`, `... a
+DIMER atom's per-atom energy is the sum over the molecule pairs it belongs
+to`): with the two NNFinder cases, 17 entries. A build without
 `TADAH_ENABLE_CERES` skips `RHOFORM NONNEG/MONOTONE: one WARNING when an
 optimiser can leave the box` (its optimiser is `CERES:LBFGS`). See the
 cmake-tools README, *Skipped tests: the TADAH-SKIP marker*, for the rules.
@@ -325,8 +332,9 @@ Without Ceres, the test cases that need it are not compiled (they are not regist
 NFP), and those that use `LIB CERES` as an example check its refusal
 instead. Without NFP the tests of HPO, MD and Tadah.LAMMPS are not built,
 and the labels `e2e`, `bench`, `shutdown`, `statistical`, `anneal`, `slow`,
-`hpo` and `mpi` have no entry: `ctest -L e2e` there runs nothing, which
-`--no-tests=error` reports as a failure (without it CTest exits 0). Every build checks these configurations
+`hpo`, `mpi` and `lammps` have no entry: `ctest -L e2e` (or `-L lammps`)
+there runs nothing, which `--no-tests=error` reports as a failure (without
+it CTest exits 0). Every build checks these configurations
 in part: `tadah_without_nfp_links` (label `cmake`, builds with NFP) builds
 and runs `tadah` as a build without NFP links it (`tadah hpo` is refused
 naming `TADAH_ENABLE_NFP`), and `hpo_configure_without_ceres` (label

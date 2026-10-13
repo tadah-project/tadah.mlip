@@ -345,10 +345,11 @@ requirements and an ARCHER2 job script are in :ref:`tadah_anneal_mpi`.
 
 **4. Testing an MPI build.** With ``-DBUILD_TESTING=ON`` the whole suite
 runs in the MPI build too (``ctest --test-dir build-mpi``): each test
-program is a one-rank MPI job. The cases that start ``PC_ISOLATION
-PROCESS`` workers -- those of the worker pool, and two HPO runs under
-``PROCESS`` -- are *Skipped* there (the MPI build has ``PC_ISOLATION
-THREAD`` only), as are the optional-data cases of the serial build. If the
+program is a one-rank MPI job. The cases that build a ``PC_ISOLATION
+PROCESS`` worker pool or ask for that mode -- those of the worker pool, and
+two HPO runs under ``PROCESS`` -- are *Skipped* there (the MPI build has
+``PC_ISOLATION THREAD`` only), as are the optional-data cases of the serial
+build. If the
 build stops while it lists the tests (the MPI build's test programs
 initialise MPI to list them), Open MPI's ``MPI_Init`` may be waiting for an
 X display through its hwloc GL component: build and test with

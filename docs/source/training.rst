@@ -292,8 +292,12 @@ Three categories of keys appear:
    ``LSCALE`` (≠ 1) or ``ESHIFT`` (explicit or via
    ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM``), the resolved values are
    written so prediction re-applies them automatically. The
-   ``*_ATOM`` / ``*_DBATOM`` toggles themselves are not stamped (only
-   their resolved output).
+   ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles are written too, as the
+   configuration set them (``false``, their default, included): a
+   potential trained with one of them ``true`` has it beside the stamped
+   ``ESHIFT``, which ``tadah predict`` (and a retrain from the potential)
+   uses as the explicit source, after a ``WARNING`` (``Multiple ESHIFT
+   sources set; precedence: explicit > ATOM > DBATOM.``).
 
 DM_REAM potentials always carry explicit ``EMBF0`` and ``RHOFORM`` lines;
 the writer spells ``RHOFORM`` in upper case and drops a stray one from a

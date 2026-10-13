@@ -2795,7 +2795,7 @@ one a finite number (``MAXTIME`` a positive one).
        ``PARAM STEP_FRAC``).  NLopt receives one step per dimension:
        SBPLX/NELDERMEAD use them as the first simplex's edges,
        BOBYQA/COBYLA as their per-dimension coordinate rescaling,
-       NEWUOA/PRAXIS collapse them to one radius, MLSL/AUGLAG forward
+       PRAXIS collapses them to one radius, MLSL/AUGLAG forward
        them to ``INNER`` (an outer ``STEP`` overrides an ``INNER`` one).
        Per-key/per-index overrides: ``STEP <KEY>[(indices)] <fraction>``
        (repeatable); the index list has the grammar of the ``OPTIM``
@@ -3604,8 +3604,11 @@ does with a failed evaluation:
   jump from the band to a usable neighbour and is as steep as that jump,
   which can mislead the searches.  In the example below under ``FAILSCORE 1e9``
   with ``FAILSCORE_GRADING ON``, from 1.4 (a graded failure whose stencil
-  point 1.6 is usable) ``DLIB:BFGS`` evaluates the upper bound 2 23 times
-  in a row, 31 evaluations in all; ``LD_SLSQP`` stops after 3 evaluations
+  point 1.6 is usable) ``DLIB:BFGS`` reaches the upper bound 2 at its 4th
+  evaluation, where the box holds its step, and ends ``FTOL_ABS reached``
+  after 6 (until 2026-10-12 its line search evaluated the bound 23 times in
+  a row, 31 evaluations in all: :ref:`hpo_repeat_points`); ``LD_SLSQP``
+  stops after 3 evaluations
   with ``STOPPED -- bug: more than iter SQP iterations (algorithm
   converged; …)``, its best the stencil point 1.6, short of the optimum at
   2; ``CERES:LBFGS`` leaves the box (2.4).  From 1.25, where the whole

@@ -187,7 +187,7 @@ Customize the Tadah!MLIP build using CMake options:
 - ``TADAH_ENABLE_OPENMP``: Enable OpenMP for parallelization (default: OFF).
 - ``TADAH_MARCH_NATIVE``: Use native optimizations (default: OFF).
 - ``TADAH_ENABLE_FAST_MATH``: Enable fast math optimizations (default: OFF).
-- ``TADAH_ENABLE_NFP``: Enable Nested Fitting Procedure (default: OFF), see :ref:`installation_nfp`. A ``tadah`` built without it refuses ``tadah hpo`` and ``TASK hpo`` before any task runs, ``tadah hpo needs the Nested Fitting Procedure, which this tadah was built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see Installation)``, and its ``tadah -h`` says so on the ``hpo`` line.
+- ``TADAH_ENABLE_NFP``: Enable Nested Fitting Procedure (default: OFF), see :ref:`installation_nfp`. A ``tadah`` built without it refuses ``tadah hpo`` and ``TASK hpo`` before any task runs, ``tadah hpo needs the Nested Fitting Procedure, which this tadah was built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see Installation)``, and its ``tadah -h`` says so on the ``hpo`` line. Such a build has no compact fitter either: ``tadah refit`` refuses ``REFIT_MODE compact``, the default, so its refit configurations set ``REFIT_MODE dense`` (as without ``TADAH_ENABLE_CERES``, below).
 - ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIB``: Absolute path to the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIBS``: Extra link items for the LAMMPS library, as a CMake list (e.g. ``"-lz;-lzstd"``); needed mainly for a static LAMMPS library, whose own dependencies are not propagated (optional, used by ``TADAH_ENABLE_NFP``).

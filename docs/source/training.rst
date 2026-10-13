@@ -79,8 +79,12 @@ finding, descriptor calculation, or fitting. They run inside
 shared across ``tadah train``, ``tadah predict``, and ``tadah hpo``.
 
 Two of them — ``LSCALE`` and the resolved ``ESHIFT`` — are stamped into
-``pot.tadah`` so ``tadah predict`` round-trips them automatically; the
-rest are training-time only. For the per-key CLI form and defaults see
+``pot.tadah`` so ``tadah predict`` round-trips them automatically. The
+potential records the others as well, with the rest of its training
+configuration (`pot.tadah format`_), and ``tadah predict`` reads them from
+it: it re-applies ``EFILTER``, ``FFILTER`` and ``ZERO_COM_FORCE`` to the
+data it predicts, and leaves out ``WDBFILE``, ``WDBFILE_AUTO`` and
+``EWEIGHT_TEMP`` (:ref:`load_transforms_predict`). For the per-key CLI form and defaults see
 :ref:`ConfigSection` and ``tadah explain <key>`` (e.g. ``tadah explain
 train.lscale``).
 
@@ -114,7 +118,7 @@ Key                          One-line summary
 ``ESHIFT_ATOM``              Derive ESHIFT from isolated-atom configurations in the dataset.
 ``ESHIFT_DBATOM``            Derive ESHIFT by least-squares atomic-energy fit over the database.
 ``EFILTER  <lo> <hi>``       Drop configurations whose per-atom energy is outside ``[lo, hi]``.
-``FFILTER  <thr>``           Drop configurations with any single force component above ``thr``.
+``FFILTER  <thr>``           Drop configurations with an atom whose force magnitude is above ``thr``.
 ``WDBFILE  <w_1> ... <w_n>`` Per-dataset weight multipliers; one per ``DBFILE``.
 ``WDBFILE_AUTO  <α>``        Automatic size balancing: per-config weight × ``1 / N_i^α``, ``α ∈ [0,1]``.
 ``EWEIGHT_TEMP  <T>``        Boltzmann reweighting at temperature ``T`` (Kelvin).
@@ -175,9 +179,16 @@ precedence **explicit > ATOM > DBATOM**:
   then 0, with a WARNING.
 
 Whichever path is used, the *resolved* per-element values are stamped
-into ``pot.tadah`` (the ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles are
-not). ``tadah predict`` re-applies them; ``--no-eshift`` ignores the
-stored values.
+into ``pot.tadah`` as ``ESHIFT``, and the ``ESHIFT_ATOM`` /
+``ESHIFT_DBATOM`` toggles are written beside them as the configuration set
+them (`pot.tadah format`_). ``tadah predict`` re-applies the stamped
+values: with one of the toggles ``true`` the stamped ``ESHIFT`` is the
+explicit source, after the ``WARNING`` above (``Multiple ESHIFT sources
+set; precedence: explicit > ATOM > DBATOM.``). ``--no-eshift`` drops the
+stored values; a potential with ``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` set
+to ``true`` then derives the shift from the dataset it predicts, as the
+training run did from its own (``ESHIFT_ATOM`` gives 0, with a WARNING, to
+an element without an isolated-atom configuration there).
 
 .. note::
 
@@ -200,7 +211,8 @@ Filtering and weighting
 * ``EFILTER lo hi`` drops any configuration whose **per-atom** energy
   ``E/N`` is outside ``[lo, hi]``; ``FFILTER thr`` drops any
   configuration with a single-atom force magnitude above ``thr``. Both
-  run first and are training-time only.
+  run first, and ``tadah predict`` applies the potential's to the data it
+  predicts too (:ref:`load_transforms_predict`).
 * ``WDBFILE w_1 … w_n`` multiplies the ``eweight`` / ``fweight`` /
   ``sweight`` of every config in dataset ``i`` by ``w_i`` — one value
   per ``DBFILE``.
@@ -218,8 +230,32 @@ Filtering and weighting
   so its net force is exactly zero — useful against residual
   translational forces left by incomplete DFT relaxation.
 
-These transforms are training-time only: they are not stamped into
-``pot.tadah`` and not re-applied at predict time.
+.. _load_transforms_predict:
+
+The transforms at predict time
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The keys of the transforms are written into ``pot.tadah`` with the rest
+of the training configuration, as it set them (only ``LSCALE`` and
+``ESHIFT`` are stamped with resolved values), and ``tadah predict`` reads
+them from the potential:
+
+* ``EFILTER``, ``FFILTER`` and ``ZERO_COM_FORCE`` are applied to the data
+  it predicts, as they were to the training data. A structure outside the
+  training run's ``EFILTER`` window, or with an atom whose force magnitude
+  is above its ``FFILTER`` threshold, is left out of the predictions:
+  ``energy.pred`` numbers the structures it keeps from 0, and only at
+  ``-v 2`` or more does a line say how many were left out (``Outlier
+  filter: dropped 18 by energy, 0 by force.``). ``ZERO_COM_FORCE true``
+  subtracts each structure's mean force from the forces it reads (the
+  ``True`` columns). To predict every structure as it is, delete these
+  lines from a copy of the potential.
+* ``WDBFILE``, ``WDBFILE_AUTO`` and ``EWEIGHT_TEMP`` are not applied: they
+  weighted the training set, and the data predicted keep their own
+  weights.
+
+A retrain from the potential (:ref:`retrain_from_potential`) applies all
+of them to the datasets of the retrain.
 
 .. _train_outputs:
 
@@ -292,8 +328,12 @@ Three categories of keys appear:
    ``LSCALE`` (≠ 1) or ``ESHIFT`` (explicit or via
    ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM``), the resolved values are
    written so prediction re-applies them automatically. The
-   ``*_ATOM`` / ``*_DBATOM`` toggles themselves are not stamped (only
-   their resolved output).
+   ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles are written too, as the
+   configuration set them (``false``, their default, included): a
+   potential trained with one of them ``true`` has it beside the stamped
+   ``ESHIFT``, which ``tadah predict`` (and a retrain from the potential)
+   uses as the explicit source, after a ``WARNING`` (``Multiple ESHIFT
+   sources set; precedence: explicit > ATOM > DBATOM.``).
 
 DM_REAM potentials always carry explicit ``EMBF0`` and ``RHOFORM`` lines;
 the writer spells ``RHOFORM`` in upper case and drops a stray one from a
@@ -392,7 +432,13 @@ it is read when the model is built, so the retrain may also change, for
 example, ``SBASIS`` or the descriptor. The other keys are the configuration
 of the first fit: the same datasets give the same potential. ``WDBFILE``,
 the weight of each dataset, is one of them: list the datasets in the same
-order. With ``LAMBDA -1`` the potential records the ``ALPHA`` and ``BETA``
+order. It needs one value for each ``DBFILE`` entry of the retrain, so for
+other datasets edit or delete it; with one value too many or too few
+``tadah train`` stops when it has read the datasets (``WDBFILE size (2)
+does not match number of datasets (1).``). The other transforms the
+potential records (``EFILTER``, ``FFILTER``, ``EWEIGHT_TEMP``,
+``ZERO_COM_FORCE``, ...: :ref:`load_transforms_predict`) apply to the
+datasets of the retrain as well. With ``LAMBDA -1`` the potential records the ``ALPHA`` and ``BETA``
 the evidence approximation found (the fit's :math:`\lambda = \alpha/\beta`;
 they are the approximation's starting guesses in a configuration), so a
 retrain starts the approximation from them (on the same datasets it stops

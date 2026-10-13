@@ -2795,7 +2795,7 @@ one a finite number (``MAXTIME`` a positive one).
        ``PARAM STEP_FRAC``).  NLopt receives one step per dimension:
        SBPLX/NELDERMEAD use them as the first simplex's edges,
        BOBYQA/COBYLA as their per-dimension coordinate rescaling,
-       NEWUOA/PRAXIS collapse them to one radius, MLSL/AUGLAG forward
+       PRAXIS collapses them to one radius, MLSL/AUGLAG forward
        them to ``INNER`` (an outer ``STEP`` overrides an ``INNER`` one).
        Per-key/per-index overrides: ``STEP <KEY>[(indices)] <fraction>``
        (repeatable); the index list has the grammar of the ``OPTIM``
@@ -3604,8 +3604,16 @@ does with a failed evaluation:
   jump from the band to a usable neighbour and is as steep as that jump,
   which can mislead the searches.  In the example below under ``FAILSCORE 1e9``
   with ``FAILSCORE_GRADING ON``, from 1.4 (a graded failure whose stencil
-  point 1.6 is usable) ``DLIB:BFGS`` evaluates the upper bound 2 23 times
-  in a row, 31 evaluations in all; ``LD_SLSQP`` stops after 3 evaluations
+  point 1.6 is usable) ``DLIB:BFGS`` reaches the upper bound 2 at its 4th
+  evaluation and ends ``FTOL_ABS reached`` after 6: its line search from
+  1.4 asks for the bound 23 times in a row, its trials clamped onto it,
+  and the run answers 22 of those calls from its record
+  (:ref:`hpo_repeat_points`); at the bound the box holds the step, so no
+  line search runs from there.  A run that evaluates every repeat again
+  (a ``PC_LAMMPS`` line, a ``--skip-rel`` filter) evaluates the bound 23
+  times, 28 evaluations in all (31 until 2026-10-12, when a line search
+  from a point the box holds was still run); ``LD_SLSQP``
+  stops after 3 evaluations
   with ``STOPPED -- bug: more than iter SQP iterations (algorithm
   converged; …)``, its best the stencil point 1.6, short of the optimum at
   2; ``CERES:LBFGS`` leaves the box (2.4).  From 1.25, where the whole
@@ -6256,9 +6264,10 @@ legacy ``# HOT_A0 <script> <a0>``), the cache is primed automatically;
 evaluation hands to the next belong to the run: a second run in the
 same process (a task file with two ``hpo`` tasks) starts from
 ``<initial>``, or from its ``WARM`` seed, again. A ``WARM`` seed's values
-do not: a later run that reads no ``WARM`` seed with a value for the
-same script and variable starts from an earlier run's seed value
-(:ref:`two runs in one process <hpo_two_runs_one_process>`).
+belong to its run too: a later run that reads no ``WARM`` seed with a value for the same
+script and variable starts from ``<initial>``; until 2026-10-12 it started
+from the earlier run's seed value (:ref:`two runs in one process
+<hpo_two_runs_one_process>`).
 
 Multiple ``--hotvar`` flags may be repeated on the same ``PC_LAMMPS``
 line; ``hot_a0`` is just a conventional name (any identifier works).

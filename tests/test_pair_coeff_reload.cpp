@@ -39,7 +39,6 @@
 #include <tadah/core/context.h>
 #include <tadah/core/core_user_config_parser.h>
 #include <tadah/core/periodic_table.h>
-#include <tadah/hpo/hpo_mpi.h>  // hpo_lammps_comm()
 #include <tadah/hpo/runners.h>
 #include <tadah/tadah.lammps/lammps_tadah.h>
 
@@ -224,7 +223,7 @@ Context parse(const std::string& path) {
 
 LMPPtr make_instance(const std::string& log = "none") {
   LMPPtr lmp = LammpsRunner().create_instance(
-      tadah::hpo::hpo_lammps_comm(), {"lmp", "-log", log, "-screen", "none"});
+      {"lmp", "-log", log, "-screen", "none"});
   REQUIRE(lmp != nullptr);
   return lmp;
 }

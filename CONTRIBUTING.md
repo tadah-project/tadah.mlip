@@ -398,10 +398,36 @@ VORONOI; the link errors name the ones that are missing.
 
 The whole suite runs in the MPI build as well, each test program a
 one-rank MPI job (test_hpo and test_tadah initialise MPI as `tadah`
-does). It Skips, besides the optional-data cases above, the seven
-`pc pool:` cases that start `PC_ISOLATION PROCESS` workers, which the MPI
-build does not have (`pc pool: in the MPI build the worker refuses to
-start` pins why). `ctest -L mpi` selects the multi-rank entries: the
+does). It Skips, besides the optional-data cases above, every case that
+builds a `PC_ISOLATION PROCESS` worker pool or asks for that mode, which
+the MPI build does not have and refuses (`pc pool: in the MPI build the
+worker refuses to start` pins why): the twelve `pc pool:` cases that build
+a pool and the two `Two runs in one process` cases under `PROCESS`. Two
+things a test case does differ between the builds, and the serial suite
+does not run the MPI build's: a case that builds a pool or asks for PROCESS
+calls `SKIP_WITHOUT_PC_PROCESS_WORKERS()` (HPO `tests/pc_process_workers.h`)
+as its first statement, and a LAMMPS instance a test creates comes from
+`LammpsRunner::create_instance`, which takes no communicator and runs it on
+the build's (`hpo_lammps_comm()`: the serial build's 0 is a null
+communicator under Open MPI, and LAMMPS aborts). In the serial build a
+PROCESS worker of test_hpo that a case starts without that call refuses to
+start, as the MPI build's workers do, so the case fails there too, however
+it built the pool. `hpo_mpi_build_tests_lint`, which runs in every build,
+reads HPO's test sources and headers as the MPI build compiles them and
+fails a case that, without the call first, builds a pool (any use of
+`PcWorkerPool` but a pointer, a reference or a smart-pointer holder) or
+writes a PROCESS request (`PC_ISOLATION PROCESS`,
+`TADAH_PC_ISOLATION=PROCESS`, the mode `"PROCESS"`); such a pool or request
+outside every case; and any use of the LAMMPS class other than as a
+pointer, a reference or a holder. Its docstring lists what it does not see
+(a value assembled from pieces, a request in a file a case reads, a case
+that relies on the serial build's default PROCESS through the `tadah`
+executable). The MPI build's test discovery runs test_hpo and test_tadah,
+so a host where Open MPI's `MPI_Init` blocks (its hwloc GL component
+waiting for an X display that accepts no connection) blocks the build:
+set `HWLOC_COMPONENTS=-gl` (and `UCX_VFS_ENABLE=n` where UCX writes inotify
+errors into the listing) for the build and the tests. `ctest -L mpi`
+selects the multi-rank entries: the
 `tadah.lammps_mpi_*` entries of every NFP build (`ctest -L lammps` above,
 which run their own `lmp` and launcher) and the MPI-only entries, run
 through CMake's `MPIEXEC_EXECUTABLE` and needing four process slots

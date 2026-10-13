@@ -22,7 +22,6 @@
 
 #ifdef TADAH_ENABLE_NFP
 #include <tadah/core/periodic_table.h>
-#include <tadah/hpo/hpo_mpi.h>  // hpo_lammps_comm()
 #include <tadah/hpo/runners.h>
 
 #include <input.h>
@@ -132,8 +131,8 @@ Result run_molecules(const std::vector<Molecule>& mols) {
   s.push_back("run 0 post no");
 
   LammpsRunner runner;
-  auto lmp = runner.create_instance(tadah::hpo::hpo_lammps_comm(),
-                                    {"lmp", "-log", "none", "-screen", "none"});
+  auto lmp = runner.create_instance(
+      {"lmp", "-log", "none", "-screen", "none"});
   REQUIRE(lmp != nullptr);
   for (const std::string& line : s) {
     std::string err;

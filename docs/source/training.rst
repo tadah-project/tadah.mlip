@@ -339,8 +339,39 @@ before it reads anything::
 
    The training configuration has no DBFILE: tadah train fits the datasets
    it lists. A potential records no DBFILE (no potential tadah writes has
-   one): to train from one, add a DBFILE line to a copy of it (the Training
-   page of the documentation, Retraining from a potential).
+   one): to train from one, add a DBFILE line to a copy of it; a potential
+   of tadah refit or refit --edit also pins every weight with its FIXINDEX
+   and FIXWEIGHT lines, the seed of a tadah hpo coefficient search, so
+   delete them from the copy for the fit to change the weights (the
+   Training page of the documentation, Retraining from a potential).
+
+A potential that ``tadah refit`` or ``tadah refit --edit`` writes, and the
+``best_pot.tadah`` of a ``tadah hpo`` run that pins every weight, has
+``FIXINDEX`` and ``FIXWEIGHT`` lines for every weight: the seed of a
+``tadah hpo`` coefficient search (:ref:`hpo_fixweight`).  A fit whose
+``FIXINDEX`` pins every weight changes none, so for a retrain delete both
+lines from the copy as well::
+
+   grep -v -e '^FIXINDEX' -e '^FIXWEIGHT' pot.tadah > retrain.train
+   echo "DBFILE db.train" >> retrain.train
+   tadah train -c retrain.train -o pot2.tadah
+
+With the lines kept, ``tadah train`` writes a potential whose ``WEIGHTS``
+are the ``FIXWEIGHT`` values and says so before it reads a dataset::
+
+   WARNING: tadah train: FIXINDEX and FIXWEIGHT pin every weight (all 84 of
+   them), so the fit changes none: the WEIGHTS of the potential written are
+   the FIXWEIGHT values. tadah refit and refit --edit write FIXINDEX and
+   FIXWEIGHT for every weight of their potentials, the seed of a tadah hpo
+   coefficient search, and so does a tadah hpo run that pins every weight in
+   its best_pot.tadah: to fit the weights to the DBFILE data, delete both
+   lines from the training configuration (the Training page of the
+   documentation, Retraining from a potential).
+
+It is a warning, not a refusal: such a fit can be deliberate (under
+``OALGO 3`` it gives the noise of the data about the pinned weights).  Until
+2026-10-13 nothing said so, and a refit potential retrained this way kept
+its weights.
 
 ``tadah hpo`` runs without a training ``DBFILE`` only when ``FIXINDEX`` and
 ``FIXWEIGHT`` pin every weight (:ref:`hpo_fixweight`). Its refusals of a
@@ -352,8 +383,9 @@ for the missing ``DBFILE`` with the advice to set ``GRAD_STRATEGY HYBRID``
 instead: with a ``DBFILE`` line the pins would be refused next (``FIXINDEX
 pins model weights``).
 
-The fit replaces what the potential holds of its own fit (``WEIGHTS``, the
-``BASIS`` of a non-linear kernel, ``NMEAN``, ``NSTDEV``, ``SIGMA``); none of
+The fit replaces what the potential holds of its own fit (``WEIGHTS``,
+those ``FIXINDEX`` pins excepted, the ``BASIS`` of a non-linear kernel,
+``NMEAN``, ``NSTDEV``, ``SIGMA``); none of
 it is read when the model is built, so the retrain may also change, for
 example, ``SBASIS`` or the descriptor. The other keys are the configuration
 of the first fit: the same datasets give the same potential. ``WDBFILE``,

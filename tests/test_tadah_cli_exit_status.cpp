@@ -6887,6 +6887,63 @@ TEST_CASE("Subcommand: train -c of a potential without a DBFILE line is "
     }
 }
 
+/* Pins: `tadah refit --edit` of a potential with an UNCERTAINTY line, as
+ * tadah 1.5.x and 1.6.0 development builds wrote them (the outputs of a
+ * dense refit of the small Ta setfl, with "UNCERTAINTY true" appended, as
+ * old.tadah), writes old_edited.tadah without it (UNCERTAINTY is a switch
+ * of the train task, and a potential does not record it), and so does an
+ * edit of that potential; a retrain of the edited potential (a DBFILE line
+ * added) gives no WARNING about an UNCERTAINTY of the potential.
+ * Before the fix: refit --edit writes its input's context, and
+ * remove_run_inputs (TrainEngine::dumpPotFile) did not remove UNCERTAINTY:
+ * both edits wrote "UNCERTAINTY true", and the retrain warned "its
+ * UNCERTAINTY true is the record of the run that trained it (tadah 1.5.x
+ * and 1.6.0 development builds wrote UNCERTAINTY into every potential)" of
+ * a file this build wrote (lanes/D/tmp/review/training-verify/unc). */
+TEST_CASE("Subcommand: refit --edit writes no UNCERTAINTY line",
+          "[TadahCLI][exit-status][refit][potential-content]") {
+  ScratchCwd cwd("refit_edit_uncertainty");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun fit = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    INFO("refit: status " << fit.status << "\n" << reported(fit));
+    REQUIRE(fit.status == 0);
+  }
+  std::ofstream("old.tadah") << slurp("pot.tadah") << "UNCERTAINTY true\n";
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--edit", "old.tadah",
+                                "--func", "phi", "--add", "2.5", "-o",
+                                "old_edited.tadah"});
+    INFO("--edit old.tadah: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  const std::string edited = slurp("old_edited.tadah");
+  INFO(edited);
+  CHECK(line_tokens(edited, "UNCERTAINTY").empty());
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--edit",
+                                "old_edited.tadah", "--func", "phi", "--add",
+                                "3.0", "-o", "twice.tadah"});
+    INFO("--edit old_edited.tadah: status " << r.status << "\n"
+                                            << reported(r));
+    REQUIRE(r.status == 0);
+    CHECK(line_tokens(slurp("twice.tadah"), "UNCERTAINTY").empty());
+  }
+  std::ofstream("db.tadah") << bcc_ta_entry("B1", 3.25, -23.1)
+                            << bcc_ta_entry("B2", 3.30, -23.4)
+                            << bcc_ta_entry("B3", 3.36, -23.2);
+  std::ofstream("retrain.train") << as_training_config(edited, "db.tadah");
+  const CliRun t = run_tadah({"tadah", "train", "-c", "retrain.train", "-o",
+                              "retrained.tadah"});
+  const std::string rep = reported(t);
+  INFO("train: status " << t.status << "\n" << rep);
+  CHECK(t.status == 0);
+  CHECK_FALSE(contains(rep, "UNCERTAINTY true is the record of the run"));
+}
+
 /* Pins: the documented retrain of a potential that tadah refit writes --
  * its copy with a DBFILE line -- fits no weight, and tadah train says so: a
  * dense Blip refit of the small Ta setfl (REFIT_LEVEL coarse) writes

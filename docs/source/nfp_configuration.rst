@@ -3611,8 +3611,8 @@ does with a failed evaluation:
   (:ref:`hpo_repeat_points`); at the bound the box holds the step, so no
   line search runs from there.  A run that evaluates every repeat again
   (a ``PC_LAMMPS`` line, a ``--skip-rel`` filter) evaluates the bound 23
-  times, 28 evaluations in all (31 until 2026-10-12, when the line search
-  from the bound evaluated it again as well); ``LD_SLSQP``
+  times, 28 evaluations in all (31 until 2026-10-12, when a line search
+  from a point the box holds was still run); ``LD_SLSQP``
   stops after 3 evaluations
   with ``STOPPED -- bug: more than iter SQP iterations (algorithm
   converged; …)``, its best the stencil point 1.6, short of the optimum at

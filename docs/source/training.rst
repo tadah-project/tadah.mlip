@@ -304,10 +304,12 @@ fitting with the migration message (``RHOFORM SIGNED`` is the density of
 every tadah before 1.6.0); see :ref:`DM_REAM <dm_ream_rhoform>`.
 
 These settings of the run are not written: ``VERBOSE``, ``NUMERIC``,
-``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE`` and ``HEALTH_LOG``, and the
-``HPOTARGET`` and ``VALIDATION`` of a ``tadah hpo`` run (which a
-``best_pot.tadah`` of an earlier version, used as the configuration,
-carried). A potential records the model's settings and its fit; one that
+``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG`` and
+``UNCERTAINTY``, and the ``HPOTARGET`` and ``VALIDATION`` of a ``tadah
+hpo`` run (which a ``best_pot.tadah`` of an earlier version, used as the
+configuration, carried); ``tadah refit --edit`` of a potential that has one
+of these lines (an ``UNCERTAINTY`` line of tadah 1.5.x) writes the edit
+without it. A potential records the model's settings and its fit; one that
 has these lines still loads. ``tadah predict`` and ``pair_style tadah`` read
 none of them except ``VERBOSE``: parsing a file with a ``VERBOSE`` line sets
 the Tadah log level of the process (``pair_style tadah`` in LAMMPS, a

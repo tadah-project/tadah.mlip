@@ -4835,16 +4835,28 @@ whose points a gate rejected before training, an ``INIT`` point outside
 the region the exploration sampled, a search under ``FAILSCORE_GRADING
 ON`` that walks out of a failure region); a run that finds none ends
 without a usable loss (``STOPPED -- no evaluation produced a usable
-loss``, status 1).  Every exploration a configuration can set evaluates at
-least one point (``MAXEVAL`` is at least 1, and every optimiser makes its
-first evaluation whatever ``MAXTIME``, the ``MAXTIME`` row), so an
-exploration that made no evaluation at all is an internal error, and the
-run ends
-``FAILED -- PRESTAGE: the exploration (EXPLORE block) LIB:ALGO returned
-without evaluating a point, …`` (status 1); until 2026-10-12 the
-refinement ran from the ``INIT`` points after a ``WARNING`` (``PRESTAGE:
-produced no candidates -- running outer optimiser as-is``), which hid
-it.  Until 2026-10-07 a failed point (``FAILSCORE`` or a
+loss``, status 1).  An exploration can make no evaluation when every call
+it makes is answered from the run's record (:ref:`hpo_repeat_points`): a
+``RESTART`` round whose exploration retraces an earlier round's, or under
+``NOISE CALIBRATION`` an exploration whose one call (``MAXEVAL 1``) is
+the seed point the calibration evaluated (``NLopt finished:
+MAXEVAL_REACHED -- maximum evaluations exhausted after 0 of MAXEVAL 1
+evaluation(s); NLopt counts its calls, and 1 of them asked for points
+the run had evaluated and were answered without an evaluation``).  Its
+recorded points are its candidates, and the refinement runs from them
+(``PRESTAGE: 3 usable candidate(s) for TOPK 5 (the exploration made 0
+evaluation(s), 0 without a usable loss, and answered 3 call(s) from the
+run's record of earlier evaluations); refining 3``).  Every exploration a
+configuration can set asks for at least one point (``MAXEVAL`` is at
+least 1, and every optimiser makes its first call whatever ``MAXTIME``,
+the ``MAXTIME`` row), so an exploration that asked for none -- no
+evaluation, and no call answered from the record -- is an internal
+error, and the run ends ``FAILED -- PRESTAGE: the exploration (EXPLORE
+block) LIB:ALGO returned without evaluating a point, so it has no
+candidate to refine (it asked for no point: …)`` (status 1); until
+2026-10-12 the refinement ran from the ``INIT`` points after a
+``WARNING`` (``PRESTAGE: produced no candidates -- running outer
+optimiser as-is``), which hid it.  Until 2026-10-07 a failed point (``FAILSCORE`` or a
 graded failure, not a gate reject) stayed among the candidates while
 fewer than ``TOPK`` usable ones existed, and the refinement started from
 it; an exploration whose every evaluation had failed so was refined from

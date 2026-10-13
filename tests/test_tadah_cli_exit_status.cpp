@@ -6827,8 +6827,11 @@ namespace {
  * ends with. */
 const char* const kNoDatasetsAdvice =
     "A potential records no DBFILE (no potential tadah writes has one): to "
-    "train from one, add a DBFILE line to a copy of it (the Training page of "
-    "the documentation, Retraining from a potential).";
+    "train from one, add a DBFILE line to a copy of it; a potential of tadah "
+    "refit or refit --edit also pins every weight with its FIXINDEX and "
+    "FIXWEIGHT lines, the seed of a tadah hpo coefficient search, so delete "
+    "them from the copy for the fit to change the weights (the Training page "
+    "of the documentation, Retraining from a potential).";
 
 }  // namespace
 
@@ -6836,13 +6839,16 @@ const char* const kNoDatasetsAdvice =
  * from the three Ta dimers (M_BLR BF_Linear and M_KRR Kern_Linear; it has
  * no DBFILE line), exits 1 without writing re.tadah, saying "The training
  * configuration has no DBFILE: tadah train fits the datasets it lists." and
- * the advice ("A potential records no DBFILE ... add a DBFILE line to a
- * copy of it (the Training page of the documentation, Retraining from a
- * potential)."), and no "Key not found"; with the DBFILE line added it
- * trains (exit 0; a pin of the documented route).
+ * the advice (kNoDatasetsAdvice: "A potential records no DBFILE ... add a
+ * DBFILE line to a copy of it; a potential of tadah refit or refit --edit
+ * also pins every weight ..."), and no "Key not found"; with the DBFILE
+ * line added it trains (exit 0; a pin of the documented route).
  * Before the fix: exit 1 with "Key not found in the Context object:
  * DBFILE" (and the Logger's "Context::operator() -> Key not found:
- * DBFILE"), naming neither potentials nor the retrain. */
+ * DBFILE"), naming neither potentials nor the retrain.
+ * Before the advice named the pins (cross-lane review 2): it ended "add a
+ * DBFILE line to a copy of it (the Training page ...).", which a refit
+ * potential so retrained followed to a fit of nothing (the next case). */
 TEST_CASE("Subcommand: train -c of a potential without a DBFILE line is "
           "refused, pointing to the retrain route",
           "[TadahCLI][train][retrain][potential-content]") {
@@ -6879,6 +6885,123 @@ TEST_CASE("Subcommand: train -c of a potential without a DBFILE line is "
       CHECK(ok.status == 0);
       CHECK(std::filesystem::exists("re.tadah"));
     }
+}
+
+/* Pins: `tadah refit --edit` of a potential with an UNCERTAINTY line, as
+ * tadah 1.5.x and 1.6.0 development builds wrote them (the outputs of a
+ * dense refit of the small Ta setfl, with "UNCERTAINTY true" appended, as
+ * old.tadah), writes old_edited.tadah without it (UNCERTAINTY is a switch
+ * of the train task, and a potential does not record it), and so does an
+ * edit of that potential; a retrain of the edited potential (a DBFILE line
+ * added) gives no WARNING about an UNCERTAINTY of the potential.
+ * Before the fix: refit --edit writes its input's context, and
+ * remove_run_inputs (TrainEngine::dumpPotFile) did not remove UNCERTAINTY:
+ * both edits wrote "UNCERTAINTY true", and the retrain warned "its
+ * UNCERTAINTY true is the record of the run that trained it (tadah 1.5.x
+ * and 1.6.0 development builds wrote UNCERTAINTY into every potential)" of
+ * a file this build wrote (lanes/D/tmp/review/training-verify/unc). */
+TEST_CASE("Subcommand: refit --edit writes no UNCERTAINTY line",
+          "[TadahCLI][exit-status][refit][potential-content]") {
+  ScratchCwd cwd("refit_edit_uncertainty");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun fit = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    INFO("refit: status " << fit.status << "\n" << reported(fit));
+    REQUIRE(fit.status == 0);
+  }
+  std::ofstream("old.tadah") << slurp("pot.tadah") << "UNCERTAINTY true\n";
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--edit", "old.tadah",
+                                "--func", "phi", "--add", "2.5", "-o",
+                                "old_edited.tadah"});
+    INFO("--edit old.tadah: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  const std::string edited = slurp("old_edited.tadah");
+  INFO(edited);
+  CHECK(line_tokens(edited, "UNCERTAINTY").empty());
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--edit",
+                                "old_edited.tadah", "--func", "phi", "--add",
+                                "3.0", "-o", "twice.tadah"});
+    INFO("--edit old_edited.tadah: status " << r.status << "\n"
+                                            << reported(r));
+    REQUIRE(r.status == 0);
+    CHECK(line_tokens(slurp("twice.tadah"), "UNCERTAINTY").empty());
+  }
+  std::ofstream("db.tadah") << bcc_ta_entry("B1", 3.25, -23.1)
+                            << bcc_ta_entry("B2", 3.30, -23.4)
+                            << bcc_ta_entry("B3", 3.36, -23.2);
+  std::ofstream("retrain.train") << as_training_config(edited, "db.tadah");
+  const CliRun t = run_tadah({"tadah", "train", "-c", "retrain.train", "-o",
+                              "retrained.tadah"});
+  const std::string rep = reported(t);
+  INFO("train: status " << t.status << "\n" << rep);
+  CHECK(t.status == 0);
+  CHECK_FALSE(contains(rep, "UNCERTAINTY true is the record of the run"));
+}
+
+/* Pins: the documented retrain of a potential that tadah refit writes --
+ * its copy with a DBFILE line -- fits no weight, and tadah train says so: a
+ * dense Blip refit of the small Ta setfl (REFIT_LEVEL coarse) writes
+ * pot.tadah with FIXINDEX 1-84 and FIXWEIGHT for every weight (the seed of
+ * a tadah hpo coefficient search) and no DBFILE; `tadah train -c
+ * retrain.train` (pot.tadah plus DBFILE db.tadah, three bcc Ta cells)
+ * exits 0 with the WARNING "tadah train: FIXINDEX and FIXWEIGHT pin every
+ * weight (all 84 of them), so the fit changes none: the WEIGHTS of the
+ * potential written are the FIXWEIGHT values. tadah refit and refit --edit
+ * write FIXINDEX and FIXWEIGHT for every weight of their potentials, ...:
+ * to fit the weights to the DBFILE data, delete both lines from the
+ * training configuration (the Training page of the documentation,
+ * Retraining from a potential).", once, and pot2.tadah has the WEIGHTS of
+ * pot.tadah.
+ * Before the fix: exit 0 and no WARNING about the pins: the potential
+ * written had the input weights and nothing said that none was fitted
+ * (lanes/D/tmp/review/training2/refit: 171 weights, the same result). */
+TEST_CASE("Subcommand: train of a refit potential with a DBFILE line warns "
+          "that its pins leave no weight to fit",
+          "[TadahCLI][train][retrain][refit][potential-content]") {
+  ScratchCwd cwd("retrain_refit_pins");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    INFO("refit: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  const std::string pot = slurp("pot.tadah");
+  REQUIRE(line_tokens(pot, "FIXINDEX") ==
+          std::vector<std::string>{"FIXINDEX", "1-84"});
+  REQUIRE(line_tokens(pot, "FIXWEIGHT").size() == 85u);
+  REQUIRE(line_tokens(pot, "DBFILE").empty());
+  std::ofstream("db.tadah") << bcc_ta_entry("B1", 3.25, -23.1)
+                            << bcc_ta_entry("B2", 3.30, -23.4)
+                            << bcc_ta_entry("B3", 3.36, -23.2);
+  std::ofstream("retrain.train") << as_training_config(pot, "db.tadah");
+  const CliRun t = run_tadah({"tadah", "train", "-c", "retrain.train", "-o",
+                              "pot2.tadah"});
+  const std::string rep = reported(t);
+  INFO("train: status " << t.status << "\n" << rep);
+  CHECK(t.status == 0);
+  const std::string warning =
+      "tadah train: FIXINDEX and FIXWEIGHT pin every weight (all 84 of "
+      "them), so the fit changes none: the WEIGHTS of the potential written "
+      "are the FIXWEIGHT values. tadah refit and refit --edit write FIXINDEX "
+      "and FIXWEIGHT for every weight of their potentials, the seed of a "
+      "tadah hpo coefficient search, and so does a tadah hpo run that pins "
+      "every weight in its best_pot.tadah: to fit the weights to the DBFILE "
+      "data, delete both lines from the training configuration (the "
+      "Training page of the documentation, Retraining from a potential).";
+  CHECK(contains(rep, warning));
+  CHECK(rep.find("pin every weight") == rep.rfind("pin every weight"));
+  REQUIRE(std::filesystem::exists("pot2.tadah"));
+  CHECK(line_tokens(slurp("pot2.tadah"), "WEIGHTS") ==
+        line_tokens(pot, "WEIGHTS"));
 }
 
 #ifdef TADAH_ENABLE_NFP

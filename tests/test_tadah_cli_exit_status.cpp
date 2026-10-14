@@ -62,6 +62,12 @@
 // mode that reads it (in dense mode in every build; in compact mode with
 // NFP and Ceres, and the refusal of compact mode without them).
 //
+// The [potential record] and [dataset keys] cases (MK's decisions of
+// 2026-10-14) run `tadah train`, `tadah predict`, `tadah refit` and, with
+// NFP, `tadah hpo`: the training record of the potentials they write, the
+// keys that prepared the training data (in the record, ignored by predict
+// and by a retrain from a potential), and predict's LSCALE.
+//
 // The [nonlinear] cases run `tadah train`, `tadah predict` (with and
 // without --error) and `tadah hpo` with every non-linear model (M_KRR
 // Kern_RBF, Kern_Polynomial, Kern_Quadratic, Kern_LQ, Kern_Sigmoid; M_BLR
@@ -7231,14 +7237,19 @@ TEST_CASE("Subcommand: hpo --validation takes one file",
  *
  * MK's decision of 2026-10-14: a potential keeps the keys it does not use --
  * the DBFILE, VALIDATION, HPOTARGET, UNCERTAINTY, VERBOSE, NUMERIC, OUTFILE,
- * AUDIT, AUDIT_SAMPLE and HEALTH_LOG its run was given -- in a comment block
+ * AUDIT, AUDIT_SAMPLE and HEALTH_LOG its run was given, and the keys that
+ * prepared its training data ([dataset keys] below) -- in a comment block
  * above its key lines, for the user's record; no loader of a potential reads
  * it (tadah predict, tadah train -c, tadah hpo -c, pair_style tadah), and
  * refit --edit reads it only to copy it. */
 
 namespace {
 
-const char* const kRecordOpen = "# --- training record (not read by tadah) ---";
+/* The opening line said "(not read by tadah)" before MK's decision of
+ * 2026-10-14 (option 2): refit --edit reads the block, to copy it. Every
+ * case below that finds a record fails on a potential with that line. */
+const char* const kRecordOpen =
+    "# --- training record (no key is read from it) ---";
 const char* const kRecordEnd = "# --- end of training record ---";
 
 /* The lines of the training record of the potential text @p pot, without
@@ -7303,7 +7314,10 @@ bool record_precedes_keys(const std::string& pot) {
  * db.tadah appears nowhere in pot3.tadah.
  * Before the fix: no potential had a training record (the decision taken in
  * MK's absence on 2026-10-12 dropped the keys, replaced by MK's of
- * 2026-10-14). */
+ * 2026-10-14).
+ * Before the opening line was corrected (MK, 2026-10-14, option 2): it
+ * read "# --- training record (not read by tadah) ---": record_of finds no
+ * record and the record checks fail. */
 TEST_CASE("Subcommand: train records the keys the run was given in the "
           "potential's training record",
           "[TadahCLI][train][potential-content][training-record]") {
@@ -7375,7 +7389,10 @@ TEST_CASE("Subcommand: train records the keys the run was given in the "
  * refit --edit from refit_pot.tadah" and then the input's record, "OUTFILE
  * refit_pot.tadah" (the edit fits nothing: its record is that of the fit
  * whose weights it edits; the edit's own -o and -v are not added).
- * Before the fix: neither potential had a training record. */
+ * Before the fix: neither potential had a training record.
+ * Before the opening line was corrected (MK, 2026-10-14, option 2): it
+ * read "# --- training record (not read by tadah) ---": record_of finds no
+ * record and the record checks fail. */
 TEST_CASE("Subcommand: refit records its run, and refit --edit copies the "
           "record of its input",
           "[TadahCLI][refit][potential-content][training-record]") {
@@ -7427,7 +7444,10 @@ TEST_CASE("Subcommand: refit records its run, and refit --edit copies the "
  * record that line 1 opens, is not a comment: every reader of the potential
  * reads it as a key. Begin each line of the record with '#', or end the
  * record (...) before it."; no potential got the missing-end-line refusal,
- * which came only when the file ended inside the record. */
+ * which came only when the file ended inside the record.
+ * Before the opening line was corrected (MK, 2026-10-14, option 2): line 1
+ * of refit_pot.tadah read "# --- training record (not read by tadah) ---":
+ * REQUIRE(lines[0] == kRecordOpen) stops the case. */
 TEST_CASE("Subcommand: refit --edit of a potential whose training record "
           "lost its end line names the missing end line, not its first key "
           "line",
@@ -7500,7 +7520,10 @@ TEST_CASE("Subcommand: refit --edit of a potential whose training record "
  * predict -p best_pot.tadah -d db.tadah` writes energy.pred byte for byte as
  * with best_pot.tadah without its record.
  * Before the fix: best_pot.tadah had no training record, and the header's
- * training dataset line ended with "  db.tadah". */
+ * training dataset line ended with "  db.tadah".
+ * Before the opening line was corrected (MK, 2026-10-14, option 2): it
+ * read "# --- training record (not read by tadah) ---": record_of finds no
+ * record and the record checks fail. */
 TEST_CASE("Subcommand: hpo records the run's DBFILE, --validation, "
           "--hpotarget and VERBOSE in best_pot.tadah's training record",
           "[TadahCLI][hpo][potential-content][training-record]") {
@@ -7570,7 +7593,10 @@ TEST_CASE("Subcommand: hpo records the run's DBFILE, --validation, "
  * CHANGELOG and the Training page state: with HPOTargets built without
  * the provenance, hpo_run_journaled passing nullptr, the record ends with
  * "VERBOSE 1" and this case fails; the case above sets VERBOSE 0 and
- * passes either way). */
+ * passes either way).
+ * Before the opening line was corrected (MK, 2026-10-14, option 2): it
+ * read "# --- training record (not read by tadah) ---": record_of finds no
+ * record and the record check fails. */
 TEST_CASE("Subcommand: hpo leaves the VERBOSE nobody wrote out of "
           "best_pot.tadah's training record",
           "[TadahCLI][hpo][potential-content][training-record]") {
@@ -7603,5 +7629,482 @@ TEST_CASE("Subcommand: hpo leaves the VERBOSE nobody wrote out of "
         std::vector<std::string>{"DBFILE db.tadah", "VALIDATION config.val",
                                  "HPOTARGET config.hpo"});
   CHECK(line_tokens(best, "VERBOSE").empty());
+}
+#endif  // TADAH_ENABLE_NFP
+
+/* ---- [dataset keys]: the keys that prepared the training data -----------
+ *
+ * MK's decision of 2026-10-14 (option 2): a potential's key lines are only
+ * what is needed to use the model -- the model's keys, the resolved ESHIFT
+ * values and LSCALE. EFILTER, FFILTER, ESHIFT_ATOM, ESHIFT_DBATOM,
+ * EWEIGHT_TEMP, ZERO_COM_FORCE, WDBFILE and WDBFILE_AUTO prepared the
+ * training data: tadah writes them into the training record; tadah predict
+ * ignores them in a potential (an older one has them as key lines too), so
+ * a filter applies to the data predicted only when predict is given it;
+ * --no-eshift compares the model with the reference energies as they are;
+ * a retrain from a potential (and tadah hpo -c of one) takes none of them
+ * from the potential, so it works with any number of datasets. */
+
+namespace {
+
+/* weighted_entry() with the energy @p energy instead of -1.0. */
+std::string entry_with_energy(const std::string& label,
+                              const std::string& energy,
+                              const std::string& second_atom,
+                              const std::string& f) {
+  std::string e = weighted_entry(label, "1 1 1", second_atom, f, "0");
+  const std::string from = "\n-1.0\n";
+  const std::size_t at = e.find(from);
+  REQUIRE(at != std::string::npos);
+  return e.replace(at, from.size(), "\n" + energy + "\n");
+}
+
+/* The three dimers of retrain_dataset() with the energy @p energy each. */
+std::string dimers_with_energy(const std::string& energy) {
+  return entry_with_energy("D1", energy, "2.60 0.40 0.30", "0.12") +
+         entry_with_energy("D2", energy, "3.10 0.20 0.50", "-0.07") +
+         entry_with_energy("D3", energy, "3.70 0.10 0.20", "0.03");
+}
+
+/* The pair configuration of retrain_config() (M_BLR BF_Linear, LAMBDA 0.1,
+ * OALGO 4) with DBFILE @p dbfile and the lines @p extra. */
+std::string dataset_keys_config(const std::string& dbfile,
+                                const std::string& extra) {
+  return with_line(retrain_config("M_BLR BF_Linear", "LAMBDA 0.1\nOALGO 4\n"),
+                   "DBFILE", "DBFILE " + dbfile) +
+         extra;
+}
+
+/* The training-only dataset keys. */
+const char* const kDatasetKeys[] = {"EFILTER",      "FFILTER",
+                                    "ESHIFT_ATOM",  "ESHIFT_DBATOM",
+                                    "EWEIGHT_TEMP", "ZERO_COM_FORCE",
+                                    "WDBFILE",      "WDBFILE_AUTO"};
+
+/* The key lines of the eight with the values of a potential of an earlier
+ * version trained with them (as the training configuration set them). */
+const char* const kOlderDatasetKeyLines =
+    "EFILTER -0.6 -0.4\nFFILTER 1.0\nZERO_COM_FORCE true\n"
+    "ESHIFT_DBATOM true\nEWEIGHT_TEMP 300\nWDBFILE 1 0\nWDBFILE_AUTO 1\n";
+
+}  // namespace
+
+/* Pins: `tadah train -c config` (DBFILE db.tadah: the three dimers of
+ * retrain_dataset(), E/N -0.5 eV and forces of 0.2 eV/A at most; with
+ * EFILTER -0.6 -0.4, FFILTER 1.0, ZERO_COM_FORCE true and ESHIFT_DBATOM
+ * true, which keep them all) writes pot.tadah with no key line of any of
+ * the eight dataset keys (its ESHIFT line, the shift ESHIFT_DBATOM
+ * resolved, stays) and the
+ * training record "DBFILE db.tadah", "EFILTER -0.6 -0.4", "FFILTER 1.0",
+ * "ESHIFT_DBATOM true", "ZERO_COM_FORCE true", "VERBOSE 0"; `tadah predict
+ * -p pot.tadah -d pred.tadah -F`, pred.tadah being the three dimers, LOW
+ * (E/N -1.5 eV, outside the EFILTER window) and HOT (forces of 8.7 eV/A,
+ * above FFILTER), exits 0, predicts all five structures (energy.pred has 5
+ * rows) and prints no "Multiple ESHIFT sources" WARNING; with --efilter
+ * -0.6 -0.4 --ffilter 1.0 on the predict command line it predicts the
+ * three (the filters apply to the data predicted when predict is given
+ * them).
+ * Before the fix: the four were key lines of pot.tadah, with ESHIFT_ATOM
+ * false and WDBFILE_AUTO 0 (the blueprint defaults of the train task), and
+ * its record was "DBFILE db.tadah", "VERBOSE 0" after the opening line
+ * "(not read by tadah)"; predict applied the potential's filters: 3 rows,
+ * and the WARNING "Multiple ESHIFT sources set; precedence: explicit > ATOM
+ * > DBATOM." (ESHIFT_DBATOM true beside the ESHIFT line). */
+TEST_CASE("Subcommand: predict of a potential trained with filters and "
+          "ESHIFT_DBATOM predicts every structure it is given",
+          "[TadahCLI][predict][dataset-keys][training-record]") {
+  ScratchCwd cwd("dataset_keys_predict_new");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config") << dataset_keys_config(
+      "db.tadah",
+      "EFILTER -0.6 -0.4\nFFILTER 1.0\nZERO_COM_FORCE true\n"
+      "ESHIFT_DBATOM true\n");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string pot = slurp("pot.tadah");
+  INFO("pot.tadah:\n" << pot);
+  CHECK(record_of(pot) ==
+        std::vector<std::string>{"DBFILE db.tadah", "EFILTER -0.6 -0.4",
+                                 "FFILTER 1.0", "ESHIFT_DBATOM true",
+                                 "ZERO_COM_FORCE true", "VERBOSE 0"});
+  for (const char* key : kDatasetKeys) {
+    INFO("key " << key);
+    CHECK(line_tokens(pot, key).empty());
+  }
+  CHECK(line_tokens(pot, "ESHIFT").size() == 2u);  // ESHIFT and one value
+
+  std::ofstream("pred.tadah")
+      << retrain_dataset()
+      << entry_with_energy("LOW", "-3.0", "2.60 0.40 0.30", "0.12")
+      << weighted_entry("HOT", "1 1 1", "3.10 0.20 0.50", "5.0", "0");
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "pred.tadah", "-F"});
+    const std::string rep = reported(p);
+    INFO("predict: status " << p.status << "\n" << rep);
+    REQUIRE(p.status == 0);
+    CHECK(predicted_values("energy.pred").size() == 5u);
+    CHECK_FALSE(contains(rep, "Multiple ESHIFT sources"));
+  }
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "pred.tadah", "-F", "--efilter", "-0.6",
+                                "-0.4", "--ffilter", "1.0"});
+    INFO("predict --efilter --ffilter: status " << p.status << "\n"
+                                                << reported(p));
+    REQUIRE(p.status == 0);
+    CHECK(predicted_values("energy.pred").size() == 3u);
+  }
+}
+
+/* Pins: `tadah predict -F` of old.tadah -- bare.tadah (the potential of
+ * the plain configuration, without its record) with the key lines of a
+ * potential of an earlier version trained with EFILTER -0.6 -0.4, FFILTER
+ * 1.0, ZERO_COM_FORCE true, ESHIFT_DBATOM true, EWEIGHT_TEMP 300, WDBFILE
+ * 1 0 and WDBFILE_AUTO 1 -- on pred.tadah (the three dimers, LOW and HOT of
+ * the case above) writes energy.pred and forces.pred byte for byte as
+ * bare.tadah does (five structures, the reference energies unshifted: the
+ * ESHIFT_DBATOM of the potential derives no shift from the data predicted),
+ * and at -v 2 says so in one INFO line: "tadah predict: old.tadah: EFILTER
+ * -0.6 -0.4, FFILTER 1.0, ESHIFT_DBATOM true, EWEIGHT_TEMP 300,
+ * ZERO_COM_FORCE true, WDBFILE 1 0 and WDBFILE_AUTO 1 prepared the
+ * training data of the potential and are not applied to the data
+ * predicted (tadah keeps such keys in a potential's training record, not
+ * as key lines); --efilter, --ffilter and --zero-com-force filter the data
+ * predicted.".
+ * Before the fix: predict applied old.tadah's EFILTER and FFILTER (3 rows)
+ * and its ESHIFT_DBATOM, which fitted a shift to the data predicted and
+ * subtracted it from the reference energies: energy.pred differs. */
+TEST_CASE("Subcommand: predict ignores the keys that prepared the training "
+          "data of an older potential",
+          "[TadahCLI][predict][dataset-keys]") {
+  ScratchCwd cwd("dataset_keys_predict_old");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config") << dataset_keys_config("db.tadah", "");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "trained.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string bare = without_record(slurp("trained.tadah"));
+  std::ofstream("bare.tadah") << bare;
+  std::ofstream("old.tadah") << bare << kOlderDatasetKeyLines;
+  std::ofstream("pred.tadah")
+      << retrain_dataset()
+      << entry_with_energy("LOW", "-3.0", "2.60 0.40 0.30", "0.12")
+      << weighted_entry("HOT", "1 1 1", "3.10 0.20 0.50", "5.0", "0");
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "bare.tadah", "-d",
+                                "pred.tadah", "-F"});
+    INFO("predict bare.tadah: status " << p.status << "\n" << reported(p));
+    REQUIRE(p.status == 0);
+    std::filesystem::rename("energy.pred", "energy_bare.pred");
+    std::filesystem::rename("forces.pred", "forces_bare.pred");
+  }
+  const CliRun p = run_tadah({"tadah", "predict", "-p", "old.tadah", "-d",
+                              "pred.tadah", "-F", "-v", "2"});
+  const std::string rep = reported(p);
+  INFO("predict old.tadah: status " << p.status << "\n" << rep);
+  REQUIRE(p.status == 0);
+  CHECK(predicted_values("energy_bare.pred").size() == 5u);
+  CHECK(slurp("energy.pred") == slurp("energy_bare.pred"));
+  CHECK(slurp("forces.pred") == slurp("forces_bare.pred"));
+  CHECK(contains(rep,
+                 "tadah predict: old.tadah: EFILTER -0.6 -0.4, FFILTER 1.0, "
+                 "ESHIFT_DBATOM true, EWEIGHT_TEMP 300, ZERO_COM_FORCE true, "
+                 "WDBFILE 1 0 and WDBFILE_AUTO 1 prepared the training data "
+                 "of the potential and are not applied to the data predicted "
+                 "(tadah keeps such keys in a potential's training record, "
+                 "not as key lines); --efilter, --ffilter and "
+                 "--zero-com-force filter the data predicted."));
+  CHECK_FALSE(contains(rep, "Multiple ESHIFT sources"));
+}
+
+/* Pins: `tadah predict --no-eshift -d db.tadah` (the three dimers, E/N -0.5
+ * eV) compares the model with the reference energies as they are: the
+ * True column of energy.pred is -0.5 for each structure, with
+ *   - pot.tadah, trained on db.tadah with ESHIFT_DBATOM true (its ESHIFT
+ *     line -0.5), and
+ *   - old.tadah, bare.tadah (trained without a shift) with the key lines
+ *     "ESHIFT -0.5" and "ESHIFT_DBATOM true" of an earlier version;
+ * without --no-eshift the True column of each is 0 (-0.5 - (-0.5)).
+ * Before the fix: pot.tadah had ESHIFT_DBATOM true as a key line, and with
+ * the ESHIFT removed by --no-eshift the toggle fitted a shift to the data
+ * predicted (-0.5 again): the True column of both was 0. */
+TEST_CASE("Subcommand: predict --no-eshift compares the model with the "
+          "reference energies as they are",
+          "[TadahCLI][predict][dataset-keys]") {
+  ScratchCwd cwd("dataset_keys_no_eshift");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config") << dataset_keys_config("db.tadah",
+                                                 "ESHIFT_DBATOM true\n");
+  std::ofstream("plain") << dataset_keys_config("db.tadah", "");
+  for (const auto& [cfg, out] :
+       {std::pair<std::string, std::string>{"config", "pot.tadah"},
+        {"plain", "trained.tadah"}}) {
+    const CliRun t = run_tadah({"tadah", "train", "-c", cfg, "-o", out});
+    INFO("train " << cfg << ": status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  {
+    const std::vector<std::string> eshift =
+        line_tokens(slurp("pot.tadah"), "ESHIFT");
+    REQUIRE(eshift.size() == 2u);
+    CHECK(std::stod(eshift[1]) == Approx(-0.5).epsilon(1e-12));
+  }
+  std::ofstream("old.tadah") << without_record(slurp("trained.tadah"))
+                             << "ESHIFT -0.5\nESHIFT_DBATOM true\n";
+  for (const char* pot : {"pot.tadah", "old.tadah"}) {
+    INFO(pot);
+    {
+      const CliRun p = run_tadah({"tadah", "predict", "-p", pot, "-d",
+                                  "db.tadah", "--no-eshift"});
+      INFO("--no-eshift: status " << p.status << "\n" << reported(p));
+      REQUIRE(p.status == 0);
+      const std::vector<double> truth = column_values("energy.pred", 1);
+      REQUIRE(truth.size() == 3u);
+      for (double t : truth) CHECK(t == Approx(-0.5).margin(1e-12));
+    }
+    {
+      const CliRun p = run_tadah({"tadah", "predict", "-p", pot, "-d",
+                                  "db.tadah"});
+      INFO("predict: status " << p.status << "\n" << reported(p));
+      REQUIRE(p.status == 0);
+      const std::vector<double> truth = column_values("energy.pred", 1);
+      REQUIRE(truth.size() == 3u);
+      for (double t : truth) CHECK(t == Approx(0.0).margin(1e-12));
+    }
+  }
+}
+
+/* Pins: `tadah predict -F` of pot.tadah, trained on db.tadah with LSCALE
+ * 1.1 (its LSCALE line), rescales the data predicted by the potential's
+ * LSCALE: energy.pred and forces.pred are byte for byte those of the same
+ * predict with --lscale 1.1, and the predicted energies differ from those
+ * of --no-lscale.
+ * Before the fix: predict replaced the potential's LSCALE with 1.0, the
+ * predict task's blueprint default (the merge of the potential and the
+ * task's context put the task's keys last): the output was that of
+ * --no-lscale. */
+TEST_CASE("Subcommand: predict applies the LSCALE of the potential",
+          "[TadahCLI][predict][dataset-keys][lscale]") {
+  ScratchCwd cwd("dataset_keys_lscale");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config") << dataset_keys_config("db.tadah", "LSCALE 1.1\n");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  REQUIRE(line_tokens(slurp("pot.tadah"), "LSCALE").size() == 2u);
+  const auto predict = [](std::vector<std::string> extra,
+                          const std::string& tag) {
+    std::vector<std::string> args = {"tadah", "predict", "-p", "pot.tadah",
+                                     "-d", "db.tadah", "-F"};
+    args.insert(args.end(), extra.begin(), extra.end());
+    const CliRun p = run_tadah(args);
+    INFO(tag << ": status " << p.status << "\n" << reported(p));
+    REQUIRE(p.status == 0);
+    std::filesystem::rename("energy.pred", "energy_" + tag + ".pred");
+    std::filesystem::rename("forces.pred", "forces_" + tag + ".pred");
+  };
+  predict({}, "default");
+  predict({"--lscale", "1.1"}, "lscale");
+  predict({"--no-lscale"}, "none");
+  CHECK_FALSE(slurp("energy_default.pred").empty());
+  CHECK(slurp("energy_default.pred") == slurp("energy_lscale.pred"));
+  CHECK(slurp("forces_default.pred") == slurp("forces_lscale.pred"));
+  CHECK(predicted_values("energy_default.pred") !=
+        predicted_values("energy_none.pred"));
+}
+
+/* Pins: a retrain from a potential takes none of the keys that prepared its
+ * training data from it, so it works with any number of datasets:
+ *   - `tadah train -c config` (DBFILE a.tadah b.tadah, the dimers at E/N
+ *     -0.5 and -0.55 eV, with WDBFILE 1 0.5, EFILTER -0.7 -0.3 and
+ *     ESHIFT_DBATOM true) writes pot.tadah (its ESHIFT line e0);
+ *   - `tadah train -c retrain.train -o pot2.tadah`, retrain.train being
+ *     pot.tadah with "DBFILE a.tadah b.tadah c.tadah" (c.tadah at E/N
+ *     -0.45 eV), exits 0; pot2.tadah has the ESHIFT e0 (the model's energy
+ *     reference, not re-derived) and the record "DBFILE a.tadah b.tadah
+ *     c.tadah", "OUTFILE pot2.tadah";
+ *   - rederive.train, retrain.train without its ESHIFT line and with
+ *     ESHIFT_DBATOM true (the documented way to derive ESHIFT from the data
+ *     of the retrain), gives pot3.tadah the ESHIFT of a training
+ *     configuration of the three datasets with ESHIFT_DBATOM true
+ *     (pot4.tadah), not e0;
+ *   - old.train, pot.tadah without its record and with the key lines
+ *     "WDBFILE 1 0.5", "EFILTER 5 6" and "ESHIFT_DBATOM true" of an earlier
+ *     version, and the three datasets, exits 0 (pot5.tadah, ESHIFT e0),
+ *     with the WARNING "tadah train: the configuration file old.train is a
+ *     potential (it has WEIGHTS): its EFILTER 5 6, ESHIFT_DBATOM true and
+ *     WDBFILE 1 0.5 prepared the training data of the fit that wrote it,
+ *     ..."; with --wdbfile 1 1 2 (pot6.tadah) the command line's WDBFILE
+ *     applies and is recorded: "DBFILE a.tadah b.tadah c.tadah", "WDBFILE 1
+ *     1 2", "OUTFILE pot6.tadah".
+ * Before the fix: pot.tadah had the key lines "WDBFILE 1 0.5", "EFILTER
+ * -0.7 -0.3" and "ESHIFT_DBATOM true", and the retrain with three datasets
+ * was refused ("WDBFILE size (2) does not match number of datasets (3).",
+ * exit 1, after the WARNING "Multiple ESHIFT sources set; precedence:
+ * explicit > ATOM > DBATOM."): the REQUIRE stops the case. */
+TEST_CASE("Subcommand: train -c retrains a potential on any number of "
+          "datasets, with the potential's ESHIFT",
+          "[TadahCLI][train][retrain][dataset-keys][training-record]") {
+  ScratchCwd cwd("dataset_keys_retrain");
+  std::ofstream("a.tadah") << retrain_dataset();
+  std::ofstream("b.tadah") << dimers_with_energy("-1.1");
+  std::ofstream("c.tadah") << dimers_with_energy("-0.9");
+  std::ofstream("config") << dataset_keys_config(
+      "a.tadah b.tadah",
+      "WDBFILE 1 0.5\nEFILTER -0.7 -0.3\nESHIFT_DBATOM true\n");
+  const auto train = [](std::vector<std::string> args) {
+    std::vector<std::string> argv = {"tadah", "train"};
+    argv.insert(argv.end(), args.begin(), args.end());
+    return run_tadah(argv);
+  };
+  {
+    const CliRun t = train({"-c", "config"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string pot = slurp("pot.tadah");
+  INFO("pot.tadah:\n" << pot);
+  const std::vector<std::string> e0 = line_tokens(pot, "ESHIFT");
+  REQUIRE(e0.size() == 2u);
+  const std::string datasets = "DBFILE a.tadah b.tadah c.tadah";
+  const std::string retrain = with_line(pot, "DBFILE", "") + datasets + "\n";
+  std::ofstream("retrain.train") << retrain;
+  {
+    const CliRun t = train({"-c", "retrain.train", "-o", "pot2.tadah"});
+    INFO("retrain: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+    const std::string pot2 = slurp("pot2.tadah");
+    INFO("pot2.tadah:\n" << pot2);
+    CHECK(line_tokens(pot2, "ESHIFT") == e0);
+    CHECK(record_of(pot2) ==
+          std::vector<std::string>{datasets, "OUTFILE pot2.tadah"});
+  }
+  std::ofstream("rederive.train")
+      << with_line(retrain, "ESHIFT", "") << "ESHIFT_DBATOM true\n";
+  std::ofstream("fresh.train")
+      << dataset_keys_config("a.tadah b.tadah c.tadah", "ESHIFT_DBATOM true\n");
+  {
+    const CliRun t = train({"-c", "rederive.train", "-o", "pot3.tadah"});
+    INFO("rederive: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+    const CliRun f = train({"-c", "fresh.train", "-o", "pot4.tadah"});
+    INFO("fresh: status " << f.status << "\n" << reported(f));
+    REQUIRE(f.status == 0);
+    const std::vector<std::string> e3 =
+        line_tokens(slurp("pot3.tadah"), "ESHIFT");
+    REQUIRE(e3.size() == 2u);
+    CHECK(e3 == line_tokens(slurp("pot4.tadah"), "ESHIFT"));
+    CHECK(e3 != e0);
+  }
+  std::ofstream("old.train")
+      << with_line(without_record(pot), "DBFILE", "")
+      << "WDBFILE 1 0.5\nEFILTER 5 6\nESHIFT_DBATOM true\n" << datasets
+      << "\n";
+  {
+    const CliRun t = train({"-c", "old.train", "-o", "pot5.tadah"});
+    const std::string rep = reported(t);
+    INFO("old.train: status " << t.status << "\n" << rep);
+    REQUIRE(t.status == 0);
+    CHECK(contains(rep, "tadah train: the configuration file old.train is a "
+                        "potential (it has WEIGHTS): its EFILTER 5 6, "
+                        "ESHIFT_DBATOM true and WDBFILE 1 0.5 prepared the "
+                        "training data of the fit that wrote it"));
+    CHECK(line_tokens(slurp("pot5.tadah"), "ESHIFT") == e0);
+  }
+  {
+    const CliRun t = train({"-c", "old.train", "-o", "pot6.tadah",
+                            "--wdbfile", "1", "1", "2"});
+    INFO("old.train --wdbfile: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+    CHECK(record_of(slurp("pot6.tadah")) ==
+          std::vector<std::string>{datasets, "WDBFILE 1 1 2",
+                                   "OUTFILE pot6.tadah"});
+  }
+}
+
+#ifdef TADAH_ENABLE_NFP
+/* Pins: `tadah hpo -c config.tadah --hpotarget config.hpo --validation
+ * config.val` (write_hpo_potential_fixture, config.tadah with EFILTER -0.6
+ * -0.4, ESHIFT_DBATOM true and WDBFILE 1 added) writes best_pot.tadah with
+ * no key line of the three, its ESHIFT line (resolved on the training
+ * data), and the training record "DBFILE db.tadah", "EFILTER -0.6 -0.4",
+ * "ESHIFT_DBATOM true", "WDBFILE 1", "VALIDATION config.val", "HPOTARGET
+ * config.hpo", "VERBOSE 0"; and `tadah hpo -c seed.tadah ...`, seed.tadah
+ * being the potential `tadah train -c config.tadah` writes (the fixture's
+ * own config.tadah) without its record, with the key lines "WDBFILE 1 1"
+ * (two values, one dataset) and "EFILTER 5 6" (it drops every structure)
+ * of an earlier version and "DBFILE db.tadah", exits 0 with best_pot.tadah,
+ * the journal (hpo_run.log) having the WARNING "tadah hpo: the
+ * configuration file seed.tadah is a potential (it has WEIGHTS): its
+ * EFILTER 5 6 and WDBFILE 1 1 prepared the training data of the fit that
+ * wrote it ...".
+ * Before the fix: the three were key lines of best_pot.tadah (with
+ * ESHIFT_ATOM false, WDBFILE_AUTO 0 and ZERO_COM_FORCE false, the hpo
+ * task's defaults) and its record, after the opening line "(not read by
+ * tadah)", listed DBFILE, VALIDATION, HPOTARGET and VERBOSE alone; the
+ * seed's WDBFILE and EFILTER applied to the run's training data, and the
+ * run was refused at startup ("HPOEngine error: WDBFILE size (2) does not
+ * match number of datasets (1).", exit 1). */
+TEST_CASE("Subcommand: hpo keeps the keys that prepared the training data in "
+          "best_pot.tadah's record and ignores those of a -c potential",
+          "[TadahCLI][hpo][dataset-keys][training-record]") {
+  ScratchCwd cwd("dataset_keys_hpo");
+  write_hpo_potential_fixture();
+  const std::string config = slurp("config.tadah");
+  std::ofstream("keys.tadah")
+      << config << "EFILTER -0.6 -0.4\nESHIFT_DBATOM true\nWDBFILE 1\n";
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "keys.tadah",
+                                "--hpotarget", "config.hpo", "--validation",
+                                "config.val"});
+    INFO("hpo: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  {
+    const std::string best = slurp("best_pot.tadah");
+    INFO("best_pot.tadah:\n" << best);
+    CHECK(record_of(best) ==
+          std::vector<std::string>{"DBFILE db.tadah", "EFILTER -0.6 -0.4",
+                                   "ESHIFT_DBATOM true", "WDBFILE 1",
+                                   "VALIDATION config.val",
+                                   "HPOTARGET config.hpo", "VERBOSE 0"});
+    for (const char* key : kDatasetKeys) {
+      INFO("key " << key);
+      CHECK(line_tokens(best, key).empty());
+    }
+    CHECK(line_tokens(best, "ESHIFT").size() == 2u);
+  }
+  for (const char* f : {"best_pot.tadah", "hpo_run.log"})
+    std::filesystem::remove(f);
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
+                                "trained.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  std::ofstream("seed.tadah")
+      << without_record(slurp("trained.tadah"))
+      << "WDBFILE 1 1\nEFILTER 5 6\nDBFILE db.tadah\n";
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "seed.tadah",
+                              "--hpotarget", "config.hpo", "--validation",
+                              "config.val"});
+  INFO("hpo -c seed.tadah: status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  CHECK(std::filesystem::exists("best_pot.tadah"));
+  const std::string journal = slurp("hpo_run.log");
+  INFO("hpo_run.log:\n" << journal);
+  CHECK(contains(journal, "tadah hpo: the configuration file seed.tadah is "
+                          "a potential (it has WEIGHTS): its EFILTER 5 6 and "
+                          "WDBFILE 1 1 prepared the training data of the fit "
+                          "that wrote it"));
 }
 #endif  // TADAH_ENABLE_NFP

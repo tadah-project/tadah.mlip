@@ -8757,6 +8757,81 @@ TEST_CASE("Subcommand: predict takes no verbosity from a potential's VERBOSE "
                       "to the data predicted"));
 }
 
+/* Pins: `tadah analysis check_bounds -c old_best.tadah`, old_best.tadah
+ * being the potential `tadah train -c config.tadah` writes (retrain_config)
+ * without its record, with "DBFILE db.tadah" and the key lines HPOTARGET
+ * config.hpo, VALIDATION config.val, VERBOSE 2 and NUMERIC 12 of a 1.5.x
+ * tadah hpo seed, does not read the seed's run settings:
+ *   - without --hpotarget it exits 1, refused "tadah analysis check_bounds:
+ *     no HPOTARGET: name the hpotarget file with --hpotarget, or with an
+ *     HPOTARGET line in a configuration file without WEIGHTS. old_best.tadah
+ *     is a potential (it has WEIGHTS): its HPOTARGET config.hpo line was a
+ *     setting of the run that wrote it and is not read.", after the WARNING
+ *     "tadah analysis check_bounds: the configuration file old_best.tadah
+ *     is a potential (it has WEIGHTS): its HPOTARGET config.hpo and VERBOSE
+ *     2 were settings of the run that wrote it, not of this run, and are
+ *     ignored (...). Give --hpotarget or --verbose on the command line, or
+ *     an HPOTARGET or VERBOSE line in a configuration file that includes the
+ *     potential with CONFIG, to apply one to this run (...).";
+ *   - with --hpotarget config.hpo (OPTIM CGRID2B (1) 2.3 2.7) it exits 0,
+ *     and the WARNING names VERBOSE 2 alone.
+ * Before the fix: no WARNING named a line of old_best.tadah, and without
+ * --hpotarget it was refused "analysis check_bounds: HPOTARGET is required
+ * (set HPOTARGET in config or pass via the CLI).": the refusal and WARNING
+ * CHECKs fail. (On v1-dev the parse stored the seed's HPOTARGET line and
+ * the run used it.) */
+TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
+          "names its HPOTARGET line, not read, and asks for --hpotarget",
+          "[TadahCLI][analysis][check_bounds][run-settings]") {
+  ScratchCwd cwd("old_run_settings_check_bounds");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.tadah")
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 0.1\nOALGO 4\n");
+  std::ofstream("config.hpo") << "OPTIM CGRID2B (1) 2.3 2.7\n";
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
+                                "trained.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  std::ofstream("old_best.tadah")
+      << without_record(slurp("trained.tadah"))
+      << "DBFILE db.tadah\nHPOTARGET config.hpo\nVALIDATION config.val\n"
+         "VERBOSE 2\nNUMERIC 12\n";
+  {
+    const CliRun r = run_tadah(
+        {"tadah", "analysis", "check_bounds", "-c", "old_best.tadah"});
+    const std::string rep = reported(r);
+    INFO("no --hpotarget: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah analysis check_bounds: no HPOTARGET: name the "
+                        "hpotarget file with --hpotarget, or with an "
+                        "HPOTARGET line in a configuration file without "
+                        "WEIGHTS. old_best.tadah is a potential (it has "
+                        "WEIGHTS): its HPOTARGET config.hpo line was a "
+                        "setting of the run that wrote it and is not read."));
+    CHECK(contains(rep, "tadah analysis check_bounds: the configuration file "
+                        "old_best.tadah is a potential (it has WEIGHTS): its "
+                        "HPOTARGET config.hpo and VERBOSE 2 were settings of "
+                        "the run that wrote it, not of this run, and are "
+                        "ignored"));
+    CHECK(contains(rep, "Give --hpotarget or --verbose on the command line, "
+                        "or an HPOTARGET or VERBOSE line in a configuration "
+                        "file that includes the potential with CONFIG, to "
+                        "apply one to this run"));
+  }
+  const CliRun r =
+      run_tadah({"tadah", "analysis", "check_bounds", "-c", "old_best.tadah",
+                 "--hpotarget", "config.hpo"});
+  const std::string rep = reported(r);
+  INFO("--hpotarget config.hpo: status " << r.status << "\n" << rep);
+  CHECK(r.status == 0);
+  CHECK(contains(rep, "tadah analysis check_bounds: the configuration file "
+                      "old_best.tadah is a potential (it has WEIGHTS): its "
+                      "VERBOSE 2 was a setting of the run that wrote it"));
+  CHECK_FALSE(contains(rep, "HPOTARGET config.hpo"));
+}
+
 #ifdef TADAH_ENABLE_NFP
 /* Pins: `tadah hpo -c old.tadah --hpotarget config.hpo` (the fixture of
  * write_hpo_potential_fixture: PC_ERMSE, a validation metric), old.tadah
@@ -8840,18 +8915,28 @@ TEST_CASE("Subcommand: hpo -c of an older best_pot.tadah does not validate "
 /* Pins: `tadah --task run.task`, its TASK hpo section "CONFIG old.tadah"
  * (the older best_pot.tadah of the case above, whose HPOTARGET config.hpo
  * line is not read) and "VALIDATION config.val", exits 1 refused "tadah
- * hpo: no HPOTARGET: name the hpotarget file with --hpotarget, or with an
- * HPOTARGET line in the task file (a potential's own HPOTARGET line names
- * the target of the run that wrote it and is not read).", after the WARNING
- * "tadah hpo: old.tadah, which the task file run.task includes with CONFIG,
- * is a potential (it has WEIGHTS): its HPOTARGET config.hpo, VERBOSE 2 and
- * NUMERIC 12 were settings of the run that wrote it, not of this run, and
- * are ignored (...). Write HPOTARGET, VERBOSE or NUMERIC in the task file
- * run.task to apply one to this run (...)."; with "HPOTARGET config.hpo" in
- * the section (run2.task) it exits 0.
+ * hpo: no HPOTARGET: name the hpotarget file with an HPOTARGET line in the
+ * TASK hpo section of the task file run.task, or above its first TASK line.
+ * old.tadah is a potential (it has WEIGHTS): its HPOTARGET config.hpo line
+ * was a setting of the run that wrote it and is not read." (no
+ * --hpotarget: a run of a task file takes no command-line option), after
+ * the WARNING "tadah hpo: old.tadah, which the task file run.task includes
+ * with CONFIG, is a potential (it has WEIGHTS): its HPOTARGET config.hpo,
+ * VERBOSE 2 and NUMERIC 12 were settings of the run that wrote it, not of
+ * this run, and are ignored (...). Write HPOTARGET, VERBOSE or NUMERIC in
+ * the task file run.task to apply one to this run (...)."; plain.task, its
+ * section "CONFIG config.tadah" (no WEIGHTS) and "VALIDATION config.val",
+ * exits 1 refused "tadah hpo: no HPOTARGET: name the hpotarget file with an
+ * HPOTARGET line in the TASK hpo section of the task file plain.task, or
+ * above its first TASK line." (no potential, no sentence on one); with
+ * "HPOTARGET config.hpo" in the section (run2.task) it exits 0.
  * Before the fix: the potential's HPOTARGET applied: run.task exited 0 (the
  * status CHECK fails), and a TASK hpo section without any HPOTARGET was
- * refused "Key not found in the Context object: HPOTARGET". */
+ * refused "Key not found in the Context object: HPOTARGET".
+ * Before the review of the fix: both refusals were "tadah hpo: no
+ * HPOTARGET: name the hpotarget file with --hpotarget, or with an HPOTARGET
+ * line in the task file (a potential's own HPOTARGET line names the target
+ * of the run that wrote it and is not read).": the refusal CHECKs fail. */
 TEST_CASE("Task file: TASK hpo does not take its HPOTARGET from the potential "
           "it includes",
           "[TadahCLI][hpo][task-file][run-settings]") {
@@ -8871,16 +8956,20 @@ TEST_CASE("Task file: TASK hpo does not take its HPOTARGET from the potential "
                                "VALIDATION config.val\n";
   std::ofstream("run2.task") << "TASK hpo\nCONFIG old.tadah\n"
                                 "VALIDATION config.val\nHPOTARGET config.hpo\n";
+  std::ofstream("plain.task") << "TASK hpo\nCONFIG config.tadah\n"
+                                 "VALIDATION config.val\n";
   {
     const CliRun r = run_tadah({"tadah", "--task", "run.task"});
     const std::string rep = reported(r);
     INFO("run.task: status " << r.status << "\n" << rep);
     CHECK(r.status == 1);
     CHECK(contains(rep, "tadah hpo: no HPOTARGET: name the hpotarget file "
-                        "with --hpotarget, or with an HPOTARGET line in the "
-                        "task file (a potential's own HPOTARGET line names "
-                        "the target of the run that wrote it and is not "
-                        "read)."));
+                        "with an HPOTARGET line in the TASK hpo section of "
+                        "the task file run.task, or above its first TASK "
+                        "line. old.tadah is a potential (it has WEIGHTS): "
+                        "its HPOTARGET config.hpo line was a setting of the "
+                        "run that wrote it and is not read."));
+    CHECK_FALSE(contains(rep, "--hpotarget"));
     CHECK(contains(rep, "tadah hpo: old.tadah, which the task file run.task "
                         "includes with CONFIG, is a potential (it has "
                         "WEIGHTS): its HPOTARGET config.hpo, VERBOSE 2 and "
@@ -8889,8 +8978,58 @@ TEST_CASE("Task file: TASK hpo does not take its HPOTARGET from the potential "
     CHECK(contains(rep, "Write HPOTARGET, VERBOSE or NUMERIC in the task file "
                         "run.task to apply one to this run"));
   }
+  {
+    const CliRun r = run_tadah({"tadah", "--task", "plain.task"});
+    const std::string rep = reported(r);
+    INFO("plain.task: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah hpo: no HPOTARGET: name the hpotarget file "
+                        "with an HPOTARGET line in the TASK hpo section of "
+                        "the task file plain.task, or above its first TASK "
+                        "line."));
+    CHECK_FALSE(contains(rep, "is a potential"));
+  }
   const CliRun r = run_tadah({"tadah", "--task", "run2.task"});
   INFO("run2.task: status " << r.status << "\n" << reported(r));
   CHECK(r.status == 0);
+}
+
+/* Pins: `tadah hpo --task run.task` refuses --hpotarget and --validation, the
+ * options of its input group beside --task, as it refuses every other
+ * option (a run of a task file takes no command-line option): `tadah hpo
+ * --task run.task --hpotarget config.hpo` and `... --validation config.val`
+ * exit 108 (CLI11's ExcludesError) with "--hpotarget excludes --task" and
+ * "--validation excludes --task", and start no run (no hpo_run.log), as
+ * `... -F` does ("--force excludes --task", a pin).
+ * Before the fix: --task excluded the options of the subcommand alone, not
+ * those of its option groups: both were accepted, the run started without
+ * them (TaskFactory reads no command line of a --task input) and was refused
+ * for want of an HPOTARGET (status 1, hpo_run.log written): the status, the
+ * message and the journal CHECKs fail. */
+TEST_CASE("Subcommand: hpo --task refuses --hpotarget and --validation",
+          "[TadahCLI][hpo][task-file]") {
+  ScratchCwd cwd("hpo_task_options");
+  write_hpo_potential_fixture();
+  std::ofstream("run.task") << "TASK hpo\nCONFIG config.tadah\n"
+                               "VALIDATION config.val\n";
+  for (const auto& [option, value] :
+       {std::pair<std::string, std::string>{"--hpotarget", "config.hpo"},
+        {"--validation", "config.val"}}) {
+    std::filesystem::remove("hpo_run.log");
+    const CliRun r = run_tadah({"tadah", "hpo", "--task", "run.task", option,
+                                value});
+    const std::string rep = reported(r);
+    INFO(option << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 108);
+    CHECK(contains(rep, option + " excludes --task"));
+    CHECK_FALSE(std::filesystem::exists("hpo_run.log"));
+  }
+  std::filesystem::remove("hpo_run.log");
+  const CliRun r = run_tadah({"tadah", "hpo", "--task", "run.task", "-F"});
+  const std::string rep = reported(r);
+  INFO("-F: status " << r.status << "\n" << rep);
+  CHECK(r.status == 108);
+  CHECK(contains(rep, "--force excludes --task"));
+  CHECK_FALSE(std::filesystem::exists("hpo_run.log"));
 }
 #endif  // TADAH_ENABLE_NFP

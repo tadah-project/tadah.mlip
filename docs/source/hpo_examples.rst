@@ -220,7 +220,5 @@ Index
        the isolated-atom energy stays exactly 0 for every candidate
        (:ref:`hpo_embf0`). The seed declares the mandatory density form
        ``RHOFORM SIGNED`` (four of its eight density amplitudes are
-       negative); that line is the seed's only change, and the run's losses
-       and parameters are bitwise those it had before the key existed
-       (:ref:`hpo_rhoform`).
+       negative; :ref:`hpo_rhoform`).
      - ``OPTIM CEMBFUNC``, ``--outvar Eiso``, ``RHOFORM SIGNED``

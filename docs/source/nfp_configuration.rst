@@ -746,12 +746,11 @@ found the first run's worker processes still running
 DIAGNOSTICS census and verdict, PERFORMANCE timings, milestones, BEST
 lines and RESULT best, and the rate limit of its hot-variable
 ``rejecting`` warnings. In 1.5.0 they went on from the first
-run's, so a second run that failed 4 of 4 evaluations read ``Total
-evaluations : 7``, ``Unusable losses : 4 (57.1%)``, ``[!] The majority
-of evaluations failed``, and gave the first run's best (``Best total
-loss``, ``Best ERMSE``) and its ``Best potential saved``, with no
-``best_pot.tadah`` written; a second run with a worse best had no BEST
-line and named the first run's evaluation as its best. A run without
+run's, so a second run that failed 4 of 4 evaluations after a run of 3
+read ``Total evaluations : 7`` and counted its 4 failures against those 7
+(57.1%), and gave the first run's best (``Best total loss``, ``Best
+ERMSE``) and its ``Best potential saved``, with no ``best_pot.tadah``
+written; a second run with a worse best had no BEST line and named the first run's evaluation as its best. A run without
 ``WARM`` started its ``--hotvar`` values from an earlier run's ``WARM``
 seed (its ``# HOT`` lines), not from ``<initial>``. At ``VERBOSE`` 1 or
 more each run prints the settings line of its own ``-c`` model's kernel
@@ -2456,7 +2455,8 @@ startup makes when it draws the chain after reading the file, names the
 ``METHOD`` line in the same form: a ``WARM`` file that is missing or
 unreadable, a ``WARM`` seed whose ``RHOFORM`` the run refuses or that
 ``WARM_ON_MISMATCH error`` refuses, a ``SOBOL`` block beyond the end of
-the sequence (in 1.5.0 they named no line):
+the sequence (1.5.0's refusals of a ``WARM`` file and under
+``WARM_ON_MISMATCH error`` named no line):
 
 .. code-block:: none
 

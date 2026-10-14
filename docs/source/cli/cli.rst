@@ -26,6 +26,9 @@ Tasks vs. direct CLI
 
 Anything that can be written on the command line can be placed inside a
 task file and executed with ``--task tasks.tadah``.  
+``--task`` takes no other option (``tadah hpo --task tasks.tadah
+--hpotarget t.hpo`` is refused, ``--hpotarget excludes --task``): the task
+file gives every key of its tasks.
 A task file is simply the CLI translated into an INI-style block:
 
 .. code-block:: ini

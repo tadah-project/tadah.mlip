@@ -5798,10 +5798,11 @@ the record's ``DBFILE`` line) and names the validation datasets.  The
 ``best_pot.tadah`` carry the same record.  Inside the run the potential the
 ``PC_LAMMPS`` scripts run is built at the run's ``VERBOSE``.  It is the
 authoritative record of the result.
-In earlier versions it had the three lines, and ``NUMERIC``, so used as
-the ``-c`` configuration of a later run without ``--validation`` it
-validated on the file its ``VALIDATION`` line named, at its ``VERBOSE`` and
-``NUMERIC``. A run reads no such line of a potential now: the seed's
+In earlier versions it had the ``HPOTARGET`` and ``VERBOSE`` lines, the
+``VALIDATION`` line when the run had a validation file (``--validation``
+was optional in 1.5.0), and ``NUMERIC``, so used as the ``-c``
+configuration of a later run without ``--validation`` it validated on the
+file its ``VALIDATION`` line named, at its ``VERBOSE`` and ``NUMERIC``. A run reads no such line of a potential now: the seed's
 ``VALIDATION``, ``HPOTARGET``, ``VERBOSE``, ``NUMERIC``, ``OUTFILE``,
 ``AUDIT``, ``AUDIT_SAMPLE`` and ``HEALTH_LOG`` lines are not read
 (:ref:`retrain_from_potential`), and the WARNING on the console and in
@@ -5820,11 +5821,24 @@ So the run validates on its own ``--validation`` file alone (an hpotarget
 with a validation metric and no ``--validation`` is refused, ``...
 no --validation file was given``), runs at its own ``-v`` and writes at its
 own ``NUMERIC``. ``tadah hpo -c`` requires ``--hpotarget``; a ``TASK hpo``
-section that includes such a potential with ``CONFIG`` gives its own
-``HPOTARGET`` line, and without one the run is refused: ``tadah hpo: no
-HPOTARGET: name the hpotarget file with --hpotarget, or with an HPOTARGET
-line in the task file (a potential's own HPOTARGET line names the target of
-the run that wrote it and is not read).``
+section that includes such a potential with ``CONFIG`` gives an
+``HPOTARGET`` line of its own, or one above the first ``TASK`` line of the
+task file (a run of a task file takes no command-line option: ``tadah hpo
+--task run.task --hpotarget config.hpo`` is refused, ``--hpotarget excludes
+--task``, and so is ``--validation``). Without one the run is refused,
+saying where it goes and naming the potential's line that was not read::
+
+   tadah hpo: no HPOTARGET: name the hpotarget file with an HPOTARGET line
+   in the TASK hpo section of the task file run.task, or above its first
+   TASK line. old.tadah is a potential (it has WEIGHTS): its HPOTARGET
+   config.hpo line was a setting of the run that wrote it and is not read.
+
+``tadah analysis check_bounds -c best_pot.tadah`` does not read the seed's
+``HPOTARGET`` line either: it names it in a WARNING, and without
+``--hpotarget`` it is refused (``tadah analysis check_bounds: no HPOTARGET:
+name the hpotarget file with --hpotarget, or with an HPOTARGET line in a
+configuration file without WEIGHTS. best_pot.tadah is a potential ...``).
+
 ``best_params.tadah`` and the other history files are appended by the
 result writer in ``QFLUSH`` batches, so while the run is going they
 trail ``best_pot.tadah`` by the rows still queued.  Every ending except

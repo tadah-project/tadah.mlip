@@ -8634,8 +8634,9 @@ TEST_CASE("Subcommand: a TASK hpo seeded from a potential with CONFIG applies "
  * 2026-10-14): VALIDATION, HPOTARGET, VERBOSE, NUMERIC, OUTFILE, AUDIT,
  * AUDIT_SAMPLE and HEALTH_LOG were settings of the run that wrote it; a
  * potential of an earlier version has them as key lines (a 1.5.x
- * best_pot.tadah has VALIDATION, HPOTARGET, VERBOSE and NUMERIC). No run
- * that reads the potential, and no program that loads it, takes them. */
+ * best_pot.tadah has HPOTARGET, VERBOSE and NUMERIC, and VALIDATION when
+ * its run had a validation file). No run that reads the potential, and no
+ * program that loads it, takes them. */
 
 /* Pins: `tadah train -c old.train`, old.train being the potential `tadah
  * train -c config.tadah -o trained.tadah` writes (retrain_config) without

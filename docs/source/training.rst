@@ -445,23 +445,26 @@ that does not start with ``#``. Nothing else reads the block.
 
 A potential of an earlier version may have some of these keys as key
 lines (an ``M_BLR`` potential its ``DBFILE``, a potential of tadah 1.5.x
-its ``UNCERTAINTY``, a ``best_pot.tadah`` its run's ``HPOTARGET``,
-``VALIDATION`` and ``VERBOSE``, and every potential of ``tadah train`` or
+its ``UNCERTAINTY``, a ``best_pot.tadah`` its run's ``HPOTARGET`` and
+``VERBOSE``, and its ``VALIDATION`` when the run had a validation file, and
+every potential of ``tadah train`` or
 ``tadah hpo`` the keys that prepared its training data, ``ESHIFT_ATOM
 false``, ``ESHIFT_DBATOM false``, ``WDBFILE_AUTO 0`` and ``ZERO_COM_FORCE
 false`` when its configuration set none); it still loads, no run takes any
 of them from it as a setting, and ``tadah refit --edit`` of it lists them in
 the edit's record instead. ``tadah predict`` ignores the keys that prepared
-the training data (:ref:`load_transforms_predict`); a retrain and ``tadah
-hpo -c`` read none of its lines of the keys of the record but ``DBFILE``
-(:ref:`retrain_from_potential`); and no program that loads a potential
+the training data (:ref:`load_transforms_predict`); a retrain, ``tadah
+hpo -c`` and ``tadah analysis check_bounds -c`` read none of its lines of
+the keys of the record but ``DBFILE`` (:ref:`retrain_from_potential`); and
+no program that loads a potential
 reads its *run settings*, ``VALIDATION``, ``HPOTARGET``, ``VERBOSE``,
 ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE`` and ``HEALTH_LOG``:
 the parser of every configuration and potential file does not store a line
 of them in a file whose key lines have ``WEIGHTS``. So a potential's
 ``VERBOSE`` line sets the Tadah log level of no program that loads it
 (``tadah predict``, ``pair_style tadah`` in LAMMPS, ``tadah refit --edit``,
-a retrain, ``tadah hpo -c``), nor the verbosity of the model built from
+a retrain, ``tadah hpo -c``, ``tadah analysis check_bounds -c``), nor the
+verbosity of the model built from
 the file: that is the program's own, the default ``VERBOSE 1`` or its
 ``-v`` (a kernel such as ``Kern_RBF`` prints its parameters, ``Kern_RBF |
 sigma: 1 | gamma: 1``, when it is built at ``VERBOSE`` 1 or more: for every
@@ -479,11 +482,14 @@ changes a force or an energy.
    line. tadah 1.5.x
    wrote some of these keys as key lines (the ``DBFILE`` of an ``M_BLR``
    potential, ``UNCERTAINTY``, a ``best_pot.tadah``'s ``HPOTARGET``,
-   ``VALIDATION``, ``VERBOSE`` and ``NUMERIC``, ``AUDIT_SAMPLE``, and the
-   keys that prepared the training data) and left the others out, and a
-   run read them as its own: a retrain from a ``best_pot.tadah`` ran at its
-   ``VERBOSE`` and wrote at its ``NUMERIC 12`` (to its ``OUTFILE``, when it
-   had one), ``tadah hpo -c`` of it validated on its ``VALIDATION`` file, and its ``VERBOSE`` set the
+   ``VERBOSE`` and ``NUMERIC`` and, when its run had a validation file,
+   ``VALIDATION``, ``AUDIT_SAMPLE``, and the keys that prepared the
+   training data) and left the others out, and a run read them as its own:
+   a retrain from a ``best_pot.tadah`` ran at its ``VERBOSE`` and wrote at
+   its ``NUMERIC 12`` (to its ``OUTFILE``, when it had one), ``tadah hpo
+   -c`` of it validated on its ``VALIDATION`` file, ``tadah analysis
+   check_bounds -c`` of it took its hpotarget file from its ``HPOTARGET``
+   line, and its ``VERBOSE`` set the
    Tadah log level of whatever loaded it, ``pair_style tadah`` included, and
    the verbosity of its models.
 
@@ -600,7 +606,8 @@ line, its ``UNCERTAINTY`` line, the switch of the run that wrote it
 (:ref:`weight_covariance`), and its run settings, ``VALIDATION``,
 ``HPOTARGET``, ``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
 ``AUDIT_SAMPLE`` and ``HEALTH_LOG`` (a ``best_pot.tadah`` of tadah 1.5.x has
-``VALIDATION``, ``HPOTARGET``, ``VERBOSE`` and ``NUMERIC``); every other line
+``HPOTARGET``, ``VERBOSE`` and ``NUMERIC``, and ``VALIDATION`` when its run
+had a validation file); every other line
 of the run, its ``DBFILE`` included, and the command line, applies as it
 would without them. A ``WARNING`` names the potential's lines that are not
 at their default (the task's default of the key when it has one, such as
@@ -636,7 +643,18 @@ which the task file retrain.task includes with CONFIG, is a potential ...``)
 and says where the run's own go: a line of the including configuration
 file, or of the task file (``Write EFILTER or WDBFILE in the task file
 retrain.task to apply one to this run``: a run of a task file takes no
-command-line option).
+command-line option, and ``--task`` refuses any other option, ``tadah hpo
+--task run.task --hpotarget config.hpo`` too). A run that needs a setting
+the potential's line gave, and has none of its own, is refused saying where
+it goes and naming the line that was not read: a ``TASK hpo`` section
+without an ``HPOTARGET`` line (``tadah hpo: no HPOTARGET: name the
+hpotarget file with an HPOTARGET line in the TASK hpo section of the task
+file run.task, or above its first TASK line. old.tadah is a potential (it
+has WEIGHTS): its HPOTARGET config.hpo line was a setting of the run that
+wrote it and is not read.``), and ``tadah analysis check_bounds -c`` of a
+seed potential without ``--hpotarget`` (``... name the hpotarget file with
+--hpotarget, or with an HPOTARGET line in a configuration file without
+WEIGHTS. ...``).
 
 To derive ``ESHIFT`` from the data of the retrain instead of using the
 potential's, delete the ``ESHIFT`` line from the copy and give the run

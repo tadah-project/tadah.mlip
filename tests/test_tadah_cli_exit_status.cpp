@@ -6826,22 +6826,23 @@ TEST_CASE("Subcommand: properties pairwise --error on a two-body plus "
  * A potential's key lines are the model's settings and its fit, neither
  * the training data (no DBFILE line) nor the inputs of the run that wrote
  * it (no HPOTARGET, VALIDATION or VERBOSE line); since MK's decision of
- * 2026-10-14 its training record, a comment block nothing reads, names
- * them for the user's record ([potential record] below). */
+ * 2026-10-14 its training record, a comment block no loader of a potential
+ * reads, names them for the user's record ([potential record] below). */
 
 namespace {
 
 /* The advice every refusal of a configuration without a training DBFILE
  * ends with. */
 const char* const kNoDatasetsAdvice =
-    "A potential has no DBFILE line (no potential tadah writes one; the "
-    "DBFILE of the run that wrote it is in its training record, a comment "
-    "block tadah does not read): to train from one, add a DBFILE line to a "
-    "copy of it; a potential of tadah refit or refit --edit also pins every "
-    "weight with its FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo "
-    "coefficient search, so delete them from the copy for the fit to change "
-    "the weights (the Training page of the documentation, Retraining from a "
-    "potential).";
+    "A potential has no DBFILE line (no potential tadah writes one; its "
+    "training record, the comment block above its key lines, lists the "
+    "datasets its weights were fitted to in a '# DBFILE' line when there "
+    "were any: a refit has none, and a potential of an earlier version has "
+    "no record): to train from one, add a DBFILE line to a copy of it; a "
+    "potential of tadah refit or refit --edit also pins every weight with "
+    "its FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo coefficient "
+    "search, so delete them from the copy for the fit to change the weights "
+    "(the Training page of the documentation, Retraining from a potential).";
 
 }  // namespace
 
@@ -6861,7 +6862,12 @@ const char* const kNoDatasetsAdvice =
  * potential so retrained followed to a fit of nothing (the next case).
  * Before the training record (MK's decision of 2026-10-14): the advice
  * began "A potential records no DBFILE (no potential tadah writes has
- * one): ...". */
+ * one): ...".
+ * Before the advice said when the record lists a DBFILE (review of the
+ * training record): it said "the DBFILE of the run that wrote it is in its
+ * training record, a comment block tadah does not read", which a refit
+ * potential, an hpo run's without training datasets and one of an earlier
+ * version contradict: the advice checks fail. */
 TEST_CASE("Subcommand: train -c of a potential without a DBFILE line is "
           "refused, pointing to the retrain route",
           "[TadahCLI][train][retrain][potential-content]") {
@@ -7052,7 +7058,11 @@ void write_hpo_potential_fixture() {
  * Before the training record (MK's decision of 2026-10-14): the advice
  * began "A potential records no DBFILE (no potential tadah writes has
  * one): ...", and the case was named "..., says that a potential records
- * none". */
+ * none".
+ * Before the advice said when the record lists a DBFILE (review of the
+ * training record): it said "the DBFILE of the run that wrote it is in its
+ * training record, a comment block tadah does not read": the advice checks
+ * fail. */
 TEST_CASE("Subcommand: hpo -c of a potential without a DBFILE line says "
           "that a potential has no DBFILE line",
           "[TadahCLI][hpo][retrain][potential-content]") {
@@ -7400,6 +7410,83 @@ TEST_CASE("Subcommand: refit records its run, and refit --edit copies the "
   CHECK(line_tokens(edited, "OUTFILE").empty());
 }
 
+/* Pins: `tadah refit --edit noend.tadah --func phi --add 2.5 -o e1.tadah`,
+ * noend.tadah being the refit_pot.tadah of `tadah refit -c config.refit -o
+ * refit_pot.tadah` (the case above) without the end line of its training
+ * record, exits 1 without writing e1.tadah, saying "noend.tadah: line 1
+ * opens a training record (...) that no end line (...) closes before line
+ * 3, the first line after it that is not a comment: restore the end line
+ * after the record, before line 3, or delete the record." -- line 1 is the
+ * opening line and line 3 the first key line, AMPGRIDMB, which every
+ * writer puts right after the record -- and not the refusal of a key line
+ * inside the record ("is not a comment: every reader ...", whose advice to
+ * begin the line with '#' would comment out a key of the potential); the
+ * unchanged refit_pot.tadah edits (exit 0).
+ * Before the fix: exit 1 with "noend.tadah: line 3, inside the training
+ * record that line 1 opens, is not a comment: every reader of the potential
+ * reads it as a key. Begin each line of the record with '#', or end the
+ * record (...) before it."; no potential got the missing-end-line refusal,
+ * which came only when the file ended inside the record. */
+TEST_CASE("Subcommand: refit --edit of a potential whose training record "
+          "lost its end line names the missing end line, not its first key "
+          "line",
+          "[TadahCLI][refit][potential-content][training-record]") {
+  ScratchCwd cwd("refit_record_no_end");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "config.refit", "-o",
+                                "refit_pot.tadah"});
+    INFO("refit: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  const std::string refit_pot = slurp("refit_pot.tadah");
+  INFO("refit_pot.tadah:\n" << refit_pot);
+  std::vector<std::string> lines;
+  {
+    std::istringstream in(refit_pot);
+    for (std::string l; std::getline(in, l);)
+      if (l != kRecordEnd) lines.push_back(l);
+  }
+  REQUIRE(lines.size() > 3);
+  REQUIRE(lines[0] == kRecordOpen);
+  REQUIRE(lines[1] == "# OUTFILE refit_pot.tadah");
+  REQUIRE(lines[2].rfind("AMPGRIDMB", 0) == 0);  // the first key line
+  {
+    std::ofstream os("noend.tadah");
+    for (const std::string& l : lines) os << l << "\n";
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--edit", "noend.tadah",
+                                "--func", "phi", "--add", "2.5", "-o",
+                                "e1.tadah"});
+    const std::string rep = reported(r);
+    INFO("--edit noend.tadah: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, std::string("noend.tadah: line 1 opens a training "
+                                    "record ('") +
+                            kRecordOpen + "') that no end line ('" +
+                            kRecordEnd +
+                            "') closes before line 3, the first line after "
+                            "it that is not a comment: restore the end line "
+                            "after the record, before line 3, or delete the "
+                            "record."));
+    CHECK_FALSE(contains(rep, "is not a comment: every reader"));
+    CHECK_FALSE(std::filesystem::exists("e1.tadah"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--edit", "refit_pot.tadah",
+                                "--func", "phi", "--add", "2.5", "-o",
+                                "e2.tadah"});
+    INFO("--edit refit_pot.tadah: status " << r.status << "\n"
+                                           << reported(r));
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("e2.tadah"));
+  }
+}
+
 #ifdef TADAH_ENABLE_NFP
 /* Pins: `tadah hpo -c config.tadah --hpotarget config.hpo --validation
  * config.val` (write_hpo_potential_fixture: one evaluation; config.tadah
@@ -7468,5 +7555,52 @@ TEST_CASE("Subcommand: hpo records the run's DBFILE, --validation, "
   }
   CHECK_FALSE(slurp("energy.pred").empty());
   CHECK(slurp("energy_record.pred") == slurp("energy.pred"));
+}
+
+/* Pins: `tadah hpo -c config.tadah --hpotarget config.hpo --validation
+ * config.val` without -v, config.tadah being write_hpo_potential_fixture's
+ * without its "VERBOSE 0" line, writes best_pot.tadah whose training record
+ * is exactly "DBFILE db.tadah", "VALIDATION config.val" and "HPOTARGET
+ * config.hpo": the VERBOSE 1 the run takes is the blueprint default nobody
+ * wrote (the hpo task's only record key with a default; hpo_run passes the
+ * task's KeyProvenance, whose origin of it is Default), so it is not
+ * recorded, and there is no VERBOSE key line either.
+ * Before the fix: passes as well (a pin of the provenance rule the HPO
+ * CHANGELOG and the Training page state: with HPOTargets built without
+ * the provenance, hpo_run_journaled passing nullptr, the record ends with
+ * "VERBOSE 1" and this case fails; the case above sets VERBOSE 0 and
+ * passes either way). */
+TEST_CASE("Subcommand: hpo leaves the VERBOSE nobody wrote out of "
+          "best_pot.tadah's training record",
+          "[TadahCLI][hpo][potential-content][training-record]") {
+  ScratchCwd cwd("hpo_record_defaults");
+  write_hpo_potential_fixture();
+  {
+    std::istringstream in(slurp("config.tadah"));
+    std::ostringstream out;
+    bool dropped = false;
+    for (std::string l; std::getline(in, l);) {
+      if (l == "VERBOSE 0") {
+        dropped = true;
+        continue;
+      }
+      out << l << "\n";
+    }
+    REQUIRE(dropped);
+    std::ofstream("config.tadah") << out.str();
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                                "--hpotarget", "config.hpo", "--validation",
+                                "config.val"});
+    INFO("hpo: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  const std::string best = slurp("best_pot.tadah");
+  INFO("best_pot.tadah:\n" << best);
+  CHECK(record_of(best) ==
+        std::vector<std::string>{"DBFILE db.tadah", "VALIDATION config.val",
+                                 "HPOTARGET config.hpo"});
+  CHECK(line_tokens(best, "VERBOSE").empty());
 }
 #endif  // TADAH_ENABLE_NFP

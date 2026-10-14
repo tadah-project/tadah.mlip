@@ -456,7 +456,7 @@ pair_style tadah has no potential: ...`` from its next ``run``. A line
 LAMMPS refuses before it reaches the pair style, such as ``pair_coeff 1 1
 other.tadah ELEMENT1`` (``ERROR: Pair_coeff must start with * * for pair
 style tadah``), changes nothing: the pair style keeps what it held.
-Tadah! 1.6.0 and earlier read only the first file a pair style was
+Tadah! 1.5.0 and earlier read only the first file a pair style was
 given: a later ``pair_coeff`` went on with that potential without a
 message, under the notices of the new file.
 
@@ -481,7 +481,7 @@ The lattice constant in ``in.ml`` must match the potential. This potential's own
 bcc lattice constant is 3.294 Å (at 0 K); at 3.5 Å the same run starts at
 −16 GPa. A crystal far from the potential's lattice can tear apart at the
 fixed volume of an NVE run and turn the released energy into heat: the
-D2_LJ potential that this guide shipped up to Tadah! 1.6.0 has its own bcc
+D2_LJ potential that this guide shipped up to Tadah! 1.5.0 has its own bcc
 lattice near 2.9 Å, and with the 3.5 Å lattice of the ``in.ml`` of that
 time it heated from 1000 K to about 8500 K. Its hard cutoff (``Cut_Dummy``)
 also let the total energy wander by about 35 meV/atom.
@@ -500,7 +500,7 @@ the descriptors of every atom (the generic kernel), here in about a second per
 A potential that takes the fast path states in the LAMMPS log how accurate
 it is. For example, a D2_LJ potential (``TYPE2B D2_LJ Ta Ta``, ``RCUT2B 6.5``,
 ``RCTYPE2B Cut_Dummy``, ``MODEL M_KRR Kern_Linear``; the Quick Start potential
-up to Tadah! 1.6.0, which does not hold bcc Ta: see below) logs
+up to Tadah! 1.5.0, which does not hold bcc Ta: see below) logs
 
 ::
 
@@ -527,7 +527,7 @@ So the fast path gives the same energies and forces as the full calculation
 (``EAMFAST false``) to ``1e-9`` inside the certified range and exactly below it.
 Distances are in the units of the potential (Å here). The range depends on the
 last digits of the weights: the line above is for the potential shipped with
-Tadah! 1.6.0, and the same potential retrained from its configuration, whose
+Tadah! 1.5.0, and the same potential retrained from its configuration, whose
 weights differ only in their last digits, reports ``[2.80045, 6.5]``. A model
 with a ``DM_REAM`` many-body block also reports a density (``rho``) table. The
 certified range is one interval that ends at the cutoff: for a potential with

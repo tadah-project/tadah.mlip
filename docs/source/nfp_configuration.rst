@@ -410,7 +410,9 @@ differs from the run's triggers a WARNING: ``WARM`` takes only the
 reference (no conversion), so the seed's recorded loss need not be
 reproduced.  A HINT is printed when a DM_REAM model under ``ZERO`` is
 trained on data without ``BIAS`` or ``ESHIFT`` (see
-:ref:`hpo_load_transforms`); prefer ``ESHIFT*``, because ``BIAS true``
+:ref:`hpo_load_transforms`); prefer ``ESHIFT*`` (for a ``-c`` seed, a
+potential, the run's own ``--eshift-atom`` or ``--eshift-dbatom``, which the
+HINT names: the seed's toggle line is not read), because ``BIAS true``
 inserts intercept columns, one per ``ATOM`` species, before the descriptor
 weights (``FIXINDEX``/``FIXWEIGHT`` indices shift) and disables ``EAMFAST``.  Under ``ZERO`` a
 combination of embedding coefficients that only shifts :math:`F` by a
@@ -5466,10 +5468,12 @@ inner training run. The lines of them that a potential has (a file with
 included with ``CONFIG`` by the configuration file or by a ``TASK hpo``
 section) are those of the fit that wrote it and are not read, with a
 ``WARNING`` on the console and in the journal; ``ESHIFT_ATOM``/
-``ESHIFT_DBATOM`` only beside its ``ESHIFT`` line
-(:ref:`retrain_from_potential`). The run's own -- on the command line, or on
-a line of the task file or of a configuration file that includes the
-potential -- apply.
+``ESHIFT_DBATOM`` with or without its ``ESHIFT`` line, so a seed's toggle
+derives no shift from the run's data (:ref:`retrain_from_potential`). Its
+``UNCERTAINTY`` line is not read either (``tadah hpo`` takes no
+``UNCERTAINTY``, and the warning does not name it). The run's own -- on the
+command line, or on a line of the task file or of a configuration file that
+includes the potential -- apply.
 
 Validation-set sanitisation
 ...........................

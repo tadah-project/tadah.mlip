@@ -217,7 +217,12 @@ are. A potential of an earlier version has its toggle as a key line beside
    intercept columns, one per ``ATOM`` species, precede the descriptor
    weights, so ``FIXINDEX``/``FIXWEIGHT`` indices shift; see
    :ref:`the bias term <bias_term>`).
-   ``tadah train`` prints a HINT when neither is present. A DM_REAM
+   ``tadah train`` prints a HINT when neither is present. When the
+   configuration is a potential (a ``tadah refit`` potential with a
+   ``DBFILE`` line, say), the toggle is the run's own: ``--eshift-atom`` or
+   ``--eshift-dbatom``, or a line of a file that includes the potential with
+   ``CONFIG``; a toggle line of the potential is not read
+   (:ref:`retrain_from_potential`). A DM_REAM
    configuration must also declare its density form ``RHOFORM`` (see
    `pot.tadah format`_). See :ref:`DM_REAM <dm_ream>`.
 
@@ -448,7 +453,7 @@ false`` when its configuration set none); it still loads, and ``tadah refit
 --edit`` of it lists them in the edit's record instead. ``tadah predict``
 ignores the keys that prepared the training data
 (:ref:`load_transforms_predict`) and a retrain from the potential those of
-its file (:ref:`retrain_from_potential`). ``tadah predict`` and
+its file and its ``UNCERTAINTY`` (:ref:`retrain_from_potential`). ``tadah predict`` and
 ``pair_style tadah`` read none of the other keys except ``VERBOSE``: parsing a file
 with a ``VERBOSE`` key line sets the Tadah log level of the process
 (``pair_style tadah`` in LAMMPS, a retrain with ``tadah train -c`` without
@@ -577,13 +582,14 @@ after the ``CONFIG`` line::
 A file that has ``WEIGHTS`` (a potential or a copy of one) is a potential,
 wherever the run reads it: given with ``-c``, or included with ``CONFIG`` by
 a configuration file or by a ``TASK train`` or ``TASK hpo`` section (a
-``tadah hpo`` seed too). Its lines of the eight are not read --
-``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` only when it has an ``ESHIFT`` line
--- and every other line of the run, and the command line, applies as it
-would without them. A ``WARNING`` names the potential's lines that are not
-at their default and that the run does not give itself: a potential of an
-earlier version has them as key lines, and so has a copy you added one
-to::
+``tadah hpo`` seed too). Its lines of the eight are not read, with or
+without an ``ESHIFT`` line, nor its ``UNCERTAINTY`` line, the switch of the
+run that wrote it (:ref:`weight_covariance`); every other line of the
+run, and the command line, applies as it would without them. A
+``WARNING`` names the potential's lines that are not at their default, that
+the run does not give itself and that its task takes (``tadah hpo`` takes
+no ``UNCERTAINTY``): a potential of an earlier version has them as key
+lines, and so has a copy you added one to::
 
    WARNING: tadah train: the configuration file retrain.train is a potential
    (it has WEIGHTS): its EFILTER 5 6 and WDBFILE 1 1 prepared the training
@@ -602,15 +608,35 @@ retrain.task to apply one to this run``: a run of a task file takes no
 command-line option).
 
 To derive ``ESHIFT`` from the data of the retrain instead of using the
-potential's, delete the ``ESHIFT`` line from the copy and set
-``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` (in the copy, in the file or task
-section that includes it, or on the command line): without an ``ESHIFT``
-line the toggle is the only source of the shift and applies. Beside the
-``ESHIFT`` line a toggle of the copy is not read, and the warning says so;
-one the run gives itself is overruled by the ``ESHIFT`` values as in any
-configuration (``Multiple ESHIFT sources set; precedence: explicit > ATOM >
-DBATOM.``). To reproduce the first fit, give the keys its record lists on
-the command line or in the file that includes the copy.
+potential's, delete the ``ESHIFT`` line from the copy and give the run
+``ESHIFT_ATOM`` or ``ESHIFT_DBATOM``: on the command line, or on a line of
+the task file or of a configuration file that includes the copy with
+``CONFIG``::
+
+   grep -v '^ESHIFT ' pot.tadah > retrain.train
+   echo "DBFILE db.train" >> retrain.train
+   tadah train -c retrain.train --eshift-dbatom -o pot2.tadah
+
+A toggle line of the copy itself is not read, with or without its
+``ESHIFT`` line. The warning names it when it is ``true``, among the keys
+the run can give, unless the run gives that toggle itself or sets the other
+one ``true``: the two choose one thing, the source of the shift, and exclude
+each other, so the run's own toggle is its choice (``--eshift-dbatom``
+beside a copy's ``ESHIFT_ATOM true`` derives the shift by the least-squares
+fit, and no warning names the copy's line). Beside an ``ESHIFT`` line a
+warning that names a toggle ends ``The ESHIFT of the configuration, the
+energy reference of the model, overrules ESHIFT_ATOM and ESHIFT_DBATOM: to
+derive ESHIFT from the data of this run, delete the ESHIFT line and give
+the run one of them``, since a toggle the run gives is overruled by the
+``ESHIFT`` values as in any configuration (``Multiple ESHIFT sources set;
+precedence: explicit > ATOM > DBATOM.``). Likewise ``--uncertainty``, or an
+``UNCERTAINTY true`` line of the task file or of a file that includes the
+copy, asks a retrain for ``weights.tadah``; the copy's own ``UNCERTAINTY
+true`` line asks for nothing, and when the run gives no ``UNCERTAINTY`` of
+its own the warning says so (``its UNCERTAINTY true asked the run that wrote
+it for weights.tadah, not this run, and is ignored``). To reproduce the
+first fit, give the keys its record lists on the command line or in the
+file that includes the copy.
 
 .. versionchanged:: 1.6.0
    A potential had the keys that prepared its training data as key lines,
@@ -618,11 +644,15 @@ the command line or in the file that includes the copy.
    first fit's datasets stopped a retrain with another number of datasets
    (``WDBFILE size (2) does not match number of datasets (3).``), and the
    first fit's ``EFILTER``, ``FFILTER``, ``EWEIGHT_TEMP`` and
-   ``ZERO_COM_FORCE`` applied to the retrain's. A line of the run that
-   included such a potential with ``CONFIG`` was mixed with the potential's
-   line of the same key: one after the ``CONFIG`` line was appended to the
-   potential's values (``WDBFILE``) or refused (``Exceeded capacity for
-   key: EFILTER``), and one before it was replaced by the potential's.
+   ``ZERO_COM_FORCE`` applied to the retrain's; its ``ESHIFT_ATOM`` or
+   ``ESHIFT_DBATOM`` was overruled by its ``ESHIFT`` line (``Multiple ESHIFT
+   sources set``) and, without one, derived the shift from the retrain's
+   data; its ``UNCERTAINTY true`` made a retrain write ``weights.tadah``. A
+   line of the run that included such a potential with ``CONFIG`` was
+   mixed with the potential's line of the same key: one after the
+   ``CONFIG`` line was appended to the potential's values (``WDBFILE``) or
+   refused (``Exceeded capacity for key: EFILTER``), and one before it was
+   replaced by the potential's.
 
 With ``LAMBDA -1`` the potential records the ``ALPHA`` and ``BETA``
 the evidence approximation found (the fit's :math:`\lambda = \alpha/\beta`;
@@ -773,12 +803,15 @@ pinned weight)::
 ``Index`` matches the ordering of the ``WEIGHTS`` row in ``pot.tadah``.
 ``UNCERTAINTY`` is a switch of the run, not part of the model: a potential
 has no ``UNCERTAINTY`` line (its :ref:`training record <training_record>`
-lists the run's). A potential given as the configuration (``tadah train
--c pot.tadah``, with a ``DBFILE`` line added) does not ask for
-``weights.tadah`` with an ``UNCERTAINTY true`` line, which tadah 1.5.x wrote into every potential trained with
-``--uncertainty``: a WARNING names the file, and ``--uncertainty`` asks for
-it. ``UNCERTAINTY true`` in a training configuration or a task file is a
-request, and a refusal names where it came from.
+lists the run's). The ``UNCERTAINTY`` line of a potential, one tadah 1.5.x
+wrote into every potential or one added to a copy, is not read by a run
+that reads the potential (``tadah train -c pot.tadah`` with a ``DBFILE``
+line added, a file or a task section that includes it with ``CONFIG``): an
+``UNCERTAINTY true`` line asks for nothing, and a WARNING names the file
+(:ref:`retrain_from_potential`). ``--uncertainty`` asks for
+``weights.tadah``, and so does ``UNCERTAINTY true`` in a training
+configuration (a file without ``WEIGHTS``), in a task file or in a file
+that includes the potential; a refusal names where it came from.
 ``--uncertainty`` is refused before training with an ``OALGO`` other than 3
 and with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``, whose solve of
 the kernel matrix computes no covariance: use implementation 1), and before

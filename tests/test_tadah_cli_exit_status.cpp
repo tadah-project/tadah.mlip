@@ -2547,20 +2547,35 @@ TEST_CASE("Subcommand: train's composition refusal names the remedies the "
         std::vector<std::string>{"ESHIFT", "0", "0"});
 }
 
+namespace {
+/* The lines of a potential's training record (defined with the
+ * training-record cases below). */
+std::vector<std::string> record_of(const std::string& pot);
+}  // namespace
+
 /* Pins: a potential used as the training configuration (tadah train -c,
  * the retrain route the multi-species BIAS refusal names) does not ask for
- * --uncertainty with the UNCERTAINTY true that tadah 1.5.x and 1.6.0
- * development builds wrote into every potential trained with it: the
- * two-species legacy potential (1 + 3 WEIGHTS, OALGO 1, UNCERTAINTY true)
- * plus a DBFILE retrains (exit 0) with a WARNING naming the file and
- * --uncertainty, writes no weights.tadah, and its potential has 2 + 3
- * WEIGHTS and no UNCERTAINTY line; --uncertainty on the command line is
- * still a request (exit 1, OALGO 3); and a training configuration (no
- * WEIGHTS) with UNCERTAINTY true and OALGO 1 is refused naming the
- * configuration file as UNCERTAINTY's source.
+ * --uncertainty with the UNCERTAINTY true that an earlier version wrote
+ * into every potential trained with it: the two-species legacy potential
+ * (1 + 3 WEIGHTS, OALGO 1, UNCERTAINTY true) plus a DBFILE retrains (exit
+ * 0) with a WARNING naming the file, the line ("its UNCERTAINTY true asked
+ * the run that wrote it for weights.tadah, not this run, and is ignored")
+ * and --uncertainty, and no development stage ("development"), writes no
+ * weights.tadah, and its potential has 2 + 3 WEIGHTS, no UNCERTAINTY line
+ * and no UNCERTAINTY in its training record (the line was not read);
+ * --uncertainty on the command line is still a request (exit 1, OALGO 3);
+ * and a training configuration (no WEIGHTS) with UNCERTAINTY true and
+ * OALGO 1 is refused naming the configuration file as UNCERTAINTY's
+ * source.
  * Before the fix: the retrain exited 1, "tadah train --uncertainty needs
  * OALGO 3 ... the configuration has OALGO 1", with no --uncertainty given,
- * and every potential tadah train wrote had an UNCERTAINTY line. */
+ * and every potential tadah train wrote had an UNCERTAINTY line.
+ * Before the fix that reads no UNCERTAINTY line of a potential: the line
+ * was read and ignored by its origin, with the WARNING "its UNCERTAINTY
+ * true is the record of the run that trained it (tadah 1.5.x and 1.6.0
+ * development builds wrote UNCERTAINTY into every potential) ...", and the
+ * record listed "UNCERTAINTY true": the WARNING, "development" and record
+ * checks fail. */
 TEST_CASE("Subcommand: train -c with a potential does not take its "
           "UNCERTAINTY for --uncertainty",
           "[TadahCLI][train][uncertainty][bias]") {
@@ -2577,11 +2592,18 @@ TEST_CASE("Subcommand: train -c with a potential does not take its "
   CHECK(contains(rep, "legacy_cfg.tadah"));
   CHECK(contains(rep, "UNCERTAINTY true"));
   CHECK(contains(rep, "--uncertainty"));
+  CHECK(contains(rep, "its UNCERTAINTY true asked the run that wrote it for "
+                      "weights.tadah, not this run, and is ignored"));
+  CHECK_FALSE(contains(rep, "development"));
   CHECK_FALSE(std::filesystem::exists("weights.tadah"));
   REQUIRE(std::filesystem::exists("re.tadah"));
   const std::string pot = slurp("re.tadah");
   CHECK(line_tokens(pot, "WEIGHTS").size() == 6u);
   CHECK(line_tokens(pot, "UNCERTAINTY").empty());
+  for (const std::string& line : record_of(pot)) {
+    INFO("record line: " << line);
+    CHECK(line.rfind("UNCERTAINTY", 0) != 0);
+  }
 
   const CliRun u = run_tadah({"tadah", "train", "-c", "legacy_cfg.tadah",
                               "-o", "re2.tadah", "--uncertainty"});
@@ -6924,7 +6946,10 @@ TEST_CASE("Subcommand: train -c of a potential without a DBFILE line is "
  * both edits wrote "UNCERTAINTY true", and the retrain warned "its
  * UNCERTAINTY true is the record of the run that trained it (tadah 1.5.x
  * and 1.6.0 development builds wrote UNCERTAINTY into every potential)" of
- * a file this build wrote (lanes/D/tmp/review/training-verify/unc). */
+ * a file this build wrote (lanes/D/tmp/review/training-verify/unc).
+ * Since the fix that reads no UNCERTAINTY line of a potential that WARNING
+ * is gone, so the retrain's output is checked to name no UNCERTAINTY at
+ * all (a pin: it named none before that fix either). */
 TEST_CASE("Subcommand: refit --edit writes no UNCERTAINTY line",
           "[TadahCLI][exit-status][refit][potential-content]") {
   ScratchCwd cwd("refit_edit_uncertainty");
@@ -6966,7 +6991,7 @@ TEST_CASE("Subcommand: refit --edit writes no UNCERTAINTY line",
   const std::string rep = reported(t);
   INFO("train: status " << t.status << "\n" << rep);
   CHECK(t.status == 0);
-  CHECK_FALSE(contains(rep, "UNCERTAINTY true is the record of the run"));
+  CHECK_FALSE(contains(rep, "UNCERTAINTY"));
 }
 
 /* Pins: the documented retrain of a potential that tadah refit writes --
@@ -7932,11 +7957,19 @@ TEST_CASE("Subcommand: predict applies the LSCALE of the potential",
  *     -0.45 eV), exits 0; pot2.tadah has the ESHIFT e0 (the model's energy
  *     reference, not re-derived) and the record "DBFILE a.tadah b.tadah
  *     c.tadah", "OUTFILE pot2.tadah";
- *   - rederive.train, retrain.train without its ESHIFT line and with
- *     ESHIFT_DBATOM true (the documented way to derive ESHIFT from the data
- *     of the retrain), gives pot3.tadah the ESHIFT of a training
- *     configuration of the three datasets with ESHIFT_DBATOM true
- *     (pot4.tadah), not e0;
+ *   - rederive.train, retrain.train without its ESHIFT line, with
+ *     --eshift-dbatom (the documented way to derive ESHIFT from the data of
+ *     the retrain: delete the ESHIFT line and give the run the toggle),
+ *     gives pot3.tadah the ESHIFT of a training configuration of the three
+ *     datasets with ESHIFT_DBATOM true (pot4.tadah), not e0; the same copy
+ *     with its own line "ESHIFT_DBATOM true" and no option (pot7.tadah):
+ *     the line is not read (the copy is a potential), so pot7.tadah has no
+ *     ESHIFT line, with the WARNING "tadah train: the configuration file
+ *     rederive_line.train is a potential (it has WEIGHTS): its
+ *     ESHIFT_DBATOM true prepared the training data of the fit that wrote
+ *     it, not of this run, and is ignored ... Give --eshift-dbatom on the
+ *     command line, or an ESHIFT_DBATOM line in a configuration file that
+ *     includes the potential with CONFIG, to apply it to this run ...";
  *   - old.train, pot.tadah without its record and with the key lines
  *     "WDBFILE 1 0.5", "EFILTER 5 6" and "ESHIFT_DBATOM true" of an earlier
  *     version, and the three datasets, exits 0 (pot5.tadah, ESHIFT e0),
@@ -7950,7 +7983,12 @@ TEST_CASE("Subcommand: predict applies the LSCALE of the potential",
  * -0.7 -0.3" and "ESHIFT_DBATOM true", and the retrain with three datasets
  * was refused ("WDBFILE size (2) does not match number of datasets (3).",
  * exit 1, after the WARNING "Multiple ESHIFT sources set; precedence:
- * explicit > ATOM > DBATOM."): the REQUIRE stops the case. */
+ * explicit > ATOM > DBATOM."): the REQUIRE stops the case.
+ * Before the fix that reads no ESHIFT_ATOM, ESHIFT_DBATOM or UNCERTAINTY
+ * line of a potential: the copy's own ESHIFT_DBATOM true, beside no ESHIFT
+ * line, was read and derived the shift (the documented way then), so
+ * pot7.tadah had an ESHIFT line and no WARNING named the line: those two
+ * checks fail. */
 TEST_CASE("Subcommand: train -c retrains a potential on any number of "
           "datasets, with the potential's ESHIFT",
           "[TadahCLI][train][retrain][dataset-keys][training-record]") {
@@ -7988,12 +8026,14 @@ TEST_CASE("Subcommand: train -c retrains a potential on any number of "
     CHECK(record_of(pot2) ==
           std::vector<std::string>{datasets, "OUTFILE pot2.tadah"});
   }
-  std::ofstream("rederive.train")
+  std::ofstream("rederive.train") << with_line(retrain, "ESHIFT", "");
+  std::ofstream("rederive_line.train")
       << with_line(retrain, "ESHIFT", "") << "ESHIFT_DBATOM true\n";
   std::ofstream("fresh.train")
       << dataset_keys_config("a.tadah b.tadah c.tadah", "ESHIFT_DBATOM true\n");
   {
-    const CliRun t = train({"-c", "rederive.train", "-o", "pot3.tadah"});
+    const CliRun t = train({"-c", "rederive.train", "-o", "pot3.tadah",
+                            "--eshift-dbatom"});
     INFO("rederive: status " << t.status << "\n" << reported(t));
     REQUIRE(t.status == 0);
     const CliRun f = train({"-c", "fresh.train", "-o", "pot4.tadah"});
@@ -8004,6 +8044,22 @@ TEST_CASE("Subcommand: train -c retrains a potential on any number of "
     REQUIRE(e3.size() == 2u);
     CHECK(e3 == line_tokens(slurp("pot4.tadah"), "ESHIFT"));
     CHECK(e3 != e0);
+  }
+  {
+    const CliRun t = train({"-c", "rederive_line.train", "-o", "pot7.tadah"});
+    const std::string rep = reported(t);
+    INFO("rederive_line: status " << t.status << "\n" << rep);
+    REQUIRE(t.status == 0);
+    CHECK(line_tokens(slurp("pot7.tadah"), "ESHIFT").empty());
+    CHECK(contains(rep, "tadah train: the configuration file "
+                        "rederive_line.train is a potential (it has "
+                        "WEIGHTS): its ESHIFT_DBATOM true prepared the "
+                        "training data of the fit that wrote it, not of "
+                        "this run, and is ignored"));
+    CHECK(contains(rep, "Give --eshift-dbatom on the command line, or an "
+                        "ESHIFT_DBATOM line in a configuration file that "
+                        "includes the potential with CONFIG, to apply it "
+                        "to this run"));
   }
   std::ofstream("old.train")
       << with_line(without_record(pot), "DBFILE", "")
@@ -8341,6 +8397,187 @@ TEST_CASE("Subcommand: hpo keeps the keys that prepared the training data in "
                           "a potential (it has WEIGHTS): its EFILTER 5 6 and "
                           "WDBFILE 1 1 prepared the training data of the fit "
                           "that wrote it"));
+}
+
+/* Pins: `tadah hpo -c seed.tadah --hpotarget config.hpo --validation
+ * config.val` (write_hpo_potential_fixture), seed.tadah being the
+ * potential `tadah train -c config.tadah` writes (no ESHIFT line) without
+ * its record, with the key lines "UNCERTAINTY true", "ESHIFT_ATOM false"
+ * and "ESHIFT_DBATOM true" of an earlier version and "DBFILE db.tadah",
+ * exits 0; none of the three lines is read: best_pot.tadah has no ESHIFT
+ * line (no shift is derived from the run's data), its training record is
+ * "DBFILE db.tadah", "VALIDATION config.val", "HPOTARGET config.hpo", the
+ * journal (hpo_run.log) has the WARNING "tadah hpo: the configuration file
+ * seed.tadah is a potential (it has WEIGHTS): its ESHIFT_DBATOM true
+ * prepared the training data of the fit that wrote it, not of this run,
+ * and is ignored ... Give --eshift-dbatom on the command line, or an
+ * ESHIFT_DBATOM line in a configuration file that includes the potential
+ * with CONFIG, to apply it to this run ...", and neither the journal nor
+ * the run's output says "UNCERTAINTY true" (tadah hpo takes no
+ * UNCERTAINTY, so the notice does not name it; ESHIFT_ATOM false is at its
+ * default).
+ * Before the fix: the toggles of a potential without an ESHIFT line and
+ * its UNCERTAINTY line were read: ESHIFT_DBATOM derived a shift
+ * (best_pot.tadah had an ESHIFT line), the record listed "ESHIFT_ATOM
+ * false", "ESHIFT_DBATOM true" and "UNCERTAINTY true" as the run's, and no
+ * WARNING named the toggle: the ESHIFT, record and WARNING checks fail. */
+TEST_CASE("Subcommand: hpo -c reads no UNCERTAINTY, ESHIFT_ATOM or "
+          "ESHIFT_DBATOM line of a seed potential",
+          "[TadahCLI][hpo][dataset-keys][training-record][uncertainty]") {
+  ScratchCwd cwd("dataset_keys_hpo_seed_toggles");
+  write_hpo_potential_fixture();
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
+                                "trained.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string trained = slurp("trained.tadah");
+  REQUIRE(line_tokens(trained, "ESHIFT").empty());
+  std::ofstream("seed.tadah")
+      << without_record(trained)
+      << "UNCERTAINTY true\nESHIFT_ATOM false\nESHIFT_DBATOM true\n"
+         "DBFILE db.tadah\n";
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "seed.tadah",
+                              "--hpotarget", "config.hpo", "--validation",
+                              "config.val"});
+  const std::string rep = reported(r);
+  INFO("hpo -c seed.tadah: status " << r.status << "\n" << rep);
+  REQUIRE(r.status == 0);
+  const std::string journal = slurp("hpo_run.log");
+  INFO("hpo_run.log:\n" << journal);
+  CHECK(contains(journal, "tadah hpo: the configuration file seed.tadah is "
+                          "a potential (it has WEIGHTS): its ESHIFT_DBATOM "
+                          "true prepared the training data of the fit that "
+                          "wrote it, not of this run, and is ignored"));
+  CHECK(contains(journal, "Give --eshift-dbatom on the command line, or an "
+                          "ESHIFT_DBATOM line in a configuration file that "
+                          "includes the potential with CONFIG, to apply it "
+                          "to this run"));
+  CHECK_FALSE(contains(journal, "UNCERTAINTY true"));
+  CHECK_FALSE(contains(rep, "UNCERTAINTY true"));
+  const std::string best = slurp("best_pot.tadah");
+  INFO("best_pot.tadah:\n" << best);
+  CHECK(line_tokens(best, "ESHIFT").empty());
+  CHECK(record_of(best) ==
+        std::vector<std::string>{"DBFILE db.tadah", "VALIDATION config.val",
+                                 "HPOTARGET config.hpo"});
+}
+
+/* Pins: the documented route from a refit to tadah hpo says how to give a
+ * DM_REAM potential under EMBF0 ZERO a per-atom reference energy, and the
+ * advice works. On the outputs of a dense refit of the small Ta setfl
+ * (pot.tadah: DM_REAM, EMBF0 ZERO, BIAS false, no ESHIFT, every weight
+ * pinned), with config.train being pot.tadah plus "DBFILE db.tadah" (three
+ * Ta dimers, retrain_dataset) and t.hpotarget refit.hpotarget with MAXEVAL
+ * 1:
+ *   - refit.hpotarget has the line "# DFT totals) give tadah hpo
+ *     --eshift-atom or --eshift-dbatom (an" and no "add ESHIFT_ATOM";
+ *   - `tadah train -c config.train -o p2.tadah` exits 0 with the HINT
+ *     "WARNING: HINT: EMBF0 ZERO fixes the DM_REAM isolated-atom energy at
+ *     0 ... If the reference energies are absolute (e.g. DFT totals), set
+ *     ESHIFT or give the run ESHIFT_ATOM or ESHIFT_DBATOM (--eshift-atom,
+ *     --eshift-dbatom: a potential's own line of them is not read), all
+ *     compatible with EAMFAST, or BIAS true ...";
+ *   - `tadah hpo -c config.train --hpotarget t.hpotarget --validation
+ *     config.val` exits 0 with the journal HINT "EMBF0 ZERO fixes ... If
+ *     reference energies are absolute (e.g. DFT totals), set ESHIFT or give
+ *     the run ESHIFT_ATOM or ESHIFT_DBATOM (--eshift-atom, --eshift-dbatom:
+ *     a potential's own line of them is not read), all compatible with
+ *     EAMFAST. ...";
+ *   - with --eshift-dbatom both exit 0 with no EMBF0 HINT, and p3.tadah and
+ *     best_pot.tadah have an ESHIFT line and "ESHIFT_DBATOM true" in their
+ *     training record (a pin: the run's own toggle applied before the fix
+ *     too).
+ * Before the fix: the hpotarget said "# DFT totals) add ESHIFT_ATOM,
+ * ESHIFT_DBATOM or ESHIFT to <config>." and both HINTs "set ESHIFT_ATOM,
+ * ESHIFT_DBATOM or ESHIFT": a toggle line added to config.train, a
+ * potential, is not read, so that advice applies no shift; the text CHECKs
+ * fail. */
+TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
+          "potential: the EMBF0 ZERO advice names the run's toggles",
+          "[TadahCLI][refit][hpo][embf0][dataset-keys]") {
+  ScratchCwd cwd("refit_embf0_eshift_advice");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun fit = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    INFO("refit: status " << fit.status << "\n" << reported(fit));
+    REQUIRE(fit.status == 0);
+  }
+  const std::string target = slurp("refit.hpotarget");
+  INFO("refit.hpotarget:\n" << target);
+  CHECK(contains(target, "# DFT totals) give tadah hpo --eshift-atom or "
+                         "--eshift-dbatom (an\n"));
+  CHECK_FALSE(contains(target, "add ESHIFT_ATOM"));
+  REQUIRE(contains(target, "MAXEVAL 200\n"));
+  std::ofstream("t.hpotarget")
+      << replace_key_line(target, "MAXEVAL", "    MAXEVAL 1");
+  const std::string pot = slurp("pot.tadah");
+  REQUIRE(line_tokens(pot, "ESHIFT").empty());
+  REQUIRE(line_tokens(pot, "EMBF0") ==
+          std::vector<std::string>{"EMBF0", "ZERO"});
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("val.tadah") << retrain_dataset();
+  std::ofstream("config.val") << "DBFILE val.tadah\n";
+  std::ofstream("config.train") << pot << "DBFILE db.tadah\n";
+  const std::string hint = "EMBF0 ZERO fixes the DM_REAM isolated-atom "
+                           "energy at 0";
+  const std::string toggles =
+      "set ESHIFT or give the run ESHIFT_ATOM or ESHIFT_DBATOM "
+      "(--eshift-atom, --eshift-dbatom: a potential's own line of them is "
+      "not read), all compatible with EAMFAST";
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "p2.tadah"});
+    const std::string rep = reported(t);
+    INFO("train: status " << t.status << "\n" << rep);
+    REQUIRE(t.status == 0);
+    CHECK(contains(rep, "HINT: " + hint));
+    CHECK(contains(rep, "If the reference energies are absolute (e.g. DFT "
+                        "totals), " + toggles + ", or BIAS true"));
+  }
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "p3.tadah", "--eshift-dbatom"});
+    const std::string rep = reported(t);
+    INFO("train --eshift-dbatom: status " << t.status << "\n" << rep);
+    REQUIRE(t.status == 0);
+    CHECK_FALSE(contains(rep, hint));
+    const std::string p3 = slurp("p3.tadah");
+    INFO("p3.tadah:\n" << p3);
+    CHECK(line_tokens(p3, "ESHIFT").size() == 2u);  // ESHIFT and one value
+    const std::vector<std::string> rec = record_of(p3);
+    CHECK(std::find(rec.begin(), rec.end(), "ESHIFT_DBATOM true") !=
+          rec.end());
+  }
+  {
+    const CliRun h = run_tadah({"tadah", "hpo", "-c", "config.train",
+                                "--hpotarget", "t.hpotarget", "--validation",
+                                "config.val"});
+    INFO("hpo: status " << h.status << "\n" << reported(h));
+    REQUIRE(h.status == 0);
+    const std::string journal = slurp("hpo_run.log");
+    INFO("hpo_run.log:\n" << journal);
+    CHECK(contains(journal, hint));
+    CHECK(contains(journal, "If reference energies are absolute (e.g. DFT "
+                            "totals), " + toggles + ". BIAS true"));
+  }
+  const CliRun h = run_tadah({"tadah", "hpo", "-c", "config.train",
+                              "--hpotarget", "t.hpotarget", "--validation",
+                              "config.val", "--eshift-dbatom"});
+  INFO("hpo --eshift-dbatom: status " << h.status << "\n" << reported(h));
+  REQUIRE(h.status == 0);
+  const std::string journal = slurp("hpo_run.log");
+  INFO("hpo_run.log:\n" << journal);
+  CHECK_FALSE(contains(journal, hint));
+  const std::string best = slurp("best_pot.tadah");
+  INFO("best_pot.tadah:\n" << best);
+  CHECK(line_tokens(best, "ESHIFT").size() == 2u);
+  const std::vector<std::string> rec = record_of(best);
+  CHECK(std::find(rec.begin(), rec.end(), "ESHIFT_DBATOM true") != rec.end());
 }
 
 /* Pins: `tadah --task run.task`, its TASK hpo section "CONFIG trained.tadah"

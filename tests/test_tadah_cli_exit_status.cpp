@@ -8031,6 +8031,241 @@ TEST_CASE("Subcommand: train -c retrains a potential on any number of "
   }
 }
 
+/* Pins: a retrain that includes a potential with CONFIG -- from a task file
+ * or a configuration file -- applies the keys that prepare the training
+ * data its own lines give, and records them; only the potential's lines of
+ * them are not read. pot.tadah is `tadah train -c config` (a.tadah b.tadah,
+ * WDBFILE 1 0.5); the retrains fit a.tadah b.tadah c.tadah:
+ *   - `tadah --task run.task` (TASK train, "CONFIG pot.tadah", the three
+ *     datasets, "WDBFILE 1 0.001 1", "OUTFILE pot2.tadah") exits 0 with no
+ *     WARNING about a potential, and pot2.tadah has the record "DBFILE
+ *     a.tadah b.tadah c.tadah", "WDBFILE 1 0.001 1", "OUTFILE pot2.tadah"
+ *     and the WEIGHTS of `tadah train -c retrain.train --wdbfile 1 0.001 1`
+ *     (pot3.tadah; retrain.train: pot.tadah with the three datasets), which
+ *     differ from those of the same task file without its WDBFILE line
+ *     (pot4.tadah);
+ *   - `tadah train -c outer.train -o pot6.tadah`, outer.train being "CONFIG
+ *     pot.tadah", the three datasets and "WDBFILE 1 0.001 1", gives the
+ *     WEIGHTS of pot2.tadah and the record "DBFILE a.tadah b.tadah
+ *     c.tadah", "WDBFILE 1 0.001 1", "OUTFILE pot6.tadah";
+ *   - `tadah --task old.task`, its TASK train section "ZERO_COM_FORCE
+ *     true", "CONFIG old.tadah", the three datasets, "WDBFILE 1 0.001 1",
+ *     "EFILTER -0.7 -0.3", "OUTFILE pot5.tadah", old.tadah being pot.tadah
+ *     with the key lines "WDBFILE 1 0.5", "EFILTER 5 6", "FFILTER 0.001"
+ *     (it would drop every structure) and "ZERO_COM_FORCE false" of an
+ *     earlier version, exits 0; pot5.tadah's record is "DBFILE a.tadah
+ *     b.tadah c.tadah", "EFILTER -0.7 -0.3", "ZERO_COM_FORCE true", "WDBFILE
+ *     1 0.001 1", "OUTFILE pot5.tadah" (the line before CONFIG too), and the
+ *     WARNING names the one line of the potential the run does not give:
+ *     "tadah train: old.tadah, which the task file old.task includes with
+ *     CONFIG, is a potential (it has WEIGHTS): its FFILTER 0.001 prepared
+ *     the training data of the fit that wrote it, not of this run, and is
+ *     ignored (tadah keeps such keys in a potential's training record, not
+ *     as key lines). Write FFILTER in the task file old.task to apply it to
+ *     this run (the Training page of the documentation, Retraining from a
+ *     potential).".
+ * Before the fix: a key of a configuration with WEIGHTS was applied only
+ * when it was a command-line option, and the include mixed the potential's
+ * lines with the run's: run.task's WDBFILE was ignored with the WARNING
+ * "tadah train: the task file run.task is a potential (it has WEIGHTS): its
+ * WDBFILE 1 0.001 1 prepared the training data of the fit that wrote it
+ * ... Give --wdbfile on the command line ..." (which `tadah --task`
+ * refuses), so pot2.tadah had the record "DBFILE ...", "OUTFILE pot2.tadah"
+ * and the WEIGHTS of pot4.tadah; outer.train's WDBFILE likewise; old.task
+ * stopped with "Exceeded capacity for key: EFILTER" (exit 1: the
+ * potential's two values were there). */
+TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
+          "applies the keys of its own lines that prepare the training data",
+          "[TadahCLI][train][retrain][dataset-keys][task-file]") {
+  ScratchCwd cwd("dataset_keys_task_retrain");
+  std::ofstream("a.tadah") << retrain_dataset();
+  std::ofstream("b.tadah") << dimers_with_energy("-1.1");
+  std::ofstream("c.tadah") << dimers_with_energy("-0.9");
+  std::ofstream("config") << dataset_keys_config("a.tadah b.tadah",
+                                                 "WDBFILE 1 0.5\n");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string pot = slurp("pot.tadah");
+  INFO("pot.tadah:\n" << pot);
+  const std::string datasets = "DBFILE a.tadah b.tadah c.tadah";
+  const auto run_task = [](const std::string& file, const std::string& body) {
+    std::ofstream(file) << body;
+    return run_tadah({"tadah", "--task", file});
+  };
+  {
+    const CliRun r = run_task("run.task", "TASK train\n  CONFIG pot.tadah\n  " +
+                                              datasets +
+                                              "\n  WDBFILE 1 0.001 1\n"
+                                              "  OUTFILE pot2.tadah\n");
+    const std::string rep = reported(r);
+    INFO("--task run.task: status " << r.status << "\n" << rep);
+    REQUIRE(r.status == 0);
+    CHECK_FALSE(contains(rep, "is a potential"));
+    const std::string pot2 = slurp("pot2.tadah");
+    INFO("pot2.tadah:\n" << pot2);
+    CHECK(record_of(pot2) == std::vector<std::string>{datasets,
+                                                      "WDBFILE 1 0.001 1",
+                                                      "OUTFILE pot2.tadah"});
+  }
+  {
+    const CliRun r = run_task("none.task", "TASK train\n  CONFIG pot.tadah\n  " +
+                                               datasets +
+                                               "\n  OUTFILE pot4.tadah\n");
+    INFO("--task none.task: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  std::ofstream("retrain.train") << pot << datasets << "\n";
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "retrain.train", "-o",
+                                "pot3.tadah", "--wdbfile", "1", "0.001", "1"});
+    INFO("train -c retrain.train --wdbfile: status " << t.status << "\n"
+                                                     << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::vector<std::string> w2 =
+      line_tokens(slurp("pot2.tadah"), "WEIGHTS");
+  REQUIRE(w2.size() > 1u);
+  CHECK(w2 == line_tokens(slurp("pot3.tadah"), "WEIGHTS"));
+  CHECK(w2 != line_tokens(slurp("pot4.tadah"), "WEIGHTS"));
+  std::ofstream("outer.train") << "CONFIG pot.tadah\n" << datasets
+                               << "\nWDBFILE 1 0.001 1\n";
+  {
+    const CliRun t =
+        run_tadah({"tadah", "train", "-c", "outer.train", "-o", "pot6.tadah"});
+    const std::string rep = reported(t);
+    INFO("train -c outer.train: status " << t.status << "\n" << rep);
+    REQUIRE(t.status == 0);
+    CHECK_FALSE(contains(rep, "is a potential"));
+    const std::string pot6 = slurp("pot6.tadah");
+    INFO("pot6.tadah:\n" << pot6);
+    CHECK(line_tokens(pot6, "WEIGHTS") == w2);
+    CHECK(record_of(pot6) == std::vector<std::string>{datasets,
+                                                      "WDBFILE 1 0.001 1",
+                                                      "OUTFILE pot6.tadah"});
+  }
+  std::ofstream("old.tadah") << without_record(pot)
+                             << "WDBFILE 1 0.5\nEFILTER 5 6\nFFILTER 0.001\n"
+                                "ZERO_COM_FORCE false\n";
+  {
+    const CliRun r = run_task(
+        "old.task", "TASK train\n  ZERO_COM_FORCE true\n  CONFIG old.tadah\n  " +
+                        datasets +
+                        "\n  WDBFILE 1 0.001 1\n  EFILTER -0.7 -0.3\n"
+                        "  OUTFILE pot5.tadah\n");
+    const std::string rep = reported(r);
+    INFO("--task old.task: status " << r.status << "\n" << rep);
+    REQUIRE(r.status == 0);
+    CHECK(contains(rep,
+                   "tadah train: old.tadah, which the task file old.task "
+                   "includes with CONFIG, is a potential (it has WEIGHTS): its "
+                   "FFILTER 0.001 prepared the training data of the fit that "
+                   "wrote it, not of this run, and is ignored (tadah keeps "
+                   "such keys in a potential's training record, not as key "
+                   "lines). Write FFILTER in the task file old.task to apply "
+                   "it to this run (the Training page of the documentation, "
+                   "Retraining from a potential)."));
+    const std::string pot5 = slurp("pot5.tadah");
+    INFO("pot5.tadah:\n" << pot5);
+    CHECK(record_of(pot5) ==
+          std::vector<std::string>{datasets, "EFILTER -0.7 -0.3",
+                                   "ZERO_COM_FORCE true", "WDBFILE 1 0.001 1",
+                                   "OUTFILE pot5.tadah"});
+  }
+}
+
+/* Pins: a TASK predict prepares the data predicted with the keys tadah
+ * predict has an option for alone: `tadah --task run.task`, its TASK predict
+ * section "POTENTIAL pot.tadah" (trained on db.tadah, the three dimers at
+ * E/N -0.5 eV, with ESHIFT_DBATOM true: its ESHIFT line -0.5), "DBFILE
+ * db.tadah", "NO_ESHIFT true", "ESHIFT_DBATOM true", "WDBFILE 1 1" (two
+ * values, one dataset), "WDBFILE_AUTO 1" and "EWEIGHT_TEMP 300", exits 0
+ * with no "Multiple ESHIFT sources" WARNING and no "WDBFILE size" refusal,
+ * and the True column of energy.pred is the reference energies as they
+ * are, -0.5 each (no shift is derived from the data predicted).
+ * Before the fix: the TASK predict's ESHIFT_DBATOM applied to the data
+ * predicted (tadah 1.5.x and v1-dev before the dataset keys record removed
+ * only WDBFILE, WDBFILE_AUTO and EWEIGHT_TEMP from it): with the ESHIFT
+ * removed by NO_ESHIFT the toggle fitted -0.5 to the data predicted and
+ * subtracted it, and the True column was 0 for each structure. */
+TEST_CASE("Subcommand: a TASK predict prepares the data predicted only with "
+          "the keys predict has an option for",
+          "[TadahCLI][predict][dataset-keys][task-file]") {
+  ScratchCwd cwd("dataset_keys_task_predict");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config") << dataset_keys_config("db.tadah",
+                                                 "ESHIFT_DBATOM true\n");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  std::ofstream("run.task") << "TASK predict\n"
+                               "  POTENTIAL pot.tadah\n"
+                               "  DBFILE db.tadah\n"
+                               "  NO_ESHIFT true\n"
+                               "  ESHIFT_DBATOM true\n"
+                               "  WDBFILE 1 1\n"
+                               "  WDBFILE_AUTO 1\n"
+                               "  EWEIGHT_TEMP 300\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  const std::string rep = reported(r);
+  INFO("--task run.task: status " << r.status << "\n" << rep);
+  REQUIRE(r.status == 0);
+  CHECK_FALSE(contains(rep, "Multiple ESHIFT sources"));
+  CHECK_FALSE(contains(rep, "WDBFILE size"));
+  const std::vector<double> truth = column_values("energy.pred", 1);
+  REQUIRE(truth.size() == 3u);
+  for (double t : truth) CHECK(t == Approx(-0.5).margin(1e-12));
+}
+
+/* Pins: `tadah predict -F --zero-com-force` zeroes the net reference force
+ * of each structure predicted: pot.tadah trained on db.tadah (the three
+ * dimers, both atoms of each with the force f f f, so the net force is 2f
+ * per component); the True column of forces.pred is 0 everywhere with
+ * --zero-com-force and not without it, and the predicted column is the
+ * same in both runs (the option changes the reference forces, not the
+ * model).
+ * Before the fix: passes as well (a pin: ZERO_COM_FORCE is among the keys
+ * the predict task has an option for, so the removal of a TASK predict's
+ * other dataset keys leaves it; a removal of every key that prepared the
+ * training data from predict's merged context makes it fail). */
+TEST_CASE("Subcommand: predict --zero-com-force zeroes the net reference "
+          "force of the data predicted",
+          "[TadahCLI][predict][dataset-keys]") {
+  ScratchCwd cwd("dataset_keys_zero_com_force");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config") << dataset_keys_config("db.tadah", "");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const auto forces = [](std::vector<std::string> extra,
+                         const std::string& tag) {
+    std::vector<std::string> args = {"tadah", "predict", "-p", "pot.tadah",
+                                     "-d", "db.tadah", "-F"};
+    args.insert(args.end(), extra.begin(), extra.end());
+    const CliRun p = run_tadah(args);
+    INFO(tag << ": status " << p.status << "\n" << reported(p));
+    REQUIRE(p.status == 0);
+    std::filesystem::rename("forces.pred", "forces_" + tag + ".pred");
+  };
+  forces({}, "plain");
+  forces({"--zero-com-force"}, "zeroed");
+  const std::vector<double> plain = column_values("forces_plain.pred", 1);
+  const std::vector<double> zeroed = column_values("forces_zeroed.pred", 1);
+  REQUIRE(plain.size() == 18u);  // 3 structures x 2 atoms x 3 components
+  REQUIRE(zeroed.size() == plain.size());
+  CHECK(std::any_of(plain.begin(), plain.end(),
+                    [](double f) { return f != 0.0; }));
+  for (double f : zeroed) CHECK(f == Approx(0.0).margin(1e-12));
+  CHECK(column_values("forces_plain.pred", 2) ==
+        column_values("forces_zeroed.pred", 2));
+}
+
 #ifdef TADAH_ENABLE_NFP
 /* Pins: `tadah hpo -c config.tadah --hpotarget config.hpo --validation
  * config.val` (write_hpo_potential_fixture, config.tadah with EFILTER -0.6
@@ -8106,5 +8341,54 @@ TEST_CASE("Subcommand: hpo keeps the keys that prepared the training data in "
                           "a potential (it has WEIGHTS): its EFILTER 5 6 and "
                           "WDBFILE 1 1 prepared the training data of the fit "
                           "that wrote it"));
+}
+
+/* Pins: `tadah --task run.task`, its TASK hpo section "CONFIG trained.tadah"
+ * (the potential `tadah train -c config.tadah` writes,
+ * write_hpo_potential_fixture), "DBFILE db.tadah", "WDBFILE 2", "EFILTER
+ * -0.6 -0.4" (which keeps the three dimers), "HPOTARGET config.hpo" and
+ * "VALIDATION config.val", exits 0; best_pot.tadah's training record is
+ * "DBFILE db.tadah", "EFILTER -0.6 -0.4", "WDBFILE 2", "VALIDATION
+ * config.val", "HPOTARGET config.hpo" (the task file's keys applied to the
+ * run and recorded), and neither the run's output nor the journal says the
+ * task file is a potential.
+ * Before the fix: hpo_run_journaled removed every key of a configuration
+ * with WEIGHTS that was not a command-line option: the journal had the
+ * WARNING "tadah hpo: the task file run.task is a potential (it has
+ * WEIGHTS): its EFILTER -0.6 -0.4 and WDBFILE 2 prepared the training data
+ * of the fit that wrote it ...", and the record had no EFILTER and no
+ * WDBFILE. */
+TEST_CASE("Subcommand: a TASK hpo seeded from a potential with CONFIG applies "
+          "the task file's keys that prepare the training data",
+          "[TadahCLI][hpo][dataset-keys][task-file][training-record]") {
+  ScratchCwd cwd("dataset_keys_hpo_task");
+  write_hpo_potential_fixture();
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
+                                "trained.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  std::ofstream("run.task") << "TASK hpo\n"
+                               "  CONFIG trained.tadah\n"
+                               "  DBFILE db.tadah\n"
+                               "  WDBFILE 2\n"
+                               "  EFILTER -0.6 -0.4\n"
+                               "  HPOTARGET config.hpo\n"
+                               "  VALIDATION config.val\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  const std::string rep = reported(r);
+  INFO("--task run.task: status " << r.status << "\n" << rep);
+  REQUIRE(r.status == 0);
+  const std::string journal = slurp("hpo_run.log");
+  INFO("hpo_run.log:\n" << journal);
+  CHECK_FALSE(contains(rep, "is a potential"));
+  CHECK_FALSE(contains(journal, "is a potential"));
+  const std::string best = slurp("best_pot.tadah");
+  INFO("best_pot.tadah:\n" << best);
+  CHECK(record_of(best) ==
+        std::vector<std::string>{"DBFILE db.tadah", "EFILTER -0.6 -0.4",
+                                 "WDBFILE 2", "VALIDATION config.val",
+                                 "HPOTARGET config.hpo"});
 }
 #endif  // TADAH_ENABLE_NFP

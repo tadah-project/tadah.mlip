@@ -63,9 +63,8 @@ The layout is the same on every path (``tadah train``, ``predict``,
   true`` (``tadah train`` and ``tadah hpo``): the fit would pin weights of
   the normalised descriptors, and their conversion to weights of the raw
   descriptors moves them, so the potential would hold neither the
-  ``FIXWEIGHT`` values it records nor a zero covariance for them (until
-  2026-10-12 ``tadah train`` fitted such a configuration: a pinned ``Nb``
-  intercept of -7.6 was written as -7.649). ``NORM true`` with ``BF_Linear``
+  ``FIXWEIGHT`` values it records nor a zero covariance for them (1.5.0's
+  ``tadah train`` fitted such a configuration). ``NORM true`` with ``BF_Linear``
   or ``Kern_Linear`` requires ``BIAS true``: the weights fitted to the normalised descriptors
   are converted to weights of the raw descriptors, and the constant this
   moves goes into the intercepts. A linear potential with ``NORM true`` and
@@ -110,8 +109,7 @@ The layout is the same on every path (``tadah train``, ``predict``,
   starts with one intercept vector per species.
 
 A potential trained with ``BIAS true`` and two or more species by tadah
-1.5.x or earlier (or a 1.6.0 development build without per-species
-intercepts) has one intercept column shared by the species. ``pair_style
+1.5.x or earlier has one intercept column shared by the species. ``pair_style
 tadah`` has used one intercept column per species since 1.3.0-beta.1, so
 with ``pair_style tadah`` 1.3.0-beta.1 and later such a potential gave wrong
 LAMMPS energies and forces (a Ta-Nb ``D2_LJ`` potential: -622.5 eV/atom in

@@ -161,9 +161,7 @@ data is loaded, on every phase ASA runs in (:ref:`nfp_manual`).
 When ``Gener_Block > 1``, ``MAXTIME``/``STOPVAL`` act at block
 boundaries (``MAXEVAL`` stays exact).  ``MAXTIME`` keeps an evaluation
 from starting once the search has made one, as in the other optimisers:
-the first is made whatever ``MAXTIME`` (until 2026-10-12 a ``MAXTIME``
-that had passed before it ended the search with none, ``ASA stopped:
-MAXTIME exceeded after 0 host eval(s)``).  A stop (``MAXEVAL``,
+the first is made whatever ``MAXTIME``.  A stop (``MAXEVAL``,
 ``MAXTIME``, ``STOPVAL``, a signal, or an error raised by an
 evaluation) ends the run with ``IMMEDIATE_EXIT`` wherever ASA is,
 including while it samples the initial cost temperature, a random
@@ -180,10 +178,9 @@ stream (unset → non-reproducible ``random_device``), a stream of its own
 for that seed: not the numbers an ``INIT`` or ``RESTART`` block's
 ``RANDOM`` method draws for the same value.  Before 1.6.0 ASA drew an
 ``INIT`` block's ``RANDOM`` numbers for an equal seed (so a run with a
-given ``SEED`` takes another path than it did then), and until
-2026-10-12 a ``RESTART`` block's, whose ``SEED`` is new in 1.6.0.  In a
+given ``SEED`` takes another path than it did then).  In a
 ``PRESTAGE`` refinement ASA draws a stream of its own too, not the
-exploration's for the same seed (it did until 2026-10-12).  The first ``INIT``
+exploration's for the same seed (in 1.5.0 it did).  The first ``INIT``
 point becomes ASA's starting point and sets ``User_Initial_Parameters
 1``; without an ``INIT`` block that point is the configuration's values
 (``CONFIG``), as for every optimiser.  Only when the ``INIT`` chain yields

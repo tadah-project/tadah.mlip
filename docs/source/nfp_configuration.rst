@@ -5466,10 +5466,12 @@ inner training run. The lines of them that a potential has (a file with
 included with ``CONFIG`` by the configuration file or by a ``TASK hpo``
 section) are those of the fit that wrote it and are not read, with a
 ``WARNING`` on the console and in the journal; ``ESHIFT_ATOM``/
-``ESHIFT_DBATOM`` only beside its ``ESHIFT`` line
-(:ref:`retrain_from_potential`). The run's own -- on the command line, or on
-a line of the task file or of a configuration file that includes the
-potential -- apply.
+``ESHIFT_DBATOM`` with or without its ``ESHIFT`` line, so a seed's toggle
+derives no shift from the run's data (:ref:`retrain_from_potential`). Its
+``UNCERTAINTY`` line is not read either (``tadah hpo`` takes no
+``UNCERTAINTY``, and the warning does not name it). The run's own -- on the
+command line, or on a line of the task file or of a configuration file that
+includes the potential -- apply.
 
 Validation-set sanitisation
 ...........................

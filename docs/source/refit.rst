@@ -304,10 +304,12 @@ Put ``EMBF0 FREE`` in the refit configuration to fit the raw embedding of
 tadah 1.5.0 and earlier (dense mode then pins :math:`F(0)` softly to the
 table value, ``REFIT_CONSTRAIN_F0``); the written potential says
 ``EMBF0 FREE``. The ``refit.hpotarget`` header notes that under ``ZERO``
-absolute reference energies need ``ESHIFT_ATOM``/``ESHIFT_DBATOM``/
-``ESHIFT`` (not ``BIAS true``: its intercept columns, one per ``ATOM``
-species, precede the weights that the ``FIXINDEX``/``FIXWEIGHT`` and ``OPTIM
-FIXWEIGHT`` lines index).
+absolute reference energies need ``tadah hpo --eshift-atom`` or
+``--eshift-dbatom``, or an ``ESHIFT`` line in the configuration (the refit
+potential with a ``DBFILE`` line: a toggle line of it is not read, since it
+is a potential, :ref:`retrain_from_potential`), not ``BIAS true``: its
+intercept columns, one per ``ATOM`` species, precede the weights that the
+``FIXINDEX``/``FIXWEIGHT`` and ``OPTIM FIXWEIGHT`` lines index.
 
 Configuration reference
 -----------------------

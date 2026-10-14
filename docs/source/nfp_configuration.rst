@@ -410,7 +410,9 @@ differs from the run's triggers a WARNING: ``WARM`` takes only the
 reference (no conversion), so the seed's recorded loss need not be
 reproduced.  A HINT is printed when a DM_REAM model under ``ZERO`` is
 trained on data without ``BIAS`` or ``ESHIFT`` (see
-:ref:`hpo_load_transforms`); prefer ``ESHIFT*``, because ``BIAS true``
+:ref:`hpo_load_transforms`); prefer ``ESHIFT*`` (for a ``-c`` seed, a
+potential, the run's own ``--eshift-atom`` or ``--eshift-dbatom``, which the
+HINT names: the seed's toggle line is not read), because ``BIAS true``
 inserts intercept columns, one per ``ATOM`` species, before the descriptor
 weights (``FIXINDEX``/``FIXWEIGHT`` indices shift) and disables ``EAMFAST``.  Under ``ZERO`` a
 combination of embedding coefficients that only shifts :math:`F` by a

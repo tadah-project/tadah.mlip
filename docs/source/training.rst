@@ -217,7 +217,12 @@ are. A potential of an earlier version has its toggle as a key line beside
    intercept columns, one per ``ATOM`` species, precede the descriptor
    weights, so ``FIXINDEX``/``FIXWEIGHT`` indices shift; see
    :ref:`the bias term <bias_term>`).
-   ``tadah train`` prints a HINT when neither is present. A DM_REAM
+   ``tadah train`` prints a HINT when neither is present. When the
+   configuration is a potential (a ``tadah refit`` potential with a
+   ``DBFILE`` line, say), the toggle is the run's own: ``--eshift-atom`` or
+   ``--eshift-dbatom``, or a line of a file that includes the potential with
+   ``CONFIG``; a toggle line of the potential is not read
+   (:ref:`retrain_from_potential`). A DM_REAM
    configuration must also declare its density form ``RHOFORM`` (see
    `pot.tadah format`_). See :ref:`DM_REAM <dm_ream>`.
 
@@ -613,9 +618,13 @@ the task file or of a configuration file that includes the copy with
    tadah train -c retrain.train --eshift-dbatom -o pot2.tadah
 
 A toggle line of the copy itself is not read, with or without its
-``ESHIFT`` line, and the warning names it when it is ``true`` and the run
-gives no toggle of its own, among the keys the run can give; beside an
-``ESHIFT`` line the warning then ends ``The ESHIFT of the configuration, the
+``ESHIFT`` line. The warning names it when it is ``true``, among the keys
+the run can give, unless the run gives that toggle itself or sets the other
+one ``true``: the two choose one thing, the source of the shift, and exclude
+each other, so the run's own toggle is its choice (``--eshift-dbatom``
+beside a copy's ``ESHIFT_ATOM true`` derives the shift by the least-squares
+fit, and no warning names the copy's line). Beside an ``ESHIFT`` line a
+warning that names a toggle ends ``The ESHIFT of the configuration, the
 energy reference of the model, overrules ESHIFT_ATOM and ESHIFT_DBATOM: to
 derive ESHIFT from the data of this run, delete the ESHIFT line and give
 the run one of them``, since a toggle the run gives is overruled by the

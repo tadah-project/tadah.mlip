@@ -561,34 +561,59 @@ The keys that prepared the training data of the first fit (``EFILTER``,
 ``ZERO_COM_FORCE``, ``WDBFILE``, ``WDBFILE_AUTO``) are in its training
 record, not among its key lines, and a retrain does not take them from the
 potential, whatever version wrote it: a retrain works with any number of
-datasets, and with none of the first fit's filters or weights. Give the
-retrain's own on the command line, where they are recorded in the new
-potential's record::
+datasets, and with none of the first fit's filters or weights. The
+retrain's own are given as in any training run, and are recorded in the new
+potential's record: on the command line, or on a line of a task file or of
+a configuration file that includes the potential with ``CONFIG``, before or
+after the ``CONFIG`` line::
 
    tadah train -c retrain.train -o pot2.tadah --wdbfile 1 0.5 --efilter -9 -2
 
-A configuration that has ``WEIGHTS`` (a potential, a copy of one, or a file
-that includes one with ``CONFIG``; a ``tadah hpo -c`` seed too) is taken as
-a potential: those of the eight that its files give are ignored, and a
-``WARNING`` names those that are not at their default, for a potential of
-an earlier version, which has them as key lines, or a line you added to the
-copy::
+   # retrain.task: tadah --task retrain.task
+   TASK train
+     CONFIG pot.tadah
+     DBFILE db1.train db2.train db3.train
+     WDBFILE 1 0.5 1
+     EFILTER -9 -2
+     OUTFILE pot2.tadah
+
+A file that has ``WEIGHTS`` (a potential or a copy of one) is a potential,
+wherever the run reads it: given with ``-c``, or included with ``CONFIG`` by
+a configuration file or by a ``TASK train`` or ``TASK hpo`` section (a
+``tadah hpo`` seed too). Its lines of the eight are not read --
+``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` only when it has an ``ESHIFT`` line
+-- and every other line of the run, and the command line, applies as it
+would without them. A ``WARNING`` names the potential's lines that are not
+at their default and that the run does not give itself: a potential of an
+earlier version has them as key lines, and so has a copy you added one
+to::
 
    WARNING: tadah train: the configuration file retrain.train is a potential
    (it has WEIGHTS): its EFILTER 5 6 and WDBFILE 1 1 prepared the training
    data of the fit that wrote it, not of this run, and are ignored (tadah
    keeps such keys in a potential's training record, not as key lines). Give
-   --efilter or --wdbfile on the command line to apply one to this run (the
-   Training page of the documentation, Retraining from a potential).
+   --efilter or --wdbfile on the command line, or an EFILTER or WDBFILE line
+   in a configuration file that includes the potential with CONFIG, to apply
+   one to this run (the Training page of the documentation, Retraining from
+   a potential).
+
+For a potential that a file includes, the warning names both (``old.tadah,
+which the task file retrain.task includes with CONFIG, is a potential ...``)
+and says where the run's own go: a line of the including configuration
+file, or of the task file (``Write EFILTER or WDBFILE in the task file
+retrain.task to apply one to this run``: a run of a task file takes no
+command-line option).
 
 To derive ``ESHIFT`` from the data of the retrain instead of using the
 potential's, delete the ``ESHIFT`` line from the copy and set
-``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` (in the copy or on the command line):
-without an ``ESHIFT`` line the toggle is the only source of the shift and
-applies. Beside the ``ESHIFT`` line a toggle of the copy is ignored (the
-explicit values overrule it in any configuration), and the warning says so.
-To reproduce the first fit, give the keys its record lists on the command
-line.
+``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` (in the copy, in the file or task
+section that includes it, or on the command line): without an ``ESHIFT``
+line the toggle is the only source of the shift and applies. Beside the
+``ESHIFT`` line a toggle of the copy is not read, and the warning says so;
+one the run gives itself is overruled by the ``ESHIFT`` values as in any
+configuration (``Multiple ESHIFT sources set; precedence: explicit > ATOM >
+DBATOM.``). To reproduce the first fit, give the keys its record lists on
+the command line or in the file that includes the copy.
 
 .. versionchanged:: 1.6.0
    A potential had the keys that prepared its training data as key lines,
@@ -596,7 +621,11 @@ line.
    first fit's datasets stopped a retrain with another number of datasets
    (``WDBFILE size (2) does not match number of datasets (3).``), and the
    first fit's ``EFILTER``, ``FFILTER``, ``EWEIGHT_TEMP`` and
-   ``ZERO_COM_FORCE`` applied to the retrain's.
+   ``ZERO_COM_FORCE`` applied to the retrain's. A line of the run that
+   included such a potential with ``CONFIG`` was mixed with the potential's
+   line of the same key: one after the ``CONFIG`` line was appended to the
+   potential's values (``WDBFILE``) or refused (``Exceeded capacity for
+   key: EFILTER``), and one before it was replaced by the potential's.
 
 With ``LAMBDA -1`` the potential records the ``ALPHA`` and ``BETA``
 the evidence approximation found (the fit's :math:`\lambda = \alpha/\beta`;

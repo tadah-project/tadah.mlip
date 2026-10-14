@@ -5503,12 +5503,15 @@ The training-side load transforms (``LSCALE``, ``ESHIFT*``,
 ``WDBFILE_AUTO``, ``ZERO_COM_FORCE``) are documented under
 :ref:`load_transforms`; place them in ``--config`` (the training
 configuration) or give them on the command line. HPO applies them on every
-inner training run. When ``--config`` is a potential (it has ``WEIGHTS``: a
-``best_pot.tadah`` used as a seed), the ones its file gives are those of the
-fit that wrote it and are ignored, with a ``WARNING`` on the console and in
-the journal; ``ESHIFT_ATOM``/``ESHIFT_DBATOM`` only beside its ``ESHIFT``
-line (:ref:`retrain_from_potential`). Give the run's own on the command
-line.
+inner training run. The lines of them that a potential has (a file with
+``WEIGHTS``: a ``best_pot.tadah`` given with ``--config`` as the seed, or
+included with ``CONFIG`` by the configuration file or by a ``TASK hpo``
+section) are those of the fit that wrote it and are not read, with a
+``WARNING`` on the console and in the journal; ``ESHIFT_ATOM``/
+``ESHIFT_DBATOM`` only beside its ``ESHIFT`` line
+(:ref:`retrain_from_potential`). The run's own -- on the command line, or on
+a line of the task file or of a configuration file that includes the
+potential -- apply.
 
 Validation-set sanitisation
 ...........................
@@ -5982,8 +5985,9 @@ Practical tips
   names.  Add the ``DBFILE`` lines of the run's ``-c`` configuration (the
   record's ``DBFILE`` line, in every archive too) to a copy of it and train
   it with ``tadah train -c``, giving the dataset keys the record lists
-  (``EFILTER``, ``WDBFILE``, ...) on the command line: a retrain takes none
-  from the potential (:ref:`retrain_from_potential`).
+  (``EFILTER``, ``WDBFILE``, ...) on the command line or in a file that
+  includes the copy with ``CONFIG``: a retrain does not read the
+  potential's (:ref:`retrain_from_potential`).
 
 .. _hpo_stopping:
 

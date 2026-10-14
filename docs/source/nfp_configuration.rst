@@ -2682,11 +2682,7 @@ one a finite number (``MAXTIME`` a positive one).
        configuration's point is, when it lies at the centre of the box and
        a calibration or an exploration evaluated it), which it counts as
        an evaluation.  Until the run kept one record (2026-10-12) a
-       refinement evaluated its start again and needed 2n + 2; until
-       2026-10-13 a StoGO refinement or calibrated StoGO search was taken
-       to start at its candidate or seed point, one evaluation short, and
-       one ``each MULTISTART start`` WARNING claimed the first start
-       too.
+       refinement evaluated its start again and needed 2n + 2.
        The warning covers every phase with a budget of its own: the
        ``STRATEGY``-level optimiser, each ``MULTISTART`` start (its
        ``BUDGET_PER_START`` or its share of ``MAXEVAL``), the ``PRESTAGE``

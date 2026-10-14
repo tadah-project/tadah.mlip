@@ -94,10 +94,9 @@ The layout is the same on every path (``tadah train``, ``predict``,
   refused, add structures of other compositions or set ``NORM false``.
   ``ESHIFT_DBATOM`` is no remedy: its least-squares fit of the species
   energies is singular on such data and sets every ``ESHIFT`` to 0 (with a
-  WARNING), so the constant goes into the descriptor weights. Until
-  2026-10-12 every refusal named ``ESHIFT_DBATOM``, ``BIAS false`` and the
-  pin, under ``NORM true`` too. ``tadah train`` checks before it computes
-  any descriptor, ``tadah hpo`` at startup. A non-linear kernel's intercepts are those of the basis
+  WARNING), so the constant goes into the descriptor weights.
+  ``tadah train`` checks before it computes any descriptor, ``tadah hpo``
+  at startup. A non-linear kernel's intercepts are those of the basis
   its fit draws, which starts with the intercept vectors (see
   :ref:`Non-linear models <nonlinear_models>`), whatever basis a potential
   used as the training configuration holds: a dot-product kernel's weights

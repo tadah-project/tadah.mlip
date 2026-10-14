@@ -8464,6 +8464,122 @@ TEST_CASE("Subcommand: hpo -c reads no UNCERTAINTY, ESHIFT_ATOM or "
                                  "HPOTARGET config.hpo"});
 }
 
+/* Pins: the documented route from a refit to tadah hpo says how to give a
+ * DM_REAM potential under EMBF0 ZERO a per-atom reference energy, and the
+ * advice works. On the outputs of a dense refit of the small Ta setfl
+ * (pot.tadah: DM_REAM, EMBF0 ZERO, BIAS false, no ESHIFT, every weight
+ * pinned), with config.train being pot.tadah plus "DBFILE db.tadah" (three
+ * Ta dimers, retrain_dataset) and t.hpotarget refit.hpotarget with MAXEVAL
+ * 1:
+ *   - refit.hpotarget has the line "# DFT totals) give tadah hpo
+ *     --eshift-atom or --eshift-dbatom (an" and no "add ESHIFT_ATOM";
+ *   - `tadah train -c config.train -o p2.tadah` exits 0 with the HINT
+ *     "WARNING: HINT: EMBF0 ZERO fixes the DM_REAM isolated-atom energy at
+ *     0 ... If the reference energies are absolute (e.g. DFT totals), set
+ *     ESHIFT or give the run ESHIFT_ATOM or ESHIFT_DBATOM (--eshift-atom,
+ *     --eshift-dbatom: a potential's own line of them is not read), all
+ *     compatible with EAMFAST, or BIAS true ...";
+ *   - `tadah hpo -c config.train --hpotarget t.hpotarget --validation
+ *     config.val` exits 0 with the journal HINT "EMBF0 ZERO fixes ... If
+ *     reference energies are absolute (e.g. DFT totals), set ESHIFT or give
+ *     the run ESHIFT_ATOM or ESHIFT_DBATOM (--eshift-atom, --eshift-dbatom:
+ *     a potential's own line of them is not read), all compatible with
+ *     EAMFAST. ...";
+ *   - with --eshift-dbatom both exit 0 with no EMBF0 HINT, and p3.tadah and
+ *     best_pot.tadah have an ESHIFT line and "ESHIFT_DBATOM true" in their
+ *     training record (a pin: the run's own toggle applied before the fix
+ *     too).
+ * Before the fix: the hpotarget said "# DFT totals) add ESHIFT_ATOM,
+ * ESHIFT_DBATOM or ESHIFT to <config>." and both HINTs "set ESHIFT_ATOM,
+ * ESHIFT_DBATOM or ESHIFT": a toggle line added to config.train, a
+ * potential, is not read, so that advice applies no shift; the text CHECKs
+ * fail. */
+TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
+          "potential: the EMBF0 ZERO advice names the run's toggles",
+          "[TadahCLI][refit][hpo][embf0][dataset-keys]") {
+  ScratchCwd cwd("refit_embf0_eshift_advice");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun fit = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    INFO("refit: status " << fit.status << "\n" << reported(fit));
+    REQUIRE(fit.status == 0);
+  }
+  const std::string target = slurp("refit.hpotarget");
+  INFO("refit.hpotarget:\n" << target);
+  CHECK(contains(target, "# DFT totals) give tadah hpo --eshift-atom or "
+                         "--eshift-dbatom (an\n"));
+  CHECK_FALSE(contains(target, "add ESHIFT_ATOM"));
+  REQUIRE(contains(target, "MAXEVAL 200\n"));
+  std::ofstream("t.hpotarget")
+      << replace_key_line(target, "MAXEVAL", "    MAXEVAL 1");
+  const std::string pot = slurp("pot.tadah");
+  REQUIRE(line_tokens(pot, "ESHIFT").empty());
+  REQUIRE(line_tokens(pot, "EMBF0") ==
+          std::vector<std::string>{"EMBF0", "ZERO"});
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("val.tadah") << retrain_dataset();
+  std::ofstream("config.val") << "DBFILE val.tadah\n";
+  std::ofstream("config.train") << pot << "DBFILE db.tadah\n";
+  const std::string hint = "EMBF0 ZERO fixes the DM_REAM isolated-atom "
+                           "energy at 0";
+  const std::string toggles =
+      "set ESHIFT or give the run ESHIFT_ATOM or ESHIFT_DBATOM "
+      "(--eshift-atom, --eshift-dbatom: a potential's own line of them is "
+      "not read), all compatible with EAMFAST";
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "p2.tadah"});
+    const std::string rep = reported(t);
+    INFO("train: status " << t.status << "\n" << rep);
+    REQUIRE(t.status == 0);
+    CHECK(contains(rep, "HINT: " + hint));
+    CHECK(contains(rep, "If the reference energies are absolute (e.g. DFT "
+                        "totals), " + toggles + ", or BIAS true"));
+  }
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                                "p3.tadah", "--eshift-dbatom"});
+    const std::string rep = reported(t);
+    INFO("train --eshift-dbatom: status " << t.status << "\n" << rep);
+    REQUIRE(t.status == 0);
+    CHECK_FALSE(contains(rep, hint));
+    const std::string p3 = slurp("p3.tadah");
+    INFO("p3.tadah:\n" << p3);
+    CHECK(line_tokens(p3, "ESHIFT").size() == 2u);  // ESHIFT and one value
+    const std::vector<std::string> rec = record_of(p3);
+    CHECK(std::find(rec.begin(), rec.end(), "ESHIFT_DBATOM true") !=
+          rec.end());
+  }
+  {
+    const CliRun h = run_tadah({"tadah", "hpo", "-c", "config.train",
+                                "--hpotarget", "t.hpotarget", "--validation",
+                                "config.val"});
+    INFO("hpo: status " << h.status << "\n" << reported(h));
+    REQUIRE(h.status == 0);
+    const std::string journal = slurp("hpo_run.log");
+    INFO("hpo_run.log:\n" << journal);
+    CHECK(contains(journal, hint));
+    CHECK(contains(journal, "If reference energies are absolute (e.g. DFT "
+                            "totals), " + toggles + ". BIAS true"));
+  }
+  const CliRun h = run_tadah({"tadah", "hpo", "-c", "config.train",
+                              "--hpotarget", "t.hpotarget", "--validation",
+                              "config.val", "--eshift-dbatom"});
+  INFO("hpo --eshift-dbatom: status " << h.status << "\n" << reported(h));
+  REQUIRE(h.status == 0);
+  const std::string journal = slurp("hpo_run.log");
+  INFO("hpo_run.log:\n" << journal);
+  CHECK_FALSE(contains(journal, hint));
+  const std::string best = slurp("best_pot.tadah");
+  INFO("best_pot.tadah:\n" << best);
+  CHECK(line_tokens(best, "ESHIFT").size() == 2u);
+  const std::vector<std::string> rec = record_of(best);
+  CHECK(std::find(rec.begin(), rec.end(), "ESHIFT_DBATOM true") != rec.end());
+}
+
 /* Pins: `tadah --task run.task`, its TASK hpo section "CONFIG trained.tadah"
  * (the potential `tadah train -c config.tadah` writes,
  * write_hpo_potential_fixture), "DBFILE db.tadah", "WDBFILE 2", "EFILTER

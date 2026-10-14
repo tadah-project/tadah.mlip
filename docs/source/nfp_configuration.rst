@@ -5814,7 +5814,8 @@ the training datasets and these settings of the run: like every potential
 it has no ``DBFILE`` line (:ref:`retrain_from_potential`), and no
 ``HPOTARGET``, ``VALIDATION`` or ``VERBOSE`` line.  Its
 :ref:`training record <training_record>`, the comment block right above
-its key lines, which nothing reads, names them as the run was given them:
+its key lines, from which no key is read, names them as the run was given
+them:
 the training ``DBFILE``, the ``--validation`` and ``--hpotarget`` files,
 and ``-v`` (and ``NUMERIC``, ``AUDIT``, ``AUDIT_SAMPLE`` and
 ``HEALTH_LOG`` when the run set them); the journal's FILES section names

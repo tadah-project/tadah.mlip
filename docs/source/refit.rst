@@ -1158,9 +1158,13 @@ the fit that produced them still describes them, and the edit's own ``-o``,
 ``edited by`` lines, newest first). A ``DBFILE``, ``UNCERTAINTY``,
 ``VERBOSE``, ``NUMERIC`` (and so on) key line of an input an earlier
 version wrote is not a key line of the edit: the edit's record lists it.
-An input whose record has an opening line without its end line, or a key
-line inside the block, is refused before anything is written, naming the
-file and the line. The potential of a refit of an EAM file records the
+What the input's record says is copied as it is, edits of yours included.
+An input whose record is malformed is refused before anything is written,
+naming the file and the lines: an opening line without its end line (the
+refusal names the opening line and the first line after it that is not a
+comment, the input's first key line when only the end line was deleted:
+restore the end line before it), an end line without its opening line, or
+a line inside the block that does not start with ``#``. The potential of a refit of an EAM file records the
 refit's ``-o``, ``-v`` and ``NUMERIC`` when they were given (above, the
 ``OUTFILE`` of ``tadah refit -c config.refit -o pot.tadah``).
 

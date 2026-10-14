@@ -290,7 +290,8 @@ required). The file is round-tripped through ``tadah predict`` and
 ``pair_style tadah`` — every field needed to reproduce the prediction
 is stored here. Above the key lines, a block of comment lines, the
 :ref:`training record <training_record>`, names the datasets and the
-settings of the run that wrote it, for your record; nothing reads it.
+settings of the run that wrote it, for your record; no key is read from
+it.
 
 A minimal single-species, two-body, kernel-ridge example::
 
@@ -382,14 +383,20 @@ and ``tadah hpo`` (``best_pot.tadah``, its rank-local copies and the
 writes no block. ``tadah refit --edit`` copies the record of its input
 (:ref:`refit_edit`).
 
-No reader of a potential reads the block: ``tadah predict``, ``tadah train
--c``, ``tadah hpo -c``, ``tadah refit --edit`` and ``pair_style tadah`` skip
-every line that starts with ``#``. A potential loads, predicts and retrains
-as it would without the block, and the ``VERBOSE`` of its record does not
-set the log level. A potential without a record (one of an earlier
-version) loads as before. Editing the block changes nothing for tadah, but
-``refit --edit`` refuses a file whose record has no end line, or a key line
-inside it, naming the file and the line.
+No key is read from the block: ``tadah predict``, ``tadah train -c``,
+``tadah hpo -c``, ``pair_style tadah`` and ``tadah refit --edit``, when they
+read the potential's keys, skip every line that starts with ``#``. A
+potential loads, predicts and retrains as it would without the block, and
+the ``VERBOSE`` of its record does not set the log level. A potential
+without a record (one of an earlier version) loads as before. ``tadah refit
+--edit`` alone reads the block itself, to copy it into the edit
+(:ref:`refit_edit`): what you write in it is carried into the edited
+potential, and the edit is refused, naming the file and the lines, when the
+block is malformed: an opening line without its end line (since every
+writer puts the key lines right after the record, deleting the end line
+makes the refusal name the opening line and the potential's first key
+line), an end line without its opening line, or a line inside the block
+that does not start with ``#``. Nothing else reads the block.
 
 A potential of an earlier version may have some of these keys as key
 lines (an ``M_BLR`` potential its ``DBFILE``, a potential of tadah 1.5.x
@@ -411,8 +418,8 @@ evaluation).
    The training record is new (MK's decision of 2026-10-14). tadah 1.5.x
    wrote some of these keys as key lines (the ``DBFILE`` of an ``M_BLR``
    potential, ``UNCERTAINTY``, a ``best_pot.tadah``'s ``HPOTARGET``,
-   ``VALIDATION`` and ``VERBOSE``, ``AUDIT_SAMPLE``) and left the others
-   out; 1.6.0 development builds between 2026-10-12 and 2026-10-14 left all
+   ``VALIDATION``, ``VERBOSE`` and ``NUMERIC``, ``AUDIT_SAMPLE``) and left
+   the others out; 1.6.0 development builds between 2026-10-12 and 2026-10-14 left all
    of them out of the potential.
 
 .. _retrain_from_potential:
@@ -423,8 +430,9 @@ Retraining from a potential
 A potential's key lines are the model's settings and its fit, not the
 training data: no potential that ``tadah train``, ``tadah hpo`` or ``tadah
 refit`` writes has a ``DBFILE`` line, whichever the model (its
-:ref:`training record <training_record>`, a comment, names the datasets of
-the run that wrote it). A potential is a training configuration without its
+:ref:`training record <training_record>`, a comment, names the datasets its
+weights were fitted to, when there were any: a refit has none, and a
+potential of an earlier version has no record). A potential is a training configuration without its
 datasets, so it retrains with the ``DBFILE`` lines of the retrain added to a
 copy of it::
 
@@ -443,13 +451,14 @@ before it reads anything::
 
    The training configuration has no DBFILE: tadah train fits the datasets
    it lists. A potential has no DBFILE line (no potential tadah writes one;
-   the DBFILE of the run that wrote it is in its training record, a comment
-   block tadah does not read): to train from one, add a DBFILE line to a
-   copy of it; a potential of tadah refit or refit --edit also pins every
-   weight with its FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo
-   coefficient search, so delete them from the copy for the fit to change
-   the weights (the Training page of the documentation, Retraining from a
-   potential).
+   its training record, the comment block above its key lines, lists the
+   datasets its weights were fitted to in a '# DBFILE' line when there were
+   any: a refit has none, and a potential of an earlier version has no
+   record): to train from one, add a DBFILE line to a copy of it; a
+   potential of tadah refit or refit --edit also pins every weight with its
+   FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo coefficient search,
+   so delete them from the copy for the fit to change the weights (the
+   Training page of the documentation, Retraining from a potential).
 
 A potential that ``tadah refit`` or ``tadah refit --edit`` writes, and the
 ``best_pot.tadah`` of a ``tadah hpo`` run that pins every weight, has

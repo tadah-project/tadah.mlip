@@ -156,7 +156,7 @@ Root-level loss control:
        too, never a NaN/Inf clamping, also where the mean of its
        substituted values overflows (two failed terms, or the ``L2`` of a
        ``--failscore`` of the largest double, under the default
-       ``FAILSCORE``); until 2026-10-12 such an evaluation was counted,
+       ``FAILSCORE``); 1.5.0 counted such an evaluation,
        and warned about with bound hints, as one that produced NaN/Inf,
        and under ``FAILSCORE_GRADING ON`` as a graded failure as well.
        ``DLIB:GFS`` hands dlib a finite stand-in for a failed
@@ -572,9 +572,7 @@ coefficients directly.  Under ``OALGO 3`` each evaluation still fits:
 an ``OALGO 3`` fit with every weight pinned gives the potential a zero
 ``WCOV`` and the ``WNOISE`` of the pinned weights' residuals on the
 training data, as ``tadah train`` writes them, so ``tadah predict
---error`` can use a ``best_pot.tadah`` (the noise alone); until 2026-10-12
-the evaluation skipped the fit there too, and the potential had neither,
-while a non-linear ``M_KRR`` kernel, whose basis the fit draws, had both:
+--error`` can use a ``best_pot.tadah`` (the noise alone):
 
 .. code-block:: none
 
@@ -747,7 +745,7 @@ found the first run's worker processes still running
 ``hpo_run.log`` counts, times and reports that run alone: its
 DIAGNOSTICS census and verdict, PERFORMANCE timings, milestones, BEST
 lines and RESULT best, and the rate limit of its hot-variable
-``rejecting`` warnings. Until 2026-10-12 they went on from the first
+``rejecting`` warnings. In 1.5.0 they went on from the first
 run's, so a second run that failed 4 of 4 evaluations read ``Total
 evaluations : 7``, ``Unusable losses : 4 (57.1%)``, ``[!] The majority
 of evaluations failed``, and gave the first run's best (``Best total
@@ -1200,8 +1198,6 @@ order.  So a script with several bad variables is put right in one run:
 
    PC_LAMMPS task failed (rb.in, occurrence 1): reading --varloss E after the script: its value 'abc' is not a number; reading --failvar F1 after the script: ERROR on proc 0: Variable F1: Divide by 0 in variable formula (src/variable.cpp:2567); reading --failvar F2 after the script: its value 'xyz' is not a number
 
-Until 2026-10-12 only the first was named.
-
 Before 1.6.0 such a value was skipped: a ``--varloss`` one added
 ``FAILSCORE`` to the mean of the evaluation's terms, which with other terms
 fell below ``0.999 × FAILSCORE`` and counted as a feasible loss; a hot
@@ -1566,9 +1562,7 @@ gate rejects before training (``BUMPGATE CANDIDATE``, ``RHOGATE``,
 ``RHOBARGATE``) has no fit to differentiate: under ``ANALYTICAL`` it is a
 point without a usable gradient (:ref:`hpo_gradient_not_finite`), from
 which NLopt and Ceres step back, and ``HYBRID`` takes finite differences
-there.  Until 2026-10-07 such a candidate ended an ``ANALYTICAL`` run
-``FAILED -- GRAD_STRATEGY=ANALYTICAL: no analytical gradient for N
-parameters at this point``.
+there.
 
 The knobs, most important first
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2455,16 +2449,14 @@ is gradient-based. …``) and the refusal of a multi-rank launch
    HPOEngine error: Error on line 17: the PRESTAGE refinement: DLIB:BFGS does not support MAXTIME
    Line: ENDOPTIMIZER
 
-Until 2026-10-07 these refusals named the phase and no line; the check of
-the ``ANALYTICAL`` setup, the ``STEP`` rules, the gradient rules and the
-multi-rank refusal named none until 2026-10-12.
+The refusals 1.5.0 had named no line and no phase.
 
 A refusal of an ``INIT`` or ``RESTART`` block's ``METHOD`` entry, which
 startup makes when it draws the chain after reading the file, names the
 ``METHOD`` line in the same form: a ``WARM`` file that is missing or
 unreadable, a ``WARM`` seed whose ``RHOFORM`` the run refuses or that
 ``WARM_ON_MISMATCH error`` refuses, a ``SOBOL`` block beyond the end of
-the sequence (until 2026-10-12 they named no line):
+the sequence (in 1.5.0 they named no line):
 
 .. code-block:: none
 
@@ -2483,13 +2475,9 @@ optimise a zero-dimensional search space (there is no OPTIM line; …).
 Add at least one OPTIM line, or use a TADAH-native optimiser, which
 evaluates the INIT start point once.``  The ``TADAH`` optimisers evaluate
 the ``INIT`` point once; ``ASA`` refuses such a space itself (``ASA:ASA
-requires at least one OPTIM dimension``).  Until 2026-10-12 only the
-``STRATEGY``-level optimiser was checked, without a line (``No OPTIM
-line: the search space has zero dimensions, and LIB NLOPT cannot …``): an
-``EXPLORE`` block's NLopt optimiser or ``DLIB:GFS`` passed startup and
-failed in the run (``NULL args to nlopt_optimize_``, dlib's ``The vectors
-can't be empty``), and an ``EXPLORE`` block's ``DLIB:BFGS`` was refused
-as ``… requires non-empty, same-sized low/high bounds``.
+requires at least one OPTIM dimension``).  In 1.5.0 such a search passed startup and failed in the run (``NULL args
+to nlopt_optimize_``, dlib's ``The vectors can't be empty``, ``…
+requires non-empty, same-sized low/high bounds``).
 
 Before 1.6.0 these backend checks ran when that optimiser started: after
 the data were loaded and any ``NOISE CALIBRATION`` evaluations, for the
@@ -2541,7 +2529,7 @@ one a finite number (``MAXTIME`` a positive one).
           HPOEngine error: Error on line 10: the STRATEGY-level optimiser: unknown optimiser NLOPT:LD_FOO: LIB NLOPT has no ALGO LD_FOO; `tadah explain ALGO` lists the optimisers
           Line: ENDOPTIMIZER
 
-       Until 2026-10-12 it was ``unknown optimizer NLOPT:LD_FOO (not
+       In 1.5.0 it was ``unknown optimizer NLOPT:LD_FOO (not
        registered in optimizer_caps)``, with no line.
    * - ``MAXEVAL`` (integer, 1 to 2\ :sup:`31` − 1)
      - Maximum number of evaluations: an integer from 1 to 2147483647,
@@ -2603,7 +2591,7 @@ one a finite number (``MAXTIME`` a positive one).
        MAXEVAL_REACHED -- maximum evaluations exhausted after 45 of MAXEVAL
        60 evaluation(s); NLopt counts its calls, and 15 of them asked for
        points the run had evaluated and were answered without an
-       evaluation``).  Until 2026-10-12 every repeat was evaluated and
+       evaluation``).  In 1.5.0 every repeat was evaluated and
        counted.
 
        A gradient search evaluates the loss at its starting point and the
@@ -2681,8 +2669,7 @@ one a finite number (``MAXTIME`` a positive one).
        centre StoGO starts at is a point the run has evaluated (the
        configuration's point is, when it lies at the centre of the box and
        a calibration or an exploration evaluated it), which it counts as
-       an evaluation.  Until the run kept one record (2026-10-12) a
-       refinement evaluated its start again and needed 2n + 2.
+       an evaluation.
        The warning covers every phase with a budget of its own: the
        ``STRATEGY``-level optimiser, each ``MULTISTART`` start (its
        ``BUDGET_PER_START`` or its share of ``MAXEVAL``), the ``PRESTAGE``
@@ -2698,7 +2685,7 @@ one a finite number (``MAXTIME`` a positive one).
           WARNING   the STRATEGY-level optimiser NLOPT:LD_LBFGS: MAXEVAL 4 takes no step: its gradient search evaluates the loss at a starting point (1 evaluation) and the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 6 or more
           WARNING   the STRATEGY-level optimiser NLOPT:GD_MLSL: MAXEVAL 9 takes no step of a local search: MLSL evaluates its starting point and its first 4 samples without a gradient (5 evaluations; POPULATION 4, NLopt's default), then its first local search, from one of them, takes the loss there from the run's record (no evaluation) and evaluates the gradient there (4 evaluations: central differences in 2 dimensions, GRAD_STRATEGY NUMERICAL) before it evaluates a point it steps to, which needs MAXEVAL 10 or more
 
-       Until 2026-10-12 nothing said so.
+       1.5.0 gave no such warning.
 
        Leave the key out for no evaluation limit.  The run then ends on
        the optimiser's other stops (``MAXTIME``, ``STOPVAL``, a
@@ -2740,11 +2727,7 @@ one a finite number (``MAXTIME`` a positive one).
        but the optimiser's first starts once that many seconds have
        passed since the optimiser started; the evaluations already
        running finish.  Every optimiser makes its first evaluation, so a
-       ``MAXTIME`` that has passed before it (``MAXTIME 1e-9``) gives one;
-       until 2026-10-12 ``ASA``, and ``DLIB:GFS`` without an ``INIT``
-       point, made none then: a ``PLAIN`` run ended ``STOPPED -- no
-       evaluation produced a usable loss`` (status 1), and a ``PRESTAGE``
-       exploration had nothing to refine.
+       ``MAXTIME`` that has passed before it (``MAXTIME 1e-9``) gives one.
        ``DLIB:BFGS`` and ``CERES`` reject it.  ``TADAH:RANDOM``,
        ``TADAH:GRID`` and ``DLIB:GFS`` accepted it and ignored it before
        1.6.0.
@@ -2822,11 +2805,9 @@ one a finite number (``MAXTIME`` a positive one).
        (:ref:`restart_decorator`).  An optimiser's random numbers are
        its own: not those an ``INIT`` or ``RESTART`` block's ``RANDOM`` or
        ``LHS`` method draws for the same value (before 1.6.0
-       ``TADAH:RANDOM`` and ``ASA`` drew an ``INIT`` block's generator,
-       and until 2026-10-12 a ``RESTART`` block's, whose ``SEED`` is new
-       in 1.6.0), and in the ``PRESTAGE``
+       ``TADAH:RANDOM`` and ``ASA`` drew an ``INIT`` block's generator), and in the ``PRESTAGE``
        refinement not those of the exploration for the same value
-       (until 2026-10-12 they were).  Inside an ``INIT`` block
+       (in 1.5.0 they were).  Inside an ``INIT`` block
        the same key seeds the stochastic init methods instead; of the
        optimisers, only NLopt reads it, and only when its block has no
        ``SEED`` of its own.  Inside a ``RESTART`` block it seeds the
@@ -2927,10 +2908,7 @@ one a finite number (``MAXTIME`` a positive one).
        whose normal equations are not positive definite in the
        gradient's implicit-function solve; NLopt and Ceres step back
        from it and go on, or stop there, and ``HYBRID`` differences
-       every parameter there.  Until 2026-10-07 such a candidate ended
-       the run ``FAILED -- GRAD_STRATEGY=ANALYTICAL: no analytical
-       gradient for N parameters at this point``, and until 2026-10-12
-       such a fit did.
+       every parameter there.
    * - ``PARAM`` (string value)
      - Algorithm-specific key/value (e.g. ``PARAM fd_step 1e-3``).  A
        value that starts like a number must be a finite number
@@ -3031,13 +3009,12 @@ the help of ``TADAH:RANDOM``.
           HPOEngine error: Error on line 10: the STRATEGY-level optimiser: NLOPT:LN_NEWUOA_BOUND is refused: NLopt 2.10 plans each LN_NEWUOA_BOUND step with a nested LD_MMA run that has no time limit and sees no stop request, ... Use NLOPT:LN_BOBYQA, Powell's bound-constrained successor of NEWUOA (its STEP rescales each dimension instead of setting one radius)
           Line: ENDOPTIMIZER
 
-       Until 2026-10-12 the refusal also offered ``LN_NEWUOA`` where the
-       search may leave the box.  ``LN_NEWUOA`` is refused as well, in
+       ``LN_NEWUOA`` is refused as well, in
        every phase and at the same lines, naming ``LN_BOBYQA``: NLopt 2.10
        runs it without the ``OPTIM`` box (``optimize.c`` calls NEWUOA with
        no bounds), so its evaluations leave the box and the best potential
        can lie outside the bounds the configuration sets, and it needs two
-       ``OPTIM`` dimensions or more.  Until 2026-10-12 it was accepted with
+       ``OPTIM`` dimensions or more.  1.5.0 accepted it with
        a startup WARNING: a 2-D run of ``MAXEVAL 25`` made 20 evaluations
        outside the box and wrote a ``best_pot.tadah`` with ``RCUT2B``
        8.11 for an ``OPTIM`` box of [4, 6], and a 1-D run passed startup
@@ -3095,10 +3072,7 @@ the help of ``TADAH:RANDOM``.
        ``SUBSPACE_DOGLEG``) are refused, in every phase and at the line
        that closes the block, naming the four above: they minimise a sum
        of squared residuals, with their derivatives, and are degenerate
-       over the one scalar loss HPO gives an optimiser.  Until 2026-10-12
-       the run stopped with ``unknown optimizer
-       CERES:LEVENBERG_MARQUARDT (not registered in optimizer_caps)``,
-       with no line and no alternatives:
+       over the one scalar loss HPO gives an optimiser:
 
        .. code-block:: none
 
@@ -3607,8 +3581,7 @@ does with a failed evaluation:
   (:ref:`hpo_repeat_points`); at the bound the box holds the step, so no
   line search runs from there.  A run that evaluates every repeat again
   (a ``PC_LAMMPS`` line, a ``--skip-rel`` filter) evaluates the bound 23
-  times, 28 evaluations in all (31 until 2026-10-12, when a line search
-  from a point the box holds was still run); ``LD_SLSQP``
+  times, 28 evaluations in all; ``LD_SLSQP``
   stops after 3 evaluations
   with ``STOPPED -- bug: more than iter SQP iterations (algorithm
   converged; …)``, its best the stencil point 1.6, short of the optimum at
@@ -3644,12 +3617,7 @@ RCUT2B = 5.2 is 9.99375e+15: a graded failure, whose grading the
 analytical gradient does not see; GRAD_STRATEGY HYBRID takes finite
 differences there)``), and ``HYBRID`` forms no analytical gradient and
 differences every parameter, which gives the graded slope, or the flat
-failure region above.  Until 2026-10-12 both kept the analytical gradient
-there, the gradient of the terms that did not fail: on a trained
-``OALGO 4`` model whose ``PC_OBSERVABLE`` term fails over the whole box,
-a search under the default strategy ended as converged on the graded loss
-(``DLIB:BFGS`` ``FTOL_ABS reached`` after 4 evaluations, ``LD_LBFGS``
-``algorithm converged`` after 12, ``CERES:LBFGS`` leaving the box).  A
+failure region above.  A
 candidate a gate rejected before training is a graded failure without a
 fit, and so without an analytical gradient either way: ``ANALYTICAL``
 gives it none (at the loss the optimiser has just evaluated, the graded
@@ -3664,11 +3632,6 @@ fail where the fit's own succeeded) the journal says so in a ``WARNING``
 at the first such point and then at the 2nd, 4th, 8th, …::
 
    WARNING   Analytical gradient could not be formed at this point (occurrence 1): the implicit-function solve has no solution at this point: the normal equations of the fit (Phi^T Phi + LAMBDA I over the training rows, LAMBDA = 0) are not positive definite in the gradient's Cholesky factorisation; GRAD_STRATEGY HYBRID takes finite differences for every parameter there, and under ANALYTICAL the point has no usable gradient
-
-Until 2026-10-12 ``ANALYTICAL`` stopped the run there (``FAILED --
-GRAD_STRATEGY=ANALYTICAL: no analytical gradient for N parameters at this
-point``), and the journal said nothing (an error of the gradient's
-computation was written at every gradient).
 
 An evaluation with a failed term is a failed evaluation — a failed
 ``PC_LAMMPS`` simulation (``--failscore``, :ref:`pc_lammps_options`) or a
@@ -3788,10 +3751,9 @@ start that such a gradient ended shows only in its journal warning when a
 later start runs to its own end).  A signal or an error decides the ending
 first.
 
-On v1-dev until 2026-10-07 only a loss that was not finite, or a
-difference that overflowed, failed a finite-difference gradient, the
-analytical strategies did not read the loss, and the status read
-``STOPPED -- gradient not finite: …``.  The run clamps every failed
+In 1.5.0 only a loss that was not finite, or a difference that
+overflowed, failed a finite-difference gradient, and the analytical
+strategies did not read the loss.  The run clamps every failed
 evaluation to a finite ``FAILSCORE``, so a start inside the failure region
 got the zero difference of two failures: from 1.25 in the example above
 ``DLIB:BFGS`` made 8 evaluations (1.25, then 1.25, 1.45 and 1.05 for its
@@ -3902,7 +3864,7 @@ so an exploration that takes an earlier round's path still hands its
 candidates on.  That holds only when every evaluation of the run is a
 function of its point, as the fit of the candidate and the validation
 metrics are.  A run evaluates every
-repeat again, as it did until 2026-10-12, when its loss has
+repeat again, as every run of 1.5.0 did, when its loss has
 
 * a ``PC_LAMMPS`` line: its scripts run on LAMMPS instances kept from
   one evaluation to the next, which keep what a script set there (LAMMPS
@@ -3997,8 +3959,8 @@ stopped: no step within the OPTIM box after 24 evaluation(s): from A =
 (5.551115122e-14 of the steepest-descent step) found no lower loss and
 came back to the point``, at the minimum of a loss whose finite
 difference there is not zero).  An iteration that asks for no evaluation
-checks for a ``SIGINT``/``SIGTERM`` as an evaluation does.  Until
-2026-10-12 such a search ran to ``MAXEVAL``, every iteration evaluating
+checks for a ``SIGINT``/``SIGTERM`` as an evaluation does.  In 1.5.0
+such a search ran to ``MAXEVAL``, every iteration evaluating
 the point again, and without ``MAXEVAL`` it never ended.  Every step that
 moves the point is dlib's own.
 
@@ -4857,10 +4819,10 @@ the ``MAXTIME`` row), so an exploration that asked for none -- no
 evaluation, and no call answered from the record -- is an internal
 error, and the run ends ``FAILED -- PRESTAGE: the exploration (EXPLORE
 block) LIB:ALGO returned without evaluating a point, so it has no
-candidate to refine (it asked for no point: …)`` (status 1); until
-2026-10-12 the refinement ran from the ``INIT`` points after a
+candidate to refine (it asked for no point: …)`` (status 1); 1.5.0
+ran the refinement from the ``INIT`` points after a
 ``WARNING`` (``PRESTAGE: produced no candidates -- running outer
-optimiser as-is``), which hid it.  Until 2026-10-07 a failed point (``FAILSCORE`` or a
+optimiser as-is``), which hid it.  In 1.5.0 a failed point (``FAILSCORE`` or a
 graded failure, not a gate reject) stayed among the candidates while
 fewer than ``TOPK`` usable ones existed, and the refinement started from
 it; an exploration whose every evaluation had failed so was refined from
@@ -5090,7 +5052,7 @@ unchanged.  Without a ``SEED`` the run draws one seed *S* from
    INFO      RESTART: the RESTART block has no SEED, so its restart points are drawn from std::random_device: restart r draws with 16739219629366395249 + r (SEED 16739219629366395249 in the RESTART block draws the same points again)
    INFO      RESTART 1/1 -- fresh init from RANDOM; RESTART SEED 16739219629366395250
 
-so a run's restart points can be drawn again (until 2026-10-12 each
+so a run's restart points can be drawn again (in 1.5.0 each
 restart drew ``std::random_device() + r``, and no journal line named
 it).  Like
 an ``INIT`` block's ``SEED``, it needs a ``RANDOM``, ``LHS`` or
@@ -5185,21 +5147,17 @@ for an equal seed: with an ``INIT`` block's ``SEED`` (and ``METHOD
 RANDOM``) equal to the optimiser's, the first round's start point was
 the optimiser's first draw, evaluated twice.  The ``RESTART`` block's
 ``SEED`` is new in 1.6.0 (before, a restart drew its points from
-``std::random_device``); until 2026-10-12 one equal to the optimiser's
-round seed made a restart's fresh ``RANDOM`` point the round's first
-draw.  A ``PRESTAGE`` refinement
+``std::random_device``).  A ``PRESTAGE`` refinement
 draws random numbers of its own: its optimiser seeds every stream (and
 NLopt its generator) with a key derived from its ``SEED``, so it does not
 draw the exploration's numbers, whatever the two ``SEED`` values and the
 seeds ``RESTART`` derives for a round (the refinement ``SEED + r·S``, the
 exploration ``EXPLORE SEED + r``, which meet for ``SEED 7`` and ``EXPLORE
-SEED 8``); the journal names the ``SEED``.  Until 2026-10-12 it drew the
+SEED 8``); the journal names the ``SEED``.  In 1.5.0 it drew the
 exploration's numbers for an equal seed: a ``TADAH:RANDOM`` refinement
 evaluated the exploration's draws again.  An ``INIT`` block's ``SEED``
 *s* and a restart round whose ``RESTART`` ``SEED + r`` is *s* draw
-different ``RANDOM`` and ``LHS`` points; until 2026-10-12 they drew the
-same ones (``INIT`` ``SEED 5`` and ``RESTART`` ``SEED 4``: restart 1
-started where round 0 had).  ``SOBOL`` draws no random numbers: both
+different ``RANDOM`` and ``LHS`` points.  ``SOBOL`` draws no random numbers: both
 blocks' seed *s* selects block *s* of the sequence.  NLopt draws from the derived seeds too, even when an
 ``INIT`` block also has a ``SEED``.  Only an NLopt optimiser without a
 ``SEED`` of its own takes its random seed from its ``INIT`` block's
@@ -6019,7 +5977,7 @@ the rows still queued, and the journal has no ``RESULT`` section.  Signals
 of different kinds do not escalate, so the stop the first one asked for
 goes on: SLURM's ``SIGTERM`` at the time limit after its ``SIGUSR2``
 warning, an MPI launcher's ``SIGTERM`` after a terminal's ``SIGINT``; nor
-does a second ``SIGUSR2``.  Until 2026-10-12 a second signal did nothing,
+does a second ``SIGUSR2``.  In 1.5.0 a second signal did nothing,
 and only ``kill -9`` ended a run waiting for a long evaluation.  The
 ``PC_ISOLATION PROCESS`` worker processes ignore all three signals, so a
 signal sent to the whole process group or job step (Ctrl-C in a
@@ -6271,7 +6229,7 @@ evaluation hands to the next belong to the run: a second run in the
 same process (a task file with two ``hpo`` tasks) starts from
 ``<initial>``, or from its ``WARM`` seed, again. A ``WARM`` seed's values
 belong to its run too: a later run that reads no ``WARM`` seed with a value for the same
-script and variable starts from ``<initial>``; until 2026-10-12 it started
+script and variable starts from ``<initial>``; in 1.5.0 it started
 from the earlier run's seed value (:ref:`two runs in one process
 <hpo_two_runs_one_process>`).
 

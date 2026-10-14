@@ -368,8 +368,7 @@ are checked, naming the key, the mode in effect and the mode that reads it:
   ``EMBF0 FREE``, so it is an error under ``EMBF0 ZERO`` (written or the
   default), true or false: ``tadah refit: REFIT_CONSTRAIN_F0 has no effect
   under EMBF0 ZERO (the default): only EMBF0 FREE reads it; remove
-  REFIT_CONSTRAIN_F0, or set EMBF0 FREE`` (until 2026-10-12 ``true`` was
-  accepted without a word and ``false`` with a WARNING).
+  REFIT_CONSTRAIN_F0, or set EMBF0 FREE``.
 * Neither mode: a top-level ``OPTIMIZER`` block, the grammar before the
   stage blocks. It is refused first, in either mode, with a text that says
   which stage block each of its sub-blocks became (``tadah refit: a
@@ -391,7 +390,7 @@ no basis family of tadah refit: Blip (Blip, BLIP, blip), Blip5 (...), ...``;
 ``accurate``, and a ``REFIT_PLACEMENT`` other than ``window`` or
 ``uniform``, both read in any letter case (``tadah refit: REFIT_LEVEL must
 be 'coarse', 'balanced' (the default), 'fine' or 'accurate' (in any letter
-case), got 'acurate'``). Until 2026-10-12 an unknown ``REFIT_BASIS``
+case), got 'acurate'``). In 1.5.0 an unknown ``REFIT_BASIS``
 (``Blipp``, ``BLIP``) fitted ``Blip`` while a WARNING called it the
 experimental Gaussian basis, another ``REFIT_LEVEL`` (``Fine``,
 ``acurate``) the ``balanced`` preset, and another ``REFIT_PLACEMENT``
@@ -1132,7 +1131,7 @@ Outputs default to ``pot_edited.tadah`` and ``refit_edited.hpotarget`` — the
 input file is never overwritten silently (an explicit ``-o`` /
 ``--hpofileout`` wins, on the command line or in a configuration or task
 file, whatever its name: ``-o pot.tadah`` writes ``pot.tadah``; writing onto
-the input is refused). Until 2026-10-12 a name equal to the default of a
+the input is refused). In 1.5.0 a name equal to the default of a
 refit (``pot.tadah``, ``refit.hpotarget``) counted as unset, and the edited
 names were written instead, without a word. ``--retarget``
 writes ``<input>_retargeted.hpotarget`` by default (below), so an

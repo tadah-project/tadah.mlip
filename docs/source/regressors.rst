@@ -181,7 +181,7 @@ startup ``tadah hpo`` refuses ``OPTIM MPARAMS (i)`` on a function that
 reads fewer than *i* values (``Kern_Linear``, ``Kern_Quadratic``,
 ``Kern_LQ``, ``BF_Linear`` and ``BF_Polynomial2`` read none), on the
 degree of ``Kern_Polynomial`` (an integer) and on the :math:`\sigma` of
-``Kern_RBF`` with a box that is not positive. (Before this was fixed,
+``Kern_RBF`` with a box that is not positive. (In 1.5.0
 every evaluation after a worker's first trained with that first
 ``MPARAMS``, while ``best_pot.tadah`` recorded the candidate's value: a
 potential from such a search predicts otherwise than the loss it was

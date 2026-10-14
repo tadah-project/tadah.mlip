@@ -123,7 +123,7 @@ largest force (eV/Å) and stress (eV/Å³) :math:`\sigma` of the structure.
 why it has none: it was fitted with another ``OALGO`` (retrain it with
 ``OALGO 3``) or with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``:
 retrain it with implementation 1); or, with ``OALGO 3``, it is a potential
-of Tadah! 1.0.0 to 1.5.0 (or of a 1.6.0 development build), whose ``SIGMA``
+of Tadah! 1.0.0 to 1.5.0, whose ``SIGMA``
 is ignored (retrain it), its fit had no more observations than effective
 weights, so its noise variance was undefined (add data and retrain it), or
 its weights were set from ``FIXWEIGHT`` without a fit. It refuses forces
@@ -138,8 +138,7 @@ structure of weight 1; structures with their own weights (``EWEIGHT_TEMP``,
 ``WDBFILE``, data balancing) were fitted with other noise levels.
 
 .. versionchanged:: 1.6.0
-   Before 1.6.0 (and in 1.6.0 development builds before ``WCOV`` and
-   ``WNOISE``) the errors were computed from ``SIGMA``, a transposed and
+   Before 1.6.0 the errors were computed from ``SIGMA``, a transposed and
    unscaled matrix,
    as :math:`\sqrt{\phi_i^\top \mathrm{diag}(\Sigma) \phi_i}` minus the
    square root of the mean of that over all rows, so most of them were
@@ -390,9 +389,7 @@ Also see :ref:`units`.
 .. note::
 
    **Datasets converted from VASP by an earlier build** (an OUTCAR or a
-   ``vasprun.xml``, with ``tadah data convert`` from Tadah 1.0.0 to 1.5.x,
-   or from a 1.6.0 development build without this change; the version
-   number does not tell them apart) hold the stress with the opposite
+   ``vasprun.xml``, with ``tadah data convert`` from Tadah 1.0.0 to 1.5.x) hold the stress with the opposite
    sign — VASP's pressure, positive under compression — and an energy
    other than F. The OUTCAR reader stored the energy without entropy,
    which differs from F by the electronic entropy term −TS (18.7 meV/atom
@@ -409,7 +406,7 @@ Also see :ref:`units`.
    neither can be repaired in place exactly (the entropy term is not
    stored). A fit with ``STRESS true`` on the old stress fitted its
    negative. An MD OUTCAR with a step at 10000 K or more, converted by any
-   earlier build (the 1.6.0 development builds included), gave structures
+   earlier build, gave structures
    that are several steps in one: VASP writes such a temperature joined to
    its word (``(temperature10147.82 K)``), which the reader did not read,
    so the step did not end at its ``EKIN_LAT`` line and was stored with the

@@ -132,10 +132,8 @@ Index
        evaluations while its loss still falls, short of the bound;
        restart 2, from 5.422967, reaches the bound and stagnates, and
        the third stagnation ends the run: 15 evaluations, the same in
-       every run. (Until 2026-10-12 it
-       ran ``DLIB:BFGS`` with restart points from ``std::random_device``,
-       then a ``DLIB:BFGS`` search that converged before the window
-       passed, so no restart fired.)
+       every run. (In 1.5.0 it
+       ran ``DLIB:BFGS`` with restart points from ``std::random_device``.)
      - ``RESTART``, ``AFTER_STAGNATION``, ``SEED``
    * - 14
      - `14_mlsl_inner <https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/v1-dev/examples/14_mlsl_inner>`_

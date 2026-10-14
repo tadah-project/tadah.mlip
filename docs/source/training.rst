@@ -132,8 +132,7 @@ LSCALE: uniform length rescale
 total energy is invariant under the change of length scale, so forces
 are divided by ``s`` and stresses (eV Å⁻³) by ``s³``: the virial
 :math:`V\sigma` is invariant and the volume grows by ``s³``. Earlier
-builds (1.3.0-beta.1, which introduced ``LSCALE``, to 1.5.x, and 1.6.0
-development builds without this change) left the stress unchanged, which
+versions (1.3.0-beta.1, which introduced ``LSCALE``, to 1.5.x) left the stress unchanged, which
 made the targets of a ``STRESS true`` fit too large by ``s³`` (6 % at
 ``s = 1.02``); their log line reads ``LSCALE: ... energy and stress
 invariant``, this build's ``... stress by 1/s^3; energy invariant``. ``s = 1``
@@ -419,8 +418,7 @@ evaluation).
    wrote some of these keys as key lines (the ``DBFILE`` of an ``M_BLR``
    potential, ``UNCERTAINTY``, a ``best_pot.tadah``'s ``HPOTARGET``,
    ``VALIDATION``, ``VERBOSE`` and ``NUMERIC``, ``AUDIT_SAMPLE``) and left
-   the others out; 1.6.0 development builds between 2026-10-12 and 2026-10-14 left all
-   of them out of the potential.
+   the others out.
 
 .. _retrain_from_potential:
 
@@ -484,9 +482,8 @@ are the ``FIXWEIGHT`` values and says so before it reads a dataset::
    documentation, Retraining from a potential).
 
 It is a warning, not a refusal: such a fit can be deliberate (under
-``OALGO 3`` it gives the noise of the data about the pinned weights).  Until
-2026-10-13 nothing said so, and a refit potential retrained this way kept
-its weights.
+``OALGO 3`` it gives the noise of the data about the pinned weights).  1.5.0 said
+nothing, and a refit potential retrained this way kept its weights.
 
 ``tadah hpo`` runs without a training ``DBFILE`` only when ``FIXINDEX`` and
 ``FIXWEIGHT`` pin every weight (:ref:`hpo_fixweight`). Its refusals of a
@@ -529,7 +526,7 @@ structures would be fitted twice. To give a dataset more weight, use
    twice: every structure was fitted twice, a fixed ``LAMBDA`` acted at half
    strength and the ``OALGO 3`` ``SIGMA`` was that of twice the data, and
    nothing said so. An ``M_BLR`` potential written by Tadah! 1.5.x or
-   earlier, or a 1.6.0 development build, still has its ``DBFILE`` line
+   earlier still has its ``DBFILE`` line
    (``tadah predict`` and ``pair_style tadah`` do not read it): remove it
    before you add the ``DBFILE`` of a retrain (the duplicated entry is
    refused), or train from it as it is, on the dataset it names. ``M_KRR``
@@ -669,8 +666,7 @@ pinned weight)::
 has no ``UNCERTAINTY`` line (its :ref:`training record <training_record>`
 lists the run's). A potential given as the configuration (``tadah train
 -c pot.tadah``, with a ``DBFILE`` line added) does not ask for
-``weights.tadah`` with an ``UNCERTAINTY true`` line, which tadah 1.5.x and
-1.6.0 development builds wrote into every potential trained with
+``weights.tadah`` with an ``UNCERTAINTY true`` line, which tadah 1.5.x wrote into every potential trained with
 ``--uncertainty``: a WARNING names the file, and ``--uncertainty`` asks for
 it. ``UNCERTAINTY true`` in a training configuration or a task file is a
 request, and a refusal names where it came from.
@@ -683,7 +679,7 @@ weight).
 
 .. versionchanged:: 1.6.0
    ``WCOV`` and ``WNOISE`` replace ``SIGMA``, which Tadah! 1.0.0 to 1.5.0
-   (and 1.6.0 development builds before this change) wrote with a
+   wrote with a
    transposed formula
    (:math:`V^\top R V` instead of :math:`V R V^\top`) and without
    :math:`s^2`; it is a deprecated key now, ignored with a notice. The third

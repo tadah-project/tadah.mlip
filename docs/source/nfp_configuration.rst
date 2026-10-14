@@ -5502,7 +5502,13 @@ The training-side load transforms (``LSCALE``, ``ESHIFT*``,
 ``EFILTER`` / ``FFILTER``, ``EWEIGHT_TEMP``, ``WDBFILE`` /
 ``WDBFILE_AUTO``, ``ZERO_COM_FORCE``) are documented under
 :ref:`load_transforms`; place them in ``--config`` (the training
-configuration). HPO applies them on every inner training run.
+configuration) or give them on the command line. HPO applies them on every
+inner training run. When ``--config`` is a potential (it has ``WEIGHTS``: a
+``best_pot.tadah`` used as a seed), the ones its file gives are those of the
+fit that wrote it and are ignored, with a ``WARNING`` on the console and in
+the journal; ``ESHIFT_ATOM``/``ESHIFT_DBATOM`` only beside its ``ESHIFT``
+line (:ref:`retrain_from_potential`). Give the run's own on the command
+line.
 
 Validation-set sanitisation
 ...........................
@@ -5806,15 +5812,18 @@ cannot be saved: the evaluation whose potential could not be saved has
 its ``loss.tadah`` row, but ``best_pot.tadah`` and ``best_params.tadah``
 keep the previous incumbent.  ``best_pot.tadah`` carries the
 configuration of the evaluation that produced it as its key lines, except
-the training datasets and these settings of the run: like every potential
-it has no ``DBFILE`` line (:ref:`retrain_from_potential`), and no
-``HPOTARGET``, ``VALIDATION`` or ``VERBOSE`` line.  Its
+the training datasets, the keys that prepared them and these settings of
+the run: like every potential it has no ``DBFILE`` line
+(:ref:`retrain_from_potential`), no line of ``EFILTER``, ``FFILTER``,
+``ESHIFT_ATOM``, ``ESHIFT_DBATOM``, ``EWEIGHT_TEMP``, ``ZERO_COM_FORCE``,
+``WDBFILE`` or ``WDBFILE_AUTO`` (its ``LSCALE`` and resolved ``ESHIFT`` are
+key lines), and no ``HPOTARGET``, ``VALIDATION`` or ``VERBOSE`` line.  Its
 :ref:`training record <training_record>`, the comment block right above
 its key lines, from which no key is read, names them as the run was given
 them:
-the training ``DBFILE``, the ``--validation`` and ``--hpotarget`` files,
-and ``-v`` (and ``NUMERIC``, ``AUDIT``, ``AUDIT_SAMPLE`` and
-``HEALTH_LOG`` when the run set them); the journal's FILES section names
+the training ``DBFILE``, the dataset keys the run set, the
+``--validation`` and ``--hpotarget`` files, and ``-v`` (and ``NUMERIC``,
+``AUDIT``, ``AUDIT_SAMPLE`` and ``HEALTH_LOG`` when the run set them); the journal's FILES section names
 the hpotarget and validation files too.  Its header names the evaluation,
 gives the statistics of each training dataset (``[i]``, the i-th entry of
 the record's ``DBFILE`` line) and names the validation datasets.  The
@@ -5968,11 +5977,13 @@ Practical tips
   the columns by their ``KEY[n]`` labels.  To reproduce a candidate,
   use the potential itself (``best_pot.tadah`` or a ``DUMP``/``BDUMP``
   archive): its key lines are the candidate's configuration except the
-  training datasets and the run's ``HPOTARGET``, ``VALIDATION`` and
-  ``VERBOSE``, which its training record names.  Add the ``DBFILE`` lines
-  of the run's ``-c`` configuration (the record's ``DBFILE`` line, in every
-  archive too) to a copy of it and train it with ``tadah train -c``
-  (:ref:`retrain_from_potential`).
+  training datasets, the keys that prepared them and the run's
+  ``HPOTARGET``, ``VALIDATION`` and ``VERBOSE``, which its training record
+  names.  Add the ``DBFILE`` lines of the run's ``-c`` configuration (the
+  record's ``DBFILE`` line, in every archive too) to a copy of it and train
+  it with ``tadah train -c``, giving the dataset keys the record lists
+  (``EFILTER``, ``WDBFILE``, ...) on the command line: a retrain takes none
+  from the potential (:ref:`retrain_from_potential`).
 
 .. _hpo_stopping:
 

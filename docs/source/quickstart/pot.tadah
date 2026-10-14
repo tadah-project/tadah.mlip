@@ -1,4 +1,4 @@
-# --- training record (not read by tadah) ---
+# --- training record (no key is read from it) ---
 # DBFILE db.train
 # --- end of training record ---
 ATOM              Ta
@@ -7,8 +7,6 @@ CEMBFUNC          0.5   0.75   1   1.25   1.5
 CGRID2B           1   2.43333333333333357   3.8666666666666667   5.29999999999999982
 CGRIDMB           2.87999999999999989
 DIMER             false   0   false
-ESHIFT_ATOM       false
-ESHIFT_DBATOM     false
 EWEIGHT           1
 FORCE             false
 FWEIGHT           1
@@ -32,7 +30,5 @@ SWEIGHT           1
 TYPE2B            D2_Blip   4   4   Ta   Ta
 TYPEMB            DM_mBlipEnv   0   1   1   5   5   Ta   Ta
 WATOM             0.308999999999999997
-WDBFILE_AUTO      0
 WEIGHTS           133.357774127816555   -123.755171524655708   -10.4804763244958963   -18.0240635733812411   -6.3685917658913116   4.13446130558423164   -8.25236089850869803   3.95181987589451467   -6.04877887227442557
-ZERO_COM_FORCE    false
 

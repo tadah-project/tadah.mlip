@@ -78,13 +78,16 @@ finding, descriptor calculation, or fitting. They run inside
 ``apply_load_transforms()`` as soon as the datasets are loaded and are
 shared across ``tadah train``, ``tadah predict``, and ``tadah hpo``.
 
-Two of them — ``LSCALE`` and the resolved ``ESHIFT`` — are stamped into
-``pot.tadah`` so ``tadah predict`` round-trips them automatically. The
-potential records the others as well, with the rest of its training
-configuration (`pot.tadah format`_), and ``tadah predict`` reads them from
-it: it re-applies ``EFILTER``, ``FFILTER`` and ``ZERO_COM_FORCE`` to the
-data it predicts, and leaves out ``WDBFILE``, ``WDBFILE_AUTO`` and
-``EWEIGHT_TEMP`` (:ref:`load_transforms_predict`). For the per-key CLI form and defaults see
+Two of them — ``LSCALE`` and the resolved ``ESHIFT`` — belong to the model,
+its length scale and its energy reference: they are key lines of
+``pot.tadah``, and ``tadah predict`` applies them to the data it predicts.
+The others (``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``,
+``EWEIGHT_TEMP``, ``ZERO_COM_FORCE``, ``WDBFILE``, ``WDBFILE_AUTO``) only
+prepared the training data: the potential lists them in its
+:ref:`training record <training_record>`, not as key lines, ``tadah
+predict`` does not apply them (:ref:`load_transforms_predict`), and a
+retrain from the potential does not take them from it
+(:ref:`retrain_from_potential`). For the per-key CLI form and defaults see
 :ref:`ConfigSection` and ``tadah explain <key>`` (e.g. ``tadah explain
 train.lscale``).
 
@@ -146,10 +149,16 @@ sits at the experimental scale.
 ``LSCALE`` is stamped into ``pot.tadah``. ``tadah predict`` re-applies
 it to the dataset it reads, so a raw DFT dataset can be given as it is;
 both the reference (``True``) and the predicted columns it writes are in
-the rescaled frame. Pass ``--no-lscale`` to ignore the stored value when
-the dataset is already at the trained scale. The
-LAMMPS ``pair_style tadah`` does **not** re-apply ``LSCALE`` — supply
-LAMMPS with positions already at the trained scale.
+the rescaled frame. ``--lscale s`` replaces the stored value; pass
+``--no-lscale`` to ignore it when the dataset is already at the trained
+scale. The LAMMPS ``pair_style tadah`` does **not** re-apply ``LSCALE`` —
+supply LAMMPS with positions already at the trained scale.
+
+.. versionchanged:: 1.6.0
+   ``tadah predict`` applies the potential's ``LSCALE``. Earlier versions
+   (1.5.x included) replaced it with 1.0, the predict task's default, unless
+   ``--lscale`` was given: the data predicted was not rescaled, as with
+   ``--no-lscale``.
 
 ESHIFT: per-element energy shift
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -179,16 +188,24 @@ precedence **explicit > ATOM > DBATOM**:
   then 0, with a WARNING.
 
 Whichever path is used, the *resolved* per-element values are stamped
-into ``pot.tadah`` as ``ESHIFT``, and the ``ESHIFT_ATOM`` /
-``ESHIFT_DBATOM`` toggles are written beside them as the configuration set
-them (`pot.tadah format`_). ``tadah predict`` re-applies the stamped
-values: with one of the toggles ``true`` the stamped ``ESHIFT`` is the
-explicit source, after the ``WARNING`` above (``Multiple ESHIFT sources
-set; precedence: explicit > ATOM > DBATOM.``). ``--no-eshift`` drops the
-stored values; a potential with ``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` set
-to ``true`` then derives the shift from the dataset it predicts, as the
-training run did from its own (``ESHIFT_ATOM`` gives 0, with a WARNING, to
-an element without an isolated-atom configuration there).
+into ``pot.tadah`` as ``ESHIFT``, the model's energy reference; the
+``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggle that derived them is listed in
+the :ref:`training record <training_record>` only. ``tadah predict``
+subtracts the stamped values from the reference energies of the data it
+predicts (``--eshift`` replaces them) and never derives a shift from that
+data: ``--no-eshift`` subtracts none, so ``energy.pred`` compares the
+model's energies, which do not change, with the reference energies as they
+are. A potential of an earlier version has its toggle as a key line beside
+``ESHIFT``; ``tadah predict`` ignores it too.
+
+.. versionchanged:: 1.6.0
+   The toggles are no key lines of a potential. Earlier versions wrote them
+   as the configuration set them, so ``tadah predict`` of a potential
+   trained with one of them ``true`` printed ``WARNING: Multiple ESHIFT
+   sources set; precedence: explicit > ATOM > DBATOM.``, and with
+   ``--no-eshift`` the toggle derived a shift from the dataset predicted
+   (``ESHIFT_DBATOM`` a least-squares fit to it) and subtracted it from its
+   reference energies.
 
 .. note::
 
@@ -211,8 +228,9 @@ Filtering and weighting
 * ``EFILTER lo hi`` drops any configuration whose **per-atom** energy
   ``E/N`` is outside ``[lo, hi]``; ``FFILTER thr`` drops any
   configuration with a single-atom force magnitude above ``thr``. Both
-  run first, and ``tadah predict`` applies the potential's to the data it
-  predicts too (:ref:`load_transforms_predict`).
+  run first. ``tadah predict`` applies them to the data it predicts only
+  when it is given them (``--efilter``, ``--ffilter``), never the
+  potential's (:ref:`load_transforms_predict`).
 * ``WDBFILE w_1 … w_n`` multiplies the ``eweight`` / ``fweight`` /
   ``sweight`` of every config in dataset ``i`` by ``w_i`` — one value
   per ``DBFILE``.
@@ -235,27 +253,45 @@ Filtering and weighting
 The transforms at predict time
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The keys of the transforms are written into ``pot.tadah`` with the rest
-of the training configuration, as it set them (only ``LSCALE`` and
-``ESHIFT`` are stamped with resolved values), and ``tadah predict`` reads
-them from the potential:
+A potential has the model's ``LSCALE`` and resolved ``ESHIFT`` as key
+lines, and ``tadah predict`` applies them to the data it predicts
+(``--lscale`` and ``--eshift`` replace them, ``--no-lscale`` and
+``--no-eshift`` cancel them). The keys that prepared the training data are
+not the potential's: ``tadah predict``
+applies none of them from the potential, so every structure it is given is
+predicted as it is. A filter applies only when predict is given it:
 
-* ``EFILTER``, ``FFILTER`` and ``ZERO_COM_FORCE`` are applied to the data
-  it predicts, as they were to the training data. A structure outside the
-  training run's ``EFILTER`` window, or with an atom whose force magnitude
-  is above its ``FFILTER`` threshold, is left out of the predictions:
-  ``energy.pred`` numbers the structures it keeps from 0, and only at
-  ``-v 2`` or more does a line say how many were left out (``Outlier
-  filter: dropped 18 by energy, 0 by force.``). ``ZERO_COM_FORCE true``
-  subtracts each structure's mean force from the forces it reads (the
-  ``True`` columns). To predict every structure as it is, delete these
-  lines from a copy of the potential.
-* ``WDBFILE``, ``WDBFILE_AUTO`` and ``EWEIGHT_TEMP`` are not applied: they
-  weighted the training set, and the data predicted keep their own
-  weights.
+* ``--efilter lo hi`` and ``--ffilter thr`` leave out the structures
+  outside the window, or with an atom whose force magnitude is above the
+  threshold (``energy.pred`` numbers the structures it keeps from 0, and at
+  ``-v 2`` a line says how many were left out: ``Outlier filter: dropped 18
+  by energy, 0 by force.``); ``--zero-com-force`` subtracts each
+  structure's mean force from the forces it reads (the ``True`` columns).
+* ``WDBFILE``, ``WDBFILE_AUTO``, ``EWEIGHT_TEMP``, ``ESHIFT_ATOM`` and
+  ``ESHIFT_DBATOM`` are never applied: they weighted the training set or
+  derived its shift, and the data predicted keep their own weights; nor are
+  those of a ``TASK predict`` of a task file.
 
-A retrain from the potential (:ref:`retrain_from_potential`) applies all
-of them to the datasets of the retrain.
+A potential of an earlier version has these keys as key lines; ``tadah
+predict`` ignores them, and at ``-v 2`` one line names those it ignored
+that are not at their default::
+
+   INFO: tadah predict: old.tadah: EFILTER -0.6 -0.4, ESHIFT_DBATOM true
+   and ZERO_COM_FORCE true prepared the training data of the potential and
+   are not applied to the data predicted (tadah keeps such keys in a
+   potential's training record, not as key lines); --efilter, --ffilter and
+   --zero-com-force filter the data predicted.
+
+.. versionchanged:: 1.6.0
+   Earlier versions applied a potential's ``EFILTER`` and ``FFILTER`` to
+   the data it predicted (a structure outside the training window was left
+   out of ``energy.pred`` and of the ``-A`` metrics) and its
+   ``ESHIFT_ATOM``/``ESHIFT_DBATOM`` with ``--no-eshift``; its
+   ``ZERO_COM_FORCE true`` was not applied (the predict task's default,
+   ``false``, replaced it).
+
+A retrain from the potential (:ref:`retrain_from_potential`) does not take
+them from the potential either.
 
 .. _train_outputs:
 
@@ -295,7 +331,7 @@ it.
 
 A minimal single-species, two-body, kernel-ridge example::
 
-   # --- training record (not read by tadah) ---
+   # --- training record (no key is read from it) ---
    # DBFILE db.train
    # --- end of training record ---
    ATOM     Ta
@@ -323,7 +359,8 @@ Three categories of key lines appear:
    ``RCTYPE2B``, ``INIT2B`` / ``INITMB``, …), model choice and
    hyperparameters (``MODEL``, ``LAMBDA``, ``NORM``, ``BIAS``, …), and
    the species list (``ATOM`` / ``WATOM``), with the other keys of the
-   training configuration but ``DBFILE`` and the settings of the run: the
+   training configuration but ``DBFILE``, the keys that prepared the
+   training data and the settings of the run: the
    :ref:`training record <training_record>` above the key lines names those
    (see also :ref:`retrain_from_potential`).
 
@@ -331,16 +368,13 @@ Three categories of key lines appear:
    coefficients :math:`\mathbf w`. The ordering matches the column
    layout of the design matrix and is reproduced exactly on load.
 
-#. **Stamped load-time transforms** — when the training run resolved
-   ``LSCALE`` (≠ 1) or ``ESHIFT`` (explicit or via
-   ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM``), the resolved values are
-   written so prediction re-applies them automatically. The
-   ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles are written too, as the
-   configuration set them (``false``, their default, included): a
-   potential trained with one of them ``true`` has it beside the stamped
-   ``ESHIFT``, which ``tadah predict`` (and a retrain from the potential)
-   uses as the explicit source, after a ``WARNING`` (``Multiple ESHIFT
-   sources set; precedence: explicit > ATOM > DBATOM.``).
+#. **Stamped load-time transforms** — the model's length scale and
+   energy reference: ``LSCALE`` and, when the training run resolved one
+   (explicit or via ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM``), ``ESHIFT``, so
+   prediction re-applies them automatically and a retrain from the
+   potential uses them. The ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles,
+   the filters and the weights of the training data are no key lines (the
+   :ref:`training record <training_record>` lists them).
 
 DM_REAM potentials always carry explicit ``EMBF0`` and ``RHOFORM`` lines;
 the writer spells ``RHOFORM`` in upper case and drops a stray one from a
@@ -355,27 +389,34 @@ every tadah before 1.6.0); see :ref:`DM_REAM <dm_ream_rhoform>`.
 Training record
 ^^^^^^^^^^^^^^^
 
-The key lines are the model's settings and its fit. The keys a potential
-does not use are not key lines: the training datasets, ``DBFILE``, and
-these settings of the run: ``VERBOSE``, ``NUMERIC``, ``OUTFILE``,
-``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG`` and ``UNCERTAINTY``, and the
-``HPOTARGET`` and ``VALIDATION`` of a ``tadah hpo`` run. For your record the
-potential keeps the values its run was given in its *training record*, a
-block of comment lines right above the key lines::
+The key lines are what is needed to use the model: its settings and its
+fit, its ``LSCALE`` and its resolved ``ESHIFT``. The keys a potential does
+not use are not key lines: the training datasets, ``DBFILE``; the keys that
+only prepared the training data, ``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``,
+``ESHIFT_DBATOM``, ``EWEIGHT_TEMP``, ``ZERO_COM_FORCE``, ``WDBFILE`` and
+``WDBFILE_AUTO`` (:ref:`load_transforms`); and these settings of the run:
+``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``,
+``HEALTH_LOG`` and ``UNCERTAINTY``, and the ``HPOTARGET`` and
+``VALIDATION`` of a ``tadah hpo`` run. For your record the potential keeps
+the values its run was given in its *training record*, a block of comment
+lines right above the key lines::
 
-   # --- training record (not read by tadah) ---
+   # --- training record (no key is read from it) ---
    # DBFILE db1.train db2.train
+   # WDBFILE 1 0.5
    # VERBOSE 0
    # OUTFILE pot2.tadah
    # --- end of training record ---
 
 It has one line for each of these keys the run was given, in the order
-``DBFILE``, ``VALIDATION``, ``HPOTARGET``, ``UNCERTAINTY``, ``VERBOSE``,
-``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG``, with
-the values as the configuration file, the task file or the command line
-wrote them (``NUMERIC`` does not change them). A key nobody set is not
-listed: the defaults tadah takes (``VERBOSE 1``, ``OUTFILE pot.tadah``) are
-left out, so ``tadah train -c config.train`` records the ``DBFILE`` of
+``DBFILE``, ``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``,
+``EWEIGHT_TEMP``, ``ZERO_COM_FORCE``, ``WDBFILE``, ``WDBFILE_AUTO``,
+``VALIDATION``, ``HPOTARGET``, ``UNCERTAINTY``, ``VERBOSE``, ``NUMERIC``,
+``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG``, with the values
+as the configuration file, the task file or the command line wrote them
+(``NUMERIC`` does not change them). A key nobody set is not
+listed: the defaults tadah takes (``VERBOSE 1``, ``OUTFILE pot.tadah``,
+``ESHIFT_ATOM false``, ``WDBFILE_AUTO 0``, ...) are left out, so ``tadah train -c config.train`` records the ``DBFILE`` of
 ``config.train`` alone, and ``-o pot2.tadah -v 0`` adds ``VERBOSE 0`` and
 ``OUTFILE pot2.tadah``. The potentials of ``tadah train``, ``tadah refit``
 and ``tadah hpo`` (``best_pot.tadah``, its rank-local copies and the
@@ -401,9 +442,15 @@ that does not start with ``#``. Nothing else reads the block.
 A potential of an earlier version may have some of these keys as key
 lines (an ``M_BLR`` potential its ``DBFILE``, a potential of tadah 1.5.x
 its ``UNCERTAINTY``, a ``best_pot.tadah`` its run's ``HPOTARGET``,
-``VALIDATION`` and ``VERBOSE``); it still loads, and ``tadah refit --edit``
-of it lists them in the edit's record instead. ``tadah predict`` and
-``pair_style tadah`` read none of them except ``VERBOSE``: parsing a file
+``VALIDATION`` and ``VERBOSE``, and every potential of ``tadah train`` or
+``tadah hpo`` the keys that prepared its training data, ``ESHIFT_ATOM
+false``, ``ESHIFT_DBATOM false``, ``WDBFILE_AUTO 0`` and ``ZERO_COM_FORCE
+false`` when its configuration set none); it still loads, and ``tadah refit
+--edit`` of it lists them in the edit's record instead. ``tadah predict``
+ignores the keys that prepared the training data
+(:ref:`load_transforms_predict`) and a retrain from the potential those of
+its file (:ref:`retrain_from_potential`). ``tadah predict`` and
+``pair_style tadah`` read none of the other keys except ``VERBOSE``: parsing a file
 with a ``VERBOSE`` key line sets the Tadah log level of the process
 (``pair_style tadah`` in LAMMPS, a retrain with ``tadah train -c`` without
 ``-v``), and the model built from the file takes that verbosity (a kernel
@@ -415,11 +462,14 @@ prints it once, for its ``-c`` model, though it builds a model for every
 evaluation).
 
 .. versionchanged:: 1.6.0
-   The training record is new (MK's decision of 2026-10-14). tadah 1.5.x
+   The training record is new (MK's decisions of 2026-10-14). Its opening
+   line is ``# --- training record (no key is read from it) ---``; ``tadah
+   refit --edit`` refuses a block opened by any other line at its end
+   line. tadah 1.5.x
    wrote some of these keys as key lines (the ``DBFILE`` of an ``M_BLR``
    potential, ``UNCERTAINTY``, a ``best_pot.tadah``'s ``HPOTARGET``,
-   ``VALIDATION``, ``VERBOSE`` and ``NUMERIC``, ``AUDIT_SAMPLE``) and left
-   the others out; 1.6.0 development builds between 2026-10-12 and 2026-10-14 left all
+   ``VALIDATION``, ``VERBOSE`` and ``NUMERIC``, ``AUDIT_SAMPLE``, and the
+   keys that prepared the training data) and left the others out; 1.6.0 development builds between 2026-10-12 and 2026-10-14 left all
    of them out of the potential.
 
 .. _retrain_from_potential:
@@ -502,16 +552,53 @@ The fit replaces what the potential holds of its own fit (``WEIGHTS``,
 those ``FIXINDEX`` pins excepted, the ``BASIS`` of a non-linear kernel,
 ``NMEAN``, ``NSTDEV``, ``SIGMA``); none of
 it is read when the model is built, so the retrain may also change, for
-example, ``SBASIS`` or the descriptor. The other keys are the configuration
-of the first fit: the same datasets give the same potential. ``WDBFILE``,
-the weight of each dataset, is one of them: list the datasets in the same
-order. It needs one value for each ``DBFILE`` entry of the retrain, so for
-other datasets edit or delete it; with one value too many or too few
-``tadah train`` stops when it has read the datasets (``WDBFILE size (2)
-does not match number of datasets (1).``). The other transforms the
-potential records (``EFILTER``, ``FFILTER``, ``EWEIGHT_TEMP``,
-``ZERO_COM_FORCE``, ...: :ref:`load_transforms_predict`) apply to the
-datasets of the retrain as well. With ``LAMBDA -1`` the potential records the ``ALPHA`` and ``BETA``
+example, ``SBASIS`` or the descriptor. The other key lines are the model of
+the first fit, with its ``LSCALE`` and ``ESHIFT``: the energy reference of
+the retrain is the potential's.
+
+The keys that prepared the training data of the first fit (``EFILTER``,
+``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``, ``EWEIGHT_TEMP``,
+``ZERO_COM_FORCE``, ``WDBFILE``, ``WDBFILE_AUTO``) are in its training
+record, not among its key lines, and a retrain does not take them from the
+potential, whatever version wrote it: a retrain works with any number of
+datasets, and with none of the first fit's filters or weights. Give the
+retrain's own on the command line, where they are recorded in the new
+potential's record::
+
+   tadah train -c retrain.train -o pot2.tadah --wdbfile 1 0.5 --efilter -9 -2
+
+A configuration that has ``WEIGHTS`` (a potential, a copy of one, or a file
+that includes one with ``CONFIG``; a ``tadah hpo -c`` seed too) is taken as
+a potential: those of the eight that its files give are ignored, and a
+``WARNING`` names those that are not at their default, for a potential of
+an earlier version, which has them as key lines, or a line you added to the
+copy::
+
+   WARNING: tadah train: the configuration file retrain.train is a potential
+   (it has WEIGHTS): its EFILTER 5 6 and WDBFILE 1 1 prepared the training
+   data of the fit that wrote it, not of this run, and are ignored (tadah
+   keeps such keys in a potential's training record, not as key lines). Give
+   --efilter or --wdbfile on the command line to apply one to this run (the
+   Training page of the documentation, Retraining from a potential).
+
+To derive ``ESHIFT`` from the data of the retrain instead of using the
+potential's, delete the ``ESHIFT`` line from the copy and set
+``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` (in the copy or on the command line):
+without an ``ESHIFT`` line the toggle is the only source of the shift and
+applies. Beside the ``ESHIFT`` line a toggle of the copy is ignored (the
+explicit values overrule it in any configuration), and the warning says so.
+To reproduce the first fit, give the keys its record lists on the command
+line.
+
+.. versionchanged:: 1.6.0
+   A potential had the keys that prepared its training data as key lines,
+   and a retrain applied them to its own datasets: a ``WDBFILE`` of the
+   first fit's datasets stopped a retrain with another number of datasets
+   (``WDBFILE size (2) does not match number of datasets (3).``), and the
+   first fit's ``EFILTER``, ``FFILTER``, ``EWEIGHT_TEMP`` and
+   ``ZERO_COM_FORCE`` applied to the retrain's.
+
+With ``LAMBDA -1`` the potential records the ``ALPHA`` and ``BETA``
 the evidence approximation found (the fit's :math:`\lambda = \alpha/\beta`;
 they are the approximation's starting guesses in a configuration), so a
 retrain starts the approximation from them (on the same datasets it stops

@@ -5471,9 +5471,11 @@ section) are those of the fit that wrote it and are not read, with a
 ``ESHIFT_DBATOM`` with or without its ``ESHIFT`` line, so a seed's toggle
 derives no shift from the run's data (:ref:`retrain_from_potential`). Its
 ``UNCERTAINTY`` line is not read either (``tadah hpo`` takes no
-``UNCERTAINTY``, and the warning does not name it). The run's own -- on the
-command line, or on a line of the task file or of a configuration file that
-includes the potential -- apply.
+``UNCERTAINTY``, and the warning does not name it), nor are its run
+settings (``VALIDATION``, ``HPOTARGET``, ``VERBOSE``, ``NUMERIC``, ...: see
+:ref:`hpo_potential_archives`). The run's own -- on the command line, or
+on a line of the task file or of a configuration file that includes the
+potential -- apply.
 
 Validation-set sanitisation
 ...........................
@@ -5796,9 +5798,33 @@ the record's ``DBFILE`` line) and names the validation datasets.  The
 ``best_pot.tadah`` carry the same record.  Inside the run the potential the
 ``PC_LAMMPS`` scripts run is built at the run's ``VERBOSE``.  It is the
 authoritative record of the result.
-In earlier versions it had the three lines, so used as the ``-c``
-configuration of a later run without ``--validation`` it validated on the
-file its ``VALIDATION`` line named.
+In earlier versions it had the three lines, and ``NUMERIC``, so used as
+the ``-c`` configuration of a later run without ``--validation`` it
+validated on the file its ``VALIDATION`` line named, at its ``VERBOSE`` and
+``NUMERIC``. A run reads no such line of a potential now: the seed's
+``VALIDATION``, ``HPOTARGET``, ``VERBOSE``, ``NUMERIC``, ``OUTFILE``,
+``AUDIT``, ``AUDIT_SAMPLE`` and ``HEALTH_LOG`` lines are not read
+(:ref:`retrain_from_potential`), and the WARNING on the console and in
+the journal names those the run reads that are not at their default::
+
+   WARNING: tadah hpo: the configuration file best_pot.tadah is a potential
+   (it has WEIGHTS): its VALIDATION config.val, VERBOSE 2 and NUMERIC 12
+   were settings of the run that wrote it, not of this run, and are ignored
+   (tadah keeps such keys in a potential's training record, not as key
+   lines). Give --validation or --verbose on the command line, or a
+   VALIDATION, VERBOSE or NUMERIC line in a configuration file that includes
+   the potential with CONFIG, to apply one to this run (the Training page of
+   the documentation, Retraining from a potential).
+
+So the run validates on its own ``--validation`` file alone (an hpotarget
+with a validation metric and no ``--validation`` is refused, ``...
+no --validation file was given``), runs at its own ``-v`` and writes at its
+own ``NUMERIC``. ``tadah hpo -c`` requires ``--hpotarget``; a ``TASK hpo``
+section that includes such a potential with ``CONFIG`` gives its own
+``HPOTARGET`` line, and without one the run is refused: ``tadah hpo: no
+HPOTARGET: name the hpotarget file with --hpotarget, or with an HPOTARGET
+line in the task file (a potential's own HPOTARGET line names the target of
+the run that wrote it and is not read).``
 ``best_params.tadah`` and the other history files are appended by the
 result writer in ``QFLUSH`` batches, so while the run is going they
 trail ``best_pot.tadah`` by the rows still queued.  Every ending except
@@ -5873,9 +5899,9 @@ reading: the RESULT table and the archive banners' ``loss=`` use
 
    ``best_pot.tadah`` files written by ``tadah hpo`` 1.5.0 contain an
    automatically inserted ``NUMERIC 12`` line.  Used as the ``-c``
-   configuration of a new run, that line is an explicit setting: the new
-   run writes 12-digit potentials and warns about it (``hpo_run.log`` and
-   stderr).  Delete the ``NUMERIC`` line to get exact potentials again.
+   configuration of a new run, that line is not read (no run reads a
+   potential's ``NUMERIC``): the new run writes exact potentials, and its
+   WARNING names the line among the seed's lines it does not read.
 
 Run log
 .......

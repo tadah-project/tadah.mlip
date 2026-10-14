@@ -1099,7 +1099,10 @@ not refused. Before 1.6.0 these keys were ignored. ``NUMERIC``, the
 precision of the files a command writes, is no key of the refit and is not
 refused: ``--edit`` writes the potential with it, and ``--retarget`` writes
 only an hpotarget, which it does not govern (below); a task file may set it
-above its first ``TASK`` line, for every task.
+above its first ``TASK`` line, for every task. ``--edit`` takes it from its
+own run only: a ``NUMERIC`` line of the edited potential (every
+``best_pot.tadah`` of ``tadah hpo`` 1.5.0 has ``NUMERIC 12``) is not read,
+so without a ``NUMERIC`` of the run the edit is exact.
 
 ``EMBF0`` and ``RHOFORM`` are properties of the potential. A configuration
 passed with ``-c`` may set them only to the potential's own values: a
@@ -1160,7 +1163,8 @@ the fit that produced them still describes them, and the edit's own ``-o``,
 ``VERBOSE``, ``NUMERIC`` (and so on) key line of an input an earlier
 version wrote, or one of the keys that prepared its training data
 (``ESHIFT_ATOM``, ``EFILTER``, ``WDBFILE``, ...), is not a key line of the
-edit: the edit's record lists it.
+edit and is not read (the edit runs at its own ``-v`` and ``NUMERIC``): the
+edit's record lists it.
 What the input's record says is copied as it is, edits of yours included.
 An input whose record is malformed is refused before anything is written,
 naming the file and the lines: an opening line without its end line (the

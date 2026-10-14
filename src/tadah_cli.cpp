@@ -18,6 +18,7 @@
 #include <tadah/core/periodic_table.h>
 
 #include <boost/algorithm/string.hpp> // for boost::split
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -331,12 +332,34 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
   } // end for each group
 }
 
+namespace {
+
+/* Every option of the subcommand @p cmd: its own and those of its option
+ * groups (CLI::App::get_options lists the options of a '+' group only, not
+ * those of a named one such as tadah hpo's "input": --config,
+ * --validation, --hpotarget and --task). */
+std::vector<CLI::Option*> every_option_of(CLI::App* cmd) {
+  std::vector<CLI::Option*> all = cmd->get_options();
+  const auto groups =
+      cmd->get_subcommands([](CLI::App* sub) { return sub->get_name().empty(); });
+  for (CLI::App* group : groups)
+    for (CLI::Option* opt : group->get_options())
+      if (std::find(all.begin(), all.end(), opt) == all.end())
+        all.push_back(opt);
+  return all;
+}
+
+}  // namespace
+
 void TadahCLI::registerExclusions() {
+  // cli_excludes = ["ALL"] (--task): the option excludes every other option
+  // of the subcommand, those of its option groups too (a run of a task file
+  // takes no command-line option: TaskFactory reads none beside --task).
   auto topLevelAction = [](CLI::App* cmd, CLI::Option* opt,
       const tadah::core::BlueprintKey& bpKey) {
       if (bpKey.cli_excludes.size()==1 && bpKey.cli_excludes[0] == "ALL") {
         // Exclude from *all* other options in that subcommand
-        for (auto *otherOpt : cmd->get_options()) {
+        for (auto *otherOpt : every_option_of(cmd)) {
           if (otherOpt != opt && otherOpt->get_name() != "--help") {
             opt->excludes(otherOpt);
           }
@@ -355,9 +378,9 @@ void TadahCLI::registerExclusions() {
   auto groupAction = [](CLI::App* cmd, CLI::App*, CLI::Option* grpOpt,
       const tadah::core::BlueprintKey& bpKey) {
     if (bpKey.cli_excludes.size()==1 && bpKey.cli_excludes[0] == "ALL") {
-      // Exclude from *all* other options in that subcommand
-      // which are not in the group apart from --help
-      for (auto *otherOpt : cmd->get_options()) {
+      // Exclude from *all* other options in that subcommand, those of its
+      // option groups (this one's too) included, apart from --help
+      for (auto *otherOpt : every_option_of(cmd)) {
         if (otherOpt != grpOpt && otherOpt->get_name() != "--help") {
           grpOpt->excludes(otherOpt);
         }

@@ -1144,6 +1144,26 @@ in ``tadah train``. All bookkeeping
 (``TYPE2B`` / ``TYPEMB`` count tokens, ``WEIGHTS``, ``FIXINDEX``/
 ``FIXWEIGHT``, ``KDEG*``, ``RCUT2B``/``RCUTMB``) is regenerated consistently.
 
+The :ref:`training record <training_record>` of the edited potential is
+that of its input, after a line naming the input::
+
+   # --- training record (not read by tadah) ---
+   # edited by tadah refit --edit from pot.tadah
+   # OUTFILE pot.tadah
+   # --- end of training record ---
+
+An edit fits nothing: its weights are the input's, edited, so the record of
+the fit that produced them still describes them, and the edit's own ``-o``,
+``-v`` and ``NUMERIC`` are not added (an edit of an edit lists both
+``edited by`` lines, newest first). A ``DBFILE``, ``UNCERTAINTY``,
+``VERBOSE``, ``NUMERIC`` (and so on) key line of an input an earlier
+version wrote is not a key line of the edit: the edit's record lists it.
+An input whose record has an opening line without its end line, or a key
+line inside the block, is refused before anything is written, naming the
+file and the line. The potential of a refit of an EAM file records the
+refit's ``-o``, ``-v`` and ``NUMERIC`` when they were given (above, the
+``OUTFILE`` of ``tadah refit -c config.refit -o pot.tadah``).
+
 .. _refit_retarget:
 
 Rewriting HPO search bounds (``--retarget``)

@@ -283,15 +283,20 @@ exit 0 without a potential.
 pot.tadah format
 ~~~~~~~~~~~~~~~~
 
-The potential file is plain ASCII. Each line is one ``KEY VALUE[…]``
+The potential file is plain ASCII. Each key line is one ``KEY VALUE[…]``
 pair using the same syntax as the training configuration file
 (whitespace separates fields; comments and blank lines are not
 required). The file is round-tripped through ``tadah predict`` and
 ``pair_style tadah`` — every field needed to reproduce the prediction
-is stored here.
+is stored here. Above the key lines, a block of comment lines, the
+:ref:`training record <training_record>`, names the datasets and the
+settings of the run that wrote it, for your record; nothing reads it.
 
 A minimal single-species, two-body, kernel-ridge example::
 
+   # --- training record (not read by tadah) ---
+   # DBFILE db.train
+   # --- end of training record ---
    ATOM     Ta
    BIAS     false
    DIMER    false   0   false
@@ -310,15 +315,16 @@ A minimal single-species, two-body, kernel-ridge example::
    WATOM    73
    WEIGHTS  14.20421334...   2604.39696519...
 
-Three categories of keys appear:
+Three categories of key lines appear:
 
 #. **Configuration echo** — every key that fully specifies the model
    geometry: descriptor type and parameters (``TYPE2B``, ``RCUT2B``,
    ``RCTYPE2B``, ``INIT2B`` / ``INITMB``, …), model choice and
    hyperparameters (``MODEL``, ``LAMBDA``, ``NORM``, ``BIAS``, …), and
    the species list (``ATOM`` / ``WATOM``), with the other keys of the
-   training configuration but ``DBFILE``: a potential does not record the
-   data it was fitted to (see :ref:`retrain_from_potential`).
+   training configuration but ``DBFILE`` and the settings of the run: the
+   :ref:`training record <training_record>` above the key lines names those
+   (see also :ref:`retrain_from_potential`).
 
 #. **Fitted parameters** — the row ``WEIGHTS …`` carries the learned
    coefficients :math:`\mathbf w`. The ordering matches the column
@@ -343,49 +349,107 @@ default: a DM_REAM training configuration without it stops before any
 fitting with the migration message (``RHOFORM SIGNED`` is the density of
 every tadah before 1.6.0); see :ref:`DM_REAM <dm_ream_rhoform>`.
 
-These settings of the run are not written: ``VERBOSE``, ``NUMERIC``,
-``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG`` and
-``UNCERTAINTY``, and the ``HPOTARGET`` and ``VALIDATION`` of a ``tadah
-hpo`` run (which a ``best_pot.tadah`` of an earlier version, used as the
-configuration, carried); ``tadah refit --edit`` of a potential that has one
-of these lines (an ``UNCERTAINTY`` line of tadah 1.5.x) writes the edit
-without it. A potential records the model's settings and its fit; one that
-has these lines still loads. ``tadah predict`` and ``pair_style tadah`` read
-none of them except ``VERBOSE``: parsing a file with a ``VERBOSE`` line sets
-the Tadah log level of the process (``pair_style tadah`` in LAMMPS, a
-retrain with ``tadah train -c`` without ``-v``), and the model built from
-the file takes that verbosity (a kernel such as ``Kern_RBF`` prints its
-parameters, ``Kern_RBF | sigma: 1 | gamma: 1``, when it is built at
-``VERBOSE`` 1 or more, the default of a file without the line: for every
-model that ``tadah train``, ``tadah predict``, ``pair_style tadah`` or a
-task of a task file builds; a ``tadah hpo`` run prints it once, for its
-``-c`` model, though it builds a model for every evaluation).
+.. _training_record:
+
+Training record
+^^^^^^^^^^^^^^^
+
+The key lines are the model's settings and its fit. The keys a potential
+does not use are not key lines: the training datasets, ``DBFILE``, and
+these settings of the run: ``VERBOSE``, ``NUMERIC``, ``OUTFILE``,
+``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG`` and ``UNCERTAINTY``, and the
+``HPOTARGET`` and ``VALIDATION`` of a ``tadah hpo`` run. For your record the
+potential keeps the values its run was given in its *training record*, a
+block of comment lines right above the key lines::
+
+   # --- training record (not read by tadah) ---
+   # DBFILE db1.train db2.train
+   # VERBOSE 0
+   # OUTFILE pot2.tadah
+   # --- end of training record ---
+
+It has one line for each of these keys the run was given, in the order
+``DBFILE``, ``VALIDATION``, ``HPOTARGET``, ``UNCERTAINTY``, ``VERBOSE``,
+``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG``, with
+the values as the configuration file, the task file or the command line
+wrote them (``NUMERIC`` does not change them). A key nobody set is not
+listed: the defaults tadah takes (``VERBOSE 1``, ``OUTFILE pot.tadah``) are
+left out, so ``tadah train -c config.train`` records the ``DBFILE`` of
+``config.train`` alone, and ``-o pot2.tadah -v 0`` adds ``VERBOSE 0`` and
+``OUTFILE pot2.tadah``. The potentials of ``tadah train``, ``tadah refit``
+and ``tadah hpo`` (``best_pot.tadah``, its rank-local copies and the
+``DUMP`` and ``BDUMP`` archives) have it; a run that set none of these keys
+writes no block. ``tadah refit --edit`` copies the record of its input
+(:ref:`refit_edit`).
+
+No reader of a potential reads the block: ``tadah predict``, ``tadah train
+-c``, ``tadah hpo -c``, ``tadah refit --edit`` and ``pair_style tadah`` skip
+every line that starts with ``#``. A potential loads, predicts and retrains
+as it would without the block, and the ``VERBOSE`` of its record does not
+set the log level. A potential without a record (one of an earlier
+version) loads as before. Editing the block changes nothing for tadah, but
+``refit --edit`` refuses a file whose record has no end line, or a key line
+inside it, naming the file and the line.
+
+A potential of an earlier version may have some of these keys as key
+lines (an ``M_BLR`` potential its ``DBFILE``, a potential of tadah 1.5.x
+its ``UNCERTAINTY``, a ``best_pot.tadah`` its run's ``HPOTARGET``,
+``VALIDATION`` and ``VERBOSE``); it still loads, and ``tadah refit --edit``
+of it lists them in the edit's record instead. ``tadah predict`` and
+``pair_style tadah`` read none of them except ``VERBOSE``: parsing a file
+with a ``VERBOSE`` key line sets the Tadah log level of the process
+(``pair_style tadah`` in LAMMPS, a retrain with ``tadah train -c`` without
+``-v``), and the model built from the file takes that verbosity (a kernel
+such as ``Kern_RBF`` prints its parameters, ``Kern_RBF | sigma: 1 | gamma:
+1``, when it is built at ``VERBOSE`` 1 or more, the default of a file
+without the line: for every model that ``tadah train``, ``tadah predict``,
+``pair_style tadah`` or a task of a task file builds; a ``tadah hpo`` run
+prints it once, for its ``-c`` model, though it builds a model for every
+evaluation).
+
+.. versionchanged:: 1.6.0
+   The training record is new (MK's decision of 2026-10-14). tadah 1.5.x
+   wrote some of these keys as key lines (the ``DBFILE`` of an ``M_BLR``
+   potential, ``UNCERTAINTY``, a ``best_pot.tadah``'s ``HPOTARGET``,
+   ``VALIDATION`` and ``VERBOSE``, ``AUDIT_SAMPLE``) and left the others
+   out; 1.6.0 development builds between 2026-10-12 and 2026-10-14 left all
+   of them out of the potential.
 
 .. _retrain_from_potential:
 
 Retraining from a potential
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A potential records the model's settings and its fit, not the training
-data: no potential that ``tadah train``, ``tadah hpo`` or ``tadah refit``
-writes has a ``DBFILE`` line, whichever the model. A potential is a
-training configuration without its datasets, so it retrains with the
-``DBFILE`` lines of the retrain added to a copy of it::
+A potential's key lines are the model's settings and its fit, not the
+training data: no potential that ``tadah train``, ``tadah hpo`` or ``tadah
+refit`` writes has a ``DBFILE`` line, whichever the model (its
+:ref:`training record <training_record>`, a comment, names the datasets of
+the run that wrote it). A potential is a training configuration without its
+datasets, so it retrains with the ``DBFILE`` lines of the retrain added to a
+copy of it::
 
    cp pot.tadah retrain.train
    echo "DBFILE db.train" >> retrain.train
    tadah train -c retrain.train -o pot2.tadah
 
+``pot2.tadah`` records the retrain: its training record names the
+``DBFILE`` of the retrain (``db.train``) and the retrain's other keys, not
+the datasets ``pot.tadah`` was trained on. The record of ``pot.tadah``, a
+comment in the copy, is neither read nor copied: it describes another fit,
+of other weights, which ``pot.tadah`` itself keeps.
+
 Without the ``DBFILE`` line ``tadah train`` refuses the configuration
 before it reads anything::
 
    The training configuration has no DBFILE: tadah train fits the datasets
-   it lists. A potential records no DBFILE (no potential tadah writes has
-   one): to train from one, add a DBFILE line to a copy of it; a potential
-   of tadah refit or refit --edit also pins every weight with its FIXINDEX
-   and FIXWEIGHT lines, the seed of a tadah hpo coefficient search, so
-   delete them from the copy for the fit to change the weights (the
-   Training page of the documentation, Retraining from a potential).
+   it lists. A potential has no DBFILE line (no potential tadah writes one;
+   the DBFILE of the run that wrote it is in its training record, a comment
+   block tadah does not read): to train from one, add a DBFILE line to a
+   copy of it; a potential of tadah refit or refit --edit also pins every
+   weight with its FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo
+   coefficient search, so delete them from the copy for the fit to change
+   the weights (the Training page of the documentation, Retraining from a
+   potential).
 
 A potential that ``tadah refit`` or ``tadah refit --edit`` writes, and the
 ``best_pot.tadah`` of a ``tadah hpo`` run that pins every weight, has
@@ -451,7 +515,7 @@ structures would be fitted twice. To give a dataset more weight, use
 ``WDBFILE``.
 
 .. versionchanged:: 1.6.0
-   An ``M_BLR`` potential recorded the ``DBFILE`` it was trained on (an
+   An ``M_BLR`` potential had the ``DBFILE`` line it was trained on (an
    ``M_KRR`` potential did not), so the retrain above listed its dataset
    twice: every structure was fitted twice, a fixed ``LAMBDA`` acted at half
    strength and the ``OALGO 3`` ``SIGMA`` was that of twice the data, and
@@ -593,7 +657,8 @@ pinned weight)::
 
 ``Index`` matches the ordering of the ``WEIGHTS`` row in ``pot.tadah``.
 ``UNCERTAINTY`` is a switch of the run, not part of the model: a potential
-does not record it. A potential given as the configuration (``tadah train
+has no ``UNCERTAINTY`` line (its :ref:`training record <training_record>`
+lists the run's). A potential given as the configuration (``tadah train
 -c pot.tadah``, with a ``DBFILE`` line added) does not ask for
 ``weights.tadah`` with an ``UNCERTAINTY true`` line, which tadah 1.5.x and
 1.6.0 development builds wrote into every potential trained with

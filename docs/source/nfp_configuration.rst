@@ -5805,14 +5805,23 @@ one exception is the error that ends a run when ``best_pot.tadah``
 cannot be saved: the evaluation whose potential could not be saved has
 its ``loss.tadah`` row, but ``best_pot.tadah`` and ``best_params.tadah``
 keep the previous incumbent.  ``best_pot.tadah`` carries the
-configuration of the evaluation that produced it except the training
-datasets and these settings of the run: like every potential it has no
-``DBFILE`` line (:ref:`retrain_from_potential`), and no ``HPOTARGET``,
-``VALIDATION`` or ``VERBOSE`` line (the ``--hpotarget``, ``--validation``
-and ``-v`` of the run; the journal's FILES section names the hpotarget and
-validation files), and its header names the evaluation and the training and
-validation datasets.  Inside the run the potential the ``PC_LAMMPS``
-scripts run is built at the run's ``VERBOSE``.  It is the authoritative record of the result.
+configuration of the evaluation that produced it as its key lines, except
+the training datasets and these settings of the run: like every potential
+it has no ``DBFILE`` line (:ref:`retrain_from_potential`), and no
+``HPOTARGET``, ``VALIDATION`` or ``VERBOSE`` line.  Its
+:ref:`training record <training_record>`, the comment block right above
+its key lines, from which no key is read, names them as the run was given
+them:
+the training ``DBFILE``, the ``--validation`` and ``--hpotarget`` files,
+and ``-v`` (and ``NUMERIC``, ``AUDIT``, ``AUDIT_SAMPLE`` and
+``HEALTH_LOG`` when the run set them); the journal's FILES section names
+the hpotarget and validation files too.  Its header names the evaluation,
+gives the statistics of each training dataset (``[i]``, the i-th entry of
+the record's ``DBFILE`` line) and names the validation datasets.  The
+``BDUMP`` and ``DUMP`` archives and the rank-local copies of
+``best_pot.tadah`` carry the same record.  Inside the run the potential the
+``PC_LAMMPS`` scripts run is built at the run's ``VERBOSE``.  It is the
+authoritative record of the result.
 In earlier versions it had the three lines, so used as the ``-c``
 configuration of a later run without ``--validation`` it validated on the
 file its ``VALIDATION`` line named.
@@ -5864,7 +5873,8 @@ Number format.  ``best_pot.tadah``, its rank-local mirrors and the
 :ref:`pot_number_format`: every non-integer number of the key/value
 lines is written with ``NUMERIC`` significant digits, default ``18`` —
 exact, so the file re-parses to precisely the doubles the evaluation used
-— and ``NUMERIC`` itself is never written.  The cutoffs and radial grids
+— and ``NUMERIC`` itself is never a key line (the training record lists the
+run's, as written).  The cutoffs and radial grids
 (``RCUT2B``, ``RCUTMB``, ``CGRID2B``, ``CGRIDMB``, ``SGRID2B``,
 ``SGRIDMB``) are written exactly whatever ``NUMERIC`` is, so a potential of
 a run with ``NUMERIC`` below 17 loads with the cutoffs and grids the
@@ -5876,8 +5886,8 @@ the boxes (starting points are evaluated exactly, see
 configuration, so with the same configuration the restart's starting
 point is the archived potential.  The precision is read once, from the
 configuration given with ``-c``; it only shapes the files, never the
-evaluation.  The ``#`` header is an annotation that ``NUMERIC`` does not
-govern.  Its machine-read lines, ``# HPO_BEST_LOSS`` and ``# HOT``, are
+evaluation.  The ``#`` header and the training record are annotations that
+``NUMERIC`` does not govern.  Its machine-read lines, ``# HPO_BEST_LOSS`` and ``# HOT``, are
 always written with 18 significant digits (lossless), whatever
 ``NUMERIC`` is: the durable-best check compares the loss exactly, and
 ``WARM`` primes the hot-value cache from ``# HOT``.  The rest of the
@@ -5957,12 +5967,12 @@ Practical tips
   match the order of your ``OPTIM`` lines; read
   the columns by their ``KEY[n]`` labels.  To reproduce a candidate,
   use the potential itself (``best_pot.tadah`` or a ``DUMP``/``BDUMP``
-  archive): it carries the candidate's configuration except the training
-  datasets and the run's ``HPOTARGET``, ``VALIDATION`` and ``VERBOSE``.
-  Add the ``DBFILE`` lines of the run's ``-c`` configuration
-  (``best_pot.tadah``'s header names the datasets; the compact header of
-  an archive does not) to a copy of it and train it with ``tadah train
-  -c`` (:ref:`retrain_from_potential`).
+  archive): its key lines are the candidate's configuration except the
+  training datasets and the run's ``HPOTARGET``, ``VALIDATION`` and
+  ``VERBOSE``, which its training record names.  Add the ``DBFILE`` lines
+  of the run's ``-c`` configuration (the record's ``DBFILE`` line, in every
+  archive too) to a copy of it and train it with ``tadah train -c``
+  (:ref:`retrain_from_potential`).
 
 .. _hpo_stopping:
 

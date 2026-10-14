@@ -1,3 +1,6 @@
+# --- training record (not read by tadah) ---
+# DBFILE db.train
+# --- end of training record ---
 ATOM              Ta
 BIAS              false
 CEMBFUNC          0.5   0.75   1   1.25   1.5

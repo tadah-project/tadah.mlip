@@ -7232,8 +7232,9 @@ TEST_CASE("Subcommand: hpo --validation takes one file",
  * MK's decision of 2026-10-14: a potential keeps the keys it does not use --
  * the DBFILE, VALIDATION, HPOTARGET, UNCERTAINTY, VERBOSE, NUMERIC, OUTFILE,
  * AUDIT, AUDIT_SAMPLE and HEALTH_LOG its run was given -- in a comment block
- * above its key lines, for the user's record; no reader of a potential reads
- * it (tadah predict, tadah train -c, tadah hpo -c, pair_style tadah). */
+ * above its key lines, for the user's record; no loader of a potential reads
+ * it (tadah predict, tadah train -c, tadah hpo -c, pair_style tadah), and
+ * refit --edit reads it only to copy it. */
 
 namespace {
 

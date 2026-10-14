@@ -1146,7 +1146,7 @@ in ``tadah train``. All bookkeeping
 The :ref:`training record <training_record>` of the edited potential is
 that of its input, after a line naming the input::
 
-   # --- training record (not read by tadah) ---
+   # --- training record (no key is read from it) ---
    # edited by tadah refit --edit from pot.tadah
    # OUTFILE pot.tadah
    # --- end of training record ---
@@ -1156,7 +1156,9 @@ the fit that produced them still describes them, and the edit's own ``-o``,
 ``-v`` and ``NUMERIC`` are not added (an edit of an edit lists both
 ``edited by`` lines, newest first). A ``DBFILE``, ``UNCERTAINTY``,
 ``VERBOSE``, ``NUMERIC`` (and so on) key line of an input an earlier
-version wrote is not a key line of the edit: the edit's record lists it.
+version wrote, or one of the keys that prepared its training data
+(``ESHIFT_ATOM``, ``EFILTER``, ``WDBFILE``, ...), is not a key line of the
+edit: the edit's record lists it.
 What the input's record says is copied as it is, edits of yours included.
 An input whose record is malformed is refused before anything is written,
 naming the file and the lines: an opening line without its end line (the

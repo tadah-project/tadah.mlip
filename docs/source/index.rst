@@ -25,9 +25,12 @@ Welcome to the Tadah! Website
    * **Descriptors** — rotationally invariant power-spectrum family
      (``DM_PS_*``, ``DM_GPS_*``, ``DM_OW_*``) and bump-support checks for
      blip channels.
-   * **Data** — load-time dataset transforms (``LSCALE``, ``ESHIFT``,
-     ``EFILTER``/``FFILTER``, ``WDBFILE``, …) applied consistently to
-     training, prediction and nested fitting.
+   * **Data** — load-time dataset transforms: ``LSCALE`` and the resolved
+     ``ESHIFT`` are part of the potential and apply in ``tadah predict``,
+     ``tadah hpo`` and a retrain; ``EFILTER``/``FFILTER``, ``WDBFILE``, …
+     prepare the training data, are kept in the potential's training record
+     and apply to prediction only when given to ``tadah predict``
+     (:ref:`load_transforms_predict`).
 
    Upgrading from 1.4 or earlier? Read the breaking changes in the
    :doc:`changelog` first — notably the ``ON``/``OFF``/``AUTO`` vocabulary

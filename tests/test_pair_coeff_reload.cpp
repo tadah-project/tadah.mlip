@@ -30,6 +30,11 @@
 // up to 0.05 A (displace_atoms, a fixed seed); with two LAMMPS types, the
 // atoms of even ID are type 2.
 //
+// One case gives pair_style tadah a potential of an earlier version, whose
+// key lines include the keys that prepared its training data (EFILTER,
+// FFILTER, ESHIFT_ATOM, ESHIFT_DBATOM, EWEIGHT_TEMP, ZERO_COM_FORCE, WDBFILE,
+// WDBFILE_AUTO): pair_style tadah reads none of them.
+//
 // It needs pair_style tadah, so a build without TADAH_ENABLE_NFP skips it.
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
@@ -937,5 +942,37 @@ TEST_CASE("pair_style tadah: a second pair_coeff logs the lines of the "
   CHECK(at != std::string::npos);
   CHECK(at > b_line);
   CHECK(log.find(line, at + 1) == std::string::npos);
+#endif
+}
+
+/* Pins: pair_coeff * * B-old Ta, B-old being the pair potential B with the
+ * key lines of the keys that prepared the training data of a potential of
+ * an earlier version (EFILTER -12 -2, FFILTER 0.01, ESHIFT_ATOM true,
+ * ESHIFT_DBATOM true, EWEIGHT_TEMP 300, ZERO_COM_FORCE true, WDBFILE 1 0,
+ * WDBFILE_AUTO 1), gives B's energy and force norm, to 1e-12: pair_style
+ * tadah reads none of the eight (tadah predict ignores them since MK's
+ * decision of 2026-10-14, option 2, and tadah train writes them into the
+ * training record), so a potential that has them as key lines runs in
+ * LAMMPS as one without them.
+ * Before the fix: passes as well (a pin: LammpsTadah builds the model from
+ * the descriptor and model keys only). */
+TEST_CASE("pair_style tadah: the dataset keys of an older potential change "
+          "no energy",
+          "[pair_coeff][lammps][dataset_keys]") {
+#ifndef TADAH_ENABLE_NFP
+  TADAH_SKIP("pair_style tadah is not built (TADAH_ENABLE_NFP OFF)");
+#else
+  tadah::core::PeriodicTable::initialize();
+  const PotFile b("lj", kLjTa);
+  const std::string older =
+      std::string(kLjTa) +
+      "EFILTER     -12     -2\nFFILTER     0.01\nESHIFT_ATOM     true\n"
+      "ESHIFT_DBATOM     true\nEWEIGHT_TEMP     300\n"
+      "ZERO_COM_FORCE     true\nWDBFILE     1     0\nWDBFILE_AUTO     1\n";
+  const PotFile b_old("lj_old", older.c_str());
+  const Energy eb = fresh_file(b.path, "Ta", 1);
+  const Energy eb_old = fresh_file(b_old.path, "Ta", 1);
+  INFO("B: " << eb << "; B with the dataset keys: " << eb_old);
+  CHECK(same(eb_old, eb));
 #endif
 }

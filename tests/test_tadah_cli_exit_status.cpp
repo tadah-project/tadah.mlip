@@ -4756,15 +4756,20 @@ std::string with_line(const std::string& text, const std::string& key,
  * BIAS false (LAMBDA 0), BIAS true with LAMBDA 1e-3 (the intercept rules of
  * the ridge) and NORM true, `tadah train -c config -o pot.tadah -F -S`
  * exits 0; the potential has the MODEL line, and for a kernel SBASIS 5 and
- * 5 x 3 (5 x 4 with BIAS) BASIS values; a second training writes the same
- * file byte for byte (the basis draw is fixed); `tadah predict -p
- * pot.tadah -d db.tadah -F -S` exits 0 with 6 energies and 63 force
- * components, each a number (|value| < 1e3).
+ * 5 x 3 (5 x 4 with BIAS) BASIS values; a second training, the same
+ * command with the first potential moved aside, writes the same file byte
+ * for byte (the basis draw is fixed); `tadah predict -p pot.tadah -d
+ * db.tadah -F -S` exits 0 with 6 energies and 63 force components, each a
+ * number (|value| < 1e3).
  * Before the fix: the first training (M_KRR Kern_RBF, BIAS false) exited
  * 1 with "ColumnLayout: total_cols=3 disagrees with design-matrix width=5"
  * and wrote no potential (the REQUIRE stops there; the check refused every
  * non-linear model: width 6 for BF_Polynomial2, and with BIAS true
- * total_cols=4 against 5 or 10). */
+ * total_cols=4 against 5 or 10).
+ * Before the training record (MK's decision of 2026-10-14): passes as well
+ * (a pin); the second training wrote pot2.tadah (-o pot2.tadah), compared
+ * with pot.tadah: the record names the run's -o (OUTFILE pot2.tadah), so
+ * the second training now runs the same command. */
 TEST_CASE("Subcommand: train and predict work for every non-linear model",
           "[TadahCLI][train][predict][nonlinear]") {
   ScratchCwd cwd("nonlinear_train");
@@ -4777,7 +4782,7 @@ TEST_CASE("Subcommand: train and predict work for every non-linear model",
     for (const auto& v : variants) {
       INFO(m.model << ", " << v.first);
       std::ofstream("config") << nonlinear_config(m, v.second);
-      for (const char* f : {"pot.tadah", "pot2.tadah", "energy.pred", "forces.pred"})
+      for (const char* f : {"pot.tadah", "pot1.tadah", "energy.pred", "forces.pred"})
         std::filesystem::remove(f);
       const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
                                   "pot.tadah", "-F", "-S"});
@@ -4795,10 +4800,11 @@ TEST_CASE("Subcommand: train and predict work for every non-linear model",
         CHECK(line_tokens(pot, "SBASIS") == std::vector<std::string>{"SBASIS", "5"});
         CHECK(line_tokens(pot, "BASIS").size() == 1 + 5 * dsize);
       }
+      std::filesystem::rename("pot.tadah", "pot1.tadah");
       const CliRun t2 = run_tadah({"tadah", "train", "-c", "config", "-o",
-                                   "pot2.tadah", "-F", "-S"});
+                                   "pot.tadah", "-F", "-S"});
       REQUIRE(t2.status == 0);
-      CHECK(slurp("pot2.tadah") == pot);
+      CHECK(slurp("pot.tadah") == pot);
 
       const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
                                   "db.tadah", "-F", "-S"});
@@ -6817,21 +6823,25 @@ TEST_CASE("Subcommand: properties pairwise --error on a two-body plus "
 
 /* ---- [hygiene-batch2]: a potential as a configuration; validation files --
  *
- * A potential records the model's settings and its fit, neither the
- * training data (no DBFILE) nor the inputs of the run that wrote it (no
- * HPOTARGET, VALIDATION or VERBOSE). */
+ * A potential's key lines are the model's settings and its fit, neither
+ * the training data (no DBFILE line) nor the inputs of the run that wrote
+ * it (no HPOTARGET, VALIDATION or VERBOSE line); since MK's decision of
+ * 2026-10-14 its training record, a comment block nothing reads, names
+ * them for the user's record ([potential record] below). */
 
 namespace {
 
 /* The advice every refusal of a configuration without a training DBFILE
  * ends with. */
 const char* const kNoDatasetsAdvice =
-    "A potential records no DBFILE (no potential tadah writes has one): to "
-    "train from one, add a DBFILE line to a copy of it; a potential of tadah "
-    "refit or refit --edit also pins every weight with its FIXINDEX and "
-    "FIXWEIGHT lines, the seed of a tadah hpo coefficient search, so delete "
-    "them from the copy for the fit to change the weights (the Training page "
-    "of the documentation, Retraining from a potential).";
+    "A potential has no DBFILE line (no potential tadah writes one; the "
+    "DBFILE of the run that wrote it is in its training record, a comment "
+    "block tadah does not read): to train from one, add a DBFILE line to a "
+    "copy of it; a potential of tadah refit or refit --edit also pins every "
+    "weight with its FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo "
+    "coefficient search, so delete them from the copy for the fit to change "
+    "the weights (the Training page of the documentation, Retraining from a "
+    "potential).";
 
 }  // namespace
 
@@ -6839,7 +6849,7 @@ const char* const kNoDatasetsAdvice =
  * from the three Ta dimers (M_BLR BF_Linear and M_KRR Kern_Linear; it has
  * no DBFILE line), exits 1 without writing re.tadah, saying "The training
  * configuration has no DBFILE: tadah train fits the datasets it lists." and
- * the advice (kNoDatasetsAdvice: "A potential records no DBFILE ... add a
+ * the advice (kNoDatasetsAdvice: "A potential has no DBFILE line ... add a
  * DBFILE line to a copy of it; a potential of tadah refit or refit --edit
  * also pins every weight ..."), and no "Key not found"; with the DBFILE
  * line added it trains (exit 0; a pin of the documented route).
@@ -6848,7 +6858,10 @@ const char* const kNoDatasetsAdvice =
  * DBFILE"), naming neither potentials nor the retrain.
  * Before the advice named the pins (cross-lane review 2): it ended "add a
  * DBFILE line to a copy of it (the Training page ...).", which a refit
- * potential so retrained followed to a fit of nothing (the next case). */
+ * potential so retrained followed to a fit of nothing (the next case).
+ * Before the training record (MK's decision of 2026-10-14): the advice
+ * began "A potential records no DBFILE (no potential tadah writes has
+ * one): ...". */
 TEST_CASE("Subcommand: train -c of a potential without a DBFILE line is "
           "refused, pointing to the retrain route",
           "[TadahCLI][train][retrain][potential-content]") {
@@ -7030,14 +7043,18 @@ void write_hpo_potential_fixture() {
  * config.tadah (no DBFILE line, no FIXINDEX) exits 1 without
  * best_pot.tadah, refusing "No training DBFILE and no FIXINDEX/FIXWEIGHT:
  * the model weights cannot be determined" and ending with the advice ("A
- * potential records no DBFILE ... Retraining from a potential)."); the
+ * potential has no DBFILE line ... Retraining from a potential)."); the
  * potential without its ATOM line is refused "the ATOM key is required",
  * with the same advice.
  * Before the fix: both refusals ended with their own remedy ("... or pin
  * every weight with FIXINDEX/FIXWEIGHT.", "(e.g. 'ATOM Ta')."), without the
- * advice. */
+ * advice.
+ * Before the training record (MK's decision of 2026-10-14): the advice
+ * began "A potential records no DBFILE (no potential tadah writes has
+ * one): ...", and the case was named "..., says that a potential records
+ * none". */
 TEST_CASE("Subcommand: hpo -c of a potential without a DBFILE line says "
-          "that a potential records none",
+          "that a potential has no DBFILE line",
           "[TadahCLI][hpo][retrain][potential-content]") {
   ScratchCwd cwd("hpo_pot_no_dbfile");
   write_hpo_potential_fixture();
@@ -7075,7 +7092,9 @@ TEST_CASE("Subcommand: hpo -c of a potential without a DBFILE line says "
 
 /* Pins: the best_pot.tadah of `tadah hpo -c config.tadah --hpotarget
  * config.hpo --validation config.val -v 1` (one evaluation) has no
- * HPOTARGET, VALIDATION or VERBOSE line and still its MODEL and WEIGHTS,
+ * HPOTARGET, VALIDATION or VERBOSE key line (its training record, a comment
+ * block, names them: the case "Subcommand: hpo records ... in
+ * best_pot.tadah's training record") and still its MODEL and WEIGHTS,
  * and its header still names the validation dataset: the line after the
  * header's "#   Validation " line is "#   [1] 3 structs, ..." ending in
  * " val.tadah" (the training dataset is db.tadah); `tadah hpo -c
@@ -7087,9 +7106,13 @@ TEST_CASE("Subcommand: hpo -c of a potential without a DBFILE line says "
  * the config.val its seed named, which no --validation asked for (exit 0).
  * The header's validation dataset passes before the fix as well (a pin);
  * the case checked only that best_pot.tadah has "Validation" and
- * "db.tadah", which the training dataset's line has. */
-TEST_CASE("Subcommand: hpo writes no HPOTARGET, VALIDATION or VERBOSE into "
-          "best_pot.tadah, and a seed potential names no validation file",
+ * "db.tadah", which the training dataset's line has.
+ * Before the training record (MK's decision of 2026-10-14): passes as well
+ * (a pin); the case was named "Subcommand: hpo writes no HPOTARGET,
+ * VALIDATION or VERBOSE into best_pot.tadah, ...". */
+TEST_CASE("Subcommand: hpo writes no HPOTARGET, VALIDATION or VERBOSE line "
+          "into best_pot.tadah, and a seed potential names no validation "
+          "file",
           "[TadahCLI][hpo][potential-content]") {
   ScratchCwd cwd("hpo_pot_run_inputs");
   write_hpo_potential_fixture();
@@ -7191,5 +7214,259 @@ TEST_CASE("Subcommand: hpo --validation takes one file",
                       "configuration file"));
   CHECK(contains(rep, "a.val b.val"));
   CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+}
+#endif  // TADAH_ENABLE_NFP
+
+/* ---- [potential record]: the training record of a potential --------------
+ *
+ * MK's decision of 2026-10-14: a potential keeps the keys it does not use --
+ * the DBFILE, VALIDATION, HPOTARGET, UNCERTAINTY, VERBOSE, NUMERIC, OUTFILE,
+ * AUDIT, AUDIT_SAMPLE and HEALTH_LOG its run was given -- in a comment block
+ * above its key lines, for the user's record; no reader of a potential reads
+ * it (tadah predict, tadah train -c, tadah hpo -c, pair_style tadah). */
+
+namespace {
+
+const char* const kRecordOpen = "# --- training record (not read by tadah) ---";
+const char* const kRecordEnd = "# --- end of training record ---";
+
+/* The lines of the training record of the potential text @p pot, without
+ * their leading "# "; empty when it has none. */
+std::vector<std::string> record_of(const std::string& pot) {
+  std::istringstream in(pot);
+  std::vector<std::string> out;
+  bool in_block = false;
+  for (std::string l; std::getline(in, l);) {
+    if (!in_block) {
+      in_block = l == kRecordOpen;
+      continue;
+    }
+    if (l == kRecordEnd) break;
+    out.push_back(l.rfind("# ", 0) == 0 ? l.substr(2) : l);
+  }
+  return out;
+}
+
+/* @p pot without its training record (the block's lines). */
+std::string without_record(const std::string& pot) {
+  std::istringstream in(pot);
+  std::string out;
+  bool in_block = false;
+  for (std::string l; std::getline(in, l);) {
+    if (l == kRecordOpen) in_block = true;
+    if (!in_block) out += l + "\n";
+    if (l == kRecordEnd) in_block = false;
+  }
+  return out;
+}
+
+/* Whether the line after the training record of @p pot is a key line (the
+ * record is the comment block right above the key lines). */
+bool record_precedes_keys(const std::string& pot) {
+  std::istringstream in(pot);
+  bool closed = false;
+  for (std::string l; std::getline(in, l);) {
+    if (closed) {
+      std::istringstream ls(l);
+      std::string k;
+      return (ls >> k) && k[0] != '#';
+    }
+    closed = l == kRecordEnd;
+  }
+  return false;
+}
+
+}  // namespace
+
+/* Pins: `tadah train -c config` (config: DBFILE db.tadah and the Nb-Ta keys
+ * of the BIAS cases) writes pot.tadah whose training record, right above
+ * its key lines, is "DBFILE db.tadah" alone: the blueprint defaults the run
+ * uses and nobody wrote (VERBOSE 1, OUTFILE pot.tadah) are not recorded;
+ * `tadah train -c config -o pot2.tadah -v 0` records "DBFILE db.tadah",
+ * "VERBOSE 0" and "OUTFILE pot2.tadah" (the command line's values), and no
+ * key line of them; `tadah predict -p pot.tadah -d db.tadah` writes
+ * energy.pred byte for byte as with bare.tadah, pot.tadah without its
+ * record; and the documented retrain, `tadah train -c retrain.train -o
+ * pot3.tadah` (pot.tadah, its record a comment, with "DBFILE db2.tadah"
+ * added), records "DBFILE db2.tadah" and "OUTFILE pot3.tadah", and
+ * db.tadah appears nowhere in pot3.tadah.
+ * Before the fix: no potential had a training record (the decision taken in
+ * MK's absence on 2026-10-12 dropped the keys, replaced by MK's of
+ * 2026-10-14). */
+TEST_CASE("Subcommand: train records the keys the run was given in the "
+          "potential's training record",
+          "[TadahCLI][train][potential-content][training-record]") {
+  ScratchCwd cwd("train_record");
+  std::ofstream("db.tadah") << nbta_dataset(false);
+  std::ofstream("db2.tadah") << nbta_dataset(false);
+  std::ofstream("config") << "DBFILE db.tadah\n" << kNbTaKeys;
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string pot = slurp("pot.tadah");
+  INFO("pot.tadah:\n" << pot);
+  CHECK(record_of(pot) == std::vector<std::string>{"DBFILE db.tadah"});
+  CHECK(record_precedes_keys(pot));
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot2.tadah", "-v", "0"});
+    INFO("train -o -v: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string pot2 = slurp("pot2.tadah");
+  INFO("pot2.tadah:\n" << pot2);
+  CHECK(record_of(pot2) ==
+        std::vector<std::string>{"DBFILE db.tadah", "VERBOSE 0",
+                                 "OUTFILE pot2.tadah"});
+  for (const char* key : {"DBFILE", "VERBOSE", "OUTFILE"}) {
+    INFO("key " << key);
+    CHECK(line_tokens(pot2, key).empty());
+  }
+
+  std::ofstream("bare.tadah") << without_record(pot);
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah"});
+    INFO("predict pot.tadah: status " << p.status << "\n" << reported(p));
+    REQUIRE(p.status == 0);
+    std::filesystem::rename("energy.pred", "energy_record.pred");
+  }
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "bare.tadah", "-d",
+                                "db.tadah"});
+    INFO("predict bare.tadah: status " << p.status << "\n" << reported(p));
+    REQUIRE(p.status == 0);
+  }
+  CHECK_FALSE(slurp("energy.pred").empty());
+  CHECK(slurp("energy_record.pred") == slurp("energy.pred"));
+
+  std::ofstream("retrain.train") << as_training_config(pot, "db2.tadah");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "retrain.train", "-o",
+                                "pot3.tadah"});
+    INFO("retrain: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string pot3 = slurp("pot3.tadah");
+  INFO("pot3.tadah:\n" << pot3);
+  CHECK(record_of(pot3) ==
+        std::vector<std::string>{"DBFILE db2.tadah", "OUTFILE pot3.tadah"});
+  CHECK(pot3.find("db.tadah") == std::string::npos);
+}
+
+/* Pins: `tadah refit -c config.refit -o refit_pot.tadah` (a dense coarse
+ * refit of the small Ta setfl) writes refit_pot.tadah whose training record
+ * is "OUTFILE refit_pot.tadah" (its configuration sets none of the other
+ * keys); `tadah refit --edit refit_pot.tadah --func phi --add 2.5 -o
+ * edited.tadah -v 0` writes edited.tadah whose record is "edited by tadah
+ * refit --edit from refit_pot.tadah" and then the input's record, "OUTFILE
+ * refit_pot.tadah" (the edit fits nothing: its record is that of the fit
+ * whose weights it edits; the edit's own -o and -v are not added).
+ * Before the fix: neither potential had a training record. */
+TEST_CASE("Subcommand: refit records its run, and refit --edit copies the "
+          "record of its input",
+          "[TadahCLI][refit][potential-content][training-record]") {
+  ScratchCwd cwd("refit_record");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "config.refit", "-o",
+                                "refit_pot.tadah"});
+    INFO("refit: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  const std::string refit_pot = slurp("refit_pot.tadah");
+  INFO("refit_pot.tadah:\n" << refit_pot);
+  CHECK(record_of(refit_pot) ==
+        std::vector<std::string>{"OUTFILE refit_pot.tadah"});
+  CHECK(record_precedes_keys(refit_pot));
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "--edit", "refit_pot.tadah",
+                                "--func", "phi", "--add", "2.5", "-o",
+                                "edited.tadah", "-v", "0"});
+    INFO("--edit: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  const std::string edited = slurp("edited.tadah");
+  INFO("edited.tadah:\n" << edited);
+  CHECK(record_of(edited) ==
+        std::vector<std::string>{
+            "edited by tadah refit --edit from refit_pot.tadah",
+            "OUTFILE refit_pot.tadah"});
+  CHECK(line_tokens(edited, "OUTFILE").empty());
+}
+
+#ifdef TADAH_ENABLE_NFP
+/* Pins: `tadah hpo -c config.tadah --hpotarget config.hpo --validation
+ * config.val` (write_hpo_potential_fixture: one evaluation; config.tadah
+ * sets DBFILE db.tadah and VERBOSE 0) writes best_pot.tadah whose training
+ * record, right above its key lines, is "DBFILE db.tadah", "VALIDATION
+ * config.val", "HPOTARGET config.hpo" and "VERBOSE 0" (the configuration
+ * file's and the command line's values), with no key line of them; the
+ * header's training dataset line ("#   [1] 3 structs, ..." after
+ * "#   Training ") names no db.tadah, which the record names; and `tadah
+ * predict -p best_pot.tadah -d db.tadah` writes energy.pred byte for byte as
+ * with best_pot.tadah without its record.
+ * Before the fix: best_pot.tadah had no training record, and the header's
+ * training dataset line ended with "  db.tadah". */
+TEST_CASE("Subcommand: hpo records the run's DBFILE, --validation, "
+          "--hpotarget and VERBOSE in best_pot.tadah's training record",
+          "[TadahCLI][hpo][potential-content][training-record]") {
+  ScratchCwd cwd("hpo_record");
+  write_hpo_potential_fixture();
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                                "--hpotarget", "config.hpo", "--validation",
+                                "config.val"});
+    INFO("hpo: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  const std::string best = slurp("best_pot.tadah");
+  INFO("best_pot.tadah:\n" << best);
+  CHECK(record_of(best) ==
+        std::vector<std::string>{"DBFILE db.tadah", "VALIDATION config.val",
+                                 "HPOTARGET config.hpo", "VERBOSE 0"});
+  CHECK(record_precedes_keys(best));
+  for (const char* key : {"DBFILE", "VALIDATION", "HPOTARGET", "VERBOSE"}) {
+    INFO("key " << key);
+    CHECK(line_tokens(best, key).empty());
+  }
+  {
+    std::istringstream in(best);
+    std::string line, after_training;
+    bool seen = false;
+    while (std::getline(in, line)) {
+      if (seen) {
+        after_training = line;
+        break;
+      }
+      seen = line.rfind("#   Training ", 0) == 0;
+    }
+    INFO("the line after the header's Training line: " << after_training);
+    CHECK(seen);
+    CHECK(after_training.rfind("#   [1] 3 structs, ", 0) == 0);
+    CHECK(after_training.find("db.tadah") == std::string::npos);
+  }
+  std::ofstream("bare.tadah") << without_record(best);
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "best_pot.tadah",
+                                "-d", "db.tadah"});
+    INFO("predict best_pot.tadah: status " << p.status << "\n"
+                                           << reported(p));
+    REQUIRE(p.status == 0);
+    std::filesystem::rename("energy.pred", "energy_record.pred");
+  }
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "bare.tadah", "-d",
+                                "db.tadah"});
+    INFO("predict bare.tadah: status " << p.status << "\n" << reported(p));
+    REQUIRE(p.status == 0);
+  }
+  CHECK_FALSE(slurp("energy.pred").empty());
+  CHECK(slurp("energy_record.pred") == slurp("energy.pred"));
 }
 #endif  // TADAH_ENABLE_NFP

@@ -199,8 +199,9 @@ chain.
    `v1-dev`, then `git push origin v1.6.0`.
 4. **Release commit** on `v1-dev` in each of the seven repos: switch the
    cmake-tools pin to `GIT_TAG v1.6.0`, and set the date of the
-   `## [1.6.0]` CHANGELOG heading (and `date-released` in
-   `CITATION.cff`) to the tag date. Push it, in the order above.
+   `## [1.6.0]` CHANGELOG heading (`## [1.6.0] — unreleased` until
+   then) and `date-released` in `CITATION.cff` to the tag date. Push
+   it, in the order above.
 5. **Tag the modules in tag order** (`core`, `models`, `mlip`, `md`,
    `tadah.lammps`, `hpo`, `tadah.mlip`): `git tag -a v1.6.0 -m "Tadah!
    1.6.0"`, then `git push origin v1.6.0`. Let each tag pipeline finish

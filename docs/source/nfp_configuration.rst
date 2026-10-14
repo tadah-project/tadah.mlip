@@ -867,7 +867,7 @@ The script gives LAMMPS the trial potential with ``pair_style tadah`` and
 adopts that evaluation's trial potential.  A ``pair_coeff * * <file>
 <elements>`` line loads that file instead (a fixed potential, for example
 a reference to compare with), and an ``EXTERN`` line after it adopts the
-trial potential again.  In Tadah! 1.6.0 and earlier a pair style that held
+trial potential again.  In Tadah! 1.5.0 and earlier a pair style that held
 a potential did not read the file of a later ``pair_coeff``: a
 ``pair_coeff * * <file>`` after an ``EXTERN`` line, with no ``clear``
 between them, ran the trial potential.

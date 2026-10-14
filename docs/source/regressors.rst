@@ -48,8 +48,8 @@ basis below.
    ``MODEL M_KRR Kern_Linear 2`` wrote the coefficients :math:`w` of its
    basis vectors as its ``WEIGHTS``, which ``tadah predict`` and ``pair_style
    tadah`` evaluated as descriptor weights, so its energies were wrong (the
-   1.6.0 development builds that check a potential's fit refused it unless
-   ``SBASIS`` equalled ``DSIZE``). Retrain such potentials.
+   check of a potential's fit refuses such a potential unless ``SBASIS``
+   equals ``DSIZE``). Retrain such potentials.
 
 Examples
 ........

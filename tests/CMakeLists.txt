@@ -189,9 +189,11 @@ add_subdirectory(catch_discovery)
 # 7. Documentation build tools (docs/tools/tests)
 # ------------------------------------------------------------------
 # Unit tests of the docs input lookup (docs/source/config/source_locator.py),
-# of the hpo.html redirect check (docs/tools/check_redirect.py) and of the
+# of the hpo.html redirect check (docs/tools/check_redirect.py), of the
 # configuration-keys and CLI page generators (docs/source/config/read_toml.py,
-# docs/source/cli/generate_cli.py). They never use the network.
+# docs/source/cli/generate_cli.py) and of the ANNEAL key tables' generator
+# (docs/source/config/read_anneal_keys.py, which needs Python 3.11 or later
+# for tomllib). They never use the network.
 #
 # Some cases need node, sphinx-build or the Python modules sphinx,
 # sphinx_rtd_theme or yaml, and skip themselves when one is missing.

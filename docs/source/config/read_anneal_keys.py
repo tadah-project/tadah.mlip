@@ -26,17 +26,23 @@ from __future__ import annotations
 import os
 import sys
 
+# The registry is read with tomllib, in the standard library from Python
+# 3.11; the documentation build needs Python 3.11 or later (CONTRIBUTING.md,
+# "Building the documentation"), and an older interpreter stops it here.
 try:
     import tomllib
+except ImportError:
+    sys.exit(
+        "read_anneal_keys.py needs Python 3.11 or later: it reads HPO's "
+        "blueprint/anneal_keys.toml with tomllib, which Python "
+        f"{sys.version_info.major}.{sys.version_info.minor} does not have "
+        f"({sys.executable}); build the documentation with Python 3.11 or "
+        "later")
 
-    def _load(path):
-        with open(path, "rb") as fh:
-            return tomllib.load(fh)
-except ImportError:  # pragma: no cover - pre-3.11 fallback
-    import toml
 
-    def _load(path):
-        return toml.load(path)
+def _load(path):
+    with open(path, "rb") as fh:
+        return tomllib.load(fh)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)

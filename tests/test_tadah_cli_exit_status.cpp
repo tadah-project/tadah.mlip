@@ -13,7 +13,9 @@
 // STRESS (from -c, the default, or -F/-S) decide only what training fits;
 // validation predicts forces because PC_FRMSE asks for them, the journal
 // says where FORCE/STRESS came from, and FORCE in the --validation file is
-// refused at its line.
+// refused at its line. The [startup] case runs `tadah hpo` with a PRESTAGE
+// refinement on NLOPT:GN_DIRECT_L, which does not start at its candidate
+// and is refused at startup, at its line (MK's decision of 2026-10-15).
 //
 // The [data] cases run the `tadah data` tools on small structure files
 // (RELEASE-1.6.0-FOLLOWUPS.md, "Known-issues session ... decisions", D,
@@ -801,6 +803,65 @@ TEST_CASE("Subcommand: hpo: FORCE in the --validation file is refused at its "
   auto names_refusal = [&](const std::string& s) {
     return has_word_force(s) && contains(s, "not accepted") &&
            names_line(s, 2) && contains(s, "config_force.val");
+  };
+  CHECK((names_refusal(r.what) || names_refusal(r.err) ||
+         names_refusal(r.out) || names_refusal(journal)));
+}
+
+/* Pins: `tadah hpo` with a STRATEGY TYPE PRESTAGE whose refinement is
+ * NLOPT:GN_DIRECT_L -- DIRECT evaluates the centre of the OPTIM box first
+ * and never reads the candidate it is given -- is refused at startup (owner
+ * decision, MK, 2026-10-15): a non-zero exit, no best_pot.tadah and no
+ * loss.tadah (nothing is evaluated), and the refusal (the escaping
+ * exception, stderr, stdout or the journal) names line 14 of config.hpo
+ * (ENDOPTIMIZER), says "STRATEGY TYPE PRESTAGE cannot refine with
+ * NLOPT:GN_DIRECT_L: it does not start at the point it is given" and lists
+ * NLOPT:LN_BOBYQA and DLIB:BFGS among the local optimisers that start at
+ * each candidate.
+ * Before the fix the run was accepted: it explored, refined with DIRECT
+ * from the centre of the box, never at the candidate, and exited 0 with a
+ * best_pot.tadah: the checks fail. */
+TEST_CASE("Subcommand: hpo: a PRESTAGE refinement on a search that does not "
+          "start at its candidate is refused at startup, naming the line",
+          "[TadahCLI][hpo][startup]") {
+  ScratchCwd cwd("prestage_direct");
+  write_frmse_fixture("config.tadah", "FORCE true\nSTRESS false\n");
+  {
+    std::ofstream os("config.hpo");
+    os << "OPTIMIZER\n"               // line 1
+          "  STRATEGY\n"
+          "    TYPE PRESTAGE\n"
+          "    LIB NLOPT\n"
+          "    ALGO GN_DIRECT_L\n"    // line 5: the refinement
+          "    MAXEVAL 4\n"
+          "    EXPLORE\n"
+          "      LIB TADAH\n"
+          "      ALGO RANDOM\n"
+          "      MAXEVAL 3\n"
+          "      SEED 1\n"
+          "    ENDEXPLORE\n"
+          "  ENDSTRATEGY\n"
+          "ENDOPTIMIZER\n"            // line 14
+          "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
+          "OPTIM FIXWEIGHT (1) -30.0 0.0\n";
+  }
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                              "--hpotarget", "config.hpo",
+                              "--validation", "config.val"});
+  const std::string journal = std::filesystem::exists("hpo_run.log")
+                                  ? slurp("hpo_run.log")
+                                  : std::string();
+  INFO("exception: " << r.what << "\nstderr:\n" << r.err
+                     << "\nhpo_run.log:\n" << journal);
+  CHECK(r.status != 0);
+  CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  CHECK_FALSE(std::filesystem::exists("loss.tadah"));
+  auto names_refusal = [&](const std::string& s) {
+    return names_line(s, 14) && contains(s, "ENDOPTIMIZER") &&
+           contains(s, "STRATEGY TYPE PRESTAGE cannot refine with "
+                       "NLOPT:GN_DIRECT_L: it does not start at the point it "
+                       "is given") &&
+           contains(s, "NLOPT:LN_BOBYQA") && contains(s, "DLIB:BFGS");
   };
   CHECK((names_refusal(r.what) || names_refusal(r.err) ||
          names_refusal(r.out) || names_refusal(journal)));

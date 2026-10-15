@@ -3,13 +3,20 @@
 Refitting tabulated EAM potentials
 ==================================
 
+.. note::
+
+   New refits write resolved :ref:`DM_Embed component blocks <dm_embed>`.
+   That page documents independent density and embedding choices, AUTO grids,
+   physical-width coordinates, and the component compact fitting path.
+
 ``tadah refit`` converts a tabulated EAM potential (a *setfl* file in the
 LAMMPS ``eam/alloy`` / ``eam/fs`` format) into a native Tadah! potential. The
 three tabulated functions — pair :math:`\phi(r)`, electron density
 :math:`\rho(r)` and embedding :math:`F(\rho)` — are re-expressed as small
 basis-function expansions and fitted, producing a native ``pot.tadah``. Its
 descriptors follow ``REFIT_BASIS``: a ``D2_*`` pair descriptor (e.g.
-``D2_Knot5``, ``D2_Blip``) together with the ``DM_REAM`` many-body descriptor.
+``D2_Knot5``, ``D2_Blip``) together with a resolved ``DM_Embed`` many-body block. Legacy ``DM_REAM`` files
+remain readable.
 The result is usable with ``tadah predict``, the Tadah!LAMMPS plugin, and
 :ref:`nested fitting <nested_fitting>`. ``refit`` also writes a round-trip
 *setfl* (for direct LAMMPS comparison) and a ``tadah hpo`` starter target.

@@ -40,9 +40,9 @@ heading; pass it as the value of ``RCTYPE2B`` or ``RCTYPEMB``.
      - 1
      - 0
      - yes
-     - Pseudo-Thomas–Fermi taper; very smooth tail
+     - Normalized tanh switch with a flat tail
    * - ``Cut_Tanh``
-     - 1
+     - tanh(1)^3
      - 0
      - yes
      - tanh\ :sup:`3` taper; Behler (2011)
@@ -50,7 +50,7 @@ heading; pass it as the value of ``RCTYPE2B`` or ``RCTYPEMB``.
      - 1
      - 0
      - **no**
-     - Sharp step; for testing only, not for production runs
+     - Sharp step; suitable when each compact radial basis terminates smoothly within the radius
    * - ``Cut_SinInv``
      - 0
      - 1
@@ -58,8 +58,14 @@ heading; pass it as the value of ``RCTYPE2B`` or ``RCTYPEMB``.
      - Inverse envelope; used internally by ``DM_mBlipEnv``
 
 
-Standard cutoffs — f(0) = 1, f(r\ :sub:`cut`) = 0
+Spatial cutoffs — f(r\ :sub:`cut`) = 0
 ---------------------------------------------------
+
+``Cut_Tanh`` has f(0) = tanh(1)^3 (approximately 0.442), rather than 1.
+Cosine cutoffs match with C1 smoothness; the quintic polynomial and tanh-cubed
+cutoffs match with C2; Cut_PT has a flat limiting tail. ``Cut_SinInv`` is an
+increasing density envelope, with C1 matching, rather than a spatial taper.
+``DM_Embed`` calls a verified self-terminating density's spatial option ``NONE``.
 
 Cut_Cos
 .......

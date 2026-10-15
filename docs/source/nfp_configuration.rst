@@ -25,7 +25,7 @@ in the order they normally appear:
      STRATEGY   ... ENDSTRATEGY      # required: TYPE + driver + decorators
        EXPLORE  ... ENDEXPLORE       # required for TYPE PRESTAGE
        REFINE   ... ENDREFINE        # optional for TYPE PRESTAGE
-       INNER    ... ENDINNER         # optional: NLopt MLSL/AUGLAG inner
+       INNER    ... ENDINNER         # optional: NLopt MLSL/AUGLAG local search
        RESTART  ... ENDRESTART       # optional decorator
    ENDOPTIMIZER
 
@@ -2435,7 +2435,7 @@ error: the ``ENDOPTIMIZER`` line for the ``STRATEGY``-level optimiser, a
 block's keys included), ``ENDEXPLORE`` for the exploration, ``ENDINNER``
 for an ``INNER`` block.  So do the startup refusals of the ``STRATEGY``
 rules (``STRATEGY TYPE MULTISTART cannot run …``, an ``INNER`` block that
-names another library), of a phase's finite differences or a
+names another library or a global optimiser), of a phase's finite differences or a
 ``GRAD_STRATEGY`` on a phase that takes no gradient, the check of the
 ``ANALYTICAL`` setup (``OPTIMIZER block: GRAD_STRATEGY ANALYTICAL …``,
 ``EXPLORE block: …``), the ``STEP`` rules (``DLIB:BFGS (OUTER) does not
@@ -2663,10 +2663,10 @@ one a finite number (``MAXTIME`` a positive one).
        step: its gradient search, which does not start at the point it is
        given, evaluates the loss at a point of its own (1 evaluation) and
        the gradient there (...) ..., which needs MAXEVAL 6 or more``, under
-       ``NOISE CALIBRATION`` too, whose seed point it does not start at),
-       and so does an ``AUGLAG`` or MLSL whose ``INNER`` search is StoGO.
+       ``NOISE CALIBRATION`` too, whose seed point it does not start at).
        (As the ``PRESTAGE`` refinement, which would not look at its
-       candidate, it is refused at startup: :ref:`strategy_block`.)  The
+       candidate, it is refused at startup, and as an ``INNER`` search,
+       which is a local one: :ref:`strategy_block`, :ref:`hpo_inner_block`.)  The
        warning
        cannot know a start whose evaluation was not usable, nor the
        refinement from ``INIT`` points that a ``PRESTAGE`` whose
@@ -4105,8 +4105,8 @@ small: roughly (1/``XTOL_REL``)\ :sup:`n` evaluations for *n*
 dimensions (``XTOL_REL 1e-3`` in two dimensions ran past 20000); it
 counts as a stop, and the message says what it costs.  ``CRS2`` and
 ``ISRES`` test the tolerances when the best improves.  ``GD_STOGO`` and
-``GD_STOGO_RAND`` need ``MAXEVAL``, in their own block or, as an
-``INNER`` search, in the enclosing one: NLopt's StoGO ignores the forced
+``GD_STOGO_RAND`` need ``MAXEVAL`` in their own block (an ``INNER`` block
+does not take them: :ref:`hpo_inner_block`): NLopt's StoGO ignores the forced
 stop by which HPO ends a search on a signal, an error, the ``RESTART``
 stagnation stop or a loss at or below ``STOPVAL`` that NLopt was not
 given (:ref:`hpo_gradient_not_finite`).  From then on StoGO calls on, and
@@ -4144,12 +4144,8 @@ decides):
    HPOEngine error: Error on line 15: the STRATEGY-level optimiser: NLOPT:G_MLSL_LDS does not support FTOL_REL with an INNER block: MLSL's multistart loop tests no tolerance, and NLopt passes the block's tolerances to no INNER search; set it in the INNER block, whose local search tests it
    Line: ENDOPTIMIZER
 
-The second sends the tolerance into the ``INNER`` block only when that
-block's algorithm tests it; otherwise it names the stops that search
-honours (``…; the INNER block's NLOPT:GN_ESCH does not test it either:
-stop that search with MAXEVAL or MAXTIME in the INNER block, or MAXEVAL,
-MAXTIME or STOPVAL in the NLOPT:AUGLAG block, which NLopt hands on to
-it``).
+The second sends the tolerance into the ``INNER`` block, whose search,
+a local NLopt algorithm (:ref:`hpo_inner_block`), tests every tolerance.
 
 Before 1.6.0 they were accepted and did nothing: ``TADAH:RANDOM`` and
 ``TADAH:GRID`` accepted every tolerance (and ``POPULATION`` and
@@ -4162,9 +4158,10 @@ optimiser, ``LN_COBYLA`` or ``LD_MMA``, which takes the block's
 tolerances) must end too: it runs with the enclosing block's ``MAXEVAL``,
 ``MAXTIME`` and ``STOPVAL`` as well as its own ``MAXEVAL``, ``MAXTIME``
 and tolerances (:ref:`hpo_inner_block`; its own ``MAXEVAL`` counts NLopt
-calls, the enclosing block's every evaluation), so an ``INNER`` global search
-under ``AUGLAG``, or ``LD_AUGLAG`` without an ``INNER`` block, needs one
-of those:
+calls, the enclosing block's every evaluation), so an ``INNER`` search
+that needs a stop (``LD_MMA``, ``LD_CCSAQ``, ``LD_SLSQP``) under
+``AUGLAG``, or ``LD_AUGLAG`` without an ``INNER`` block, needs one of
+those:
 
 .. code-block:: none
 
@@ -4739,20 +4736,21 @@ list depends on the libraries the build includes):
 
 NLopt's ``AUGLAG`` (``AUGLAG``, ``LN_AUGLAG``, ``LD_AUGLAG`` and their
 ``_EQ`` forms) is a local algorithm: it runs its ``INNER`` search from the
-start it is given.  With an ``INNER`` search that does not start at the
-point it is given -- NLopt's StoGO (``GD_STOGO``, ``GD_STOGO_RAND``),
-DIRECT (``GN_DIRECT*``, ``GN_ORIG_DIRECT*``) or AGS (``GN_AGS``), which
-never read it -- no start would begin at its ``INIT`` point, so
-``MULTISTART`` refuses it at startup, at the ``INNER`` block's
-``ENDINNER`` line (``the INNER block of the STRATEGY-level optimiser:
-NLOPT:LN_AUGLAG runs its INNER search NLOPT:GN_AGS from the point it is
-given (each MULTISTART start's INIT point), and NLOPT:GN_AGS does not start
-at the point it is given (AGS evaluates points of a space-filling curve
-through the whole OPTIM box, the first near its centre; NLopt never reads
-that point), so no MULTISTART start would begin at its INIT point. Use a
-local NLopt algorithm in the INNER block, which starts at the point it is
-given (NLOPT:LD_AUGLAG, ..., NLOPT:LN_SBPLX), or STRATEGY TYPE PLAIN to run
-NLOPT:LN_AUGLAG once.``); 1.5.0 accepted it.
+start it is given, and that search is a local one, as every ``INNER``
+search is (:ref:`hpo_inner_block`): an ``INNER`` block that names a global
+optimiser is refused at startup, at its ``ENDINNER`` line, under
+``MULTISTART`` as under every ``STRATEGY TYPE`` (``the INNER block of the
+STRATEGY-level optimiser: NLOPT:LN_AUGLAG cannot run NLOPT:GN_AGS as its
+INNER search: an INNER search is a local search, which NLOPT:LN_AUGLAG
+starts at its own starting point, and NLOPT:GN_AGS is a global optimiser
+that does not start at the point it is given (AGS evaluates points of a
+space-filling curve through the whole OPTIM box, the first near its
+centre; NLopt never reads that point). Use a local NLopt algorithm in the
+INNER block, which starts at the point it is given (NLOPT:LD_AUGLAG, ...,
+NLOPT:LN_SBPLX), or run NLOPT:GN_AGS as the exploration (EXPLORE block) or
+once, as STRATEGY TYPE PLAIN.``).  1.5.0 accepted such a ``MULTISTART``,
+whose starts then searched the whole box, with StoGO, DIRECT and AGS
+never at their ``INIT`` point.
 
 TYPE PRESTAGE — staged global → local
 .....................................
@@ -4814,13 +4812,15 @@ starts at its point:
    HPOEngine error: Error on line 14: STRATEGY TYPE PRESTAGE cannot refine with NLOPT:GN_DIRECT_L: it does not start at the point it is given (DIRECT evaluates the centre of the OPTIM box first and then divides the whole box; NLopt never reads that point), so the refinement would never use the exploration's candidates, for any TOPK. Use a local optimiser, which starts at each candidate (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, NLOPT:LD_AUGLAG, NLOPT:LD_AUGLAG_EQ, NLOPT:LD_CCSAQ, NLOPT:LD_LBFGS, NLOPT:LD_MMA, NLOPT:LD_SLSQP, NLOPT:LD_TNEWTON, NLOPT:LD_TNEWTON_PRECOND, NLOPT:LD_TNEWTON_PRECOND_RESTART, NLOPT:LD_TNEWTON_RESTART, NLOPT:LD_VAR1, NLOPT:LD_VAR2, NLOPT:LN_AUGLAG, NLOPT:LN_AUGLAG_EQ, NLOPT:LN_BOBYQA, NLOPT:LN_COBYLA, NLOPT:LN_NELDERMEAD, NLOPT:LN_PRAXIS, NLOPT:LN_SBPLX), or run NLOPT:GN_DIRECT_L as the exploration (EXPLORE block) or once, as STRATEGY TYPE PLAIN.
    Line: ENDOPTIMIZER
 
-An ``AUGLAG`` refinement whose ``INNER`` search is one of them is refused
-the same way, at the ``INNER`` block's ``ENDINNER`` line (``the INNER
-block of the PRESTAGE refinement: NLOPT:AUGLAG runs its INNER search
-NLOPT:GD_STOGO from the point it is given (each candidate of the
-exploration), and NLOPT:GD_STOGO does not start at the point it is given
-(...), so the refinement would never use the exploration's candidates. Use
-a local NLopt algorithm in the INNER block, ...``).  The other global
+An ``AUGLAG`` or MLSL refinement whose ``INNER`` search is one of them, or
+any other global optimiser, is refused at the ``INNER`` block's
+``ENDINNER`` line, as every global ``INNER`` search is
+(:ref:`hpo_inner_block`: ``the INNER block of the PRESTAGE refinement:
+NLOPT:AUGLAG cannot run NLOPT:GD_STOGO as its INNER search: an INNER
+search is a local search, which NLOPT:AUGLAG starts at its own starting
+point, and NLOPT:GD_STOGO is a global optimiser that does not start at the
+point it is given (...). Use a local NLopt algorithm in the INNER block,
+...``).  The other global
 optimisers start at their point and stay accepted with ``TOPK 1``:
 ``GN_CRS2_LM``, ``GN_ISRES`` and ``GN_ESCH`` take it as the first member of
 their population, MLSL evaluates it first, ``TADAH:RANDOM`` and
@@ -5296,7 +5296,9 @@ INNER block — NLopt MLSL / AUGLAG sub-optimiser
 -----------------------------------------------
 
 NLopt's MLSL / G_MLSL_LDS / AUGLAG drivers delegate inner work to a
-local optimiser.  Configure the inner via:
+local optimiser: MLSL starts a local search at points it samples in the
+``OPTIM`` box, and ``AUGLAG``, which HPO runs without a constraint, runs
+one, once, from its own starting point.  Configure the inner via:
 
 .. code-block:: none
 
@@ -5330,6 +5332,39 @@ enclosing block (``STRATEGY``, ``EXPLORE`` or ``REFINE``):
 Before 1.6.0 an ``INNER`` block without ``ALGO`` was accepted and failed
 inside NLopt once the run had started.
 
+The ``INNER`` search is a local search, so its ``ALGO`` is a local NLopt
+algorithm (``tadah explain ALGO`` marks each optimiser global or local;
+``tadah explain`` of an MLSL or AUGLAG form says what its ``INNER`` block
+takes): ``LN_BOBYQA``, ``LN_COBYLA``, ``LN_NELDERMEAD``, ``LN_PRAXIS``,
+``LN_SBPLX``, the ``LD_*`` gradient searches, or ``LN_AUGLAG``,
+``LD_AUGLAG`` and their ``_EQ`` forms, which run NLopt's default local
+search from the point they are given.  A global optimiser there -- every
+NLopt algorithm whose name starts with ``G``: ``GN_CRS2_LM``,
+``GN_ISRES``, ``GN_ESCH``, the ``GN_DIRECT`` and ``GN_ORIG_DIRECT`` forms,
+``GN_AGS``, ``GD_STOGO``, ``GD_STOGO_RAND`` and the MLSL forms -- would
+search the whole box from each of those points (under ``AUGLAG``, once:
+the global search under another name), and is refused at startup, before
+any data is loaded, at the ``INNER`` block's ``ENDINNER`` line, in every
+phase and ``STRATEGY TYPE``: the ``STRATEGY``-level optimiser under
+``PLAIN`` and ``MULTISTART``, the ``PRESTAGE`` refinement (at the
+``STRATEGY`` level or in a ``REFINE`` block) and the ``EXPLORE`` block
+(owner decision, MK, 2026-10-15: no nested global search).  The message
+names the local NLopt algorithms; for StoGO, DIRECT and AGS, which never
+read the point they are given, it says where they start instead
+(``... and NLOPT:GD_STOGO is a global optimiser that does not start at
+the point it is given (StoGO evaluates the centre of the OPTIM box first
+and then samples the whole box; NLopt never reads that point). ...``):
+
+.. code-block:: none
+
+   HPOEngine error: Error on line 10: the INNER block of the STRATEGY-level optimiser: NLOPT:G_MLSL_LDS cannot run NLOPT:GN_CRS2_LM as its INNER search: an INNER search is a local search, which NLOPT:G_MLSL_LDS starts at the points it samples in the OPTIM box, and NLOPT:GN_CRS2_LM is a global optimiser. Use a local NLopt algorithm in the INNER block, which starts at the point it is given (NLOPT:LD_AUGLAG, NLOPT:LD_AUGLAG_EQ, NLOPT:LD_CCSAQ, NLOPT:LD_LBFGS, NLOPT:LD_MMA, NLOPT:LD_SLSQP, NLOPT:LD_TNEWTON, NLOPT:LD_TNEWTON_PRECOND, NLOPT:LD_TNEWTON_PRECOND_RESTART, NLOPT:LD_TNEWTON_RESTART, NLOPT:LD_VAR1, NLOPT:LD_VAR2, NLOPT:LN_AUGLAG, NLOPT:LN_AUGLAG_EQ, NLOPT:LN_BOBYQA, NLOPT:LN_COBYLA, NLOPT:LN_NELDERMEAD, NLOPT:LN_PRAXIS, NLOPT:LN_SBPLX), or run NLOPT:GN_CRS2_LM as the exploration (EXPLORE block) or once, as STRATEGY TYPE PLAIN.
+   Line:     ENDINNER
+
+To search the whole box, run the global optimiser on its own: as the
+``STRATEGY``-level optimiser of a ``PLAIN`` run, or as the ``PRESTAGE``
+exploration with a local refinement.  1.5.0 accepted every NLopt
+algorithm as the ``INNER`` search and ran it.
+
 Only NLopt's MLSL and AUGLAG algorithms run an ``INNER`` search, and they
 run it with NLopt, so the ``INNER`` block's ``LIB`` is ``NLOPT``.  Both
 rules are startup errors, raised before any data is loaded and naming the
@@ -5353,7 +5388,8 @@ initial step to the local optimiser); a startup warning says so.
 ``AUGLAG``, ``AUGLAG_EQ``, ``G_MLSL`` and ``G_MLSL_LDS`` have no default
 local optimiser, so they need an ``INNER`` block, and for the same reason
 an ``INNER`` block cannot name one of them (``INNER`` blocks do not
-nest); ``LN_AUGLAG``, ``LD_AUGLAG``, their ``_EQ`` forms and the
+nest; the message says so for ``G_MLSL`` and ``G_MLSL_LDS`` too, which
+are global as well); ``LN_AUGLAG``, ``LD_AUGLAG``, their ``_EQ`` forms and the
 ``GN_``/``GD_`` MLSL forms run NLopt's ``LN_COBYLA`` or ``LD_MMA``
 without one.  Both are startup errors that name the phase and the line
 of its block (``ENDOPTIMIZER`` or ``ENDEXPLORE``; ``ENDINNER`` for the
@@ -5388,8 +5424,7 @@ Tolerances are the other way round: the ``INNER`` block's own are its
 search's, and those of the enclosing MLSL or AUGLAG block reach no
 ``INNER`` search, so they are refused there (``NLOPT:G_MLSL_LDS does not support
 FTOL_REL with an INNER block: …; set it in the INNER block, whose local
-search tests it``, or, when the ``INNER`` algorithm does not test it
-either, the stops that search honours).  NLopt gives an ``INNER`` search under MLSL that sets
+search tests it``).  NLopt gives an ``INNER`` search under MLSL that sets
 none of ``FTOL_REL``, ``FTOL_ABS`` and ``XTOL_REL`` the tolerances
 ``FTOL_REL 1e-15`` and ``XTOL_REL 1e-7`` (``optimize.c``); before 1.6.0
 an ``XTOL_ABS`` on the MLSL block switched these off.  MLSL's own loop
@@ -5417,11 +5452,13 @@ AUGLAG evaluates the result of its ``INNER`` search once more when that
 search ends (NLopt's ``auglag.c``); before 1.6.0 that evaluation could
 come after the enclosing block's ``MAXEVAL`` was spent, one more than
 it, and it now counts against it like any other.  An ``INNER`` search
-that needs a stop and has none in either block is a startup error:
+that needs a stop (``LD_MMA``, ``LD_CCSAQ``, ``LD_SLSQP``, whose only
+convergence test is the tolerances) and has none in either block is a
+startup error:
 
 .. code-block:: none
 
-   HPOEngine error: Error on line 15: the STRATEGY-level optimiser: the INNER search of NLOPT:AUGLAG (NLOPT:GN_DIRECT_L) needs a stop: NLopt's global search has no convergence test of its own and runs until it is interrupted; set MAXEVAL, MAXTIME or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the INNER block, or MAXEVAL, MAXTIME or STOPVAL in the NLOPT:AUGLAG block, which NLopt hands on to it; DIRECT's XTOL_REL and XTOL_ABS end it only once every rectangle is that small, after roughly (1/XTOL_REL)^n evaluations in n dimensions
+   HPOEngine error: Error on line 11: the STRATEGY-level optimiser: the INNER search of NLOPT:AUGLAG (NLOPT:LD_MMA) needs a stop: without a tolerance it has no convergence test and runs until it is interrupted; set MAXEVAL, MAXTIME or a positive tolerance it honours (FTOL_REL, FTOL_ABS, XTOL_REL, XTOL_ABS) in the INNER block, or MAXEVAL, MAXTIME or STOPVAL in the NLOPT:AUGLAG block, which NLopt hands on to it
    Line: ENDOPTIMIZER
 
 ``SEED`` is not valid inside ``INNER``.  MLSL and AUGLAG run the
@@ -5429,8 +5466,7 @@ that needs a stop and has none in either block is a startup error:
 one random stream per run.  The enclosing block's ``SEED`` seeds it (or,
 without one, the enclosing block's ``INIT``-block ``SEED``), and every
 random number of the run comes from it: G_MLSL's sample points and the
-draws of the ``INNER`` optimiser, such as a ``GN_CRS2_LM`` population
-under AUGLAG.  An ``INNER`` ``SEED`` could only reseed that stream in
+draws of the ``INNER`` optimiser, such as ``LN_PRAXIS``'s random steps.  An ``INNER`` ``SEED`` could only reseed that stream in
 place of the enclosing block's seed, so the startup check rejects it and
 names the line.  This configuration:
 
@@ -5449,7 +5485,7 @@ names the line.  This configuration:
        SEED 10
        INNER
          LIB NLOPT
-         ALGO GN_CRS2_LM
+         ALGO LN_PRAXIS
          SEED 20
        ENDINNER
      ENDSTRATEGY
@@ -5467,8 +5503,7 @@ The message names ``EXPLORE`` or ``REFINE`` when the ``INNER`` block is
 there.  Set ``SEED`` on that block instead.  Here, deleting ``SEED 20``
 leaves ``SEED 10``: the three starts run with seeds 10, 11 and 12, each
 with a ``MAXEVAL`` of 100 (``MAXEVAL 300`` split over ``N_STARTS``), and
-each start's ``GN_CRS2_LM`` search draws a population of its own from
-its seed.  In the same way the ``PRESTAGE`` refinement runs candidate
+each start's ``LN_PRAXIS`` search draws its random steps from its seed.  In the same way the ``PRESTAGE`` refinement runs candidate
 *i* with ``SEED + i``, and each ``RESTART`` round runs with a derived seed
 (:ref:`restart_decorator`) that its ``INNER`` search draws from too.  An
 ``INIT`` block is not valid inside ``INNER`` either; MLSL picks its local

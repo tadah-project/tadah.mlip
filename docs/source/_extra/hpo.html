@@ -1,25 +1,6 @@
 <!DOCTYPE html>
-<!--
-  Redirect for the Nested Fitting page that was hpo.html until Tadah! 1.6.0,
-  when it was split into nfp_background, nfp_quickstart and nfp_configuration.
-  Copied verbatim to the output root by html_extra_path (conf.py).
-
-  The script keeps deep links working.  A fragment named in the routes table
-  goes to that target verbatim; every other fragment is carried over to the
-  default page, because nfp_configuration kept the old section ids.  Routes:
-    - the opening sections, now pages of their own: #nested-fitting and
-      #background -> nfp_background, #quick-start and #nfp-quick-start ->
-      nfp_quickstart;
-    - v1.3.0-beta.1 sections that moved to the ANNEAL page or were renamed;
-    - the Performance & parallelism subsections renamed in 1.6.0 with the
-      removal of the legacy MPI build: #desktop-build-openmp and #mpi-build;
-    - #see-also: that list of links was dropped in the split, so it opens
-      the top of the configuration reference.
-  Without JavaScript the meta refresh opens the configuration reference.
-  docs/tools/check_redirect.py reads the routes table after every HTML build
-  and checks each target page and anchor, and every anchor of the old page
-  (docs/tools/hpo_legacy_anchors.txt).
--->
+<!-- Compatibility routes for the Nested Fitting chapter.
+     Checked after each HTML build by docs/tools/check_redirect.py. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -30,27 +11,89 @@
 {
   "default": "nfp_configuration.html",
   "routes": {
-    "nested-fitting": "nfp_background.html",
+    "additional-options": "nfp_lammps_options.html#additional-options",
     "background": "nfp_background.html",
-    "quick-start": "nfp_quickstart.html",
-    "nfp-quick-start": "nfp_quickstart.html",
-    "tadah-anneal-block": "anneal.html#tadah-anneal-block",
-    "lib-tadah-algo-anneal-classic-simulated-annealing": "anneal.html#tadah-anneal-block",
-    "corana-adaptive-variant-opt-in": "anneal.html#tadah-anneal-corana",
-    "tadah-anneal-journal": "anneal.html#tadah-anneal-journal",
-    "journal-output": "anneal.html#tadah-anneal-journal",
-    "best-only-snapshots": "nfp_configuration.html#best-improvement-histories",
-    "bound-transforms": "nfp_configuration.html#search-space-scaling",
-    "see-also": "nfp_configuration.html#nfp-manual",
-    "hpo-quick-start": "nfp_quickstart.html#nfp-quick-start",
+    "bad-potential-early-exit": "nfp_review_pending.html#bad-potential-early-exit",
+    "best-improvement-histories": "nfp_output_settings.html#best-improvement-histories",
+    "best-only-snapshots": "nfp_output_settings.html#best-only-snapshots",
+    "block-hierarchy": "nfp_configuration.html#block-hierarchy",
+    "bound-transforms": "nfp_search_space.html#bound-transforms",
+    "ceres-param-keys": "nfp_optimizer_settings.html#ceres-param-keys",
+    "chain-entries": "nfp_initialisation.html#chain-entries",
+    "choosing-the-optimizer": "nfp_optimizer_settings.html#choosing-the-optimizer",
+    "configuration-file": "nfp_configuration.html#configuration-file",
+    "corana-adaptive-variant-opt-in": "anneal.html#corana-adaptive-variant-opt-in",
+    "cutoffs-of-knot-family-refit-potentials": "nfp_review_pending.html#cutoffs-of-knot-family-refit-potentials",
+    "designing-failprobe-in": "nfp_review_pending.html#designing-failprobe-in",
+    "desktop-build-openmp": "nfp_review_pending.html#within-one-process-openmp-and-the-worker-pool",
+    "diagnostic-markers": "nfp_review_pending.html#diagnostic-markers",
+    "diagnostic-stdout-markers": "nfp_review_pending.html#diagnostic-stdout-markers",
+    "energy-force-stress-validation-metrics": "nfp_validation_targets.html#energy-force-stress-validation-metrics",
+    "example": "nfp_lammps_targets.html#example",
+    "failscore-grading": "nfp_losses.html#failscore-grading",
+    "failure-handling-graded-failscore": "nfp_losses.html#failure-handling-graded-failscore",
+    "failvar-recipes-for-typical-scripts": "nfp_review_pending.html#failvar-recipes-for-typical-scripts",
+    "how-many-seeds-does-the-optimiser-actually-consume": "nfp_initialisation.html#how-many-seeds-does-the-optimiser-actually-consume",
+    "hpo-fixweight": "nfp_search_space.html#hpo-fixweight",
+    "hpo-knot-rcut": "nfp_review_pending.html#hpo-knot-rcut",
+    "hpo-load-transforms": "nfp_review_pending.html#hpo-load-transforms",
     "hpo-manual": "nfp_configuration.html#nfp-manual",
+    "hpo-quick-start": "nfp_quickstart.html#nfp-quick-start",
+    "individual-validation-targets-and-weights": "nfp_validation_targets.html#individual-validation-targets-and-weights",
+    "init-block-seeding-strategies": "nfp_initialisation.html#init-block-seeding-strategies",
+    "inner-block-nlopt-mlsl-auglag-sub-optimiser": "nfp_inner.html#inner-block-nlopt-mlsl-auglag-sub-optimiser",
+    "journal-output": "nfp_review_pending.html#journal-output",
+    "lib-tadah-algo-anneal-classic-simulated-annealing": "anneal.html#lib-tadah-algo-anneal-classic-simulated-annealing",
+    "lib-tadah-the-annealing-family": "optimizer.html#lib-tadah-the-annealing-family",
+    "load-time-data-transforms": "nfp_review_pending.html#load-time-data-transforms",
+    "loss-functions": "nfp_losses.html#loss-functions",
+    "loss-global-loss-function": "nfp_losses.html#loss-global-loss-function",
+    "loss-options": "nfp_losses.html#loss-options",
+    "main-log-files": "nfp_output_settings.html#main-log-files",
     "manual": "nfp_configuration.html#nfp-manual",
-    "choosing-the-optimizer": "nfp_configuration.html#optimizer-block-common-attributes",
-    "loss-options": "nfp_configuration.html#loss-functions",
-    "physical-constraints": "nfp_configuration.html#physics-informed-constraints-pc-lammps",
-    "example": "nfp_configuration.html#physics-informed-constraints-pc-lammps",
-    "desktop-build-openmp": "nfp_configuration.html#within-one-process-openmp-and-the-worker-pool",
-    "mpi-build": "nfp_configuration.html#across-mpi-ranks-tadah-hpo-mpi"
+    "mpi-build": "nfp_review_pending.html#across-mpi-ranks-tadah-hpo-mpi",
+    "multi-node-runs-tadah-hpo-mpi-and-archer2": "nfp_review_pending.html#multi-node-runs-tadah-hpo-mpi-and-archer2",
+    "nested-fitting": "nfp_background.html",
+    "nfp-manual": "nfp_configuration.html#nfp-manual",
+    "nfp-quick-start": "nfp_quickstart.html",
+    "noise-block": "nfp_noise.html#noise-block",
+    "optimizer-block-common-attributes": "nfp_optimizer_settings.html#optimizer-block-common-attributes",
+    "optim-search-space-constraints": "nfp_search_space.html#optim-search-space-constraints",
+    "order-of-firing-within-one-iteration": "nfp_review_pending.html#order-of-firing-within-one-iteration",
+    "output-files": "nfp_output_settings.html#output-files",
+    "pc-performance-constraints": "nfp_validation_targets.html#pc-performance-constraints",
+    "performance-constraints": "nfp_validation_targets.html#performance-constraints",
+    "performance-parallelism": "nfp_review_pending.html#performance-parallelism",
+    "per-metric-bad-pot-pre-filter": "nfp_validation_targets.html#per-metric-bad-pot-pre-filter",
+    "physical-constraints": "nfp_lammps_targets.html#physical-constraints",
+    "physics-informed-constraints-pc-lammps": "nfp_lammps_targets.html#physics-informed-constraints-pc-lammps",
+    "pinning-and-searching-linear-coefficients": "nfp_search_space.html#pinning-and-searching-linear-coefficients",
+    "potential-archives": "nfp_output_settings.html#potential-archives",
+    "practical-advice": "nfp_review_pending.html#practical-advice",
+    "practical-tips": "nfp_review_pending.html#practical-tips",
+    "quick-start": "nfp_quickstart.html",
+    "required-options": "nfp_lammps_options.html#required-options",
+    "restart-decorator": "nfp_restart.html#restart-decorator",
+    "result-contract-for-user-scripts": "nfp_lammps_options.html#result-contract-for-user-scripts",
+    "run-log": "nfp_output_settings.html#run-log",
+    "search-space-constraints": "nfp_search_space.html#search-space-constraints",
+    "search-space-scaling": "nfp_search_space.html#search-space-scaling",
+    "see-also": "nfp_configuration.html#nfp-manual",
+    "setup-effort-honestly": "nfp_review_pending.html#setup-effort-honestly",
+    "strategy-block": "nfp_strategies.html#strategy-block",
+    "tadah-anneal-block": "anneal.html#tadah-anneal-block",
+    "tadah-anneal-journal": "nfp_review_pending.html#tadah-anneal-journal",
+    "tadah-anneal-mpi": "nfp_review_pending.html#tadah-anneal-mpi",
+    "the-knobs-most-important-first": "nfp_review_pending.html#the-knobs-most-important-first",
+    "top-level-keys-inside-the-init-block": "nfp_initialisation.html#top-level-keys-inside-the-init-block",
+    "type-multistart": "nfp_strategies.html#type-multistart",
+    "type-plain": "nfp_strategies.html#type-plain",
+    "type-prestage-staged-global-local": "nfp_strategies.html#type-prestage-staged-global-local",
+    "validation-set-sanitisation": "nfp_validation_targets.html#validation-set-sanitisation",
+    "warm-start-hot-a0-or-any-hotvar": "nfp_review_pending.html#warm-start-hot-a0-or-any-hotvar",
+    "warmstart-protocol": "nfp_review_pending.html#warmstart-protocol",
+    "warm-start-protocol-and-bad-potential-early-exit": "nfp_review_pending.html#warm-start-protocol-and-bad-potential-early-exit",
+    "what-problem-this-solves": "nfp_review_pending.html#what-problem-this-solves"
   }
 }
 </script>
@@ -68,12 +111,8 @@
 </head>
 <body>
 <h1>Nested Fitting has moved</h1>
-<p>The Nested Fitting page (<code>hpo.html</code>) was split in Tadah! 1.6.0
-into <a href="nfp_background.html">Background</a>,
-<a href="nfp_quickstart.html">Quick Start</a> and
-<a href="nfp_configuration.html">Configuration File</a>.</p>
-<p>Continue to the <a href="nfp_configuration.html">Configuration File</a>
-reference. Links to sections of the old page are sent to the same section
-on the new pages.</p>
+<p>Continue to <a href="nfp_configuration.html">Configuration syntax and block layout</a>
+or the <a href="nfp_reference.html">settings reference</a>.
+Older topic links lead to the corresponding reference or review material.</p>
 </body>
 </html>

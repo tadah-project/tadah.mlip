@@ -269,12 +269,19 @@ endif()
 # best_pot.tadah; DLIB:GFS reaches MAXEVAL (it used to crash, SIGSEGV).
 # gfs_mixed starts with failures and ends as a successful run.
 # fd_straddle: a failed evaluation in DLIB:BFGS's finite-difference stencil
-# ends the search with its own trailer and status 0; fd_inside: a start
-# inside the failure region ends it at its first gradient, after one
-# evaluation; failscore_zero: FAILSCORE 0 is a startup error at its line.
+# is not differenced, and the gradient takes the usable side (status 0);
+# fd_inside: a start inside the failure region ends the search at its first
+# gradient, after one evaluation; failscore_zero: FAILSCORE 0 is a startup
+# error at its line; ceres_box (a build with Ceres): a point
+# CERES:STEEPEST_DESCENT proposes outside the OPTIM box is scored by its
+# distance, not evaluated, and is not the best.
 if(TADAH_ENABLE_NFP)
-  foreach(_case random_skip gfs_throws gfs_mixed fd_straddle fd_inside
-                failscore_zero)
+  set(_failed_evaluation_cases random_skip gfs_throws gfs_mixed fd_straddle
+                               fd_inside failscore_zero)
+  if(TADAH_ENABLE_CERES)
+    list(APPEND _failed_evaluation_cases ceres_box)
+  endif()
+  foreach(_case IN LISTS _failed_evaluation_cases)
     add_test(NAME tadah_hpo_failed_evaluations_${_case}
       COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/cli_failed_evaluations/check_hpo_failed_evaluations.py

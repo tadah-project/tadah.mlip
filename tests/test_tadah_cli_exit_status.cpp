@@ -4584,14 +4584,25 @@ TEST_CASE("Subcommand: explain: a configuration key that is no option of a "
  * a `tadah hpo` target's LIB and ALGO can name ("LIB NLOPT", its LD_LBFGS
  * row, the refused NLOPT:LN_NEWUOA and CERES:LEVENBERG_MARQUARDT), and
  * `tadah explain <LIB>:<ALGO>` or `<ALGO>` one optimiser's help: ld_lbfgs
- * ("Options for NLOPT:LD_LBFGS", its stops), CERES:LBFGS (its PARAM keys
- * and that it ignores the box), NLOPT:LN_NEWUOA (REFUSED); an unknown
+ * ("Options for NLOPT:LD_LBFGS", its stops), CERES:STEEPEST_DESCENT (its
+ * PARAM keys, that it ignores the box, that a point it proposes outside
+ * the box is not evaluated, and that the slope of that point's score points
+ * away from the box, so a descent step leads back into it), CERES:LBFGS
+ * (REFUSED, naming NLOPT:LD_LBFGS
+ * instead; owner decision, MK, 2026-10-15), NLOPT:LN_NEWUOA (REFUSED); an
+ * unknown
  * NLOPT:LD_FOO exits 1 naming what is wrong. A name that is no command, no
  * configuration key and no optimiser is refused as before. Without HPO,
  * `tadah explain ALGO` exits 1 saying that this tadah has no HPO.
  * Before the fix: `tadah explain ALGO` and the others exited 1 with
  * "tadah explain: no command or configuration key 'ALGO'" (and 'ld_lbfgs',
- * ...): print_caps, the ALGO help, was reachable only from HPO's tests. */
+ * ...): print_caps, the ALGO help, was reachable only from HPO's tests.
+ * Before the box fix (2026-10-15): CERES:LBFGS printed its PARAM keys and
+ * "ignores the OPTIM box", and CERES:STEEPEST_DESCENT's help said its
+ * iterates "are evaluated there, and such a point can become the best";
+ * then (review) it gave that slope the wrong sign, "... graded by its
+ * distance to the box, whose slope points back into it, it counts against
+ * MAXEVAL ...": the slope check fails. */
 TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
           "LIB:ALGO describes one",
           "[TadahCLI][exit-status][explain][explain_algo]") {
@@ -4616,12 +4627,28 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     CHECK(contains(r.out, "Stops that end a run: MAXEVAL"));
   }
   {
+    const CliRun r =
+        run_tadah({"tadah", "explain", "CERES:STEEPEST_DESCENT"});
+    INFO("CERES:STEEPEST_DESCENT: status " << r.status << "\n"
+                                           << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "Options for CERES:STEEPEST_DESCENT\n"));
+    CHECK(contains(r.out, "PARAM tol_gradinf"));
+    CHECK(contains(r.out, "ignores the OPTIM box"));
+    CHECK(contains(r.out, "Such a point is not evaluated: it is scored as a "
+                          "failure graded by its distance to the box"));
+    CHECK(contains(r.out, "whose slope points away from the box, so a "
+                          "descent step leads back into it; it counts "
+                          "against MAXEVAL"));
+    CHECK_FALSE(contains(r.out, "points back into it"));
+  }
+  {
     const CliRun r = run_tadah({"tadah", "explain", "CERES:LBFGS"});
     INFO("CERES:LBFGS: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
-    CHECK(contains(r.out, "Options for CERES:LBFGS\n"));
-    CHECK(contains(r.out, "PARAM tol_gradinf"));
-    CHECK(contains(r.out, "ignores the OPTIM box"));
+    CHECK(contains(r.out, "Options for CERES:LBFGS\n   * REFUSED: "));
+    CHECK(contains(r.out, "Use NLOPT:LD_LBFGS"));
+    CHECK_FALSE(contains(r.out, "PARAM tol_gradinf"));
   }
   {
     const CliRun r = run_tadah({"tadah", "explain", "NLOPT:LN_NEWUOA"});

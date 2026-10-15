@@ -294,8 +294,9 @@ potential file` and the others) and the two of `tests/test_dimer_pe_atom.cpp`
 (`... the per-atom energies of a DIMER potential sum to its energy`, `... a
 DIMER atom's per-atom energy is the sum over the molecule pairs it belongs
 to`): with the two NNFinder cases, 17 entries. A build without
-`TADAH_ENABLE_CERES` skips `RHOFORM NONNEG/MONOTONE: one WARNING when an
-optimiser can leave the box` (its optimiser is `CERES:LBFGS`). See the
+`TADAH_ENABLE_CERES` skips `RHOFORM NONNEG/MONOTONE: no projection WARNING
+when an optimiser can leave the box: such a point is not evaluated` (its
+optimiser is `CERES:STEEPEST_DESCENT`). See the
 cmake-tools README, *Skipped tests: the TADAH-SKIP marker*, for the rules.
 
 **Build configurations tested.** The suite above is that of a build with

@@ -41,9 +41,12 @@ mature third-party optimizers behind the same interface.
      - Global function search (consumes every ``INIT`` point) and
        box-constrained quasi-Newton refinement.
    * - ``CERES``
-     - ``LBFGS``, ``WOLFE``, ``NLCG``, ``STEEPEST_DESCENT``
+     - ``STEEPEST_DESCENT``
      - Gradient-based local refinement with finite-difference gradients;
-       no box constraints.
+       no box constraints: a point it proposes outside the ``OPTIM`` box is
+       scored by its distance to the box, not evaluated
+       (:ref:`hpo_out_of_box`). ``LBFGS``, ``WOLFE`` and ``NLCG`` are
+       refused.
 
 Any of these backends can be the outer optimiser, local or global; the
 ``STRATEGY`` block wraps it (``PLAIN``, ``MULTISTART``, ``PRESTAGE``,

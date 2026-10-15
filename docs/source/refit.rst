@@ -912,8 +912,8 @@ its ``ALGO`` in ``LIB``:
 
 The ``ALGO`` names are the refit's own, not those of ``tadah hpo``: the
 refit's dlib global search is ``GLOBAL`` (``tadah hpo``'s ``DLIB GFS``),
-and ``LBFGS`` is dlib's L-BFGS (NLopt's is ``LD_LBFGS``; in ``tadah hpo``
-``LBFGS`` is a ``CERES`` algorithm).
+and ``LBFGS`` is dlib's L-BFGS (NLopt's is ``LD_LBFGS``; ``tadah hpo``
+refuses its ``CERES`` ``LBFGS``).
 
 The refit's ``MLSL``, ``DIRECT`` and ``CRS2`` are NLopt's ``GN_MLSL_LDS``,
 ``GN_DIRECT_L`` and ``GN_CRS2_LM``.  ``GN_MLSL`` (MLSL with pseudo-random

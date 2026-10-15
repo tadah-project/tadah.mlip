@@ -14,10 +14,11 @@
 // validation predicts forces because PC_FRMSE asks for them, the journal
 // says where FORCE/STRESS came from, and FORCE in the --validation file is
 // refused at its line. The [startup] cases run `tadah hpo` with a PRESTAGE
-// refinement on NLOPT:GN_DIRECT_L, which does not start at its candidate
-// and is refused at startup, at its line (MK's decision of 2026-10-15),
-// and with a PLAIN NLOPT:GN_DIRECT_L whose INIT and RESTART blocks have no
-// effect on it, each warned about at startup, naming its line.
+// refinement on NLOPT:GN_DIRECT_L, which does not start at its candidate,
+// and with an INNER block that names a global optimiser (no nested global
+// search); each is refused at startup, at its line (MK's decisions of
+// 2026-10-15); and with a PLAIN NLOPT:GN_DIRECT_L whose INIT and RESTART
+// blocks have no effect on it, each warned about at startup, naming its line.
 //
 // The [data] cases run the `tadah data` tools on small structure files
 // (RELEASE-1.6.0-FOLLOWUPS.md, "Known-issues session ... decisions", D,
@@ -942,6 +943,63 @@ TEST_CASE("Subcommand: hpo: an INIT and a RESTART block on a search that "
   CHECK(count(r.err, "[HPO] WARNING: " + restart) == 1);
   CHECK(count(journal, init) == 1);
   CHECK(count(journal, restart) == 1);
+}
+
+/* Pins: `tadah hpo` with STRATEGY TYPE PLAIN NLOPT:G_MLSL_LDS whose INNER
+ * block names NLOPT:GN_CRS2_LM, a global optimiser, is refused at startup
+ * (no nested global search: owner decision, MK, 2026-10-15): a non-zero
+ * exit, no best_pot.tadah and no loss.tadah (nothing is evaluated), and the
+ * refusal (the escaping exception, stderr, stdout or the journal) names
+ * line 11 of config.hpo (ENDINNER), says "the INNER block of the
+ * STRATEGY-level optimiser: NLOPT:G_MLSL_LDS cannot run NLOPT:GN_CRS2_LM
+ * as its INNER search: an INNER search is a local search" and lists
+ * NLOPT:LN_BOBYQA among the local NLopt algorithms to use.
+ * Before the fix the run was accepted: MLSL ran a CRS2 search of the whole
+ * box as each of its local searches and the run exited 0 with a
+ * best_pot.tadah: the checks fail. */
+TEST_CASE("Subcommand: hpo: an INNER block that names a global optimiser is "
+          "refused at startup, naming its ENDINNER line",
+          "[TadahCLI][hpo][startup]") {
+  ScratchCwd cwd("inner_global");
+  write_frmse_fixture("config.tadah", "FORCE true\nSTRESS false\n");
+  {
+    std::ofstream os("config.hpo");
+    os << "OPTIMIZER\n"               // line 1
+          "  STRATEGY\n"
+          "    TYPE PLAIN\n"
+          "    LIB NLOPT\n"
+          "    ALGO G_MLSL_LDS\n"     // line 5
+          "    MAXEVAL 6\n"
+          "    INNER\n"
+          "      LIB NLOPT\n"
+          "      ALGO GN_CRS2_LM\n"   // line 9: the INNER search
+          "      MAXEVAL 3\n"
+          "    ENDINNER\n"            // line 11
+          "  ENDSTRATEGY\n"
+          "ENDOPTIMIZER\n"
+          "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
+          "OPTIM FIXWEIGHT (1) -30.0 0.0\n";
+  }
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                              "--hpotarget", "config.hpo",
+                              "--validation", "config.val"});
+  const std::string journal = std::filesystem::exists("hpo_run.log")
+                                  ? slurp("hpo_run.log")
+                                  : std::string();
+  INFO("exception: " << r.what << "\nstderr:\n" << r.err
+                     << "\nhpo_run.log:\n" << journal);
+  CHECK(r.status != 0);
+  CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  CHECK_FALSE(std::filesystem::exists("loss.tadah"));
+  auto names_refusal = [&](const std::string& s) {
+    return names_line(s, 11) && contains(s, "ENDINNER") &&
+           contains(s, "the INNER block of the STRATEGY-level optimiser: "
+                       "NLOPT:G_MLSL_LDS cannot run NLOPT:GN_CRS2_LM as its "
+                       "INNER search: an INNER search is a local search") &&
+           contains(s, "NLOPT:LN_BOBYQA");
+  };
+  CHECK((names_refusal(r.what) || names_refusal(r.err) ||
+         names_refusal(r.out) || names_refusal(journal)));
 }
 
 #endif  // TADAH_ENABLE_NFP
@@ -4690,14 +4748,25 @@ TEST_CASE("Subcommand: explain: a configuration key that is no option of a "
  * a `tadah hpo` target's LIB and ALGO can name ("LIB NLOPT", its LD_LBFGS
  * row, the refused NLOPT:LN_NEWUOA and CERES:LEVENBERG_MARQUARDT), and
  * `tadah explain <LIB>:<ALGO>` or `<ALGO>` one optimiser's help: ld_lbfgs
- * ("Options for NLOPT:LD_LBFGS", its stops), CERES:LBFGS (its PARAM keys
- * and that it ignores the box), NLOPT:LN_NEWUOA (REFUSED); an unknown
+ * ("Options for NLOPT:LD_LBFGS", its stops), CERES:STEEPEST_DESCENT (its
+ * PARAM keys, that it ignores the box, that a point it proposes outside
+ * the box is not evaluated, and that the slope of that point's score points
+ * away from the box, so a descent step leads back into it), CERES:LBFGS
+ * (REFUSED, naming NLOPT:LD_LBFGS
+ * instead; owner decision, MK, 2026-10-15), NLOPT:LN_NEWUOA (REFUSED); an
+ * unknown
  * NLOPT:LD_FOO exits 1 naming what is wrong. A name that is no command, no
  * configuration key and no optimiser is refused as before. Without HPO,
  * `tadah explain ALGO` exits 1 saying that this tadah has no HPO.
  * Before the fix: `tadah explain ALGO` and the others exited 1 with
  * "tadah explain: no command or configuration key 'ALGO'" (and 'ld_lbfgs',
- * ...): print_caps, the ALGO help, was reachable only from HPO's tests. */
+ * ...): print_caps, the ALGO help, was reachable only from HPO's tests.
+ * Before the box fix (2026-10-15): CERES:LBFGS printed its PARAM keys and
+ * "ignores the OPTIM box", and CERES:STEEPEST_DESCENT's help said its
+ * iterates "are evaluated there, and such a point can become the best";
+ * then (review) it gave that slope the wrong sign, "... graded by its
+ * distance to the box, whose slope points back into it, it counts against
+ * MAXEVAL ...": the slope check fails. */
 TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
           "LIB:ALGO describes one",
           "[TadahCLI][exit-status][explain][explain_algo]") {
@@ -4722,12 +4791,28 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     CHECK(contains(r.out, "Stops that end a run: MAXEVAL"));
   }
   {
+    const CliRun r =
+        run_tadah({"tadah", "explain", "CERES:STEEPEST_DESCENT"});
+    INFO("CERES:STEEPEST_DESCENT: status " << r.status << "\n"
+                                           << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "Options for CERES:STEEPEST_DESCENT\n"));
+    CHECK(contains(r.out, "PARAM tol_gradinf"));
+    CHECK(contains(r.out, "ignores the OPTIM box"));
+    CHECK(contains(r.out, "Such a point is not evaluated: it is scored as a "
+                          "failure graded by its distance to the box"));
+    CHECK(contains(r.out, "whose slope points away from the box, so a "
+                          "descent step leads back into it; it counts "
+                          "against MAXEVAL"));
+    CHECK_FALSE(contains(r.out, "points back into it"));
+  }
+  {
     const CliRun r = run_tadah({"tadah", "explain", "CERES:LBFGS"});
     INFO("CERES:LBFGS: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
-    CHECK(contains(r.out, "Options for CERES:LBFGS\n"));
-    CHECK(contains(r.out, "PARAM tol_gradinf"));
-    CHECK(contains(r.out, "ignores the OPTIM box"));
+    CHECK(contains(r.out, "Options for CERES:LBFGS\n   * REFUSED: "));
+    CHECK(contains(r.out, "Use NLOPT:LD_LBFGS"));
+    CHECK_FALSE(contains(r.out, "PARAM tol_gradinf"));
   }
   {
     const CliRun r = run_tadah({"tadah", "explain", "NLOPT:LN_NEWUOA"});
@@ -4742,6 +4827,28 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     CHECK(r.status == 1);
     CHECK(contains(reported(r), "tadah explain: unknown optimiser "
                                 "NLOPT:LD_FOO: LIB NLOPT has no ALGO LD_FOO"));
+  }
+  /* Pins: MLSL's and AUGLAG's help says that their INNER block takes a
+   * local optimiser (no nested global search, owner decision, MK,
+   * 2026-10-15). Before the fix: no such entry, the checks fail. */
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "NLOPT:G_MLSL_LDS"});
+    INFO("NLOPT:G_MLSL_LDS: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "\n   * INNER ... ENDINNER: the local search it "
+                          "runs, from the points it\n     samples in the "
+                          "OPTIM box: LIB NLOPT and a local ALGO; a global "
+                          "one"));
+    CHECK(contains(r.out, "The block is required: NLopt has no default"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "LN_AUGLAG"});
+    INFO("LN_AUGLAG: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "\n   * INNER ... ENDINNER: the local search it "
+                          "runs, from its own starting\n     point: LIB NLOPT "
+                          "and a local ALGO"));
+    CHECK(contains(r.out, "Without one NLopt runs its default LN_COBYLA."));
   }
 #else
   const CliRun r = run_tadah({"tadah", "explain", "ALGO"});

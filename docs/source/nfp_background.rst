@@ -132,9 +132,10 @@ One evaluation, step by step
 
 For every candidate :math:`\theta` the host
 
-#. under ``RHOFORM NONNEG``/``MONOTONE``, **projects** every negative
-   ``AMPGRIDMB`` coordinate onto 0, and evaluates and records that point
-   (:ref:`hpo_rhoform_positive`);
+#. **scores a point outside the** ``OPTIM`` **box** by its distance to the
+   box, without evaluating it (only ``CERES:STEEPEST_DESCENT`` proposes
+   one; a coordinate within rounding of a bound is evaluated on the bound):
+   :ref:`hpo_out_of_box`;
 #. **checks the bump-support gate** (``BUMPGATE CANDIDATE``, the
    default): a candidate whose hard-cutoff bumps would reach past their
    cutoff is rejected with a failure loss before any training work;

@@ -41,9 +41,12 @@ mature third-party optimizers behind the same interface.
      - Global function search (consumes every ``INIT`` point) and
        box-constrained quasi-Newton refinement.
    * - ``CERES``
-     - ``LBFGS``, ``WOLFE``, ``NLCG``, ``STEEPEST_DESCENT``
+     - ``STEEPEST_DESCENT``
      - Gradient-based local refinement with finite-difference gradients;
-       no box constraints.
+       no box constraints: a point it proposes outside the ``OPTIM`` box is
+       scored by its distance to the box, not evaluated
+       (:ref:`hpo_out_of_box`). ``LBFGS``, ``WOLFE`` and ``NLCG`` are
+       refused.
 
 Any of these backends can be the outer optimiser, local or global; the
 ``STRATEGY`` block wraps it (``PLAIN``, ``MULTISTART``, ``PRESTAGE``,
@@ -58,7 +61,10 @@ gradient, so ``GD_MLSL``, ``GD_MLSL_LDS``, ``LD_AUGLAG`` and
 ``LN_SBPLX``, ``LN_COBYLA``, …) are accepted with ``PC_LAMMPS``; without
 one they run NLopt's default local optimiser, ``LD_MMA``, and are
 rejected with a message naming it.  Before 1.6.0 they were rejected with a
-derivative-free ``INNER`` block too.
+derivative-free ``INNER`` block too.  An ``INNER`` block takes a local
+NLopt algorithm (:ref:`hpo_inner_block`), so with ``PC_LAMMPS`` a
+derivative-free one, which the refusal of a gradient-based ``INNER``
+block names (``NLOPT:LN_AUGLAG``, …, ``NLOPT:LN_SBPLX``).
 A failed loss at the point, or a failed evaluation in the
 finite-difference stencil of a usable point, leaves the point without a
 usable gradient, whatever ``FAILSCORE`` is (at a graded failure at the
@@ -141,13 +147,15 @@ with a warning), ``GRAD_STRATEGY`` on a phase that takes no gradient (a
 derivative-free optimiser, or an MLSL or AUGLAG whose local search is
 one), ``STOPVAL`` inside an ``INNER`` block —, an NLopt ``AUGLAG``,
 ``AUGLAG_EQ``, ``G_MLSL`` or ``G_MLSL_LDS`` without an ``INNER`` block,
-or, for every backend but NLopt, a ``PARAM`` key it does not read, named
+an ``INNER`` block that names a global optimiser (an ``INNER`` search is a
+local search; :ref:`hpo_inner_block`), or, for every backend but NLopt, a ``PARAM`` key it does not read, named
 with the keys it takes (``TADAH:RANDOM: unknown PARAM 'FOO' (it takes
 none)``; :ref:`nfp_manual`).  Before 1.6.0 ``TADAH:RANDOM``,
 ``TADAH:GRID``, ``DLIB:GFS`` and NLopt accepted such attributes and
 ignored them, and ``CERES`` its ``SEED`` (the annealers, ``ASA`` and
-``DLIB:BFGS`` already refused theirs), and NLopt refused such an
-``AUGLAG`` or ``G_MLSL`` only once the run had started.
+``DLIB:BFGS`` already refused theirs), NLopt refused such an
+``AUGLAG`` or ``G_MLSL`` only once the run had started, and a global
+``INNER`` search ran.
 
 .. toctree::
    :maxdepth: 2

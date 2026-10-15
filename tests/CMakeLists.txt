@@ -492,3 +492,36 @@ if(TADAH_ENABLE_NFP)
     PROCESSORS ${_wn_jobs}
     RESOURCE_LOCK tadah_header_check)
 endif()
+
+
+# ------------------------------------------------------------------
+# 13. Text check (cmake-tools' tadah_add_text_check)
+# ------------------------------------------------------------------
+# tadah_text and cmake-tools_text (label text): no line of the text files
+# of this repository, or of the cmake-tools this build uses, carries a
+# person's initials, a reference to co-workers, a decision attributed to
+# the code's owner, the name of an AI tool, a note kept outside the
+# repository or filler wording (testing/tadah_text_check.cmake lists the
+# rules and the files read). Each module checks its own repository the same
+# way (<library>_text). Before the fix: tadah_text fails, 108 lines (97 with
+# a person's initials, 6 decision notes, 4 workspace notes and .gitignore's
+# entry for an AI tool's state directory); cmake-tools_text fails, 2 lines
+# (that entry and its comment in .gitignore).
+tadah_add_text_check(tadah)
+tadah_add_text_check(cmake-tools ROOT ${tadah_cmake_SOURCE_DIR})
+
+# The function and its script, on throw-away trees and a throw-away project
+# (text_check/check_text_check.cmake lists the cases: a clean tree, a line
+# breaking each rule, the skipped directories and files, a line split by a
+# ';', the refusals of the script and of the function). Before the fix:
+# passes as well (the check's own test).
+add_test(NAME tadah_text_check_tool
+  COMMAND ${CMAKE_COMMAND}
+    -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+    -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/text_check
+    "-DGENERATOR=${CMAKE_GENERATOR}"
+    -DCTEST=${CMAKE_CTEST_COMMAND}
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/text_check/check_text_check.cmake)
+set_tests_properties(tadah_text_check_tool PROPERTIES
+  LABELS cmake
+  TIMEOUT 300)

@@ -17,6 +17,15 @@ versioning follows [SemVer](https://semver.org/) at the umbrella level.
 
 ## [Unreleased]
 
+### Added
+- [models] Add scalar `DM_Embed` with independent density/embedding families, cutoffs, local references and optional envelopes, including Wendland C2/C4 policies.
+- [mlip] Write resolved component blocks from CLI refits and preserve them through editing, analysis and exported HPO starters.
+- [hpo] Route named parameters in ETA or physical-width coordinates through bounds, analytical derivatives, candidates, support/density gates and warm starts.
+- [umbrella] Unified `DM_Embed` component configuration and workflow documentation: basis normalization, spline degree/order, physical widths, smoothness, named NFP parameters, refitting, editing and both pinned/re-solved coefficient HPO workflows.
+
+### Fixed
+- [umbrella] Correct cutoff formula and normalization descriptions and clarify the permitted self-terminating NONE case.
+
 ## [1.6.0] — unreleased
 
 A clean-up release for wider testing: one version everywhere, documentation that matches the code, and fixes in every module.

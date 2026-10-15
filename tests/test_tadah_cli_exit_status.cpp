@@ -7560,7 +7560,7 @@ TEST_CASE("Subcommand: refit --edit of a potential whose training record "
   REQUIRE(lines.size() > 3);
   REQUIRE(lines[0] == kRecordOpen);
   REQUIRE(lines[1] == "# OUTFILE refit_pot.tadah");
-  REQUIRE(lines[2].rfind("AMPGRIDMB", 0) == 0);  // the first key line
+  REQUIRE(lines[2].rfind("DESCRIPTOR", 0) == 0);  // the first declaration
   {
     std::ofstream os("noend.tadah");
     for (const std::string& l : lines) os << l << "\n";
@@ -8578,13 +8578,13 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
       << replace_key_line(target, "MAXEVAL", "    MAXEVAL 1");
   const std::string pot = slurp("pot.tadah");
   REQUIRE(line_tokens(pot, "ESHIFT").empty());
-  REQUIRE(line_tokens(pot, "EMBF0") ==
-          std::vector<std::string>{"EMBF0", "ZERO"});
+  REQUIRE(line_tokens(pot, "REFERENCE") ==
+          std::vector<std::string>{"REFERENCE", "ZERO"});
   std::ofstream("db.tadah") << retrain_dataset();
   std::ofstream("val.tadah") << retrain_dataset();
   std::ofstream("config.val") << "DBFILE val.tadah\n";
   std::ofstream("config.train") << pot << "DBFILE db.tadah\n";
-  const std::string hint = "EMBF0 ZERO fixes the DM_REAM isolated-atom "
+  const std::string hint = "REFERENCE ZERO fixes the DM_Embed isolated-atom "
                            "energy at 0";
   const std::string toggles =
       "set ESHIFT or give the run ESHIFT_ATOM or ESHIFT_DBATOM "

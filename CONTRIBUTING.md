@@ -475,9 +475,14 @@ overrides live in `HPO/examples/tools/tolerance_overrides.json`.
 ## Building the documentation
 
 The Sphinx sources live in `docs/source` (Python requirements in
-`docs/requirements.txt`). The build reads three inputs from outside
-this repository. It never falls back to another branch: when an input
-is missing it stops and lists every location it tried.
+`docs/requirements.txt`). The build needs Python 3.11 or later: it
+generates the ANNEAL key tables from HPO's `blueprint/anneal_keys.toml`
+with `tomllib` (`docs/source/config/read_anneal_keys.py`), and on an
+older Python that script stops the build with `read_anneal_keys.py needs
+Python 3.11 or later: ...`, naming the interpreter. The build reads
+three inputs from outside this repository. It never falls back to
+another branch: when an input is missing it stops and lists every
+location it tried.
 
 | Input | Where the build looks, in order |
 |-------|---------------------------------|
@@ -504,8 +509,10 @@ python3 -m unittest discover -s Tadah.MLIP/docs/tools/tests -v
 
 The unit tests cover the input lookup (`docs/source/config/source_locator.py`),
 the `hpo.html` redirect check, the configuration-keys page generator
-(`docs/source/config/read_toml.py`) and the CLI page generator
-(`docs/source/cli/generate_cli.py`). The GitLab `docs_sphinx` job runs them
+(`docs/source/config/read_toml.py`), the CLI page generator
+(`docs/source/cli/generate_cli.py`) and the ANNEAL key tables' generator
+(`docs/source/config/read_anneal_keys.py`: its message on a Python
+without `tomllib`). The GitLab `docs_sphinx` job runs them
 and the same build, with all three variables set explicitly, in a virtual
 environment of its own into which it installs `docs/requirements.txt` every
 time (`python3 -m venv`: the runner image needs Python's `venv` module), so a
@@ -519,8 +526,8 @@ so `ctest -L docs` runs them) in every build configured with
 `hpo_anneal_registry_sync` reads TOML with `tomllib`, and the configure step
 stops on an older interpreter; `ctest -R hpo_test_python_minimum` checks
 that. The cases that need `node`, `sphinx-build` or the Python modules `sphinx`,
-`sphinx_rtd_theme`, `yaml` (PyYAML) or `pytomlpp` skip themselves when one
-is missing. CTest then reports the entry as *Skipped*, not *Passed*, and its
+`sphinx_rtd_theme`, `yaml` (PyYAML), `pytomlpp` or `tomllib` (Python 3.11 or
+later) skip themselves when one is missing. CTest then reports the entry as *Skipped*, not *Passed*, and its
 output names the skipped cases, so a pass means every case ran.
 
 `hpo.html`, the Nested Fitting page before 1.6.0, is now a redirect

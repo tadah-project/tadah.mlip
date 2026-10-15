@@ -3054,8 +3054,9 @@ the help of ``TADAH:RANDOM``.
        ``TADAH_ENABLE_CERES`` (the default) and is rejected with
        ``PC_LAMMPS``.  It does **not** enforce box constraints: a point it
        proposes outside the ``OPTIM`` box is not evaluated, but scored as a
-       failure graded by its distance to the box, and its gradient there
-       points back into the box (:ref:`hpo_out_of_box`); warned about at
+       failure graded by its distance to the box, and its gradient there is
+       the slope of that score, which points away from the box, so a descent
+       step leads back into it (:ref:`hpo_out_of_box`); warned about at
        startup and at the first such point, and counted in
        ``DIAGNOSTICS``.  Use ``DLIB:BFGS`` or ``NLOPT:LD_LBFGS`` for
        bounds-enforced gradient optimisation.  ``LBFGS``, ``WOLFE`` and
@@ -3347,17 +3348,17 @@ same:
      - Inside the box
      - Next to a bound
    * - ``NUMERICAL``, ``CENTRAL``, either rule
-     - 2 *n*, plus 1 when the loss at the point is not passed
-     - 2 *n*, plus 1 when the loss at the point is not passed
+     - 2 *n*
+     - 2 *n*
    * - ``NUMERICAL``, ``FORWARD``
-     - *n*, plus 1 when the loss at the point is not passed
-     - *n*, plus 1 when the loss at the point is not passed
+     - *n*
+     - *n*
    * - ``HYBRID``, ``CENTRAL``
      - 1 + 2 *m*
-     - 1 + 2 *m*, plus 1 when the loss at the point is not passed
+     - 1 + 2 *m*
    * - ``HYBRID``, ``FORWARD``
-     - 1 + *m*, plus 1 when the loss at the point is not passed
-     - 1 + *m*, plus 1 when the loss at the point is not passed
+     - 1 + *m*
+     - 1 + *m*
 
 A gradient takes the loss the optimiser has just evaluated at exactly
 its point, and does not evaluate the point again: a one-sided or forward
@@ -3368,9 +3369,9 @@ gradient they ask for: the NLopt ``LD_*`` searches and the ``CERES``
 drivers evaluate the loss and the gradient together, and ``DLIB:BFGS`` asks
 for a gradient at its start, right after the loss there, and after each
 line search at the point the search ended on, the last point it evaluated
-(its line search evaluates the loss alone).  A gradient evaluates the
-point itself only when it is asked for without that loss, once per
-gradient (``DIAGNOSTICS`` counts ``HYBRID``'s: ``HYBRID centre losses``).
+(its line search evaluates the loss alone).  So no gradient evaluates its
+point a second time, and the kind of the loss there (usable, a graded
+failure, a failure: :ref:`hpo_gradient_not_finite`) is always known.
 With a hot-variable warm start the loss the optimiser was given is the
 one used.  Every evaluation counts toward ``MAXEVAL``.  Before 1.6.0
 ``NUMERICAL`` evaluated the loss at the point itself first (1 + 2 *n*
@@ -3452,8 +3453,7 @@ RCUT2B = 5.999996 with the loss at the point itself; …``), and
 ``DIAGNOSTICS`` counts, each only when it is not zero, the points snapped
 onto the box, the points proposed outside it (:ref:`hpo_out_of_box`), the
 one-sided differences and the differences taken without a point of another
-kind (:ref:`hpo_gradient_not_finite`) per dimension, and ``HYBRID``'s own
-evaluations of the point:
+kind (:ref:`hpo_gradient_not_finite`) per dimension:
 
 .. code-block:: none
 
@@ -3463,13 +3463,11 @@ evaluations of the point:
      ignores the bounds, not evaluated: scored as failures graded by their
      distance to the box; see the first such WARNING)
    One-sided differences   : 1 (a coordinate within a step of its bound, differenced
-     into it): RCUT2B 1
+     into the box): RCUT2B 1
    Mixed-kind stencils     : 1 (a stencil point held a loss of another kind than the
      point's own -- a failure next to a usable loss, a usable loss or an
      ungraded failure next to a graded one -- and the difference was taken
      without it): CGRID2B[2] 1
-   HYBRID centre losses    : 1 (evaluations of a gradient's point, where the
-     optimiser's own loss could not be reused)
 
 A run whose gradients never come within a step of a bound keeps its
 ``DIAGNOSTICS``.
@@ -3477,8 +3475,7 @@ A run whose gradients never come within a step of a bound keeps its
 **What changed.**  Before 1.6.0 every stencil was central: within a step of
 a bound one of its points was evaluated outside the box (examples 01, 05,
 09, 13, 23 and 26 recorded ``RCUT2B = 6.000002``, outside ``[4, 6]``, as
-their best), or, for a ``RHOFORM NONNEG``/``MONOTONE`` amplitude at 0,
-below 0.  Ceres' rule, the default under
+their best).  Ceres' rule, the default under
 ``NONE``, ran inside Ceres, which has no bounds.  Runs whose gradients never
 come within a step of a bound are unchanged bit for bit, with either rule
 and with ``HYBRID`` (only the ``OPTIMISER`` line is new), and so are
@@ -3488,10 +3485,10 @@ derivative-free, ``ANALYTICAL``, annealing, ``ASA``, ``GRID`` and
 under ``OPTIM_SCALE AUTO``: that end is now exactly the ``OPTIM`` bound,
 where it could come out one unit in the last place outside; and where an
 NLopt search under ``OPTIM_SCALE NONE`` proposes a point within rounding
-outside the box, which is now evaluated on the bound.  A search whose gradient reaches a bound can take a
-different path from there; so can a ``NONNEG``/``MONOTONE`` run at a zero
-amplitude, a ``CERES`` run whose iterates leave the box, a ``LOG`` or
-``ASINH`` run at a bound (at the ulp level), an NLopt run under
+outside the box, which is now evaluated on the bound.  A search whose
+gradient reaches a bound can take a different path from there; so can a
+``CERES`` run whose iterates leave the box, a ``LOG`` or ``ASINH`` run at a
+bound (at the ulp level), an NLopt run under
 ``OPTIM_SCALE NONE`` that rounded a point past a bound (evaluated on it
 now), a run with a formerly ignored
 ``diff_method`` or ``fd_kernel``, and a ``HYBRID`` run without an
@@ -3533,9 +3530,9 @@ x` on a ``LOG`` dimension).  This is the range of band D of
 largest double, included), so such a point is never the best, a ``WARM``
 seed or a ``PRESTAGE`` candidate, and it lies below :math:`F` itself.
 :math:`L` grows with the distance, and the gradient there, whatever
-``GRAD_STRATEGY``, is its slope, which points back into the box; nothing is
-evaluated for it.  The point has its ``loss.tadah`` and ``params.tadah``
-rows (the point proposed), counts against ``MAXEVAL`` and is a failed
+``GRAD_STRATEGY``, is its slope, which points away from the box, so a
+descent step leads back into it; nothing is evaluated for it.  The point
+has its ``loss.tadah`` and ``params.tadah`` rows (the point proposed), counts against ``MAXEVAL`` and is a failed
 evaluation in the census.  The first is a ``WARNING``, the next ones
 ``INFO`` lines (the first five, then powers of two), and ``DIAGNOSTICS``
 counts them all (``Out-of-box points``):
@@ -3555,10 +3552,14 @@ candidate cutoff beyond the box needs no neighbour lists of its own (the
 lists are built once, for every cutoff of the box), and a ``RHOFORM
 NONNEG``/``MONOTONE`` amplitude is never evaluated below 0
 (:ref:`hpo_rhoform_positive`).  Before 1.6.0 such a point was evaluated
-where it was proposed — with lists short of a cutoff beyond the box, and a
-negative amplitude as it was — and could become the best: a 2-D
-``CERES`` run on the HPO examples' model (``RCUT2B`` in [4, 6],
-``CGRID2B (2)`` in [0.1, 2]) recorded its best at ``RCUT2B`` 12.19.
+where it was proposed, with neighbour lists short of a cutoff beyond the
+box, and could become the best.  So a ``CERES`` run whose line searches
+leave the box takes another path: on the one-dimensional search of
+:ref:`hpo_gradient_not_finite` (``OPTIM CGRID2B (2) 1.0 2.0``, failing
+below about 1.47) from 1.4 under ``FAILSCORE 1e9`` and ``FAILSCORE_GRADING
+ON``, ``CERES:STEEPEST_DESCENT`` proposes 3 points outside [1, 2], evaluates
+none of them, and ends ``FTOL_REL reached`` after 30 evaluations, its best
+1.9854.
 
 .. _hpo_gradient_not_finite:
 
@@ -3624,10 +3625,9 @@ a point of another kind:
 
 A one-sided stencil near a bound, and a ``FORWARD`` one
 (:ref:`hpo_fd_stencil`), take the loss at the point itself.  ``HYBRID``
-reads the loss the optimiser has just evaluated at the point; without it
-(``DLIB:BFGS`` asking for the gradient of another point), it evaluates the
-point first, whose kind decides the differences (counted under ``HYBRID
-centre losses`` in the journal's DIAGNOSTICS).
+reads the loss the optimiser has just evaluated at the point too, whose kind
+decides its differences: every backend passes that loss with each gradient
+it asks for (:ref:`hpo_fd_stencil`).
 
 ``GRAD_STRATEGY ANALYTICAL``, and ``HYBRID`` before its analytical pass,
 read the loss the optimiser has just evaluated at the point too: a failed
@@ -3650,10 +3650,8 @@ differences every parameter, which gives the graded slope, or the flat
 failure region above.  A
 candidate a gate rejected before training is a graded failure without a
 fit, and so without an analytical gradient either way: ``ANALYTICAL``
-gives it none (at the loss the optimiser has just evaluated, the graded
-failure above; asked without that loss, ``the analytical gradient could
-not be formed at this point``, the stop line giving the gate's reject
-note), and ``HYBRID`` differences it.  So does a point whose fit the
+gives it none (at the loss the optimiser has just evaluated: the failed
+or graded loss above), and ``HYBRID`` differences it.  So does a point whose fit the
 analytical gradient cannot differentiate: its implicit-function solve
 factorises the normal equations of the fit, Φᵀ Φ + ``LAMBDA`` I over the
 training rows, and where they are not positive definite there (with a
@@ -3691,11 +3689,7 @@ terms summed past the largest double (two of them under the default
 The rule has limits.  A usable point whose stencil reaches a failure on
 both sides has no gradient, and a one-sided difference next to the failure
 region is only first-order where its far point is missing (the 2-point
-difference).  And a gradient asked
-for without the loss at its point (``DLIB:BFGS`` for a point other than
-its last evaluation) cannot tell a failed point: ``ANALYTICAL``, and
-``HYBRID`` for what it does not difference, give the analytical gradient
-there.
+difference).
 
 A point without a usable gradient ends the search where the backend cannot
 go on without it:
@@ -4840,7 +4834,7 @@ starts at its point:
 
 .. code-block:: none
 
-   HPOEngine error: Error on line 14: STRATEGY TYPE PRESTAGE cannot refine with NLOPT:GN_DIRECT_L: it does not start at the point it is given (DIRECT evaluates the centre of the OPTIM box first and then divides the whole box; NLopt never reads that point), so the refinement would never use the exploration's candidates, for any TOPK. Use a local optimiser, which starts at each candidate (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, NLOPT:LD_AUGLAG, NLOPT:LD_AUGLAG_EQ, NLOPT:LD_CCSAQ, NLOPT:LD_LBFGS, NLOPT:LD_MMA, NLOPT:LD_SLSQP, NLOPT:LD_TNEWTON, NLOPT:LD_TNEWTON_PRECOND, NLOPT:LD_TNEWTON_PRECOND_RESTART, NLOPT:LD_TNEWTON_RESTART, NLOPT:LD_VAR1, NLOPT:LD_VAR2, NLOPT:LN_AUGLAG, NLOPT:LN_AUGLAG_EQ, NLOPT:LN_BOBYQA, NLOPT:LN_COBYLA, NLOPT:LN_NELDERMEAD, NLOPT:LN_PRAXIS, NLOPT:LN_SBPLX), or run NLOPT:GN_DIRECT_L as the exploration (EXPLORE block) or once, as STRATEGY TYPE PLAIN.
+   HPOEngine error: Error on line 14: STRATEGY TYPE PRESTAGE cannot refine with NLOPT:GN_DIRECT_L: it does not start at the point it is given (DIRECT evaluates the centre of the OPTIM box first and then divides the whole box; NLopt never reads that point), so the refinement would never use the exploration's candidates, for any TOPK. Use a local optimiser, which starts at each candidate (CERES:STEEPEST_DESCENT, DLIB:BFGS, NLOPT:LD_AUGLAG, NLOPT:LD_AUGLAG_EQ, NLOPT:LD_CCSAQ, NLOPT:LD_LBFGS, NLOPT:LD_MMA, NLOPT:LD_SLSQP, NLOPT:LD_TNEWTON, NLOPT:LD_TNEWTON_PRECOND, NLOPT:LD_TNEWTON_PRECOND_RESTART, NLOPT:LD_TNEWTON_RESTART, NLOPT:LD_VAR1, NLOPT:LD_VAR2, NLOPT:LN_AUGLAG, NLOPT:LN_AUGLAG_EQ, NLOPT:LN_BOBYQA, NLOPT:LN_COBYLA, NLOPT:LN_NELDERMEAD, NLOPT:LN_PRAXIS, NLOPT:LN_SBPLX), or run NLOPT:GN_DIRECT_L as the exploration (EXPLORE block) or once, as STRATEGY TYPE PLAIN.
    Line: ENDOPTIMIZER
 
 An ``AUGLAG`` refinement whose ``INNER`` search is one of them is refused

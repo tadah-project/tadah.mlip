@@ -7,6 +7,10 @@ This page lists every two-body (``D2_*``) and many-body (``DM_*``) descriptor
 compiled into Tadah!MLIP.  The class name shown in each heading is exactly the
 keyword you write in your configuration file.
 
+For new scalar-density work, :ref:`DM_Embed <dm_embed>` selects density basis,
+embedding basis, spatial cutoff and optional envelope in independent component
+blocks. Existing flat descriptors remain supported.
+
 General workflow
 ----------------
 

@@ -80,6 +80,7 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    training.rst
    regressors.rst
    descriptors.rst
+   dm_embed.rst
    cutoffs.rst
    refit.rst
 

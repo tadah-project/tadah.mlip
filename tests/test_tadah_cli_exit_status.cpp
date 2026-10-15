@@ -4008,8 +4008,9 @@ TEST_CASE("Subcommand: refit: a configuration number out of its range is "
  *  - its element line gives a0 = 330.4 (tantalum's lattice constant in
  *    picometres), whose bcc crystal has its nearest neighbours 286 A
  *    apart, beyond the table's cutoff, 4.5 A: the refusal names a0 = 330.4
- *    A, "at or beyond the table's cutoff, rcut = 4.5 A", "the crystal has
- *    no pair within the cutoff" and that "a value in picometres is 100
+ *    A, "at or beyond the table's cutoff, rcut = 4.5 A", "LAMMPS
+ *    (pair_style eam/alloy) counts a pair only below rcut: the crystal has
+ *    no interaction in LAMMPS" and that "a value in picometres is 100
  *    times the value in Angstrom";
  *  - its grid line gives dr = 1e-300, so that its r tables of 501 points
  *    end at 5e-298, short of rcut 4.5: the refusal names the file, line 5,
@@ -4018,11 +4019,13 @@ TEST_CASE("Subcommand: refit: a configuration number out of its range is "
  * `tadah train` with that table as the SETFL of a DM_EAM model is refused
  * the same way (the reader is the one every SETFL user reads with). The
  * table as written fits (exit 0, the [refit] case above).
- * Before the fix: both refits exited 0 and wrote pot.tadah (the first with
- * a self-test of crystals without a neighbour, 0.000 meV/atom; the second
- * evaluating every distance at a spline index past int), and the train
- * crashed the test process (segmentation fault: DM_EAM read its table at
- * that index). */
+ * Before the fix: the first refusal said "the crystal has no pair within
+ * the cutoff" (tadah itself counts a pair at exactly rcut), so its third
+ * needle fails. Before the gates, both refits exited 0 and wrote pot.tadah
+ * (the first with a self-test of crystals without a neighbour, 0.000
+ * meV/atom; the second evaluating every distance at a spline index past
+ * int), and the train crashed the test process (segmentation fault:
+ * DM_EAM read its table at that index). */
 TEST_CASE("Subcommand: refit refuses a header lattice constant beyond the "
           "cutoff and a table whose r grid does not reach it",
           "[TadahCLI][exit-status][refit]") {
@@ -4044,7 +4047,8 @@ TEST_CASE("Subcommand: refit refuses a header lattice constant beyond the "
        std::vector<std::pair<std::string, std::vector<std::string>>>{
            {"eam_pm.alloy",
             {"a0 = 330.4 A", "at or beyond the table's cutoff, rcut = 4.5 A",
-             "the crystal has no pair within the cutoff",
+             "and LAMMPS (pair_style eam/alloy) counts a pair only below "
+             "rcut: the crystal has no interaction in LAMMPS",
              "a value in picometres is 100 times the value in Angstrom"}},
            {"eam_dr.alloy",
             {"EAMSetflIO: setfl file 'eam_dr.alloy', line 5: the r tables do "

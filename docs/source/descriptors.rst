@@ -361,8 +361,10 @@ Many-Body
      - Embedded Atom Descriptor with Gaussian-type orbital basis
    * - ``DM_EAM``
      - Many-body part of the Embedded Atom Method (density and embedding function), from the same ``SETFL`` file
+   * - ``DM_Embed``
+     - Scalar EAM-form density and embedding composed in a ``DESCRIPTOR`` block (``tadah refit`` writes it); :ref:`dm_embed`
    * - ``DM_REAM``
-     - Refittable EAM: flexible density and embedding expansions (``tadah refit``)
+     - Refittable EAM: flexible density and embedding expansions (``tadah refit`` before 1.6.0)
    * - ``DM_mRLR``
      - mEAD with s·ρ·log(c·ρ) embedding
    * - ``DM_mSQRT``
@@ -428,8 +430,10 @@ DM_EAM
 DM_REAM
 ~~~~~~~
 
-The native EAM many-body descriptor written by :ref:`tadah refit <refit>`.
-Both EAM functions are basis expansions: the pair density
+The native EAM many-body descriptor that :ref:`tadah refit <refit>` wrote
+before 1.6.0; it now writes the many-body term as a :ref:`DM_Embed
+<dm_embed>` component, and DM_REAM potentials load, train, predict and edit
+unchanged. Both EAM functions are basis expansions: the pair density
 :math:`\rho(r)=W f_c(r)\sum_n a_n\,T_n(r)` (centres ``CGRIDMB``, widths
 ``SGRIDMB``, fixed amplitudes ``AMPGRIDMB``; :math:`T_n` depends on the
 density form ``RHOFORM``, below) and the embedding

@@ -5,9 +5,19 @@ Refitting tabulated EAM potentials
 
 .. note::
 
-   New refits write resolved :ref:`DM_Embed component blocks <dm_embed>`.
-   That page documents independent density and embedding choices, AUTO grids,
-   physical-width coordinates, and the component compact fitting path.
+   ``tadah refit`` writes the many-body term as a resolved :ref:`DM_Embed
+   component <dm_embed>`: a ``DESCRIPTOR <id> DM_Embed`` ... ``ENDDESCRIPTOR``
+   block and ``TYPEMB @<id>`` (the ID ``eam``, or that of the block of a
+   refit configuration that declares one), whose ``DENSITY`` block carries
+   the density form (``FORM``) and whose ``EMBEDDING`` block the embedding
+   reference (``REFERENCE``). Before 1.6.0 it wrote a ``DM_REAM`` term, with
+   ``TYPEMB DM_REAM``, ``CGRIDMB``, ``SGRIDMB``, ``AMPGRIDMB``,
+   ``CEMBFUNC``, ``SEMBFUNC``, ``RCUTMB``, ``RCTYPEMB``, ``RHOFORM`` and
+   ``EMBF0`` lines; such potentials still load, train and predict unchanged,
+   and ``--edit`` edits them (`Editing a refitted potential (--edit)`_). The
+   :ref:`DM_Embed page <dm_embed>` documents independent density and
+   embedding choices, AUTO grids, physical-width coordinates, and the
+   component compact fitting path.
 
 ``tadah refit`` converts a tabulated EAM potential (a *setfl* file in the
 LAMMPS ``eam/alloy`` / ``eam/fs`` format) into a native Tadah! potential. The
@@ -134,7 +144,12 @@ pass thresholds. ``cohesive delta`` is the equilibrium-energy error. A fit
 that stays above them ends with a WARNING naming the keys of the fit that
 ran: ``REFIT_COMPACT_NMAX`` or ``EXPLORE MAX_ADD`` (a larger basis) after a
 compact fit, ``REFIT_MAX_ESCALATIONS`` or ``N2B``/``NRHO_BASIS``/``NF_BASIS``
-after a dense one. Before 1.6.0 a compact fit got the dense fit's advice,
+after a dense one. A fit of :ref:`DM_Embed components <dm_embed_refit>`
+has the basis its block declares and does not escalate it (a configuration
+with blocks refuses ``REFIT_MAX_ESCALATIONS``): its WARNING names the
+component's counts and grids (``CENTRES AUTO <count>``, or a finer
+explicit grid), and ``REFIT_COMPONENT_ITERATIONS`` after a compact fit or
+``N2B`` (the pair function) after a dense one. Before 1.6.0 a compact fit got the dense fit's advice,
 and its window report named ``REFIT_PLACEMENT`` and the dense fit's uniform
 tail basis.
 
@@ -143,14 +158,21 @@ tail basis.
 Density form (``RHOFORM``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The refit configuration must declare the :ref:`DM_REAM density form
-<dm_ream_rhoform>` of the potential it writes: ``RHOFORM SIGNED``,
-``NONNEG`` or ``MONOTONE``. There is no default; without the key ``refit``
-stops before reading the table with ``tadah refit configuration: DM_REAM:
-RHOFORM is required: ...``. The density is fitted, self-tested (the crystal
-self-test and ``refit.eam`` use the fitted density in its form) and written
-in the declared form, and the log states it (``tadah refit: RHOFORM
-<form>: ...; the potential declares RHOFORM <form>.``).
+A refit configuration without ``DESCRIPTOR`` blocks must declare the
+density form of the potential it writes (the forms of the :ref:`DM_REAM
+density <dm_ream_rhoform>`): ``RHOFORM SIGNED``, ``NONNEG`` or
+``MONOTONE``. There is no default; without the key ``refit`` stops before
+reading the table with ``tadah refit configuration: DM_REAM: RHOFORM is
+required: ...``. The density is fitted, self-tested (the crystal self-test
+and ``refit.eam`` use the fitted density in its form) and written in the
+declared form, as the ``FORM`` line of the written potential's density
+component (``DESCRIPTOR eam DM_Embed``; the potential has no ``RHOFORM``
+line), and the log states it (``tadah refit: RHOFORM <form>: ...; the
+written potential's density component declares FORM <form>.``). A
+configuration with :ref:`DESCRIPTOR blocks <dm_embed_refit>` declares the
+form in the block's ``DENSITY`` (``FORM``; its ``RHOFORM`` is refused), and
+the log reads ``tadah refit: FORM <form>: ...; the density component <ID>
+declares FORM <form>.``
 
 .. list-table::
    :header-rows: 1
@@ -162,9 +184,10 @@ in the declared form, and the log states it (``tadah refit: RHOFORM
    * - ``SIGNED``
      - Signed amplitudes :math:`a_n` of the basis functions
        :math:`\psi_n`, as every tadah before 1.6.0 fitted them. In dense
-       mode the key only adds the ``RHOFORM SIGNED`` line to
-       ``pot.tadah``: the fit, ``refit.eam`` and ``refit.hpotarget`` are
-       those of the density before the key existed; compact mode can differ
+       mode the fitted density, ``refit.eam`` and the density's bounds in
+       ``refit.hpotarget`` are those of the density before the key existed
+       (the potential declares it as its component's ``FORM SIGNED``);
+       compact mode can differ
        where the earlier joint refinement left a bump past the cutoff (see
        *Compact mode* below).
      - Any table; no sign or shape guarantee.
@@ -187,7 +210,8 @@ or ``Gaussian`` (dense); otherwise it stops with ``tadah refit: RHOFORM
 MONOTONE is not defined for REFIT_BASIS Knot5 (the REFIT_MODE compact
 default, a one-sided knot family): use a bump basis (Blip, Blip5) or RHOFORM
 NONNEG ...``. ``MONOTONE`` also needs a non-negative, non-increasing
-many-body cutoff; ``refit`` writes ``Cut_Dummy``, which is one.
+many-body cutoff; ``refit`` writes ``Cut_Dummy`` (the density's ``CUTOFF
+TYPE NONE``), which is one.
 ``NONNEG`` with a knot family is allowed, but a knot density with every
 amplitude :math:`\ge 0` is non-increasing and convex (knots :math:`\le`
 ``RCUTMB``, non-increasing cutoff), so the fit is locked to such shapes and
@@ -212,7 +236,11 @@ neighbouring nodes above :math:`\mathrm{tol}`, with
 message names the node, e.g. ``EAMRefit: RHOFORM MONOTONE cannot fit this
 table: the tabulated density rises from rho = ... at r = ... A to ... at r
 = ... A, inside the fit window [..., ...] A, and a MONOTONE density is
-non-increasing. Use RHOFORM NONNEG or SIGNED.``
+non-increasing. Use RHOFORM NONNEG or SIGNED.``; for a component the
+message names its ``FORM`` and the remedy in its block (``EAMRefit: the
+density component CU's FORM NONNEG cannot fit this table: ... Use FORM
+SIGNED in its DENSITY block.``), also in compact mode, where the
+configured grids are checked before the solve.
 
 **Dense mode.** ``SIGNED`` solves each window block by the rank-revealing
 least squares used before 1.6.0 (GELSD); ``NONNEG`` and ``MONOTONE`` solve it by
@@ -298,29 +326,38 @@ Before 1.6.0 it fitted the table in dense mode after a WARNING (a defaulted
 (the ``full_lo`` of ``refit_range_report.dat``); below it, the original
 table shifted by the constant that joins it to the fitted density there,
 clamped at 0 under ``NONNEG`` and ``MONOTONE``. The form's guarantees are
-those of the native density, from the inner fit bound out. ``tadah analysis bfunc`` plots the basis
-functions :math:`\psi_n` of a potential, not the steps :math:`S_n` of a
-``MONOTONE`` density.
+those of the native density, from the inner fit bound out. ``tadah
+analysis bfunc --type MB`` plots the density functions of a potential in
+its form: the steps :math:`S_n` of a ``MONOTONE`` density, the bumps
+:math:`\psi_n` otherwise (with ``--rescale`` tapered by the cutoff).
 
 Embedding reference (``EMBF0``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The native potential declares its :ref:`DM_REAM embedding reference
-<dm_ream>`. Under the default ``EMBF0 ZERO`` both fitting modes fit the
+The native potential declares its embedding reference as the
+``REFERENCE`` line of its density component's ``EMBEDDING`` block: the
+configuration's ``EMBF0`` (the :ref:`DM_REAM key <dm_ream>`; default
+``ZERO``) without ``DESCRIPTOR`` blocks, the block's ``REFERENCE`` with
+them (``EMBF0`` is then refused). Under the default ``EMBF0 ZERO``
+(``REFERENCE ZERO``) both fitting modes fit the
 zero-referenced embedding :math:`F(\rho) - F(0)` against the zero-referenced
 table :math:`F_{tab}(\rho) - F_{tab}(0)` ("fit what you evaluate"), so the
 native potential, ``refit.eam`` (its first ``F`` value is exactly 0) and the
 self-test all have :math:`F(0) = 0` exactly. Forces, energy differences at
 fixed atom count and the cohesive energy are those of the table; absolute energies are referenced
 to the isolated atom, i.e. shifted by :math:`-F_{tab}(0)` per atom, which the
-log reports (``table F(0) = X eV removed``; for most tables X = 0). Under
-``ZERO`` the self-test's ``cohesive`` line is labelled relative to the
-isolated atom.
+log reports (``tadah refit: EMBF0 ZERO: table F(0) = X eV removed; ...``,
+``REFERENCE ZERO`` for a component configuration; for most tables X = 0).
+Under ``ZERO`` the self-test's ``cohesive`` line is labelled relative to
+the isolated atom.
 
-Put ``EMBF0 FREE`` in the refit configuration to fit the raw embedding of
-tadah 1.5.0 and earlier (dense mode then pins :math:`F(0)` softly to the
-table value, ``REFIT_CONSTRAIN_F0``); the written potential says
-``EMBF0 FREE``. The ``refit.hpotarget`` header notes that under ``ZERO``
+Put ``EMBF0 FREE`` in the refit configuration (``REFERENCE FREE`` in a
+component's ``EMBEDDING`` block) to fit the raw embedding of tadah 1.5.0
+and earlier (dense mode then pins :math:`F(0)` softly to the table value,
+``REFIT_CONSTRAIN_F0``, which a configuration with blocks refuses); the
+written potential says ``REFERENCE FREE``. The ``refit.hpotarget`` header
+(``# REFERENCE ZERO: F(0) = 0 exactly, ...``; ``EMBF0 ZERO`` for a
+DM_REAM potential) notes that under ``ZERO``
 absolute reference energies need ``tadah hpo --eshift-atom`` or
 ``--eshift-dbatom``, or an ``ESHIFT`` line in the configuration (the refit
 potential with a ``DBFILE`` line: a toggle line of it is not read, since it
@@ -379,7 +416,11 @@ are checked, naming the key, the mode in effect and the mode that reads it:
   ``REFIT_COMPACT_INSERT_TOPK`` are read by the knot families only (the
   default ``Knot5``, ``Knot3``, ``KnotMix``), so each is an error with
   ``REFIT_BASIS Blip`` or ``Blip5`` (in any spelling ``refit`` takes,
-  ``M6`` included).
+  ``M6`` included). ``REFIT_COMPONENT_ITERATIONS``, the iteration limit of
+  the compact fit of :ref:`DM_Embed components <dm_embed_refit>` (default
+  60), is read with ``DESCRIPTOR`` blocks only, so it is an error without
+  them (``tadah refit: REFIT_COMPONENT_ITERATIONS has no effect without
+  DESCRIPTOR blocks: ...``).
 * Dense mode only: the keys of :ref:`refit_dense` (``REFIT_LEVEL``,
   ``N2B``, ``NRHO_BASIS``, ``NF_BASIS``, ``REFIT_MAX_ESCALATIONS``,
   ``REFIT_PLACEMENT``, ``REFIT_CONSTRAIN_F0``). ``REFIT_CONSTRAIN_F0``,
@@ -527,6 +568,9 @@ Compact mode only (``REFIT_MODE dense`` refuses these keys).
    * - Key
      - Default
      - Effect
+   * - ``REFIT_COMPONENT_ITERATIONS``
+     - ``60``
+     - With ``DESCRIPTOR`` blocks only: the iteration limit of the compact fit of the :ref:`DM_Embed components <dm_embed_refit>` (the centre and scale optimisation that their grids seed), an integer from 1. A fit that stops at the limit before converging is written, with a WARNING naming the stop and the key. Without blocks it is an error.
    * - ``REFIT_COMPACT_NMAX``
      - ``40``
      - Per-function basis ceiling: one integer from 1 (all functions) or three ``phi rho F`` (e.g. ``35 12 35``). Higher is more flexible and slower. The sample grid of at least 4×NMAX points must fit 2147483647, so the largest NMAX is at most 536870911 (checked with the other numbers, before the EAM file is read).
@@ -1014,7 +1058,9 @@ when the refit will be tuned further.
      - :math:`F(\rho)` basis count, from 1 to 1024.
    * - ``REFIT_MAX_ESCALATIONS``
      - ``4``
-     - Automatic basis-escalation rounds while above tolerance, from 0.
+     - Automatic basis-escalation rounds while above tolerance, from 0. An
+       error with ``DESCRIPTOR`` blocks: a component fit has the basis its
+       block declares (``CENTRES AUTO <count>``).
    * - ``REFIT_CONSTRAIN_F0``
      - ``true``
      - Under ``EMBF0 FREE``: pin the raw :math:`F(0)` softly to the table
@@ -1044,8 +1090,10 @@ existing refit potential — no EAM input, no new fit::
    # remove the embedding basis function nearest rho = 0.9
    tadah refit --edit pot.tadah --func F --remove 0.9
 
-``--func`` selects the curve: ``phi`` (pair, ``CGRID2B``), ``rho`` (density,
-``CGRIDMB`` / ``AMPGRIDMB``) or ``F`` (embedding, ``CEMBFUNC``). Exactly one
+``--func`` selects the curve: ``phi`` (pair, ``CGRID2B``), ``rho`` (the
+density: a DM_Embed component's ``DENSITY`` functions, or a DM_REAM
+potential's ``CGRIDMB`` / ``AMPGRIDMB``) or ``F`` (the embedding: the
+component's ``EMBEDDING`` functions, or ``CEMBFUNC``). Exactly one
 of ``--add <centre>`` / ``--remove <centre>`` is required. Both knot
 (``Knot5`` / ``Knot3``) and blip (``Blip`` / ``Blip5``) family pair
 descriptors are supported; ``D2_mJoin`` and Gaussian potentials are not,
@@ -1056,8 +1104,9 @@ The many-body term is **optional**:
 
 * *pure two-body potentials* (``TYPE2B`` only — e.g. hand-built knot pair
   potentials) are fully supported through ``--func phi``;
-* *DM_REAM potentials* (as written by ``tadah refit``) expose all three
-  curves;
+* *DM_Embed potentials* (as ``tadah refit`` writes them; :ref:`dm_embed`
+  describes how a component is edited) and *DM_REAM potentials* (as
+  ``tadah refit`` wrote them before 1.6.0) expose all three curves;
 * *any other many-body descriptor* restricts editing to ``--func phi`` —
   the many-body keys and their WEIGHTS block ride along untouched (the
   pair block is always the WEIGHTS prefix).
@@ -1082,8 +1131,9 @@ compensation; expect observables to change and re-validate the potential.
 Removing the outermost radial knot also shrinks the effective cutoff and the
 uncovered tail cannot be compensated (warned).
 
-``F`` edits act in the potential's ``EMBF0`` reference (the log states it). Under
-``EMBF0 ZERO`` the ``F`` curve is :math:`F(\rho) - F(0)`: removing a function
+``F`` edits act in the potential's embedding reference, a DM_Embed
+component's ``REFERENCE`` or a DM_REAM potential's ``EMBF0`` (the log states
+it). Under ``ZERO`` the ``F`` curve is :math:`F(\rho) - F(0)`: removing a function
 with :math:`g(0) \neq 0`, or adjusting a compensating function with
 :math:`g(0) \neq 0`, changes ``F`` by a constant over the whole ``F`` domain,
 so the compensation region is then widened to :math:`[0,` largest support
@@ -1121,6 +1171,14 @@ own run only: a ``NUMERIC`` line of the edited potential (every
 ``best_pot.tadah`` of ``tadah hpo`` 1.5.0 has ``NUMERIC 12``) is not read,
 so without a ``NUMERIC`` of the run the edit is exact.
 
+Conversely a refit of an EAM file reads none of the options of ``--edit``
+and ``--retarget``: ``tadah refit -c refit.cfg --rcut2b 4.5`` (or
+``--rcutmb``, ``--pct``, ``--set``, ``--rhoform``) is refused before any task
+runs (``--rcut2b requires --retarget``), and a refit configuration that sets
+one of their keys is an error naming it (``tadah refit: the RETARGET_RCUT2B
+key requires --retarget <file.hpotarget>.``). Before 1.6.0 ``--rcut2b`` and
+``--rcutmb`` were accepted by a refit and had no effect.
+
 ``EMBF0`` and ``RHOFORM`` are properties of the potential. A configuration
 passed with ``-c`` may set them only to the potential's own values: a
 different value is refused before anything is written, as in ``tadah
@@ -1130,8 +1188,9 @@ and a ``RHOFORM`` set for a DM_REAM potential without one does not supply
 it.
 
 ``rho`` edits act in the potential's :ref:`density form <dm_ream_rhoform>`
-(the log states it), and the edited potential keeps its ``RHOFORM`` line.
-The input must declare ``RHOFORM`` (a DM_REAM potential without it stops
+(the log states it), and the edited potential keeps it (a component's
+``FORM``, a DM_REAM potential's ``RHOFORM`` line). A DM_REAM input must
+declare ``RHOFORM`` (a DM_REAM potential without it stops
 with ``pot edit: DM_REAM: RHOFORM is required: ...``; add ``RHOFORM
 SIGNED`` to a fit written before tadah 1.6.0), and under ``NONNEG`` and
 ``MONOTONE`` its density must pass the checks DM_REAM applies on load (the messages are
@@ -1259,8 +1318,37 @@ per-key retarget such as ``--pct 5 SGRIDMB=50`` is a fixed point too. An
 params)``) and a retarget at the global percentage removes it again, so
 ``RCUT`` lines are fixed points as well.
 
+**DM_Embed targets.** The target of a DM_Embed potential (every target
+``refit`` writes) names the many-body parameters by component path: each
+component's parameters follow the pair section under a header of their own
+(``# ---- EAM component (DM_Embed) density and embedding shape ----``),
+each group after a ``# COMPONENT_PARAMETER <path> <rule>`` line whose rule
+is the group's bound: ``NONNEG`` for the amplitudes of a ``FORM NONNEG`` or
+``MONOTONE`` density (:math:`lo = \max(0, v - d)`), ``POSITIVE`` for the
+widths and radii, ``FREE`` otherwise. ``--retarget`` keeps those rules,
+rewrites the percentage of the group comments (``# EAM.DENSITY.CENTRES
+(+-X%, ...``) and accepts ``--set 'EAM.DENSITY.CENTRES(2)=2.4,2.6'``. The
+knot centres of a density with ``CUTOFF TYPE NONE``, whose knots must end
+within its fixed ``RADIUS``, get boxes that end at ``RADIUS`` (the largest
+knot's box is the half below it), recorded in a parsed comment
+(``# EAM.DENSITY.CENTRES knot-support cap: RADIUS = 4.00398451956218
+(...)``), which ``--retarget`` reads: it recovers a capped centre from its
+lower bound and keeps the cap. ``--rhoform`` and ``--rcutmb`` name the
+DM_REAM keys and are refused on a target without ``AMPGRIDMB`` and
+``CGRIDMB`` groups (``retarget: --rhoform NONNEG has nothing to act on in
+this file: its density amplitudes are the DM_Embed component path(s)
+EAM.DENSITY.AMPLITUDES, whose form is the component's FORM ...``;
+``retarget: --rcutmb has nothing to act on in this file: ... a component's
+radius is its CUTOFF RADIUS, the path(s) EAM.DENSITY.CUTOFF.RADIUS ...``):
+a component's form is its potential's ``FORM``, and its radius is the
+``RADIUS`` of its ``CUTOFF`` block. ``tadah hpo`` refuses ``OPTIM CGRIDMB``
+(``SGRIDMB``, ``AMPGRIDMB``, ``CEMBFUNC``, ``SEMBFUNC``, ``RCUTMB``) for a
+DM_Embed potential, naming the component path (:ref:`dm_embed_parameters`):
+rename the keys of a target written for an older refit, or regenerate it.
+
 **Density form.** Under ``RHOFORM NONNEG`` and ``MONOTONE`` the hpotarget
-written by ``refit`` (and ``refit --edit``) keeps every ``AMPGRIDMB`` box
+of a DM_REAM potential (written by ``refit --edit`` of one, or by
+``refit`` before 1.6.0) keeps every ``AMPGRIDMB`` box
 non-negative, :math:`lo = \max(0, v - d)` (a zero amplitude gets
 :math:`[0, d]`), and records the form in a header line, because the
 hpotarget does not carry the potential::

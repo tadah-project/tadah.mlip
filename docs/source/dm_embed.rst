@@ -52,7 +52,12 @@ in declaration order. To order blocks together with legacy descriptors, put
 ``TYPEMB @ta`` at the desired position among the legacy ``TYPEMB`` declarations.
 Reference every declared ID exactly once. Legacy cutoff and grid lists continue
 to describe the legacy terms only. ``CONFIG`` includes preserve block order,
-boundaries and source locations.
+boundaries and source locations: an included file's blocks follow those of the
+including file. Elsewhere blocks take the precedence of a key: in a task file a
+``TASK`` section's ``DESCRIPTOR`` blocks replace the GLOBAL section's, as a
+section's key replaces a GLOBAL key, and in ``TASK predict`` (and ``tadah
+predict``) a task's blocks replace its potential's, so a GLOBAL model serves
+both ``TASK train`` and the ``TASK predict`` of the potential it writes.
 
 ``FORM`` is required in each density: ``SIGNED`` permits signed amplitudes;
 ``NONNEG`` requires nonnegative amplitudes and positive pair weights;
@@ -140,6 +145,8 @@ with C1 smoothness at C; the smoothsteps match with C2 and C4. Enabled envelopes
 explicitly reject negative total density. OFF permits signed density. There is
 no high-density cutoff on the embedding basis.
 
+.. _dm_embed_parameters:
+
 Named nonlinear parameters
 --------------------------
 
@@ -161,15 +168,36 @@ Only the configured ETA or WIDTHS path exists. Knot degrees, basis choices,
 reference modes, forms and envelope types are discrete and cannot be optimized.
 Radius optimization under NONE is refused. Repeated dimensions and inactive
 aliases are errors. Existing flat OPTIM syntax remains available for legacy
-terms. Scalar density gates accept a single scalar component; mixed terms need
-an explicitly defined component selection before such gates can be applied.
+terms; a legacy many-body key (``CGRIDMB``, ``SGRIDMB``, ``AMPGRIDMB``,
+``CEMBFUNC``, ``SEMBFUNC``, ``RCUTMB``) of a potential whose many-body term is
+DM_Embed, which has no such key, is refused naming the component path that
+holds the parameter (``OPTIM CGRIDMB: the potential has no CGRIDMB key: its
+many-body term is DM_Embed component(s) (DESCRIPTOR blocks), whose density
+parameter is the named path TA.DENSITY.CENTRES; ...``). In a ``DM_mJoin`` the
+analytical gradient (``GRAD_STRATEGY ANALYTICAL`` or ``HYBRID``) differentiates
+the named paths of its ``DM_Embed`` children; a legacy key indexes the joined
+lists, which no child reads against its own grid, so ``HYBRID`` takes it by
+finite differences and ``ANALYTICAL`` names it as a parameter it cannot
+differentiate, as before ``DM_Embed``. Scalar density gates accept a single
+scalar component; mixed terms need an explicitly defined component selection
+before such gates can be applied. A trainer of a DM_Embed potential (``tadah
+train``, ``tadah hpo``'s ``best_pot.tadah``) writes no ``RCTYPEMB`` line: the
+blocks' ``CUTOFF`` are the many-body cutoffs.
+
+.. _dm_embed_refit:
 
 Refit, editing and analysis
 ---------------------------
 
-New CLI refits write resolved ``DM_Embed`` blocks. Without component blocks,
-``REFIT_BASIS`` keeps its shared-family meaning. Gaussian refits use a smooth
-Cut_Poly taper. With a block, select the existing pair family separately through
+Every ``tadah refit`` writes resolved ``DM_Embed`` blocks (:ref:`refit`; the ID
+``eam`` when the configuration declares no block). Without component blocks,
+``REFIT_BASIS`` keeps its shared-family meaning, and ``RHOFORM`` and ``EMBF0``
+become the written block's ``FORM`` and ``REFERENCE``. A dense ``REFIT_BASIS
+Gaussian`` refit fits and writes the pair function and the density with the
+smooth cutoff ``Cut_Poly`` at the table's rcut (``RCTYPE2B Cut_Poly``, the
+density's ``CUTOFF TYPE Cut_Poly``), since a Gaussian density never vanishes and
+needs a real smooth cutoff; its EXPERIMENTAL warning says so. With a block,
+select the existing pair family separately through
 ``REFIT_PAIR_BASIS`` (default Blip5); REFIT_BASIS and global many-body arrays,
 RHOFORM and EMBF0 conflict with component ownership. REFIT_PAIR_BASIS without
 a block is refused; REFIT_BASIS controls every legacy component.
@@ -185,13 +213,51 @@ with analytical variable-projection derivatives and Ceres; pair coefficients
 are fitted on the pair grid. Legacy ladder stage settings are refused for this
 path, which takes its seeds from the component grids.
 
+A component fit has the basis its block declares and does not escalate it:
+``REFIT_MAX_ESCALATIONS`` is refused with a block, and a fit above tolerance
+names the component's counts and grids (``CENTRES AUTO <count>``, or a finer
+explicit grid). Both modes fit the density on [max(wall edge, r_lo), RADIUS],
+the window of the fit without blocks (never below r_lo), and the embedding on
+the table's whole range, [0, rhomax] (the log's ``embedding fit window [0,
+...]``). ``REFIT_COMPONENT_ITERATIONS`` (compact mode with a block only;
+default 60) is the iteration limit of the compact fit: a solve that stops
+there before converging is written with a WARNING naming the stop and the key.
+The compact fit evaluates the configured grids before the solve, so a table
+the declared ``FORM`` cannot follow is refused with its own message (``EAMRefit:
+the density component CU's FORM NONNEG cannot fit this table: ... Use FORM
+SIGNED in its DENSITY block.``); during the solve a trial point the component
+cannot be evaluated at is infeasible, and an internal error stops the refit.
+Its Ceres solve prints no progress lines whatever ``VERBOSE`` is (the INFO log
+has its summary).
+
 ``refit --edit`` preserves component families, envelopes, reference and selected
 coordinate system; additions have zero coefficient. Removal reports compensation residuals and refits the remaining
 coefficients and is lossy. ``--eta`` specifies the new function's eta, converted
-once to its selected coordinate when the component stores WIDTHS. Retargeted HPO
-starters retain named paths and their positivity rules. ``analysis bfunc`` uses
-``TYPE MB DENSITY`` or ``TYPE MB EMBEDDING`` for component curves; ``TYPE MB Y``
-applies the spatial cutoff to the density basis. Generic and scalar EAM LAMMPS
+once to its selected coordinate when the component stores WIDTHS.
+
+HPO starters (``refit.hpotarget``) list each component's parameters after the
+pair section under a header of their own, ``# ---- TA component (DM_Embed)
+density and embedding shape ----``, each group after a ``# COMPONENT_PARAMETER
+<path> <rule>`` line (``NONNEG``, ``POSITIVE`` or ``FREE``), and note a zero
+reference as ``REFERENCE ZERO``. The knot centres of a density with ``CUTOFF TYPE
+NONE``, whose knots end within the fixed RADIUS, get boxes that end at RADIUS,
+recorded in a ``# TA.DENSITY.CENTRES knot-support cap: RADIUS = 4 (...)``
+comment. Retargeted starters retain named paths, their positivity rules and the
+cap; ``--retarget`` rewrites the percentage of component group comments and
+accepts ``--set 'TA.DENSITY.CENTRES(2)=1.8,2.2'``, and refuses ``--rhoform`` and
+``--rcutmb``, which name DM_REAM keys, on a starter without ``AMPGRIDMB`` and
+``CGRIDMB`` groups (the form is the block's ``FORM``, the radius the path
+``TA.DENSITY.CUTOFF.RADIUS``).
+
+``analysis bfunc --type MB DENSITY`` (or ``MB``) and ``MB EMBEDDING`` print
+component curves with the meaning of the radial curves: the bare functions;
+``--rescale`` tapers the density functions by the spatial cutoff (the product
+rule under ``--derivative``) and is refused for the embedding, which has no
+spatial cutoff; ``MB Y`` prints the bare density functions and then a block
+with the cutoff (its derivative under ``--derivative``), in the fixed
+``NUMERIC`` format of the two-body curves. A DM_REAM potential's density and
+embedding are printed the same way, in the declared density form (the steps of
+a ``MONOTONE`` density) and embedding reference. Generic and scalar EAM LAMMPS
 evaluation share the same composed evaluator.
 
 For HPO, either retain FIXINDEX/FIXWEIGHT and search selected coefficient pins,

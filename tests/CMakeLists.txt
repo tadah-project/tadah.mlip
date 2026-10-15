@@ -436,8 +436,8 @@ endforeach()
 # --fresh, 3.24, in the umbrella's 3.15), header_check/check_header_check.cmake
 # (--fresh, ctest --test-dir 3.20, string(JSON) 3.19, in its 3.18),
 # removed_options/check_removed_option.cmake (--fresh) and
-# catch_discovery/check_skip.cmake (--test-dir), both 3.18. Before the build
-# matrix review: 9 -- this file's two SKIP_REGULAR_EXPRESSION (3.16) under the
+# catch_discovery/check_skip.cmake (--test-dir), both 3.18. Before an
+# earlier fix: 9 -- this file's two SKIP_REGULAR_EXPRESSION (3.16) under the
 # umbrella's 3.15, and seven scripts that declare 3.18 above it
 # (catch_discovery/check_discovery.cmake, check_module.cmake,
 # check_skip.cmake, doxygen_input/probe.cmake,
@@ -468,7 +468,7 @@ set_tests_properties(tadah_cmake_minimum_features PROPERTIES
 # Before the fix: main() called tadah::hpo::pc_worker_main in every build,
 # so the link failed ("undefined reference to
 # `tadah::hpo::pc_worker_main(int, char**)'") and a build without NFP had
-# no tadah. Before the build matrix review: `tadah hpo` said
+# no tadah. Before the refusal was added: `tadah hpo` said
 # "EngineFactory::create: No engine found for HPO".
 if(TADAH_ENABLE_NFP)
   add_subdirectory(without_nfp)

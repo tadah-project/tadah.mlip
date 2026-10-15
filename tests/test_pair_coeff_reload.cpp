@@ -950,9 +950,9 @@ TEST_CASE("pair_style tadah: a second pair_coeff logs the lines of the "
  * an earlier version (EFILTER -12 -2, FFILTER 0.01, ESHIFT_ATOM true,
  * ESHIFT_DBATOM true, EWEIGHT_TEMP 300, ZERO_COM_FORCE true, WDBFILE 1 0,
  * WDBFILE_AUTO 1), gives B's energy and force norm, to 1e-12: pair_style
- * tadah reads none of the eight (tadah predict ignores them since MK's
- * decision of 2026-10-14, option 2, and tadah train writes them into the
- * training record), so a potential that has them as key lines runs in
+ * tadah reads none of the eight (tadah predict ignores them, and tadah
+ * train writes them into the training record), so a potential that has
+ * them as key lines runs in
  * LAMMPS as one without them.
  * Before the fix: passes as well (a pin: LammpsTadah builds the model from
  * the descriptor and model keys only). */

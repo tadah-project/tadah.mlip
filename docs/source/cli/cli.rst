@@ -46,8 +46,8 @@ A task file is simply the CLI translated into an INI-style block:
 Short-hand rules
 ----------------
 
-* Boolean flags never take a value on the CLI: ``--force`` ✓  
-  ``--force true`` ✗
+* Boolean flags never take a value on the CLI: write ``--force``, not
+  ``--force true``.
 * Lists accept space-separated tokens **or**
   comma/range syntax (``1,3-5,10-20:2``).
 * Mutually exclusive options are flagged in the help (``Excludes``);

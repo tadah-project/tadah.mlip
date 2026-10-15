@@ -476,7 +476,7 @@ and ``log.lammps`` are the input script's output, and none of the lines
 changes a force or an energy.
 
 .. versionchanged:: 1.6.0
-   The training record is new (MK's decisions of 2026-10-14). Its opening
+   The training record is new. Its opening
    line is ``# --- training record (no key is read from it) ---``; ``tadah
    refit --edit`` refuses a block opened by any other line at its end
    line. tadah 1.5.x

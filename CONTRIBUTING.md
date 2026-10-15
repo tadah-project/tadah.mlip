@@ -29,7 +29,7 @@ every repo (see [`RELEASING.md`](RELEASING.md)).
 
 File a bug report on the GitLab project that owns the affected code.
 If you're unsure which one, file it on
-<https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues> — we'll move it.
+<https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>; it will be moved to the right project.
 
 A useful bug report includes:
 
@@ -181,7 +181,7 @@ build* below).
 `ctest -L bench` runs HPO's LAMMPS-driven cases, four entries of hidden
 Catch cases (`[.][!benchmark]`): `hpo_lammps_hessian` (the Hessian of a
 relaxed 4-atom bcc Ta cell and a `pair_tadah` virial microbench),
-`hpo_phase3_pilot` (the `PC_LAMMPS` adjoint chain on real relaxations,
+`hpo_adjoint_pilot` (the `PC_LAMMPS` adjoint chain on real relaxations,
 against finite differences), `hpo_bench_pair_tadah` (a `pair_tadah`
 microbench on 256 atoms) and `hpo_host_e2e` (`HPO_Host`'s analytical
 gradient, a `PC_LAMMPS` script among its cases). They run in the full

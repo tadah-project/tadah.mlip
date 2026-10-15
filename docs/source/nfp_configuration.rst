@@ -4519,9 +4519,9 @@ startup, once, naming the block's line (instead of the warning above):
 
    [HPO] WARNING: the INIT block on line 2: the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not start at the point it is given (DIRECT evaluates the centre of the OPTIM box first and then divides the whole box; NLopt never reads that point), so the search never evaluates the block's INIT points. To start the search at them, use an optimiser that starts at the point it is given.
 
-The same holds for an ``AUGLAG`` whose ``INNER`` search is one of them
-(``NLOPT:LN_AUGLAG runs its INNER search NLOPT:GN_DIRECT_L from the point it
-is given, and NLOPT:GN_DIRECT_L does not start ...``).  Under ``NOISE
+An ``AUGLAG`` or ``MLSL`` whose ``INNER`` block names one of them is
+refused at startup, as every global ``INNER`` search is (an ``INNER`` search
+is a local search, :ref:`strategy_block`), so no such warning concerns it.  Under ``NOISE
 CALIBRATION`` the sentence adds that the calibration evaluates the first of
 the points; an ``OPTIMIZER``-level block that a ``PRESTAGE`` exploration
 without an ``INIT`` block of its own takes is named with ``the refinement

@@ -204,10 +204,25 @@ optimiser may vary, and over what bounds:
 
    OPTIM <KEY> (indices) <low> <high>
 
-* ``<KEY>`` — any optimisable key from the training configuration.
+* ``<KEY>`` — any optimisable key from the training configuration, or a
+  named component path of a :ref:`DM_Embed <dm_embed>` block,
+  ``<ID>.DENSITY.CENTRES``, ``<ID>.DENSITY.ETA`` (or ``.WIDTHS``, as the
+  block declares), ``<ID>.DENSITY.AMPLITUDES``,
+  ``<ID>.DENSITY.CUTOFF.RADIUS``, ``<ID>.EMBEDDING.CENTRES``,
+  ``<ID>.EMBEDDING.ETA`` (``.WIDTHS``) and
+  ``<ID>.EMBEDDING.ENVELOPE.CUTOFF`` (:ref:`dm_embed_parameters`; the
+  starter target of ``tadah refit`` names them).
   A key or value that is not a search target is refused, at its line or
   at startup, naming it (*Special cases* below: e.g. ``RCUT2B`` with
-  ``D2_EAM``, whose cutoff is its setfl file's).  Keys are
+  ``D2_EAM``, whose cutoff is its setfl file's). A legacy many-body key
+  (``CGRIDMB``, ``SGRIDMB``, ``AMPGRIDMB``, ``CEMBFUNC``, ``SEMBFUNC``,
+  ``RCUTMB``) of a potential whose many-body term is DM_Embed, which has
+  no such key, is refused naming the component path that holds the
+  parameter (``OPTIM CGRIDMB: the potential has no CGRIDMB key: its
+  many-body term is DM_Embed component(s) (DESCRIPTOR blocks), whose
+  density parameter is the named path EAM.DENSITY.CENTRES; ...``): a target
+  written for a refit before 1.6.0, which wrote DM_REAM keys, needs its
+  keys renamed for a potential ``tadah refit`` writes now.  Keys are
   case-insensitive, as in the
   configuration: the key is upper-cased when the line is read, so every
   rule below applies whatever its case (``OPTIM weights`` is refused like
@@ -259,7 +274,8 @@ example ``OPTIM SGRID2B (2) …`` followed by ``OPTIM CGRID2B (2) …`` and
 ``OPTIM CGRID2B (1) …`` gives the order ``CGRID2B[1]``, ``CGRID2B[2]``,
 ``SGRID2B[2]``.  The hpotarget written by ``tadah refit`` follows the
 same rule: its ``OPTIM`` groups are listed as ``CGRID2B``, ``SGRID2B``,
-``CGRIDMB``, …, ``FIXWEIGHT``, and the run orders them by key.  This
+the component paths (``EAM.DENSITY.CENTRES``, …; ``CGRIDMB``, … for a
+DM_REAM potential), ``FIXWEIGHT``, and the run orders them by key.  This
 order is a documented contract, kept from release to release: reordering
 the ``OPTIM`` lines changes neither the columns nor an ASA index, while
 adding or removing a key moves the dimensions of the keys that sort
@@ -423,7 +439,11 @@ changes any energy, so the coefficients may drift along it; the raw
 tools that evaluate the weights without honouring ``EMBF0``.  Example
 ``27_dm_ream_embf0`` (:doc:`hpo_examples`) searches the embedding knots of
 a ``tadah refit`` seed and checks that the isolated atom stays at exactly
-0 for every candidate.
+0 for every candidate. A :ref:`DM_Embed <dm_embed>` potential, which
+``tadah refit`` writes since 1.6.0, declares the reference as its
+component's ``REFERENCE`` (default ``ZERO``, the same zero reference), and
+its embedding parameters are the paths ``<ID>.EMBEDDING.CENTRES`` and
+``.ETA`` (``.WIDTHS``), not ``CEMBFUNC``/``SEMBFUNC``.
 
 .. _hpo_rhoform:
 
@@ -444,15 +464,18 @@ expansion), and ``hpo_run.log`` reports the density of the ``-c`` potential
 and of the best (see :ref:`hpo_feasibility_gates`). ``WARM`` seeds must
 declare the run's form when density keys are searched (see the same
 section). Example ``27_dm_ream_embf0`` (:doc:`hpo_examples`) declares
-``RHOFORM SIGNED``.
+``RHOFORM SIGNED``. A :ref:`DM_Embed <dm_embed>` potential declares the form
+as its component's ``FORM``; its amplitudes are the path
+``<ID>.DENSITY.AMPLITUDES``, whose boxes are non-negative under ``NONNEG``
+and ``MONOTONE``.
 
 .. _hpo_knot_rcut:
 
 Cutoffs of knot-family refit potentials
 ---------------------------------------
 
-For potentials written by ``tadah refit`` with the knot basis families
-(``D2_Knot5`` two-body, ``DM_REAM`` knot density), the effective cutoff
+For knot-family potentials (``D2_Knot5`` two-body, the ``DM_REAM`` knot
+density that ``tadah refit`` wrote before 1.6.0), the effective cutoff
 **is the largest knot position**: each knot function :math:`(t-r)_+^k`
 vanishes smoothly at its own knot, so ``RCUT2B``/``RCUTMB`` are *derived*
 quantities (see :ref:`refit_rcut_contract`).  ``tadah hpo`` enforces this
@@ -482,6 +505,15 @@ Blip-family potentials are unaffected: their hard truncation at the
 stated ``RCUT`` is part of the fitted model, so the key remains
 authoritative; under a hard cutoff ``BUMPGATE`` keeps every candidate's
 bumps inside it.
+
+A ``DM_Embed`` knot density (``BASIS Knot5`` with ``CUTOFF TYPE NONE``, what
+``tadah refit`` writes for a knot basis) keeps its fixed ``RADIUS``: every
+knot must end within it, which the support gate checks for every
+candidate, and the radius is not re-derived from the knots. Its starter
+target therefore ends the boxes of the knot centres at ``RADIUS``
+(``# EAM.DENSITY.CENTRES knot-support cap: RADIUS = ...``, which
+``tadah refit --retarget`` keeps; :ref:`refit_retarget`), so no part of a
+box is infeasible.
 
 Bump support on hard cutoffs (``BUMPGATE``).  On a hard-cutoff
 (``Cut_Dummy``) channel every compact bump must end inside the cutoff,
@@ -2232,7 +2264,8 @@ every evaluation, ``BUMPGATE`` line and count is exactly as before.
 *armed*, i.e. evaluated for every candidate (its density pair weights
 included), by an ``OPTIM`` line (in any case, anywhere in the file) on
 ``AMPGRIDMB``, ``CGRIDMB``, ``SGRIDMB`` or ``RCUTMB``, the keys that change
-:math:`\rho(r)` or its window. A gate without one cannot act: every
+:math:`\rho(r)` or its window, or on a component path of a DM_Embed
+density (``<ID>.DENSITY.*``; the gates take a single scalar component). A gate without one cannot act: every
 candidate would have the ``-c`` density and its one verdict (an ``OPTIM
 WATOM`` only scales the density, and the verdicts are scale-invariant), so
 it is an error at the gate's line naming the keys that would arm it

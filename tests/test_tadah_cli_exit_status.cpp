@@ -2293,6 +2293,83 @@ TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment"
 
 namespace {
 
+/* The DM_Embed model of the [task-file] block cases: one component on the
+ * Ta dimers of write_ta_dimer_training(), its density centres `centres`. */
+std::size_t lines_with_text(const std::string& text, const std::string& needle) {
+  std::istringstream in(text);
+  std::size_t n = 0;
+  for (std::string line; std::getline(in, line);)
+    if (line.find(needle) != std::string::npos) ++n;
+  return n;
+}
+
+std::string ta_embed_model(const std::string& centres = "2.5 3.5") {
+  return "ATOM Ta\nWATOM 73\nINIT2B false\nINITMB true\n"
+         "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
+         "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n"
+         "DESCRIPTOR ta DM_Embed\nPAIRS Ta Ta\nDENSITY\nBASIS Blip5\n"
+         "FORM SIGNED\nCENTRES " + centres + "\nETA 1 1\nAMPLITUDES 1 0.5\n"
+         "CUTOFF\nTYPE Cut_Poly\nRADIUS 4.5\nENDCUTOFF\nENDDENSITY\n"
+         "EMBEDDING\nBASIS Gaussian\nCENTRES 0 0.5 1\nETA 2 2 2\n"
+         "REFERENCE ZERO\nENDEMBEDDING\nENDDESCRIPTOR\n";
+}
+
+}  // namespace
+
+/* Pins: a task file whose GLOBAL section declares a DM_Embed model (a
+ * DESCRIPTOR block) and the training data, with TASK train writing
+ * pot_new.tadah and TASK predict predicting with it, runs: exit 0 and one
+ * prediction per structure. The predict task's model is its potential's
+ * block, which the GLOBAL block it also receives replaces, as a key of
+ * the task replaces the potential's (Context::merge). Before the fix the
+ * blocks were appended: 'DM_Embed: duplicate descriptor ID 'ta'', exit 1,
+ * after the training had run. */
+TEST_CASE("Task file: a GLOBAL DESCRIPTOR block is the model of TASK train "
+          "and TASK predict",
+          "[TadahCLI][exit-status][task-file]") {
+  ScratchCwd cwd("task_global_block");
+  write_ta_dimer_training();
+  std::ofstream("run.task")
+      << "VERBOSE 0\nDBFILE db.tadah\n" << ta_embed_model()
+      << "TASK train\n  OUTFILE pot_new.tadah\n"
+         "TASK predict\n  POTENTIAL pot_new.tadah\n";
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 0);
+  CHECK_FALSE(contains(rep, "duplicate descriptor ID"));
+  REQUIRE(std::filesystem::exists("pot_new.tadah"));
+  REQUIRE(std::filesystem::exists("energy.pred"));
+  CHECK(predicted_values("energy.pred").size() == 3u);
+}
+
+/* Pins: a TASK section's DESCRIPTOR block replaces the GLOBAL section's
+ * block of the same kind, as a key of the section replaces the GLOBAL one:
+ * the potential TASK train writes has the section's density centres
+ * (1.5 3), and one block. Before the fix the blocks were appended and the
+ * training stopped with 'DM_Embed: duplicate descriptor ID'. */
+TEST_CASE("Task file: a TASK section's DESCRIPTOR replaces the GLOBAL one",
+          "[TadahCLI][exit-status][task-file]") {
+  ScratchCwd cwd("task_block_override");
+  write_ta_dimer_training();
+  const std::string model = ta_embed_model();
+  const std::string section = ta_embed_model("1.5 3");
+  std::ofstream("run.task")
+      << "VERBOSE 0\nDBFILE db.tadah\n" << model << "TASK train\n"
+      << section.substr(section.find("DESCRIPTOR"));
+  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 0);
+  CHECK_FALSE(contains(rep, "duplicate descriptor ID"));
+  REQUIRE(std::filesystem::exists("pot.tadah"));
+  const std::string pot = slurp("pot.tadah");
+  CHECK(lines_with_text(pot, "DESCRIPTOR ta DM_Embed") == 1u);
+  CHECK(contains(pot, "CENTRES 1.5 3"));
+}
+
+namespace {
+
 /* The number of lines of @p text that contain @p needle. */
 std::size_t lines_with(const std::string& text, const std::string& needle) {
   std::istringstream in(text);
@@ -4057,6 +4134,33 @@ TEST_CASE("Subcommand: refit: a configuration number out of its range is "
   INFO("REFIT_TOL_AMBIENT 0.5: status " << ok.status << "\n" << reported(ok));
   CHECK(ok.status == 0);
   CHECK(std::filesystem::exists("pot.tadah"));
+}
+
+/* ---- [refit]: --rcut2b and --rcutmb are options of --retarget ---------- */
+
+/* Pins: `tadah refit -c` with --rcut2b or --rcutmb (options of --retarget)
+ * is refused before any task runs, naming --retarget, as --pct, --set and
+ * --rhoform without --retarget are, and writes no potential. Before the
+ * fix the two options had no cli_needs: the refit exited 0, RCUT2B stayed
+ * as fitted, and nothing said the option had no effect. */
+TEST_CASE("Subcommand: refit: --rcut2b and --rcutmb require --retarget",
+          "[TadahCLI][exit-status][refit]") {
+  ScratchCwd cwd("refit_rcut_flags");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n"
+         "REFIT_TOL_AMBIENT 0.5\n";
+  for (const char* flag : {"--rcut2b", "--rcutmb"}) {
+    const CliRun r =
+        run_tadah({"tadah", "refit", "-c", "config.refit", flag, "4.0"});
+    const std::string rep = reported(r);
+    INFO(flag << ": status " << r.status << "\n" << rep);
+    CHECK(r.status != 0);
+    CHECK(contains(rep, std::string(flag) + " requires --retarget"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+    std::filesystem::remove("pot.tadah");
+  }
 }
 
 /* ---- [refit]: the table and the crystal of its header ----------------- */

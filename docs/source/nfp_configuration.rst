@@ -5339,9 +5339,10 @@ takes): ``LN_BOBYQA``, ``LN_COBYLA``, ``LN_NELDERMEAD``, ``LN_PRAXIS``,
 ``LN_SBPLX``, the ``LD_*`` gradient searches, or ``LN_AUGLAG``,
 ``LD_AUGLAG`` and their ``_EQ`` forms, which run NLopt's default local
 search from the point they are given.  A global optimiser there -- every
-NLopt algorithm whose name starts with ``G``: ``GN_CRS2_LM``,
-``GN_ISRES``, ``GN_ESCH``, the ``GN_DIRECT`` and ``GN_ORIG_DIRECT`` forms,
-``GN_AGS``, ``GD_STOGO``, ``GD_STOGO_RAND`` and the MLSL forms -- would
+NLopt algorithm whose name starts with ``G`` and that runs no ``INNER``
+block of its own: ``GN_CRS2_LM``, ``GN_ISRES``, ``GN_ESCH``, the
+``GN_DIRECT`` and ``GN_ORIG_DIRECT`` forms, ``GN_AGS``, ``GD_STOGO``,
+``GD_STOGO_RAND`` and the ``GN_`` and ``GD_`` MLSL forms -- would
 search the whole box from each of those points (under ``AUGLAG``, once:
 the global search under another name), and is refused at startup, before
 any data is loaded, at the ``INNER`` block's ``ENDINNER`` line, in every
@@ -5362,8 +5363,26 @@ and then samples the whole box; NLopt never reads that point). ...``):
 
 To search the whole box, run the global optimiser on its own: as the
 ``STRATEGY``-level optimiser of a ``PLAIN`` run, or as the ``PRESTAGE``
-exploration with a local refinement.  1.5.0 accepted every NLopt
-algorithm as the ``INNER`` search and ran it.
+exploration with a local refinement.  1.5.0 accepted each of these
+global algorithms as the ``INNER`` search and ran it (``G_MLSL``,
+``G_MLSL_LDS``, ``AUGLAG`` and ``AUGLAG_EQ`` it accepted there too, and
+NLopt failed them: below).
+
+With ``PC_LAMMPS``, which takes no gradient, the ``INNER`` search is a
+derivative-free local NLopt algorithm; a gradient-based one is refused
+when the file is read, at the ``ENDINNER`` line, naming each one it can
+be (from the caps registry; example 14, ``14_mlsl_inner``, with ``ALGO
+LD_MMA`` in its ``INNER`` block):
+
+.. code-block:: none
+
+   HPOEngine error: Error on line 22: --hpotarget defines PC_LAMMPS but INNER's optimiser NLOPT:LD_MMA is gradient-based. PC_LAMMPS requires a gradient-free optimiser, and an INNER search is a local NLopt algorithm: name a derivative-free one in the INNER block (NLOPT:LN_AUGLAG, NLOPT:LN_AUGLAG_EQ, NLOPT:LN_BOBYQA, NLOPT:LN_COBYLA, NLOPT:LN_NELDERMEAD, NLOPT:LN_PRAXIS, NLOPT:LN_SBPLX).
+   Line:     ENDINNER
+
+Before 1.6.0 that refusal named what the other blocks take,
+``PC_LAMMPS requires a gradient-free optimiser (NLOPT GN_*/LN_*, TADAH
+RANDOM/GRID/ANNEAL). The only gradient-based exception is DLIB:BFGS …``,
+of which an ``INNER`` block takes only the ``LN_*`` algorithms.
 
 Only NLopt's MLSL and AUGLAG algorithms run an ``INNER`` search, and they
 run it with NLopt, so the ``INNER`` block's ``LIB`` is ``NLOPT``.  Both

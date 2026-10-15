@@ -58,7 +58,10 @@ gradient, so ``GD_MLSL``, ``GD_MLSL_LDS``, ``LD_AUGLAG`` and
 ``LN_SBPLX``, ``LN_COBYLA``, …) are accepted with ``PC_LAMMPS``; without
 one they run NLopt's default local optimiser, ``LD_MMA``, and are
 rejected with a message naming it.  Before 1.6.0 they were rejected with a
-derivative-free ``INNER`` block too.
+derivative-free ``INNER`` block too.  An ``INNER`` block takes a local
+NLopt algorithm (:ref:`hpo_inner_block`), so with ``PC_LAMMPS`` a
+derivative-free one, which the refusal of a gradient-based ``INNER``
+block names (``NLOPT:LN_AUGLAG``, …, ``NLOPT:LN_SBPLX``).
 A failed loss at the point, or a failed evaluation in the
 finite-difference stencil of a usable point, leaves the point without a
 usable gradient, whatever ``FAILSCORE`` is (at a graded failure at the

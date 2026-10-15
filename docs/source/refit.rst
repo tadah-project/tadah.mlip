@@ -98,7 +98,17 @@ the EAM header** (the ``<Z> <mass> <a0> <lattice>`` line). ``fcc``, ``bcc`` and
 :math:`c/a=\sqrt{8/3}`. If the header declares no supported lattice or a
 non-positive constant (for example ``... 0.0 NONE``), ``refit`` stops with an
 error — edit that line to the actual ground-state lattice and lattice constant
-and rerun. The test compares the original and fitted models on the *same*
+and rerun. It stops the same way, before any fitting, when the constant puts
+the crystal's nearest neighbours less than the table's radial step ``dr``
+apart at the strongest compression the refit tests (a/a0 =
+``REFIT_REACH_SMIN``), where the table describes no pair distance: a constant
+written in metres rather than Ångström, for example, or a subnormal one:
+
+.. code-block:: none
+
+   tadah refit: the lattice constant of the EAM header, a0 = 1e-323 A, puts the nearest neighbours of the fcc crystal 0 A apart at the strongest compression the refit tests (a/a0 = REFIT_REACH_SMIN 0.1), less than the step of the table's radial grid, dr = 0.0125313 A: the table describes no pair distance of that crystal. Edit the element line of the setfl file (`<Z> <mass> <a0> <lattice>`): set the equilibrium lattice constant, in Angstrom.
+
+The test compares the original and fitted models on the *same*
 geometry, so the reported errors are exact even when the header constant is not
 the potential's own energy minimum.
 

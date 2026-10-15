@@ -1,60 +1,69 @@
+.. _quick-start:
+
+.. _hpo-quick-start:
+
 .. _nfp_quick_start:
 
-Quick Start
-===========
+First run
+=========
 
+Use a ``tadah`` build with nested fitting enabled. Start from the files
+in ``Tadah.MLIP/examples/CLI/ex_2`` (also shown in :ref:`cli_example_2`).
+Copy that directory to a working directory before running so that the
+output files stay with your experiment.
 
-Nested fitting needs up to three input files:
+The three inputs
+----------------
 
-#. A :term:`training configuration` — the same configuration file you
-   would use for ``tadah train``.  See :ref:`ConfigSection` for the
-   full key list.
-#. A *validation* file — a list of validation datasets passed via the
-   ``DBFILE`` keyword.  *Optional*: only required when the loss uses
-   validation-set metrics (``PC_ERMSE``, ``PC_FRMSE``, …); a run whose
-   loss comes entirely from ``PC_OBSERVABLE`` or ``PC_LAMMPS`` lines can
-   omit ``--validation`` (the two kinds are mutually exclusive in one
-   HPO configuration).
-#. An :term:`HPO configuration` — the file documented in
-   :ref:`nfp_manual`.  Conventionally named ``config.hpo``.
+.. list-table::
+   :header-rows: 1
+   :widths: 23 22 55
 
-The training configuration's ``DBFILE`` is itself *optional* when every
-model weight is pinned via ``FIXINDEX``/``FIXWEIGHT`` (see
-:ref:`hpo_fixweight`) — with no free weights there is nothing for the
-least-squares stage to fit.  In that mode the element set must be
-declared explicitly with the ``ATOM`` key, and at least one loss source
-must remain.  A ``PC_OBSERVABLE`` run of that kind with a gradient-based
-backend needs ``GRAD_STRATEGY HYBRID`` (or a derivative-free backend):
-an unset ``GRAD_STRATEGY`` resolves to ``ANALYTICAL`` there, which needs
-training data, and startup refuses it (:ref:`pc_observable`).
+   * - Input
+     - Command option
+     - Contents
+   * - ``config.train``
+     - ``--config``
+     - Model definition, training datasets and regression settings.
+   * - ``config.val``
+     - ``--validation``
+     - Validation datasets, listed with ``DBFILE``.
+   * - ``config.hpo``
+     - ``--hpotarget``
+     - Search parameters, targets and optimiser settings.
 
-The driving command line is
+Paths in the example are relative to the working directory. Run from
+the directory containing those files and the two datasets.
 
-::
+A small search
+--------------
 
-   tadah hpo --config <config.train> --hpotarget <config.hpo> --validation <config.val>
+For a short first run, replace the example's ``config.hpo`` with:
 
-A minimal ``config.hpo``:
+.. literalinclude:: nfp_examples/first_run.hpo
+   :language: none
 
-.. code-block:: none
+This evaluates the configured cutoff first, then five grid values from
+4.5 to 5.5: six evaluations in total. It fits the model at each value and
+minimises the squared validation energy RMSE.
+The model, training data and validation data come from the example.
 
-   OPTIMIZER
-     STRATEGY
-       TYPE PLAIN
-       LIB DLIB
-       ALGO BFGS
-       MAXEVAL 50
-     ENDSTRATEGY
-   ENDOPTIMIZER
+.. code-block:: bash
 
-   LOSS L2
-   PC_ERMSE 0 1.0
-   OPTIM RCUT2B (1) 4.0 6.0
+   tadah hpo --config config.train --validation config.val --hpotarget config.hpo
 
-Each ``PC_*`` line adds one term to the loss, and the loss of an
-evaluation is the mean of its terms (:ref:`nested_fitting`).  Keep
-``LOSS`` (and ``FAILSCORE``) above any ``PC_LAMMPS`` line: each
-``PC_LAMMPS`` line takes the values in force when it is read.
+After a successful run, inspect ``best_pot.tadah``, ``best_loss.tadah``
+and ``hpo_run.log``. :doc:`nfp_output_settings` explains output controls;
+:doc:`nfp_search_space` explains how to replace the single ``OPTIM`` line
+with parameters of your own model.
 
-See :ref:`cli_example_2` for a slightly bigger walkthrough, and
-:ref:`hpo_examples` for a graded series of worked examples.
+Other starting points
+---------------------
+
+A run using validation metrics needs the validation input. A run using
+only physical-property targets can omit it. ``PC_OBSERVABLE`` and
+``PC_LAMMPS`` cannot be mixed in the same run; see :doc:`nfp_objective`.
+
+A model with all coefficients pinned can omit training ``DBFILE`` if
+its element set is declared with ``ATOM``. For that workflow, follow
+:ref:`dm_embed_refit` and the :doc:`gradient requirements <nfp_gradients>`.

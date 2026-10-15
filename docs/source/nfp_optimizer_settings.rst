@@ -1,0 +1,142 @@
+.. _hpo_optimizer_common:
+
+.. _dlib_param_keys:
+
+.. _optimizer-block-common-attributes:
+
+.. _choosing-the-optimizer:
+
+.. _ceres-param-keys:
+
+Common optimiser settings
+=========================
+
+An optimiser minimises the loss over the dimensions selected by ``OPTIM``.
+Set ``LIB`` and ``ALGO`` together. The settings below belong to an
+optimiser: the main ``STRATEGY``, its ``EXPLORE`` or ``REFINE`` phase, or
+an eligible ``INNER`` search. Direct settings in ``OPTIMIZER`` are the
+short form for the main optimiser.
+
+Choose ``LIB`` and ``ALGO`` from :doc:`optimizer`. Names are
+case-sensitive, and a library name alone does not select an algorithm.
+Each driver accepts a subset of the settings below; unsupported settings
+are diagnosed during setup.
+
+Common keys
+-----------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Key
+     - Meaning
+   * - ``LIB``, ``ALGO``
+     - Required backend and algorithm names.
+   * - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
+     - Evaluation budget, time budget and target loss. See
+       :doc:`nfp_stopping_settings`.
+   * - ``FTOL_REL``, ``FTOL_ABS``, ``XTOL_REL``, ``XTOL_ABS``
+     - Backend-dependent convergence settings. See
+       :doc:`nfp_stopping_settings`.
+   * - ``POPULATION n``
+     - Population size for ``TADAH:ANNEAL_PA`` and NLopt's CRS2, ISRES,
+       ESCH, MLSL and ``GD_STOGO_RAND`` algorithms. Other backends refuse
+       it. Defaults and valid sizes depend on the algorithm.
+   * - ``VECTOR_ARR n``
+     - NLopt stored-vector count for ``LD_LBFGS``, ``LD_VAR1``,
+       ``LD_VAR2`` and the ``LD_TNEWTON`` family. Other backends refuse it.
+   * - ``THREADS n``
+     - Positive integer, default ``1``. The main optimiser's value sizes
+       the shared worker pool for training, prediction and LAMMPS scripts.
+       An ``EXPLORE`` or ``INNER`` value does not resize that pool.
+       ``CERES`` rejects an explicit ``THREADS`` setting.
+   * - ``SEED n``
+     - Unsigned 64-bit optimiser seed. See the seed rules below.
+   * - ``STEP fraction``
+     - Initial step for supported NLopt algorithms; see below.
+   * - ``GRAD_STRATEGY mode``
+     - Gradient calculation; see :doc:`nfp_gradients`.
+   * - ``PARAM name value``
+     - Algorithm-specific setting; see the parameter references below.
+
+``POPULATION`` and ``VECTOR_ARR`` accept unsigned integers; zero has the
+backend's own meaning. ``THREADS`` is in ``[1, 2147483647]``. Do not add
+settings for features an algorithm does not use: these are checked at
+startup.
+
+Initial step: ``STEP``
+----------------------
+
+``STEP`` is a finite fraction in ``(0, 0.5]`` of each dimension's
+transformed search width. It is supported by selected NLopt algorithms,
+including ``LN_BOBYQA``, ``LN_COBYLA``, ``LN_SBPLX`` and
+``LN_NELDERMEAD``. It is not a universal optimiser setting.
+
+Use a block-wide value, optionally with overrides::
+
+   STEP 0.1
+   STEP CGRID2B(1-3) 0.05
+
+Overrides can select all optimised indices of a key (omit the index
+list), or a list such as ``(1-4,7)``. Each selected index must belong to
+the search. Without a block-wide ``STEP``, overrides must cover every
+optimised dimension. The effective steps can be adjusted near bounds
+and are reported in the run journal. An outer MLSL/AUGLAG ``STEP``
+overrides the step of its ``INNER`` search.
+
+For annealing, use its ``PARAM STEP_FRAC``. For ``TADAH:GRID``, use
+``PARAM GRID_POINTS``. Finite-difference steps use ``PARAM fd_step``;
+see :doc:`nfp_gradients`.
+
+Seeds
+-----
+
+An optimiser's ``SEED`` controls its search stream. ``INIT SEED`` and
+``RESTART SEED`` control their starting-point methods separately.
+NLopt uses the enclosing optimiser's seed, falling back to its
+``INIT`` seed when no optimiser seed is present. ``INNER`` has no seed
+of its own.
+
+``TADAH:GRID``, ``DLIB:BFGS`` and ``CERES`` refuse ``SEED`` because they
+draw no random numbers. ``DLIB:GFS`` ignores it with a warning. Every
+NLopt algorithm accepts it, including deterministic ones. Set seeds
+explicitly for stochastic search and sampling; see
+:doc:`nfp_initialisation` and :doc:`nfp_restart`.
+
+Algorithm parameters: ``PARAM``
+-------------------------------
+
+Keep parameter names in the case shown by their reference.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 28 72
+
+   * - Backend
+     - Accepted parameter reference
+   * - ``TADAH:RANDOM``, ``DLIB:GFS``
+     - No ``PARAM`` settings.
+   * - ``TADAH:GRID``
+     - ``PARAM GRID_POINTS n``: integer at least ``2``; default ``20``
+       grid points per dimension.
+   * - ``DLIB:BFGS``
+     - Finite-difference settings in :doc:`nfp_gradients`, and
+       ``tol_gradinf`` in :doc:`nfp_stopping_settings`.
+   * - ``CERES:STEEPEST_DESCENT``
+     - Finite-difference settings, ``tol_gradinf``, ``max_iter`` and
+       ``max_ls_iter``; see :doc:`nfp_gradients` and
+       :doc:`nfp_stopping_settings`.
+   * - ``NLOPT``
+     - Shared finite-difference settings plus numeric NLopt
+       ``set_param`` settings. Their applicability belongs to the chosen
+       NLopt algorithm; an arbitrary name is not proof it takes effect.
+   * - ``TADAH:ANNEAL``, ``ANNEAL_PA``
+     - :doc:`anneal` and :doc:`anneal_pa`.
+   * - ``TADAH:ANNEAL_PT``
+     - :doc:`anneal_pt`.
+   * - ``ASA:ASA``
+     - :doc:`asa`.
+
+``LOG_HP`` and ``OPTIM_SCALE`` configure search coordinates rather than
+an individual algorithm. See :doc:`nfp_search_space`.

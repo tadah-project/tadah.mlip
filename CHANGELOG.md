@@ -17,6 +17,17 @@ versioning follows [SemVer](https://semver.org/) at the umbrella level.
 
 ## [Unreleased]
 
+### Changed
+- [umbrella] Reorganise Nested Fitting into short syntax, block-key and option
+  references, with a runnable first example. Preserve old topic links and keep
+  the previous workflow and diagnostic text in a temporary review file. Check
+  the reference against the parser and drivers, correcting block placement,
+  loss defaults and formulas, coordinate scaling, initialisation, budgets,
+  gradients and the current limitations of parallel multistart and PA jitter.
+- [hpo] Correct shared annealing help descriptions for plateau tests and
+  automatic-jitter calibration. Schema, defaults and numerical behaviour are
+  unchanged.
+
 ## [1.6.0] — unreleased
 
 A clean-up release for wider testing: one version everywhere, documentation that matches the code, and fixes in every module.

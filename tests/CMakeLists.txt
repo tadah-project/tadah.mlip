@@ -513,14 +513,18 @@ tadah_add_text_check(cmake-tools ROOT ${tadah_cmake_SOURCE_DIR})
 # The function and its script, on throw-away trees and a throw-away project
 # (text_check/check_text_check.cmake lists the cases: a clean tree, a line
 # breaking each rule, the skipped directories and files, a line split by a
-# ';', the refusals of the script and of the function). Before the fix:
-# passes as well (the check's own test).
+# ';', a git work tree's ignored and untracked files, the refusals of the
+# script and of the function). Before the fix: passes as well (the check's
+# own test). The git cases need git (GIT); without it the script says
+# "git cases not run".
+find_package(Git QUIET)
 add_test(NAME tadah_text_check_tool
   COMMAND ${CMAKE_COMMAND}
     -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
     -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/text_check
     "-DGENERATOR=${CMAKE_GENERATOR}"
     -DCTEST=${CMAKE_CTEST_COMMAND}
+    "-DGIT=${GIT_EXECUTABLE}"
     -P ${CMAKE_CURRENT_SOURCE_DIR}/text_check/check_text_check.cmake)
 set_tests_properties(tadah_text_check_tool PROPERTIES
   LABELS cmake

@@ -4,7 +4,7 @@
 # assembled here from pieces, so this file matches none of them.
 #
 #   cmake -DTADAH_CMAKE_DIR=<cmake-tools> -DWORK_DIR=<scratch>
-#         -DGENERATOR=<CMake generator> -DCTEST=<ctest>
+#         -DGENERATOR=<CMake generator> -DCTEST=<ctest> [-DGIT=<git>]
 #         -P check_text_check.cmake
 #
 # The script, run on a tree:
@@ -22,6 +22,11 @@
 #               than 1 MiB: it passes and reads none of them
 #   split       two lines that break a rule, one with a ';' inside brackets:
 #               it fails and counts 2 lines, each reported on its own
+#   git         with GIT, a root that is the top of a git work tree: a line
+#               that breaks a rule in a file git ignores (out/run.txt) is
+#               not read, one in a file git would track (new.md, not yet
+#               added) is; a root inside a work tree (its sub/) reads every
+#               file, the ignored ones too. Not run without GIT (it says so)
 #   refusals    no TADAH_TEXT_ROOT, and a root that is not a directory
 # The function, in a project configured with GENERATOR:
 #   entry       tadah_add_text_check(probe) and (probe2 ROOT <dir>) add
@@ -147,6 +152,58 @@ if(r EQUAL 0)
   fail("split: the check passed:\n${out}")
 elseif(NOT out MATCHES "2 lines in ")
   fail("split: expected '2 lines in', got:\n${out}")
+endif()
+
+# --- the script: git -----------------------------------------------------
+if(DEFINED GIT AND NOT "${GIT}" STREQUAL "")
+  set(repo "${WORK_DIR}/git")
+  write_clean("${repo}")
+  file(WRITE "${repo}/.gitignore" "out/\n")
+  file(WRITE "${repo}/out/run.txt" "${bad_note}\n")
+  file(WRITE "${repo}/sub/out/run.txt" "${bad_note}\n")
+  file(WRITE "${repo}/sub/notes.md" "Plain notes.\n")
+  execute_process(COMMAND "${GIT}" init -q "${repo}" RESULT_VARIABLE r
+                  OUTPUT_VARIABLE o ERROR_VARIABLE e)
+  if(NOT r EQUAL 0)
+    fail("git: git init failed:\n${o}${e}")
+  else()
+    execute_process(COMMAND "${GIT}" -C "${repo}" add src docs CMakeLists.txt
+                            LICENSE .gitignore RESULT_VARIABLE r
+                    OUTPUT_VARIABLE o ERROR_VARIABLE e)
+    if(NOT r EQUAL 0)
+      fail("git: git add failed:\n${o}${e}")
+    endif()
+    # Ignored files only: nothing is read that breaks a rule.
+    execute_process(COMMAND "${CMAKE_COMMAND}" "-DTADAH_TEXT_ROOT=${repo}"
+                            "-DGIT=${GIT}" -P "${script}"
+                    RESULT_VARIABLE r OUTPUT_VARIABLE o ERROR_VARIABLE e)
+    set(out "${o}${e}")
+    if(NOT r EQUAL 0)
+      fail("git: the check read an ignored file:\n${out}")
+    elseif(NOT out MATCHES "\\(the files git tracks or would track\\)")
+      fail("git: the check did not read git's list of files:\n${out}")
+    endif()
+    # A file git would track, not yet added, is read.
+    file(WRITE "${repo}/new.md" "${bad_phrase}\n")
+    execute_process(COMMAND "${CMAKE_COMMAND}" "-DTADAH_TEXT_ROOT=${repo}"
+                            "-DGIT=${GIT}" -P "${script}"
+                    RESULT_VARIABLE r OUTPUT_VARIABLE o ERROR_VARIABLE e)
+    set(out "${o}${e}")
+    if(r EQUAL 0 OR NOT out MATCHES "(^|\n)new\\.md: a stock phrase: " OR
+       out MATCHES "out/run\\.txt")
+      fail("git: expected new.md, and not out/run.txt, reported:\n${out}")
+    endif()
+    # A root inside the work tree is walked: its ignored file is read.
+    execute_process(COMMAND "${CMAKE_COMMAND}" "-DTADAH_TEXT_ROOT=${repo}/sub"
+                            "-DGIT=${GIT}" -P "${script}"
+                    RESULT_VARIABLE r OUTPUT_VARIABLE o ERROR_VARIABLE e)
+    set(out "${o}${e}")
+    if(r EQUAL 0 OR NOT out MATCHES "(^|\n)out/run\\.txt: a workspace note: ")
+      fail("git: a root inside the work tree did not read out/run.txt:\n${out}")
+    endif()
+  endif()
+else()
+  message(NOTICE "git cases not run: no -DGIT=<git>")
 endif()
 
 # --- the script: refusals ------------------------------------------------

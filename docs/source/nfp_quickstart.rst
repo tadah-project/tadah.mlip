@@ -4,8 +4,8 @@
 
 .. _nfp_quick_start:
 
-First run
-=========
+Quick start
+===========
 
 Use a ``tadah`` build with nested fitting enabled. Start from the files
 in ``Tadah.MLIP/examples/CLI/ex_2`` (also shown in :ref:`cli_example_2`).

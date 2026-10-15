@@ -182,10 +182,42 @@ class ShippedPageTest(unittest.TestCase):
         routes = table['routes']
         self.assertEqual(
             routes['desktop-build-openmp'],
-            'nfp_configuration.html#within-one-process-openmp-and-the-worker-pool')
+            'nfp_review_pending.html#within-one-process-openmp-and-the-worker-pool')
         self.assertEqual(
             routes['mpi-build'],
-            'nfp_configuration.html#across-mpi-ranks-tadah-hpo-mpi')
+            'nfp_review_pending.html#across-mpi-ranks-tadah-hpo-mpi')
+
+    @unittest.skipIf(shutil.which('node') is None, 'node is not installed')
+    def test_current_configuration_urls_follow_moved_topics(self):
+        # The pre-split nfp_configuration.html page is still the format
+        # guide. Its old deep links must work as well as hpo.html links.
+        script = os.path.join(DOCS_SOURCE, '_static', 'nfp_redirect.js')
+        with open(script, encoding='utf-8') as fh:
+            javascript = fh.read()
+        cases = {
+            '': None,
+            '#nfp-manual': None,
+            '#loss-functions': 'nfp_losses.html#loss-functions',
+            '#hpo-fd-stencil': 'nfp_gradients.html#hpo-fd-stencil',
+            '#__proto__': None,
+            '#toString': None,
+            '#unknown-section': None,
+        }
+        harness = '''
+var out = {};
+JSON.parse(process.argv[1]).forEach(function (hash) {
+  out[hash] = null;
+  var window = {location: {hash: hash,
+                          replace: function (u) { out[hash] = u; }}};
+  (function (window) { %s })(window);
+});
+console.log(JSON.stringify(out));
+''' % javascript
+        proc = subprocess.run(
+            ['node', '-e', harness, json.dumps(list(cases))],
+            capture_output=True, text=True, timeout=60)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(json.loads(proc.stdout), cases)
 
     def test_every_legacy_anchor_is_listed_once(self):
         anchors = check_redirect.read_anchors(check_redirect.DEFAULT_ANCHORS)

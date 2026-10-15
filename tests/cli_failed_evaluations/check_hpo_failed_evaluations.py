@@ -38,19 +38,33 @@ evaluation's row records FAILSCORE.
 
   fd_straddle  DLIB:BFGS from CGRID2B[2] = 1.6, PARAM fd_step 0.2: the
                finite-difference stencil of the start point is 1.8 and 1.4,
-               and a skip cap fails 1.4. A failed evaluation in the stencil
-               of a usable point fails its gradient, whatever FAILSCORE is
-               (a difference with a failure is no slope). The search ends
-               there, after three evaluations: 1.6, then its gradient's
-               stencil 1.8 and 1.4, which takes the loss at 1.6 that dlib
-               has just evaluated as its centre (it evaluated 1.6 a second
-               time before HPO's centre fix: four evaluations). The run
-               ends with status 0 (1.6 and 1.8 are usable losses) and the
-               trailer "STOPPED -- no usable gradient: a failed evaluation
-               in the finite-difference stencil" (it said "gradient not
-               finite" until 2026-10-07; the default FAILSCORE, the largest
-               double, made the difference overflow); it used to report
-               "MAXEVAL=60 reached" and COMPLETED.
+               and a skip cap fails 1.4. A difference never mixes a usable
+               loss with a failure (owner decision, MK, 2026-10-15): the
+               gradient at 1.6 is the one-sided difference into the usable
+               side, 1.8 and 2.0, with the loss at 1.6 that dlib has just
+               evaluated. The search goes on to the bound 2.0, the best,
+               and ends "DLIB:BFGS: FTOL_ABS reached" after 39 evaluations,
+               status 0; the journal names the difference taken without
+               1.4 and DIAGNOSTICS count it ("Mixed-kind stencils : 1").
+               Until then the search ended at that gradient after three
+               evaluations, 1.6, 1.8 and 1.4, with the trailer "STOPPED --
+               no usable gradient: a failed evaluation in the
+               finite-difference stencil".
+  ceres_box    CERES:STEEPEST_DESCENT from CGRID2B[2] = 1.9, PARAM fd_step
+               0.2 (the one-sided difference at 1.7 and 1.5: 2.1 is
+               outside); Ceres' GradientProblemSolver has no bounds, and its
+               first step proposes 0.9, outside the OPTIM box [1, 2]. No
+               point outside the box is evaluated or can be the best (owner
+               decision, MK, 2026-10-15): 0.9 is scored as a failure graded
+               by its distance to the box, 0.1 of its width
+               (1.797284568240756e+308, in [0.99975, 1) x FAILSCORE), with a
+               WARNING and DIAGNOSTICS "Out-of-box points : 1"; it is the
+               only row outside the box; the best lies in the box; the
+               search ends "FAILURE (Numerical failure in line search)"
+               after 41 evaluations, status 0. Until then 0.9 was evaluated
+               there (a failure of the skip cap, FAILSCORE), with the
+               WARNING "... lies outside its OPTIM box [1, 2] and is
+               evaluated there".
   fd_inside    DLIB:BFGS from CGRID2B[2] = 1.25, inside the failure region:
                the start and its stencil 1.45 and 1.05 fail. The failed
                loss at the start fails its gradient before the stencil is
@@ -174,14 +188,31 @@ OPTIM CGRID2B (2) 1.0 2.0
 """,
     },
     "fd_straddle": {
-        "oalgo": 4, "bias": "false", "evals": 3, "usable": True,
-        "kind": "fd_stop",
+        "oalgo": 4, "bias": "false", "evals": 39, "usable": True,
+        "kind": "fd_side",
         "tadah_grids": ("CGRID2B 0.5 1.6", "SGRID2B 3.0 5.0", 2),
         "hpo": """OPTIMIZER
   STRATEGY
     TYPE PLAIN
     LIB DLIB
     ALGO BFGS
+    MAXEVAL 60
+    PARAM fd_step 0.2
+  ENDSTRATEGY
+ENDOPTIMIZER
+""" + OBJECTIVE + """PC_ERMSE 0 1 --skip-above 9.9
+OPTIM CGRID2B (2) 1.0 2.0
+""",
+    },
+    "ceres_box": {
+        "oalgo": 4, "bias": "false", "evals": 41, "usable": True,
+        "kind": "ceres_box",
+        "tadah_grids": ("CGRID2B 0.5 1.9", "SGRID2B 3.0 5.0", 2),
+        "hpo": """OPTIMIZER
+  STRATEGY
+    TYPE PLAIN
+    LIB CERES
+    ALGO STEEPEST_DESCENT
     MAXEVAL 60
     PARAM fd_step 0.2
   ENDSTRATEGY
@@ -227,9 +258,20 @@ OPTIM CGRID2B (1) 0.1 0.9
 }
 
 NO_USABLE_STATUS = "STOPPED -- no evaluation produced a usable loss"
+FD_SIDE_STATUS = "DLIB:BFGS: FTOL_ABS reached"
+FD_SIDE_NOTE = ("finite differences: at CGRID2B[2] = 1.6 (a usable loss), the "
+                "stencil point CGRID2B[2] = 1.4 (loss 1.797693135e+308) is of "
+                "another kind, so the difference is taken without it: "
+                "one-sided 3-point difference, at CGRID2B[2] = 1.8 and "
+                "CGRID2B[2] = 2 with the loss at the point itself")
+CERES_BOX_STATUS = ("STOPPED -- CERES:STEEPEST_DESCENT: FAILURE (Numerical "
+                    "failure in line search)")
+CERES_BOX_WARNING = ("eval 4: CGRID2B[2] = 0.9 lies outside its OPTIM box "
+                     "[1, 2]: it is not evaluated, and is scored "
+                     "1.797284568240756e+308, a failure graded by its "
+                     "distance to the box")
+CERES_BOX_SCORE_ROW = "1.797284568240756e+308"
 GFS_MAXEVAL_STATUS = "DLIB:GFS: MAXEVAL reached"
-FD_STOP_STATUS = ("STOPPED -- no usable gradient: a failed evaluation in "
-                  "the finite-difference stencil")
 FD_INSIDE_STOP = ("DLIB:BFGS stopped: no usable gradient: a failed evaluation "
                   "in the finite-difference stencil (the loss at CGRID2B[2] "
                   "= 1.25 is 1.797693135e+308)")
@@ -240,6 +282,17 @@ NO_USABLE_ERROR = ("no evaluation produced a usable loss; no best_pot.tadah "
 # The default FAILSCORE, the largest double, as loss.tadah prints it with
 # DIGITS 15.
 FAILSCORE_ROW = "1.797693134862316e+308"
+# Its value: the 16 printed digits round above the largest double, which
+# float() reads as inf.
+FAILSCORE = sys.float_info.max
+# A loss at or above this is a failure: FAILSCORE, a graded failure, or the
+# score of a point outside the OPTIM box.
+FAIL_BAND_FLOOR = 0.999 * FAILSCORE
+
+
+def loss_of(text):
+    """A loss.tadah value; the FAILSCORE row is the largest double."""
+    return FAILSCORE if text == FAILSCORE_ROW else float(text)
 # loss.tadah prints 16 significant digits: losses closer than this cannot
 # be ordered from the file.
 PRINT_RESOLUTION = 2e-15
@@ -302,13 +355,13 @@ def check_files(work, case, rc, stderr, journal):
     if iters != list(range(1, case["evals"] + 1)):
         failures.append(f"loss.tadah rows are {iters}, expected 1 .. "
                         f"{case['evals']}")
-    failed = [r for r in rows if r[-1] == FAILSCORE_ROW]
+    failed = [r for r in rows if loss_of(r[-1]) >= FAIL_BAND_FLOOR]
     status = journal_value(journal, "Optimiser status")
     unusable = journal_value(journal, "Unusable losses")
     unusable_n = int(unusable.split()[0]) if unusable else None
     if unusable_n != len(failed):
         failures.append(f"journal 'Unusable losses' is {unusable!r}; "
-                        f"loss.tadah has {len(failed)} FAILSCORE rows")
+                        f"loss.tadah has {len(failed)} failed rows")
     if "[ok] Every evaluation produced a usable loss" in journal:
         failures.append("the journal claims every evaluation produced a "
                         "usable loss")
@@ -343,19 +396,47 @@ def check_files(work, case, rc, stderr, journal):
         failures.append(f"exit status {rc}, expected 0")
     if NO_USABLE_ERROR in stderr:
         failures.append(f"stderr says {NO_USABLE_ERROR!r}")
-    if case.get("kind") == "fd_stop":
-        if status != FD_STOP_STATUS:
+    if case.get("kind") == "fd_side":
+        if status != FD_SIDE_STATUS:
             failures.append(f"journal status {status!r}, expected "
-                            f"{FD_STOP_STATUS!r}")
-        if "MAXEVAL=60 reached" in journal:
-            failures.append("the journal says MAXEVAL=60 was reached")
+                            f"{FD_SIDE_STATUS!r}")
+        if "stopped: no usable gradient" in journal:
+            failures.append("the journal says the search stopped without a "
+                            "usable gradient")
+        if journal.count(FD_SIDE_NOTE) != 1:
+            failures.append(f"the journal does not say {FD_SIDE_NOTE!r} once")
+        if not re.search(r"Mixed-kind stencils\s*: 1 ", journal):
+            failures.append("DIAGNOSTICS do not count one mixed-kind stencil")
         xs = [float(r[-1]) for r in data_rows(work / "params.tadah")]
-        if [round(x, 12) for x in xs] != [1.6, 1.8, 1.4]:
-            failures.append(f"the evaluations are {xs}, expected the start "
-                            "point 1.6 and its stencil 1.8, 1.4")
-        if [r[-1] == FAILSCORE_ROW for r in rows] != [False, False, True]:
+        if [round(x, 12) for x in xs[:4]] != [1.6, 1.8, 1.4, 2.0]:
+            failures.append(f"the first evaluations are {xs[:4]}, expected "
+                            "1.6, its stencil 1.8 and 1.4, and 2.0")
+        if [r[-1] == FAILSCORE_ROW for r in rows] != \
+                [i == 2 for i in range(len(rows))]:
             failures.append("only the stencil point 1.4 should fail: "
                             f"{[r[-1] for r in rows]}")
+    elif case.get("kind") == "ceres_box":
+        if status != CERES_BOX_STATUS:
+            failures.append(f"journal status {status!r}, expected "
+                            f"{CERES_BOX_STATUS!r}")
+        if journal.count(CERES_BOX_WARNING) != 1:
+            failures.append(f"the journal does not say {CERES_BOX_WARNING!r} "
+                            "once")
+        if not re.search(r"Out-of-box points\s*: 1 ", journal):
+            failures.append("DIAGNOSTICS do not count one out-of-box point")
+        xs = [float(r[-1]) for r in data_rows(work / "params.tadah")]
+        outside = [i for i, x in enumerate(xs) if x < 1.0 or x > 2.0]
+        if outside != [3] or rows[3][-1] != CERES_BOX_SCORE_ROW:
+            failures.append(f"the points outside the box are rows "
+                            f"{[i + 1 for i in outside]} "
+                            f"({[xs[i] for i in outside]}), expected row 4, "
+                            f"0.9, scored {CERES_BOX_SCORE_ROW}: "
+                            f"{[rows[i][-1] for i in outside]}")
+        for i in outside:
+            v = loss_of(rows[i][-1])
+            if not (0.99975 * FAILSCORE <= v < FAILSCORE):
+                failures.append(f"row {i + 1} outside the box has the loss "
+                                f"{rows[i][-1]}, not an out-of-box score")
     else:
         if status != GFS_MAXEVAL_STATUS:
             failures.append(f"journal status {status!r}, expected "
@@ -363,7 +444,8 @@ def check_files(work, case, rc, stderr, journal):
         if any(r[-1] != FAILSCORE_ROW for r in rows[:3]):
             failures.append("the three starting points did not all fail: "
                             f"{[r[-1] for r in rows[:3]]}")
-    usable = {int(r[0]): float(r[-1]) for r in rows if r[-1] != FAILSCORE_ROW}
+    usable = {int(r[0]): loss_of(r[-1]) for r in rows
+              if loss_of(r[-1]) < FAIL_BAND_FLOOR}
     if not usable:
         failures.append("no evaluation produced a usable loss")
         return failures

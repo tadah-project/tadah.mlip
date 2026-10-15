@@ -116,14 +116,44 @@ the EAM header** (the ``<Z> <mass> <a0> <lattice>`` line). ``fcc``, ``bcc`` and
 non-positive constant (for example ``... 0.0 NONE``), ``refit`` stops with an
 error — edit that line to the actual ground-state lattice and lattice constant
 and rerun. It stops the same way, before any fitting, when the constant puts
-the crystal's nearest neighbours less than the table's radial step ``dr``
-apart at the strongest compression the refit tests (a/a0 =
-``REFIT_REACH_SMIN``), where the table describes no pair distance: a constant
-written in metres rather than Ångström, for example, or a subnormal one:
+the crystal's nearest neighbours at or beyond the table's cutoff, where LAMMPS
+counts no pair (``pair_style eam/alloy`` counts a pair only below ``rcut``, so
+there the crystal has no interaction; tadah's own neighbour lists keep a pair
+at exactly ``rcut``): a constant written in picometres rather than Ångström,
+for example,
+
+.. code-block:: none
+
+   tadah refit: the lattice constant of the EAM header, a0 = 361 A, puts the nearest neighbours of the fcc crystal 255.26554800834364 A apart, at or beyond the table's cutoff, rcut = 5 A, and LAMMPS (pair_style eam/alloy) counts a pair only below rcut: the crystal has no interaction in LAMMPS. Edit the element line of the setfl file (`<Z> <mass> <a0> <lattice>`): set the equilibrium lattice constant, in Angstrom (a value in picometres is 100 times the value in Angstrom).
+
+and when it puts them less than the table's radial step ``dr`` apart at the
+strongest compression the refit tests (a/a0 = ``REFIT_REACH_SMIN``), where the
+table describes no pair distance: a constant written in metres rather than
+Ångström, for example, or a subnormal one:
 
 .. code-block:: none
 
    tadah refit: the lattice constant of the EAM header, a0 = 1e-323 A, puts the nearest neighbours of the fcc crystal 0 A apart at the strongest compression the refit tests (a/a0 = REFIT_REACH_SMIN 0.1), less than the step of the table's radial grid, dr = 0.0125313 A: the table describes no pair distance of that crystal. Edit the element line of the setfl file (`<Z> <mass> <a0> <lattice>`): set the equilibrium lattice constant, in Angstrom.
+
+The setfl file itself is read as ``pair_style eam/alloy`` reads it (see
+``tadah explain SETFL``): its r tables hold r = 0, ``dr``, ...,
+(``nr`` − 1) ``dr``, and LAMMPS and tadah take a table's last value at every
+r past its last point, so a grid line whose cutoff lies more than one step
+past that point (``nr`` × ``dr`` below ``rcut`` by more than 10\ :sup:`-4`
+of it), or whose ``rcut`` / ``dr`` exceeds 2147483647, is refused before the
+tables are read, naming the file, the line and the numbers:
+
+.. code-block:: none
+
+   EAMSetflIO: setfl file 'Cu.eam.alloy', line 5: the r tables do not reach the cutoff: nr = 1000 points dr = 0.001 apart end at r = (nr - 1) x dr = 0.999, and rcut = 5 lies more than one step past their last point (nr x dr = 1); LAMMPS (pair_style eam/alloy) and tadah would take each table's last value for every r from 0.999 to 5. Correct nr, dr or rcut on the grid line ('nrho drho nr dr rcut').
+
+Files that put the cutoff at the last point, before it or one step past it
+(``rcut`` = ``nr`` × ``dr``, as in Zhou's and Mendelev's files) are read.
+With ``OUTPUT_GRID_SCALE`` the written ``refit.eam`` keeps the input's span
+(``nr`` − 1) × ``dr``, or, when that would leave the cutoff more than one of
+its steps past its last point, ends one step before ``rcut``; a scale whose
+point counts round to the input's (``1.0`` among them) writes the input's
+grid itself.
 
 The test compares the original and fitted models on the *same*
 geometry, so the reported errors are exact even when the header constant is not
@@ -506,7 +536,11 @@ General and output
        3 to 2147483647 points per table, checked once the EAM file is read,
        before any fitting (``tadah refit: OUTPUT_GRID_SCALE '0.0001' for
        refit.eam: EAMSetflIO: a grid scale of 0.0001 gives nrho = 1 and
-       nr = 1 points ...``).
+       nr = 1 points ...``). The r grid keeps the input's span
+       (nr − 1) × dr, or, when that would put ``rcut`` more than one of
+       its steps past its last point (an input with ``rcut`` = nr × dr
+       scaled up), ends one of its steps before ``rcut``; a scale whose
+       counts round to the input's gives the input grid itself.
    * - ``OPTIM_PCT`` (float)
      - ``5.0``
      - ±% half-width of the OPTIM bounds written into the HPO target; > 0
@@ -922,8 +956,8 @@ its ``ALGO`` in ``LIB``:
 
 The ``ALGO`` names are the refit's own, not those of ``tadah hpo``: the
 refit's dlib global search is ``GLOBAL`` (``tadah hpo``'s ``DLIB GFS``),
-and ``LBFGS`` is dlib's L-BFGS (NLopt's is ``LD_LBFGS``; in ``tadah hpo``
-``LBFGS`` is a ``CERES`` algorithm).
+and ``LBFGS`` is dlib's L-BFGS (NLopt's is ``LD_LBFGS``; ``tadah hpo``
+refuses its ``CERES`` ``LBFGS``).
 
 The refit's ``MLSL``, ``DIRECT`` and ``CRS2`` are NLopt's ``GN_MLSL_LDS``,
 ``GN_DIRECT_L`` and ``GN_CRS2_LM``.  ``GN_MLSL`` (MLSL with pseudo-random

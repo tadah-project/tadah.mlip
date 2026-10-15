@@ -13,9 +13,12 @@
 // STRESS (from -c, the default, or -F/-S) decide only what training fits;
 // validation predicts forces because PC_FRMSE asks for them, the journal
 // says where FORCE/STRESS came from, and FORCE in the --validation file is
-// refused at its line. The [startup] case runs `tadah hpo` with a PRESTAGE
-// refinement on NLOPT:GN_DIRECT_L, which does not start at its candidate
-// and is refused at startup, at its line (MK's decision of 2026-10-15).
+// refused at its line. The [startup] cases run `tadah hpo` with a PRESTAGE
+// refinement on NLOPT:GN_DIRECT_L, which does not start at its candidate,
+// and with an INNER block that names a global optimiser (no nested global
+// search); each is refused at startup, at its line (MK's decisions of
+// 2026-10-15); and with a PLAIN NLOPT:GN_DIRECT_L whose INIT and RESTART
+// blocks have no effect on it, each warned about at startup, naming its line.
 //
 // The [data] cases run the `tadah data` tools on small structure files
 // (RELEASE-1.6.0-FOLLOWUPS.md, "Known-issues session ... decisions", D,
@@ -862,6 +865,138 @@ TEST_CASE("Subcommand: hpo: a PRESTAGE refinement on a search that does not "
                        "NLOPT:GN_DIRECT_L: it does not start at the point it "
                        "is given") &&
            contains(s, "NLOPT:LN_BOBYQA") && contains(s, "DLIB:BFGS");
+  };
+  CHECK((names_refusal(r.what) || names_refusal(r.err) ||
+         names_refusal(r.out) || names_refusal(journal)));
+}
+
+/* Pins: `tadah hpo` with a PLAIN NLOPT:GN_DIRECT_L -- which never reads the
+ * point it is given and draws no random numbers -- under an INIT block
+ * (line 2, METHOD CONFIG) and an active RESTART block (line 10) runs (exit
+ * 0, a best_pot.tadah) and warns about both at startup, once each, on
+ * standard error ("[HPO] WARNING: ") and in the journal: "the INIT block
+ * on line 2: the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not start
+ * at the point it is given (DIRECT evaluates the centre of the OPTIM box
+ * first and then divides the whole box; NLopt never reads that point), so
+ * the search never evaluates the block's INIT points. ..." and "the RESTART
+ * block on line 10: the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not
+ * start ... and draws no random numbers, so every RESTART round, whatever
+ * points it starts from, asks for round 0's points again, which the run's
+ * record answers: no round after round 0 evaluates a new point, ...".
+ * Before the fix: the run gave neither warning (the checks fail). */
+TEST_CASE("Subcommand: hpo: an INIT and a RESTART block on a search that "
+          "does not start at its point are warned about at startup, naming "
+          "their lines",
+          "[TadahCLI][hpo][startup]") {
+  ScratchCwd cwd("plain_direct_init_restart");
+  write_frmse_fixture("config.tadah", "FORCE true\nSTRESS false\n");
+  {
+    std::ofstream os("config.hpo");
+    os << "OPTIMIZER\n"                // line 1
+          "  INIT\n"                   // line 2
+          "    METHOD CONFIG\n"
+          "  ENDINIT\n"
+          "  STRATEGY\n"
+          "    TYPE PLAIN\n"
+          "    LIB NLOPT\n"
+          "    ALGO GN_DIRECT_L\n"
+          "    MAXEVAL 6\n"
+          "    RESTART\n"              // line 10
+          "      AFTER_STAGNATION 2\n"
+          "      MAX 1\n"
+          "    ENDRESTART\n"
+          "  ENDSTRATEGY\n"
+          "ENDOPTIMIZER\n"
+          "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
+          "OPTIM FIXWEIGHT (1) -30.0 0.0\n";
+  }
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                              "--hpotarget", "config.hpo",
+                              "--validation", "config.val"});
+  const std::string journal = std::filesystem::exists("hpo_run.log")
+                                  ? slurp("hpo_run.log")
+                                  : std::string();
+  INFO("exception: " << r.what << "\nstderr:\n" << r.err
+                     << "\nhpo_run.log:\n" << journal);
+  CHECK(r.status == 0);
+  CHECK(std::filesystem::exists("best_pot.tadah"));
+  const std::string direct =
+      "the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not start at the "
+      "point it is given (DIRECT evaluates the centre of the OPTIM box first "
+      "and then divides the whole box; NLopt never reads that point)";
+  const std::string init = "the INIT block on line 2: " + direct +
+                           ", so the search never evaluates the block's INIT "
+                           "points.";
+  const std::string restart =
+      "the RESTART block on line 10: " + direct +
+      " and draws no random numbers, so every RESTART round, whatever points "
+      "it starts from, asks for round 0's points again, which the run's "
+      "record answers: no round after round 0 evaluates a new point";
+  const auto count = [](const std::string& text, const std::string& what) {
+    std::size_t n = 0;
+    for (auto p = text.find(what); p != std::string::npos;
+         p = text.find(what, p + what.size()))
+      ++n;
+    return n;
+  };
+  CHECK(count(r.err, "[HPO] WARNING: " + init) == 1);
+  CHECK(count(r.err, "[HPO] WARNING: " + restart) == 1);
+  CHECK(count(journal, init) == 1);
+  CHECK(count(journal, restart) == 1);
+}
+
+/* Pins: `tadah hpo` with STRATEGY TYPE PLAIN NLOPT:G_MLSL_LDS whose INNER
+ * block names NLOPT:GN_CRS2_LM, a global optimiser, is refused at startup
+ * (no nested global search: owner decision, MK, 2026-10-15): a non-zero
+ * exit, no best_pot.tadah and no loss.tadah (nothing is evaluated), and the
+ * refusal (the escaping exception, stderr, stdout or the journal) names
+ * line 11 of config.hpo (ENDINNER), says "the INNER block of the
+ * STRATEGY-level optimiser: NLOPT:G_MLSL_LDS cannot run NLOPT:GN_CRS2_LM
+ * as its INNER search: an INNER search is a local search" and lists
+ * NLOPT:LN_BOBYQA among the local NLopt algorithms to use.
+ * Before the fix the run was accepted: MLSL ran a CRS2 search of the whole
+ * box as each of its local searches and the run exited 0 with a
+ * best_pot.tadah: the checks fail. */
+TEST_CASE("Subcommand: hpo: an INNER block that names a global optimiser is "
+          "refused at startup, naming its ENDINNER line",
+          "[TadahCLI][hpo][startup]") {
+  ScratchCwd cwd("inner_global");
+  write_frmse_fixture("config.tadah", "FORCE true\nSTRESS false\n");
+  {
+    std::ofstream os("config.hpo");
+    os << "OPTIMIZER\n"               // line 1
+          "  STRATEGY\n"
+          "    TYPE PLAIN\n"
+          "    LIB NLOPT\n"
+          "    ALGO G_MLSL_LDS\n"     // line 5
+          "    MAXEVAL 6\n"
+          "    INNER\n"
+          "      LIB NLOPT\n"
+          "      ALGO GN_CRS2_LM\n"   // line 9: the INNER search
+          "      MAXEVAL 3\n"
+          "    ENDINNER\n"            // line 11
+          "  ENDSTRATEGY\n"
+          "ENDOPTIMIZER\n"
+          "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
+          "OPTIM FIXWEIGHT (1) -30.0 0.0\n";
+  }
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                              "--hpotarget", "config.hpo",
+                              "--validation", "config.val"});
+  const std::string journal = std::filesystem::exists("hpo_run.log")
+                                  ? slurp("hpo_run.log")
+                                  : std::string();
+  INFO("exception: " << r.what << "\nstderr:\n" << r.err
+                     << "\nhpo_run.log:\n" << journal);
+  CHECK(r.status != 0);
+  CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  CHECK_FALSE(std::filesystem::exists("loss.tadah"));
+  auto names_refusal = [&](const std::string& s) {
+    return names_line(s, 11) && contains(s, "ENDINNER") &&
+           contains(s, "the INNER block of the STRATEGY-level optimiser: "
+                       "NLOPT:G_MLSL_LDS cannot run NLOPT:GN_CRS2_LM as its "
+                       "INNER search: an INNER search is a local search") &&
+           contains(s, "NLOPT:LN_BOBYQA");
   };
   CHECK((names_refusal(r.what) || names_refusal(r.err) ||
          names_refusal(r.out) || names_refusal(journal)));
@@ -4028,6 +4163,94 @@ TEST_CASE("Subcommand: refit: --rcut2b and --rcutmb require --retarget",
   }
 }
 
+/* ---- [refit]: the table and the crystal of its header ----------------- */
+
+/* Pins: `tadah refit -c` of the small Ta setfl (dense, coarse) exits 1 and
+ * writes no potential when
+ *  - its element line gives a0 = 330.4 (tantalum's lattice constant in
+ *    picometres), whose bcc crystal has its nearest neighbours 286 A
+ *    apart, beyond the table's cutoff, 4.5 A: the refusal names a0 = 330.4
+ *    A, "at or beyond the table's cutoff, rcut = 4.5 A", "LAMMPS
+ *    (pair_style eam/alloy) counts a pair only below rcut: the crystal has
+ *    no interaction in LAMMPS" and that "a value in picometres is 100
+ *    times the value in Angstrom";
+ *  - its grid line gives dr = 1e-300, so that its r tables of 501 points
+ *    end at 5e-298, short of rcut 4.5: the refusal names the file, line 5,
+ *    "the r tables do not reach the cutoff", "nr = 501 points dr = 1e-300
+ *    apart", "rcut = 4.5" and the grid line to correct.
+ * `tadah train` with that table as the SETFL of a DM_EAM model is refused
+ * the same way (the reader is the one every SETFL user reads with). The
+ * table as written fits (exit 0, the [refit] case above).
+ * Before the fix: the first refusal said "the crystal has no pair within
+ * the cutoff" (tadah itself counts a pair at exactly rcut), so its third
+ * needle fails. Before the gates, both refits exited 0 and wrote pot.tadah
+ * (the first with a self-test of crystals without a neighbour, 0.000
+ * meV/atom; the second evaluating every distance at a spline index past
+ * int), and the train crashed the test process (segmentation fault:
+ * DM_EAM read its table at that index). */
+TEST_CASE("Subcommand: refit refuses a header lattice constant beyond the "
+          "cutoff and a table whose r grid does not reach it",
+          "[TadahCLI][exit-status][refit]") {
+  ScratchCwd cwd("refit_gates");
+  const std::string good = small_ta_setfl();
+  const auto replaced = [&](const std::string& from, const std::string& to) {
+    std::string t = good;
+    const auto at = t.find(from);
+    REQUIRE(at != std::string::npos);
+    t.replace(at, from.size(), to);
+    return t;
+  };
+  { std::ofstream os("eam_pm.alloy");
+    os << replaced("\n73 180.95 3.304 bcc\n", "\n73 180.95 330.4 bcc\n"); }
+  // the grid line is "501 <drho> 501 0.01 4.5"
+  { std::ofstream os("eam_dr.alloy");
+    os << replaced(" 501 0.01 4.5\n", " 501 1e-300 4.5\n"); }
+  for (const auto& [eam, needles] :
+       std::vector<std::pair<std::string, std::vector<std::string>>>{
+           {"eam_pm.alloy",
+            {"a0 = 330.4 A", "at or beyond the table's cutoff, rcut = 4.5 A",
+             "and LAMMPS (pair_style eam/alloy) counts a pair only below "
+             "rcut: the crystal has no interaction in LAMMPS",
+             "a value in picometres is 100 times the value in Angstrom"}},
+           {"eam_dr.alloy",
+            {"EAMSetflIO: setfl file 'eam_dr.alloy', line 5: the r tables do "
+             "not reach the cutoff: nr = 501 points dr = 1e-300 apart",
+             "rcut = 4.5", "the grid line ('nrho drho nr dr rcut')"}}}) {
+    std::ofstream("config.refit")
+        << "EAM " << eam << "\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+           "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    const std::string rep = reported(r);
+    INFO(eam << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    for (const std::string& n : needles) {
+      INFO("needle: " << n);
+      CHECK(contains(rep, n));
+    }
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+    std::filesystem::remove("pot.tadah");
+  }
+  {
+    std::ofstream("config.train")
+        << "DBFILE db.tadah\nATOM Ta\nWATOM 1\nINIT2B false\n"
+           "INITMB true\nTYPEMB DM_EAM 0 Ta Ta\n"
+           "RCTYPEMB Cut_Dummy\nRCUTMB 4.5\nSETFL eam_dr.alloy\n"
+           "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+           "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+    std::ofstream("db.tadah") << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+                              << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+                              << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1);
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config.train",
+                                "-o", "pot.tadah"});
+    const std::string rep = reported(r);
+    INFO("train: status " << r.status << "\n" << rep);
+    CHECK(r.status != 0);
+    CHECK(contains(rep, "EAMSetflIO: setfl file 'eam_dr.alloy', line 5: the "
+                        "r tables do not reach the cutoff"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
 /* ---- [refit]: a key of the other REFIT_MODE is refused ---------------- */
 
 // A top-level OPTIMIZER block of the grammar before the stage blocks, and
@@ -4629,14 +4852,25 @@ TEST_CASE("Subcommand: explain: a configuration key that is no option of a "
  * a `tadah hpo` target's LIB and ALGO can name ("LIB NLOPT", its LD_LBFGS
  * row, the refused NLOPT:LN_NEWUOA and CERES:LEVENBERG_MARQUARDT), and
  * `tadah explain <LIB>:<ALGO>` or `<ALGO>` one optimiser's help: ld_lbfgs
- * ("Options for NLOPT:LD_LBFGS", its stops), CERES:LBFGS (its PARAM keys
- * and that it ignores the box), NLOPT:LN_NEWUOA (REFUSED); an unknown
+ * ("Options for NLOPT:LD_LBFGS", its stops), CERES:STEEPEST_DESCENT (its
+ * PARAM keys, that it ignores the box, that a point it proposes outside
+ * the box is not evaluated, and that the slope of that point's score points
+ * away from the box, so a descent step leads back into it), CERES:LBFGS
+ * (REFUSED, naming NLOPT:LD_LBFGS
+ * instead; owner decision, MK, 2026-10-15), NLOPT:LN_NEWUOA (REFUSED); an
+ * unknown
  * NLOPT:LD_FOO exits 1 naming what is wrong. A name that is no command, no
  * configuration key and no optimiser is refused as before. Without HPO,
  * `tadah explain ALGO` exits 1 saying that this tadah has no HPO.
  * Before the fix: `tadah explain ALGO` and the others exited 1 with
  * "tadah explain: no command or configuration key 'ALGO'" (and 'ld_lbfgs',
- * ...): print_caps, the ALGO help, was reachable only from HPO's tests. */
+ * ...): print_caps, the ALGO help, was reachable only from HPO's tests.
+ * Before the box fix (2026-10-15): CERES:LBFGS printed its PARAM keys and
+ * "ignores the OPTIM box", and CERES:STEEPEST_DESCENT's help said its
+ * iterates "are evaluated there, and such a point can become the best";
+ * then (review) it gave that slope the wrong sign, "... graded by its
+ * distance to the box, whose slope points back into it, it counts against
+ * MAXEVAL ...": the slope check fails. */
 TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
           "LIB:ALGO describes one",
           "[TadahCLI][exit-status][explain][explain_algo]") {
@@ -4661,12 +4895,28 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     CHECK(contains(r.out, "Stops that end a run: MAXEVAL"));
   }
   {
+    const CliRun r =
+        run_tadah({"tadah", "explain", "CERES:STEEPEST_DESCENT"});
+    INFO("CERES:STEEPEST_DESCENT: status " << r.status << "\n"
+                                           << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "Options for CERES:STEEPEST_DESCENT\n"));
+    CHECK(contains(r.out, "PARAM tol_gradinf"));
+    CHECK(contains(r.out, "ignores the OPTIM box"));
+    CHECK(contains(r.out, "Such a point is not evaluated: it is scored as a "
+                          "failure graded by its distance to the box"));
+    CHECK(contains(r.out, "whose slope points away from the box, so a "
+                          "descent step leads back into it; it counts "
+                          "against MAXEVAL"));
+    CHECK_FALSE(contains(r.out, "points back into it"));
+  }
+  {
     const CliRun r = run_tadah({"tadah", "explain", "CERES:LBFGS"});
     INFO("CERES:LBFGS: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
-    CHECK(contains(r.out, "Options for CERES:LBFGS\n"));
-    CHECK(contains(r.out, "PARAM tol_gradinf"));
-    CHECK(contains(r.out, "ignores the OPTIM box"));
+    CHECK(contains(r.out, "Options for CERES:LBFGS\n   * REFUSED: "));
+    CHECK(contains(r.out, "Use NLOPT:LD_LBFGS"));
+    CHECK_FALSE(contains(r.out, "PARAM tol_gradinf"));
   }
   {
     const CliRun r = run_tadah({"tadah", "explain", "NLOPT:LN_NEWUOA"});
@@ -4681,6 +4931,28 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     CHECK(r.status == 1);
     CHECK(contains(reported(r), "tadah explain: unknown optimiser "
                                 "NLOPT:LD_FOO: LIB NLOPT has no ALGO LD_FOO"));
+  }
+  /* Pins: MLSL's and AUGLAG's help says that their INNER block takes a
+   * local optimiser (no nested global search, owner decision, MK,
+   * 2026-10-15). Before the fix: no such entry, the checks fail. */
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "NLOPT:G_MLSL_LDS"});
+    INFO("NLOPT:G_MLSL_LDS: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "\n   * INNER ... ENDINNER: the local search it "
+                          "runs, from the points it\n     samples in the "
+                          "OPTIM box: LIB NLOPT and a local ALGO; a global "
+                          "one"));
+    CHECK(contains(r.out, "The block is required: NLopt has no default"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "explain", "LN_AUGLAG"});
+    INFO("LN_AUGLAG: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "\n   * INNER ... ENDINNER: the local search it "
+                          "runs, from its own starting\n     point: LIB NLOPT "
+                          "and a local ALGO"));
+    CHECK(contains(r.out, "Without one NLopt runs its default LN_COBYLA."));
   }
 #else
   const CliRun r = run_tadah({"tadah", "explain", "ALGO"});

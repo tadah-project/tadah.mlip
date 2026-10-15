@@ -29,7 +29,7 @@ every repo (see [`RELEASING.md`](RELEASING.md)).
 
 File a bug report on the GitLab project that owns the affected code.
 If you're unsure which one, file it on
-<https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues> — we'll move it.
+<https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>; it will be moved to the right project.
 
 A useful bug report includes:
 
@@ -181,7 +181,7 @@ build* below).
 `ctest -L bench` runs HPO's LAMMPS-driven cases, four entries of hidden
 Catch cases (`[.][!benchmark]`): `hpo_lammps_hessian` (the Hessian of a
 relaxed 4-atom bcc Ta cell and a `pair_tadah` virial microbench),
-`hpo_phase3_pilot` (the `PC_LAMMPS` adjoint chain on real relaxations,
+`hpo_adjoint_pilot` (the `PC_LAMMPS` adjoint chain on real relaxations,
 against finite differences), `hpo_bench_pair_tadah` (a `pair_tadah`
 microbench on 256 atoms) and `hpo_host_e2e` (`HPO_Host`'s analytical
 gradient, a `PC_LAMMPS` script among its cases). They run in the full
@@ -251,6 +251,19 @@ itself; those entries need CMake 3.19 (they read CTest's test list with
 `string(JSON)`), and on CMake 3.16-3.18, which the tests of a build without
 `TADAH_ENABLE_NFP` accept, they are Skipped with a line that says so. The
 installed tree is not checked.
+
+`ctest -L text` reads the text files of each repository the build
+configures (`tadah.core_text`, `tadah.models_text`, `tadah.mlip_text` and,
+with `TADAH_ENABLE_NFP`, `tadah.md_text`, `tadah.lammps_text` and
+`tadah.hpo_text`; `tadah_text` for this repository and `cmake-tools_text`
+for the cmake-tools it uses), from cmake-tools' `tadah_add_text_check()`,
+and fails on a line that carries a person's initials, a reference to
+co-workers, a decision attributed to the code's owner, the name of an AI
+tool, a note kept outside the repository or filler wording, naming the file,
+the rule and the line (`testing/tadah_text_check.cmake` in cmake-tools lists
+the rules). State what the code does and why in the text itself. In a git
+clone it reads the files git tracks or would track, so run outputs that git
+ignores are not read. `ctest -R tadah_text_check_tool` tests the function.
 
 **Skipped, not passed.** A test that cannot run because an optional input
 is absent (an external dataset, an environment variable) must be reported

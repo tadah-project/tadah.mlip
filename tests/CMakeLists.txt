@@ -436,8 +436,8 @@ endforeach()
 # --fresh, 3.24, in the umbrella's 3.15), header_check/check_header_check.cmake
 # (--fresh, ctest --test-dir 3.20, string(JSON) 3.19, in its 3.18),
 # removed_options/check_removed_option.cmake (--fresh) and
-# catch_discovery/check_skip.cmake (--test-dir), both 3.18. Before the build
-# matrix review: 9 -- this file's two SKIP_REGULAR_EXPRESSION (3.16) under the
+# catch_discovery/check_skip.cmake (--test-dir), both 3.18. Before an
+# earlier fix: 9 -- this file's two SKIP_REGULAR_EXPRESSION (3.16) under the
 # umbrella's 3.15, and seven scripts that declare 3.18 above it
 # (catch_discovery/check_discovery.cmake, check_module.cmake,
 # check_skip.cmake, doxygen_input/probe.cmake,
@@ -468,7 +468,7 @@ set_tests_properties(tadah_cmake_minimum_features PROPERTIES
 # Before the fix: main() called tadah::hpo::pc_worker_main in every build,
 # so the link failed ("undefined reference to
 # `tadah::hpo::pc_worker_main(int, char**)'") and a build without NFP had
-# no tadah. Before the build matrix review: `tadah hpo` said
+# no tadah. Before the refusal was added: `tadah hpo` said
 # "EngineFactory::create: No engine found for HPO".
 if(TADAH_ENABLE_NFP)
   add_subdirectory(without_nfp)
@@ -492,3 +492,40 @@ if(TADAH_ENABLE_NFP)
     PROCESSORS ${_wn_jobs}
     RESOURCE_LOCK tadah_header_check)
 endif()
+
+
+# ------------------------------------------------------------------
+# 13. Text check (cmake-tools' tadah_add_text_check)
+# ------------------------------------------------------------------
+# tadah_text and cmake-tools_text (label text): no line of the text files
+# of this repository, or of the cmake-tools this build uses, carries a
+# person's initials, a reference to co-workers, a decision attributed to
+# the code's owner, the name of an AI tool, a note kept outside the
+# repository or filler wording (testing/tadah_text_check.cmake lists the
+# rules and the files read). Each module checks its own repository the same
+# way (<library>_text). Before the fix: tadah_text fails, 108 lines (97 with
+# a person's initials, 6 decision notes, 4 workspace notes and .gitignore's
+# entry for an AI tool's state directory); cmake-tools_text fails, 2 lines
+# (that entry and its comment in .gitignore).
+tadah_add_text_check(tadah)
+tadah_add_text_check(cmake-tools ROOT ${tadah_cmake_SOURCE_DIR})
+
+# The function and its script, on throw-away trees and a throw-away project
+# (text_check/check_text_check.cmake lists the cases: a clean tree, a line
+# breaking each rule, the skipped directories and files, a line split by a
+# ';', a git work tree's ignored and untracked files, the refusals of the
+# script and of the function). Before the fix: passes as well (the check's
+# own test). The git cases need git (GIT); without it the script says
+# "git cases not run".
+find_package(Git QUIET)
+add_test(NAME tadah_text_check_tool
+  COMMAND ${CMAKE_COMMAND}
+    -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+    -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/text_check
+    "-DGENERATOR=${CMAKE_GENERATOR}"
+    -DCTEST=${CMAKE_CTEST_COMMAND}
+    "-DGIT=${GIT_EXECUTABLE}"
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/text_check/check_text_check.cmake)
+set_tests_properties(tadah_text_check_tool PROPERTIES
+  LABELS cmake
+  TIMEOUT 300)

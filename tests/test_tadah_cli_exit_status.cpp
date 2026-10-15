@@ -11,29 +11,28 @@
 //
 // The [validation-metric] cases run `tadah hpo` with PC_FRMSE: FORCE and
 // STRESS (from -c, the default, or -F/-S) decide only what training fits;
-// validation predicts forces because PC_FRMSE asks for them, the journal
-// says where FORCE/STRESS came from, and FORCE in the --validation file is
-// refused at its line. The [startup] cases run `tadah hpo` with a PRESTAGE
-// refinement on NLOPT:GN_DIRECT_L, which does not start at its candidate,
-// and with an INNER block that names a global optimiser (no nested global
-// search); each is refused at startup, at its line (MK's decisions of
-// 2026-10-15); and with a PLAIN NLOPT:GN_DIRECT_L whose INIT and RESTART
-// blocks have no effect on it, each warned about at startup, naming its line.
+// validation predicts forces because PC_FRMSE asks for them, the journal says
+// where FORCE/STRESS came from, and FORCE in the --validation file is refused
+// at its line. The [startup] cases run `tadah hpo` with a PRESTAGE refinement
+// on NLOPT:GN_DIRECT_L, which does not start at its candidate, and with an
+// INNER block that names a global optimiser (no nested global search); each
+// is refused at startup, at its line; and with a PLAIN NLOPT:GN_DIRECT_L
+// whose INIT and RESTART blocks have no effect on it, each warned about at
+// startup, naming its line.
 //
-// The [data] cases run the `tadah data` tools on small structure files
-// (RELEASE-1.6.0-FOLLOWUPS.md, "Known-issues session ... decisions", D,
-// "Data tools"): `data convert` on a file that is not DFT output, or that
-// does not exist, exits non-zero with a message naming the file (and the
-// recognised formats) instead of crashing; `data print -s` and `data write
-// -s` read a structure file; `data dedup` needs --threshold, keeps the first
+// The [data] cases run the `tadah data` tools on small structure files:
+// `data convert` on a file that is not DFT output, or that does not exist,
+// exits non-zero with a message naming the file (and the recognised
+// formats) instead of crashing; `data print -s` and `data write -s` read a
+// structure file; `data dedup` needs --threshold, keeps the first
 // of each set of equal structures, and matches atoms independently of their
 // order and periodically. They need no HPO and run in every build.
 //
-// The [coincident] cases (report_leftovers.md section 3, option A): `tadah
-// predict`, `tadah train` and `tadah hpo` refuse a dataset holding a
-// structure with two atoms at the same position before they predict, train
-// or evaluate, naming the structure and the atoms (NNFinder's refusal). The
-// predict and train cases run in every build, the hpo case needs NFP.
+// The [coincident] cases: `tadah predict`, `tadah train` and `tadah hpo`
+// refuse a dataset holding a structure with two atoms at the same position
+// before they predict, train or evaluate, naming the structure and the atoms
+// (NNFinder's refusal). The predict and train cases run in every build, the
+// hpo case needs NFP.
 //
 // The [index] cases run `tadah data print`, `tadah analysis descriptor` and
 // `tadah analysis bfunc` with -i: the indices are 1-based, parsed strictly
@@ -67,18 +66,18 @@
 // mode that reads it (in dense mode in every build; in compact mode with
 // NFP and Ceres, and the refusal of compact mode without them).
 //
-// The [potential record] and [dataset keys] cases (MK's decisions of
-// 2026-10-14) run `tadah train`, `tadah predict`, `tadah refit` and, with
-// NFP, `tadah hpo`: the training record of the potentials they write, the
-// keys that prepared the training data (in the record, ignored by predict
-// and by a retrain from a potential), and predict's LSCALE.
+// The [potential record] and [dataset keys] cases run `tadah train`, `tadah
+// predict`, `tadah refit` and, with NFP, `tadah hpo`: the training record of
+// the potentials they write, the keys that prepared the training data (in the
+// record, ignored by predict and by a retrain from a potential), and
+// predict's LSCALE.
 //
-// The [nonlinear] cases run `tadah train`, `tadah predict` (with and
-// without --error) and `tadah hpo` with every non-linear model (M_KRR
-// Kern_RBF, Kern_Polynomial, Kern_Quadratic, Kern_LQ, Kern_Sigmoid; M_BLR
-// BF_Polynomial2), which the design matrix's column-layout check refused
-// (RELEASE-1.6.0-FOLLOWUPS.md, "Training"), and `tadah predict` with a KRR
-// potential whose basis does not fit. The hpo case needs NFP.
+// The [nonlinear] cases run `tadah train`, `tadah predict` (with and without
+// --error) and `tadah hpo` with every non-linear model (M_KRR Kern_RBF,
+// Kern_Polynomial, Kern_Quadratic, Kern_LQ, Kern_Sigmoid; M_BLR
+// BF_Polynomial2), which the design matrix's column-layout check refused,
+// and `tadah predict` with a KRR potential whose basis does not fit. The hpo
+// case needs NFP.
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
@@ -812,15 +811,14 @@ TEST_CASE("Subcommand: hpo: FORCE in the --validation file is refused at its "
 }
 
 /* Pins: `tadah hpo` with a STRATEGY TYPE PRESTAGE whose refinement is
- * NLOPT:GN_DIRECT_L -- DIRECT evaluates the centre of the OPTIM box first
- * and never reads the candidate it is given -- is refused at startup (owner
- * decision, MK, 2026-10-15): a non-zero exit, no best_pot.tadah and no
- * loss.tadah (nothing is evaluated), and the refusal (the escaping
- * exception, stderr, stdout or the journal) names line 14 of config.hpo
- * (ENDOPTIMIZER), says "STRATEGY TYPE PRESTAGE cannot refine with
- * NLOPT:GN_DIRECT_L: it does not start at the point it is given" and lists
- * NLOPT:LN_BOBYQA and DLIB:BFGS among the local optimisers that start at
- * each candidate.
+ * NLOPT:GN_DIRECT_L -- DIRECT evaluates the centre of the OPTIM box first and
+ * never reads the candidate it is given -- is refused at startup: a non-zero
+ * exit, no best_pot.tadah and no loss.tadah (nothing is evaluated), and the
+ * refusal (the escaping exception, stderr, stdout or the journal) names line
+ * 14 of config.hpo (ENDOPTIMIZER), says "STRATEGY TYPE PRESTAGE cannot refine
+ * with NLOPT:GN_DIRECT_L: it does not start at the point it is given" and
+ * lists NLOPT:LN_BOBYQA and DLIB:BFGS among the local optimisers that start
+ * at each candidate.
  * Before the fix the run was accepted: it explored, refined with DIRECT
  * from the centre of the box, never at the candidate, and exited 0 with a
  * best_pot.tadah: the checks fail. */
@@ -946,14 +944,13 @@ TEST_CASE("Subcommand: hpo: an INIT and a RESTART block on a search that "
 }
 
 /* Pins: `tadah hpo` with STRATEGY TYPE PLAIN NLOPT:G_MLSL_LDS whose INNER
- * block names NLOPT:GN_CRS2_LM, a global optimiser, is refused at startup
- * (no nested global search: owner decision, MK, 2026-10-15): a non-zero
- * exit, no best_pot.tadah and no loss.tadah (nothing is evaluated), and the
- * refusal (the escaping exception, stderr, stdout or the journal) names
- * line 11 of config.hpo (ENDINNER), says "the INNER block of the
- * STRATEGY-level optimiser: NLOPT:G_MLSL_LDS cannot run NLOPT:GN_CRS2_LM
- * as its INNER search: an INNER search is a local search" and lists
- * NLOPT:LN_BOBYQA among the local NLopt algorithms to use.
+ * block names NLOPT:GN_CRS2_LM, a global optimiser, is refused at startup (no
+ * nested global search): a non-zero exit, no best_pot.tadah and no loss.tadah
+ * (nothing is evaluated), and the refusal (the escaping exception, stderr,
+ * stdout or the journal) names line 11 of config.hpo (ENDINNER), says "the
+ * INNER block of the STRATEGY-level optimiser: NLOPT:G_MLSL_LDS cannot run
+ * NLOPT:GN_CRS2_LM as its INNER search: an INNER search is a local search"
+ * and lists NLOPT:LN_BOBYQA among the local NLopt algorithms to use.
  * Before the fix the run was accepted: MLSL ran a CRS2 search of the whole
  * box as each of its local searches and the run exited 0 with a
  * best_pot.tadah: the checks fail. */
@@ -1039,9 +1036,7 @@ TEST_CASE("Subcommand: data convert: a structure file is refused, naming it "
 /* Pins: `tadah data convert --dft-file <missing file>` exits non-zero
  * without writing the output file, and the report names the file, says it
  * cannot be opened (it holds "open", in any case) and, as for an
- * unrecognised file, names the recognised formats (the decision: "data
- * convert on an unknown or missing file gives an error naming the
- * recognised formats").
+ * unrecognised file, names the recognised formats.
  * Before the fix: "Could not open file: ...", then the same nullptr
  * dereference: SIGSEGV. */
 TEST_CASE("Subcommand: data convert: a missing file is refused, naming it "
@@ -1645,15 +1640,14 @@ std::vector<std::string> fields_of(const std::string& line) {
   return out;
 }
 
-/* Pins (MK, 2026-10-06): `tadah predict -A` measures a dataset whose
- * structures all have force weight 0 (stress weight 0) in no force (stress)
- * metric: with -F -A on S.tadah (weights 1) and nof.tadah (force weights 0)
- * it exits 0, prints nan for nof.tadah in each Force line, a mean equal to
- * S.tadah's value, and a line naming nof.tadah as not measured; the same
- * with -S for nos.tadah (stress weights 0). With only the file without the
- * data it exits 1 before predicting, naming it and the weight. The other
- * weight refuses nothing (nof.tadah -S -A and nos.tadah -F -A, and -A
- * alone, exit 0).
+/* Pins: `tadah predict -A` measures a dataset whose structures all have force
+ * weight 0 (stress weight 0) in no force (stress) metric: with -F -A on
+ * S.tadah (weights 1) and nof.tadah (force weights 0) it exits 0, prints nan
+ * for nof.tadah in each Force line, a mean equal to S.tadah's value, and a
+ * line naming nof.tadah as not measured; the same with -S for nos.tadah
+ * (stress weights 0). With only the file without the data it exits 1 before
+ * predicting, naming it and the weight. The other weight refuses nothing
+ * (nof.tadah -S -A and nos.tadah -F -A, and -A alone, exit 0).
  * Before the fix: the run with both files was refused. */
 TEST_CASE("Subcommand: predict -A leaves out a dataset without the data, and "
           "refuses when no dataset has it",
@@ -1881,8 +1875,8 @@ TEST_CASE("Subcommand: data dedup without --threshold says it needs "
 }
 
 /* Pins: `tadah data dedup --threshold 1e-6` on T1 = T2 = T3 and a different
- * T4 (Cl at x = 2.0 instead of 2.5; report_leftovers.md section 2) keeps the
- * first of the three equal structures and T4: exactly T1, T4, in that order.
+ * T4 (Cl at x = 2.0 instead of 2.5) keeps the first of the three equal
+ * structures and T4: exactly T1, T4, in that order.
  * Before the fix: the prune removed the first index of every duplicate pair
  * ((1,2), (1,3), (2,3)), so index 1 was removed three times and the later
  * structures shifted into it: "Removed: 3", only T4 kept. */
@@ -1968,7 +1962,7 @@ TEST_CASE("Subcommand: data dedup refuses a structure with a singular cell",
  *   S3 = S1 with Na stored at x + a0 = (5,0,0),
  *   F1 = [Na, Na (coincident), Cl], F2 = [Na, Na (coincident), K elsewhere],
  * it keeps exactly S1, F1, F2: S2 and S3 are copies of S1, and F1 and F2
- * differ (report_leftovers.md section 2).
+ * differ.
  * Before the fix: is_the_same depended on the atom order and ignored the
  * cell, and counted the coincident Na of F2 twice; so S2 and S3 were kept
  * and F1 was removed as a duplicate of F2: S1, S2, S3, F2. */
@@ -1996,9 +1990,9 @@ TEST_CASE("Subcommand: data dedup removes copies with the atoms in another "
 /* ---- the [coincident] cases ---------------------------------------------
  *
  * NNFinder refuses a structure with two atoms at one position, naming the
- * structure and the atoms (report_leftovers.md section 3, option A). `tadah
- * predict`, `tadah train` and `tadah hpo` build their neighbour lists before
- * they predict, train or evaluate, so each stops there with that message. */
+ * structure and the atoms. `tadah predict`, `tadah train` and `tadah hpo`
+ * build their neighbour lists before they predict, train or evaluate, so
+ * each stops there with that message. */
 
 namespace {
 
@@ -2189,8 +2183,7 @@ std::optional<double> stats_pair_r_min(const std::string& text,
  *   clean-Ta      Ta (0,0,0), Ta (2.5,2.5,2.5) in a 5 A cell (4.33 A apart),
  *   close-Ta      the same plus Ta (0.3,0,0): atoms 1 and 3 at 0.3 A,
  *   coincident-Ta the same plus Ta (0,0,0): atoms 1 and 3 at 0,
- * it lists exactly the pairs of structures 2 and 3 (report_leftovers.md
- * sections 3.6 E and 9 item 5).
+ * it lists exactly the pairs of structures 2 and 3.
  * Before the fix: there was no --close-contact option; the command line was
  * refused (CLI11 "The following arguments were not expected: --close-contact
  * 0.5", status 109) and nothing ran. The r_min check fails on its own while
@@ -2666,8 +2659,8 @@ TEST_CASE("Subcommand: train warns of FIXINDEX with BIAS true naming the "
  * retrains it into 2 + 3 WEIGHTS (exit 0).
  * Before the fix: predict exited 0 with the shared intercept (and LAMMPS
  * used the weights with one intercept column per species); the retrained
- * potential had 1 + 3 WEIGHTS again. Before the one-guard rewording
- * (review): the message said "WEIGHTS has 4 values" and "DSIZE 5". */
+ * potential had 1 + 3 WEIGHTS again. Before the one-guard rewording: the
+ * message said "WEIGHTS has 4 values" and "DSIZE 5". */
 TEST_CASE("Subcommand: predict refuses a two-species BIAS potential with one "
           "shared intercept column; train -c retrains it",
           "[TadahCLI][predict][bias]") {
@@ -4850,25 +4843,23 @@ TEST_CASE("Subcommand: explain: a configuration key that is no option of a "
 /* Pins: in a build with HPO (TADAH_ENABLE_NFP), `tadah explain ALGO` (in
  * any letter case, and LIB) exits 0 and prints the table of the optimisers
  * a `tadah hpo` target's LIB and ALGO can name ("LIB NLOPT", its LD_LBFGS
- * row, the refused NLOPT:LN_NEWUOA and CERES:LEVENBERG_MARQUARDT), and
- * `tadah explain <LIB>:<ALGO>` or `<ALGO>` one optimiser's help: ld_lbfgs
- * ("Options for NLOPT:LD_LBFGS", its stops), CERES:STEEPEST_DESCENT (its
- * PARAM keys, that it ignores the box, that a point it proposes outside
- * the box is not evaluated, and that the slope of that point's score points
- * away from the box, so a descent step leads back into it), CERES:LBFGS
- * (REFUSED, naming NLOPT:LD_LBFGS
- * instead; owner decision, MK, 2026-10-15), NLOPT:LN_NEWUOA (REFUSED); an
- * unknown
- * NLOPT:LD_FOO exits 1 naming what is wrong. A name that is no command, no
- * configuration key and no optimiser is refused as before. Without HPO,
- * `tadah explain ALGO` exits 1 saying that this tadah has no HPO.
+ * row, the refused NLOPT:LN_NEWUOA and CERES:LEVENBERG_MARQUARDT), and `tadah
+ * explain <LIB>:<ALGO>` or `<ALGO>` one optimiser's help: ld_lbfgs ("Options
+ * for NLOPT:LD_LBFGS", its stops), CERES:STEEPEST_DESCENT (its PARAM keys,
+ * that it ignores the box, that a point it proposes outside the box is not
+ * evaluated, and that the slope of that point's score points away from the
+ * box, so a descent step leads back into it), CERES:LBFGS (REFUSED, naming
+ * NLOPT:LD_LBFGS instead), NLOPT:LN_NEWUOA (REFUSED); an unknown NLOPT:LD_FOO
+ * exits 1 naming what is wrong. A name that is no command, no configuration
+ * key and no optimiser is refused as before. Without HPO, `tadah explain
+ * ALGO` exits 1 saying that this tadah has no HPO.
  * Before the fix: `tadah explain ALGO` and the others exited 1 with
  * "tadah explain: no command or configuration key 'ALGO'" (and 'ld_lbfgs',
  * ...): print_caps, the ALGO help, was reachable only from HPO's tests.
  * Before the box fix (2026-10-15): CERES:LBFGS printed its PARAM keys and
  * "ignores the OPTIM box", and CERES:STEEPEST_DESCENT's help said its
  * iterates "are evaluated there, and such a point can become the best";
- * then (review) it gave that slope the wrong sign, "... graded by its
+ * then it gave that slope the wrong sign, "... graded by its
  * distance to the box, whose slope points back into it, it counts against
  * MAXEVAL ...": the slope check fails. */
 TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
@@ -4933,8 +4924,8 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
                                 "NLOPT:LD_FOO: LIB NLOPT has no ALGO LD_FOO"));
   }
   /* Pins: MLSL's and AUGLAG's help says that their INNER block takes a
-   * local optimiser (no nested global search, owner decision, MK,
-   * 2026-10-15). Before the fix: no such entry, the checks fail. */
+   * local optimiser (no nested global search). Before the fix: no such
+   * entry, the checks fail. */
   {
     const CliRun r = run_tadah({"tadah", "explain", "NLOPT:G_MLSL_LDS"});
     INFO("NLOPT:G_MLSL_LDS: status " << r.status << "\n" << reported(r));
@@ -5231,10 +5222,10 @@ std::string with_line(const std::string& text, const std::string& key,
  * and wrote no potential (the REQUIRE stops there; the check refused every
  * non-linear model: width 6 for BF_Polynomial2, and with BIAS true
  * total_cols=4 against 5 or 10).
- * Before the training record (MK's decision of 2026-10-14): passes as well
- * (a pin); the second training wrote pot2.tadah (-o pot2.tadah), compared
- * with pot.tadah: the record names the run's -o (OUTFILE pot2.tadah), so
- * the second training now runs the same command. */
+ * Before the training record: passes as well (a pin); the second training
+ * wrote pot2.tadah (-o pot2.tadah), compared with pot.tadah: the record
+ * names the run's -o (OUTFILE pot2.tadah), so the second training now runs
+ * the same command. */
 TEST_CASE("Subcommand: train and predict work for every non-linear model",
           "[TadahCLI][train][predict][nonlinear]") {
   ScratchCwd cwd("nonlinear_train");
@@ -6902,7 +6893,7 @@ TEST_CASE("Subcommand: train --uncertainty lists the standard deviation of "
  * Before the fix: --uncertainty wrote pot.tadah and then exited 1 ("Sigma
  * matrix is not computed.", tested on LAMBDA 0); without it the potential
  * had a SIGMA of inf and nan values (1/s^2 of the undetermined directions,
- * s = 0) and no WARNING. Before the review fix: the --uncertainty message
+ * s = 0) and no WARNING. Before the wording fix: the --uncertainty message
  * appended "Add observations (data with a non-zero weight)" to whatever
  * the reason was, and predict --error said "`tadah train` writes WCOV and
  * WNOISE for a fit with OALGO 3; retrain the potential with OALGO 3" (the
@@ -7192,9 +7183,9 @@ std::string zero_wcov_block(const std::string& pot, std::size_t lo,
  * (1e-12 relative), WNOISE_E from pot.tadah.
  * Before the fix: exit 1, "ColumnLayout: total_cols=4 disagrees with
  * DSIZE=9" (the parts' contexts carried the full potential's DSIZE).
- * (This case asserted only r >= 0 inside the cutoffs until the review of
- * WCOV and WNOISE: a part error computed from the full descriptor, or 0,
- * passed. Checked against such a mutation, (b) and (c) fail.) */
+ * (This case asserted only r >= 0 inside the cutoffs until WCOV and
+ * WNOISE were rechecked: a part error computed from the full descriptor,
+ * or 0, passed. Checked against such a mutation, (b) and (c) fail.) */
 TEST_CASE("Subcommand: properties pairwise --error on a two-body plus "
           "many-body potential",
           "[TadahCLI][properties][uncertainty]") {
@@ -7286,13 +7277,13 @@ TEST_CASE("Subcommand: properties pairwise --error on a two-body plus "
   }
 }
 
-/* ---- [hygiene-batch2]: a potential as a configuration; validation files --
+/* ---- a potential as a configuration; validation files -------------------
  *
  * A potential's key lines are the model's settings and its fit, neither
  * the training data (no DBFILE line) nor the inputs of the run that wrote
- * it (no HPOTARGET, VALIDATION or VERBOSE line); since MK's decision of
- * 2026-10-14 its training record, a comment block no loader of a potential
- * reads, names them for the user's record ([potential record] below). */
+ * it (no HPOTARGET, VALIDATION or VERBOSE line); its training record, a
+ * comment block no loader of a potential reads, names them for the user's
+ * record ([potential record] below). */
 
 namespace {
 
@@ -7322,17 +7313,16 @@ const char* const kNoDatasetsAdvice =
  * Before the fix: exit 1 with "Key not found in the Context object:
  * DBFILE" (and the Logger's "Context::operator() -> Key not found:
  * DBFILE"), naming neither potentials nor the retrain.
- * Before the advice named the pins (cross-lane review 2): it ended "add a
- * DBFILE line to a copy of it (the Training page ...).", which a refit
- * potential so retrained followed to a fit of nothing (the next case).
- * Before the training record (MK's decision of 2026-10-14): the advice
- * began "A potential records no DBFILE (no potential tadah writes has
- * one): ...".
- * Before the advice said when the record lists a DBFILE (review of the
- * training record): it said "the DBFILE of the run that wrote it is in its
- * training record, a comment block tadah does not read", which a refit
- * potential, an hpo run's without training datasets and one of an earlier
- * version contradict: the advice checks fail. */
+ * Before the advice named the pins: it ended "add a DBFILE line to a copy of
+ * it (the Training page ...).", which a refit potential so retrained followed
+ * to a fit of nothing (the next case).
+ * Before the training record: the advice began "A potential records no
+ * DBFILE (no potential tadah writes has one): ...".
+ * Before the advice said when the record lists a DBFILE: it said "the
+ * DBFILE of the run that wrote it is in its training record, a comment
+ * block tadah does not read", which a refit potential, an hpo run's without
+ * training datasets and one of an earlier version contradict: the advice
+ * checks fail. */
 TEST_CASE("Subcommand: train -c of a potential without a DBFILE line is "
           "refused, pointing to the retrain route",
           "[TadahCLI][train][retrain][potential-content]") {
@@ -7383,7 +7373,7 @@ TEST_CASE("Subcommand: train -c of a potential without a DBFILE line is "
  * both edits wrote "UNCERTAINTY true", and the retrain warned "its
  * UNCERTAINTY true is the record of the run that trained it (tadah 1.5.x
  * and 1.6.0 development builds wrote UNCERTAINTY into every potential)" of
- * a file this build wrote (lanes/D/tmp/review/training-verify/unc).
+ * a file this build wrote.
  * Since the fix that reads no UNCERTAINTY line of a potential that WARNING
  * is gone, so the retrain's output is checked to name no UNCERTAINTY at
  * all (a pin: it named none before that fix either). */
@@ -7447,7 +7437,7 @@ TEST_CASE("Subcommand: refit --edit writes no UNCERTAINTY line",
  * pot.tadah.
  * Before the fix: exit 0 and no WARNING about the pins: the potential
  * written had the input weights and nothing said that none was fitted
- * (lanes/D/tmp/review/training2/refit: 171 weights, the same result). */
+ * (171 weights, the same result). */
 TEST_CASE("Subcommand: train of a refit potential with a DBFILE line warns "
           "that its pins leave no weight to fit",
           "[TadahCLI][train][retrain][refit][potential-content]") {
@@ -7523,14 +7513,12 @@ void write_hpo_potential_fixture() {
  * Before the fix: both refusals ended with their own remedy ("... or pin
  * every weight with FIXINDEX/FIXWEIGHT.", "(e.g. 'ATOM Ta')."), without the
  * advice.
- * Before the training record (MK's decision of 2026-10-14): the advice
- * began "A potential records no DBFILE (no potential tadah writes has
- * one): ...", and the case was named "..., says that a potential records
- * none".
- * Before the advice said when the record lists a DBFILE (review of the
- * training record): it said "the DBFILE of the run that wrote it is in its
- * training record, a comment block tadah does not read": the advice checks
- * fail. */
+ * Before the training record: the advice began "A potential records no
+ * DBFILE (no potential tadah writes has one): ...", and the case was named
+ * "..., says that a potential records none".
+ * Before the advice said when the record lists a DBFILE: it said "the DBFILE
+ * of the run that wrote it is in its training record, a comment block tadah
+ * does not read": the advice checks fail. */
 TEST_CASE("Subcommand: hpo -c of a potential without a DBFILE line says "
           "that a potential has no DBFILE line",
           "[TadahCLI][hpo][retrain][potential-content]") {
@@ -7585,9 +7573,9 @@ TEST_CASE("Subcommand: hpo -c of a potential without a DBFILE line says "
  * The header's validation dataset passes before the fix as well (a pin);
  * the case checked only that best_pot.tadah has "Validation" and
  * "db.tadah", which the training dataset's line has.
- * Before the training record (MK's decision of 2026-10-14): passes as well
- * (a pin); the case was named "Subcommand: hpo writes no HPOTARGET,
- * VALIDATION or VERBOSE into best_pot.tadah, ...". */
+ * Before the training record: passes as well (a pin); the case was named
+ * "Subcommand: hpo writes no HPOTARGET, VALIDATION or VERBOSE into
+ * best_pot.tadah, ...". */
 TEST_CASE("Subcommand: hpo writes no HPOTARGET, VALIDATION or VERBOSE line "
           "into best_pot.tadah, and a seed potential names no validation "
           "file",
@@ -7697,19 +7685,19 @@ TEST_CASE("Subcommand: hpo --validation takes one file",
 
 /* ---- [potential record]: the training record of a potential --------------
  *
- * MK's decision of 2026-10-14: a potential keeps the keys it does not use --
- * the DBFILE, VALIDATION, HPOTARGET, UNCERTAINTY, VERBOSE, NUMERIC, OUTFILE,
- * AUDIT, AUDIT_SAMPLE and HEALTH_LOG its run was given, and the keys that
- * prepared its training data ([dataset keys] below) -- in a comment block
- * above its key lines, for the user's record; no loader of a potential reads
- * it (tadah predict, tadah train -c, tadah hpo -c, pair_style tadah), and
- * refit --edit reads it only to copy it. */
+ * A potential keeps the keys it does not use -- the DBFILE, VALIDATION,
+ * HPOTARGET, UNCERTAINTY, VERBOSE, NUMERIC, OUTFILE, AUDIT, AUDIT_SAMPLE
+ * and HEALTH_LOG its run was given, and the keys that prepared its
+ * training data ([dataset keys] below) -- in a comment block above its key
+ * lines, for the user's record; no loader of a potential reads it (tadah
+ * predict, tadah train -c, tadah hpo -c, pair_style tadah), and refit
+ * --edit reads it only to copy it. */
 
 namespace {
 
-/* The opening line said "(not read by tadah)" before MK's decision of
- * 2026-10-14 (option 2): refit --edit reads the block, to copy it. Every
- * case below that finds a record fails on a potential with that line. */
+/* The opening line said "(not read by tadah)" before it was corrected:
+ * refit --edit reads the block, to copy it. Every case below that finds a
+ * record fails on a potential with that line. */
 const char* const kRecordOpen =
     "# --- training record (no key is read from it) ---";
 const char* const kRecordEnd = "# --- end of training record ---";
@@ -7774,11 +7762,10 @@ bool record_precedes_keys(const std::string& pot) {
  * pot3.tadah` (pot.tadah, its record a comment, with "DBFILE db2.tadah"
  * added), records "DBFILE db2.tadah" and "OUTFILE pot3.tadah", and
  * db.tadah appears nowhere in pot3.tadah.
- * Before the fix: no potential had a training record (the decision taken in
- * MK's absence on 2026-10-12 dropped the keys, replaced by MK's of
- * 2026-10-14).
- * Before the opening line was corrected (MK, 2026-10-14, option 2): it
- * read "# --- training record (not read by tadah) ---": record_of finds no
+ * Before the fix: no potential had a training record (an earlier rule
+ * dropped the keys).
+ * Before the opening line was corrected: it read
+ * "# --- training record (not read by tadah) ---": record_of finds no
  * record and the record checks fail. */
 TEST_CASE("Subcommand: train records the keys the run was given in the "
           "potential's training record",
@@ -7852,7 +7839,7 @@ TEST_CASE("Subcommand: train records the keys the run was given in the "
  * refit_pot.tadah" (the edit fits nothing: its record is that of the fit
  * whose weights it edits; the edit's own -o and -v are not added).
  * Before the fix: neither potential had a training record.
- * Before the opening line was corrected (MK, 2026-10-14, option 2): it
+ * Before the opening line was corrected: it
  * read "# --- training record (not read by tadah) ---": record_of finds no
  * record and the record checks fail. */
 TEST_CASE("Subcommand: refit records its run, and refit --edit copies the "
@@ -7907,7 +7894,7 @@ TEST_CASE("Subcommand: refit records its run, and refit --edit copies the "
  * reads it as a key. Begin each line of the record with '#', or end the
  * record (...) before it."; no potential got the missing-end-line refusal,
  * which came only when the file ended inside the record.
- * Before the opening line was corrected (MK, 2026-10-14, option 2): line 1
+ * Before the opening line was corrected: line 1
  * of refit_pot.tadah read "# --- training record (not read by tadah) ---":
  * REQUIRE(lines[0] == kRecordOpen) stops the case. */
 TEST_CASE("Subcommand: refit --edit of a potential whose training record "
@@ -7983,7 +7970,7 @@ TEST_CASE("Subcommand: refit --edit of a potential whose training record "
  * with best_pot.tadah without its record.
  * Before the fix: best_pot.tadah had no training record, and the header's
  * training dataset line ended with "  db.tadah".
- * Before the opening line was corrected (MK, 2026-10-14, option 2): it
+ * Before the opening line was corrected: it
  * read "# --- training record (not read by tadah) ---": record_of finds no
  * record and the record checks fail. */
 TEST_CASE("Subcommand: hpo records the run's DBFILE, --validation, "
@@ -8056,7 +8043,7 @@ TEST_CASE("Subcommand: hpo records the run's DBFILE, --validation, "
  * the provenance, hpo_run_journaled passing nullptr, the record ends with
  * "VERBOSE 1" and this case fails; the case above sets VERBOSE 0 and
  * passes either way).
- * Before the opening line was corrected (MK, 2026-10-14, option 2): it
+ * Before the opening line was corrected: it
  * read "# --- training record (not read by tadah) ---": record_of finds no
  * record and the record check fails. */
 TEST_CASE("Subcommand: hpo leaves the VERBOSE nobody wrote out of "
@@ -8096,16 +8083,16 @@ TEST_CASE("Subcommand: hpo leaves the VERBOSE nobody wrote out of "
 
 /* ---- [dataset keys]: the keys that prepared the training data -----------
  *
- * MK's decision of 2026-10-14 (option 2): a potential's key lines are only
- * what is needed to use the model -- the model's keys, the resolved ESHIFT
- * values and LSCALE. EFILTER, FFILTER, ESHIFT_ATOM, ESHIFT_DBATOM,
- * EWEIGHT_TEMP, ZERO_COM_FORCE, WDBFILE and WDBFILE_AUTO prepared the
- * training data: tadah writes them into the training record; tadah predict
- * ignores them in a potential (an older one has them as key lines too), so
- * a filter applies to the data predicted only when predict is given it;
- * --no-eshift compares the model with the reference energies as they are;
- * a retrain from a potential (and tadah hpo -c of one) takes none of them
- * from the potential, so it works with any number of datasets. */
+ * A potential's key lines are only what is needed to use the model -- the
+ * model's keys, the resolved ESHIFT values and LSCALE. EFILTER, FFILTER,
+ * ESHIFT_ATOM, ESHIFT_DBATOM, EWEIGHT_TEMP, ZERO_COM_FORCE, WDBFILE and
+ * WDBFILE_AUTO prepared the training data: tadah writes them into the
+ * training record; tadah predict ignores them in a potential (an older one
+ * has them as key lines too), so a filter applies to the data predicted
+ * only when predict is given it; --no-eshift compares the model with the
+ * reference energies as they are; a retrain from a potential (and tadah
+ * hpo -c of one) takes none of them from the potential, so it works with
+ * any number of datasets. */
 
 namespace {
 
@@ -9067,8 +9054,8 @@ TEST_CASE("Subcommand: a TASK hpo seeded from a potential with CONFIG applies "
 }
 #endif  // TADAH_ENABLE_NFP
 
-/* ---- an older potential's run settings (completing MK's rule of
- * 2026-10-14): VALIDATION, HPOTARGET, VERBOSE, NUMERIC, OUTFILE, AUDIT,
+/* ---- an older potential's run settings (completing the training record
+ * rule): VALIDATION, HPOTARGET, VERBOSE, NUMERIC, OUTFILE, AUDIT,
  * AUDIT_SAMPLE and HEALTH_LOG were settings of the run that wrote it; a
  * potential of an earlier version has them as key lines (a 1.5.x
  * best_pot.tadah has HPOTARGET, VERBOSE and NUMERIC, and VALIDATION when
@@ -9371,7 +9358,7 @@ TEST_CASE("Subcommand: hpo -c of an older best_pot.tadah does not validate "
  * Before the fix: the potential's HPOTARGET applied: run.task exited 0 (the
  * status CHECK fails), and a TASK hpo section without any HPOTARGET was
  * refused "Key not found in the Context object: HPOTARGET".
- * Before the review of the fix: both refusals were "tadah hpo: no
+ * Before the fix was corrected: both refusals were "tadah hpo: no
  * HPOTARGET: name the hpotarget file with --hpotarget, or with an HPOTARGET
  * line in the task file (a potential's own HPOTARGET line names the target
  * of the run that wrote it and is not read).": the refusal CHECKs fail. */

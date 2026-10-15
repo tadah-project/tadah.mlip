@@ -3036,8 +3036,7 @@ the help of ``TADAH:RANDOM``.
        outside the box and wrote a ``best_pot.tadah`` with ``RCUT2B``
        8.11 for an ``OPTIM`` box of [4, 6], and a 1-D run passed startup
        and ended ``FAILED -- dimension 1 must be >= 2`` after no
-       evaluation (owner decision taken in MK's absence, 2026-10-12: the
-       box is the configuration's contract):
+       evaluation (the box is the configuration's contract):
 
        .. code-block:: none
 
@@ -5493,7 +5492,7 @@ any data is loaded, at the ``INNER`` block's ``ENDINNER`` line, in every
 phase and ``STRATEGY TYPE``: the ``STRATEGY``-level optimiser under
 ``PLAIN`` and ``MULTISTART``, the ``PRESTAGE`` refinement (at the
 ``STRATEGY`` level or in a ``REFINE`` block) and the ``EXPLORE`` block
-(owner decision, MK, 2026-10-15: no nested global search).  The message
+(no nested global search).  The message
 names the local NLopt algorithms; for StoGO, DIRECT and AGS, which never
 read the point they are given, it says where they start instead
 (``... and NLOPT:GD_STOGO is a global optimiser that does not start at

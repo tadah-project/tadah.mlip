@@ -39,13 +39,13 @@ evaluation's row records FAILSCORE.
   fd_straddle  DLIB:BFGS from CGRID2B[2] = 1.6, PARAM fd_step 0.2: the
                finite-difference stencil of the start point is 1.8 and 1.4,
                and a skip cap fails 1.4. A difference never mixes a usable
-               loss with a failure (owner decision, MK, 2026-10-15): the
-               gradient at 1.6 is the one-sided difference into the usable
-               side, 1.8 and 2.0, with the loss at 1.6 that dlib has just
-               evaluated. The search goes on to the bound 2.0, the best,
-               and ends "DLIB:BFGS: FTOL_ABS reached" after 39 evaluations,
-               status 0; the journal names the difference taken without
-               1.4 and DIAGNOSTICS count it ("Mixed-kind stencils : 1").
+               loss with a failure: the gradient at 1.6 is the one-sided
+               difference into the usable side, 1.8 and 2.0, with the loss
+               at 1.6 that dlib has just evaluated. The search goes on to
+               the bound 2.0, the best, and ends "DLIB:BFGS: FTOL_ABS
+               reached" after 39 evaluations, status 0; the journal names
+               the difference taken without 1.4 and DIAGNOSTICS count it
+               ("Mixed-kind stencils : 1").
                Until then the search ended at that gradient after three
                evaluations, 1.6, 1.8 and 1.4, with the trailer "STOPPED --
                no usable gradient: a failed evaluation in the
@@ -54,9 +54,9 @@ evaluation's row records FAILSCORE.
                0.2 (the one-sided difference at 1.7 and 1.5: 2.1 is
                outside); Ceres' GradientProblemSolver has no bounds, and its
                first step proposes 0.9, outside the OPTIM box [1, 2]. No
-               point outside the box is evaluated or can be the best (owner
-               decision, MK, 2026-10-15): 0.9 is scored as a failure graded
-               by its distance to the box, 0.1 of its width
+               point outside the box is evaluated or can be the best: 0.9
+               is scored as a failure graded by its distance to the box,
+               0.1 of its width
                (1.797284568240756e+308, in [0.99975, 1) x FAILSCORE), with a
                WARNING and DIAGNOSTICS "Out-of-box points : 1"; it is the
                only row outside the box; the best lies in the box; the

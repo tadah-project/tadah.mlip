@@ -252,6 +252,19 @@ itself; those entries need CMake 3.19 (they read CTest's test list with
 `TADAH_ENABLE_NFP` accept, they are Skipped with a line that says so. The
 installed tree is not checked.
 
+`ctest -L text` reads the text files of each repository the build
+configures (`tadah.core_text`, `tadah.models_text`, `tadah.mlip_text` and,
+with `TADAH_ENABLE_NFP`, `tadah.md_text`, `tadah.lammps_text` and
+`tadah.hpo_text`; `tadah_text` for this repository and `cmake-tools_text`
+for the cmake-tools it uses), from cmake-tools' `tadah_add_text_check()`,
+and fails on a line that carries a person's initials, a reference to
+co-workers, a decision attributed to the code's owner, the name of an AI
+tool, a note kept outside the repository or filler wording, naming the file,
+the rule and the line (`testing/tadah_text_check.cmake` in cmake-tools lists
+the rules). State what the code does and why in the text itself. In a git
+clone it reads the files git tracks or would track, so run outputs that git
+ignores are not read. `ctest -R tadah_text_check_tool` tests the function.
+
 **Skipped, not passed.** A test that cannot run because an optional input
 is absent (an external dataset, an environment variable) must be reported
 as *Skipped*, so that a passing `ctest` means the checks ran:

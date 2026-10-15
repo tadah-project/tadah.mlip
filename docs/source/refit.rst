@@ -99,13 +99,15 @@ the EAM header** (the ``<Z> <mass> <a0> <lattice>`` line). ``fcc``, ``bcc`` and
 non-positive constant (for example ``... 0.0 NONE``), ``refit`` stops with an
 error — edit that line to the actual ground-state lattice and lattice constant
 and rerun. It stops the same way, before any fitting, when the constant puts
-the crystal's nearest neighbours at or beyond the table's cutoff, where the
-crystal has no pair (LAMMPS and tadah count a pair only below ``rcut``): a
-constant written in picometres rather than Ångström, for example,
+the crystal's nearest neighbours at or beyond the table's cutoff, where LAMMPS
+counts no pair (``pair_style eam/alloy`` counts a pair only below ``rcut``, so
+there the crystal has no interaction; tadah's own neighbour lists keep a pair
+at exactly ``rcut``): a constant written in picometres rather than Ångström,
+for example,
 
 .. code-block:: none
 
-   tadah refit: the lattice constant of the EAM header, a0 = 361 A, puts the nearest neighbours of the fcc crystal 255.26554800834364 A apart, at or beyond the table's cutoff, rcut = 5 A: the crystal has no pair within the cutoff. Edit the element line of the setfl file (`<Z> <mass> <a0> <lattice>`): set the equilibrium lattice constant, in Angstrom (a value in picometres is 100 times the value in Angstrom).
+   tadah refit: the lattice constant of the EAM header, a0 = 361 A, puts the nearest neighbours of the fcc crystal 255.26554800834364 A apart, at or beyond the table's cutoff, rcut = 5 A, and LAMMPS (pair_style eam/alloy) counts a pair only below rcut: the crystal has no interaction in LAMMPS. Edit the element line of the setfl file (`<Z> <mass> <a0> <lattice>`): set the equilibrium lattice constant, in Angstrom (a value in picometres is 100 times the value in Angstrom).
 
 and when it puts them less than the table's radial step ``dr`` apart at the
 strongest compression the refit tests (a/a0 = ``REFIT_REACH_SMIN``), where the
@@ -132,7 +134,9 @@ Files that put the cutoff at the last point, before it or one step past it
 (``rcut`` = ``nr`` × ``dr``, as in Zhou's and Mendelev's files) are read.
 With ``OUTPUT_GRID_SCALE`` the written ``refit.eam`` keeps the input's span
 (``nr`` − 1) × ``dr``, or, when that would leave the cutoff more than one of
-its steps past its last point, ends one step before ``rcut``.
+its steps past its last point, ends one step before ``rcut``; a scale whose
+point counts round to the input's (``1.0`` among them) writes the input's
+grid itself.
 
 The test compares the original and fitted models on the *same*
 geometry, so the reported errors are exact even when the header constant is not
@@ -487,7 +491,8 @@ General and output
        nr = 1 points ...``). The r grid keeps the input's span
        (nr − 1) × dr, or, when that would put ``rcut`` more than one of
        its steps past its last point (an input with ``rcut`` = nr × dr
-       scaled up), ends one of its steps before ``rcut``.
+       scaled up), ends one of its steps before ``rcut``; a scale whose
+       counts round to the input's gives the input grid itself.
    * - ``OPTIM_PCT`` (float)
      - ``5.0``
      - ±% half-width of the OPTIM bounds written into the HPO target; > 0

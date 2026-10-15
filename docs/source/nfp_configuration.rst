@@ -2659,12 +2659,15 @@ one a finite number (``MAXTIME`` a positive one).
        (``GD_STOGO``, ``GD_STOGO_RAND``) does not start at the point it is
        given: its first point is the centre of its box, where it takes its
        first gradient, so wherever its phase starts it needs 2n + 2
-       (``the PRESTAGE refinement NLOPT:GD_STOGO: MAXEVAL 5 takes no step:
-       its gradient search, which does not start at the point it is
+       (``the STRATEGY-level optimiser NLOPT:GD_STOGO: MAXEVAL 5 takes no
+       step: its gradient search, which does not start at the point it is
        given, evaluates the loss at a point of its own (1 evaluation) and
-       the gradient there (...) ..., which needs MAXEVAL 6 or more``), and
-       so does an ``AUGLAG`` or MLSL whose ``INNER`` search is StoGO.  (A
-       StoGO refinement does not look at its candidate.)  The warning
+       the gradient there (...) ..., which needs MAXEVAL 6 or more``, under
+       ``NOISE CALIBRATION`` too, whose seed point it does not start at),
+       and so does an ``AUGLAG`` or MLSL whose ``INNER`` search is StoGO.
+       (As the ``PRESTAGE`` refinement, which would not look at its
+       candidate, it is refused at startup: :ref:`strategy_block`.)  The
+       warning
        cannot know a start whose evaluation was not usable, nor the
        refinement from ``INIT`` points that a ``PRESTAGE`` whose
        exploration has no usable candidate falls back on, nor whether the
@@ -4734,6 +4737,23 @@ list depends on the libraries the build includes):
    HPOEngine error: Error on line 13: STRATEGY TYPE MULTISTART cannot run TADAH:ANNEAL: it is a global optimiser that consumes a single starting point, so restarting it from each INIT point is rejected for any N_STARTS. Use a local or multi-seed optimiser (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, DLIB:GFS, ... (23 more)), or STRATEGY TYPE PLAIN to run TADAH:ANNEAL once.
    Line: ENDOPTIMIZER
 
+NLopt's ``AUGLAG`` (``AUGLAG``, ``LN_AUGLAG``, ``LD_AUGLAG`` and their
+``_EQ`` forms) is a local algorithm: it runs its ``INNER`` search from the
+start it is given.  With an ``INNER`` search that does not start at the
+point it is given -- NLopt's StoGO (``GD_STOGO``, ``GD_STOGO_RAND``),
+DIRECT (``GN_DIRECT*``, ``GN_ORIG_DIRECT*``) or AGS (``GN_AGS``), which
+never read it -- no start would begin at its ``INIT`` point, so
+``MULTISTART`` refuses it at startup, at the ``INNER`` block's
+``ENDINNER`` line (``the INNER block of the STRATEGY-level optimiser:
+NLOPT:LN_AUGLAG runs its INNER search NLOPT:GN_AGS from the point it is
+given (each MULTISTART start's INIT point), and NLOPT:GN_AGS does not start
+at the point it is given (AGS evaluates points of a space-filling curve
+through the whole OPTIM box, the first near its centre; NLopt never reads
+that point), so no MULTISTART start would begin at its INIT point. Use a
+local NLopt algorithm in the INNER block, which starts at the point it is
+given (NLOPT:LD_AUGLAG, ..., NLOPT:LN_SBPLX), or STRATEGY TYPE PLAIN to run
+NLOPT:LN_AUGLAG once.``); 1.5.0 accepted it.
+
 TYPE PRESTAGE — staged global → local
 .....................................
 
@@ -4772,8 +4792,44 @@ Key              Args          Effect
                                1 with a single-seed global refinement optimiser is a
                                startup error, whatever number of candidates the
                                exploration would harvest (``TOPK 1`` refines the best
-                               one once).  Only valid with ``TYPE PRESTAGE``.
+                               one once).  A refinement optimiser that does not start
+                               at its candidate is a startup error for any ``TOPK``
+                               (below).  Only valid with ``TYPE PRESTAGE``.
 ================ ============= =============================================================
+
+The refinement starts from the candidates, so its optimiser must start at
+the point it is given.  NLopt's StoGO (``GD_STOGO``, ``GD_STOGO_RAND``),
+DIRECT (``GN_DIRECT``, ``GN_DIRECT_L``, ``GN_DIRECT_L_RAND``, their
+``_NOSCAL`` forms, ``GN_ORIG_DIRECT``, ``GN_ORIG_DIRECT_L``) and AGS
+(``GN_AGS``) never read that point: they evaluate the centre of the box
+first (AGS a point of its space-filling curve near it) and then search
+the whole box, so as the refinement they never use a candidate.  Such a
+refinement, at the ``STRATEGY`` level or in a ``REFINE`` block, is
+refused at startup, before any data is loaded, at the ``ENDOPTIMIZER``
+line, for any ``TOPK``; the message names every local optimiser that
+starts at its point:
+
+.. code-block:: none
+
+   HPOEngine error: Error on line 14: STRATEGY TYPE PRESTAGE cannot refine with NLOPT:GN_DIRECT_L: it does not start at the point it is given (DIRECT evaluates the centre of the OPTIM box first and then divides the whole box; NLopt never reads that point), so the refinement would never use the exploration's candidates, for any TOPK. Use a local optimiser, which starts at each candidate (CERES:LBFGS, CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS, NLOPT:LD_AUGLAG, NLOPT:LD_AUGLAG_EQ, NLOPT:LD_CCSAQ, NLOPT:LD_LBFGS, NLOPT:LD_MMA, NLOPT:LD_SLSQP, NLOPT:LD_TNEWTON, NLOPT:LD_TNEWTON_PRECOND, NLOPT:LD_TNEWTON_PRECOND_RESTART, NLOPT:LD_TNEWTON_RESTART, NLOPT:LD_VAR1, NLOPT:LD_VAR2, NLOPT:LN_AUGLAG, NLOPT:LN_AUGLAG_EQ, NLOPT:LN_BOBYQA, NLOPT:LN_COBYLA, NLOPT:LN_NELDERMEAD, NLOPT:LN_PRAXIS, NLOPT:LN_SBPLX), or run NLOPT:GN_DIRECT_L as the exploration (EXPLORE block) or once, as STRATEGY TYPE PLAIN.
+   Line: ENDOPTIMIZER
+
+An ``AUGLAG`` refinement whose ``INNER`` search is one of them is refused
+the same way, at the ``INNER`` block's ``ENDINNER`` line (``the INNER
+block of the PRESTAGE refinement: NLOPT:AUGLAG runs its INNER search
+NLOPT:GD_STOGO from the point it is given (each candidate of the
+exploration), and NLOPT:GD_STOGO does not start at the point it is given
+(...), so the refinement would never use the exploration's candidates. Use
+a local NLopt algorithm in the INNER block, ...``).  The other global
+optimisers start at their point and stay accepted with ``TOPK 1``:
+``GN_CRS2_LM``, ``GN_ISRES`` and ``GN_ESCH`` take it as the first member of
+their population, MLSL evaluates it first, ``TADAH:RANDOM`` and
+``TADAH:GRID`` evaluate it before they sample the box, and the annealers
+and ASA start their chain there.  As an exploration, and in a ``PLAIN``
+run, StoGO, DIRECT and AGS are accepted as before.  With a ``TOPK`` above
+1 the refusal comes before the ``TOPK`` rule, whose advice, ``TOPK 1``,
+would not help.  1.5.0 accepted such a refinement with ``TOPK 1``: it
+searched the whole box from its centre and never evaluated its candidate.
 
 The ``EXPLORE`` block accepts the full driver-attribute set
 (``LIB``/``ALGO``/``MAXEVAL`` / …) and an optional ``INIT`` block; it

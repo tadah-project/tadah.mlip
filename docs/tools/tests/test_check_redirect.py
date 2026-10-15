@@ -139,6 +139,20 @@ def shipped_routes():
 class ShippedPageTest(unittest.TestCase):
     '''The page docs/source/_extra/hpo.html as shipped.'''
 
+    def test_configuration_topics_keep_deep_links_after_the_split(self):
+        # A visitor following a reference link must reach the relevant
+        # option page, rather than the file-format page or its top.
+        _, table = shipped_routes()
+        for anchor, page in (
+            ('loss-functions', 'nfp_losses.html'),
+            ('search-space-constraints', 'nfp_search_space.html'),
+            ('restart-decorator', 'nfp_restart.html'),
+            ('noise-block', 'nfp_noise.html'),
+        ):
+            with self.subTest(anchor=anchor):
+                self.assertEqual(table['routes'].get(anchor),
+                                 f'{page}#{anchor}')
+
     def test_routes_of_the_split(self):
         _, table = shipped_routes()
         self.assertEqual(table['default'], 'nfp_configuration.html')

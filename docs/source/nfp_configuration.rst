@@ -4435,7 +4435,9 @@ Top-level keys inside the ``INIT`` block
      - Seed for the stochastic methods (RANDOM / LHS / SOBOL).  An NLopt
        optimiser without a ``SEED`` of its own also takes its random seed
        from it, and so does the search of its ``INNER`` block; its own
-       ``SEED`` takes precedence.  Every other optimiser is seeded only by
+       ``SEED`` takes precedence.  ``MULTISTART`` start *i* and ``RESTART``
+       round *r* derive it as they derive ``SEED`` (``+ i``, ``+ r·S``).
+       Every other optimiser is seeded only by
        the ``SEED`` of its own block (``OPTIMIZER`` in the short form,
        ``STRATEGY``, ``EXPLORE``, ``REFINE``).
    * - ``WARM_ON_MISMATCH``
@@ -4479,7 +4481,8 @@ Optimiser                        Seeds consumed
 ================================ ===================================================
 ``DLIB:GFS``                     All K (forwarded as ``initial_function_evals``).
 ``DLIB:BFGS``                    First only (``optim_init.front()``).
-Any ``NLOPT`` algorithm          First only.
+Any ``NLOPT`` algorithm          First only; none for StoGO, DIRECT and AGS
+                                 (below).
 ``TADAH:RANDOM``, ``TADAH:GRID`` First only — used as eval 0, then sweep.
 ``TADAH:ANNEAL``                 First only — used as the SA chain's starting state after T0 calibration.
 ``TADAH:ANNEAL_PT``/``_PA``      First only — the coldest slot starts there and the
@@ -4502,6 +4505,28 @@ Any ``NLOPT`` algorithm          First only.
 single call because GFS already takes every seed natively; ``TYPE
 PRESTAGE`` feeds its ``TOPK`` candidates to the refinement the same
 way.
+
+NLopt's StoGO (``GD_STOGO``, ``GD_STOGO_RAND``), DIRECT (``GN_DIRECT*``,
+``GN_ORIG_DIRECT*``) and AGS (``GN_AGS``) never read the point they are
+given: they start at the centre of the ``OPTIM`` box (AGS at a point of its
+curve near it).  As a ``MULTISTART`` start or the ``PRESTAGE`` refinement
+they are refused (:ref:`strategy_block`); as the ``STRATEGY``-level
+optimiser under ``PLAIN`` or the ``PRESTAGE`` exploration, an ``INIT`` block
+with a ``METHOD`` line has no effect on their search, and the run says so at
+startup, once, naming the block's line (instead of the warning above):
+
+.. code-block:: none
+
+   [HPO] WARNING: the INIT block on line 2: the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not start at the point it is given (DIRECT evaluates the centre of the OPTIM box first and then divides the whole box; NLopt never reads that point), so the search never evaluates the block's INIT points. To start the search at them, use an optimiser that starts at the point it is given.
+
+An ``AUGLAG`` or ``MLSL`` whose ``INNER`` block names one of them is
+refused at startup, as every global ``INNER`` search is (an ``INNER`` search
+is a local search, :ref:`strategy_block`), so no such warning concerns it.  Under ``NOISE
+CALIBRATION`` the sentence adds that the calibration evaluates the first of
+the points; an ``OPTIMIZER``-level block that a ``PRESTAGE`` exploration
+without an ``INIT`` block of its own takes is named with ``the refinement
+starts from them only when no evaluation of the exploration has a usable
+loss`` (the fallback of ``TYPE PRESTAGE``, :ref:`strategy_block`).
 
 .. _search_space_scaling:
 
@@ -5178,6 +5203,65 @@ strategy until the ``MAX`` restarts are used; no strategy ends a run on a
 stagnation it absorbed, except the ``PRESTAGE`` exploration, which hands
 over to the refinement.
 
+A round's fresh points and seeds change nothing for a search that does not
+start at the point it is given and draws no random numbers: NLopt's
+``GD_STOGO``, ``GN_DIRECT``, ``GN_DIRECT_L``, the ``_NOSCAL`` forms (NLopt
+2.10 runs ``GN_DIRECT_L_RAND_NOSCAL`` as ``GN_DIRECT_L_NOSCAL``),
+``GN_ORIG_DIRECT``, ``GN_ORIG_DIRECT_L`` and ``GN_AGS``, and
+``GN_DIRECT_L_RAND`` in one ``OPTIM`` dimension (it draws only to choose
+between equally long sides of a box).  Every round asks for round 0's points
+again, whose losses the run's record answers (:ref:`hpo_repeat_points`),
+until its stagnation window ends it, so no round after round 0 evaluates a
+new point.  The run says so at startup, naming the ``RESTART`` line:
+
+.. code-block:: none
+
+   [HPO] WARNING: the RESTART block on line 10: the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not start at the point it is given (DIRECT evaluates the centre of the OPTIM box first and then divides the whole box; NLopt never reads that point) and draws no random numbers, so every RESTART round, whatever points it starts from, asks for round 0's points again, which the run's record answers: no round after round 0 evaluates a new point, and the RESTART block's only effect is to end the run once round 0 has had no new best in AFTER_STAGNATION 2 evaluations. For rounds that search anew, use an optimiser that starts at the point it is given.
+
+``GD_STOGO`` obtains gradients, and a round forms its gradients itself (the
+record keeps the losses only), so each round evaluates round 0's
+finite-difference stencils again, up to ``AFTER_STAGNATION`` evaluations,
+and the warning says so: ``asks for round 0's points again, and their
+gradients: the run's record answers their losses, but a round forms its
+gradients itself and evaluates their finite-difference stencils again
+(GRAD_STRATEGY NUMERICAL): no round after round 0 evaluates a new point, and
+each round evaluates up to AFTER_STAGNATION 2 of round 0's points again
+before it ends without a new best`` (under ``GRAD_STRATEGY ANALYTICAL`` and
+``HYBRID`` each point at which a round asks for a gradient is evaluated
+again).  ``GD_STOGO_RAND`` below ``POPULATION`` 2\ *n* + 1 (*n* the
+``OPTIM`` dimensions; NLopt's default is 2\ *n*) takes the centre of the box
+as its first trial point and runs its first local search from it before any
+random trial point, so every round asks first for the points of round 0's
+first local search again; it reaches its random trial points only if that
+search ends before the round's stagnation window does, and the warning says
+so (``... asks first for the points of round 0's first local search again
+...``, advising ``POPULATION`` 2\ *n* + 1 or more, whose trial points are
+all random).
+
+With a loss that the run evaluates again at a repeated point (a
+``PC_LAMMPS`` line, a ``--skip-rel`` filter; :ref:`hpo_repeat_points`) the
+warning says ``asks for round 0's points again as long as their losses are
+those of round 0 (the run evaluates them again: ...)``; for a ``PRESTAGE``
+exploration on such a search it says that each round's exploration asks for
+round 0's exploration points again, so that a round's refinement starts from
+candidates among them.
+
+A search that does not start at the point it is given but draws random
+numbers (``GN_DIRECT_L_RAND`` in two or more dimensions, ``GD_STOGO_RAND``
+at ``POPULATION`` 2\ *n* + 1 or more) searches anew in each round, with the
+round's random numbers (``SEED + r``, below), but never evaluates the round's
+fresh points either: a ``RESTART`` block with ``METHOD`` lines on it is
+warned about, naming the line:
+
+.. code-block:: none
+
+   [HPO] WARNING: the RESTART block on line 10: the STRATEGY-level optimiser NLOPT:GN_DIRECT_L_RAND does not start at the point it is given (DIRECT evaluates the centre of the OPTIM box first and then divides the whole box; NLopt never reads that point), so no RESTART round evaluates the points of the block's METHOD lines: a round's search differs from round 0's only in the random numbers it draws. To start each round at the block's points, use an optimiser that starts at the point it is given.
+
+A ``PRESTAGE`` exploration on such a search that takes the round's points
+(its ``EXPLORE`` block has no ``INIT`` block) is named likewise, with the
+refinement's fallback to them (``... a round's refinement starts from them
+only when no evaluation of its exploration has a usable loss ...``).
+
 Restart *r* (``1`` … ``MAX``) also gives every optimiser that has a
 ``SEED`` a seed of its own, so a seeded stochastic optimiser or
 exploration draws new random numbers instead of repeating round 0's from
@@ -5191,7 +5275,10 @@ the new point:
   seed no other start of the run uses.  With ``SEED 7``, ``TOPK 3`` and
   ``MAX 2``, the refinement's candidates run with seeds 7, 8, 9, then 10,
   11, 12, then 13, 14, 15;
-* an ``EXPLORE`` optimiser runs with its ``SEED + r``.
+* an ``EXPLORE`` optimiser runs with its ``SEED + r``;
+* an NLopt optimiser without a ``SEED``, which takes its random seed from
+  its ``INIT`` block's ``SEED``, runs with that ``SEED`` derived the same
+  way (``+ r·S``; an ``EXPLORE`` block's ``+ r``).
 
 An ``INNER`` block has no ``SEED`` of its own: its search draws from the
 random stream of the enclosing optimiser's run, seeded with that
@@ -5242,8 +5329,9 @@ different ``RANDOM`` and ``LHS`` points.  ``SOBOL`` draws no random numbers: bot
 blocks' seed *s* selects block *s* of the sequence.  NLopt draws from the derived seeds too, even when an
 ``INIT`` block also has a ``SEED``.  Only an NLopt optimiser without a
 ``SEED`` of its own takes its random seed from its ``INIT`` block's
-``SEED``, which is not derived, so it repeats its random sequence in every
-round.
+``SEED``, which a round derives as it derives ``SEED`` (the journal's
+``RESTART r/MAX`` line names it ``INIT SEED``), so such an optimiser too
+draws new random numbers in every round.
 
 ``RESTART`` fires with every backend, including NLopt (also
 inside the ``INNER`` local search of MLSL/AUGLAG), ``DLIB:GFS`` with any
@@ -6661,7 +6749,8 @@ Marker                                                                       Mea
                                                                              and Ceres' message.
 ``[HPO] MULTISTART: running K starts (parallel=N)``                           MULTISTART fires.
 ``[HPO] MULTISTART per-start MAXEVAL = N``                                    Either from ``BUDGET_PER_START`` or split.
-``[HPO] MULTISTART start i/K -- running inner optimiser (seed=…)``            Per-start; ``(seed=…)`` only when ``SEED`` is set.
+``[HPO] MULTISTART start i/K -- running inner optimiser (seed=…)``            Per-start; ``(seed=…)`` only when ``SEED`` is set, ``(INIT seed=…)``
+                                                                              for an NLopt optimiser seeded by its ``INIT`` block's ``SEED``.
 ``[HPO] PRESTAGE: exploration phase LIB:ALGO (MAXEVAL=…)``                    PRESTAGE phase starts (``MAXEVAL=none: no evaluation limit``
                                                                               when the ``EXPLORE`` block has none).
 ``[HPO] PRESTAGE: top-K losses: …``                                           Snapshot quality after PRESTAGE finishes.
@@ -6670,7 +6759,8 @@ Marker                                                                       Mea
                                                                               init method (``CHAIN`` for several ``METHOD`` lines, ``CONFIG``
                                                                               without one); ``; …`` lists the round's seeds: ``RESTART SEED``
                                                                               (the fresh points', ``SEED + i``) when the ``RESTART`` block has a
-                                                                              ``SEED``, then the derived seeds of the phases that have one.
+                                                                              ``SEED``, then the derived seeds of the phases that have one
+                                                                              (``INIT SEED`` for an NLopt optimiser seeded by its ``INIT`` block).
 ``[HPO] RESTART: stagnation reached, max restarts (M) used; stopping``         Restarts exhausted; the run stops.
 ``[HPO] MULTISTART: N of K start(s) stopped on stagnation; …``                Batch outcome reported to RESTART.
 ``[HPO] REFINEMENT: N of K seed(s) stopped on stagnation …``                  PRESTAGE refinement outcome, reported to RESTART.

@@ -41,8 +41,8 @@ Corana kernel
 With ``PARAM CORANA ON``, proposals move one coordinate at a time with
 uniform displacements. Each coordinate's step width adapts from its
 acceptance rate after ``NS`` sweeps. A sweep visits every dimension;
-a temperature rung contains ``NT`` such adjustment cycles. Use ``NT``
-instead of CLASSIC's ``CHAIN_LENGTH``.
+a temperature rung contains ``NT`` such adjustment cycles. ``NT``
+controls the Corana rung length; ``CHAIN_LENGTH`` belongs to CLASSIC.
 
 Temperature and stopping
 ------------------------
@@ -54,8 +54,8 @@ used. Explicit ``T_INIT`` makes ``T0_PROBES`` and ``T0_ACCEPT`` inactive,
 so supplying them together is rejected.
 
 The temperature is multiplied by ``RT`` after each rung. ``RT`` must be
-in ``(0,1)``. ``T_MIN`` is positive and cannot exceed the resolved
-starting temperature. Default ``CHAIN_LENGTH AUTO`` (CLASSIC) or
+in ``(0,1)``. ``T_MIN`` is positive and at most the resolved starting
+temperature. Default ``CHAIN_LENGTH AUTO`` (CLASSIC) or
 ``NT AUTO`` (Corana) divides the remaining evaluation budget across the
 schedule and therefore requires ``MAXEVAL``. Without that budget,
 supply the appropriate length explicitly.
@@ -84,5 +84,5 @@ ranges described above are checked in addition to the table ranges.
 
 Common settings, including ``SEED`` and ``THREADS``, are in
 :doc:`nfp_optimizer_settings`. ``THREADS`` sizes evaluation work; the
-search chain itself is serial. ``STEP``, ``XTOL_*``, ``POPULATION``,
-``VECTOR_ARR`` and ``GRAD_STRATEGY`` are not accepted by this backend.
+search chain itself is serial. This backend rejects ``STEP``,
+``XTOL_*``, ``POPULATION``, ``VECTOR_ARR`` and ``GRAD_STRATEGY``.

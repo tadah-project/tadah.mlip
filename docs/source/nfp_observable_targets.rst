@@ -7,8 +7,8 @@ Typed observable targets
 process. It belongs at the root of the
 :doc:`target file <nfp_configuration>`, and each line adds one loss
 term. The only implemented kind is ``cohesive_energy``; its crystal is
-bcc. A file containing these targets cannot also contain
-``PC_LAMMPS`` or ``PC_FAILPROBE``.
+bcc. The parser rejects files that mix these targets with ``PC_LAMMPS``
+or ``PC_FAILPROBE``.
 
 .. code-block:: none
 
@@ -85,7 +85,7 @@ Relaxation options
      - Maximum accepted atomic force in eV/Å after relaxation.
    * - ``--unconverged const <value>``
      - ``const 100``
-     - Report this finite value when relaxation does not converge.
+     - Report this finite value for an unconverged relaxation.
    * - ``--unconverged force-scaled <slope>``
      - Unset
      - Instead report ``target + slope * fmax`` for an unconverged
@@ -103,14 +103,14 @@ Gradient compatibility
 For a phase that uses gradients, an omitted ``GRAD_STRATEGY`` resolves
 to ``ANALYTICAL`` when typed observables are present. Explicit
 ``ANALYTICAL`` and ``HYBRID`` are accepted; ``NUMERICAL`` is refused.
-Derivative-free phases do not need a gradient setting.
+Derivative-free phases use loss values alone.
 
 ``ANALYTICAL`` requires a supported linear fit with training data,
 ``OALGO 4``, fixed ``LAMBDA >= 0``, ``NORM false``, ``STRESS false``
 and no ``FIXINDEX`` pins or ``PC_SRMSE`` target. Startup also checks
 the selected descriptor parameters. For typed observables, ``MAPE``,
-``RMSLE`` and ``--unconverged force-scaled`` need ``HYBRID`` because
-the observable-gradient path does not differentiate those cases.
+``RMSLE`` and ``--unconverged force-scaled`` require the numerical
+contribution provided by ``HYBRID``.
 
-Set ``GRAD_STRATEGY`` on the phase owning the objective, rather than
-inside an NLopt ``INNER`` block.
+``GRAD_STRATEGY`` belongs to the phase owning the objective. An NLopt
+``INNER`` search obtains gradients through that enclosing phase.

@@ -17,8 +17,8 @@ Search parameters and bounds
 
 ``OPTIM`` selects continuous values from the training configuration or
 potential supplied with ``--config``. Each selected value becomes one
-dimension of the outer search. Values that you leave out retain their
-configured values, except model coefficients that the inner fit solves.
+dimension of the outer search. Unselected values retain their configured
+values, except model coefficients that the inner fit solves.
 
 Explicit bounds
 ---------------
@@ -43,19 +43,21 @@ the same index twice is an error.
 For keys containing species labels as well as numbers, indices select
 the numeric values. ``FIXWEIGHT`` has its own indexing rule below.
 Discrete choices, integer-only values, internal derived keys and
-inactive parameters cannot be searched. Examples include descriptor
+inactive parameters are rejected by ``OPTIM``. Examples include descriptor
 families, density forms, ``FIXINDEX``, ``SBASIS`` and ``OALGO (1)``.
 
-Bounds from the configured values
----------------------------------
+.. _bounds-from-the-configured-values:
+
+Automatic bounds
+----------------
 
 .. code-block:: none
 
    OPTIM <KEY> (indices) AUTO [RATIO <f> | FRAC <p>] \
        [FLOOR <a>] [GROUP_FLOOR <r>] [LIN | LOG | ASINH <c>]
 
-``AUTO`` derives each box from its value ``x0`` in ``--config``. A
-``METHOD WARM`` starting point does not change this reference value.
+``AUTO`` derives each box from its value ``x0`` in ``--config``, including
+runs that obtain their starting point through ``METHOD WARM``.
 
 .. list-table:: AUTO options
    :header-rows: 1
@@ -87,8 +89,7 @@ For nonnegative density amplitudes, ``FRAC`` bounds are clipped at zero.
 Without either floor option these amplitudes receive
 ``GROUP_FLOOR 0.001``; if the whole group is zero, supply ``FLOOR`` or
 explicit bounds. ``RATIO`` requires positive seeds for such amplitudes.
-Legacy keys beginning with ``RCUT`` require explicit bounds instead of
-``AUTO``.
+Legacy keys beginning with ``RCUT`` require explicit bounds.
 
 Coordinate scaling
 ------------------
@@ -111,8 +112,8 @@ The trailing shape tag determines the coordinate used by the optimiser:
 
 At the root level, ``OPTIM_SCALE AUTO`` maps these transformed bounds
 to ``[0, 1]`` for each dimension. This is the default.
-``OPTIM_SCALE NONE`` retains the transformed bounds without that
-normalisation. It does not remove a ``LOG`` or ``ASINH`` transform.
+``OPTIM_SCALE NONE`` retains the transformed bounds at their original
+scale, including any ``LOG`` or ``ASINH`` transform.
 
 ``LOG_HP ratio`` is an optional key inside ``OPTIMIZER`` or ``STRATEGY``.
 It converts linear dimensions to logarithmic ones when their lower bound
@@ -122,8 +123,8 @@ An ``ASINH`` dimension retains its shape. To control each dimension
 directly, omit ``LOG_HP`` and write the required shape tags on ``OPTIM``.
 
 The bounds and values written in ``params.tadah`` use the selected
-physical coordinates. Scaling changes the optimiser's coordinates, not
-the units in those columns.
+physical coordinates. Scaling applies to the optimiser's coordinates;
+reported parameter columns retain their physical units.
 
 Component parameters
 --------------------
@@ -140,8 +141,8 @@ A :doc:`DM_Embed <dm_embed>` block exposes named parameter paths. Replace
    * - ``ta.density.centres``
      - Every density basis.
    * - ``ta.density.eta`` or ``ta.density.widths``
-     - The scale coordinate declared in the density component;
-       neither exists for knots.
+     - The scale coordinate declared in a bump or Gaussian density
+       component.
    * - ``ta.density.amplitudes``
      - Every density basis; bounds must be nonnegative for
        ``NONNEG`` and ``MONOTONE`` forms.
@@ -150,15 +151,15 @@ A :doc:`DM_Embed <dm_embed>` block exposes named parameter paths. Replace
    * - ``ta.embedding.centres``
      - Every embedding basis.
    * - ``ta.embedding.eta`` or ``ta.embedding.widths``
-     - The scale coordinate declared in the embedding component;
-       neither exists for knots.
+     - The scale coordinate declared in a bump or Gaussian embedding
+       component.
    * - ``ta.embedding.envelope.cutoff``
      - An enabled envelope; unavailable for ``OFF``.
 
 Scale and cutoff bounds must be positive. ``WIDTHS`` remains the
 authoritative coordinate when the component declares it: bounds,
 derivatives and saved values use widths. An envelope cutoff is a density
-value and does not enlarge spatial neighbour lists.
+value. Spatial neighbour lists use interaction radii.
 
 .. code-block:: none
 
@@ -167,16 +168,22 @@ value and does not enlarge spatial neighbour lists.
    OPTIM ta.density.cutoff.radius (1) 5.5 6.5
 
 The example requires matching component arrays, ``WIDTHS`` in the
-embedding component and a smooth density cutoff. Legacy many-body keys
-such as ``CGRIDMB`` do not alias these paths.
+embedding component and a smooth density cutoff. Named paths are required
+for component parameters; legacy many-body keys such as ``CGRIDMB`` apply
+to legacy descriptors.
 
 Pinned coefficients
 -------------------
 
+Pinned coefficients remain fixed during the inner fit. ``OPTIM FIXWEIGHT``
+selects them for the outer search. With all coefficients pinned, evaluation
+proceeds directly from the selected weights. The refit workflow supports
+both pinned-coefficient searches and re-solving coefficients from training
+data; see :ref:`DM_Embed refit workflows <dm_embed_refit>`.
+
 ``OPTIM WEIGHTS`` is rejected. To search model coefficients, pin them
 with ``FIXINDEX`` and ``FIXWEIGHT`` in ``--config``, then use
-``OPTIM FIXWEIGHT``. Its indices name model weights, not positions in
-the ``FIXWEIGHT`` list:
+``OPTIM FIXWEIGHT``. Its indices name model weights:
 
 .. code-block:: none
 
@@ -190,8 +197,10 @@ the ``FIXWEIGHT`` list:
 This searches weight 5, initially ``0.3``. Weight 2 remains pinned at
 ``-0.1``. Each searched weight must appear in ``FIXINDEX``.
 
-Inspecting the resolved space
------------------------------
+.. _inspecting-the-resolved-space:
+
+Resolved search space
+---------------------
 
 ``hpo_search_space.tsv`` lists each dimension, its bounds, seed, shape
 and optimiser coordinates. If any box uses ``AUTO``,
@@ -200,6 +209,6 @@ round-trip precision, suitable for reusing the resolved bounds.
 
 Dimensions are ordered alphabetically by uppercase key, then by their
 position within that key. For ``FIXWEIGHT`` the position is the slot in
-``FIXINDEX``. Reordering the ``OPTIM`` lines does not reorder dimensions.
+``FIXINDEX``. This order is independent of ``OPTIM`` declaration order.
 Use the TSV's ``dim`` column when an optimiser option takes a dimension
 number.

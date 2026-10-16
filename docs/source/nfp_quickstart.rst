@@ -7,13 +7,15 @@
 Quick start
 ===========
 
-Use a ``tadah`` build with nested fitting enabled. Start from the files
-in ``Tadah.MLIP/examples/CLI/ex_2`` (also shown in :ref:`cli_example_2`).
-Copy that directory to a working directory before running so that the
-output files stay with your experiment.
+This example requires a ``tadah`` build with nested fitting enabled and
+a working copy of ``Tadah.MLIP/examples/CLI/ex_2`` (also shown in
+:ref:`cli_example_2`). The working copy keeps the generated files with
+the experiment.
 
-The three inputs
-----------------
+.. _the-three-inputs:
+
+Input files
+-----------
 
 .. list-table::
    :header-rows: 1
@@ -35,7 +37,9 @@ The three inputs
 Paths in the example are relative to the working directory. Run from
 the directory containing those files and the two datasets.
 
-A small search
+.. _a-small-search:
+
+Minimal search
 --------------
 
 For a short first run, replace the example's ``config.hpo`` with:
@@ -54,15 +58,16 @@ The model, training data and validation data come from the example.
 
 After a successful run, inspect ``best_pot.tadah``, ``best_loss.tadah``
 and ``hpo_run.log``. :doc:`nfp_output_settings` explains output controls;
-:doc:`nfp_search_space` explains how to replace the single ``OPTIM`` line
-with parameters of your own model.
+:doc:`nfp_search_space` describes parameter selection for other models.
 
-Other starting points
----------------------
+.. _other-starting-points:
+
+Alternative inputs
+------------------
 
 A run using validation metrics needs the validation input. A run using
-only physical-property targets can omit it. ``PC_OBSERVABLE`` and
-``PC_LAMMPS`` cannot be mixed in the same run; see :doc:`nfp_objective`.
+only physical-property targets can omit it. Each run selects one property
+target family: ``PC_OBSERVABLE`` or ``PC_LAMMPS``; see :doc:`nfp_objective`.
 
 A model with all coefficients pinned can omit training ``DBFILE`` if
 its element set is declared with ``ATOM``. For that workflow, follow

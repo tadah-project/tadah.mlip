@@ -18,6 +18,13 @@ versioning follows [SemVer](https://semver.org/) at the umbrella level.
 ## [Unreleased]
 
 ### Changed
+- [umbrella] Restore the Nested Fitting overview diagram and place pinned-weight
+  search details in the parameter reference. Use manual-style headings and
+  affirmative descriptions throughout the chapter. Promote the block/key
+  directory and add an Optimizer section that shows the parser's subblock
+  hierarchy. Wrap reference-table prose and parameter names to fit the reading
+  column at desktop and mobile widths. Consolidate generated annealing
+  defaults, values and descriptions into a two-column reference layout.
 - [umbrella] Reorganise Nested Fitting into short syntax, block-key and option
   references, with a runnable first example. Preserve old topic links and keep
   the previous workflow and diagnostic text in a temporary review file. Check

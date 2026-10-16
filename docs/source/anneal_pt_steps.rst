@@ -22,8 +22,8 @@ a second temperature-calibration pass uses the calibrated production
 kernel. An explicit ``T_HOT`` or ``STEP_MODE FIXED`` skips that second
 pass.
 
-An explicit ``STEP_WARMUP_SWEEPS`` is rejected with ``FIXED`` because
-that mode performs no warm-up. ``STEP_TRUST_FACTOR`` is accepted only
+An explicit ``STEP_WARMUP_SWEEPS`` requires a mode with calibration,
+so ``FIXED`` rejects it. ``STEP_TRUST_FACTOR`` is accepted only
 with ``ADAPTIVE``. Set a number
 greater than ``1`` to bound scales around their calibrated values, or
 ``OFF`` to disable that clamp. With a moving ladder, frozen proposal

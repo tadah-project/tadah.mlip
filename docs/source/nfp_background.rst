@@ -5,7 +5,7 @@
 Overview
 ========
 
-Nested fitting searches model settings against a loss that you define.
+Nested fitting searches model settings against a configured loss.
 The command is ``tadah hpo``; the names *Nested Fitting Procedure* (NFP)
 and *Hyperparameter Optimisation* (HPO) refer to the same feature.
 
@@ -15,21 +15,25 @@ the training configuration. The resulting potential is scored against
 validation metrics or physical-property targets, and that loss guides
 the next candidate.
 
-Pinned coefficients remain fixed during the inner fit. They can instead
-be searched directly with ``OPTIM FIXWEIGHT``. When all coefficients
-are pinned, the least-squares stage is unnecessary. The refit workflow
-supports both pinned-coefficient searches and re-solving coefficients
-from training data; see :ref:`DM_Embed refit workflows <dm_embed_refit>`.
+.. figure:: images/nested_fitting.jpg
+   :alt: Nested fitting workflow with an outer parameter search and inner coefficient fit.
+   :align: center
+   :width: 610px
 
-What you configure
-------------------
+   Nested fitting workflow illustrated with the DLIB GFS (MaxLIPO+TR)
+   optimiser.
+
+.. _what-you-configure:
+
+Configuration components
+------------------------
 
 .. list-table::
    :header-rows: 1
    :widths: 35 65
 
    * - Part of the run
-     - Where to start
+     - Reference
    * - Input files and command
      - :doc:`nfp_quickstart`
    * - File format and nesting
@@ -43,10 +47,10 @@ What you configure
    * - Saved potentials and histories
      - :doc:`nfp_output_settings`
 
-For successful evaluations, the total loss is the mean of the weighted
-loss terms, not a sum normalised by the weights. A failed target can
-fail the whole evaluation. Choose targets and weights with their units
-and scales in mind; the exact rules are in :doc:`nfp_losses`.
+For successful evaluations, the total loss is the arithmetic mean of
+the weighted loss terms. A failed target can fail the whole evaluation.
+Target units and scales determine suitable weights; the exact rules are
+in :doc:`nfp_losses`.
 
-Data used to choose hyperparameters is part of fitting. Keep an independent
-test set or set of properties to assess the final potential.
+Data used to choose hyperparameters is part of fitting. An independent
+test set or set of properties provides an assessment of the final potential.

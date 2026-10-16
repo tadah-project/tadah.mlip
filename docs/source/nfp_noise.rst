@@ -41,14 +41,13 @@ For ``d`` dimensions, ``AUTO`` derives::
 
    fd_step = max(1e-3 * box_diagonal / sqrt(d), 1e-6)
 
-The diagonal is measured in transformed optimiser coordinates. This is
-a box-size heuristic; it does not estimate noise from evaluations and
-is not set by ``CALIBRATION``.
+The diagonal is measured in transformed optimiser coordinates. This
+box-size heuristic depends solely on the search bounds and dimension count.
 
 It configures the main optimiser's finite differences, including each
-``MULTISTART`` search or ``PRESTAGE`` refinement. It does not configure
-``EXPLORE``. It is refused when the main optimiser takes no finite
-differences, or when ``PARAM fd_step`` is already supplied. The resulting
+``MULTISTART`` search or ``PRESTAGE`` refinement. ``EXPLORE`` retains
+its own finite-difference settings. ``AUTO`` requires a main optimiser
+that takes finite differences and an omitted ``PARAM fd_step``. The resulting
 step must fit every search box; see :doc:`nfp_gradients`.
 
 Repeated evaluations
@@ -61,6 +60,5 @@ history and can update the best potential. They are outside the search's
 starting point exists, calibration is skipped with a warning.
 
 The journal reports the losses and suggests an ``FTOL_REL`` from their
-spread. It does not apply that suggestion or alter the optimiser's
-stopping settings. Use :doc:`nfp_stopping_settings` to set an appropriate
-supported tolerance explicitly.
+spread. Applying the suggested tolerance requires an explicit setting;
+see :doc:`nfp_stopping_settings` for supported tolerances.

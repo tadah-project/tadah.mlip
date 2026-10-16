@@ -116,7 +116,7 @@ Starting point and probes
        values are overridden.
    * - ``User_Tangents``
      - ``0``
-     - Only ``0`` is supported; HPO supplies no analytical ASA tangents.
+     - Only ``0`` is supported; ASA computes its tangents numerically.
    * - ``Curvature_0``
      - ``1``
      - ``1`` skips curvature; ``0`` computes it at exit; ``-1`` also

@@ -5,9 +5,9 @@ Parallel tempering: ANNEAL_PT
 
 ``LIB TADAH`` with ``ALGO ANNEAL_PT`` runs several derivative-free
 search chains, called replicas, at different temperatures. The replicas
-exchange states between neighbouring temperature slots. There is no
-cooling schedule: the ladder endpoints stay fixed after calibration,
-while optional ladder adaptation changes interior temperatures.
+exchange states between neighbouring temperature slots. The ladder
+endpoints stay fixed after calibration, while optional ladder adaptation
+changes interior temperatures.
 
 .. code-block:: none
 
@@ -58,8 +58,8 @@ replicas over ranks; their HPO driver accepts this backend with
 Stopping
 --------
 
-Parallel tempering has no finite cooling schedule, so supply a supported
-stop. It accepts ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` and positive
+Parallel tempering runs until a supported stopping condition is met.
+It accepts ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` and positive
 ``FTOL_REL``/``FTOL_ABS``. An active stagnation restart can supply a stop
 in a single-rank run.
 

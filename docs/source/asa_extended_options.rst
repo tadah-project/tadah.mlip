@@ -4,8 +4,7 @@ ASA dimension, cache and block options
 These ``PARAM`` options extend the :doc:`ASA <asa>` scalar settings.
 All values must be finite. **Indexed** options accept ``Name[i]`` for
 dimension ``i`` (1-based), or plain ``Name`` to fill every dimension.
-The index follows ``hpo_search_space.tsv``; it is not an index into a
-particular ``OPTIM`` key's array.
+The index follows the complete dimension order in ``hpo_search_space.tsv``.
 
 Temperature and probe scales
 ----------------------------
@@ -36,7 +35,7 @@ Temperature and probe scales
      - Positive; **indexed**. Initial temperature of each dimension.
 
 Use ``Delta_X 0`` to disable default tangent steps; an explicit
-``User_Delta_Parameter`` cannot be zero.
+``User_Delta_Parameter`` must be positive.
 
 Multiple minima and cache
 -------------------------
@@ -92,14 +91,15 @@ Generated-state blocks
 With adaptive resizing, block size remains between 1 and
 ``Gener_Block_Max`` and may drop below ``Gener_Block``. Blocks larger
 than one change the sampled sequence. ``THREADS`` bounds concurrent
-workers; it does not itself increase the generated-state block size.
+workers. Generated-state block size is set by the block parameters.
 
-Unavailable options
--------------------
+.. _unavailable-options:
+
+Interface scope
+---------------
 
 The tables on this page and :doc:`asa_options` cover all 34 accepted
-``PARAM`` names. Other upstream ASA features are not automatically
-available through HPO. In particular, ``Coarse_Resolution``,
+``PARAM`` names exposed through HPO. ``Coarse_Resolution``,
 ``User_Cost_Temperature``, recursive ASA, local-fit options, importance
 sampling and ASA checkpointing options are excluded. Their named
-parameters produce a startup error rather than being ignored.
+parameters produce a startup error.

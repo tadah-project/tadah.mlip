@@ -64,9 +64,9 @@ Targets must be finite; weights must be finite and nonnegative.
      - eV/Å³
 
 Keep the spelling ``PC_ErRMSE``: root keywords are case-sensitive.
-For the global form, HPO averages the metric across datasets and then
-applies the root :doc:`LOSS <nfp_losses>`, target and weight.
-Dataset sizes do not weight that average.
+For the global form, HPO takes the unweighted arithmetic mean of the
+metric across datasets, then applies the root :doc:`LOSS <nfp_losses>`,
+target and weight.
 
 Dataset-specific targets
 ------------------------
@@ -93,9 +93,9 @@ For measured dataset metrics :math:`x_i`, targets :math:`t_i`, weights
    C = \frac{1}{N}\sum_i w_i\,\ell(x_i,t_i).
 
 It still counts as one term in the total loss. A zero weight contributes
-zero but retains that dataset in the denominator. Weights are not
-normalised. With nonlinear losses, taking the mean of dataset losses
-differs from taking the loss of the mean metric.
+zero and retains that dataset in the denominator. Weights enter the
+expression at their configured values. With nonlinear losses, taking
+the mean of dataset losses differs from taking the loss of the mean metric.
 
 Missing reference data
 ----------------------

@@ -16,7 +16,7 @@ Output settings
 ===============
 
 These root-level keys control history files and optional potential
-archives. They do not change the objective or the search bounds.
+archives.
 
 History cadence and precision
 -----------------------------
@@ -67,9 +67,8 @@ for an earlier evaluation to finish or for an active writer.
 
 Each has a corresponding ``best_`` history, such as
 ``best_params.tadah``. Its first column is the improvement ordinal,
-starting at one, rather than the evaluation number. These files append
-history rows; they are not single-row snapshots. Read each file's header
-for the enabled columns.
+starting at one. These files accumulate history rows; each file's header
+lists the enabled columns.
 
 Potential archives
 ------------------
@@ -86,15 +85,14 @@ evaluation as ``directory/pot_<evaluation>.tadah``.
 ``N >= 1`` and create the directory if necessary. Omit the directive to
 leave that archive disabled.
 
-``DUMP`` is an evaluation archive: a saved candidate need not be a
-successful fit or a new best. Points rejected for being outside the
-search box are not archived.
+``DUMP`` archives evaluated candidates, including failed fits and
+candidates whose losses exceed the current best. Archiving is limited
+to points inside the search box.
 
 The current best is saved to ``best_pot.tadah`` independently of
-``OUTPUT``, ``BOUTPUT``, ``DUMP``, ``BDUMP`` and ``QFLUSH``. Reducing the
-history or archive cadence does not reduce how often this potential is
-updated. ``DIGITS`` controls report formatting; it does not set the
-precision of the potential's parameter values.
+``OUTPUT``, ``BOUTPUT``, ``DUMP``, ``BDUMP`` and ``QFLUSH``. It is updated
+at every improvement. ``DIGITS`` controls report formatting; potential
+parameters retain their full saved precision.
 
 For an MPI PT/PA run, rank-local histories and archives receive rank
 suffixes. The unsuffixed ``best_pot.tadah`` is the shared winning

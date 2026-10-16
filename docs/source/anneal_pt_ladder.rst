@@ -9,12 +9,12 @@ Temperature endpoints
 
 ``T_HOT`` is positive. Omit it to calibrate the hot endpoint from loss
 probes; ``T0_PROBES`` must then be at least ``2``. If ``T_HOT`` is
-explicit, supplying ``T0_PROBES`` or ``T0_ACCEPT`` is an error because
-they would not be used.
+explicit, the calibration settings ``T0_PROBES`` and ``T0_ACCEPT``
+are inactive and rejected.
 
 ``T_COLD`` is positive and must be below the resolved hot endpoint. If
-omitted, it is derived from ``T_HOT / LADDER_SPAN``. Do not set both
-``T_COLD`` and ``LADDER_SPAN``.
+omitted, it is derived from ``T_HOT / LADDER_SPAN``. ``T_COLD`` and
+``LADDER_SPAN`` are mutually exclusive.
 
 .. include:: config/anneal_keys_pt.rst
    :start-after: .. rubric:: Temperature
@@ -29,8 +29,8 @@ one place more slots towards the hot end; values above one place more
 towards the cold end.
 
 Adaptation changes interior log-temperature gaps while preserving the
-endpoints. It uses nondegenerate exchange attempts; identical-loss
-exchanges do not provide adaptation evidence. ``LADDER_FREEZE`` can
+endpoints. It uses only nondegenerate exchange attempts as adaptation
+evidence. ``LADDER_FREEZE`` can
 stop further adaptation after the acceptance rates have equalised
 within its statistical test.
 
@@ -43,8 +43,8 @@ Exchange cadence
 
 ``SWAP_EVERY`` sets the epochs between exchange rounds.
 ``SWAP_WINDOW`` controls periodic diagnostics and the tolerance-stop
-window. Its ``OFF`` value suppresses periodic diagnostic windows; it
-does not disable exchanges or the tolerance test.
+window. Its ``OFF`` value suppresses periodic diagnostic windows;
+exchanges and the tolerance test remain active.
 
 .. include:: config/anneal_keys_pt.rst
    :start-after: .. rubric:: Exchange and diagnostics cadence

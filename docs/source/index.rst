@@ -93,6 +93,8 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
    nfp_background.rst
    nfp_quickstart.rst
    nfp_configuration.rst
+   nfp_block_keys.rst
+   nfp_optimizer.rst
    nfp_reference.rst
    hpo_examples.rst
    nfp_review_pending.rst

@@ -49,8 +49,7 @@ Options marked **indexed** accept both a uniform value and overrides:
 
 The uniform value is applied first; indexed values override individual
 dimensions regardless of line order. Indices are 1-based and match the
-``dim`` column of ``hpo_search_space.tsv``, not ``OPTIM`` declaration
-order. ``Sequential_Parameters`` is a separate scalar option with a
+``dim`` column of ``hpo_search_space.tsv``. ``Sequential_Parameters`` is a separate scalar option with a
 zero-based value.
 
 Search controls
@@ -67,10 +66,10 @@ configured stop still apply.
 ASA's tangent probes are controlled by its own ``Delta_X`` options,
 independently of the common finite-difference gradient settings.
 
-ASA cannot run under ``TYPE MULTISTART`` or refine ``TOPK > 1``
+Setup rejects ASA under ``TYPE MULTISTART`` or refinement of ``TOPK > 1``
 candidates under ``TYPE PRESTAGE``. It can run as the exploration phase,
 as a single refinement, or under a ``RESTART`` decorator. Multi-rank
-HPO launches support the PT/PA optimisers rather than ASA.
+HPO launches support the PT/PA optimisers.
 
 .. _asa_probes_box:
 

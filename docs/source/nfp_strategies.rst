@@ -33,8 +33,8 @@ Policy keys
    * - ``PARALLEL``
      - ``1``
      - Positive integer. Separate starts currently run sequentially;
-       requesting more than ``1`` for a batch produces a warning that
-       parallel starts are not implemented.
+       requesting more than ``1`` for a batch produces a warning and
+       retains sequential execution.
    * - ``BUDGET_PER_START``
      - Unset
      - Integer in ``[1, 2147483647]``; per-start ``MAXEVAL`` override for
@@ -49,8 +49,10 @@ default. ``RESTART`` is an optional child of any policy; see
 :doc:`nfp_restart`. ``INNER`` is available for eligible NLopt backends;
 see :doc:`nfp_inner`.
 
-One search: PLAIN
------------------
+.. _one-search-plain:
+
+Single search: PLAIN
+--------------------
 
 Run the selected optimiser once::
 
@@ -61,8 +63,10 @@ Run the selected optimiser once::
      MAXEVAL 200
    ENDSTRATEGY
 
-Several searches: MULTISTART
-----------------------------
+.. _several-searches-multistart:
+
+Multiple searches: MULTISTART
+-----------------------------
 
 ``MULTISTART`` uses up to ``min(N_STARTS, available INIT points)``
 separate starts. Supply enough points with :doc:`nfp_initialisation`.
@@ -72,25 +76,25 @@ A global backend that consumes only one seed is rejected for this policy.
 If ``BUDGET_PER_START`` is absent, a main ``MAXEVAL M`` is divided among
 ``k`` actual starts as ``ceil(M/k)`` per start. Rounding can make the sum
 larger than ``M``. A supplied ``BUDGET_PER_START`` replaces this division.
-``MAXTIME`` applies to each search, not the complete batch.
+``MAXTIME`` applies separately to each search.
 
 A backend that accepts all seeds in one run, currently ``DLIB:GFS``,
-runs once with those seeds; ``BUDGET_PER_START`` is rejected because it
-would not apply. Separate starts currently run sequentially, including
-when ``PARALLEL > 1`` requests concurrent starts. ``THREADS`` can still
-parallelise evaluation work within each search; it does not make the
-starts concurrent.
+runs once with those seeds and rejects ``BUDGET_PER_START``. Separate
+starts currently run sequentially, including when ``PARALLEL > 1``
+requests concurrent starts. ``THREADS`` controls parallel evaluation
+work within each search.
 
-Explore then refine: PRESTAGE
------------------------------
+.. _explore-then-refine-prestage:
+
+Staged search: PRESTAGE
+-----------------------
 
 Declare ``TYPE PRESTAGE`` before its phase blocks. ``EXPLORE`` is
 required and has its own ``LIB`` and ``ALGO``. It runs once and collects
 up to ``TOPK`` distinct candidates with usable losses.
 
-``REFINE`` is optional syntax for the main optimiser's settings. It does
-not create another independent optimiser configuration: values written
-there also configure the ``STRATEGY``-level optimiser.
+``REFINE`` groups the main optimiser's settings. Values written there
+configure the same optimiser as settings at ``STRATEGY`` level.
 
 .. code-block:: none
 
@@ -120,5 +124,5 @@ When fewer than ``TOPK`` usable candidates exist, those candidates are
 refined. When every exploration evaluation fails, the driver warns and
 runs refinement from the main ``INIT`` points instead. An exploration
 ``INIT`` chain overrides the shared main starting points. A refinement
-``INIT`` chain configures those main points; it does not replace usable
-exploration candidates.
+``INIT`` chain configures those main points. Usable exploration candidates
+take precedence as refinement starting points.

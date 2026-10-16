@@ -2,8 +2,10 @@
 
 .. _hpo_optimizer:
 
-Choosing an optimiser
-=====================
+.. _choosing-an-optimiser:
+
+Optimiser algorithms
+====================
 
 ``LIB`` selects the optimisation library; ``ALGO`` selects its driver.
 Place both in ``STRATEGY`` for a plain or multistart search, or in the
@@ -24,7 +26,8 @@ They may also appear directly in ``OPTIMIZER`` for a plain search.
 An algorithm searches the parameters selected by ``OPTIM``. The separate
 :doc:`run strategy <nfp_strategies>` controls how searches are combined;
 ``INNER`` configures the local search inside an NLopt composite driver.
-Neither selects the regression algorithm used to fit model coefficients.
+The training configuration selects the regression algorithm for model
+coefficients.
 
 Algorithms by library
 ---------------------
@@ -73,8 +76,8 @@ settings. Ceres drivers require a build with Ceres enabled.
        distance-based failure score.
 
 For ``LIB NLOPT``, the complete list is grouped below. The composite
-MLSL and AUGLAG drivers obtain gradients according to their local search,
-so the letters in their names alone do not determine compatibility.
+MLSL and AUGLAG drivers obtain gradients according to their local search.
+Compatibility therefore depends on the selected local driver.
 
 .. list-table:: NLopt algorithms
    :header-rows: 1
@@ -108,8 +111,10 @@ so the letters in their names alone do not determine compatibility.
 :doc:`INNER block <nfp_inner>`. The other MLSL/AUGLAG variants have a
 default local driver that an ``INNER`` block can replace.
 
-Checking a choice
------------------
+.. _checking-a-choice:
+
+Algorithm capabilities
+----------------------
 
 Use the executable's help to inspect the available drivers and the
 settings consumed by one driver:

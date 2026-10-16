@@ -4,8 +4,7 @@ Budgets and convergence settings
 ================================
 
 Stopping settings belong to an optimiser phase. Support is checked
-against the selected backend; an unused setting is rejected rather than
-silently ignored. See :doc:`optimizer` for backend comparisons.
+against the selected backend; an unused setting is rejected. See :doc:`optimizer` for backend comparisons.
 
 Budgets and target loss
 -----------------------
@@ -26,11 +25,10 @@ Budgets and target loss
        reject it.
    * - ``STOPVAL loss``
      - Finite target loss. ``DLIB:BFGS`` and ``CERES`` reject it;
-       ``INNER`` inherits the enclosing value instead of accepting one.
+       ``INNER`` inherits the enclosing value.
 
 ``MAXTIME`` inside an optimiser is distinct from the root-level LAMMPS
-script timeout. It does not forcibly interrupt an evaluation already in
-progress. ``STOPVAL`` comparisons are backend-dependent; keep its value
+script timeout. Evaluations already in progress are allowed to finish. ``STOPVAL`` comparisons are backend-dependent; keep its value
 below the failed-evaluation score when using NLopt or ASA.
 
 The total run can exceed one ``MAXEVAL``: ``MULTISTART`` distributes
@@ -60,9 +58,9 @@ Convergence tolerances
    * - ``XTOL_ABS``
      - Absolute change or resolution in optimiser coordinates.
 
-These are finite numbers. Their precise tests are backend-specific;
-they are not four interchangeable convergence guarantees. For supported
-NLopt and annealing tests, zero or negative values disable the test.
+These are finite numbers, with backend-specific convergence tests.
+For supported NLopt and annealing tests, zero or negative values disable
+the test.
 Some adapters impose stricter ranges or use a setting differently:
 
 * ``DLIB:BFGS`` uses ``FTOL_ABS`` (default ``1e-7``) as its
@@ -70,7 +68,7 @@ Some adapters impose stricter ranges or use a setting differently:
   alternative. Both together are rejected. Despite its name,
   ``tol_gradinf`` tests the gradient's **L2 norm** in this backend.
 * ``DLIB:GFS`` uses nonnegative ``FTOL_ABS`` as its solver accuracy
-  setting (default ``1e-3``). It does not end the global search.
+  setting (default ``1e-3``); the search uses its other configured stops.
 * ``CERES:STEEPEST_DESCENT`` uses ``FTOL_REL`` (default ``1e-6``),
   ``XTOL_REL`` (default ``1e-8``), both nonnegative, and positive ``PARAM tol_gradinf``
   (default ``1e-10``, largest gradient component). It refuses
@@ -78,7 +76,7 @@ Some adapters impose stricter ranges or use a setting differently:
 * Annealing's ``FTOL_*`` settings govern its plateau rule; see
   :doc:`anneal` and :doc:`anneal_pt`.
 * With explicit ``INNER``, put local convergence tolerances in that
-  block. They are not copied from the parent.
+  block; these settings are independent of the parent tolerances.
 
 Additional Ceres limits
 -----------------------
@@ -89,8 +87,7 @@ and relies on the evaluation budget and convergence tests.
 
 ``PARAM max_ls_iter N`` limits line-search step-size iterations, an
 integer from ``1`` to ``2147483647``. Omission retains Ceres' own default.
-Neither setting is a count of complete loss evaluations; use
-``MAXEVAL`` for that budget.
+``MAXEVAL`` sets the separate budget for complete loss evaluations.
 
 Required stopping conditions
 ----------------------------

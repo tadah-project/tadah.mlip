@@ -17,8 +17,8 @@ optimiser: the main ``STRATEGY``, its ``EXPLORE`` or ``REFINE`` phase, or
 an eligible ``INNER`` search. Direct settings in ``OPTIMIZER`` are the
 short form for the main optimiser.
 
-Choose ``LIB`` and ``ALGO`` from :doc:`optimizer`. Names are
-case-sensitive, and a library name alone does not select an algorithm.
+``LIB`` and ``ALGO`` form a required pair of case-sensitive names;
+:doc:`optimizer` lists the supported combinations.
 Each driver accepts a subset of the settings below; unsupported settings
 are diagnosed during setup.
 
@@ -49,7 +49,7 @@ Common keys
    * - ``THREADS n``
      - Positive integer, default ``1``. The main optimiser's value sizes
        the shared worker pool for training, prediction and LAMMPS scripts.
-       An ``EXPLORE`` or ``INNER`` value does not resize that pool.
+       The pool retains this size during ``EXPLORE`` and ``INNER`` searches.
        ``CERES`` rejects an explicit ``THREADS`` setting.
    * - ``SEED n``
      - Unsigned 64-bit optimiser seed. See the seed rules below.
@@ -61,9 +61,8 @@ Common keys
      - Algorithm-specific setting; see the parameter references below.
 
 ``POPULATION`` and ``VECTOR_ARR`` accept unsigned integers; zero has the
-backend's own meaning. ``THREADS`` is in ``[1, 2147483647]``. Do not add
-settings for features an algorithm does not use: these are checked at
-startup.
+backend's own meaning. ``THREADS`` is in ``[1, 2147483647]``. Startup
+checks each setting against the selected algorithm's capabilities.
 
 Initial step: ``STEP``
 ----------------------
@@ -71,7 +70,7 @@ Initial step: ``STEP``
 ``STEP`` is a finite fraction in ``(0, 0.5]`` of each dimension's
 transformed search width. It is supported by selected NLopt algorithms,
 including ``LN_BOBYQA``, ``LN_COBYLA``, ``LN_SBPLX`` and
-``LN_NELDERMEAD``. It is not a universal optimiser setting.
+``LN_NELDERMEAD``.
 
 Use a block-wide value, optionally with overrides::
 
@@ -130,7 +129,8 @@ Keep parameter names in the case shown by their reference.
    * - ``NLOPT``
      - Shared finite-difference settings plus numeric NLopt
        ``set_param`` settings. Their applicability belongs to the chosen
-       NLopt algorithm; an arbitrary name is not proof it takes effect.
+       NLopt algorithm and requires confirmation in that algorithm's
+       parameter reference.
    * - ``TADAH:ANNEAL``, ``ANNEAL_PA``
      - :doc:`anneal` and :doc:`anneal_pa`.
    * - ``TADAH:ANNEAL_PT``
@@ -138,5 +138,5 @@ Keep parameter names in the case shown by their reference.
    * - ``ASA:ASA``
      - :doc:`asa`.
 
-``LOG_HP`` and ``OPTIM_SCALE`` configure search coordinates rather than
-an individual algorithm. See :doc:`nfp_search_space`.
+``LOG_HP`` and ``OPTIM_SCALE`` configure the search coordinates. See
+:doc:`nfp_search_space`.

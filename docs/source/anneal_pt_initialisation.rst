@@ -49,9 +49,8 @@ Automatic jitter calibration
 ----------------------------
 
 ``JITTER AUTO`` probes one coordinate at a time around the seed.
-The resulting scales describe the tested displacements; they do not
-guarantee that simultaneous displacement of all coordinates keeps the
-loss within ``p``.
+The resulting scales describe the tested single-coordinate displacements.
+The loss under simultaneous displacement depends on their combined effect.
 
 Its probes are outside ``MAXEVAL`` but are real loss evaluations.
 ``INIT_JITTER_MAXEVAL`` caps these probes separately; its automatic cap
@@ -59,7 +58,7 @@ allows ``INIT_JITTER_PROBES`` for each measured dimension plus the
 requested audit probes, up to the number of measured dimensions.
 ``INIT_JITTER_SAMPLE`` can reduce the measured set. With an optimiser
 ``MAXTIME``, ``INIT_JITTER_MAXTIME_FRAC`` also bounds calibration time.
-Do not assume that ``MAXEVAL`` alone limits startup cost.
+Total startup cost includes the search and jitter-calibration budgets.
 
 The ``INIT_JITTER_*`` calibration controls require ``JITTER AUTO``;
 ``INIT_JITTER_LADDER`` instead applies to all jitter modes. Resolved

@@ -4,8 +4,8 @@ Stagnation restarts: RESTART
 ============================
 
 An optional ``RESTART`` block inside ``STRATEGY`` relaunches the policy
-when evaluations stop improving the run's best loss. It does not read a
-checkpoint or resume a previous process.
+when evaluations stop improving the run's best loss. Each relaunch starts
+a fresh search within the current process.
 
 .. code-block:: none
 
@@ -49,7 +49,9 @@ Both ``AFTER_STAGNATION`` and ``MAX`` must be positive for restarts to
 be active. An empty method chain uses ``CONFIG``. The initial launch
 uses ``INIT``; the restart chain is used only after stagnation.
 
-What restarts
+.. _what-restarts:
+
+Restart scope
 -------------
 
 A restart relaunches the whole policy: a ``PLAIN`` search, the
@@ -59,8 +61,8 @@ exploration hands its candidates to refinement before the enclosing
 policy can restart.
 
 Each relaunch gets fresh search budgets. Reaching an optimiser's own
-stop normally ends the policy; it does not automatically request a
-restart. After ``MAX`` restarts, the next stagnation ends the run.
+stop normally ends the policy. Restarts are triggered by stagnation.
+After ``MAX`` restarts, the next stagnation ends the run.
 
 A chain that produces no point reuses the previous launch's starting
 points and emits a warning. An exploration with its own ``INIT`` chain

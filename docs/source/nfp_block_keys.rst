@@ -1,14 +1,15 @@
 Block and key directory
 =======================
 
-Use this page to find **where** a setting belongs. Follow the reference
-links for accepted values, defaults and combinations. Block names and keys
-are separate: ``METHOD`` is a key inside ``INIT``; ``INIT`` opens a block.
+The outer-search file contains root directives and one ``OPTIMIZER``
+block. This directory groups root keys by purpose. The :doc:`nfp_optimizer`
+section covers the block, its subblocks and their keys. Accepted values,
+defaults and restrictions appear in the linked reference pages.
 
 Root directives
 ---------------
 
-These appear outside ``OPTIMIZER``.
+These keys appear outside ``OPTIMIZER``.
 
 .. list-table::
    :header-rows: 1
@@ -34,90 +35,33 @@ These appear outside ``OPTIMIZER``.
    * - ``OUTPUT``, ``BOUTPUT``, ``QFLUSH``, ``DIGITS``, ``DUMP``, ``BDUMP``
      - Histories, precision and potential archives: :doc:`nfp_output_settings`.
 
-The legacy root key ``MAXTIME`` aliases ``PC_SCRIPT_TIMEOUT``. Inside an
-optimiser block, ``MAXTIME`` has a different meaning: a search time budget.
-Use ``PC_SCRIPT_TIMEOUT`` at root level to make the distinction clear.
+The legacy root key ``MAXTIME`` aliases ``PC_SCRIPT_TIMEOUT``. Inside
+``OPTIMIZER`` and its search subblocks, ``MAXTIME`` sets a search time
+budget. The explicit root spelling ``PC_SCRIPT_TIMEOUT`` distinguishes
+the script limit from the search budget.
 
-Shared optimiser keys
----------------------
+.. _shared-optimiser-keys:
 
-The following keys are accepted in ``OPTIMIZER``, ``STRATEGY``, ``EXPLORE``
-and ``REFINE``. Each backend supports a subset of their settings; being in
-the right scope does not make a setting valid for every algorithm.
+.. _block-scopes:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 48 52
+.. _optimizer-the-outer-search:
 
-   * - Keys
-     - Purpose and value reference
-   * - ``LIB``, ``ALGO``
-     - Driver selection: :doc:`optimizer`.
-   * - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``FTOL_REL``, ``FTOL_ABS``,
-       ``XTOL_REL``, ``XTOL_ABS``
-     - Budgets and convergence: :doc:`nfp_stopping_settings`.
-   * - ``POPULATION``, ``STEP``, ``SEED``, ``VECTOR_ARR``, ``THREADS``
-     - Driver controls: :doc:`nfp_optimizer_settings`.
-   * - ``GRAD_STRATEGY``
-     - Derivative calculation: :doc:`nfp_gradients`.
-   * - ``PARAM``
-     - Algorithm-specific settings: :doc:`nfp_optimizer_settings`.
+.. _strategy-how-searches-are-arranged:
 
-Block scopes
-------------
+.. _explore-and-refine-staged-searches:
 
-``OPTIMIZER`` — the outer search
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _init-starting-points:
 
-Contains the shared optimiser keys and ``LOG_HP`` (search-coordinate
-scaling; :doc:`nfp_search_space`). Child blocks: ``INIT``, ``NOISE`` and
-``STRATEGY``. It is a container for the outer search, not the inner
-regression that fits model coefficients.
+.. _noise-objective-noise-calibration:
 
-``STRATEGY`` — how searches are arranged
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _inner-an-nlopt-local-sub-optimiser:
 
-Contains the shared optimiser keys and ``LOG_HP``, plus ``TYPE``,
-``N_STARTS``, ``PARALLEL``, ``BUDGET_PER_START`` and ``TOPK``.
-Child blocks: ``INIT``, ``EXPLORE``, ``REFINE``, ``INNER`` and ``RESTART``.
-The strategy determines which of these keys and blocks can be used.
-See :doc:`nfp_strategies`.
+.. _restart-launches-after-stagnation:
 
-``EXPLORE`` and ``REFINE`` — staged searches
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Optimizer block
+---------------
 
-Contain the shared optimiser keys. Child blocks: ``INIT`` and ``INNER``.
-``EXPLORE`` configures the exploration driver. ``REFINE`` groups settings
-for the strategy's refinement driver. Both require a staged strategy.
-See :doc:`nfp_strategies`.
-
-``INIT`` — starting points
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Contains ``METHOD``, ``K_TOTAL``, ``SEED`` and ``WARM_ON_MISMATCH``; no
-child blocks. It can be placed inside ``OPTIMIZER``, ``STRATEGY``,
-``EXPLORE`` or ``REFINE``. Repeat ``METHOD`` to build a seed chain.
-The old key ``STRATEGY`` inside this block aliases ``METHOD``.
-See :doc:`nfp_initialisation`.
-
-``NOISE`` — objective-noise calibration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Contains ``AUTO`` and ``CALIBRATION``; no child blocks. It is placed
-directly inside ``OPTIMIZER``. See :doc:`nfp_noise`.
-
-``INNER`` — an NLopt local sub-optimiser
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Contains the shared optimiser keys **except** ``SEED``, ``GRAD_STRATEGY``
-and ``STOPVAL``; no child blocks. It is placed in ``STRATEGY``, ``EXPLORE``
-or ``REFINE`` for a compatible NLopt composite driver.
-It does not configure the model's inner regression. See :doc:`nfp_inner`.
-
-``RESTART`` — launches after stagnation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Contains ``AFTER_STAGNATION``, ``MAX`` and the ``INIT`` keys (including
-the legacy ``STRATEGY`` alias); no child blocks. It is placed inside
-``STRATEGY``. Its method chain supplies fresh starts; it does not resume a
-saved optimiser state. See :doc:`nfp_restart`.
+``OPTIMIZER`` configures the outer search. Its immediate subblocks are
+``INIT``, ``NOISE`` and ``STRATEGY``. The staged-search subblocks
+``EXPLORE`` and ``REFINE`` belong inside ``STRATEGY``.
+See :doc:`nfp_optimizer` for their hierarchy and key directory.

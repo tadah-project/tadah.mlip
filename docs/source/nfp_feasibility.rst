@@ -33,15 +33,15 @@ The seed must satisfy its support condition in both modes. The check
 applies to supported legacy bump channels with ``Cut_Dummy``, and to
 ``DM_Embed`` density components with cutoff ``NONE``. Smooth spatial
 cutoffs permit the underlying basis support to extend beyond the
-interaction radius. Embedding-envelope cutoffs are not spatial ranges.
+interaction radius. Embedding-envelope cutoffs act on density values.
 
 For a ``DM_Embed`` compact bump of centre :math:`c` and physical width
 :math:`w`, its right support edge is :math:`c+s w`, where :math:`s` is
 ``2`` for Blip, ``3`` for Blip5 and ``1`` for either Wendland family.
 With ``ETA``, replace :math:`w` by :math:`1/\eta`. A left-active density
 knot ends at its centre. Gaussian density requires a smooth cutoff and
-cannot use ``NONE``. Interaction-radius optimisation under ``NONE`` is
-refused because that radius does not taper the density.
+rejects ``NONE``. Interaction-radius optimisation requires a smooth
+spatial cutoff.
 
 ``TADAH_BUMPGATE=CANDIDATE|STRICT`` overrides the file setting.
 
@@ -50,12 +50,12 @@ Density-gate scope
 
 ``RHOGATE`` and ``RHOBARGATE`` are optional and may be used together.
 They support a bare legacy ``DM_REAM`` many-body term or a single scalar
-``DM_Embed`` component. Multiple component densities and legacy joined
-many-body descriptors are not supported. Their scans use the configured
+``DM_Embed`` component. They reject multiple component densities and
+legacy joined many-body descriptors. Their scans use the configured
 density, including its spatial cutoff.
 
-Both gates require positive density pair weights. Their verdicts are
-based on finite grids, not a proof between grid points. Each key can
+Both gates require positive density pair weights. Their verdicts apply
+to the sampled points of finite grids. Each key can
 appear only once; unknown or repeated options are errors. The options
 and lattice names on these two lines are case-insensitive.
 
@@ -135,7 +135,7 @@ step also fails.
      - ``ERROR``
      - Same initial-seed policy as ``RHOGATE``.
 
-The nearest shell at the largest lattice constant must not exceed the
-smallest reachable interaction radius. A non-finite scan or an
+The nearest shell at the largest lattice constant must lie at or within
+the smallest reachable interaction radius. A non-finite scan or an
 identically zero lattice density fails. ``MONOTONE`` guarantees only
 non-increase, so it can still fail this stricter test on a plateau.

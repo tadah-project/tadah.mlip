@@ -74,8 +74,10 @@
 
 .. _what-problem-this-solves:
 
-Material reserved for the next review
-=====================================
+.. _material-reserved-for-the-next-review:
+
+Pending documentation review
+============================
 
 The configuration reference has been separated from workflows, diagnostic
 interpretation and historical notes. The previous text is preserved in a
@@ -84,11 +86,13 @@ temporary source file:
 :download:`NESTED-FITTING-DEFERRED.rst <../NESTED-FITTING-DEFERRED.rst>`.
 
 That file includes the earlier chapter verbatim, including superseded
-configuration passages for context. It is **review material**, not an
-alternative reference. Use :doc:`nfp_reference` for current settings.
+configuration passages for context. This **review material** supports
+the next editing pass. :doc:`nfp_reference` documents current settings.
 
-Topics to review next
----------------------
+.. _topics-to-review-next:
+
+Deferred topics
+---------------
 
 * Fitting workflows: pinned coefficients, re-solving coefficients for each
   candidate, legacy density and embedding settings, load-time transforms.

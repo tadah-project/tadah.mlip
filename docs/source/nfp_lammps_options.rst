@@ -74,8 +74,9 @@ The script must define the returned value as an equal-style variable.
 HPO injects the cached seed before running it. Scripts without
 ``--hotvar`` that reference a returned hot value run after its producer.
 Each hot-variable name must have only one producing script.
-Do not also create the same name with ``--invar`` or ``-var``: those
-create index-style variables, which conflict with equal-style injection.
+Creating the same name with ``--invar`` or ``-var`` causes hot-value
+injection to fail: those options create index-style variables, which
+conflict with equal-style injection.
 
 Violation variables
 -------------------
@@ -101,6 +102,6 @@ for its timer: ``--invar maxtime``, ``-var maxtime`` and ``-v maxtime``
 are refused.
 
 Double-dash options belong to HPO. Unknown options and extra values
-after an HPO option are errors. ``--ncpu`` is no longer accepted;
-parallel script execution uses ``THREADS`` and ``PC_ISOLATION``.
+after an HPO option are errors. Parallel script execution uses
+``THREADS`` and ``PC_ISOLATION``; the old ``--ncpu`` option is rejected.
 ``--gate`` and ``--s0`` belong only to ``PC_FAILPROBE``.

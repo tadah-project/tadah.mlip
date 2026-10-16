@@ -526,7 +526,11 @@ the `hpo.html` redirect check, the configuration-keys page generator
 (`docs/source/config/read_toml.py`), the CLI page generator
 (`docs/source/cli/generate_cli.py`) and the ANNEAL key tables' generator
 (`docs/source/config/read_anneal_keys.py`: its message on a Python
-without `tomllib`). The GitLab `docs_sphinx` job runs them
+without `tomllib`). A browser regression renders reference tables with the
+shipped stylesheet at desktop and mobile widths, checks for horizontal
+overflow, and checks that code blocks retain their formatting. It uses a
+local Chromium, Chromium Browser or Google Chrome executable and a temporary
+Sphinx page. The GitLab `docs_sphinx` job runs them
 and the same build, with all three variables set explicitly, in a virtual
 environment of its own into which it installs `docs/requirements.txt` every
 time (`python3 -m venv`: the runner image needs Python's `venv` module), so a
@@ -539,7 +543,7 @@ so `ctest -L docs` runs them) in every build configured with
 (`HPO/cmake/hpo_test_python.cmake`), because their registry drift gate
 `hpo_anneal_registry_sync` reads TOML with `tomllib`, and the configure step
 stops on an older interpreter; `ctest -R hpo_test_python_minimum` checks
-that. The cases that need `node`, `sphinx-build` or the Python modules `sphinx`,
+that. The cases that need `node`, a Chromium-family browser, `sphinx-build` or the Python modules `sphinx`,
 `sphinx_rtd_theme`, `yaml` (PyYAML), `pytomlpp` or `tomllib` (Python 3.11 or
 later) skip themselves when one is missing. CTest then reports the entry as *Skipped*, not *Passed*, and its
 output names the skipped cases, so a pass means every case ran.

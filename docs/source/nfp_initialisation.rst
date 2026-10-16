@@ -52,8 +52,8 @@ Repeat ``METHOD`` to concatenate methods into one chain.
      - One point read from the named potential; only selected ``OPTIM``
        values are taken. See the mismatch policy below.
 
-No ``INIT`` block, or an empty method chain, supplies one ``CONFIG``
-point. An explicit chain does **not** prepend ``CONFIG``. Near-duplicate
+An absent ``INIT`` block, or an empty method chain, supplies one ``CONFIG``
+point. An explicit chain supplies only its declared methods. Near-duplicate
 points in a chain are removed in transformed coordinates, retaining the
 first occurrence. ``METHOD NOISE_AUTO`` is reserved and rejected.
 
@@ -84,13 +84,15 @@ Other keys
 use ``METHOD`` in new files to distinguish a method line from the
 ``STRATEGY ... ENDSTRATEGY`` block.
 
-Reading a warm seed
--------------------
+.. _reading-a-warm-seed:
+
+Warm seeds
+----------
 
 ``WARM`` reads the values selected by this run's ``OPTIM`` lines,
 including named component paths. Other model settings come from the
-current training configuration. It starts a new search; it does not
-resume optimiser state.
+current training configuration. ``WARM`` starts a fresh optimiser search
+from those parameter values.
 
 With ``warn``, missing values use their current configuration values and
 out-of-bounds values are clamped, with diagnostics. With ``error``,

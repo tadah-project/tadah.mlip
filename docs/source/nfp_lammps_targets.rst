@@ -26,7 +26,8 @@ Here ``Ecoh`` and ``a0`` must be defined as equal-style variables in
 records a diagnostic. Script option details are on
 :doc:`nfp_lammps_options`.
 
-``PC_LAMMPS`` cannot share a target file with ``PC_OBSERVABLE``.
+The parser rejects a target file that mixes ``PC_LAMMPS`` with
+``PC_OBSERVABLE``.
 Several ``PC_LAMMPS`` lines are allowed. Their declared order determines
 the output-column order, even when scripts execute in parallel.
 
@@ -59,10 +60,10 @@ These are root keys, independent of the ``OPTIMIZER`` block.
 For a finite soft limit :math:`t`, the derived hard deadline is
 :math:`\max(3t,t+120\,\mathrm{s})`. With no soft timeout, ``0`` means no
 hard deadline. ``PC_WORKER_TIMEOUT`` affects ``PROCESS`` mode only.
-Deadlines that cannot fit the worker's millisecond counter are refused.
+Deadlines exceeding the worker's millisecond-counter range are refused.
 
 ``PC_SCRIPT_TIMEOUT`` accepts ``90``, ``1:30`` and ``00:01:30`` for
-90 seconds; use ``off`` for no limit rather than ``0``. Each script line
+90 seconds; ``off`` disables the limit, while ``0`` is invalid. Each script line
 captures the current value when parsed; ``--maxtime`` overrides it for
 that line. Root ``MAXTIME`` is a legacy alias for this key. ``MAXTIME``
 inside an optimiser block instead limits an optimiser search.

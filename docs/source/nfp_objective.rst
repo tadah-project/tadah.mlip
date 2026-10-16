@@ -1,10 +1,10 @@
 Losses and targets
 ==================
 
-Choose the quantities that each candidate potential must reproduce, then
-choose the loss function and weights. Validation metrics can be combined
-with either LAMMPS targets or built-in observables; those last two target
-families cannot be combined with each other in one run.
+Targets define the quantities that each candidate potential must reproduce;
+loss functions and weights determine their contributions to the objective.
+Validation metrics can accompany one physical-property target family per
+run: LAMMPS targets or built-in observables.
 
 .. toctree::
    :maxdepth: 1

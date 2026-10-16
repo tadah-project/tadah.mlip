@@ -17,27 +17,27 @@ and potentials and can clean outputs from an earlier run.
 
    * - Task
      - Example directory
-   * - Add a LAMMPS property target
+   * - LAMMPS property targets
      - ``01_minimal``
-   * - Try random search or a grid
+   * - Random and grid searches
      - ``02_random_search``, ``11_grid_sweep``
-   * - Use several starting points
+   * - Multiple starting points
      - ``07_init_lhs_multistart``, ``08_init_sobol_gfs``
-   * - Start from a saved potential
+   * - Warm starts from saved potentials
      - ``09_init_warm``
-   * - Explore then refine
+   * - Staged exploration and refinement
      - ``12_prestage``
-   * - Restart after stagnation
+   * - Stagnation restarts
      - ``13_restart``
-   * - Use an NLopt local sub-optimiser
+   * - NLopt local sub-optimisers
      - ``14_mlsl_inner``
-   * - Search pinned coefficients
+   * - Pinned-coefficient searches
      - ``16_fixweight_mixed``, ``17_no_training_db``
-   * - Use a built-in observable
+   * - Built-in observables
      - ``22_pc_observable``
-   * - Set targets per validation dataset
+   * - Dataset-specific targets
      - ``23_per_dataset_targets``
-   * - Derive bounds from the seed
+   * - Automatic bounds from the seed
      - ``24_optim_auto``
 
 The `HPO examples README

@@ -33,6 +33,28 @@ against MODELS, rather than inferred from legacy key names.
 
 Detailed source locations and commands are recorded with the review evidence.
 
+## Presentation and hierarchy review
+
+The overview again includes `images/nested_fitting.jpg`. Its MaxLIPO+TR label
+corresponds to `DLIB:GFS`: `HPO/src/optimizer_spec.cpp` describes the driver,
+and `include/tadah/hpo/dlib_adapter.h` calls `dlib::find_min_global`.
+The pinned-coefficient discussion belongs to the search-parameter reference.
+
+The top-level block/key directory and Optimizer section follow the state
+machine in `HPO/src/hpo_targets.cpp`: OPTIMIZER contains INIT, NOISE and
+STRATEGY; STRATEGY contains EXPLORE and REFINE. The latter require TYPE
+PRESTAGE. INIT and INNER placement and leaf keys were checked against the
+same parser and `optimizer_block.cpp`; composite-driver requirements come
+from `strategy_rules.cpp`. Former section anchors remain available.
+
+Reference tables wrap prose and parameter names through the stylesheet.
+Loss formulas use compact definitions to give equations the reading column's
+width. A CTest-discovered browser regression reproduces the original overflow
+and verifies table and inline-filename wrapping at desktop and mobile widths,
+while checking preformatted code. An independent browser audit checks the
+rendered chapter at 1280, 900, 390 and 320 pixels. Its offline run blocks the
+external MathJax script, so formula typesetting is outside that visual check.
+
 ## Remaining work
 
 - **OPEN — parser delimiter validation:** repeated OPTIMIZER blocks and some

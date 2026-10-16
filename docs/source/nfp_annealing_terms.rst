@@ -19,7 +19,7 @@ evaluations from the algorithm's units of work.
       A candidate point submitted to the Metropolis acceptance rule.
       An evaluated proposal costs one objective evaluation whether it is
       accepted or rejected. Redrawing a coordinate to keep the proposal
-      inside its bounds does not itself evaluate the objective.
+      inside its bounds only generates a candidate point.
 
    sweep
       In parallel tempering, one whole-vector proposal with the CLASSIC

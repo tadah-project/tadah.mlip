@@ -9,8 +9,7 @@ each temperature change reweights and resamples the current population.
 Walkers with lower loss receive more descendants. Each resulting walker
 then runs ``SWEEPS`` temperature rungs at the new temperature.
 
-``SWEEPS`` counts rungs, not the shorter parallel-tempering sweeps:
-one rung costs ``CHAIN_LENGTH`` proposals with the default kernel, or
+``SWEEPS`` counts temperature rungs. One rung costs ``CHAIN_LENGTH`` proposals with the default kernel, or
 ``NT * NS * dimensions`` proposals with ``CORANA ON``. Budget limits can
 truncate this work. See :doc:`nfp_annealing_terms` for these units.
 
@@ -37,8 +36,8 @@ different slots obtain different proposal sequences.
 Example
 -------
 
-This optimiser block needs the root ``OPTIM`` and target directives of
-your run:
+This optimiser block requires root ``OPTIM`` and target directives
+to define the search space and loss:
 
 .. code-block:: none
 
@@ -71,11 +70,10 @@ from the parser's registry. Optimiser attributes such as ``POPULATION``,
 
 .. note::
 
-   The current population driver accepts ``INIT_MODE JITTER AUTO`` and
-   its calibration controls but does not run that calibration: it uses the
-   proposal scales as uniform initial-jitter bounds. Use ``INIT_MODE
-   JITTER``, ``INIT_MODE JITTER <fraction>`` or ``INIT_MODE UNIFORM``
-   when configuring this driver. The measured ``JITTER AUTO`` calibration
-   is implemented for parallel tempering.
+   Population annealing uses proposal scales as uniform initial-jitter
+   bounds for ``INIT_MODE JITTER AUTO``. Its accepted calibration controls
+   are inactive. Supported initialisation choices are ``INIT_MODE JITTER``,
+   ``INIT_MODE JITTER <fraction>`` and ``INIT_MODE UNIFORM``. Measured
+   ``JITTER AUTO`` calibration is available in parallel tempering.
 
 .. include:: config/anneal_keys_pa.rst

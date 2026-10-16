@@ -131,6 +131,7 @@ html_theme = "sphinx_rtd_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+html_css_files = ['tables.css']
 
 # Files copied verbatim to the output root.  _extra/hpo.html redirects the
 # pre-1.6.0 Nested Fitting page (hpo.html) to the pages it was split into;

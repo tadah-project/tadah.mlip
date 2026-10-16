@@ -1,0 +1,20 @@
+/* Keep reference tables within the reading column. The theme otherwise
+   keeps every cell on one line and makes the table scroll horizontally. */
+.rst-content .wy-table-responsive table.docutils {
+    width: 100%;
+}
+
+.rst-content .wy-table-responsive table.docutils th,
+.rst-content .wy-table-responsive table.docutils td,
+.rst-content .wy-table-responsive table.docutils code,
+.rst-content .wy-table-responsive table.docutils .pre {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+    .rst-content .wy-table-responsive table.docutils th,
+    .rst-content .wy-table-responsive table.docutils td {
+        padding: 8px;
+    }
+}

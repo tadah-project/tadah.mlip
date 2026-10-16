@@ -4,6 +4,8 @@
     width: 100%;
 }
 
+.rst-content p code.literal,
+.rst-content p code.literal .pre,
 .rst-content .wy-table-responsive table.docutils th,
 .rst-content .wy-table-responsive table.docutils td,
 .rst-content .wy-table-responsive table.docutils code,

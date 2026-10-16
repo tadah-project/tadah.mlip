@@ -110,6 +110,8 @@ class TableLayoutTest(unittest.TestCase):
      - ``64``
      - Calibration probes for the initial distribution of replica states.
 
+Archive path: ``runs/parameter_search/validation_candidates/selected_components/best_pot_<improvement>.tadah``.
+
 .. code-block:: none
 
    OPTIMIZER
@@ -128,6 +130,8 @@ window.addEventListener('load', function () { setTimeout(function () {
   const report = {
     width: window.innerWidth,
     tables: tables.map(el => ({client: el.clientWidth, scroll: el.scrollWidth})),
+    paragraphs: Array.from(document.querySelectorAll('.rst-content p')).map(
+      el => ({client: el.clientWidth, scroll: el.scrollWidth})),
     content: document.querySelector('.rst-content').getBoundingClientRect().width,
     tableWidths: tables.map(el => el.querySelector('table').getBoundingClientRect().width),
     codeWhitespace: getComputedStyle(document.querySelector('.highlight pre')).whiteSpace
@@ -160,6 +164,9 @@ window.addEventListener('load', function () { setTimeout(function () {
                         self.assertLessEqual(table_width, report['content'] + 1,
                                              report)
                     self.assertEqual(report['codeWhitespace'], 'pre')
+                    for paragraph in report['paragraphs']:
+                        self.assertLessEqual(paragraph['scroll'], paragraph['client'] + 1,
+                                             report)
 
 
 if __name__ == '__main__':

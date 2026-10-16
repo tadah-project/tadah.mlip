@@ -11,8 +11,10 @@ three includable .rst fragments:
     config/anneal_keys_pa.rst       (TADAH:ANNEAL_PA)
 
 Keys are grouped by function and ordered by importance (the registry's
-`group` and `rank` fields); cross-key rules render as constraint sentences
-in the description column, so documentation cannot drift from validation.
+`group` and `rank` fields). Each key has a reference cell with separate
+default, value and description paragraphs. Cross-key rules render as
+constraint sentences after the description, so documentation cannot drift
+from validation.
 
 The HPO checkout is found by source_locator.py: $TADAH_HPO_SOURCE_DIR, then
 the HPO checkout next to this repository, then $TADAH_PATH/HPO, then (on
@@ -190,12 +192,10 @@ def render(kind: str, data: dict) -> str:
             "",
             ".. list-table::",
             "   :header-rows: 1",
-            "   :widths: 22 12 16 50",
+            "   :widths: 28 72",
             "",
             "   * - Key",
-            "     - Default",
-            "     - Values",
-            "     - Description",
+            "     - Reference",
         ]
         for k in rows:
             doc = k["doc"]
@@ -204,9 +204,11 @@ def render(kind: str, data: dict) -> str:
                 doc = doc.rstrip(".") + ". " + " ".join(extra)
             lines += [
                 f"   * - ``{k['name']}``",
-                f"     - {default_for(k, kind)}",
-                f"     - {range_for(k)}",
-                f"     - {doc}",
+                f"     - Default: {default_for(k, kind)}",
+                "",
+                f"       Values: {range_for(k)}",
+                "",
+                f"       {doc}",
             ]
         lines.append("")
     return "\n".join(lines) + "\n"

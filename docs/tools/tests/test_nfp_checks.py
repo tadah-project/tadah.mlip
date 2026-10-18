@@ -88,6 +88,37 @@ def build(files, theme_options=None, theme='sphinx_rtd_theme', extra_conf='',
         return proc.returncode, warnings
 
 
+def site_config():
+    """extensions, html_theme_options and exclude_patterns of
+    docs/source/conf.py, read with small local inputs in place of the CORE
+    and HPO checkouts and the Doxygen XML."""
+    with tempfile.TemporaryDirectory(prefix='tadah_nfp_conf_') as tmp:
+        for name, text in {'CORE/blueprint/blueprint_tadah.toml':
+                           '[TADAH]\nversion = "0.0.1"\n',
+                           'HPO/blueprint/anneal_keys.toml': '# fixture\n',
+                           'xml/index.xml': ''}.items():
+            path = os.path.join(tmp, name)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w', encoding='utf-8') as fh:
+                fh.write(text)
+        env = dict(os.environ, TADAH_CORE_SOURCE_DIR=os.path.join(tmp, 'CORE'),
+                   TADAH_HPO_SOURCE_DIR=os.path.join(tmp, 'HPO'),
+                   TADAH_DOXYGEN_XML_DIR=os.path.join(tmp, 'xml'))
+        proc = subprocess.run(
+            [sys.executable, '-c',
+             'import json, sys; from sphinx.config import Config; '
+             'c = Config.read(sys.argv[1]); '
+             'c.add("html_theme_options", {}, "html", (dict,)); '
+             'c.init_values(); '
+             'print("CONFIG=" + json.dumps({k: getattr(c, k) for k in '
+             '("extensions", "html_theme_options", "exclude_patterns")}))',
+             SOURCE], env=env, text=True, capture_output=True, timeout=60)
+    if proc.returncode != 0:
+        raise AssertionError(f'reading {SOURCE}/conf.py failed:\n{proc.stderr}')
+    line = next(l for l in proc.stdout.splitlines() if l.startswith('CONFIG='))
+    return json.loads(line[len('CONFIG='):])
+
+
 def root(nfp_entries, titlesonly=True, other=('other',)):
     return page('Fixture', toctree(other, caption='How to Use Tadah!'),
                 toctree(nfp_entries, caption='Nested Fitting',
@@ -221,36 +252,30 @@ class SidebarTest(unittest.TestCase):
         self.assertIn('no page has a navigation sidebar', warnings[0])
 
     def test_the_site_configuration_shows_two_levels(self):
-        # The theme options of docs/source/conf.py, read with small local
-        # inputs in place of the CORE and HPO checkouts and the XML.
-        with tempfile.TemporaryDirectory(prefix='tadah_nfp_conf_') as tmp:
-            for name, text in {'CORE/blueprint/blueprint_tadah.toml':
-                               '[TADAH]\nversion = "0.0.1"\n',
-                               'HPO/blueprint/anneal_keys.toml': '# fixture\n',
-                               'xml/index.xml': ''}.items():
-                path = os.path.join(tmp, name)
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                with open(path, 'w', encoding='utf-8') as fh:
-                    fh.write(text)
-            env = dict(os.environ, TADAH_CORE_SOURCE_DIR=os.path.join(tmp, 'CORE'),
-                       TADAH_HPO_SOURCE_DIR=os.path.join(tmp, 'HPO'),
-                       TADAH_DOXYGEN_XML_DIR=os.path.join(tmp, 'xml'))
-            proc = subprocess.run(
-                [sys.executable, '-c',
-                 'import json, sys; from sphinx.config import Config; '
-                 'c = Config.read(sys.argv[1]); '
-                 'c.add("html_theme_options", {}, "html", (dict,)); '
-                 'c.init_values(); '
-                 'print("OPTIONS=" + json.dumps(c.html_theme_options)); '
-                 'print("EXT=" + json.dumps(c.extensions))',
-                 SOURCE], env=env, text=True, capture_output=True, timeout=60)
-            self.assertEqual(proc.returncode, 0, proc.stderr)
-            out = dict(l.split('=', 1) for l in proc.stdout.splitlines()
-                       if l.startswith(('OPTIONS=', 'EXT=')))
-        self.assertIn('nfp_checks', json.loads(out['EXT']))
-        options = json.loads(out['OPTIONS'])
+        config = site_config()
+        self.assertIn('nfp_checks', config['extensions'])
+        options = config['html_theme_options']
         status, warnings = build(THREE_LEVELS, options, strict=True)
         self.assertEqual((status, warnings), (0, []), options)
+
+
+@unittest.skipUnless(HAVE_SPHINX, 'Sphinx and sphinx_rtd_theme are required')
+class ShippedFilesTest(unittest.TestCase):
+    def test_files_under_nfp_files_are_not_pages(self):
+        # A source file among the shipped files (an example's README.rst)
+        # is a file to download or include, not a page: with the
+        # exclude_patterns of docs/source/conf.py the build reads it as
+        # neither a page outside every toctree nor a Nested Fitting page
+        # with a code line longer than 80 characters. Files included from
+        # there still are (nfp/overview.rst includes files/eighty.txt).
+        exclude = site_config()['exclude_patterns']
+        files = dict(GOOD)
+        files['nfp/files/examples/pt/README.rst'] = page(
+            'Readme', directive('code-block:: none', LINE_80 + 'x'))
+        status, warnings = build(files, {'navigation_depth': 2},
+                                 extra_conf=f'exclude_patterns = {exclude!r}\n',
+                                 strict=True)
+        self.assertEqual((status, warnings), (0, []), exclude)
 
 
 class SiteRootTest(unittest.TestCase):

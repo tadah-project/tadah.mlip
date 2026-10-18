@@ -191,12 +191,14 @@ add_subdirectory(catch_discovery)
 # Unit tests of the docs input lookup (docs/source/config/source_locator.py),
 # of the hpo.html redirect check (docs/tools/check_redirect.py), of the
 # configuration-keys and CLI page generators (docs/source/config/read_toml.py,
-# docs/source/cli/generate_cli.py) and of the ANNEAL key tables' generator
+# docs/source/cli/generate_cli.py), of the ANNEAL key tables' generator
 # (docs/source/config/read_anneal_keys.py, which needs Python 3.11 or later
-# for tomllib). They never use the network.
+# for tomllib) and of the browser check of built pages
+# (docs/tools/check_layout.py). They never use the network.
 #
-# Some cases need node, sphinx-build or the Python modules sphinx,
-# sphinx_rtd_theme or yaml, and skip themselves when one is missing.
+# Some cases need node, sphinx-build, a Chromium-family browser or the
+# Python modules sphinx, sphinx_rtd_theme or yaml, and skip themselves when
+# one is missing.
 # unittest still exits 0 then, ending with "OK (skipped=N)";
 # that run is reported as Skipped, not Passed, so a pass means every case
 # ran. A failing run ends with "FAILED (...)" and stays a failure. "Ran 0
@@ -213,6 +215,27 @@ set_tests_properties(tadah_docs_tools PROPERTIES
   ENVIRONMENT PYTHONDONTWRITEBYTECODE=1
   SKIP_REGULAR_EXPRESSION "\nOK \\(skipped=[0-9]+"
   FAIL_REGULAR_EXPRESSION "\nRan 0 tests ")
+
+# The site's stylesheet in a headless browser: docs_layout/
+# check_docs_layout.py builds a small project with the theme, theme options
+# and stylesheets of docs/source/conf.py and checks it with
+# docs/tools/check_layout.py at 1280, 1024, 900, 768 and 390 px. Code lines
+# of 80 characters fit on desktop windows (1024 px and wider), also in a
+# list inside a list and in a note; code wraps on narrower windows; tables,
+# inline literals, display maths and images stay in the text column. A
+# 120-character line must scroll at 1280 and 1024 px, which shows that the
+# check sees an overflow. Skipped (77) without sphinx, sphinx_rtd_theme or
+# a Chromium-family browser.
+add_test(NAME tadah_docs_layout
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/docs_layout/check_docs_layout.py
+    --docs-source ${PROJECT_SOURCE_DIR}/docs/source
+    --workdir ${CMAKE_CURRENT_BINARY_DIR}/docs_layout)
+set_tests_properties(tadah_docs_layout PROPERTIES
+  LABELS docs
+  TIMEOUT 300
+  SKIP_RETURN_CODE 77
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
 
 
 # ------------------------------------------------------------------

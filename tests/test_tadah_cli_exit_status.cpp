@@ -81,10 +81,13 @@
 //
 // The [hpo-check] cases run `tadah hpo --check` and a task file whose TASK
 // hpo section has CHECK true: a valid setup prints its summary and exits 0
-// without an evaluation or a file; a target file with an unknown key and a
-// missing dataset exit non-zero with the message of `tadah hpo`; a run with
-// CHECK false, given or by default, writes no CHECK line into its
-// potentials. They need NFP.
+// without an evaluation or a file; a target file with an unknown key, a
+// missing dataset and a DUMP or BDUMP directory in a directory that does
+// not exist exit non-zero with the message of `tadah hpo`; a run with CHECK
+// false, given or by default, writes no CHECK line into its potentials;
+// CHECK is a setting of the run: `tadah train` writes no CHECK key line,
+// and `tadah hpo -c` of a potential with a CHECK true line runs. They need
+// NFP.
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
@@ -9624,9 +9627,14 @@ TEST_CASE("Task file: CHECK true in a TASK hpo section checks the setup, and "
 
 /* Pins: `tadah hpo --check` on a setup `tadah hpo` refuses at startup exits
  * with the run's status and message, and writes no file (the run writes its
- * journal): a target file with an unknown key (the parser names it), and a
+ * journal): a target file with an unknown key (the parser names it), a
  * training configuration whose DBFILE names a file that does not exist (the
- * message names the file). */
+ * message names the file), and a DUMP or a BDUMP line whose directory is in
+ * a directory that does not exist (the message names the directory; no
+ * directory is created).
+ * Before the DUMP and BDUMP directories were checked at their line: the
+ * check of such a setup passed (status 0) and the run stopped when it
+ * created the directory (status 1). */
 TEST_CASE("Subcommand: hpo --check refuses a setup with the message of "
           "tadah hpo, and writes no file",
           "[TadahCLI][hpo][hpo-check]") {
@@ -9640,6 +9648,10 @@ TEST_CASE("Subcommand: hpo --check refuses a setup with the message of "
       {"unknown key in the target file", "NOSUCHKEY 1\n", "db.tadah",
        "NOSUCHKEY"},
       {"missing training dataset", "", "absent.tadah", "absent.tadah"},
+      {"DUMP directory in a missing directory", "DUMP 1 missing/pots\n",
+       "db.tadah", "missing/pots"},
+      {"BDUMP directory in a missing directory",
+       "BDUMP 1 missing/best_pots\n", "db.tadah", "missing/best_pots"},
   };
   for (const Case& c : cases) {
     INFO("case: " << c.name);
@@ -9669,6 +9681,88 @@ TEST_CASE("Subcommand: hpo --check refuses a setup with the message of "
     CHECK(check.status == run.status);
     CHECK(contains(engine_error(run), c.says));
     CHECK(engine_error(check) == engine_error(run));
+    CHECK_FALSE(std::filesystem::exists("missing"));
+  }
+}
+
+/* Pins: CHECK is a setting of the run, as HPOTARGET is, and a potential
+ * neither carries nor sets it:
+ *   - `tadah train -c chk.tadah -o pot.tadah`, chk.tadah the fixture's
+ *     config.tadah with "CHECK true", exits 0, and pot.tadah has no CHECK
+ *     key line; its training record lists "# CHECK true" (tadah train reads
+ *     no CHECK);
+ *   - so do `tadah --task g.task`, CHECK true above its TASK train line,
+ *     and `tadah --task t.task`, CHECK true inside its TASK train section;
+ *   - `tadah hpo -c seed.tadah --hpotarget config.hpo --validation
+ *     config.val`, seed.tadah pot.tadah with "CHECK true" and "DBFILE
+ *     db.tadah" added, runs: status 0, no check summary, best_pot.tadah
+ *     (without a CHECK line), and a WARNING names "CHECK true" as a setting
+ *     of the run that wrote the potential;
+ *   - `tadah hpo --check -c seed.tadah ...` is a check: the summary, and no
+ *     file.
+ * Before the fix: tadah train wrote the key line "CHECK true" in each of
+ * the three, and `tadah hpo -c seed.tadah` read it: it printed the check
+ * summary and exited 0 without a run. */
+TEST_CASE("Subcommand: CHECK is a setting of the run: tadah train writes no "
+          "CHECK line, and hpo -c of a potential with CHECK true runs",
+          "[TadahCLI][hpo][hpo-check][retrain]") {
+  ScratchCwd cwd("hpo_check_setting");
+  write_hpo_check_fixture();
+  {
+    const std::string config = slurp("config.tadah");
+    std::ofstream("chk.tadah") << config << "CHECK true\n";
+  }
+  std::ofstream("g.task") << "CHECK true\nTASK train\nCONFIG config.tadah\n"
+                             "OUTFILE potg.tadah\n";
+  std::ofstream("t.task") << "TASK train\nCONFIG config.tadah\n"
+                             "OUTFILE pott.tadah\nCHECK true\n";
+  const std::vector<std::pair<std::vector<std::string>, std::string>> trains =
+      {{{"tadah", "train", "-c", "chk.tadah", "-o", "pot.tadah"}, "pot.tadah"},
+       {{"tadah", "--task", "g.task"}, "potg.tadah"},
+       {{"tadah", "--task", "t.task"}, "pott.tadah"}};
+  for (const auto& [args, potential] : trains) {
+    const CliRun t = run_tadah(args);
+    INFO(args[1] << " " << args[2] << ": status " << t.status << "\n"
+                 << reported(t));
+    REQUIRE(t.status == 0);
+    REQUIRE(std::filesystem::exists(potential));
+    const std::string text = slurp(potential);
+    INFO(potential << ":\n" << text);
+    CHECK(has_key_line(potential, "WEIGHTS"));
+    CHECK_FALSE(has_key_line(potential, "CHECK"));
+    CHECK(contains(text, "\n# CHECK true\n"));
+  }
+  {
+    const std::string pot = slurp("pot.tadah");
+    std::ofstream("seed.tadah") << pot << "CHECK true\nDBFILE db.tadah\n";
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "seed.tadah",
+                                "--hpotarget", "config.hpo", "--validation",
+                                "config.val"});
+    const std::string rep = reported(r);
+    INFO("hpo -c seed.tadah: status " << r.status << "\n" << rep);
+    CHECK(r.status == 0);
+    CHECK_FALSE(contains(r.out, "passed the startup checks"));
+    CHECK(contains(rep, "its CHECK true was a setting of the run that wrote "
+                        "it, not of this run, and is ignored"));
+    REQUIRE(std::filesystem::exists("best_pot.tadah"));
+    CHECK_FALSE(has_key_line("best_pot.tadah", "CHECK"));
+  }
+  for (const char* d : {"pots", "best_pots"}) std::filesystem::remove_all(d);
+  for (const char* f : {"best_pot.tadah", "hpo_run.log"})
+    std::filesystem::remove(f);
+  {
+    const auto before = run_directory_entries();
+    const CliRun r = run_tadah({"tadah", "hpo", "--check", "-c", "seed.tadah",
+                                "--hpotarget", "config.hpo", "--validation",
+                                "config.val"});
+    INFO("hpo --check -c seed.tadah: status " << r.status << "\n"
+                                              << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "tadah hpo --check: config.hpo passed the startup "
+                          "checks"));
+    CHECK(run_directory_entries() == before);
   }
 }
 

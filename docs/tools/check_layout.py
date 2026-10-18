@@ -90,16 +90,21 @@ MEASURE = r'''
     }
     return false;
   };
+  // How far right an element or its content (a word that does not
+  // break) reaches.
+  const reach = el => {
+    const r = el.getBoundingClientRect();
+    return r.left + Math.max(r.width, el.scrollWidth);
+  };
   if (doc > W) {
-    const wide = Array.from(document.body.querySelectorAll('*')).filter(el => {
-      const r = el.getBoundingClientRect();
-      return r.width > 0 && r.right > W + 1 && !inSidebar(el) && !clipped(el);
-    });
+    const wide = Array.from(document.body.querySelectorAll('*')).filter(el =>
+      el.getBoundingClientRect().width > 0 && reach(el) > W + 1 &&
+      !inSidebar(el) && !clipped(el));
     const deepest = wide.filter(el => !wide.some(o => o !== el && el.contains(o)));
     const names = deepest.slice(0, 3).map(el => {
       const cls = el.classList.length ? '.' + Array.from(el.classList).join('.') : '';
       return el.tagName.toLowerCase() + cls + where(el) +
-             ' (right edge ' + Math.round(el.getBoundingClientRect().right) + ')';
+             ' (right edge ' + Math.round(reach(el)) + ')';
     });
     out.problems.push({element: 'document',
                        detail: 'scrollWidth ' + doc + ' > window ' + W +

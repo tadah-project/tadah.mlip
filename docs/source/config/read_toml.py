@@ -101,19 +101,19 @@ whose values are names (:ref:`ATOM`, :ref:`TYPE2B`, :ref:`TYPEMB`,
 Value Limits
 ------------
 
-Each keyword takes a fixed number of values.  Passing the wrong count can raise an error, but enforcement is not yet fully consistent.  While this is being improved, keep these points in mind:
+Each key takes a set number of values. A wrong count is not refused for every key:
 
-* **Too many values** – Tadah!MLIP may reject the input with a clear message or quietly discard the extras; the latter can later surface as obscure run-time failures (even an occasional segmentation fault).
-* **Too few values** – usually triggers an error, although a crash remains possible in rare corner cases.
+* **Too many values**: Tadah!MLIP refuses the line with a message, or ignores the extra values without one. Ignored values can cause failures later in the run whose cause is hard to see, in rare cases a segmentation fault.
+* **Too few values**: Tadah!MLIP usually refuses the line; in rare cases it crashes.
 
-In short, give every keyword exactly the number of values it expects—no more, no less—to avoid unpleasant surprises.
+Give every key exactly the number of values it expects.
 
 .. _SupportedKEYS:
 
 Supported KEYS
 --------------
 
-This section contains all KEYS currently used by Tadah!MLIP. A key marked
+This section contains all KEYS used by Tadah!MLIP. A key marked
 **Deprecated** is still accepted in configuration and potential files so that
 older files load: Tadah!MLIP checks its value, ignores it and writes one
 warning per key and process to standard error

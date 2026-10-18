@@ -26,9 +26,9 @@ Configuration File
 
 .. note:: This page is auto-generated from the blueprint TOML on every docs build. If you spot a mismatch between this reference and runtime behaviour, please report it on the `Tadah!MLIP GitLab <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_.
 
-.. note:: This configuration file is NOT used by the HPO (Hyperparameter Optimization) module of Tadah!MLIP. The HPO module uses a different configuration file format, which is documented in the :ref:`nested_fitting`.
-
 This section describes the format of the configuration file used by Tadah!MLIP.
+
+Nested fitting (``tadah hpo``, see :ref:`nested_fitting`) reads the same file, given with ``--config``, as the training configuration of every potential it trains.
 
 For example, the configuration file can control the training process, specifying one or more datasets for use during the training stage. It defines cutoff functions and corresponding radii along with the regression model and descriptor choices.
 

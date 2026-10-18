@@ -25,6 +25,13 @@ Blank lines and lines starting with '#' are comments. --list checks the
 manifest and prints ``<id>|<labels>|<timeout>`` per run (labels with
 ``examples`` first, separated by ','); CMake reads it to add the entries.
 
+Every page under docs/source/nfp that runs ``tadah`` in a ``bash`` code
+block needs a line, and so does every directory under docs/source/nfp/files
+that holds a target file (*.hpo) or a training configuration (*.train).
+coverage() lists what has none, and the lines whose page or directory does
+not exist; the unit tests of the documentation tools (tadah_docs_tools)
+fail on the shipped manifest when it lists anything.
+
 A run copies the manifest's directory to <workdir>/files (the source tree is
 never written; a run can read files of a sibling directory, such as
 ../data), then runs every command of the page's ``bash`` code blocks in
@@ -155,6 +162,78 @@ def parse_manifest(path):
             runs.append(Run(rid, page, rdir, label_list, int(timeout),
                             parse_tolerances(tolerances, where), number))
     return runs
+
+
+def _inside(path, directory):
+    '''Whether *path* is *directory* or lies under it (both normalised).'''
+    return os.path.commonpath([path, directory]) == directory
+
+
+def coverage(manifest):
+    '''What the manifest at *manifest* (docs/source/nfp/files/manifest.txt)
+    leaves without a run, as a list of messages (empty when nothing):
+
+      * a line whose page does not exist or is not under docs/source/nfp
+        (outside docs/source/nfp/files), or whose directory does not exist
+        or is not under docs/source/nfp/files;
+      * a page under docs/source/nfp (outside files/) with a ``tadah``
+        command in a ``bash`` code block that no line names;
+      * a directory under docs/source/nfp/files that holds a target file
+        (*.hpo) or a training configuration (*.train) and that no line
+        runs in.
+
+    A manifest that cannot be read is one message.'''
+    files = os.path.dirname(os.path.abspath(manifest))
+    nfp = os.path.dirname(files)
+    docs_source = os.path.dirname(nfp)
+    try:
+        runs = parse_manifest(manifest)
+    except ManifestError as err:
+        return [str(err)]
+    problems, pages, dirs = [], set(), set()
+    for r in runs:
+        where = f'{manifest}:{r.line}'
+        page = os.path.normpath(os.path.join(docs_source, r.page))
+        if not _inside(page, nfp) or _inside(page, files):
+            problems.append(f'{where}: page {r.page} is not under {nfp} '
+                            '(outside files/)')
+        elif not os.path.isfile(page):
+            problems.append(f'{where}: page {r.page} does not exist')
+        else:
+            pages.add(page)
+        run_dir = os.path.normpath(os.path.join(files, r.dir))
+        if not _inside(run_dir, files):
+            problems.append(f'{where}: directory {r.dir} is not under {files}')
+        elif not os.path.isdir(run_dir):
+            problems.append(f'{where}: directory {r.dir} does not exist')
+        else:
+            dirs.add(run_dir)
+    for top, subdirs, names in os.walk(nfp):
+        subdirs.sort()
+        if _inside(top, files):
+            continue
+        for name in sorted(names):
+            page = os.path.join(top, name)
+            if not name.endswith('.rst') or page in pages:
+                continue
+            tadah = [c for c in bash_commands(page) if c.argv[0] == 'tadah']
+            if tadah:
+                rel = os.path.relpath(page, docs_source)
+                problems.append(f'{rel}:{tadah[0].line}: runs tadah, and no line '
+                                f'of {manifest} runs the page')
+    kinds = (('.hpo', 'a target file'), ('.train', 'a training configuration'))
+    for top, subdirs, names in os.walk(files):
+        subdirs.sort()
+        if top in dirs:
+            continue
+        for suffix, kind in kinds:
+            found = sorted(n for n in names if n.endswith(suffix))
+            if found:
+                rel = os.path.relpath(top, docs_source)
+                problems.append(f'{rel} holds {kind} ({", ".join(found)}), and '
+                                f'no line of {manifest} runs in it')
+                break
+    return problems
 
 
 def read_expected(path):

@@ -12,9 +12,11 @@ checks it with docs/tools/check_layout.py at 1280, 1024, 900, 768 and
     that has no place to break) at the top level, in a literal block, in a
     bullet list, in a bullet list inside a bullet list, in a definition
     list, in a numbered list, in a note and from a ``literalinclude``;
-  * a two-column table with long inline literals, a field list with a
-    long field name, a paragraph with a 40-character inline literal,
-    display maths and an image wider than the text column.
+  * a two-column table with long inline literals, field lists with long
+    field names (``Template Parameters``, as the API pages have, also in a
+    definition list) and bodies of long words, a paragraph with a
+    40-character inline literal, display maths and an image wider than the
+    text column.
 
 The stylesheet must fit all of it at every width: 80-character lines are
 shown whole on desktop windows (1024 px and wider) and wrap on narrower
@@ -36,6 +38,7 @@ import struct
 import subprocess
 import sys
 import zlib
+from textwrap import indent
 
 SKIP = 77
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -45,6 +48,17 @@ COMMAND = ('tadah hpo --config config.train --validation config.val '
            '--hpotarget config_a.hpo')
 WIDE = ' '.join(['OPTIM', 'RCUT2B', '(1)', '4.0', '6.5'] * 6)[:120]
 assert len(RULER) == 80 and len(COMMAND) == 80 and len(WIDE) == 120
+
+
+# A field list as the API pages show one: a field name of two words and a
+# body of long words.
+FIELDS = '''\
+:Template Parameters: * **ChannelFn** -- Channel function (F_SQ, F_SQRT,
+                        F_RLR, F_Blip, ...).
+                      * **RadialBasis** -- Radial basis policy (BlipRadial,
+                        GaussianRadial, ...). Default: BlipRadial.
+                      * **AggMode** -- Aggregation mode (PowerSpectrum,
+                        OrbitalWise). Default: PowerSpectrum.'''
 
 
 def block(lines, indent, language='none'):
@@ -115,6 +129,13 @@ An inline literal of 40 characters: ``{RULER[:40]}``.
 :Environment override: ``TADAH_PC_ISOLATION`` replaces the value of the key
    for every evaluation of the run.
 :Syntax: ``PC_LAMMPS <script> --varloss <name> <target> <weight>``
+
+{FIELDS}
+
+A class template
+   In a definition list.
+
+{indent(FIELDS, '   ')}
 
 .. math::
 

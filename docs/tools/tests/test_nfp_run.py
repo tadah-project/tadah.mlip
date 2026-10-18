@@ -188,6 +188,91 @@ class ManifestTest(unittest.TestCase):
     def test_the_shipped_manifest_is_valid(self):
         check_nfp_run.parse_manifest(MANIFEST)
 
+    def test_the_shipped_manifest_runs_every_page_and_directory(self):
+        # Every page under docs/source/nfp that runs tadah, and every
+        # directory of docs/source/nfp/files with a target file or a
+        # training configuration, has a line; every line names a page and
+        # a directory that exist.
+        self.assertEqual(check_nfp_run.coverage(MANIFEST), [])
+
+
+class CoverageTest(unittest.TestCase):
+    '''A docs tree in a scratch directory: source/nfp/{tutorial/unit1.rst,
+    target_file.rst} and source/nfp/files/{manifest.txt, data/,
+    tutorial/unit1/}.'''
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix='tadah_nfp_coverage_')
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.source = os.path.join(self.tmp, 'source')
+        self.files = os.path.join(self.source, 'nfp', 'files')
+        self.put('nfp/tutorial/unit1.rst', PAGE)
+        # A guide whose only code is a target-file fragment runs nothing.
+        self.put('nfp/target_file.rst', 'The Target File\n===============\n\n'
+                 '.. code-block:: none\n\n   OPTIM RCUT2B (1) 4.0 6.5\n')
+        self.put('nfp/files/data/ta.tadahdb', 'data\n')
+        self.put('nfp/files/tutorial/unit1/config.hpo', 'OPTIM RCUT2B (1) 4.0 6.5\n')
+        self.put('nfp/files/tutorial/unit1/config.train', 'DBFILE ta.db\n')
+        self.manifest('unit1 | nfp/tutorial/unit1.rst | tutorial/unit1 | - | 60 | -')
+
+    def put(self, rel, text):
+        path = os.path.join(self.source, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as fh:
+            fh.write(text)
+
+    def manifest(self, *lines):
+        self.put('nfp/files/manifest.txt', '# runs\n' + ''.join(l + '\n' for l in lines))
+
+    def coverage(self):
+        return check_nfp_run.coverage(os.path.join(self.files, 'manifest.txt'))
+
+    def test_a_manifest_that_runs_every_page_and_directory(self):
+        self.assertEqual(self.coverage(), [])
+
+    def test_a_page_that_runs_tadah_needs_a_line(self):
+        self.put('nfp/examples/pt.rst', 'PT\n==\n\n.. code-block:: bash\n\n'
+                 '   tadah hpo -h\n')
+        problems = self.coverage()
+        self.assertEqual(len(problems), 1, problems)
+        self.assertRegex(problems[0], r'nfp/examples/pt\.rst:6: runs tadah, and no '
+                         r'line of .*manifest\.txt runs the page')
+
+    def test_a_directory_of_runnable_files_needs_a_line(self):
+        self.put('nfp/files/examples/pt/config.hpo', 'OPTIM RCUT2B (1) 4.0 6.5\n')
+        self.put('nfp/files/examples/gfs/retrain.train', 'DBFILE ta.db\n')
+        problems = self.coverage()
+        self.assertEqual(len(problems), 2, problems)
+        self.assertRegex(problems[0], r'nfp/files/examples/gfs holds a training '
+                         r'configuration \(retrain\.train\), and no line of '
+                         r'.*manifest\.txt runs in it')
+        self.assertRegex(problems[1], r'nfp/files/examples/pt holds a target file '
+                         r'\(config\.hpo\), and no line of .*manifest\.txt runs in it')
+
+    def test_each_line_names_a_page_and_a_directory_that_exist(self):
+        self.manifest('unit1 | nfp/tutorial/unit1.rst | tutorial/unit1 | - | 60 | -',
+                      'u2 | nfp/tutorial/unit2.rst | tutorial/unit1 | - | 60 | -',
+                      'u3 | nfp/tutorial/unit1.rst | tutorial/unit3 | - | 60 | -',
+                      'u4 | ../outside.rst | tutorial/unit1 | - | 60 | -',
+                      'u5 | nfp/tutorial/unit1.rst | ../../.. | - | 60 | -')
+        self.put('../outside.rst', PAGE)
+        problems = self.coverage()
+        self.assertEqual(len(problems), 4, problems)
+        self.assertRegex(problems[0], r'manifest\.txt:3: page nfp/tutorial/unit2\.rst '
+                         r'does not exist')
+        self.assertRegex(problems[1], r'manifest\.txt:4: directory tutorial/unit3 '
+                         r'does not exist')
+        self.assertRegex(problems[2], r'manifest\.txt:5: page \.\./outside\.rst is '
+                         r'not under ')
+        self.assertRegex(problems[3], r'manifest\.txt:6: directory \.\./\.\./\.\. is '
+                         r'not under ')
+
+    def test_a_malformed_manifest_is_reported(self):
+        self.manifest('unit1 | nfp/tutorial/unit1.rst | tutorial/unit1')
+        problems = self.coverage()
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn('3 fields, expected 6', problems[0])
+
 
 class RunTest(unittest.TestCase):
     '''A docs tree in a scratch directory: source/nfp/files/{manifest.txt,

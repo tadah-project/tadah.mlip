@@ -26,10 +26,17 @@
 
 /* Field lists: the theme gives the field body at least 80% of the list's
    width, so a field name wider than the other fifth pushes the list past
-   the text column. The name takes at most 30% (longer names wrap) and the
-   body the rest. */
+   the text column. The name takes at most 30% and the body the rest.
+   The theme also sizes the name inside its box to the name on one line
+   (max-content), which no column can make narrower: let it shrink, so that
+   a longer name wraps, at a blank where there is one, else anywhere. */
 html.writer-html5 .rst-content dl.field-list {
     grid-template-columns: fit-content(30%) minmax(0, 1fr);
+}
+
+html.writer-html5 .rst-content dl.field-list > dt {
+    grid-template-columns: minmax(0, max-content) auto;
+    overflow-wrap: anywhere;
 }
 
 /* Code blocks: lines of up to 80 characters are shown whole on desktop

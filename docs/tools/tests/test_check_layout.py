@@ -58,6 +58,9 @@ PAGES = {
     'math.html': html('<div role="main"><div class="math">'
                       '<span style="white-space: nowrap">' + 'x+' * 200
                       + '</span></div></div>'),
+    'fields.html': html('<div role="main"><dl class="field-list" style="display: '
+                        'grid; grid-template-columns: max-content 90%">'
+                        '<dt>A long field name</dt><dd>Body.</dd></dl></div>'),
     'sub/nested.html': html('<div role="main"><p>Nested.</p></div>'),
     '_static/skipped.html': html('<div role="main"><p>Static.</p></div>'),
 }
@@ -90,9 +93,9 @@ class FixtureTree(unittest.TestCase):
 class SelectPagesTest(FixtureTree):
     def test_every_page_but_underscore_directories_by_default(self):
         self.assertEqual(check_layout.select_pages(self.dir),
-                         ['code.html', 'document.html', 'image.html',
-                          'math.html', 'ok.html', 'sub/nested.html',
-                          'table.html'])
+                         ['code.html', 'document.html', 'fields.html',
+                          'image.html', 'math.html', 'ok.html',
+                          'sub/nested.html', 'table.html'])
 
     def test_globs_select_pages(self):
         self.assertEqual(check_layout.select_pages(self.dir, ['sub/**/*.html',
@@ -160,6 +163,13 @@ class RenderTest(FixtureTree):
         self.assertEqual([(p.page, p.element) for p in problems],
                          [('table.html', 'wy-table-responsive[1]'),
                           ('math.html', 'div.math[1]')])
+
+    def test_a_field_list_wider_than_its_box(self):
+        # The body takes 90% of the list's width, the name the rest and more.
+        problems = self.check('fields.html', widths=(1280,))
+        self.assertEqual([p.element for p in problems], ['dl.field-list[1]'])
+        self.assertRegex(problems[0].detail,
+                         r'^scrollWidth \d+ > clientWidth 260 "A long field')
 
     def test_main_reports_each_problem_and_exits_1(self):
         out = io.StringIO()

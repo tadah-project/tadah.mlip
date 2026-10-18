@@ -225,10 +225,10 @@ set_tests_properties(tadah_docs_tools PROPERTIES
 # docs/tools/check_layout.py at 1280, 1024, 900, 768 and 390 px. Code lines
 # of 80 characters fit on desktop windows (1024 px and wider), also in a
 # list inside a list and in a note; code wraps on narrower windows; tables,
-# inline literals, display maths and images stay in the text column. A
-# 120-character line must scroll at 1280 and 1024 px, which shows that the
-# check sees an overflow. Skipped (77) without sphinx, sphinx_rtd_theme or
-# a Chromium-family browser.
+# field lists, inline literals, display maths and images stay in the text
+# column. A 120-character line must scroll at 1280 and 1024 px, which shows
+# that the check sees an overflow. Skipped (77) without sphinx,
+# sphinx_rtd_theme or a Chromium-family browser.
 add_test(NAME tadah_docs_layout
   COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/docs_layout/check_docs_layout.py

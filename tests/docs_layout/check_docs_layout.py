@@ -12,9 +12,9 @@ checks it with docs/tools/check_layout.py at 1280, 1024, 900, 768 and
     that has no place to break) at the top level, in a literal block, in a
     bullet list, in a bullet list inside a bullet list, in a definition
     list, in a numbered list, in a note and from a ``literalinclude``;
-  * a two-column table with long inline literals, a paragraph with a
-    40-character inline literal, display maths and an image wider than the
-    text column.
+  * a two-column table with long inline literals, a field list with a
+    long field name, a paragraph with a 40-character inline literal,
+    display maths and an image wider than the text column.
 
 The stylesheet must fit all of it at every width: 80-character lines are
 shown whole on desktop windows (1024 px and wider) and wrap on narrower
@@ -111,6 +111,10 @@ Other content
      - ``runs/parameter_search/validation_candidates/best_pot_12.tadah``
 
 An inline literal of 40 characters: ``{RULER[:40]}``.
+
+:Environment override: ``TADAH_PC_ISOLATION`` replaces the value of the key
+   for every evaluation of the run.
+:Syntax: ``PC_LAMMPS <script> --varloss <name> <target> <weight>``
 
 .. math::
 

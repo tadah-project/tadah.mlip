@@ -12,9 +12,11 @@ default 1280, 1024, 900, 768 and 390 px), and a page fails at a width when
     exceeds the window width); the problem names the deepest elements that
     reach past the right edge of the window;
   * a code block (``pre``, ``.highlight``), a table wrapper
-    (``.wy-table-responsive``), display maths (``div.math``) or an image
-    (``img``) scrolls horizontally (scrollWidth > clientWidth + 1 px) or
-    reaches past the text column (the page's ``role="main"`` element).
+    (``.wy-table-responsive``), a field list (``dl.field-list``), display
+    maths (``div.math``) or an image (``img``) is wider than its box
+    (scrollWidth > clientWidth + 1 px: it scrolls, or its content sticks
+    out) or reaches past the text column (the page's ``role="main"``
+    element).
 
 Elements of the navigation sidebar are not measured. Each problem is one
 line, ``<page>:<element>:<width>px: <what>``, where <element> is the kind,
@@ -106,7 +108,8 @@ MEASURE = r'''
   const main = document.querySelector('[role="main"]') ||
                document.querySelector('.rst-content') || document.body;
   const column = main.getBoundingClientRect();
-  for (const kind of ['pre', '.highlight', '.wy-table-responsive', 'div.math', 'img']) {
+  for (const kind of ['pre', '.highlight', '.wy-table-responsive', 'dl.field-list',
+                      'div.math', 'img']) {
     let n = 0;
     for (const el of document.querySelectorAll(kind)) {
       if (inSidebar(el)) { continue; }

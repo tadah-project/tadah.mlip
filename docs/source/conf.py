@@ -109,7 +109,10 @@ language = 'C++'
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+# nfp/files holds the files the Nested Fitting pages offer for download and
+# include (data, scripts, the files of each tutorial unit and example, with
+# their READMEs): none of them is a page.
+exclude_patterns = ['nfp/files/**']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None

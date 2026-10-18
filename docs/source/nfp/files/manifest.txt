@@ -1,6 +1,9 @@
 # The runs of the Nested Fitting pages: one line per directory of files
 # whose page commands are run under CTest (tadah_nfp_<id>, label examples;
 # tests/nfp_docs/check_nfp_run.py runs them and describes each field).
+# Every page under docs/source/nfp that runs tadah in a bash code block,
+# and every directory here that holds a target file (*.hpo) or a training
+# configuration (*.train), needs a line: tadah_docs_tools fails otherwise.
 #
 #   <id> | <page.rst> | <dir> | <labels> | <timeout> | <tolerances>
 #

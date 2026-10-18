@@ -123,11 +123,28 @@ pygments_style = None
 import sphinx_rtd_theme
 html_theme = "sphinx_rtd_theme"
 
-# Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
-#
-# html_theme_options = {}
+# The sidebar shows at most two levels under each caption: the pages, and the
+# sections of the page you are on (under "Nested Fitting", whose toctree in
+# index.rst has :titlesonly:, the pages of a hub instead). The nfp_checks
+# extension warns about a deeper sidebar entry on any page. The other options
+# are the defaults of sphinx_rtd_theme 3, written out so that a theme release
+# with other defaults does not change the site (an option the theme drops is
+# a build warning). canonical_url and analytics_* are deprecated and unset.
+html_theme_options = {
+    'navigation_depth': 2,
+    'collapse_navigation': True,
+    'sticky_navigation': True,
+    'includehidden': True,
+    'titles_only': False,
+    'prev_next_buttons_location': 'bottom',
+    'style_external_links': False,
+    'style_nav_header_background': '',
+    'logo_only': False,
+    'vcs_pageview_mode': '',
+    'flyout_display': 'hidden',
+    'version_selector': True,
+    'language_selector': True,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

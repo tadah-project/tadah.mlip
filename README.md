@@ -20,7 +20,6 @@ University of Edinburgh.
 ## Quick links
 
 - [Documentation](https://tadah.readthedocs.io/v1-dev/)
-- [HPO examples](https://git.ecdf.ed.ac.uk/tadah/hpo/-/tree/v1-dev/examples)
 - [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 - [Citation](CITATION.cff)

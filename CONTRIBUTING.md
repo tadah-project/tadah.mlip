@@ -500,22 +500,6 @@ after MLIP is configured (in the umbrella build: MLIP, MD, HPO, Tadah.LAMMPS
 and the umbrella itself), an argument containing `;` is split in two and an
 empty argument is dropped. Discovered entries are not affected.
 
-For the HPO worked-example regression suite (added during the beta
-prep — fast subset runs in ~5 s). It runs the `tadah` that `TADAH` names
-(an absolute path: the suite runs it from each example directory), else
-the first one on `PATH`, and writes its outputs into the example
-directories:
-
-```bash
-TADAH="$TADAH_PATH/Tadah.MLIP/build/tadah" bash HPO/examples/run_reference_suite.sh --fast
-# or
-TADAH="$TADAH_PATH/Tadah.MLIP/build/tadah" bash HPO/examples/run_reference_suite.sh --full
-```
-
-The driver compares the example outputs against
-`HPO/examples/<NN>/reference_fingerprint.json`. Per-example tolerance
-overrides live in `HPO/examples/tools/tolerance_overrides.json`.
-
 ## Building the documentation
 
 The Sphinx sources live in `docs/source` (Python requirements in
@@ -696,8 +680,8 @@ A reviewer looks for:
   backwards-compatible, or explicitly called out as breaking?
 - For numerical changes, is determinism preserved (same SEED → same
   output)? Cross-repo numerical drift is the most expensive class of
-  regression; see the HPO `reference_fingerprint.json` mechanism for
-  how we catch it.
+  regression: a change that moves a result updates the tests that pin
+  it (losses, evaluation counts, statuses) and says why.
 
 ## Code of Conduct
 

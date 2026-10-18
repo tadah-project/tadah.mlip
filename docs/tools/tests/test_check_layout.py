@@ -58,6 +58,8 @@ PAGES = {
     'math.html': html('<div role="main"><div class="math">'
                       '<span style="white-space: nowrap">' + 'x+' * 200
                       + '</span></div></div>'),
+    'word.html': html('<div role="main"><section id="w"><p>'
+                      + 'x' * 300 + '</p></section></div>'),
     'fields.html': html('<div role="main"><dl class="field-list" style="display: '
                         'grid; grid-template-columns: max-content 90%">'
                         '<dt>A long field name</dt><dd>Body.</dd></dl></div>'),
@@ -95,7 +97,7 @@ class SelectPagesTest(FixtureTree):
         self.assertEqual(check_layout.select_pages(self.dir),
                          ['code.html', 'document.html', 'fields.html',
                           'image.html', 'math.html', 'ok.html',
-                          'sub/nested.html', 'table.html'])
+                          'sub/nested.html', 'table.html', 'word.html'])
 
     def test_globs_select_pages(self):
         self.assertEqual(check_layout.select_pages(self.dir, ['sub/**/*.html',
@@ -150,6 +152,15 @@ class RenderTest(FixtureTree):
         self.assertRegex(problems[0].detail,
                          r'^scrollWidth 2110 > window 1280; div\.wide#sec '
                          r'\(right edge 2110\)$')
+
+    def test_a_word_that_does_not_break_is_named(self):
+        # The paragraph's box fits the column; its text reaches past the
+        # window.
+        problems = self.check('word.html', widths=(1280,))
+        self.assertEqual(len(problems), 1, problems)
+        self.assertRegex(problems[0].detail,
+                         r'^scrollWidth (\d+) > window 1280; p#w '
+                         r'\(right edge \1\)$')
 
     def test_an_image_wider_than_the_text_column(self):
         problems = self.check('image.html', widths=(1280,))

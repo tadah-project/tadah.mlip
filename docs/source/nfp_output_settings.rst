@@ -82,8 +82,15 @@ Potential archives
 evaluation as ``directory/pot_<evaluation>.tadah``.
 ``BDUMP N directory`` archives every ``N``-th improvement as
 ``directory/best_pot_<improvement>.tadah``. Both require integer
-``N >= 1`` and create the directory if necessary. Omit the directive to
-leave that archive disabled.
+``N >= 1``. Without the line, that archive is disabled.
+
+The directory is checked when the target file is read. An existing
+directory must have write permission. A directory that does not exist
+must be in an existing directory with write permission, since only the
+last directory of the path is created. Otherwise the run, and
+``tadah hpo --check``, stop at the line. The run creates a missing
+directory once every startup check has passed, before its first
+evaluation, so a run that stops at startup creates none.
 
 ``DUMP`` archives evaluated candidates, including failed fits and
 candidates whose losses exceed the current best. Archiving is limited

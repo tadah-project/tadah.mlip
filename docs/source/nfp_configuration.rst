@@ -29,8 +29,9 @@ File format
 
 * Each directive occupies one line: a keyword, then its space-separated values.
   Indentation is for readability; block delimiters determine the scope.
-* A block opens with its name and closes with ``END`` plus that name,
-  on a separate line. These delimiter lines define the block boundaries.
+* A block opens with a line that holds only its name, and closes with a
+  line that holds only ``END`` plus that name. ``tadah hpo`` refuses any
+  other word on these lines.
 * ``#`` starts a comment, including after a value. Blank lines are ignored.
 * A trailing ``\`` continues a directive on the next line. Whitespace
   separates the tokens on the joined lines.
@@ -109,15 +110,33 @@ targets. Root settings and output controls appear outside ``OPTIMIZER``.
 Block placement and order
 -------------------------
 
-``OPTIMIZER`` is the only root block in ``config.hpo``. Its immediate
-subblocks are ``INIT``, ``NOISE`` and ``STRATEGY``. ``EXPLORE`` and
-``REFINE`` are nested within ``STRATEGY``. The :doc:`nfp_optimizer`
-section gives the full subblock hierarchy and accepted keys.
+The file has top-level keys and one ``OPTIMIZER`` block, which describes
+the search. ``OPTIMIZER`` never stands inside another block. Inside it you
+can open ``INIT``, ``NOISE`` and ``STRATEGY`` blocks. ``EXPLORE`` and
+``REFINE`` blocks go inside ``STRATEGY``. :doc:`nfp_optimizer` lists
+every block and the keys it accepts.
 
-One ``OPTIMIZER`` block describes the search. For a plain search,
-``LIB``, ``ALGO`` and the other optimiser settings can appear directly
-inside it. An explicit ``STRATEGY`` subblock groups the run policy and
-its settings.
+For a plain search, ``LIB``, ``ALGO`` and the other optimiser settings
+can appear directly inside ``OPTIMIZER``. A ``STRATEGY`` block inside it
+groups the search strategy and its settings.
+
+Close each block with its ``END`` line before the block around it closes,
+and before the end of the file. ``tadah hpo`` refuses a file that breaks
+these rules and names the line, for example an ``ENDOPTIMIZER`` line
+inside an open ``STRATEGY`` block.
+
+A repeated ``INIT``, ``NOISE``, ``EXPLORE``, ``REFINE`` or ``RESTART``
+block continues the first one. A key set in both blocks takes the later
+value. The ``METHOD`` lines of a repeated ``INIT`` or ``RESTART`` block
+add to the same list of starting-point methods (see
+:doc:`nfp_initialisation`).
+
+.. versionchanged:: 1.6.0
+   ``tadah hpo`` refuses a second ``OPTIMIZER`` block, an ``OPTIMIZER``
+   line inside a block and a block left open at the end of the file. It
+   also refuses an ``ENDOPTIMIZER`` line inside another block or with no
+   block open, and a word after the name on a line that opens or closes a
+   block.
 
 ``TYPE PRESTAGE`` precedes the opening of ``EXPLORE`` or ``REFINE``.
 ``REFINE`` groups the refinement settings of the surrounding ``STRATEGY``.

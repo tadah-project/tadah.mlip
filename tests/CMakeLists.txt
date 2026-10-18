@@ -240,6 +240,39 @@ set_tests_properties(tadah_docs_layout PROPERTIES
   SKIP_RETURN_CODE 77
   ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
 
+# The Nested Fitting pages of the real site in a headless browser:
+# docs_layout/check_site_layout.py builds the documentation as
+# CONTRIBUTING.md describes -- Doxygen with this build's docs/Doxyfile, then
+# sphinx-build -W --keep-going with its XML and the CORE and HPO sources of
+# this build -- in the build tree, and checks every page under nfp/ with
+# docs/tools/check_layout.py at 1280, 1024, 900, 768 and 390 px; every page
+# source under docs/source/nfp must be a built page. Skipped (77) without
+# Doxygen, a Python module of docs/requirements.txt or a Chromium-family
+# browser, and while docs/source/nfp holds no page. Without NFP the build
+# does not configure HPO, and the docs build looks its sources up itself.
+# The project looks for Doxygen after it adds this directory.
+find_package(Doxygen QUIET)
+set(_site_layout_args
+  --docs-source ${PROJECT_SOURCE_DIR}/docs/source
+  --doxyfile ${CMAKE_BINARY_DIR}/docs/Doxyfile
+  --workdir ${CMAKE_CURRENT_BINARY_DIR}/docs_site
+  --core-source ${Tadah.CORE_SOURCE_DIR})
+if(DOXYGEN_EXECUTABLE)
+  list(APPEND _site_layout_args --doxygen ${DOXYGEN_EXECUTABLE})
+endif()
+if(TADAH_ENABLE_NFP)
+  list(APPEND _site_layout_args --hpo-source ${Tadah.HPO_SOURCE_DIR})
+endif()
+add_test(NAME tadah_docs_site_layout
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/docs_layout/check_site_layout.py
+    ${_site_layout_args})
+set_tests_properties(tadah_docs_site_layout PROPERTIES
+  LABELS docs
+  TIMEOUT 1800
+  SKIP_RETURN_CODE 77
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
 
 # ------------------------------------------------------------------
 # 8. `tadah hpo` stopped by a signal exits with 128 + the signal number

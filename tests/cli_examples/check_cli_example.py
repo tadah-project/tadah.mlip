@@ -20,47 +20,22 @@ nothing and exits 77, which CTest reports as Skipped.
 """
 import argparse
 import os
-import re
 import shlex
 import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                '..', 'doc_commands'))
+from doc_commands import tadah_commands  # noqa: E402
+
 SKIP = 77
-DIRECTIVE = re.compile(r'^(\s*)\.\. code-block::\s*bash\s*$')
 
 
 def readme_commands(readme):
-    '''The `tadah` command lines of the bash code blocks, in order.'''
-    with open(readme, encoding='utf-8') as fh:
-        lines = fh.read().splitlines()
-    commands = []
-    i = 0
-    while i < len(lines):
-        m = DIRECTIVE.match(lines[i])
-        i += 1
-        if not m:
-            continue
-        indent = len(m.group(1))
-        block = []
-        while i < len(lines):
-            line = lines[i]
-            if line.strip() and len(line) - len(line.lstrip()) <= indent:
-                break
-            block.append(line.strip())
-            i += 1
-        joined, pending = [], ''
-        for line in block:
-            if line.endswith('\\'):
-                pending += line[:-1] + ' '
-                continue
-            joined.append(pending + line)
-            pending = ''
-        for line in joined:
-            argv = shlex.split(line, comments=True)
-            if argv and argv[0] == 'tadah':
-                commands.append(argv)
-    return commands
+    '''The `tadah` command lines of the bash code blocks, in order
+    (doc_commands.py).'''
+    return tadah_commands(readme)
 
 
 def data_rows(path):

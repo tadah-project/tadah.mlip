@@ -130,6 +130,21 @@ class ReadTomlTest(unittest.TestCase):
         self.assertIn('standard error', intro)
         self.assertIn('pair_style tadah', intro)
 
+    def test_page_intro_says_tadah_hpo_reads_the_same_file(self):
+        # `tadah hpo --config` takes the training configuration: HPO's run
+        # trains every potential of the search from it. The page said that
+        # nested fitting did not use the file.
+        page = self.rt.render(blueprint())
+        intro = page[:page.index('.. _LAMBDA:')]
+        self.assertNotRegex(intro, r'(?i)not used by|HPO module')
+        paragraphs = [p for p in intro.split('\n\n') if 'tadah hpo' in p]
+        self.assertEqual(len(paragraphs), 1, intro)
+        sentence = ' '.join(paragraphs[0].split())
+        self.assertIn('``--config``', sentence)
+        self.assertIn(':ref:`nested_fitting`', sentence)
+        self.assertEqual(sentence.count('. '), 0, sentence)
+        self.assertNotIn('.. note::', paragraphs[0])
+
     def test_allowed_values_are_listed(self):
         # blueprint field `allowed_values` (CORE): the only values of a
         # string key, matched without regard to case; any other value is an

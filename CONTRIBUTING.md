@@ -147,7 +147,9 @@ tag (`[.statistical]`) runs through an explicit entry, which also needs the
 flag: `add_test(NAME x COMMAND test_foo "[.tag]" --warn NoTests)`.
 `ctest -R tadah_catch` runs the regression tests for the discovery itself
 (`tests/catch_discovery`). `ctest -L docs` runs the unit tests of the
-documentation build tools (see *Building the documentation*).
+documentation build tools, the layout check of the stylesheet,
+`tadah_docs_layout`, and that of the Nested Fitting pages of the built
+site, `tadah_docs_site_layout` (see *Building the documentation*).
 `ctest -L examples` runs the CLI examples the documentation includes
 (`tadah_cli_example_<name>`, one per `examples/CLI/<name>/README.rst` that
 `docs/source/examples.rst` includes): `tests/cli_examples` copies the
@@ -164,6 +166,27 @@ the potential, regenerate `pot.tadah` with `tadah train -c config.train` in
 that directory and check the numbers the page quotes. The Catch test case
 `quickstart: in.ml with the shipped pot.tadah ...` (test_tadah, NFP builds)
 runs the page's LAMMPS example, `in.ml`, with it.
+The label also has one entry per run of the Nested Fitting pages,
+`tadah_nfp_<id>`, one per line of `docs/source/nfp/files/manifest.txt`
+(`<id> | <page.rst> | <dir> | <labels> | <timeout> | <tolerances>`; the
+file's header and `tests/nfp_docs/check_nfp_run.py` describe the fields).
+The script copies `docs/source/nfp/files` to the build tree, runs the
+`tadah` commands of the page's bash code blocks in the line's directory
+(another command is an error), checks that each exits 0 within the timeout
+and leaves its result, and compares the best loss of the run with the
+directory's `expected.csv`, the table the page quotes, within the line's
+tolerance. A line's labels are added to `examples` (`slow` for a run longer
+than about two minutes: `ctest -LE slow` leaves it out). The configure step
+reads the manifest (`check_nfp_run.py --list`) and stops at a malformed
+line. Every page under `docs/source/nfp` that runs `tadah` in a bash code
+block needs a line, and so does every directory under
+`docs/source/nfp/files` that holds a target file (`*.hpo`) or a training
+configuration (`*.train`): `tadah_docs_tools` fails on the shipped manifest
+otherwise, naming each page and directory without a line and each line
+whose page (under `docs/source/nfp`) or directory (under
+`docs/source/nfp/files`) does not exist (`check_nfp_run.coverage()`).
+`tests/doc_commands/doc_commands.py` reads the commands of a bash code
+block for both scripts.
 `ctest -L e2e` runs HPO's host end-to-end groups
 (`hpo_fixweight_e2e`, `hpo_durable_e2e`, `hpo_embf0_e2e`, `hpo_rcut_e2e`,
 `hpo_rhoform_e2e`, `hpo_rhogate_e2e`, `hpo_rhobargate_e2e`,
@@ -284,20 +307,26 @@ as *Skipped*, so that a passing `ctest` means the checks ran:
   `SKIP_REGULAR_EXPRESSION "${TADAH_TEST_SKIP_REGULAR_EXPRESSION}"`
   itself;
 - a script entry either exits with a code of its own and sets
-  `SKIP_RETURN_CODE` (`hpo_strategy_matrix` and `tadah_cli_example_*`:
-  77), or prints a line that its own `SKIP_REGULAR_EXPRESSION` matches
+  `SKIP_RETURN_CODE` (`hpo_strategy_matrix`, `tadah_cli_example_*`,
+  `tadah_nfp_*`, `tadah_docs_layout` and `tadah_docs_site_layout`: 77),
+  or prints a line that its own `SKIP_REGULAR_EXPRESSION` matches
   (`tadah_docs_tools`, see *Building the documentation*).
 
 The CTest summary lists skipped entries under "The following tests did not
 run". With the documentation tools installed and without the optional data,
 the suite skips exactly the two MLIP `NNFinder: real CH4 phase-I structure`
-cases (`TADAH_TEST_PHASEI_DB`) and `hpo_strategy_matrix`
-(`TADAH_HPO_INTEGRATION_BUNDLE`), and in a build with `TADAH_ENABLE_NFP` the
+cases (`TADAH_TEST_PHASEI_DB`), `hpo_strategy_matrix`
+(`TADAH_HPO_INTEGRATION_BUNDLE`) and, while `docs/source/nfp` holds no
+page, `tadah_docs_site_layout`, and in a build with `TADAH_ENABLE_NFP` the
 six `tadah.lammps_mpi_*` entries unless `TADAH_LMP_MPI` and
 `TADAH_LMP_MPIEXEC` name an MPI `lmp` and its launcher (`ctest -L lammps`
 above); `tadah_docs_tools` is Skipped too when one
-of its tools is missing. A build without `TADAH_ENABLE_NFP` also skips
-`tadah_cli_example_ex_2`, whose README runs `tadah hpo`, and every Catch
+of its tools is missing, `tadah_docs_layout` without Sphinx,
+`sphinx_rtd_theme` or a Chromium-family browser, and
+`tadah_docs_site_layout` without Doxygen, a Python module of
+`docs/requirements.txt` or such a browser. A build without
+`TADAH_ENABLE_NFP` also skips `tadah_cli_example_ex_2`, whose README runs
+`tadah hpo`, every `tadah_nfp_*` entry whose page runs it, and every Catch
 case of test_tadah that runs `pair_style tadah`, which is not built there
 (each says `pair_style tadah is not built (TADAH_ENABLE_NFP OFF)`): the
 *Quick Start* case `quickstart: in.ml with the shipped pot.tadah conserves
@@ -306,9 +335,10 @@ of `tests/test_pair_coeff_reload.cpp` (`a second pair_coeff loads its
 potential file` and the others) and the two of `tests/test_dimer_pe_atom.cpp`
 (`... the per-atom energies of a DIMER potential sum to its energy`, `... a
 DIMER atom's per-atom energy is the sum over the molecule pairs it belongs
-to`): with the two NNFinder cases, 17 entries. A build without
-`TADAH_ENABLE_CERES` skips `RHOFORM NONNEG/MONOTONE: no projection WARNING
-when an optimiser can leave the box: such a point is not evaluated` (its
+to`): with the two NNFinder cases, 17 entries, and
+`tadah_docs_site_layout` while `docs/source/nfp` holds no page. A build
+without `TADAH_ENABLE_CERES` skips `RHOFORM NONNEG/MONOTONE: no projection
+WARNING when an optimiser can leave the box: such a point is not evaluated` (its
 optimiser is `CERES:STEEPEST_DESCENT`). See the
 cmake-tools README, *Skipped tests: the TADAH-SKIP marker*, for the rules.
 
@@ -489,11 +519,16 @@ overrides live in `HPO/examples/tools/tolerance_overrides.json`.
 ## Building the documentation
 
 The Sphinx sources live in `docs/source` (Python requirements in
-`docs/requirements.txt`). The build needs Python 3.11 or later: it
-generates the ANNEAL key tables from HPO's `blueprint/anneal_keys.toml`
-with `tomllib` (`docs/source/config/read_anneal_keys.py`), and on an
-older Python that script stops the build with `read_anneal_keys.py needs
-Python 3.11 or later: ...`, naming the interpreter. The build reads
+`docs/requirements.txt`; the theme options `conf.py` sets need
+`sphinx_rtd_theme` 3.0 or later). The files the Nested Fitting pages offer
+for download and include live under `docs/source/nfp/files`, which
+`conf.py` excludes from the pages (`exclude_patterns`): an rst or Markdown
+file there, such as an example's README, is not a page. The build needs
+Python 3.11 or later: it generates the ANNEAL key tables from HPO's
+`blueprint/anneal_keys.toml` with `tomllib`
+(`docs/source/config/read_anneal_keys.py`), and on an older Python that
+script stops the build with `read_anneal_keys.py needs Python 3.11 or
+later: ...`, naming the interpreter. The build reads
 three inputs from outside this repository. It never falls back to
 another branch: when an input is missing it stops and lists every
 location it tried.
@@ -524,12 +559,16 @@ python3 -m unittest discover -s Tadah.MLIP/docs/tools/tests -v
 The unit tests cover the input lookup (`docs/source/config/source_locator.py`),
 the `hpo.html` redirect check, the configuration-keys page generator
 (`docs/source/config/read_toml.py`), the CLI page generator
-(`docs/source/cli/generate_cli.py`) and the ANNEAL key tables' generator
+(`docs/source/cli/generate_cli.py`), the ANNEAL key tables' generator
 (`docs/source/config/read_anneal_keys.py`: its message on a Python
-without `tomllib`). A browser regression renders reference tables with the
-shipped stylesheet at desktop and mobile widths, checks for horizontal
-overflow, and checks that code blocks retain their formatting. It uses a
-local Chromium, Chromium Browser or Google Chrome executable and a temporary
+without `tomllib`), the layout rules of the build (`docs/tools/nfp_checks.py`,
+below), the browser check of built pages (`docs/tools/check_layout.py`,
+below) and the runs of the Nested Fitting pages
+(`tests/nfp_docs/check_nfp_run.py`, with a stand-in for `tadah`). A browser
+regression renders reference tables with the shipped stylesheet at desktop
+and mobile widths, checks for horizontal overflow, and checks that code
+lines stay whole at 1024 px and wider and wrap below. It uses a local
+Chromium, Chromium Browser or Google Chrome executable and a temporary
 Sphinx page. The GitLab `docs_sphinx` job runs them
 and the same build, with all three variables set explicitly, in a virtual
 environment of its own into which it installs `docs/requirements.txt` every
@@ -547,6 +586,64 @@ that. The cases that need `node`, a Chromium-family browser, `sphinx-build` or t
 `sphinx_rtd_theme`, `yaml` (PyYAML), `pytomlpp` or `tomllib` (Python 3.11 or
 later) skip themselves when one is missing. CTest then reports the entry as *Skipped*, not *Passed*, and its
 output names the skipped cases, so a pass means every case ran.
+
+**Layout.** No page may need a horizontal scroll bar. The stylesheet
+`docs/source/_static/tables.css` narrows the side padding of the text
+column on windows 1024 px and wider, so that a code line of 80 characters
+fits whole, also in a list inside a list, wraps code lines on narrower
+windows, and gives the name of a field list a column of at most 30% of the
+list's width, in which a longer name wraps (at a blank where there is one,
+else anywhere). `conf.py` sets the sidebar to two levels under each caption
+(`navigation_depth` 2; the other theme options are written out with the
+defaults of `sphinx_rtd_theme` 3), and the "Nested Fitting" toctree of
+`index.rst` has `:titlesonly:`. The `nfp_checks` Sphinx extension
+(`docs/tools/nfp_checks.py`, listed in `conf.py`) turns the rules into
+build warnings, so `sphinx-build -W` fails on
+
+- a sidebar entry deeper than two levels on any page, and a "Nested
+  Fitting" toctree without `:titlesonly:`;
+- in a page under `nfp/`: a code line longer than 80 characters (included
+  files too), an inline literal with more than 40 characters without a
+  space, a table with more than two columns, `parsed-literal` or `raw`
+  content, a toctree outside a hub (an `index.rst`), a hub with more than
+  one toctree or with `:maxdepth:` other than 1, and a page longer than 250
+  source lines or seven sections (a tutorial unit under `nfp/tutorial/`:
+  200 lines; the generated pages under `nfp/reference/` have no limit).
+
+`docs/tools/check_layout.py` renders built pages in a headless
+Chromium-family browser at 1280, 1024, 900, 768 and 390 px, without
+network access, and prints one line per overflow,
+`<page>:<element>:<width>px: <what>`: a page wider than the window (with
+the elements whose box or text reaches past it; the lines a code block
+scrolls stay in its box), or a code block, table,
+field list, display maths or image that is wider than its box or reaches
+past the text column. Check the pages you change:
+
+```bash
+python3 Tadah.MLIP/docs/tools/check_layout.py "$TMPDIR/docs_html" --pages 'nfp/**/*.html'
+```
+
+It exits 1 when it reports an overflow, and 2 when it cannot run (no
+browser, no page matches). Display maths is measured unrendered: MathJax,
+which the pages load from its CDN, does not load without network access.
+`tadah_docs_layout` (label `docs`) builds a small project with the theme,
+theme options and stylesheets of `conf.py` and checks it with the same
+script: 80-character code lines fit at 1280 and 1024 px, code wraps at
+900, 768 and 390 px, field lists with a long field name (`Template
+Parameters`, also in a definition list) fit at every width, and a
+120-character line scrolls on the desktop widths, which shows that the
+check sees an overflow.
+
+`tadah_docs_site_layout` (label `docs`,
+`tests/docs_layout/check_site_layout.py`) checks the Nested Fitting pages
+of the real site: it runs Doxygen with the
+build's `docs/Doxyfile` and `sphinx-build -W --keep-going` with that XML and
+the build's CORE and HPO sources (without `TADAH_ENABLE_NFP`, HPO is looked
+up as above), in the build tree (`tests/docs_site`), then the same script on
+every page under `nfp/` at the five widths. Every page source under
+`docs/source/nfp` must be a built page. It takes about 45 s, and is Skipped
+without Doxygen, a Python module of `docs/requirements.txt` or a
+Chromium-family browser, and while `docs/source/nfp` holds no page.
 
 `hpo.html`, the Nested Fitting page before 1.6.0, is now a redirect
 (`docs/source/_extra/hpo.html`) to the pages it was split into. After

@@ -134,7 +134,8 @@ window.addEventListener('load', function () { setTimeout(function () {
       el => ({client: el.clientWidth, scroll: el.scrollWidth})),
     content: document.querySelector('.rst-content').getBoundingClientRect().width,
     tableWidths: tables.map(el => el.querySelector('table').getBoundingClientRect().width),
-    codeWhitespace: getComputedStyle(document.querySelector('.highlight pre')).whiteSpace
+    codeWhitespace: getComputedStyle(document.querySelector('.highlight pre')).whiteSpace,
+    codeWrap: getComputedStyle(document.querySelector('.highlight pre')).overflowWrap
   };
   const el = document.createElement('script');
   el.id = 'layout-report'; el.type = 'application/json';
@@ -163,7 +164,15 @@ window.addEventListener('load', function () { setTimeout(function () {
                                              report)
                         self.assertLessEqual(table_width, report['content'] + 1,
                                              report)
-                    self.assertEqual(report['codeWhitespace'], 'pre')
+                    # Code lines are kept whole on desktop windows (1024 px
+                    # and wider) and wrap on narrower ones.
+                    if width >= 1024:
+                        self.assertEqual((report['codeWhitespace'],
+                                          report['codeWrap']), ('pre', 'normal'))
+                    else:
+                        self.assertEqual((report['codeWhitespace'],
+                                          report['codeWrap']),
+                                         ('pre-wrap', 'anywhere'))
                     for paragraph in report['paragraphs']:
                         self.assertLessEqual(paragraph['scroll'], paragraph['client'] + 1,
                                              report)

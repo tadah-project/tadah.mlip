@@ -574,8 +574,8 @@ output names the skipped cases, so a pass means every case ran.
 **Layout.** No page may need a horizontal scroll bar. The stylesheet
 `docs/source/_static/tables.css` narrows the side padding of the text
 column on windows 1024 px and wider, so that a code line of 80 characters
-fits whole, also in a list inside a list, and wraps code lines on narrower
-windows. `conf.py` sets the sidebar to two levels under each caption
+fits whole, also in a list inside a list, wraps code lines on narrower
+windows, and gives the name of a field list at most 30% of the width. `conf.py` sets the sidebar to two levels under each caption
 (`navigation_depth` 2; the other theme options are written out with the
 defaults of `sphinx_rtd_theme` 3), and the "Nested Fitting" toctree of
 `index.rst` has `:titlesonly:`. The `nfp_checks` Sphinx extension
@@ -595,9 +595,10 @@ build warnings, so `sphinx-build -W` fails on
 `docs/tools/check_layout.py` renders built pages in a headless
 Chromium-family browser at 1280, 1024, 900, 768 and 390 px, without
 network access, and prints one line per overflow,
-`<page>:<element>:<width>px: <what>`: a page wider than the window, or a
-code block, table, display maths or image that scrolls or reaches past the
-text column. Check the pages you change:
+`<page>:<element>:<width>px: <what>`: a page wider than the window (with
+the elements whose box or text reaches past it), or a code block, table,
+field list, display maths or image that is wider than its box or reaches
+past the text column. Check the pages you change:
 
 ```bash
 python3 Tadah.MLIP/docs/tools/check_layout.py "$TMPDIR/docs_html" --pages 'nfp/**/*.html'

@@ -1,4 +1,7 @@
-/* Keep reference tables within the reading column. The theme otherwise
+/* Page layout on top of the theme. No page needs a horizontal scroll bar:
+   reference tables, inline literals and code blocks fit the text column.
+
+   Keep reference tables within the reading column. The theme otherwise
    keeps every cell on one line and makes the table scroll horizontally. */
 .rst-content .wy-table-responsive table.docutils {
     width: 100%;
@@ -18,5 +21,30 @@
     .rst-content .wy-table-responsive table.docutils th,
     .rst-content .wy-table-responsive table.docutils td {
         padding: 8px;
+    }
+}
+
+/* Code blocks: lines of up to 80 characters are shown whole on desktop
+   windows (1024 px and wider). A code line is 12 px monospace, about
+   7.2 px a character: 80 characters and the block's padding take about
+   602 px. Next to the 300 px sidebar of a 1024 px window, the theme's side
+   padding (3.236em) leaves 620 px, too little for a block in a list; 2em
+   leaves 660 px, enough for a block in a list inside a list or in a note
+   inside a list. */
+@media screen and (min-width: 1024px) {
+    .wy-nav-content {
+        padding-left: 2em;
+        padding-right: 2em;
+    }
+}
+
+/* Narrower windows wrap code lines instead of scrolling them: at a blank
+   where there is one, else anywhere. */
+@media screen and (max-width: 1023.98px) {
+    .rst-content pre,
+    .rst-content pre.literal-block,
+    .rst-content div[class^=highlight] pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
     }
 }

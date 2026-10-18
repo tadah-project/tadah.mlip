@@ -193,7 +193,8 @@ add_subdirectory(catch_discovery)
 # configuration-keys and CLI page generators (docs/source/config/read_toml.py,
 # docs/source/cli/generate_cli.py), of the ANNEAL key tables' generator
 # (docs/source/config/read_anneal_keys.py, which needs Python 3.11 or later
-# for tomllib) and of the browser check of built pages
+# for tomllib), of the layout and structure rules of the build
+# (docs/tools/nfp_checks.py) and of the browser check of built pages
 # (docs/tools/check_layout.py). They never use the network.
 #
 # Some cases need node, sphinx-build, a Chromium-family browser or the

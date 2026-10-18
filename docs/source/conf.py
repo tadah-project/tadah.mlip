@@ -38,7 +38,8 @@ from sphinx.errors import ConfigError as _ConfigError
 
 _CONFDIR = os.path.dirname(os.path.abspath(__file__))
 _sys.path.insert(0, os.path.join(_CONFDIR, 'config'))
-# docs/tools holds the check_redirect extension (see html_extra_path).
+# docs/tools holds the check_redirect extension (see html_extra_path) and
+# nfp_checks, the layout and structure rules of the pages (see extensions).
 _sys.path.insert(0, os.path.join(_CONFDIR, '..', 'tools'))
 import source_locator as _loc
 import blueprint_source as _bps
@@ -74,7 +75,8 @@ extensions = ['breathe',
               'myst_parser',
               'sphinx_exec_code',
               'matplotlib.sphinxext.plot_directive',
-              'check_redirect']
+              'check_redirect',
+              'nfp_checks']
 
 # plot_directive: deterministic inline figures (temperature ladders,
 # acceptance curves, ...). No source links; PNG only, keeps builds fast.

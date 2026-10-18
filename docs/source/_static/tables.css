@@ -24,6 +24,14 @@
     }
 }
 
+/* Field lists: the theme gives the field body at least 80% of the list's
+   width, so a field name wider than the other fifth pushes the list past
+   the text column. The name takes at most 30% (longer names wrap) and the
+   body the rest. */
+html.writer-html5 .rst-content dl.field-list {
+    grid-template-columns: fit-content(30%) minmax(0, 1fr);
+}
+
 /* Code blocks: lines of up to 80 characters are shown whole on desktop
    windows (1024 px and wider). A code line is 12 px monospace, about
    7.2 px a character: 80 characters and the block's padding take about

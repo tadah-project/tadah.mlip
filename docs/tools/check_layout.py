@@ -91,10 +91,12 @@ MEASURE = r'''
     return false;
   };
   // How far right an element or its content (a word that does not
-  // break) reaches.
+  // break) reaches. The content of an element that clips or scrolls it
+  // (a code block that scrolls) stays in its box.
   const reach = el => {
     const r = el.getBoundingClientRect();
-    return r.left + Math.max(r.width, el.scrollWidth);
+    const content = getComputedStyle(el).overflowX === 'visible' ? el.scrollWidth : 0;
+    return r.left + Math.max(r.width, content);
   };
   if (doc > W) {
     const wide = Array.from(document.body.querySelectorAll('*')).filter(el =>

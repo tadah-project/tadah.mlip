@@ -60,6 +60,12 @@ PAGES = {
                       + '</span></div></div>'),
     'word.html': html('<div role="main"><section id="w"><p>'
                       + 'x' * 300 + '</p></section></div>'),
+    # Code blocks that scroll their own long lines, then the element that
+    # widens the document.
+    'scrolls.html': html('<div role="main"><section id="sec">'
+                         + ('<pre>' + 'y' * 200 + '</pre>') * 3
+                         + '<div class="wide" style="width: 2000px">w</div>'
+                         '</section></div>'),
     'fields.html': html('<div role="main"><dl class="field-list" style="display: '
                         'grid; grid-template-columns: max-content 90%">'
                         '<dt>A long field name</dt><dd>Body.</dd></dl></div>'),
@@ -96,7 +102,7 @@ class SelectPagesTest(FixtureTree):
     def test_every_page_but_underscore_directories_by_default(self):
         self.assertEqual(check_layout.select_pages(self.dir),
                          ['code.html', 'document.html', 'fields.html',
-                          'image.html', 'math.html', 'ok.html',
+                          'image.html', 'math.html', 'ok.html', 'scrolls.html',
                           'sub/nested.html', 'table.html', 'word.html'])
 
     def test_globs_select_pages(self):
@@ -161,6 +167,19 @@ class RenderTest(FixtureTree):
         self.assertRegex(problems[0].detail,
                          r'^scrollWidth (\d+) > window 1280; p#w '
                          r'\(right edge \1\)$')
+
+    def test_a_code_block_that_scrolls_does_not_widen_the_document(self):
+        # Its lines are clipped to its box: the problem names the element
+        # that reaches past the window, and each code block only as a block
+        # that scrolls.
+        problems = self.check('scrolls.html', widths=(1280,))
+        document = [p for p in problems if p.element == 'document']
+        self.assertEqual(len(document), 1, problems)
+        self.assertRegex(document[0].detail,
+                         r'^scrollWidth 2110 > window 1280; div\.wide#sec '
+                         r'\(right edge 2110\)$')
+        self.assertEqual(sorted(p.element for p in problems if p is not document[0]),
+                         ['pre[1]#sec', 'pre[2]#sec', 'pre[3]#sec'])
 
     def test_an_image_wider_than_the_text_column(self):
         problems = self.check('image.html', widths=(1280,))

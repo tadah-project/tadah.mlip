@@ -194,8 +194,10 @@ add_subdirectory(catch_discovery)
 # docs/source/cli/generate_cli.py), of the ANNEAL key tables' generator
 # (docs/source/config/read_anneal_keys.py, which needs Python 3.11 or later
 # for tomllib), of the layout and structure rules of the build
-# (docs/tools/nfp_checks.py) and of the browser check of built pages
-# (docs/tools/check_layout.py). They never use the network.
+# (docs/tools/nfp_checks.py), of the browser check of built pages
+# (docs/tools/check_layout.py) and of the runs of the Nested Fitting pages
+# (nfp_docs/check_nfp_run.py, doc_commands/doc_commands.py). They never use
+# the network.
 #
 # Some cases need node, sphinx-build, a Chromium-family browser or the
 # Python modules sphinx, sphinx_rtd_theme or yaml, and skip themselves when
@@ -349,6 +351,54 @@ foreach(_inc IN LISTS _cli_example_includes)
   set_tests_properties(tadah_cli_example_${_ex} PROPERTIES
     LABELS examples
     TIMEOUT 900
+    SKIP_RETURN_CODE 77
+    ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+endforeach()
+
+
+# ------------------------------------------------------------------
+# 9b. The runs of the Nested Fitting pages (docs/source/nfp/files)
+# ------------------------------------------------------------------
+# One entry, tadah_nfp_<id> (label examples, and the labels its line adds,
+# such as slow), per line of docs/source/nfp/files/manifest.txt:
+# nfp_docs/check_nfp_run.py runs the `tadah` commands of the page's bash
+# code blocks in a scratch copy of the files, checks that each exits 0 and
+# writes its results, and compares the run with the expected.csv the page
+# quotes, within the line's tolerances. A page that runs `tadah hpo` is
+# Skipped in a build without NFP. `check_nfp_run.py --list` reads the
+# manifest (a malformed line stops the configure step, naming it).
+set(_nfp_manifest ${PROJECT_SOURCE_DIR}/docs/source/nfp/files/manifest.txt)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${_nfp_manifest})
+execute_process(
+  COMMAND ${Python3_EXECUTABLE} -B
+    ${CMAKE_CURRENT_SOURCE_DIR}/nfp_docs/check_nfp_run.py --list ${_nfp_manifest}
+  OUTPUT_VARIABLE _nfp_runs
+  ERROR_VARIABLE _nfp_runs_error
+  RESULT_VARIABLE _nfp_runs_result)
+if(NOT _nfp_runs_result EQUAL 0)
+  message(FATAL_ERROR "nfp_docs/check_nfp_run.py --list failed: ${_nfp_runs_error}")
+endif()
+string(REPLACE "\n" ";" _nfp_runs "${_nfp_runs}")
+foreach(_run IN LISTS _nfp_runs)
+  if(_run STREQUAL "")
+    continue()
+  endif()
+  string(REPLACE "|" ";" _run "${_run}")
+  list(GET _run 0 _id)
+  list(GET _run 1 _labels)
+  list(GET _run 2 _timeout)
+  string(REPLACE "," ";" _labels "${_labels}")
+  math(EXPR _ctest_timeout "${_timeout} + 120")
+  add_test(NAME tadah_nfp_${_id}
+    COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/nfp_docs/check_nfp_run.py
+      --manifest ${_nfp_manifest} --id ${_id}
+      --tadah $<TARGET_FILE:tadah>
+      --workdir ${CMAKE_CURRENT_BINARY_DIR}/nfp_docs/${_id}
+      --nfp ${_cli_example_nfp})
+  set_tests_properties(tadah_nfp_${_id} PROPERTIES
+    LABELS "${_labels}"
+    TIMEOUT ${_ctest_timeout}
     SKIP_RETURN_CODE 77
     ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
 endforeach()

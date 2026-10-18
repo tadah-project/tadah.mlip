@@ -1,0 +1,16 @@
+# The runs of the Nested Fitting pages: one line per directory of files
+# whose page commands are run under CTest (tadah_nfp_<id>, label examples;
+# tests/nfp_docs/check_nfp_run.py runs them and describes each field).
+#
+#   <id> | <page.rst> | <dir> | <labels> | <timeout> | <tolerances>
+#
+# id          the CTest entry is tadah_nfp_<id> (letters, digits, '_')
+# page.rst    the page whose bash code blocks run, relative to docs/source
+# dir         the directory they run in, relative to this directory; it
+#             holds expected.csv (Quantity,Value), the results the page
+#             quotes
+# labels      CTest labels besides examples, separated by ',', or '-';
+#             slow: a run longer than about two minutes
+# timeout     seconds the commands may take together
+# tolerances  <quantity>=<relative tolerance> or <quantity>=abs:<tolerance>,
+#             separated by ',', or '-' (best_loss=1e-6)

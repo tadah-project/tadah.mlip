@@ -115,6 +115,68 @@ def code_blocks(text):
     return blocks
 
 
+def blocks_of(text, language):
+    """The text of each code block of *language* of a page, its lines
+    joined by blanks."""
+    out, lines, i = [], text.split('\n'), 0
+    while i < len(lines):
+        m = re.match(r'^(\s*)\.\. code-block:: (\S+)$', lines[i])
+        i += 1
+        if not m:
+            continue
+        outer, content = len(m.group(1)), []
+        while i < len(lines) and (not lines[i].strip()
+                                  or len(lines[i]) - len(lines[i].lstrip())
+                                  > outer):
+            content.append(lines[i].strip())
+            i += 1
+        if m.group(2) == language:
+            out.append(' '.join(' '.join(content).split()))
+    return out
+
+
+def prose_of(text):
+    """A page without its code blocks and the options of its entries (such
+    as :hint:), its markup removed and its blanks collapsed: the text a
+    reader sees outside the code blocks."""
+    out, lines, i = [], text.split('\n'), 0
+    while i < len(lines):
+        m = re.match(r'^(\s*)\.\. code-block::', lines[i])
+        if not m:
+            if not re.match(r'^\s+:(names|text|annotation|also|hint|scope|'
+                            r'kind):', lines[i]):
+                out.append(lines[i])
+            i += 1
+            continue
+        i += 1
+        while i < len(lines) and (not lines[i].strip()
+                                  or len(lines[i]) - len(lines[i].lstrip())
+                                  > len(m.group(1))):
+            i += 1
+    text = re.sub(r'\\(.)', r'\1', ' '.join(out).replace('``', ''))
+    return ' '.join(text.split())
+
+
+def field_bodies(text, name):
+    """The body of each field *name* of a page, its lines joined."""
+    out, lines = [], text.split('\n')
+    for i, line in enumerate(lines):
+        if line.strip() != f':{name}:':
+            continue
+        outer, body = len(line) - len(line.lstrip()), []
+        for nxt in lines[i + 1:]:
+            if nxt.strip() and len(nxt) - len(nxt.lstrip()) <= outer:
+                break
+            body.append(nxt.strip())
+        out.append('\n'.join(body).strip())
+    return out
+
+
+#: The name each annealer starts its messages with (anneal_core.h).
+ANNEALER = {'serial': 'TADAH:ANNEAL', 'pt': 'TADAH:ANNEAL_PT',
+            'pa': 'TADAH:ANNEAL_PA'}
+
+
 def logical_lines(text):
     """The logical lines of a target-file fragment as the parser reads them
     (blueprint/hpotarget.toml, [lexing]): a comment runs from # to the end
@@ -306,6 +368,59 @@ class PagesTest(unittest.TestCase):
                                           r'csv-table|table)::')
                 self.assertNotRegex(text, r'(?m)^\s*\+[-=+]+\+\s*$')
                 self.assertNotRegex(text, r'(?m)^\s*=+( +=+)+\s*$')
+
+    def test_messages_are_quoted_as_program_output(self):
+        # Pins: a message of tadah hpo is a block of program output, as the
+        # program prints it, and not prose of the page (its wording, such
+        # as "remove STEP", is the program's): the refusals of an
+        # annealer's PARAM key, each with the name of the annealer that
+        # prints it and that annealer's own message, and the reason an
+        # optimiser gives when it refuses STEP.
+        # Before the fix: the annealers' messages are inline literals of
+        # prose without the annealer's name, and a STEP refusal is prose.
+        rules = self.anneal.get('rule', [])
+        expected = [f"{ANNEALER[r['kind']]}: {r['msg']}" for r in rules
+                    if r['type'] == 'kind_reject']
+        expected += [f"{ANNEALER[kind]}: {r['msg']}"
+                     for r in self.anneal.get('renamed', [])
+                     for kind in r['kinds']]
+        notes = [o['step_note'] for o in self.optimizers['optimizer']
+                 if o['status'] != 'refused' and not o['step_consumed']
+                 and o['step_note']]
+        self.assertTrue(expected and notes)
+        for page, messages in (('anneal_params', expected),
+                               ('optimisers', notes)):
+            blocks = blocks_of(self.pages[page], 'text')
+            prose = prose_of(self.pages[page])
+            for msg in messages:
+                with self.subTest(page=page, message=msg[:60]):
+                    msg = ' '.join(msg.split())
+                    self.assertTrue(any(msg in b for b in blocks))
+                    self.assertNotIn(msg.split(': ', 1)[-1][:50], prose)
+
+    def test_the_values_read_as_sentences(self):
+        # Pins: the description of an argument (``<name>``: ...) is a
+        # fragment and the registry's text a sentence after it; each ends
+        # with a full stop; an argument of any word is "a word" (a file, a
+        # variable, a value), not "a name". (The annealers' values are a
+        # range, as the annealing tables write it.)
+        # Before the fix: "a number; The tolerance, ..." and "<value>: a
+        # name".
+        count = 0
+        for name in PAGES:
+            for body in field_bodies(self.pages[name], 'Values'):
+                items = [i[2:] if i.startswith('- ') else i
+                         for i in body.split('\n- ')]
+                for item in [i for i in items if i.startswith('``<')]:
+                    count += 1
+                    with self.subTest(page=name, item=item[:60]):
+                        item = ' '.join(item.split())
+                        self.assertNotRegex(item, r';\s+(The|A|An)\b')
+                        self.assertTrue(item.endswith('.'), item)
+        self.assertGreater(count, 100)
+        invar = self.pages['pc_options'].split(
+            '.. hpo:key:: PC_LAMMPS.--invar\n', 1)[1].split('\n.. hpo:', 1)[0]
+        self.assertIn('``<value>``: a word.', invar)
 
     def test_examples_read_as_the_registry_writes_them(self):
         # Pins: an example longer than a code line is continued with a

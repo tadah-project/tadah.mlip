@@ -126,10 +126,20 @@ these rules and names the line, for example an ``ENDOPTIMIZER`` line
 inside an open ``STRATEGY`` block.
 
 A repeated ``INIT``, ``NOISE``, ``EXPLORE``, ``REFINE`` or ``RESTART``
-block continues the first one. A key set in both blocks takes the later
-value. The ``METHOD`` lines of a repeated ``INIT`` or ``RESTART`` block
-add to the same list of starting-point methods (see
-:doc:`nfp_initialisation`).
+block continues the first one. An ``INIT``, ``NOISE`` or ``RESTART`` key
+set in both blocks takes the later value. The ``METHOD`` lines of a
+repeated ``INIT`` or ``RESTART`` block add to the same list of
+starting-point methods (see :doc:`nfp_initialisation`).
+
+An optimiser key, such as ``ALGO``, ``MAXEVAL``, ``SEED`` or ``PARAM``
+of one name, is set once for its optimiser. ``OPTIMIZER``, ``STRATEGY``
+and ``REFINE`` configure the same optimiser, so a key set in two of them
+is refused, as is a key set twice in one block or in a repeated block.
+The message names the line of the first.
+
+.. versionchanged:: 1.6.0
+   An optimiser key set twice for one optimiser is refused. 1.5.0 used
+   the later value.
 
 .. versionchanged:: 1.6.0
    ``tadah hpo`` refuses a second ``OPTIMIZER`` block, an ``OPTIMIZER``

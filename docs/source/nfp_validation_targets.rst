@@ -35,7 +35,13 @@ Metric keys
 -----------
 
 Syntax: ``PC_<METRIC> <target> <weight> [--skip-above <cap>] [--skip-rel <ratio>]``.
-Targets must be finite; weights must be finite and nonnegative.
+Targets must be finite; weights must be finite and nonnegative. A metric
+has one global line: a second one is refused, and the message names the
+line of the first.
+
+.. versionchanged:: 1.6.0
+   A repeated ``PC_EMAE``, ``PC_ErRMSE``, ``PC_ERSQ`` or ``PC_SRMSE``
+   line is refused. 1.5.0 used the last one.
 
 .. list-table:: Metrics and units
    :header-rows: 1

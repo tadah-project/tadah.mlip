@@ -130,17 +130,23 @@ block continues the first one. The ``METHOD`` lines of a repeated
 ``INIT`` or ``RESTART`` block add to the same list of starting-point
 methods (see :doc:`nfp_initialisation`).
 
-Each key is set once for what it configures. ``OPTIMIZER``, ``STRATEGY``
-and ``REFINE`` configure the same optimiser, and the ``INIT`` blocks
-inside ``OPTIMIZER`` and inside ``STRATEGY`` the same starting points. A
-key set twice, in one block, in a repeated block or in two such blocks,
-is refused, and the message names the line of the first. ``METHOD``
-lines and ``STEP <KEY>`` overrides are no repeats: a ``METHOD`` line adds
-to its list, and an override refines the block-wide ``STEP``.
+Each key that takes one value is set once for what it configures.
+``OPTIMIZER``, ``STRATEGY`` and ``REFINE`` configure the same optimiser,
+and the ``INIT`` blocks inside ``OPTIMIZER``, ``STRATEGY`` and ``REFINE``
+the same starting points. A top-level key such as ``QFLUSH`` or ``DUMP``
+configures the run. A key set twice, in one block, in a repeated block or
+in two such blocks, is refused, and the message names the line of the
+first.
+
+Lines that add are no repeats. A ``METHOD`` line adds to its list, and
+``OPTIM``, ``PC_LAMMPS`` and ``PC_OBSERVABLE`` lines, and ``PC_ERMSE``
+and ``PC_FRMSE`` lines of other datasets, add to the file's. A
+``STEP <KEY>`` override of other indices refines the block-wide
+``STEP``.
 
 .. versionchanged:: 1.6.0
-   A key set twice for one optimiser, its starting points, or the
-   ``NOISE``, ``RESTART`` or ``STRATEGY`` settings is refused. 1.5.0 used
+   A key set twice for one optimiser, its starting points, the ``NOISE``,
+   ``RESTART`` or ``STRATEGY`` settings or the run is refused. 1.5.0 used
    the later value.
 
 .. versionchanged:: 1.6.0
@@ -155,8 +161,9 @@ to its list, and an override refines the block-wide ``STEP``.
 
 ``LOSS``, ``FAILSCORE`` and ``PC_SCRIPT_TIMEOUT`` precede the
 ``PC_LAMMPS`` and ``PC_FAILPROBE`` lines they affect. Each target line
-captures those settings when it is read. Repetition rules depend on the
-key. Repeated ``OPTIM`` lines must select distinct dimensions.
+captures those settings when it is read, so the three may be given again
+for the lines after them. Repeated ``OPTIM`` lines select distinct
+dimensions.
 
 .. raw:: html
 

@@ -3,9 +3,9 @@
 Training
 ========
 
-This page covers the ``tadah train`` command in depth. For a one-shot
-introduction see :ref:`training` in the quickstart; for the full
-key-by-key reference see :ref:`ConfigSection`.
+This page covers the ``tadah train`` command in depth. :ref:`training` in
+the quickstart gives a one-shot introduction, and :ref:`ConfigSection` the
+full key-by-key reference.
 
 Command
 -------
@@ -26,14 +26,14 @@ Flag               Config key       Effect
 ================== ================ =====================================================================
 ``-c <file>``      ``CONFIG``       Training configuration file.
 ``-o <file>``      ``OUTFILE``      Trained-model output file (default ``pot.tadah``).
-``-F``             ``FORCE``        Train on forces in addition to energies (default off).
-``-S``             ``STRESS``       Train on stresses in addition to energies (default off).
-``--uncertainty``  ``UNCERTAINTY``  Write every weight with its standard deviation, ``weights.tadah``; needs ``OALGO 3`` (default off).
+``-F``             ``FORCE``        Trains on forces in addition to energies (default off).
+``-S``             ``STRESS``       Trains on stresses in addition to energies (default off).
+``--uncertainty``  ``UNCERTAINTY``  Writes every weight with its standard deviation, ``weights.tadah``; needs ``OALGO 3`` (default off).
 ``-v <0|1|2>``     ``VERBOSE``      Log level: 0 ERROR, 1 WARNING, 2 INFO (default 1).
 ================== ================ =====================================================================
 
 Training data must be supplied as one or more Tadah! database files via
-``DBFILE`` in the configuration; see :ref:`dataset` for the on-disk format.
+``DBFILE`` in the configuration; :ref:`dataset` gives the on-disk format.
 
 Pipeline
 --------
@@ -41,21 +41,21 @@ Pipeline
 For each ``tadah train`` invocation the engine runs the following stages
 in order:
 
-#. **Load the structures** declared by every ``DBFILE`` key into memory.
-#. **Apply load-time data transforms** (``LSCALE``, ``ESHIFT*``,
+#. **Loading the structures** declared by every ``DBFILE`` key into memory.
+#. **Applying load-time data transforms** (``LSCALE``, ``ESHIFT*``,
    ``EFILTER`` / ``FFILTER``, ``EWEIGHT_TEMP``, ``WDBFILE`` /
-   ``WDBFILE_AUTO``, ``ZERO_COM_FORCE``) — see :ref:`load_transforms`.
-#. **Build the neighbour list** out to ``RCUTMAX``: every periodic image
+   ``WDBFILE_AUTO``, ``ZERO_COM_FORCE``; :ref:`load_transforms`).
+#. **Building the neighbour list** out to ``RCUTMAX``: every periodic image
    of every atom closer than the cutoff, for any cell (triclinic, or
-   thinner than the cutoff) and for atoms inside or outside the cell (see
-   :doc:`API/nn_finder`).
-#. **Run the pre-flight audit** when enabled (``AUDIT`` is ``off`` by
+   thinner than the cutoff) and for atoms inside or outside the cell
+   (:doc:`API/nn_finder`).
+#. **Running the pre-flight audit** when enabled (``AUDIT`` is ``off`` by
    default; ``warn`` reports findings, ``error`` refuses to launch on a
    FAIL-level finding), which checks dataset statistics and
    per-descriptor metadata for ρ-collapse and out-of-range parameter
    combinations.
-#. **Fit the regression model** declared by ``MODEL``.
-#. **Write ``pot.tadah``** (or whatever ``--outfile`` requests) and, with
+#. **Fitting the regression model** declared by ``MODEL``.
+#. **Writing ``pot.tadah``** (or whatever ``--outfile`` requests) and, with
    ``--uncertainty``, ``weights.tadah``.
 
 .. versionchanged:: 1.6.0
@@ -64,7 +64,7 @@ in order:
    direction (e.g. a 2-atom bcc cell with :math:`a = 3.41` Å at a 10 Å
    cutoff kept 168 of each atom's 180 neighbours), or is triclinic, or whose
    atoms lie outside the cell. Potentials trained on such structures, and
-   ``tadah predict`` results for them, change; retrain the potentials.
+   ``tadah predict`` results for them, change; such potentials need retraining.
    ``tadah predict`` now agrees with ``pair_style tadah`` in LAMMPS on every
    cell.
 
@@ -87,9 +87,9 @@ prepared the training data: the potential lists them in its
 :ref:`training record <training_record>`, not as key lines, ``tadah
 predict`` does not apply them (:ref:`load_transforms_predict`), and a
 retrain from the potential does not take them from it
-(:ref:`retrain_from_potential`). For the per-key CLI form and defaults see
-:ref:`ConfigSection` and ``tadah explain <key>`` (e.g. ``tadah explain
-train.lscale``).
+(:ref:`retrain_from_potential`). :ref:`ConfigSection` and ``tadah explain
+<key>`` (e.g. ``tadah explain train.lscale``) give the per-key CLI form and
+defaults.
 
 Order of application
 ~~~~~~~~~~~~~~~~~~~~
@@ -101,7 +101,7 @@ several feed the next:
    extreme outlier cannot poison the later least-squares and
    reweighting steps.
 #. **Length rescale** (``LSCALE``).
-#. **ESHIFT** — determine the per-element shifts, then subtract them.
+#. **ESHIFT** — the per-element shifts are determined, then subtracted.
 #. **Boltzmann reweight** (``EWEIGHT_TEMP``) — after ESHIFT, so the
    Boltzmann factor sees the shifted, user-meaningful energies.
 #. **COM-force zeroing** (``ZERO_COM_FORCE``).
@@ -118,14 +118,14 @@ Key                          One-line summary
 ============================ ===========================================================================
 ``LSCALE``                   Uniform length rescale (DFT → experimental scale).  Persisted to pot.tadah.
 ``ESHIFT``                   Explicit per-element energy shift; one value per element ordered by Z.
-``ESHIFT_ATOM``              Derive ESHIFT from isolated-atom configurations in the dataset.
-``ESHIFT_DBATOM``            Derive ESHIFT by least-squares atomic-energy fit over the database.
-``EFILTER  <lo> <hi>``       Drop configurations whose per-atom energy is outside ``[lo, hi]``.
-``FFILTER  <thr>``           Drop configurations with an atom whose force magnitude is above ``thr``.
+``ESHIFT_ATOM``              Derives ESHIFT from isolated-atom configurations in the dataset.
+``ESHIFT_DBATOM``            Derives ESHIFT by least-squares atomic-energy fit over the database.
+``EFILTER  <lo> <hi>``       Drops configurations whose per-atom energy is outside ``[lo, hi]``.
+``FFILTER  <thr>``           Drops configurations with an atom whose force magnitude is above ``thr``.
 ``WDBFILE  <w_1> ... <w_n>`` Per-dataset weight multipliers; one per ``DBFILE``.
 ``WDBFILE_AUTO  <α>``        Automatic size balancing: per-config weight × ``1 / N_i^α``, ``α ∈ [0,1]``.
 ``EWEIGHT_TEMP  <T>``        Boltzmann reweighting at temperature ``T`` (Kelvin).
-``ZERO_COM_FORCE``           Subtract the mean force per configuration.
+``ZERO_COM_FORCE``           Subtracts the mean force per configuration.
 ============================ ===========================================================================
 
 LSCALE: uniform length rescale
@@ -141,17 +141,17 @@ made the targets of a ``STRESS true`` fit too large by ``s³`` (6 % at
 invariant``, this build's ``... stress by 1/s^3; energy invariant``. ``s = 1``
 (the default) is a no-op and ``s <= 0`` is a configuration error.
 
-The intended use is matching a DFT lattice constant to experiment: set
-``LSCALE = a_exp / a_DFT`` so the trained model's equilibrium volume
-sits at the experimental scale.
+The intended use is matching a DFT lattice constant to experiment:
+``LSCALE = a_exp / a_DFT`` puts the trained model's equilibrium volume
+at the experimental scale.
 
 ``LSCALE`` is stamped into ``pot.tadah``. ``tadah predict`` re-applies
 it to the dataset it reads, so a raw DFT dataset can be given as it is;
 both the reference (``True``) and the predicted columns it writes are in
-the rescaled frame. ``--lscale s`` replaces the stored value; pass
-``--no-lscale`` to ignore it when the dataset is already at the trained
+the rescaled frame. ``--lscale s`` replaces the stored value;
+``--no-lscale`` ignores it when the dataset is already at the trained
 scale. The LAMMPS ``pair_style tadah`` does **not** re-apply ``LSCALE`` —
-supply LAMMPS with positions already at the trained scale.
+LAMMPS needs positions already at the trained scale.
 
 .. versionchanged:: 1.6.0
    ``tadah predict`` applies the potential's ``LSCALE``. Earlier versions
@@ -211,11 +211,11 @@ are. A potential of an earlier version has its toggle as a key line beside
    **DM_REAM potentials (EMBF0 ZERO, the default).** The zero-referenced
    embedding fixes the isolated-atom energy of a DM_REAM model at 0, so the
    model has no free per-atom constant unless ``BIAS true`` is set. When the
-   reference energies are absolute (e.g. DFT totals), remove the per-atom
-   reference with ``ESHIFT``, ``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` (which
-   keeps the LAMMPS ``EAMFAST`` kernel usable) or set ``BIAS true`` (its
-   intercept columns, one per ``ATOM`` species, precede the descriptor
-   weights, so ``FIXINDEX``/``FIXWEIGHT`` indices shift; see
+   reference energies are absolute (e.g. DFT totals), ``ESHIFT``,
+   ``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` removes the per-atom reference
+   (which keeps the LAMMPS ``EAMFAST`` kernel usable), or ``BIAS true``
+   fits it (its intercept columns, one per ``ATOM`` species, precede the
+   descriptor weights, so ``FIXINDEX``/``FIXWEIGHT`` indices shift;
    :ref:`the bias term <bias_term>`).
    ``tadah train`` prints a HINT when neither is present. When the
    configuration is a potential (a ``tadah refit`` potential with a
@@ -223,8 +223,8 @@ are. A potential of an earlier version has its toggle as a key line beside
    ``--eshift-dbatom``, or a line of a file that includes the potential with
    ``CONFIG``; a toggle line of the potential is not read
    (:ref:`retrain_from_potential`). A DM_REAM
-   configuration must also declare its density form ``RHOFORM`` (see
-   `pot.tadah format`_). See :ref:`DM_REAM <dm_ream>`.
+   configuration must also declare its density form ``RHOFORM``
+   (`pot.tadah format`_), described in :ref:`DM_REAM <dm_ream>`.
 
 Filtering and weighting
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -303,7 +303,7 @@ Output files
 ------------
 
 ``tadah train`` writes its results into the **current working
-directory** (i.e. wherever you invoked the command).
+directory** (i.e. wherever the command was invoked).
 
 ================== ============================================================================
 File               Contents
@@ -330,7 +330,7 @@ required). The file is round-tripped through ``tadah predict`` and
 ``pair_style tadah`` — every field needed to reproduce the prediction
 is stored here. Above the key lines, a block of comment lines, the
 :ref:`training record <training_record>`, names the datasets and the
-settings of the run that wrote it, for your record; no key is read from
+settings of the run that wrote it, for the record; no key is read from
 it.
 
 A minimal single-species, two-body, kernel-ridge example::
@@ -366,7 +366,7 @@ Three categories of key lines appear:
    training configuration but ``DBFILE``, the keys that prepared the
    training data and the settings of the run: the
    :ref:`training record <training_record>` above the key lines names those
-   (see also :ref:`retrain_from_potential`).
+   (:ref:`retrain_from_potential`).
 
 #. **Fitted parameters** — the row ``WEIGHTS …`` carries the learned
    coefficients :math:`\mathbf w`. The ordering matches the column
@@ -386,7 +386,7 @@ potential without a DM_REAM block (a notice on standard error, once per
 process: :ref:`RHOFORM and EMBF0 without a DM_REAM block <dm_ream_only_keys>`). ``RHOFORM`` has no
 default: a DM_REAM training configuration without it stops before any
 fitting with the migration message (``RHOFORM SIGNED`` is the density of
-every tadah before 1.6.0); see :ref:`DM_REAM <dm_ream_rhoform>`.
+every tadah before 1.6.0), described in :ref:`DM_REAM <dm_ream_rhoform>`.
 
 .. _training_record:
 
@@ -401,7 +401,7 @@ only prepared the training data, ``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``,
 ``WDBFILE_AUTO`` (:ref:`load_transforms`); and these settings of the run:
 ``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``,
 ``HEALTH_LOG`` and ``UNCERTAINTY``, and the ``HPOTARGET`` and
-``VALIDATION`` of a ``tadah hpo`` run. For your record the potential keeps
+``VALIDATION`` of a ``tadah hpo`` run. For the record, the potential keeps
 the values its run was given in its *training record*, a block of comment
 lines right above the key lines::
 
@@ -435,7 +435,7 @@ potential loads, predicts and retrains as it would without the block, and
 the ``VERBOSE`` of its record does not set the log level. A potential
 without a record (one of an earlier version) loads as before. ``tadah refit
 --edit`` alone reads the block itself, to copy it into the edit
-(:ref:`refit_edit`): what you write in it is carried into the edited
+(:ref:`refit_edit`): what is written in it is carried into the edited
 potential, and the edit is refused, naming the file and the lines, when the
 block is malformed: an opening line without its end line (since every
 writer puts the key lines right after the record, deleting the end line
@@ -535,7 +535,7 @@ A potential that ``tadah refit`` or ``tadah refit --edit`` writes, and the
 ``best_pot.tadah`` of a ``tadah hpo`` run that pins every weight, has
 ``FIXINDEX`` and ``FIXWEIGHT`` lines for every weight: the seed of a
 ``tadah hpo`` coefficient search (:ref:`hpo_fixweight`).  A fit whose
-``FIXINDEX`` pins every weight changes none, so for a retrain delete both
+``FIXINDEX`` pins every weight changes none, so a retrain deletes both
 lines from the copy as well::
 
    grep -v -e '^FIXINDEX' -e '^FIXWEIGHT' pot.tadah > retrain.train
@@ -616,7 +616,7 @@ tadah train's ``OUTFILE pot.tadah``, else the key's: ``VERBOSE 1``,
 itself and that its task reads (``tadah hpo`` reads no ``UNCERTAINTY`` or
 ``OUTFILE``, ``tadah train`` no ``VALIDATION``, ``HPOTARGET`` or
 ``HEALTH_LOG``): a potential of an earlier version has them as key lines,
-and so has a copy you added one to::
+and so has a copy with one added::
 
    WARNING: tadah train: the configuration file retrain.train is a potential
    (it has WEIGHTS): its EFILTER 5 6 and WDBFILE 1 1 prepared the training
@@ -656,11 +656,11 @@ seed potential without ``--hpotarget`` (``... name the hpotarget file with
 --hpotarget, or with an HPOTARGET line in a configuration file without
 WEIGHTS. ...``).
 
-To derive ``ESHIFT`` from the data of the retrain instead of using the
-potential's, delete the ``ESHIFT`` line from the copy and give the run
-``ESHIFT_ATOM`` or ``ESHIFT_DBATOM``: on the command line, or on a line of
-the task file or of a configuration file that includes the copy with
-``CONFIG``::
+A retrain derives ``ESHIFT`` from its own data, instead of using the
+potential's, when the ``ESHIFT`` line is deleted from the copy and the run
+is given ``ESHIFT_ATOM`` or ``ESHIFT_DBATOM``: on the command line, or on a
+line of the task file or of a configuration file that includes the copy
+with ``CONFIG``::
 
    grep -v '^ESHIFT ' pot.tadah > retrain.train
    echo "DBFILE db.train" >> retrain.train
@@ -688,9 +688,9 @@ configuration). Likewise ``--uncertainty``, or an
 copy, asks a retrain for ``weights.tadah``; the copy's own ``UNCERTAINTY
 true`` line asks for nothing, and when the run gives no ``UNCERTAINTY`` of
 its own the warning says so (``its UNCERTAINTY true asked the run that wrote
-it for weights.tadah, not this run, and is ignored``). To reproduce the
-first fit, give the keys its record lists on the command line or in the
-file that includes the copy.
+it for weights.tadah, not this run, and is ignored``). A retrain
+reproduces the first fit when it is given the keys its record lists, on
+the command line or in the file that includes the copy.
 
 .. versionchanged:: 1.6.0
    A potential had the keys that prepared its training data as key lines,
@@ -720,8 +720,8 @@ there, to its convergence tolerance).
 A ``DBFILE`` that lists one dataset file twice (the same path, two spellings
 of it, or a link to it) is refused, naming both entries, by ``tadah train``
 and, at startup, by ``tadah hpo``: each entry is a dataset, so each of its
-structures would be fitted twice. To give a dataset more weight, use
-``WDBFILE``.
+structures would be fitted twice. ``WDBFILE`` gives a dataset more
+weight.
 
 .. versionchanged:: 1.6.0
    An ``M_BLR`` potential had the ``DBFILE`` line it was trained on (an
@@ -730,9 +730,10 @@ structures would be fitted twice. To give a dataset more weight, use
    strength and the ``OALGO 3`` ``SIGMA`` was that of twice the data, and
    nothing said so. An ``M_BLR`` potential written by Tadah! 1.5.x or
    earlier still has its ``DBFILE`` line
-   (``tadah predict`` and ``pair_style tadah`` do not read it): remove it
-   before you add the ``DBFILE`` of a retrain (the duplicated entry is
-   refused), or train from it as it is, on the dataset it names. ``M_KRR``
+   (``tadah predict`` and ``pair_style tadah`` do not read it): a retrain
+   either removes it before adding its own ``DBFILE`` (the duplicated entry
+   is refused), or trains from the potential as it is, on the dataset it
+   names. ``M_KRR``
    potentials did not record ``ALPHA`` and ``BETA``; they do now, as
    ``M_BLR`` ones did. ``tadah train`` with a configuration without
    ``DBFILE`` (an ``M_KRR`` potential as it is) stopped with ``Key not found
@@ -745,7 +746,7 @@ Number format
 
 Every non-integer number of a potential's key/value lines is written
 with ``NUMERIC`` **significant** digits (``printf`` ``%.{N}g``; those of
-the cutoffs and grids exactly, see below). The default, ``18``, is exact:
+the cutoffs and grids exactly, as described below). The default, ``18``, is exact:
 17 significant digits identify every double, so a potential reloaded from
 ``pot.tadah`` is bit-identical to the one in memory. That is why a value typed as ``5.3`` comes back as
 ``5.29999999999999982`` — the exact double nearest to 5.3 — and why
@@ -791,7 +792,7 @@ configuration sets the precision of ``pot.tadah``), to ``tadah refit
 --edit`` (a ``NUMERIC`` set for the run is honoured — the edit is then
 exact only up to that rounding, and a WARNING says so; the edited
 potential's own ``NUMERIC`` line is not read) and to the potentials ``tadah
-hpo`` writes (see :ref:`hpo_potential_archives`).
+hpo`` writes (:ref:`hpo_potential_archives`).
 
 .. note::
 
@@ -846,8 +847,8 @@ their number. ``pot.tadah`` gets two keys:
 When the fit has no more observations than effective weights
 (:math:`n_\mathrm{obs} \le \gamma`) the noise variance is undefined: no
 ``WCOV`` and ``WNOISE`` are written, and a WARNING says why. Any other
-``OALGO`` writes neither. ``tadah predict --error`` reads them (see
-:ref:`predict_error`).
+``OALGO`` writes neither. ``tadah predict --error`` reads them
+(:ref:`predict_error`).
 
 ``--uncertainty`` writes ``weights.tadah``: every weight with its standard
 deviation, the square root of the diagonal of :math:`\Sigma_w` (0 for a
@@ -872,10 +873,10 @@ configuration (a file without ``WEIGHTS``), in a task file or in a file
 that includes the potential; a refusal names where it came from.
 ``--uncertainty`` is refused before training with an ``OALGO`` other than 3
 and with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``, whose solve of
-the kernel matrix computes no covariance: use implementation 1), and before
-``pot.tadah`` is written when the covariance is undefined; the message says
-why and what to change (for too few observations: add data with a non-zero
-weight).
+the kernel matrix computes no covariance; implementation 1 computes one), and
+before ``pot.tadah`` is written when the covariance is undefined; the message
+says why and what to change (for too few observations: more data with a
+non-zero weight).
 
 .. versionchanged:: 1.6.0
    ``WCOV`` and ``WNOISE`` replace ``SIGMA``, which Tadah! 1.0.0 to 1.5.0
@@ -898,11 +899,11 @@ Diagnostic output (verbose 2)
 With ``--verbose 2`` (INFO level) the engine logs progress to stdout:
 load-time transform summaries, neighbour-finding wall-time, the
 pre-flight audit report, and the regression solver status. None of
-these lines are written to files; capture them with shell redirection
-if needed (``tadah train -c config.train -v 2 2>&1 | tee train.log``).
+these lines are written to files; shell redirection captures them if
+needed (``tadah train -c config.train -v 2 2>&1 | tee train.log``).
 
-See also
---------
+Related pages
+-------------
 
 * :ref:`training` — quickstart introduction.
 * :ref:`ConfigSection` — every configuration key, with defaults.

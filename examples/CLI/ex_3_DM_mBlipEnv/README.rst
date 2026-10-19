@@ -1,5 +1,5 @@
-Example 3 - DM_mBlipEnv: Train and Predict
-------------------------------------------
+Example 3 - DM_mBlipEnv: Training and Prediction
+------------------------------------------------
 
 This example exercises the ``DM_mBlipEnv`` many-body descriptor.
 The dataset ``tdata.db`` holds bcc Ta configurations from LAMMPS molecular dynamics with the Ta1_Ravelo_2013 EAM potential: energies in eV, forces in eV/Å and the virial (configurational) Cauchy stress in eV/Å³, positive under tension.
@@ -35,9 +35,9 @@ embedding function is not ``F_SQ`` (``rho^2``), so for ``L > 0`` the
 embedding is applied to individual orbital densities before the
 invariance-restoring quadratic sum and the descriptor is **not**
 rotationally invariant (the code emits a runtime ``WARNING``). ``Lmax``
-is also hard-capped at 6. This example therefore uses ``L = 0``. For a
-rotationally invariant ``L > 0`` many-body descriptor use the
-``DM_PS_*`` family instead.
+is also hard-capped at 6. This example therefore uses ``L = 0``. The
+``DM_PS_*`` family gives a rotationally invariant ``L > 0`` many-body
+descriptor instead.
 
 Files provided
 ..............
@@ -53,7 +53,7 @@ The ``TYPEMB`` line
 
 ``TYPEMB DM_mBlipEnv 0 1 1 5 5 Ta Ta`` - the integers, in order, are:
 
-* ``0`` - ``L``, the maximum orbital angular momentum (see above);
+* ``0`` - ``L``, the maximum orbital angular momentum (described above);
 * ``1`` - ``size(CGRIDMB)``, number of radial Gaussian centres;
 * ``1`` - ``size(SGRIDMB)``, number of radial Gaussian widths;
 * ``5`` - ``size(CEMBFUNC)``, number of embedding blip centres;
@@ -88,7 +88,7 @@ choice:
 * A linear fit can only constrain a blip whose support overlaps the
   data band (``rho ~ 0.89-1.10``). A blip with no data overlap gets a
   zero weight from the regulariser, so adding narrow low-``rho`` blips
-  does **not** remove the dead zone - they are simply zeroed.
+  does **not** remove the dead zone - they are zeroed.
 
 The fix is to make the blips **wide**: ``SEMBFUNC = 2.0`` gives each
 blip a support of width ``4/eta = 2.0``. Every blip in
@@ -117,7 +117,7 @@ the working directory (a 5-column design matrix, one column per blip).
 Prediction
 ..........
 
-To verify the round-trip, predict back on the training set:
+A prediction back on the training set verifies the round-trip:
 
 .. code-block:: bash
 

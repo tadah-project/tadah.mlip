@@ -1,9 +1,9 @@
 Command Line Interface
 ======================
 
-Tadah!MLIP’s CLI follows one simple pattern; once you know the
-conventions you can drive every tool—from dataset wrangling to
-hyper-parameter optimisation.
+Tadah!MLIP’s CLI follows one simple pattern; the same conventions
+drive every tool—from dataset wrangling to hyper-parameter
+optimisation.
 
 Basic invocation
 ----------------
@@ -29,7 +29,7 @@ task file and executed with ``--task tasks.tadah``.
 ``--task`` takes no other option (``tadah hpo --task tasks.tadah
 --hpotarget t.hpo`` is refused, ``--hpotarget excludes --task``): the task
 file gives every key of its tasks.
-A task file is simply the CLI translated into an INI-style block:
+A task file is the CLI translated into an INI-style block:
 
 .. code-block:: ini
 
@@ -46,12 +46,12 @@ A task file is simply the CLI translated into an INI-style block:
 Short-hand rules
 ----------------
 
-* Boolean flags never take a value on the CLI: write ``--force``, not
-  ``--force true``.
+* Boolean flags never take a value on the CLI: the flag is ``--force``,
+  not ``--force true``.
 * Lists accept space-separated tokens **or**
   comma/range syntax (``1,3-5,10-20:2``).
 * Mutually exclusive options are flagged in the help (``Excludes``);
-  Tadah!MLIP aborts if you combine them.
+  Tadah!MLIP aborts if they are combined.
 * Any multi-value option can be repeated:
   ``--dbfile file1 file2`` or ``--dbfile file1 --dbfile file2``.
 
@@ -59,34 +59,34 @@ Top-level command map
 ---------------------
 
 ==================  ============================================================
-``analysis``        Visualise basis / cutoff functions or compute descriptors
+``analysis``        Visualises basis / cutoff functions or computes descriptors
 
-                    * ``descriptor`` – calculate structure descriptors  
-                    * ``bfunc`` – evaluate/plot basis functions  
-                    * ``cutoff`` – evaluate/plot cutoff functions  
+                    * ``descriptor`` – calculates structure descriptors  
+                    * ``bfunc`` – evaluates/plots basis functions  
+                    * ``cutoff`` – evaluates/plots cutoff functions  
 
-``data``            Create & manipulate datasets
+``data``            Creates & manipulates datasets
 
                     * ``convert`` – DFT → Tadah! format  
-                    * ``print`` – echo structure info  
-                    * ``write`` – export structures  
-                    * ``dedup`` – remove duplicates from a database
-                    * ``merge`` – concatenate databases  
-                    * ``split`` – partition a database  
-                    * ``sample`` – sample a database  
-                    * ``balance`` – re-weight / shift energies & forces  
+                    * ``print`` – echoes structure info  
+                    * ``write`` – exports structures  
+                    * ``dedup`` – removes duplicates from a database
+                    * ``merge`` – concatenates databases  
+                    * ``split`` – partitions a database  
+                    * ``sample`` – samples a database  
+                    * ``balance`` – re-weights / shifts energies & forces  
 
 ``explain``         Detailed help for any command/option (dot-notation)
 
 ``hpo``             Global hyper-parameter optimisation of a model
 
-``predict``         Run a trained potential on datasets or raw structures
+``predict``         Runs a trained potential on datasets or raw structures
 
-``properties``      Evaluate benchmark properties
+``properties``      Evaluates benchmark properties
 
                     * ``pairwise`` – energy vs. distance curves  
 
-``train``           Fit a new potential (``-c config.tadah``)
+``train``           Fits a new potential (``-c config.tadah``)
 ==================  ============================================================
 
 Commands reference

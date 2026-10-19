@@ -35,7 +35,7 @@ Glossary and Abbreviations
       One contribution to the nested-fitting loss: an enabled validation
       metric, a ``PC_LAMMPS --varloss`` variable or a ``PC_OBSERVABLE``
       line.  The loss of an evaluation is the mean of its weighted terms,
-      clipped to ``FAILSCORE`` (see :ref:`nested_fitting`).
+      clipped to ``FAILSCORE`` (:ref:`nested_fitting`).
 
    Search Space Constraint
       A bound placed on a :term:`hyperparameter` via an ``OPTIM`` line.
@@ -55,4 +55,4 @@ Abbreviations
       Nested Fitting Procedure
 
    HPO
-      Hyperparameter Optimization
+      Hyperparameter Optimisation

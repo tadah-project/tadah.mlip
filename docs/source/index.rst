@@ -7,8 +7,8 @@ Welcome to the Tadah! Website
 .. admonition:: Tadah! |release| — work in progress, ready to use
    :class: note
 
-   This release is a **usable work in progress**: it is the version we fit
-   and run potentials with, and we want your feedback on it. The CLI
+   This release is a **usable work in progress**: the Tadah! authors fit
+   and run potentials with this version, and feedback on it is welcome. The CLI
    (subcommands, flags, configuration keys) and the ``pot.tadah`` format
    are stable across 1.x; the C++ API is **not** yet stable and may change
    before 2.0. Highlights since the 1.3 beta:
@@ -20,7 +20,7 @@ Welcome to the Tadah! Website
      a unit-cube search-space scaling layer (``OPTIM_SCALE AUTO``,
      ``OPTIM ... AUTO`` boxes); per-dataset validation targets and weights;
      graded ``FAILSCORE`` and process-isolated ``PC_LAMMPS`` scripts.
-   * **Refit** (``tadah refit``) — convert tabulated EAM potentials into
+   * **Refit** (``tadah refit``) — converts tabulated EAM potentials into
      native Tadah! potentials, with a fast EAM-collapse path in LAMMPS.
    * **Descriptors** — rotationally invariant power-spectrum family
      (``DM_PS_*``, ``DM_GPS_*``, ``DM_OW_*``) and bump-support checks for
@@ -32,17 +32,17 @@ Welcome to the Tadah! Website
      and apply to prediction only when given to ``tadah predict``
      (:ref:`load_transforms_predict`).
 
-   Upgrading from 1.4 or earlier? Read the breaking changes in the
-   :doc:`changelog` first — notably the ``ON``/``OFF``/``AUTO`` vocabulary
-   for optimiser ``PARAM`` keys and 1-based indices in HPO output. Please
-   `report any issues`_ you hit.
+   An upgrade from 1.4 or earlier starts with the breaking changes in the
+   :doc:`changelog` — notably the ``ON``/``OFF``/``AUTO`` vocabulary
+   for optimiser ``PARAM`` keys and 1-based indices in HPO output.
+   `Issue reports <report any issues_>`_ are welcome.
 
    .. _report any issues: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues
 
 
 This is the home of Tadah! software, used for developing and deploying machine learning interatomic potentials. This website provides documentation with examples to help users quickly get up to speed, along with an associated API for developers.
 
-Here we also publish selected interatomic potentials developed by |gja_link| using Tadah! software.
+This site also publishes selected interatomic potentials developed by |gja_link| using Tadah! software, listed in :ref:`mlips`.
 
 .. |gja_link| raw:: html
 
@@ -50,9 +50,6 @@ Here we also publish selected interatomic potentials developed by |gja_link| usi
        <span style="vertical-align:middle;">Prof. Ackland's group</span>
    </a>
 
-
-.. seealso:: 
-   For our interatomic potentials, see :ref:`mlips`.
 
 .. toctree::
    :maxdepth: 2

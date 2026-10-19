@@ -1,18 +1,18 @@
 Example 0 - Basics: Tadah!MLIP
 ------------------------------
 
-``tadah`` is a command-line tool designed to simplify training and evaluation of machine learning models. It provides a user-friendly interface for managing configurations, datasets, and training processes. ``tadah`` is the main entry point for subcommands that perform specific tasks within your machine learning workflow.
+``tadah`` is a command-line tool designed to simplify training and evaluation of machine learning models. It provides a user-friendly interface for managing configurations, datasets, and training processes. ``tadah`` is the main entry point for subcommands that perform specific tasks within a machine learning workflow.
 
-In this example, we demonstrate how to:
+This example shows:
   
-- Access help information using the ``tadah`` binary.
-- Use the ``explain`` subcommand to understand the purpose of different subcommands and their options.
+- how the ``tadah`` binary gives help information;
+- how the ``explain`` subcommand explains the purpose of different subcommands and their options.
 
-Before getting started, ensure that **Tadah!** is installed and accessible through your ``$PATH``. If it is not, either add it to your ``$PATH`` or use the full path to the Tadah! binary in your commands.
+The example needs **Tadah!** installed and accessible through the ``$PATH``. A binary that is not on the ``$PATH`` is either added to it or called by its full path in the commands.
 
 .. note::
 
-   If you need installation instructions or system prerequisites, refer to :ref:`installation`.
+   :ref:`installation` gives the installation instructions and system prerequisites.
 
 Accessing Tadah! Help
 .....................
@@ -34,7 +34,7 @@ These commands will print a list of subcommands and their short descriptions.
 Subcommand Hierarchy
 ....................
 
-Tadah! supports multiple levels of subcommands for better organization and clarity:
+Tadah! supports multiple levels of subcommands for better organisation and clarity:
 
 - **Top-level subcommands**: These include commands like ``train`` or ``data``.
 - **Second-level subcommands**: Certain commands (like ``data``) have subcommands of their own (e.g., ``split``, ``balance``).
@@ -53,13 +53,13 @@ For help with a specific subcommand, such as ``train``:
 Tadah! explain command
 ......................
 
-Tadah! offers an ``explain`` subcommand to help you understand the purpose of each subcommand and its options. The ``explain`` subcommand takes a single argument:
+Tadah! offers an ``explain`` subcommand that explains the purpose of each subcommand and its options. The ``explain`` subcommand takes a single argument:
 
 - The argument represents a query about either a particular (sub)command or an option.
 - It prints an extended description, including usage, purpose, and any additional helpful information.
-- To specify which subcommand or option to explain use a *dot-separated* format. Each dot separates the subcommand(s), and the specific option of interest.
+- The subcommand or option to explain is given in a *dot-separated* format. Each dot separates the subcommand(s), and the specific option of interest.
 
-For example, to learn about the ``train`` command’s ``--task`` option:
+For example, the ``train`` command’s ``--task`` option:
 
 .. code-block:: bash
 
@@ -71,7 +71,7 @@ For a second-level subcommand, such as ``tadah data split``:
 
    tadah explain data.split
 
-And to learn more about the ``--dbfile`` option of ``tadah data split``:
+And the ``--dbfile`` option of ``tadah data split``:
 
 .. code-block:: bash
 
@@ -80,7 +80,7 @@ And to learn more about the ``--dbfile`` option of ``tadah data split``:
 Runtime Errors
 ..............
 
-Tadah! provides helpful runtime errors, such as when a configuration file is missing a necessary key. While we strive for reliability, no code is entirely bug-free. If you encounter any issues, please report them on **Tadah!’s GitLab**:
+Tadah! provides helpful runtime errors, such as when a configuration file is missing a necessary key. No code is entirely bug-free, and issue reports are welcome on **Tadah!’s GitLab**:
 
 - `Tadah! GitLab Issues <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_
 

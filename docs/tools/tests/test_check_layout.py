@@ -13,6 +13,7 @@ import struct
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -38,6 +39,31 @@ def html(body, style=STYLE):
 
 SIDE = ('<div class="wy-nav-side"><pre>' + 'n' * 200 + '</pre>'
         '<img src="logo.png" width="900" height="5"></div>')
+
+
+def theme(delay):
+    '''A stand-in for the Read the Docs theme's script. The theme defines
+    window.SphinxRtdTheme and puts each table.docutils in a
+    div.wy-table-responsive from a document-ready handler, which runs after
+    the load event. Here the handler runs *delay* ms after the load event,
+    as it can on a busy machine; with *delay* None it never runs.'''
+    wrap = ('for (const t of document.querySelectorAll("table.docutils")) {'
+            ' const box = document.createElement("div");'
+            ' box.className = "wy-table-responsive";'
+            ' t.replaceWith(box); box.appendChild(t); }')
+    late = ('' if delay is None else
+            'window.addEventListener("load", () => setTimeout(() => {'
+            f' {wrap} }}, {delay}));')
+    return f'<script>window.SphinxRtdTheme = {{}}; {late}</script>'
+
+
+# After the load event, a script widens a block by 25 px in each animation
+# frame up to 2000 px (80 frames, about 1.3 s): past the window from frame 47.
+GROW = ('<script>window.addEventListener("load", () => {'
+        ' const el = document.querySelector(".grow");'
+        ' const step = () => { const w = parseInt(el.style.width) + 25;'
+        ' el.style.width = w + "px"; if (w < 2000) requestAnimationFrame(step); };'
+        ' requestAnimationFrame(step); });</script>')
 
 PAGES = {
     'ok.html': html(SIDE + '<div role="main"><section id="intro"><p>Text.</p>'
@@ -69,6 +95,25 @@ PAGES = {
     'fields.html': html('<div role="main"><dl class="field-list" style="display: '
                         'grid; grid-template-columns: max-content 90%">'
                         '<dt>A long field name</dt><dd>Body.</dd></dl></div>'),
+    # The theme puts the table in its box (which scrolls it) 1.5 s after the
+    # load event; outside the box the table widens the document.
+    'theme_late.html': html(theme(1500) + '<div role="main"><section id="tab">'
+                            '<table class="docutils"><tr>'
+                            '<td style="white-space: nowrap">' + 'cell ' * 100
+                            + '</td></tr></table></section></div>'),
+    # The theme never puts the table in its box; it leaves a field list's
+    # table out.
+    'theme_never.html': html(theme(None) + '<div role="main">'
+                             '<table class="docutils"><tr><td>Table.</td></tr>'
+                             '</table><table class="docutils field-list"><tr>'
+                             '<td>Fields.</td></tr></table></div>'),
+    # Without the theme a table stays where it is.
+    'no_theme.html': html('<div role="main"><section id="t">'
+                          '<table class="docutils"><tr><td>Fits.</td></tr>'
+                          '</table></section></div>'),
+    'grows.html': html('<div role="main"><section id="sec">'
+                       '<div class="grow" style="width: 0px">g</div>'
+                       '</section></div>' + GROW),
     'sub/nested.html': html('<div role="main"><p>Nested.</p></div>'),
     '_static/skipped.html': html('<div role="main"><p>Static.</p></div>'),
 }
@@ -102,8 +147,10 @@ class SelectPagesTest(FixtureTree):
     def test_every_page_but_underscore_directories_by_default(self):
         self.assertEqual(check_layout.select_pages(self.dir),
                          ['code.html', 'document.html', 'fields.html',
-                          'image.html', 'math.html', 'ok.html', 'scrolls.html',
-                          'sub/nested.html', 'table.html', 'word.html'])
+                          'grows.html', 'image.html', 'math.html',
+                          'no_theme.html', 'ok.html', 'scrolls.html',
+                          'sub/nested.html', 'table.html', 'theme_late.html',
+                          'theme_never.html', 'word.html'])
 
     def test_globs_select_pages(self):
         self.assertEqual(check_layout.select_pages(self.dir, ['sub/**/*.html',
@@ -200,6 +247,40 @@ class RenderTest(FixtureTree):
         self.assertEqual([p.element for p in problems], ['dl.field-list[1]'])
         self.assertRegex(problems[0].detail,
                          r'^scrollWidth \d+ > clientWidth 260 "A long field')
+
+    def test_tables_are_measured_in_the_box_the_theme_puts_them_in(self):
+        # The theme's script runs well after the load event: the table is
+        # measured in its box, which scrolls it, as a reader sees it.
+        # Measured before, it would widen the document.
+        problems = self.check('theme_late.html', widths=(1280,))
+        self.assertEqual([p.element for p in problems],
+                         ['wy-table-responsive[1]#tab'], problems)
+        self.assertRegex(problems[0].detail,
+                         r'^scrollWidth \d+ > clientWidth 260 "cell cell')
+
+    def test_without_the_theme_a_table_is_measured_where_it_is(self):
+        self.assertEqual(self.check('no_theme.html', widths=(1280,)), [])
+
+    def test_a_page_is_measured_once_its_layout_stops_changing(self):
+        problems = self.check('grows.html', widths=(1280,))
+        self.assertEqual(len(problems), 1, problems)
+        self.assertEqual(problems[0].element, 'document')
+        self.assertRegex(problems[0].detail,
+                         r'^scrollWidth 2110 > window 1280; div\.grow#sec '
+                         r'\(right edge 2110\)$')
+
+    def test_a_page_that_does_not_become_ready_is_an_error(self):
+        err = io.StringIO()
+        with mock.patch.object(check_layout, 'READY_TIMEOUT', 1, create=True), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(err):
+            status = check_layout.main([self.dir, '--pages', 'theme_never.html',
+                                        '--widths', '1280'])
+        self.assertEqual(status, 2, err.getvalue())
+        self.assertRegex(err.getvalue(),
+                         r'^check_layout: file://\S+/theme_never\.html: not '
+                         r'ready after 1 s: the theme has not put 1 table\(s\) '
+                         r'in a div\.wy-table-responsive\n$')
 
     def test_main_reports_each_problem_and_exits_1(self):
         out = io.StringIO()

@@ -680,7 +680,7 @@ A reviewer looks for:
   backwards-compatible, or explicitly called out as breaking?
 - For numerical changes, is determinism preserved (same SEED → same
   output)? Cross-repo numerical drift is the most expensive class of
-  regression: a change that moves a result updates the tests that pin
+  regression: a change that moves a result updates the tests that check
   it (losses, evaluation counts, statuses) and says why.
 
 ## Code of Conduct

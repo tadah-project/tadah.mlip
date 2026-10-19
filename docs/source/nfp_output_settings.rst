@@ -70,6 +70,11 @@ Each has a corresponding ``best_`` history, such as
 starting at one. These files accumulate history rows; each file's header
 lists the enabled columns.
 
+The run writes these files, ``hpo_run.log`` and ``best_pot.tadah`` into
+the working directory. A working directory without write permission, or
+an existing history file that cannot be written, stops the run, and
+``tadah hpo --check``, at startup, before any data is loaded.
+
 Potential archives
 ------------------
 
@@ -84,13 +89,14 @@ evaluation as ``directory/pot_<evaluation>.tadah``.
 ``directory/best_pot_<improvement>.tadah``. Both require integer
 ``N >= 1``. Without the line, that archive is disabled.
 
-The directory is checked when the target file is read. An existing
+The directories are checked when the target file is read. An existing
 directory must have write permission. A directory that does not exist
 must be in an existing directory with write permission, since only the
-last directory of the path is created. Otherwise the run, and
-``tadah hpo --check``, stop at the line. The run creates a missing
-directory once every startup check has passed, before its first
-evaluation, so a run that stops at startup creates none.
+last directory of the path is created, or in the other line's new
+directory (``DUMP 100 archive`` with ``BDUMP 5 archive/best``, in either
+order). Otherwise the run, and ``tadah hpo --check``, stop at the line.
+The run creates a missing directory right before its first evaluation, the
+outer one first, so a run that stops before then creates none.
 
 ``DUMP`` archives evaluated candidates, including failed fits and
 candidates whose losses exceed the current best. Archiving is limited

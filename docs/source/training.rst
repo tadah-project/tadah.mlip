@@ -420,7 +420,9 @@ It has one line for each of these keys the run was given, in the order
 ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG``,
 with the values
 as the configuration file, the task file or the command line wrote them
-(``NUMERIC`` does not change them). A key nobody set is not
+(``NUMERIC`` does not change them). ``CHECK`` is listed by ``tadah train``
+and ``tadah refit``, which do not read it; a ``tadah hpo`` potential lists
+none. A key nobody set is not
 listed: the defaults tadah takes (``VERBOSE 1``, ``OUTFILE pot.tadah``,
 ``ESHIFT_ATOM false``, ``WDBFILE_AUTO 0``, ...) are left out, so ``tadah train -c config.train`` records the ``DBFILE`` of
 ``config.train`` alone, and ``-o pot2.tadah -v 0`` adds ``VERBOSE 0`` and

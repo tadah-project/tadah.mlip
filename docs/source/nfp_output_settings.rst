@@ -77,7 +77,10 @@ run cannot open (to write; the lock to read and write), stops the run,
 and ``tadah hpo --check``, at startup, before any data is loaded. A
 history file, the journal or the lock that is a symbolic link is written
 through the link, and is checked where the link leads;
-``best_pot.tadah`` is replaced, link and all.
+``best_pot.tadah`` is replaced, link and all. ``hpo_run.log`` may be a
+named pipe, which the run opens once and whose reader it waits for; a
+history file may not, as the run reopens it for each row. A device such
+as ``/dev/null`` may take any of these files, a socket none.
 
 Potential archives
 ------------------

@@ -251,6 +251,7 @@ A clean-up release for wider testing: one version everywhere, documentation that
 - `[mlip]` `FastCellFrac` and `FastEnergyEvaluator` (no callers; `FastCellFrac` missed images), and `NNFinder::calc_naive`, `calc_binned`, `deduplicate` and `num_shifts`.
 
 ### Fixed
+- `[hpo]` **`tadah hpo` removes `best_pot.tadah.lock` when the run ends**, also when a signal or an error ends it; an empty `best_pot.tadah.lock` stayed in the run directory after every run. The file exists while the run publishes its best potential.
 - `[hpo]` **The `best_pot.tadah` header gives the search space in real bounds**, the box of each `OPTIM` line, as the journal does; it gave the optimiser's internal box, the unit box `[0, 1]` under `OPTIM_SCALE AUTO`. **The header and the journal write a numeric `PARAM` value as it reads**: `GRID_POINTS=11` and `STEP_FRAC=0.15`, where they wrote `1.1000e+01` and `1.5000e-01`.
 - `[hpo]` **A point outside the OPTIM box gets no `DUMP` archive, whenever its row is written.** Such a point (only `CERES:STEEPEST_DESCENT` proposes one) is not trained. In 1.5.0 its row written at the end of the run (`QFLUSH` larger than the evaluations left) or after a stalled evaluation was skipped got an archive holding the header alone.
 - `[hpo]` **`DLIB:GFS` refuses a negative `FTOL_ABS` at startup** (`the STRATEGY-level optimiser: DLIB:GFS: FTOL_ABS is the accuracy of dlib's solver and must be >= 0 (got -0.001)`). In 1.5.0 it passed startup, and the search failed inside dlib once the training data had been read (`Failing expression was 0 <= eps`).

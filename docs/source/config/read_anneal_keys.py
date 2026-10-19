@@ -13,8 +13,9 @@ three includable .rst fragments:
 Keys are grouped by function and ordered by importance (the registry's
 `group` and `rank` fields). Each key has a reference cell with separate
 default, value and description paragraphs. Cross-key rules render as
-constraint sentences after the description, so documentation cannot drift
-from validation.
+sentences after the description, each the refusal it is (the annealers
+refuse a key its rule does not allow), so documentation cannot drift from
+validation.
 
 The HPO checkout is found by source_locator.py: $TADAH_HPO_SOURCE_DIR, then
 the HPO checkout next to this repository, then $TADAH_PATH/HPO, then (on
@@ -76,17 +77,17 @@ def locate_toml() -> str:
 #: Presence-tested or run-time-derived defaults, described rather than
 #: numeric (the registry has no static value for these kinds).
 AUTO_DEFAULT_TEXT = {
-    ("CHAIN_LENGTH", "serial"): "auto (budget)",
-    ("NT", "serial"): "auto (budget)",
-    ("T_INIT", "serial"): "auto (calibrated)",
-    ("T_HOT", "pt"): "auto (calibrated)",
-    ("T_HOT", "pa"): "auto (calibrated)",
-    ("T_MIN", "serial"): "auto (T0 * 1e-6)",
-    ("T_MIN", "pa"): "auto (T0 * 1e-6)",
-    ("T_COLD", "pt"): "auto (T_HOT / LADDER_SPAN)",
-    ("RESET_TO_BEST", "serial"): "``OFF`` (``ON`` with ``CORANA``)",
+    ("CHAIN_LENGTH", "serial"): "``AUTO``: from ``MAXEVAL``",
+    ("NT", "serial"): "``AUTO``: from ``MAXEVAL``",
+    ("T_INIT", "serial"): "calibrated with probes",
+    ("T_HOT", "pt"): "calibrated with probes",
+    ("T_HOT", "pa"): "calibrated with probes",
+    ("T_MIN", "serial"): "1e-6 times the starting temperature",
+    ("T_MIN", "pa"): "1e-6 times the starting temperature",
+    ("T_COLD", "pt"): "``T_HOT`` divided by ``LADDER_SPAN``",
+    ("RESET_TO_BEST", "serial"): "``OFF`` (``ON`` with ``CORANA ON``)",
     ("RESET_TO_BEST", "pt"): "``OFF``",
-    ("REPLICAS", "pt"): "max(THREADS, 2)",
+    ("REPLICAS", "pt"): "the larger of ``THREADS`` and 2",
 }
 
 
@@ -125,7 +126,10 @@ def range_for(key: dict) -> str:
     if key["type"] == "bool":
         return "``ON`` | ``OFF``"
     if key.get("custom_range"):
-        # No table range: the check is hand-written in anneal::Knobs::parse.
+        # No table range: the check is hand-written in anneal::Knobs::parse,
+        # and the registry says the range in words (range_doc).
+        if key.get("range_doc"):
+            return key["range_doc"]
         base = "integer >= 1" if key["type"] == "count" else "float"
         return base + _token_suffix(key)
     has_min, has_max = "min" in key, "max" in key
@@ -151,6 +155,10 @@ def _num(v) -> str:
 
 
 def constraint_sentences(name: str, rules: list, kind_keys: set) -> list[str]:
+    """The rules of the key *name* as sentences, each the refusal it is: an
+    annealer refuses a key that its rule does not allow (anneal_core.h),
+    so "unused when T_INIT is set" is a refusal, not a key ignored. A rule
+    that names a key of another annealer is left out."""
     out = []
     for rule in rules:
         if rule.get("key") != name:
@@ -159,17 +167,19 @@ def constraint_sentences(name: str, rules: list, kind_keys: set) -> list[str]:
         if ref is not None and ref not in kind_keys:
             continue   # rule references a key of a different family member
         kind = rule["type"]
-        if kind == "requires_flag":
-            out.append(f"Requires ``{rule['flag']} ON``.")
+        if kind in ("requires_flag", "unused_when_flag_off"):
+            text = f"Refused unless ``{rule['flag']}`` is ``ON``."
         elif kind == "conflicts_flag":
-            out.append(f"Invalid with ``{rule['flag']} ON``.")
+            text = f"Refused when ``{rule['flag']}`` is ``ON``."
         elif kind == "unused_when_set":
-            out.append(f"Unused when ``{rule['other']}`` is set.")
-        elif kind == "unused_when_flag_off":
-            out.append(f"Unused when ``{rule['flag']}`` is ``OFF``.")
+            text = f"Refused when ``{rule['other']}`` is set."
         elif kind == "requires_enum":
-            out.append(
-                f"Only with ``{rule['enum_key']} {rule['value']}``.")
+            text = (f"Refused unless ``{rule['enum_key']}`` is "
+                    f"``{rule['value']}``.")
+        else:
+            continue
+        if text not in out:
+            out.append(text)
     return out
 
 
@@ -199,6 +209,8 @@ def render(kind: str, data: dict) -> str:
         ]
         for k in rows:
             doc = k["doc"]
+            if k.get("long_doc"):
+                doc = doc.rstrip(".") + ". " + k["long_doc"]
             extra = constraint_sentences(k["name"], rules, kind_keys)
             if extra:
                 doc = doc.rstrip(".") + ". " + " ".join(extra)

@@ -71,3 +71,11 @@ html.writer-html5 .rst-content dl.field-list > dd {
         overflow-wrap: anywhere;
     }
 }
+
+/* An entry of the Nested Fitting reference headed by words (a rule, the
+   LAMMPS script: a topic of the hpo domain) has its heading in the font of
+   the text; the theme sets every entry heading in the code font, which
+   suits the name of a key. */
+html.writer-html5 .rst-content dl.hpo.topic > dt .sig-name {
+    font-family: inherit !important;
+}

@@ -13,9 +13,11 @@ Entries (written by the generator, not by hand)::
 
        Body: paragraphs and a field list.
 
-``hpo:key``, ``hpo:block``, ``hpo:opt`` and ``hpo:param`` declare an
-entry whose anchor is its id (the argument); ``:names:`` lists the bare
-names it answers to (without it, only the id reaches the entry),
+``hpo:key``, ``hpo:block``, ``hpo:opt``, ``hpo:param`` and ``hpo:topic``
+declare an entry whose anchor is its id (the argument); a topic is an
+entry headed by words, such as a rule, and its heading and the roles that
+cite it show those words as text, not as code. ``:names:`` lists the bare
+names an entry answers to (without it, only the id reaches the entry),
 ``:text:`` is the name shown in its heading and by a role that cites it
 by id, ``:annotation:`` a few words after the name, ``:also:`` further
 ids of the same entry. ``hpo:removed`` declares a name that a target file
@@ -33,16 +35,19 @@ Roles::
     :hpo:block:`STRATEGY`         a block
     :hpo:opt:`NLOPT:LN_SBPLX`     an optimiser (LIB:ALGO, ALGO alone, or LIB)
     :hpo:param:`GRID_POINTS`      a PARAM key (PARAM.<optimiser>.<name>)
+    :hpo:topic:`RULE.<name>`      a rule or another topic, by id
     :hpo:key:`!MAXEVAL`           the same, not linked, still checked
     :hpo:key:`text <MAXEVAL>`     another text
 
-A role renders inline literal text: the name as written, or the entry's
-``:text:`` when it is cited by id, linked to the entry. An id is looked up
-first, then a bare name. Each of these is a build warning at the page and
-line of the role (so ``sphinx-build -W`` fails): a name no entry of the
-role's kind answers to (naming the kind it is when another role takes
-it); a name of several entries (naming their ids); a removed name (with
-its hint). The text is then shown without a link.
+A role renders inline literal text (a topic: text): the name as written,
+or the entry's ``:text:`` when it is cited by id, linked to the entry. An
+id is looked up first, then a bare name; a name of one entry that is also
+a removed name cites that entry. Each of these is a build warning at the
+page and line of the role (so ``sphinx-build -W`` fails): a name no entry
+of the role's kind answers to (naming the kind it is when another role
+takes it); a name of several entries (naming their ids, each of which
+resolves it); a removed name that no entry has (with its hint). The text
+is then shown without a link.
 """
 import difflib
 
@@ -59,13 +64,18 @@ from sphinx.util.nodes import make_refnode
 logger = logging.getLogger(__name__)
 
 #: Object types, and the role of each.
-KINDS = ('key', 'block', 'opt', 'param')
+KINDS = ('key', 'block', 'opt', 'param', 'topic')
 KIND_WORDS = {'key': 'key', 'block': 'block', 'opt': 'optimiser',
-              'param': 'PARAM key'}
-ARTICLE = {'key': 'a', 'block': 'a', 'opt': 'an', 'param': 'a'}
+              'param': 'PARAM key', 'topic': 'topic'}
+ARTICLE = {'key': 'a', 'block': 'a', 'opt': 'an', 'param': 'a',
+           'topic': 'a'}
 #: The removed names each role checks: the target-file keywords (key and
 #: block) and the retired PARAM keys.
-REMOVED_SCOPE = {'key': 'key', 'block': 'key', 'opt': None, 'param': 'param'}
+REMOVED_SCOPE = {'key': 'key', 'block': 'key', 'opt': None, 'param': 'param',
+                 'topic': None}
+#: The node of a role's text: a topic is words, the others are names.
+TEXT_NODE = {k: nodes.inline if k == 'topic' else nodes.literal
+             for k in KINDS}
 
 
 def _names(text):
@@ -77,7 +87,7 @@ def _warn(message, node):
 
 
 class HpoEntry(ObjectDescription):
-    """One reference entry: a key, block, optimiser or PARAM key."""
+    """One reference entry: a key, block, optimiser, PARAM key or topic."""
 
     has_content = True
     required_arguments = 1
@@ -185,7 +195,7 @@ class HpoDomain(Domain):
     object_types = {k: ObjType(KIND_WORDS[k], k) for k in KINDS}
     directives = dict({k: HpoEntry for k in KINDS}, removed=HpoRemoved,
                       target=HpoTarget)
-    roles = {k: HpoRole() for k in KINDS}
+    roles = {k: HpoRole(innernodeclass=TEXT_NODE[k]) for k in KINDS}
     initial_data = {'objects': {}, 'removed': {}}
     data_version = 1
 
@@ -242,10 +252,12 @@ class HpoDomain(Domain):
                        if r[1] == role and target in r[2])
         gone = sorted(i for i, r in removed.items()
                       if r[1] == scope and target in r[2])
-        if len(found) == 1 and not gone:
+        # An entry of the name wins over a removed name: the name is in the
+        # target file's vocabulary.
+        if len(found) == 1:
             return 'found', found[0]
-        if len(found) + len(gone) > 1:
-            return 'ambiguous', found + gone
+        if len(found) > 1:
+            return 'ambiguous', found
         if gone:
             return 'removed', [(i, removed[i][3]) for i in gone]
         others = sorted({r[1] for i, r in objects.items()
@@ -268,8 +280,8 @@ class HpoDomain(Domain):
         if status == 'found':
             docname, _kind, _names_, text = self.data['objects'][detail]
             if not node.get('refexplicit') and target == detail:
-                contnode = nodes.literal(text, text,
-                                         classes=contnode['classes'])
+                contnode = TEXT_NODE[typ](text, text,
+                                          classes=contnode['classes'])
             if node.get('hpo_nolink'):
                 contnode['classes'] = [c for c in contnode['classes']
                                        if c != 'xref']
@@ -288,7 +300,7 @@ class HpoDomain(Domain):
                   f"{KIND_WORDS[typ]} of the target-file reference{detail}",
                   node)
         written = node.get('hpo_written', target)
-        return nodes.literal(written, written, classes=[
+        return TEXT_NODE[typ](written, written, classes=[
             c for c in contnode['classes'] if c != 'xref'])
 
     def resolve_any_xref(self, env, fromdocname, builder, target, node,

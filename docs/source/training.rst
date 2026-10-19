@@ -400,8 +400,9 @@ only prepared the training data, ``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``,
 ``ESHIFT_DBATOM``, ``EWEIGHT_TEMP``, ``ZERO_COM_FORCE``, ``WDBFILE`` and
 ``WDBFILE_AUTO`` (:ref:`load_transforms`); and these settings of the run:
 ``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``,
-``HEALTH_LOG`` and ``UNCERTAINTY``, and the ``HPOTARGET`` and
-``VALIDATION`` of a ``tadah hpo`` run. For the record, the potential keeps
+``HEALTH_LOG`` and ``UNCERTAINTY``, the ``HPOTARGET`` and
+``VALIDATION`` of a ``tadah hpo`` run, and ``CHECK``, the setting of
+``tadah hpo --check``. For the record, the potential keeps
 the values its run was given in its *training record*, a block of comment
 lines right above the key lines::
 
@@ -415,10 +416,13 @@ lines right above the key lines::
 It has one line for each of these keys the run was given, in the order
 ``DBFILE``, ``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``,
 ``EWEIGHT_TEMP``, ``ZERO_COM_FORCE``, ``WDBFILE``, ``WDBFILE_AUTO``,
-``VALIDATION``, ``HPOTARGET``, ``UNCERTAINTY``, ``VERBOSE``, ``NUMERIC``,
-``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG``, with the values
+``VALIDATION``, ``HPOTARGET``, ``CHECK``, ``UNCERTAINTY``, ``VERBOSE``,
+``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG``,
+with the values
 as the configuration file, the task file or the command line wrote them
-(``NUMERIC`` does not change them). A key nobody set is not
+(``NUMERIC`` does not change them). ``CHECK`` is listed by ``tadah train``
+and ``tadah refit``, which do not read it; a ``tadah hpo`` potential lists
+none. A key nobody set is not
 listed: the defaults tadah takes (``VERBOSE 1``, ``OUTFILE pot.tadah``,
 ``ESHIFT_ATOM false``, ``WDBFILE_AUTO 0``, ...) are left out, so ``tadah train -c config.train`` records the ``DBFILE`` of
 ``config.train`` alone, and ``-o pot2.tadah -v 0`` adds ``VERBOSE 0`` and
@@ -457,8 +461,9 @@ the training data (:ref:`load_transforms_predict`); a retrain, ``tadah
 hpo -c`` and ``tadah analysis check_bounds -c`` read none of its lines of
 the keys of the record but ``DBFILE`` (:ref:`retrain_from_potential`); and
 no program that loads a potential
-reads its *run settings*, ``VALIDATION``, ``HPOTARGET``, ``VERBOSE``,
-``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE`` and ``HEALTH_LOG``:
+reads its *run settings*, ``VALIDATION``, ``HPOTARGET``, ``CHECK``,
+``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE`` and
+``HEALTH_LOG``:
 the parser of every configuration and potential file does not store a line
 of them in a file whose key lines have ``WEIGHTS``. So a potential's
 ``VERBOSE`` line sets the Tadah log level of no program that loads it
@@ -604,7 +609,7 @@ a configuration file or by a ``TASK train`` or ``TASK hpo`` section (a
 ``DBFILE`` are not read: those of the eight, with or without an ``ESHIFT``
 line, its ``UNCERTAINTY`` line, the switch of the run that wrote it
 (:ref:`weight_covariance`), and its run settings, ``VALIDATION``,
-``HPOTARGET``, ``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
+``HPOTARGET``, ``CHECK``, ``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
 ``AUDIT_SAMPLE`` and ``HEALTH_LOG`` (a ``best_pot.tadah`` of tadah 1.5.x has
 ``HPOTARGET``, ``VERBOSE`` and ``NUMERIC``, and ``VALIDATION`` when its run
 had a validation file); every other line
@@ -614,7 +619,7 @@ at their default (the task's default of the key when it has one, such as
 tadah train's ``OUTFILE pot.tadah``, else the key's: ``VERBOSE 1``,
 ``NUMERIC 18``), that the run does not give
 itself and that its task reads (``tadah hpo`` reads no ``UNCERTAINTY`` or
-``OUTFILE``, ``tadah train`` no ``VALIDATION``, ``HPOTARGET`` or
+``OUTFILE``, ``tadah train`` no ``VALIDATION``, ``HPOTARGET``, ``CHECK`` or
 ``HEALTH_LOG``): a potential of an earlier version has them as key lines,
 and so has a copy with one added::
 

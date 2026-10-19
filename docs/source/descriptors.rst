@@ -197,12 +197,25 @@ Key points
 
 * One **TYPE** line per constituent descriptor follows immediately, in
   the order of concatenation.
-* Every auxiliary key has a matching list
-  (``RCTYPE*``, ``RCUT*``, ``CGRID*``, ``SGRID*``,
-  and, if required, ``C/SEMBFUNC``).
-  List length **must** equal the number of constituents.
+* Each constituent takes one ``RCTYPE*`` and one ``RCUT*`` value, in the
+  order of the **TYPE** lines.
+* The values of a list key (``CGRID*``, ``SGRID*``, ``C/SEMBFUNC`` and
+  the other lists a descriptor takes) form one list, whatever lines they
+  are written on. Each constituent takes as many values as its **TYPE**
+  line asks for, in the order of the **TYPE** lines, as a single
+  descriptor does.
+* More or fewer values are refused, and so is a list key that no
+  constituent reads.
+* A ``DM_Poly`` descriptor with the RLR or Blip embedding reads
+  ``C/SEMBFUNC`` whole and cannot be a constituent; one with the SQRT
+  embedding is joined with every ``SEMBFUNC`` value 1.
 * Each constituent can target its own element pair(s), cutoff type and
   distance.
+
+.. versionchanged:: 1.6.0
+   Values that no descriptor takes are refused; 1.5.0 ignored them. A
+   potential that 1.5.0 wrote with such values loads, with a warning that
+   names them.
 
 Quick examples
 --------------

@@ -126,10 +126,27 @@ these rules and names the line, for example an ``ENDOPTIMIZER`` line
 inside an open ``STRATEGY`` block.
 
 A repeated ``INIT``, ``NOISE``, ``EXPLORE``, ``REFINE`` or ``RESTART``
-block continues the first one. A key set in both blocks takes the later
-value. The ``METHOD`` lines of a repeated ``INIT`` or ``RESTART`` block
-add to the same list of starting-point methods (see
-:doc:`nfp_initialisation`).
+block continues the first one. The ``METHOD`` lines of a repeated
+``INIT`` or ``RESTART`` block add to the same list of starting-point
+methods (see :doc:`nfp_initialisation`).
+
+Each key that takes one value is set once for what it configures.
+``OPTIMIZER``, ``STRATEGY`` and ``REFINE`` configure the same optimiser,
+and the ``INIT`` blocks inside ``OPTIMIZER``, ``STRATEGY`` and ``REFINE``
+the same starting points. A top-level key such as ``QFLUSH`` or ``DUMP``
+configures the run. A key set twice, in one block, in a repeated block or
+in two such blocks, is refused, and the message names the line of the
+first.
+
+Lines that add are no repeats: ``METHOD`` lines, ``OPTIM``,
+``PC_LAMMPS`` and ``PC_OBSERVABLE`` lines, and ``PC_ERMSE`` and
+``PC_FRMSE`` lines of other datasets. A ``STEP <KEY>`` override of other
+indices refines the block-wide ``STEP``.
+
+.. versionchanged:: 1.6.0
+   A key set twice for one optimiser, its starting points, the ``NOISE``,
+   ``RESTART`` or ``STRATEGY`` settings or the run is refused. 1.5.0 used
+   the later value.
 
 .. versionchanged:: 1.6.0
    ``tadah hpo`` refuses a second ``OPTIMIZER`` block, an ``OPTIMIZER``
@@ -142,9 +159,15 @@ add to the same list of starting-point methods (see
 ``REFINE`` groups the refinement settings of the surrounding ``STRATEGY``.
 
 ``LOSS``, ``FAILSCORE`` and ``PC_SCRIPT_TIMEOUT`` precede the
-``PC_LAMMPS`` and ``PC_FAILPROBE`` lines they affect. Each target line
-captures those settings when it is read. Repetition rules depend on the
-key. Repeated ``OPTIM`` lines must select distinct dimensions.
+``PC_LAMMPS`` and ``PC_FAILPROBE`` lines they affect. Each such line
+captures those settings when it is read, and the options ``--varloss``,
+``--failscore`` and ``--maxtime`` give it values of its own. A second
+line of one of the three follows a ``PC_LAMMPS`` or ``PC_FAILPROBE`` line
+that takes the first, or is refused. The run-wide uses take the last
+line: the validation metrics' loss, the ceiling of every loss and the
+``PROCESS`` worker deadline.
+
+Repeated ``OPTIM`` lines select distinct dimensions.
 
 .. raw:: html
 

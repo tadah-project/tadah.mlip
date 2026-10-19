@@ -9835,3 +9835,139 @@ TEST_CASE("Subcommand: hpo -h lists --check",
   CHECK(contains(r.out, "Checks the setup of tadah hpo"));
 }
 #endif  // TADAH_ENABLE_NFP
+
+/* ---------------------------------------------------------------------------
+ * A potential with RCTYPE, RCUT and list values its descriptors do not
+ * take, as tadah 1.5.0 wrote them (a joined line of D2_Blip and D2_BP with
+ * a third RCTYPE2B and RCUT2B value and a KDEG2B neither reads), is
+ * trained from: tadah train -c and tadah hpo -c report the values, one
+ * WARNING per key, leave them out and train the potential's model.
+ * Before the fix: both refused it ('TYPE2B names 2 descriptors (D2_Blip,
+ * D2_BP) but RCTYPE2B has 3 values: ...'), after the WARNINGs.
+ * ------------------------------------------------------------------------- */
+namespace {
+
+const char* const kRetrainTaDb =
+    "bcc_ta_a\n1.0 1.0 1.0\n-0.30 0.0\n"
+    "3.301 0.0 0.0\n0.0 3.301 0.0\n0.0 0.0 6.602\n"
+    "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+    "Ta 0.05 -0.03 0.02  0.31 -0.12 0.05\n"
+    "Ta 1.70 1.62 1.68  -0.22 0.17 -0.09\n"
+    "Ta -0.04 0.06 3.33  0.04 0.21 -0.15\n"
+    "Ta 1.61 1.69 4.92  -0.13 -0.26 0.19\n"
+    "\n"
+    "bcc_ta_b\n1.0 1.0 1.0\n-0.24 0.0\n"
+    "3.301 0.0 0.0\n0.0 3.301 0.0\n0.0 0.0 6.602\n"
+    "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+    "Ta 0.10 0.00 -0.05  -0.27 0.08 0.14\n"
+    "Ta 1.66 1.58 1.62  0.19 -0.23 0.06\n"
+    "Ta 0.02 -0.08 3.27  0.11 0.16 -0.21\n"
+    "Ta 1.69 1.71 5.00  -0.03 -0.01 0.01\n"
+    "\n";
+
+/* Trains the joined model into pot.tadah, then writes old_pot.tadah: that
+ * potential with the values 1.5.0 kept and a DBFILE line. */
+void write_old_potential() {
+  { std::ofstream os("train.db"); os << kRetrainTaDb; }
+  {
+    std::ofstream os("config.tadah");
+    os << "DBFILE train.db\nATOM Ta\nWATOM 1\nINIT2B true\nINITMB false\n"
+          "TYPE2B D2_mJoin\nTYPE2B D2_Blip 2 2 Ta Ta\nTYPE2B D2_BP 2 2 Ta Ta\n"
+          "RCTYPE2B Cut_Cos Cut_Cos\nRCUT2B 5 4.5\n"
+          "CGRID2B 2 3 0.5 1.0\nSGRID2B 1 1 2 3\n"
+          "BIAS true\nVERBOSE 0\nMODEL M_BLR BF_Linear\nLAMBDA 1e-3\n";
+  }
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
+                              "pot.tadah"});
+  INFO("train stderr:\n" << t.err << t.what);
+  REQUIRE(t.status == 0);
+  std::ifstream in("pot.tadah");
+  std::ofstream os("old_pot.tadah");
+  for (std::string line; std::getline(in, line);) {
+    std::istringstream ss(line);
+    std::string k;
+    ss >> k;
+    if (k == "RCTYPE2B") line = "RCTYPE2B Cut_Cos Cut_Cos Cut_Tanh";
+    else if (k == "RCUT2B") line = "RCUT2B 5 4.5 6";
+    else if (k == "DBFILE") continue;
+    os << line << "\n";
+  }
+  os << "KDEG2B 5 5\nDBFILE train.db\n";
+}
+
+/* The keys reported once per process (core::report_ignored_key_once): a
+ * case run after another in one process sees none again. */
+std::vector<bool> reported_before() {
+  std::vector<bool> b;
+  for (const char* key : {"RCTYPE2B", "RCUT2B", "KDEG2B"})
+    b.push_back(tadah::core::ignored_key_reported(key));
+  return b;
+}
+
+void check_reported(const std::string& err, const std::vector<bool>& before) {
+  const char* notices[] = {
+      "WARNING: Part of RCTYPE2B (Cut_Tanh) is ignored: TYPE2B names 2 "
+      "descriptors (D2_Blip, D2_BP), which take its first 2 values; the "
+      "potential works unchanged without it",
+      "WARNING: Part of RCUT2B (6) is ignored: TYPE2B names 2 descriptors "
+      "(D2_Blip, D2_BP), which take its first 2 values; the potential "
+      "works unchanged without it",
+      "WARNING: Key KDEG2B (5 5) is ignored: TYPE2B names 2 descriptors "
+      "(D2_Blip, D2_BP), which take none of its values; the potential "
+      "works unchanged without it"};
+  for (std::size_t i = 0; i < 3; ++i) {
+    INFO(notices[i]);
+    CHECK(contains(err, notices[i]) == !before[i]);
+  }
+}
+
+}  // namespace
+
+TEST_CASE("Subcommand: train: a potential with values its descriptors do not "
+          "take retrains, the values reported and left out",
+          "[TadahCLI][train][potential]") {
+  ScratchCwd cwd("retrain_old_pot");
+  write_old_potential();
+  const auto before = reported_before();
+  const CliRun r = run_tadah({"tadah", "train", "-c", "old_pot.tadah", "-o",
+                              "retrained.tadah"});
+  INFO("stderr:\n" << r.err << r.what);
+  REQUIRE(r.status == 0);
+  check_reported(r.err, before);
+  CHECK(pot_key("retrained.tadah", "RCTYPE2B") ==
+        std::vector<std::string>{"Cut_Cos", "Cut_Cos"});
+  CHECK(pot_key("retrained.tadah", "RCUT2B") ==
+        std::vector<std::string>{"5", "4.5"});
+  CHECK(pot_key("retrained.tadah", "KDEG2B").empty());
+  /* the potential's model, trained on the same data */
+  CHECK(pot_key("retrained.tadah", "WEIGHTS") ==
+        pot_key("pot.tadah", "WEIGHTS"));
+}
+
+#ifdef TADAH_ENABLE_NFP
+TEST_CASE("Subcommand: hpo: a -c potential with values its descriptors do not "
+          "take is searched from, the values reported and left out",
+          "[TadahCLI][hpo][potential]") {
+  ScratchCwd cwd("hpo_old_pot");
+  write_old_potential();
+  { std::ofstream os("config.val"); os << "DBFILE train.db\n"; }
+  {
+    std::ofstream os("config.hpo");
+    os << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 2\nENDOPTIMIZER\n"
+          "LOSS L2\nPC_ERMSE 0 1\nOPTIM CGRID2B (1) 1.5 2.5\n";
+  }
+  const auto before = reported_before();
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "old_pot.tadah",
+                              "--hpotarget", "config.hpo",
+                              "--validation", "config.val"});
+  INFO("stderr:\n" << r.err << r.what);
+  REQUIRE(r.status == 0);
+  check_reported(r.err, before);
+  REQUIRE(std::filesystem::exists("best_pot.tadah"));
+  CHECK(pot_key("best_pot.tadah", "RCTYPE2B") ==
+        std::vector<std::string>{"Cut_Cos", "Cut_Cos"});
+  CHECK(pot_key("best_pot.tadah", "RCUT2B") ==
+        std::vector<std::string>{"5", "4.5"});
+  CHECK(pot_key("best_pot.tadah", "KDEG2B").empty());
+}
+#endif  // TADAH_ENABLE_NFP

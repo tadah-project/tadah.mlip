@@ -18,21 +18,21 @@ file format.
 Key features
 ------------
 
-- **Pluggable descriptors and regressors** — mix descriptor families
-  (2-body, many-body, EAM-style) with linear or kernel regressors.
-- **Nested fitting (HPO)** — drive the training loop from an outer
-  optimiser that scores trial potentials against physics-informed
-  constraints (elastic constants, equilibrium volume, surface energies,
-  …). See :ref:`nested_fitting`.
+- **Pluggable descriptors and regressors** — descriptor families
+  (2-body, many-body, EAM-style) combine with linear or kernel regressors.
+- **Nested fitting (HPO)** — an outer optimiser drives the training loop
+  and scores trial potentials against physics-informed constraints
+  (elastic constants, equilibrium volume, surface energies, …;
+  :ref:`nested_fitting`).
 - **LAMMPS interface** — every descriptor and model exposed through
   ``pair_style tadah``; ``LSCALE`` and ``ESHIFT`` round-trip through the
   potential file.
 - **OpenMP build** — desktop parallelism via ``OMP_NUM_THREADS``.
   An MPI build (``TADAH_HPO_MPI``) spreads the parallel annealing
-  optimisers of ``tadah hpo`` over several nodes (see
-  :ref:`installation_hpo_mpi`); training itself runs in one process.
-- **C++ API** — link against ``libtadah.mlip`` / ``libtadah.core`` for
-  embedded use; see :ref:`compiling_and_linking`.
+  optimisers of ``tadah hpo`` over several nodes
+  (:ref:`installation_hpo_mpi`); training itself runs in one process.
+- **C++ API** — ``libtadah.mlip`` / ``libtadah.core`` link into other
+  programs for embedded use (:ref:`compiling_and_linking`).
 
 CLI surface
 -----------
@@ -40,15 +40,15 @@ CLI surface
 The ``tadah`` driver exposes the following top-level commands (each
 documented in :doc:`cli/cli`):
 
-- ``tadah train`` / ``tadah predict`` — fit and apply potentials.
+- ``tadah train`` / ``tadah predict`` — fits and applies potentials.
 - ``tadah hpo`` — nested fitting (hyperparameter optimisation).
-- ``tadah data`` — convert, ``balance``, ``dedup``, ``merge``,
-  ``sample``, ``split``, ``print``, ``write`` datasets and structures
+- ``tadah data`` — dataset and structure tools: convert, ``balance``,
+  ``dedup``, ``merge``, ``sample``, ``split``, ``print``, ``write``
   (CIF, VASP, CASTEP, LAMMPS; online sources MP/COD/NOMAD via
   ``--structure``).
-- ``tadah analysis`` — plot basis functions, cutoffs, descriptors.
+- ``tadah analysis`` — plots basis functions, cutoffs, descriptors.
 - ``tadah properties pairwise`` — pairwise energy between two atoms.
-- ``tadah explain <command>.<option>`` — print the help text of a command
+- ``tadah explain <command>.<option>`` — prints the help text of a command
   or of one of its options (``tadah explain refit.refit_mode``), or of any
   configuration key, alone or after a command (``tadah explain SETFL``,
   ``tadah explain refit.rhoform``), each name in any letter case; a
@@ -66,7 +66,7 @@ Tadah!MLIP and Tadah!LAMMPS are hosted at:
 
     https://git.ecdf.ed.ac.uk/tadah
 
-For build instructions see :ref:`installation`. Selected published
+:ref:`installation` gives the build instructions. Selected published
 potentials produced with Tadah! by |gja_link| are listed in
 :ref:`mlips`.
 

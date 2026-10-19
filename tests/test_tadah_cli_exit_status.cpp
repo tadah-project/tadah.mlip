@@ -3213,7 +3213,7 @@ TEST_CASE("Subcommand: hpo in a tadah built without NFP is refused, naming "
 }
 
 /* Pins: in a tadah built without TADAH_ENABLE_NFP, `tadah -h` lists hpo as
- * "hpo Optimize the model architecture and hyperparameters. tadah hpo needs
+ * "hpo Optimises the model architecture and hyperparameters. tadah hpo needs
  * the Nested Fitting Procedure, ...; reconfigure with -DTADAH_ENABLE_NFP=ON
  * (see Installation)." (whitespace collapsed: the listing wraps), `tadah
  * hpo -h` has the same two sentences, and `tadah explain hpo` ends with a
@@ -3226,7 +3226,7 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo say "
           "that a tadah built without NFP has no hpo",
           "[TadahCLI][exit-status][not-built]") {
   ScratchCwd cwd("hpo_not_built_help");
-  const std::string described = std::string("Optimize the model architecture "
+  const std::string described = std::string("Optimises the model architecture "
                                             "and hyperparameters. ") +
                                 kHpoNotBuilt + ".";
   {
@@ -3255,7 +3255,7 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo say "
 }
 #else
 /* Pins: in a tadah built with TADAH_ENABLE_NFP, `tadah -h` lists hpo as
- * "hpo Optimize the model architecture and hyperparameters.", and neither
+ * "hpo Optimises the model architecture and hyperparameters.", and neither
  * it, `tadah hpo -h` nor `tadah explain hpo` (each exits 0 and prints
  * something) says "which this tadah was built without".
  * Before the fix: passes as well (a pin: only a tadah without NFP has the
@@ -3274,7 +3274,7 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo of a "
   }
   const CliRun h = run_tadah({"tadah", "-h"});
   CHECK(contains(one_line(h.out),
-                 "hpo Optimize the model architecture and hyperparameters."));
+                 "hpo Optimises the model architecture and hyperparameters."));
 }
 #endif  // TADAH_ENABLE_NFP
 
@@ -5065,9 +5065,9 @@ TEST_CASE("Subcommand: explain: a key without a long description prints its "
   const CliRun add = run_tadah({"tadah", "explain", "refit.add"});
   INFO("refit.add: status " << add.status << "\n" << reported(add));
   CHECK(add.status == 0);
-  CHECK(contains(add.out, "Insert one basis function into the curve selected "
+  CHECK(contains(add.out, "Inserts one basis function into the curve selected "
                           "by --func"));
-  CHECK_FALSE(contains(add.out, "`tadah refit --edit`: insert a basis "
+  CHECK_FALSE(contains(add.out, "`tadah refit --edit`: inserts a basis "
                                 "function at this centre"));
 }
 

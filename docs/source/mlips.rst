@@ -3,16 +3,16 @@
 Trained MLIPs
 =============
 
-This page lists the interatomic potentials developed by our group and discover what we’re currently working on.
+This page lists the interatomic potentials developed by Prof. Ackland's group, and those still in progress.
 
 N2
 --
 
-A machine-learned interatomic potential specifically designed to study the phase diagram of N₂ up to 10 GPa. The model uses ``pair_style tadah`` which requires the ``Tadah!LAMMPS`` plugin to be installed (:ref:`installation_lammps`). The potential is robust and highly transferable, although its performance above 10 GPa is unknown. At higher pressure, we expect that its predictions will gradually diverge from experimental results. It won't support high-pressure polymerisation or bond breaking in general due to its rigid nature.
+A machine-learned interatomic potential specifically designed to study the phase diagram of N₂ up to 10 GPa. The model uses ``pair_style tadah`` which requires the ``Tadah!LAMMPS`` plugin to be installed (:ref:`installation_lammps`). The potential is robust and highly transferable, although its performance above 10 GPa is unknown. At higher pressure, its predictions are expected to diverge gradually from experimental results. It won't support high-pressure polymerisation or bond breaking in general due to its rigid nature.
 
 It describes rigid molecules (a ``DIMER`` model): in LAMMPS each N₂ molecule must be two bonded atoms (for example with ``atom_style bond``) kept at the bond length of the potential's ``DIMER`` key, 1.1014 Å, and ``pair_style tadah`` requires ``newton off`` for this potential. Each pair of molecules whose centres of mass are within the cutoff less the bond length is evaluated as one cluster of four atoms; ``compute pe/atom`` gives each atom the sum of its energies in the clusters of its molecule, so the per-atom energies sum to the potential energy.
 
-A ``DIMER`` potential is evaluated with every atom as Z = 1, whatever its element (``tadah train``, ``tadah predict`` and ``pair_style tadah`` alike). Every pair therefore gets the weight of the Z = 1 (H–H) pair, which is 1 unless ``WATOM`` sets a weight for H; the ``WATOM`` weight of the potential's own element (N) is not applied. Its two-body and many-body descriptors must be declared for the element pairs ``* *``, as in this file (``TYPE2B D2_Blip 4 4 * *``, ``TYPEMB DM_Blip 1 4 4 * *``). A ``DIMER`` potential whose ``TYPE2B`` or ``TYPEMB`` names specific element pairs, such as ``N N``, applies to no pair the evaluation sees; it is refused when it is loaded: ``DIMER evaluates every atom as Z=1; declare TYPE2B/TYPEMB with * * element pairs``. See :ref:`DIMER`.
+A ``DIMER`` potential is evaluated with every atom as Z = 1, whatever its element (``tadah train``, ``tadah predict`` and ``pair_style tadah`` alike). Every pair therefore gets the weight of the Z = 1 (H–H) pair, which is 1 unless ``WATOM`` sets a weight for H; the ``WATOM`` weight of the potential's own element (N) is not applied. Its two-body and many-body descriptors must be declared for the element pairs ``* *``, as in this file (``TYPE2B D2_Blip 4 4 * *``, ``TYPEMB DM_Blip 1 4 4 * *``). A ``DIMER`` potential whose ``TYPE2B`` or ``TYPEMB`` names specific element pairs, such as ``N N``, applies to no pair the evaluation sees; it is refused when it is loaded: ``DIMER evaluates every atom as Z=1; declare TYPE2B/TYPEMB with * * element pairs``. :ref:`DIMER` describes the key.
 
 :download:`Tadah!N2 <mlips/tadah.n2>`
 
@@ -27,7 +27,7 @@ Both potentials show very good agreement with experimental data for the equation
 
 Potentials are provided in both the native Tadah! format, which uses ``pair_style tadah``, and the LAMMPS tabulated format, used with ``pair_style table``.
 
-We have re-optimized both potentials using nested fitting procedure (NFP) to make them compatible with the current version of Tadah!. The updated potentials have been enhanced by incorporating the classical ZBL potential for energies above 1 keV, smoothly joined to the existing CCSD(T)-based model. In other words, the Tadah! potentials are stiffer in the core electron region, where the ZBL screening function is often inadequate.
+Both potentials were re-optimised with the nested fitting procedure (NFP) to make them compatible with the current version of Tadah!. The updated potentials have been enhanced by incorporating the classical ZBL potential for energies above 1 keV, smoothly joined to the existing CCSD(T)-based model. In other words, the Tadah! potentials are stiffer in the core electron region, where the ZBL screening function is often inadequate.
 
 Each tabulated file is the corresponding native potential written out by LAMMPS ``pair_write`` at 1000 separations from 0.5 to 12 Å.
 

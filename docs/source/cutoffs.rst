@@ -5,7 +5,7 @@ Cutoff Functions
 
 Cutoff functions multiply every radial term to enforce a smooth boundary at
 the cutoff radius.  The config label is the exact class name in the section
-heading; pass it as the value of ``RCTYPE2B`` or ``RCTYPEMB``.
+heading; it is given as the value of ``RCTYPE2B`` or ``RCTYPEMB``.
 
 .. list-table::
    :header-rows: 1
@@ -40,7 +40,7 @@ heading; pass it as the value of ``RCTYPE2B`` or ``RCTYPEMB``.
      - 1
      - 0
      - yes
-     - Normalized tanh switch with a flat tail
+     - Normalised tanh switch with a flat tail
    * - ``Cut_Tanh``
      - tanh(1)^3
      - 0

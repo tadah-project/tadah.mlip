@@ -48,9 +48,10 @@ Configuration
 
 Blocks activate the many-body term; an explicitly disabled ``INITMB`` is an
 error. IDs are unique without regard to case. Without ``TYPEMB``, blocks compose
-in declaration order. To order blocks together with legacy descriptors, put
-``TYPEMB @ta`` at the desired position among the legacy ``TYPEMB`` declarations.
-Reference every declared ID exactly once. Legacy cutoff and grid lists continue
+in declaration order. A ``TYPEMB @ta`` line among the legacy ``TYPEMB``
+declarations places that block at its position, ordering blocks together with
+legacy descriptors. With ``TYPEMB``, each declared ID must appear exactly once;
+any other count is an error. Legacy cutoff and grid lists continue
 to describe the legacy terms only. ``CONFIG`` includes preserve block order,
 boundaries and source locations: an included file's blocks follow those of the
 including file. Elsewhere blocks take the precedence of a key: in a task file a
@@ -61,7 +62,7 @@ both ``TASK train`` and the ``TASK predict`` of the potential it writes.
 
 ``FORM`` is required in each density: ``SIGNED`` permits signed amplitudes;
 ``NONNEG`` requires nonnegative amplitudes and positive pair weights;
-``MONOTONE`` uses normalized integrated bumps with nonnegative amplitudes and
+``MONOTONE`` uses normalised integrated bumps with nonnegative amplitudes and
 positive weights. Knot densities use ``NONNEG`` for their naturally decreasing
 left-active powers; ``MONOTONE`` requires a bump family. ``REFERENCE`` defaults
 to ``ZERO`` and an absent envelope defaults to ``OFF``. Duplicate, unknown,
@@ -80,10 +81,10 @@ With :math:`x=\eta(q-\mu)` for compact bumps, and :math:`u=|x|`:
      - Definition / support
      - Smoothness
    * - ``Blip``
-     - Peak-normalized cubic B-spline, :math:`|x|<2`
+     - Peak-normalised cubic B-spline, :math:`|x|<2`
      - C2
    * - ``Blip5``
-     - Peak-normalized quintic B-spline, :math:`|x|<3`
+     - Peak-normalised quintic B-spline, :math:`|x|<3`
      - C4
    * - ``Gaussian``
      - :math:`\exp[-\eta(q-\mu)^2]`, noncompact
@@ -102,7 +103,7 @@ With :math:`x=\eta(q-\mu)` for compact bumps, and :math:`u=|x|`:
 without the field all degrees are 5. It accepts neither ETA nor WIDTHS. The
 embedding knots remain right-active at arbitrarily high density.
 
-These are peak normalizations, not volume or orthogonality normalizations. The
+These are peak normalisations, not volume or orthogonality normalisations. The
 cubic and quintic spline *degrees* are 3 and 5; their spline *orders* are 4 and
 6. The cubic form agrees with `Alfe and Gillan
 <https://www.homepages.ucl.ac.uk/~ucfbdxa/pubblicazioni/prb04blips.pdf>`_.
@@ -121,9 +122,9 @@ infinity, divided by its full one-dimensional area. Thus S is 1 below support,
 1/2 at its centre, and 0 above support. The areas in x coordinates are 3/2,
 20/11, 2/3 and 16/27 for Blip, Blip5, WendlandC2 and WendlandC4. The Gaussian
 step is :math:`\tfrac12\operatorname{erfc}(\sqrt\eta(q-\mu))`.
-For the Wendland steps, let :math:`t=1-x`, :math:`0\le x\le1`. The normalized
+For the Wendland steps, with :math:`t=1-x`, :math:`0\le x\le1`, the normalised
 upper tails are :math:`S_{C2}(x)=t^5(3/2-t)` and
-:math:`S_{C4}(x)=t^7(72-99t+35t^2)/16`. Extend them by
+:math:`S_{C4}(x)=t^7(72-99t+35t^2)/16`. They extend by
 :math:`S(-x)=1-S(x)`, with values 1 and 0 below and above support.
 
 
@@ -135,7 +136,7 @@ Spatial cutoffs are ``Cut_Cos``, ``Cut_CosS``, ``Cut_Poly``, ``Cut_PolyS``,
 smooth cutoff, even if its evaluated tail underflows. With NONE, every density
 component must terminate smoothly at or before RADIUS. With a smooth cutoff,
 centres, knot positions and radius remain independent. Envelope cutoffs have
-density units and never contribute to spatial neighbor ranges.
+density units and never contribute to spatial neighbour ranges.
 
 Every embedding family supports ``OFF``, ``SinInv``, ``Smoothstep2`` or
 ``Smoothstep4``; products of envelopes are not accepted. For t = rho/C below 1,
@@ -160,13 +161,13 @@ Named nonlinear parameters
    OPTIM ta.embedding.widths (1-4) AUTO RATIO 1.2
    OPTIM ta.embedding.envelope.cutoff (1) 1.0 3.0
 
-Paths, bounds, optimizer steps, differences, checkpoints and logs use the
+Paths, bounds, optimiser steps, differences, checkpoints and logs use the
 declared coordinates. Width derivatives include -eta/w for compact bumps and
 -2 eta/w for Gaussians. The selected coordinates remain authoritative; potential
-serialization preserves their full precision even at a lower NUMERIC setting.
+serialisation preserves their full precision even at a lower NUMERIC setting.
 Only the configured ETA or WIDTHS path exists. Knot degrees, basis choices,
-reference modes, forms and envelope types are discrete and cannot be optimized.
-Radius optimization under NONE is refused. Repeated dimensions and inactive
+reference modes, forms and envelope types are discrete and cannot be optimised.
+Radius optimisation under NONE is refused. Repeated dimensions and inactive
 aliases are errors. Existing flat OPTIM syntax remains available for legacy
 terms; a legacy many-body key (``CGRIDMB``, ``SGRIDMB``, ``AMPGRIDMB``,
 ``CEMBFUNC``, ``SEMBFUNC``, ``RCUTMB``) of a potential whose many-body term is
@@ -197,8 +198,8 @@ Gaussian`` refit fits and writes the pair function and the density with the
 smooth cutoff ``Cut_Poly`` at the table's rcut (``RCTYPE2B Cut_Poly``, the
 density's ``CUTOFF TYPE Cut_Poly``), since a Gaussian density never vanishes and
 needs a real smooth cutoff; its EXPERIMENTAL warning says so. With a block,
-select the existing pair family separately through
-``REFIT_PAIR_BASIS`` (default Blip5); REFIT_BASIS and global many-body arrays,
+``REFIT_PAIR_BASIS`` (default Blip5) selects the existing pair family
+separately; REFIT_BASIS and global many-body arrays,
 RHOFORM and EMBF0 conflict with component ownership. REFIT_PAIR_BASIS without
 a block is refused; REFIT_BASIS controls every legacy component.
 
@@ -260,17 +261,17 @@ embedding are printed the same way, in the declared density form (the steps of
 a ``MONOTONE`` density) and embedding reference. Generic and scalar EAM LAMMPS
 evaluation share the same composed evaluator.
 
-For HPO, either retain FIXINDEX/FIXWEIGHT and search selected coefficient pins,
-or remove both pin keys and supply training data so every shape candidate
-re-solves its linear coefficients. Validation data alone does not train them.
+For HPO, a configuration either retains FIXINDEX/FIXWEIGHT and searches
+selected coefficient pins, or removes both pin keys and supplies training data
+so every shape candidate re-solves its linear coefficients. Validation data alone does not train them.
 
 Further candidates
 ------------------
 
 Compact support and adjustable smoothness motivate Wendland candidates; fitting
 accuracy and conditioning must be measured at comparable fitting budgets.
-`Chernih, Sloan and Womersley <https://arxiv.org/abs/1203.5696>`_ analyze Wendland
+`Chernih, Sloan and Womersley <https://arxiv.org/abs/1203.5696>`_ analyse Wendland
 families. Fourier-Bessel bases (`DimeNet <https://arxiv.org/abs/2003.03123>`_) and
 orthogonal polynomial constructions (`ACE analysis
 <https://arxiv.org/abs/1911.03550>`_) are further candidates, outside this
-implementation. Their normalizations and conditioning differ from these bumps.
+implementation. Their normalisations and conditioning differ from these bumps.

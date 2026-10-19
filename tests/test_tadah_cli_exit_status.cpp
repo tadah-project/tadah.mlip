@@ -8050,7 +8050,7 @@ TEST_CASE("Subcommand: hpo records the run's DBFILE, --validation, "
  * recorded, and there is no VERBOSE key line either.
  * Before the fix: passes as well (a pin of the provenance rule the HPO
  * CHANGELOG and the Training page state: with HPOTargets built without
- * the provenance, hpo_run_journaled passing nullptr, the record ends with
+ * the provenance, hpo_run_from_startup passing nullptr, the record ends with
  * "VERBOSE 1" and this case fails; the case above sets VERBOSE 0 and
  * passes either way).
  * Before the opening line was corrected: it
@@ -9023,7 +9023,7 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
  * config.val", "HPOTARGET config.hpo" (the task file's keys applied to the
  * run and recorded), and neither the run's output nor the journal says the
  * task file is a potential.
- * Before the fix: hpo_run_journaled removed every key of a configuration
+ * Before the fix: hpo_run removed every key of a configuration
  * with WEIGHTS that was not a command-line option: the journal had the
  * WARNING "tadah hpo: the task file run.task is a potential (it has
  * WEIGHTS): its EFILTER -0.6 -0.4 and WDBFILE 2 prepared the training data
@@ -9763,6 +9763,57 @@ TEST_CASE("Subcommand: CHECK is a setting of the run: tadah train writes no "
     CHECK(contains(r.out, "tadah hpo --check: config.hpo passed the startup "
                           "checks"));
     CHECK(run_directory_entries() == before);
+  }
+}
+
+/* Pins: a TASK hpo section whose own key lines have WEIGHTS is a potential:
+ * its CHECK true line, a run setting, is not read, as its HPOTARGET line
+ * would not be, so `tadah --task inline.task` (HPOTARGET and VALIDATION
+ * above the TASK hpo line; the section: the key lines of pot.tadah, which
+ * tadah train wrote from config.tadah, then "DBFILE db.tadah" and "CHECK
+ * true") runs: status 0, best_pot.tadah, no check summary, and a WARNING
+ * that names the line and says where CHECK goes ("Write CHECK in ..."). A
+ * CHECK true line above the first TASK line (above.task, the same section
+ * without its CHECK line) is the run's: the check's summary, and no file.
+ * This pins the rule the CHECK help states. */
+TEST_CASE("Task file: a TASK hpo section with WEIGHTS is a potential, whose "
+          "CHECK line is not read; CHECK above the first TASK line is",
+          "[TadahCLI][hpo][hpo-check][task-file]") {
+  ScratchCwd cwd("hpo_check_section_potential");
+  write_hpo_check_fixture();
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
+                                "pot.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string pot = slurp("pot.tadah");
+  std::ofstream("inline.task")
+      << "HPOTARGET config.hpo\nVALIDATION config.val\nTASK hpo\n" << pot
+      << "DBFILE db.tadah\nCHECK true\n";
+  std::ofstream("above.task")
+      << "HPOTARGET config.hpo\nVALIDATION config.val\nCHECK true\n"
+         "TASK hpo\n"
+      << pot << "DBFILE db.tadah\n";
+  {
+    const auto before = run_directory_entries();
+    const CliRun r = run_tadah({"tadah", "--task", "above.task"});
+    INFO("above.task: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "tadah hpo --check: config.hpo passed the startup "
+                          "checks"));
+    CHECK(run_directory_entries() == before);
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "--task", "inline.task"});
+    const std::string rep = reported(r);
+    INFO("inline.task: status " << r.status << "\n" << rep);
+    CHECK(r.status == 0);
+    CHECK_FALSE(contains(r.out, "passed the startup checks"));
+    CHECK(contains(rep, "its CHECK true was a setting of the run that wrote "
+                        "it, not of this run, and is ignored"));
+    CHECK(contains(rep, "Write CHECK in "));
+    CHECK(std::filesystem::exists("best_pot.tadah"));
   }
 }
 

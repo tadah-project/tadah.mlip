@@ -1,3 +1,5 @@
+.. _example_3_dm_mblipenv_train_and_predict:
+
 Example 3 - DM_mBlipEnv: Training and Prediction
 ------------------------------------------------
 

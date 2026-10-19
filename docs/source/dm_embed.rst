@@ -48,9 +48,10 @@ Configuration
 
 Blocks activate the many-body term; an explicitly disabled ``INITMB`` is an
 error. IDs are unique without regard to case. Without ``TYPEMB``, blocks compose
-in declaration order. ``TYPEMB @ta``, placed among the legacy ``TYPEMB``
-declarations, orders blocks together with legacy descriptors. Every declared ID
-is referenced exactly once. Legacy cutoff and grid lists continue
+in declaration order. A ``TYPEMB @ta`` line among the legacy ``TYPEMB``
+declarations places that block at its position, ordering blocks together with
+legacy descriptors. With ``TYPEMB``, each declared ID must appear exactly once;
+any other count is an error. Legacy cutoff and grid lists continue
 to describe the legacy terms only. ``CONFIG`` includes preserve block order,
 boundaries and source locations: an included file's blocks follow those of the
 including file. Elsewhere blocks take the precedence of a key: in a task file a

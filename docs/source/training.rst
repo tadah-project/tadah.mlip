@@ -535,8 +535,8 @@ A potential that ``tadah refit`` or ``tadah refit --edit`` writes, and the
 ``best_pot.tadah`` of a ``tadah hpo`` run that pins every weight, has
 ``FIXINDEX`` and ``FIXWEIGHT`` lines for every weight: the seed of a
 ``tadah hpo`` coefficient search (:ref:`hpo_fixweight`).  A fit whose
-``FIXINDEX`` pins every weight changes none, so a retrain deletes both
-lines from the copy as well::
+``FIXINDEX`` pins every weight changes none, so both lines are deleted
+from the copy for a retrain as well::
 
    grep -v -e '^FIXINDEX' -e '^FIXWEIGHT' pot.tadah > retrain.train
    echo "DBFILE db.train" >> retrain.train
@@ -730,10 +730,10 @@ weight.
    strength and the ``OALGO 3`` ``SIGMA`` was that of twice the data, and
    nothing said so. An ``M_BLR`` potential written by Tadah! 1.5.x or
    earlier still has its ``DBFILE`` line
-   (``tadah predict`` and ``pair_style tadah`` do not read it): a retrain
-   either removes it before adding its own ``DBFILE`` (the duplicated entry
-   is refused), or trains from the potential as it is, on the dataset it
-   names. ``M_KRR``
+   (``tadah predict`` and ``pair_style tadah`` do not read it): the line is
+   removed from the copy before the ``DBFILE`` of the retrain is added (the
+   duplicated entry is refused), or the potential is retrained as it is, on
+   the dataset it names. ``M_KRR``
    potentials did not record ``ALPHA`` and ``BETA``; they do now, as
    ``M_BLR`` ones did. ``tadah train`` with a configuration without
    ``DBFILE`` (an ``M_KRR`` potential as it is) stopped with ``Key not found
@@ -901,6 +901,8 @@ load-time transform summaries, neighbour-finding wall-time, the
 pre-flight audit report, and the regression solver status. None of
 these lines are written to files; shell redirection captures them if
 needed (``tadah train -c config.train -v 2 2>&1 | tee train.log``).
+
+.. _see_also:
 
 Related pages
 -------------

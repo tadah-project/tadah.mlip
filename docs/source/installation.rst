@@ -171,6 +171,8 @@ Recommended workflow: one build directory per build type:
         -DCMAKE_BUILD_TYPE=Debug
     cmake --build build-debug --parallel
 
+.. _alternative_set_the_build_type_in_your_own_preset:
+
 Alternative: the build type in a custom preset
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -334,7 +336,7 @@ that collide with a real MPI library at link time;
 ``-DTADAH_HPO_MPI_SKIP_LIB_CHECK=ON`` lifts this check for an MPI build of
 LAMMPS that is only named differently. The MPI library must provide ``MPI_THREAD_MULTIPLE``.
 
-**3. Launching.** ``tadah`` starts with ``srun`` or with the ``mpirun`` /
+**3. Launching.** ``tadah`` is started with ``srun`` or with the ``mpirun`` /
 ``mpiexec`` of the MPI library it links, the one next to the
 ``mpicxx`` that CMake recorded as ``MPI_CXX_COMPILER`` in
 ``build-mpi/CMakeCache.txt``. A launcher of another MPI — one that comes
@@ -591,8 +593,8 @@ velocities by atom ID, so each lattice site starts with a velocity that
 depends on the number of ranks. The trajectories then differ from the
 first step (the *Quick Start* ``in.ml`` at 1, 2 and 4 ranks: 415, 419 and
 426 K after 100 steps), though each run conserves its energy. Runs on
-different rank counts compare with ``loop geom`` (velocities from the
-positions), or when every run starts from one data file: with ``loop
+different rank counts are comparable with ``loop geom`` (velocities from
+the positions) or when every run starts from one data file: with ``loop
 geom`` the three ``in.ml`` runs print the same thermo rows for all 1000
 steps.
 
@@ -627,8 +629,8 @@ location such as ``/usr`` or ``/usr/local`` nothing extra is required:
 Non-standard prefix (e.g. ``$HOME/.local``)
 ...........................................
 When Tadah! is installed in a private directory, the compiler and linker need
-a hint. The quickest way is the include and library paths on the command
-line:
+a hint. The quickest hint is the include and library paths, given on the
+command line:
 
 .. code-block:: bash
 

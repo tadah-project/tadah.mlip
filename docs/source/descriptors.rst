@@ -163,7 +163,7 @@ Each descriptor needs matching auxiliary keys:
 
 (and the analogous ``*MB`` variants for many-body descriptors).
 
-Ordering matters: the recommended layout writes the block
+Ordering matters: the recommended layout keeps the block
 
 .. code-block:: ini
 
@@ -173,7 +173,7 @@ Ordering matters: the recommended layout writes the block
    CGRID2B  …
    SGRID2B  …
 
-together before the next descriptor family starts, so the eye can verify
+together, before the next descriptor family starts, so the eye can verify
 that list lengths match.
 
 .. _composite_descriptors:

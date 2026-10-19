@@ -39,6 +39,14 @@ html.writer-html5 .rst-content dl.field-list > dt {
     overflow-wrap: anywhere;
 }
 
+/* A field body breaks a word wider than its column, as a table cell does:
+   the entries of the Nested Fitting reference name keys of 30 characters
+   (Limit_Invalid_Generated_States) in their text, which at 390 px is wider
+   than the body of a field list in an entry. */
+html.writer-html5 .rst-content dl.field-list > dd {
+    overflow-wrap: anywhere;
+}
+
 /* Code blocks: lines of up to 80 characters are shown whole on desktop
    windows (1024 px and wider). A code line is 12 px monospace, about
    7.2 px a character: 80 characters and the block's padding take about

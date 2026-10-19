@@ -8,7 +8,7 @@ This page provides step-by-step installation instructions for:
 - **Tadah!MLIP** (ML potential training; provides the ``tadah`` CLI)
 - **ML‑TADAH for LAMMPS** (Tadah!LAMMPS; adds the ``pair_style tadah`` pair style to LAMMPS)
 
-For more detailed and up-to-date guidance (including platform-specific notes), see:
+More detailed and up-to-date guidance (including platform-specific notes) is at:
 https://tadah.readthedocs.io/
 
 .. _requirements:
@@ -47,7 +47,7 @@ Tadah!MLIP provides the command-line interface binary, ``tadah``, for developing
 Obtaining Source Code
 .....................
 
-Clone Tadah!MLIP at a release tag, or at ``v1-dev``, the development
+Tadah!MLIP is cloned at a release tag, or at ``v1-dev``, the development
 branch of the 1.x line, from which the releases are tagged:
 
 .. code-block:: bash
@@ -58,11 +58,11 @@ branch of the 1.x line, from which the releases are tagged:
     # or the development line
     git clone -b v1-dev https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
 
-Name the branch or tag: a plain ``git clone`` checks out the repository's
-default branch, which need not be ``v1-dev``. CMake fetches the other
-Tadah! modules at the same ref. It finds a branch by itself, but a tag
-checkout has no branch, so configure a release clone with
-``-DTADAH_GIT_BRANCH=v1.6.0`` (see :ref:`installation_git_branch`).
+Both commands name the branch or tag: a plain ``git clone`` checks out the
+repository's default branch, which need not be ``v1-dev``. CMake fetches
+the other Tadah! modules at the same ref. It finds a branch by itself, but
+a tag checkout has no branch, so a release clone is configured with
+``-DTADAH_GIT_BRANCH=v1.6.0`` (:ref:`installation_git_branch`).
 
 .. _building_tadah:
 
@@ -72,14 +72,14 @@ Configuration and Compilation
 Tadah!MLIP uses CMake for configuration and a standard build tool for compilation.
 
 The executable ``tadah`` is installed in the ``bin`` directory by default (``${CMAKE_INSTALL_PREFIX}/bin``).
-After a successful compilation (before installation), the ``tadah`` binary should also be present inside your build directory (commonly as ``build/tadah`` or under a subdirectory like ``build/bin/``, depending on your platform and CMake generator).
+After a successful compilation (before installation), the ``tadah`` binary should also be present inside the build directory (commonly as ``build/tadah`` or under a subdirectory like ``build/bin/``, depending on the platform and the CMake generator).
 
 Using the provided CMake defaults preset (recommended)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Tadah!MLIP ships a CMake *initial cache* file with Linux end-user defaults at
-``cmake/presets/tadah-linux-defaults.cmake``. You can use it as-is, or edit it to
-match your preferences and reuse it for future builds.
+``cmake/presets/tadah-linux-defaults.cmake``. It serves as-is, or edited to match
+local preferences and reused for future builds.
 
 .. code-block:: bash
 
@@ -93,7 +93,7 @@ match your preferences and reuse it for future builds.
     cmake --build build --parallel
     cmake --install build
 
-To override individual settings without editing the preset file, append ``-D`` options (see :ref:`configuration_options`), e.g.:
+``-D`` options appended to the command override individual settings without editing the preset file (:ref:`configuration_options`), e.g.:
 
 .. code-block:: bash
 
@@ -101,7 +101,7 @@ To override individual settings without editing the preset file, append ``-D`` o
         -DTADAH_ENABLE_OPENMP=ON \
         -DCMAKE_INSTALL_PREFIX=~/.local
 
-Alternatively, you can configure and build without the preset as follows:
+The build can also be configured and compiled without the preset:
 
 .. code-block:: bash
 
@@ -124,17 +124,17 @@ Configuration Options
 
 .. note::
 
-   If you configure with ``-C cmake/presets/tadah-linux-defaults.cmake``, the values in that
-   file become the initial defaults for the new build directory (e.g. it sets conservative
-   end-user defaults such as disabling optional features). You can customize these defaults
-   either by (1) appending ``-D<option>=<value>`` to the CMake command, or (2) editing the
-   preset file itself and reusing it for future builds.
+   With ``-C cmake/presets/tadah-linux-defaults.cmake``, the values in that file become the
+   initial defaults for the new build directory (e.g. it sets conservative end-user defaults
+   such as disabling optional features). These defaults are customised either by (1) appending
+   ``-D<option>=<value>`` to the CMake command, or (2) editing the preset file itself and
+   reusing it for future builds.
 
 Installation location
 ^^^^^^^^^^^^^^^^^^^^^
 
-To change the installation location from the default (typically ``/usr/local`` on Linux), set
-``CMAKE_INSTALL_PREFIX`` during configuration:
+``CMAKE_INSTALL_PREFIX``, set during configuration, changes the installation location from the
+default (typically ``/usr/local`` on Linux):
 
 .. code-block:: bash
 
@@ -171,37 +171,38 @@ Recommended workflow: one build directory per build type:
         -DCMAKE_BUILD_TYPE=Debug
     cmake --build build-debug --parallel
 
-Alternative: set the build type in your own preset
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _alternative_set_the_build_type_in_your_own_preset:
 
-If you prefer to keep your build type in a preset file, you can copy the provided preset and
-add a default build type:
+Alternative: the build type in a custom preset
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A copy of the provided preset can also hold a default build type:
 
 .. code-block:: cmake
 
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
       "Build type (Debug, Release, RelWithDebInfo, MinSizeRel)")
 
-Customize the Tadah!MLIP build using CMake options:
+These CMake options customise the Tadah!MLIP build:
 
-- ``TADAH_ENABLE_OPENMP``: Enable OpenMP for parallelization (default: OFF).
-- ``TADAH_MARCH_NATIVE``: Use native optimizations (default: OFF).
-- ``TADAH_ENABLE_FAST_MATH``: Enable fast math optimizations (default: OFF).
-- ``TADAH_ENABLE_NFP``: Enable Nested Fitting Procedure (default: OFF), see :ref:`installation_nfp`. A ``tadah`` built without it refuses ``tadah hpo`` and ``TASK hpo`` before any task runs, ``tadah hpo needs the Nested Fitting Procedure, which this tadah was built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see Installation)``, and its ``tadah -h`` says so on the ``hpo`` line. Such a build has no compact fitter either: ``tadah refit`` refuses ``REFIT_MODE compact``, the default, so its refit configurations set ``REFIT_MODE dense`` (as without ``TADAH_ENABLE_CERES``, below).
+- ``TADAH_ENABLE_OPENMP``: Enables OpenMP for parallelisation (default: OFF).
+- ``TADAH_MARCH_NATIVE``: Uses native optimisations (default: OFF).
+- ``TADAH_ENABLE_FAST_MATH``: Enables fast math optimisations (default: OFF).
+- ``TADAH_ENABLE_NFP``: Enables the Nested Fitting Procedure (default: OFF; :ref:`installation_nfp`). A ``tadah`` built without it refuses ``tadah hpo`` and ``TASK hpo`` before any task runs, ``tadah hpo needs the Nested Fitting Procedure, which this tadah was built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see Installation)``, and its ``tadah -h`` says so on the ``hpo`` line. Such a build has no compact fitter either: ``tadah refit`` refuses ``REFIT_MODE compact``, the default, so its refit configurations set ``REFIT_MODE dense`` (as without ``TADAH_ENABLE_CERES``, below).
 - ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIB``: Absolute path to the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIBS``: Extra link items for the LAMMPS library, as a CMake list (e.g. ``"-lz;-lzstd"``); needed mainly for a static LAMMPS library, whose own dependencies are not propagated (optional, used by ``TADAH_ENABLE_NFP``).
-- ``TADAH_ENABLE_CERES``: Build the Ceres Solver optimiser family of ``tadah hpo`` (``LIB CERES``) (default: ON; only relevant with ``TADAH_ENABLE_NFP``). ``PARAM fd_kernel ceres``, Ceres' finite-difference step rule, does not need it: Tadah evaluates that rule itself (before 1.6.0 it ran inside Ceres and needed this option). The compact fit of ``tadah refit`` does need it: without it ``tadah refit`` refuses ``REFIT_MODE compact``, the default, so a refit configuration of such a build sets ``REFIT_MODE dense``.
-- ``TADAH_GIT_BRANCH``: The git branch or tag the Tadah! modules are fetched at (detected when not given, see :ref:`installation_git_branch`; pass it for a release source tarball, e.g. ``v1.6.0``).
-- ``TADAH_HPO_MPI``: Distribute the replicas of the ``TADAH:ANNEAL_PT`` / ``TADAH:ANNEAL_PA`` optimisers of ``tadah hpo`` over MPI ranks (default: OFF; only relevant with ``TADAH_ENABLE_NFP``; needs an MPI build of LAMMPS), see :ref:`installation_hpo_mpi`.
+- ``TADAH_ENABLE_CERES``: Builds the Ceres Solver optimiser family of ``tadah hpo`` (``LIB CERES``) (default: ON; only relevant with ``TADAH_ENABLE_NFP``). ``PARAM fd_kernel ceres``, Ceres' finite-difference step rule, does not need it: Tadah evaluates that rule itself (before 1.6.0 it ran inside Ceres and needed this option). The compact fit of ``tadah refit`` does need it: without it ``tadah refit`` refuses ``REFIT_MODE compact``, the default, so a refit configuration of such a build sets ``REFIT_MODE dense``.
+- ``TADAH_GIT_BRANCH``: The git branch or tag the Tadah! modules are fetched at (detected when not given, :ref:`installation_git_branch`; a release source tarball needs it, e.g. ``v1.6.0``).
+- ``TADAH_HPO_MPI``: Distributes the replicas of the ``TADAH:ANNEAL_PT`` / ``TADAH:ANNEAL_PA`` optimisers of ``tadah hpo`` over MPI ranks (default: OFF; only relevant with ``TADAH_ENABLE_NFP``; needs an MPI build of LAMMPS; :ref:`installation_hpo_mpi`).
 
-Additional CMake options to consider:
+Further CMake options:
 
-- ``CMAKE_INSTALL_PREFIX``: Set the install destination when ``make install`` is invoked. A common choice is ``-DCMAKE_INSTALL_PREFIX=~/.local``.
+- ``CMAKE_INSTALL_PREFIX``: Sets the install destination of ``make install``. A common choice is ``-DCMAKE_INSTALL_PREFIX=~/.local``.
 - ``BUILD_SHARED_LIBS``: Whether to build shared or static Tadah!MLIP libraries (default: OFF).
-- ``BUILD_TESTING``: Include tests (default: OFF). Needs CMake 3.16 or later, and a Python 3 interpreter, which runs the unit tests of the documentation build tools; with ``TADAH_ENABLE_NFP``, Python 3.11 or later, for the Nested Fitting tests (their key-registry check reads TOML with ``tomllib``). The configure step stops when it finds no suitable interpreter.
+- ``BUILD_TESTING``: Includes tests (default: OFF). Needs CMake 3.16 or later, and a Python 3 interpreter, which runs the unit tests of the documentation build tools; with ``TADAH_ENABLE_NFP``, Python 3.11 or later, for the Nested Fitting tests (their key-registry check reads TOML with ``tomllib``). The configure step stops when it finds no suitable interpreter.
 
-Append flags to the ``cmake`` command with the ``-D`` prefix and a value of ``ON``, ``OFF``, or a path, e.g.:
+Each option is appended to the ``cmake`` command with the ``-D`` prefix and a value of ``ON``, ``OFF``, or a path, e.g.:
 
 .. code-block:: bash
 
@@ -210,7 +211,7 @@ Append flags to the ``cmake`` command with the ``-D`` prefix and a value of ``ON
         -DTADAH_MARCH_NATIVE=ON \
         -DCMAKE_INSTALL_PREFIX=~/.local
 
-You can provide multiple ``-D<option>=<value>`` pairs in a single call.
+One call takes several ``-D<option>=<value>`` pairs.
 
 .. _installation_git_branch:
 
@@ -235,14 +236,15 @@ the first of these (cmake-tools' ``tadah_get_git_branch``):
 A Tadah!MLIP clone on ``v1-dev`` therefore fetches every module at
 ``v1-dev``.  A detached HEAD (a clone of a release tag, ``git clone -b
 v1.6.0``, is one), or a release source tarball (which has no ``.git``),
-has no branch: CMake warns, and you pass the ref yourself, for a release
-its tag:
+has no branch: CMake warns, and the ref is passed explicitly, for a
+release its tag:
 
 .. code-block:: bash
 
     cmake -S . -B build -DTADAH_GIT_BRANCH=v1.6.0
 
-Build, install, test, and docs from an out-of-tree ``build`` directory:
+Building, installing, testing and generating the docs from an out-of-tree
+``build`` directory:
 
 .. code-block:: bash
 
@@ -262,7 +264,7 @@ the variables that name them explicitly (``TADAH_DOXYGEN_XML_DIR``,
 Go Faster Stripe - Desktop Version
 ..................................
 
-OpenMP is supported if available on your system. Compile Tadah!MLIP with OpenMP support and set the number of threads to match your CPU cores for best performance.
+OpenMP is supported where the system provides it. A Tadah!MLIP build with OpenMP support performs best with as many threads as CPU cores:
 
 .. code-block:: bash
 
@@ -274,7 +276,7 @@ MPI-Parallel Hyperparameter Optimisation
 ........................................
 
 Training (``tadah train``) and the other ``tadah`` commands run in one
-process; use OpenMP threads (:ref:`gofasterstripe`) to occupy the cores of a
+process; OpenMP threads (:ref:`gofasterstripe`) occupy the cores of a
 node. MPI parallelism is available for hyperparameter optimisation: with
 ``-DTADAH_HPO_MPI=ON`` the ``TADAH:ANNEAL_PT`` and ``TADAH:ANNEAL_PA``
 optimisers of ``tadah hpo`` distribute their replicas over MPI ranks, which
@@ -282,10 +284,10 @@ lets one run span several nodes. It needs ``-DTADAH_ENABLE_NFP=ON``
 (:ref:`installation_nfp`) and an MPI build of LAMMPS with ML‑TADAH, both
 built with the same MPI library.
 
-**1. LAMMPS with MPI.** Configure LAMMPS with ML‑TADAH as in
-:ref:`installation_lammps`, adding ``-DBUILD_MPI=ON`` and a library name
-that contains ``mpi`` (``-DLAMMPS_MACHINE=mpi`` names it
-``liblammps_mpi.a``), and build the library target:
+**1. LAMMPS with MPI.** LAMMPS is configured with ML‑TADAH as in
+:ref:`installation_lammps`, with ``-DBUILD_MPI=ON`` and a library name
+that contains ``mpi`` added (``-DLAMMPS_MACHINE=mpi`` names it
+``liblammps_mpi.a``), and its library target is built:
 
 .. code-block:: bash
 
@@ -298,8 +300,8 @@ that contains ``mpi`` (``-DLAMMPS_MACHINE=mpi`` names it
       -DTADAH_GIT_BRANCH=v1-dev
     cmake --build build-mpi --target lammps --parallel
 
-**2. Tadah!MLIP with TADAH_HPO_MPI.** Point ``TADAH_LAMMPS_DIR`` and
-``TADAH_LAMMPS_LIB`` at that LAMMPS, and enable OpenMP:
+**2. Tadah!MLIP with TADAH_HPO_MPI.** ``TADAH_LAMMPS_DIR`` and
+``TADAH_LAMMPS_LIB`` point at that LAMMPS, and OpenMP is enabled:
 
 .. code-block:: bash
 
@@ -315,13 +317,13 @@ LAMMPS builds with OpenMP when its configure finds it (``BUILD_OMP``),
 and a static LAMMPS library then calls the OpenMP runtime: without
 ``-DTADAH_ENABLE_OPENMP=ON`` (the defaults preset leaves it ``OFF``)
 linking ``tadah`` fails on ``omp_get_num_threads``, ``GOMP_parallel`` and
-the like; alternatively configure LAMMPS with ``-DBUILD_OMP=OFF``. Nor
+the like; a LAMMPS configured with ``-DBUILD_OMP=OFF`` avoids this. Nor
 does a static LAMMPS library bring the libraries that its packages use.
 The LAMMPS of step 1, with ML‑TADAH alone, needs none; one with
 COMPRESS needs zlib (and libzstd, when LAMMPS found it), one with GRAPHICS
 libjpeg, libpng and zlib (those it found), and one with VORONOI that
 build's own ``build-mpi/voro_build-prefix/src/voro_build/src/libvoro++.a``.
-Add them with ``TADAH_LAMMPS_LIBS``, as in the serial build (step 2 of
+``TADAH_LAMMPS_LIBS`` adds them, as in the serial build (step 2 of
 :ref:`installation_nfp`), for example
 ``-DTADAH_LAMMPS_LIBS="-lzstd;-lz;-lpng;-ljpeg;/path/to/lammps/build-mpi/voro_build-prefix/src/voro_build/src/libvoro++.a"``
 for all three; the link errors name the ones that are missing.
@@ -330,12 +332,12 @@ The executable is still ``tadah`` and runs without ``mpirun`` too (a
 one-rank job; Open MPI then makes its session directory under ``TMPDIR``,
 which must be a writable directory). The configure step refuses a LAMMPS
 library whose file name lacks ``mpi``, because the serial LAMMPS library carries MPI stub symbols
-that collide with a real MPI library at link time; set
-``-DTADAH_HPO_MPI_SKIP_LIB_CHECK=ON`` when an MPI build of LAMMPS is simply
-named differently. The MPI library must provide ``MPI_THREAD_MULTIPLE``.
+that collide with a real MPI library at link time;
+``-DTADAH_HPO_MPI_SKIP_LIB_CHECK=ON`` lifts this check for an MPI build of
+LAMMPS that is only named differently. The MPI library must provide ``MPI_THREAD_MULTIPLE``.
 
-**3. Launching.** Launch with ``srun`` or with the ``mpirun`` /
-``mpiexec`` of the MPI library ``tadah`` links, the one next to the
+**3. Launching.** ``tadah`` is started with ``srun`` or with the ``mpirun`` /
+``mpiexec`` of the MPI library it links, the one next to the
 ``mpicxx`` that CMake recorded as ``MPI_CXX_COMPILER`` in
 ``build-mpi/CMakeCache.txt``. A launcher of another MPI — one that comes
 first on ``PATH``, from a conda environment for example — does not start
@@ -352,15 +354,15 @@ two HPO runs under ``PROCESS`` -- are *Skipped* there (the MPI build has
 build. If the
 build stops while it lists the tests (the MPI build's test programs
 initialise MPI to list them), Open MPI's ``MPI_Init`` may be waiting for an
-X display through its hwloc GL component: build and test with
-``HWLOC_COMPONENTS=-gl``. The multi-rank
+X display through its hwloc GL component: ``HWLOC_COMPONENTS=-gl``, set
+for the build and the tests, avoids this. The multi-rank
 tests of ``tadah hpo`` exist only in this build: ``ctest -L mpi`` runs them
 through ``MPIEXEC_EXECUTABLE`` at 1, 2 and 4 ranks and needs four process
 slots
 (``MPIEXEC_MAX_NUMPROCS``). CMake takes the first ``mpiexec`` on ``PATH``
 for ``MPIEXEC_EXECUTABLE``, whichever MPI it belongs to; when another
-MPI's comes first, configure with ``-DMPIEXEC_EXECUTABLE=/path/to/mpiexec``,
-the launcher of step 3 (the wrong one starts one-rank jobs, and the
+MPI's comes first, ``-DMPIEXEC_EXECUTABLE=/path/to/mpiexec`` at configure
+time names the launcher of step 3 (the wrong one starts one-rank jobs, and the
 multi-rank tests fail). They check the rank invariance of ``ANNEAL_PT``
 / ``ANNEAL_PA`` (``hpo_anneal_mpi_matrix``), a signal that one rank
 receives (``hpo_mpi_signal_*``) and ``tadah hpo`` end to end on 1 and 2
@@ -390,27 +392,27 @@ Building Tadah!MLIP with Nested Fitting Procedure support
 .. warning::
 
    The NFP module requires a LAMMPS build that includes ML‑TADAH and has LAMMPS exceptions enabled (``LAMMPS_EXCEPTIONS``).
-   On recent LAMMPS versions this is often enabled by default; on older versions it may need to be set explicitly in your LAMMPS build configuration. See :ref:`installation_lammps` for details on building LAMMPS with ML‑TADAH.
+   On recent LAMMPS versions this is often enabled by default; on older versions it may need to be set explicitly in the LAMMPS build configuration. :ref:`installation_lammps` describes building LAMMPS with ML‑TADAH.
 
-Building Tadah!MLIP with NFP is more involved, and for this reason it is not built by default. Please read these notes carefully before proceeding.
+Building Tadah!MLIP with NFP is more involved, and for this reason it is not built by default. The notes below describe what such a build needs.
 
-To build Tadah!MLIP with NFP, follow these steps:
+A Tadah!MLIP build with NFP takes these steps:
 
-1. **Compile LAMMPS with ML‑TADAH enabled** (:ref:`installation_lammps`).
+1. **Compiling LAMMPS with ML‑TADAH enabled** (:ref:`installation_lammps`).
 
    **Shared vs. Static builds**
 
-   It is often simplest to use a shared-library build of LAMMPS when linking against Tadah!MLIP.
+   A shared-library build of LAMMPS is often the simplest to link against Tadah!MLIP.
 
    **Serial vs. MPI**
 
-   - Use a serial LAMMPS build for the default (non-MPI) Tadah!MLIP build.
-   - Use an MPI build of LAMMPS for the MPI-parallel HPO build (``TADAH_HPO_MPI``, :ref:`installation_hpo_mpi`).
+   - The default (non-MPI) Tadah!MLIP build takes a serial LAMMPS build.
+   - The MPI-parallel HPO build (``TADAH_HPO_MPI``, :ref:`installation_hpo_mpi`) takes an MPI build of LAMMPS.
 
-   For details on producing a LAMMPS library (shared/static) with your chosen build system, consult the LAMMPS build documentation:
+   The LAMMPS build documentation describes how each build system produces a LAMMPS library (shared/static):
    https://docs.lammps.org/Build_cmake.html
 
-2. **Configure Tadah!MLIP** (:ref:`building_tadah`) adding:
+2. **Configuring Tadah!MLIP** (:ref:`building_tadah`) with these options added:
 
    - ``-DTADAH_ENABLE_NFP=ON``
    - ``-DTADAH_LAMMPS_DIR=/path/to/lammps`` (LAMMPS root directory)
@@ -436,9 +438,9 @@ It does not require Tadah!MLIP to be installed.
 .. important::
 
    ML‑TADAH / Tadah!LAMMPS is **not part of the official LAMMPS distribution**.
-   You must clone Tadah!LAMMPS yourself and enable it during the LAMMPS build.
+   Tadah!LAMMPS is cloned separately and enabled during the LAMMPS build.
 
-For general LAMMPS build instructions and prerequisites, see the official LAMMPS documentation:
+The official LAMMPS documentation gives the general LAMMPS build instructions and prerequisites:
 
 - CMake build: https://docs.lammps.org/Build_cmake.html
 
@@ -452,17 +454,17 @@ CMake build with ML‑TADAH (recommended)
 
 This method integrates ML‑TADAH into a normal LAMMPS CMake configure/build, by adding a small set of extra CMake options.
 
-**Step 1 — Clone LAMMPS**
+**Step 1 — Cloning LAMMPS**
 
-Choose a LAMMPS version appropriate for your project (example: git clone stable branch):
+Any LAMMPS version appropriate for the project serves; the example below clones the stable branch:
 
 .. code-block:: bash
 
     git clone -b stable --depth 1 https://github.com/lammps/lammps.git /path/to/lammps
 
-**Step 2 — Clone Tadah!LAMMPS**
+**Step 2 — Cloning Tadah!LAMMPS**
 
-Clone Tadah!LAMMPS anywhere on your filesystem, at a release tag or at
+Tadah!LAMMPS is cloned anywhere on the filesystem, at a release tag or at
 ``v1-dev``, the development line (a plain ``git clone`` checks out the
 repository's default branch, which need not be either):
 
@@ -474,9 +476,9 @@ repository's default branch, which need not be either):
     # or the development line
     git clone -b v1-dev https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git /path/to/tadah.lammps
 
-**Step 3 — Configure LAMMPS and enable ML‑TADAH**
+**Step 3 — Configuring LAMMPS with ML‑TADAH enabled**
 
-From the **LAMMPS root directory** (``/path/to/lammps``), run your usual LAMMPS CMake configure command and **add** these four options:
+The usual LAMMPS CMake configure command runs from the **LAMMPS root directory** (``/path/to/lammps``), with these four options **added**:
 
 * ``-DPKG_ML-TADAH=ON``
 * ``-DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake``
@@ -497,17 +499,18 @@ Minimal example, for a ``v1-dev`` checkout:
 ``TADAH_GIT_BRANCH`` is the git branch or tag the Tadah! modules are
 fetched at.  Tadah!LAMMPS pulls ``Tadah.MD`` and, through it,
 ``Tadah.MODELS`` and ``Tadah.CORE``; the Tadah!LAMMPS sources themselves
-are whatever you have checked out at ``TADAH_LAMMPS_SOURCE_DIR``.  Give
-the ref of that checkout, so that both come from the same line:
+are whatever is checked out at ``TADAH_LAMMPS_SOURCE_DIR``.
+``TADAH_GIT_BRANCH`` names the ref of that checkout, so that both come
+from the same line:
 ``-DTADAH_GIT_BRANCH=v1-dev`` for a ``v1-dev`` clone,
 ``-DTADAH_GIT_BRANCH=v1.6.0`` for a clone of the 1.6.0 release.
 
 Without it the ref is detected (:ref:`installation_git_branch`) from the
 checkout of the project CMake was started on, which in this build is
 **LAMMPS**: a LAMMPS branch (``stable``, ``develop``, …) that has nothing
-to do with your Tadah!LAMMPS checkout, or no ref at all for a LAMMPS
-release tarball or a detached HEAD (CMake warns).  Always pass
-``-DTADAH_GIT_BRANCH`` in the LAMMPS build.
+to do with the Tadah!LAMMPS checkout, or no ref at all for a LAMMPS
+release tarball or a detached HEAD (CMake warns).  The LAMMPS build
+therefore always needs ``-DTADAH_GIT_BRANCH``.
 
 Example using the LAMMPS GCC preset and building a serial binary, for a
 ``v1-dev`` checkout:
@@ -522,7 +525,7 @@ Example using the LAMMPS GCC preset and building a serial binary, for a
       -DTADAH_GIT_BRANCH=v1-dev \
       -DLAMMPS_MACHINE=serial
 
-**Step 4 — Build**
+**Step 4 — Building**
 
 .. code-block:: bash
 
@@ -543,9 +546,9 @@ above); ``cmake --build build --target lmp`` builds it alone, and
 
 **Advanced integration options**
 
-The CMake integration also supports additional options (e.g. verbosity controls and custom style registration lists). These are documented here:
+The CMake integration also supports additional options (e.g. verbosity controls and custom style registration lists), documented in:
 
-- ``tadah.lammps/integration/README.md`` (in your Tadah!LAMMPS checkout)
+- ``tadah.lammps/integration/README.md`` (in the Tadah!LAMMPS checkout)
 
 .. _installation_lammps_mpi:
 
@@ -553,9 +556,9 @@ Running pair_style tadah on several MPI ranks
 .............................................
 
 ``pair_style tadah`` runs domain-decomposed like any LAMMPS pair style.
-Configure LAMMPS with the options of Step 3 and ``-DBUILD_MPI=ON`` (CMake
-finds the MPI of ``mpicxx``), build ``lmp`` and start it with the
-``mpirun`` / ``mpiexec`` of that MPI (or ``srun``):
+LAMMPS is configured with the options of Step 3 and ``-DBUILD_MPI=ON``
+(CMake finds the MPI of ``mpicxx``), and ``lmp`` is built and started with
+the ``mpirun`` / ``mpiexec`` of that MPI (or ``srun``):
 
 .. code-block:: bash
 
@@ -589,29 +592,30 @@ the input makes them: ``create_atoms`` numbers the atoms rank by rank, and
 velocities by atom ID, so each lattice site starts with a velocity that
 depends on the number of ranks. The trajectories then differ from the
 first step (the *Quick Start* ``in.ml`` at 1, 2 and 4 ranks: 415, 419 and
-426 K after 100 steps), though each run conserves its energy. Use ``loop
-geom`` (velocities from the positions), or start every run from one data
-file, to compare runs across rank counts: with ``loop geom`` the three
-``in.ml`` runs print the same thermo rows for all 1000 steps.
+426 K after 100 steps), though each run conserves its energy. Runs on
+different rank counts are comparable with ``loop geom`` (velocities from
+the positions) or when every run starts from one data file: with ``loop
+geom`` the three ``in.ml`` runs print the same thermo rows for all 1000
+steps.
 
 The test suite checks this agreement when it is given an MPI ``lmp``
-(``tadah.lammps_mpi_*``, see ``CONTRIBUTING.md``, *Running tests*):
-configure a Tadah!MLIP build with tests and NFP (:ref:`installation_nfp`)
-with ``-DTADAH_LMP_MPI=/path/to/lammps/build-mpi/lmp_mpi`` and
-``-DTADAH_LMP_MPIEXEC=/path/to/mpiexec``, the launcher of that MPI, and
-run ``ctest -L lammps``; without them the entries are *Skipped*.
+(``tadah.lammps_mpi_*``, described in ``CONTRIBUTING.md``, *Running
+tests*): a Tadah!MLIP build with tests and NFP (:ref:`installation_nfp`),
+configured with ``-DTADAH_LMP_MPI=/path/to/lammps/build-mpi/lmp_mpi`` and
+``-DTADAH_LMP_MPIEXEC=/path/to/mpiexec``, the launcher of that MPI, runs
+them with ``ctest -L lammps``; without them the entries are *Skipped*.
 
 Traditional make-based build
 ............................
 
 The classic LAMMPS ``make`` workflow is **not supported** for
-Tadah!LAMMPS in this release. Use the CMake build documented above.
+Tadah!LAMMPS in this release. The CMake build documented above replaces it.
 
 Libraries and C++ Headers
 -------------------------
 
 .. note::
-   This section is relevant only if you intend to use the Tadah!API. If you're using the command line interface (CLI), you can safely skip this section.
+   This section is relevant only to the Tadah!API. The command line interface (CLI) needs none of it.
 
 Tadah!API installs its headers to
 ``${CMAKE_INSTALL_PREFIX}/include`` and its libraries to
@@ -624,8 +628,8 @@ location such as ``/usr`` or ``/usr/local`` nothing extra is required:
 
 Non-standard prefix (e.g. ``$HOME/.local``)
 ...........................................
-When Tadah! is installed in a private directory you must give the compiler and
-linker a hint. The quickest way is to add the include and library paths on the
+When Tadah! is installed in a private directory, the compiler and linker need
+a hint. The quickest hint is the include and library paths, given on the
 command line:
 
 .. code-block:: bash
@@ -647,8 +651,8 @@ after the executable has been built:
 
 Optional convenience variables
 ..............................
-If you prefer not to repeat ``-I``/``-L`` flags, set environment variables
-once for your shell (or in a module file):
+Environment variables, set once for the shell (or in a module file), save
+repeating the ``-I``/``-L`` flags:
 
 .. code-block:: bash
 
@@ -659,8 +663,9 @@ once for your shell (or in a module file):
     # run-time
     export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
 
-Keep the scope of these variables as narrow as possible (script, shell session,
-or environment module) to avoid accidental conflicts with other software.
+These variables are best kept to the narrowest scope possible (script, shell
+session, or environment module), which avoids accidental conflicts with other
+software.
 
 Compiled Libraries
 ..................
@@ -679,13 +684,13 @@ The following libraries are produced, depending on the build settings:
 Compiling and Linking with Library
 ..................................
 
-For C++ library use, compile with C++17 or higher. Include library headers using the prefix ``tadah/`` and link relevant libraries. For ``libtadah.mlip`` it is often the case that both ``libtadah.models`` and ``libtadah.core`` must be linked as well.
+C++ library use needs C++17 or higher. Library headers are included with the prefix ``tadah/``, and the relevant libraries are linked. For ``libtadah.mlip`` it is often the case that both ``libtadah.models`` and ``libtadah.core`` must be linked as well.
 
 .. code-block:: c++
 
     #include <tadah/mlip/atom.h>
 
-Link with ``libtadah.mlip``:
+Linking with ``libtadah.mlip``:
 
 .. code-block:: bash
 
@@ -707,27 +712,27 @@ Troubleshooting
 
 #. **CMake not found / version too old**
 
-   Ensure CMake is installed and up-to-date (3.15 or later; 3.24 with ``TADAH_ENABLE_NFP``, 3.16 with ``BUILD_TESTING``). On Linux, you can often install or upgrade CMake via your package manager, or download a binary from the CMake website.
+   The build needs an installed, up-to-date CMake (3.15 or later; 3.24 with ``TADAH_ENABLE_NFP``, 3.16 with ``BUILD_TESTING``). On Linux, the package manager can often install or upgrade CMake; the CMake website also offers binaries.
 
 #. **Compiler not found / version too old**
 
-   Ensure your C++ compiler supports C++17, including floating-point ``std::to_chars`` in its standard library. Update your compiler if necessary (e.g., GCC 11+, Clang with libc++ 14+ or libstdc++ 11+, MSVC 2019 16.4+).
+   The C++ compiler must support C++17, including floating-point ``std::to_chars`` in its standard library (e.g., GCC 11+, Clang with libc++ 14+ or libstdc++ 11+, MSVC 2019 16.4+); an older compiler needs an update.
 
 #. **LAPACK not found**
 
-   Install LAPACK development files via your package manager (e.g., ``liblapack-dev`` on Debian/Ubuntu).
+   The package manager installs the LAPACK development files (e.g., ``liblapack-dev`` on Debian/Ubuntu).
 
 #. **CMake configuration errors related to missing dependencies**
 
-   Review the CMake output for missing dependencies. Install any required libraries or development packages.
+   The CMake output names the missing dependencies; the required libraries or development packages then need installing.
 
 #. **Build errors during compilation**
 
-   Check the compiler output for specific error messages. Ensure all dependencies are correctly installed and that your compiler supports the required C++ standard.
+   The compiler output gives the specific error messages. Common causes are a dependency that is not correctly installed and a compiler without the required C++ standard.
 
 #. **Permission denied** when running ``make install``
 
-   Choose a user-writeable prefix:
+   A user-writeable prefix avoids it:
 
    .. code-block:: bash
 
@@ -736,7 +741,7 @@ Troubleshooting
 
 #. **Shared object ImportError** when running ``tadah``
 
-   Update ``LD_LIBRARY_PATH``:
+   ``LD_LIBRARY_PATH`` needs the library directory:
 
    .. code-block:: bash
 
@@ -744,12 +749,12 @@ Troubleshooting
 
 #. **LAMMPS build issues**
 
-   Consult the LAMMPS build documentation and ensure your toolchain is working for LAMMPS first:
+   The first check is that the toolchain builds LAMMPS on its own, following the LAMMPS build documentation:
 
    - https://docs.lammps.org/Build_cmake.html
 
-   Then re-check the ML‑TADAH integration steps in :ref:`installation_lammps`.
+   The second check covers the ML‑TADAH integration steps in :ref:`installation_lammps`.
 
 #. **Other issues**
 
-   Contact us for any unlisted problems.
+   Problems not listed here go to the contact address in :ref:`contact`.

@@ -24,11 +24,11 @@ header = '''
 Configuration File
 ==================
 
-.. note:: This page is auto-generated from the blueprint TOML on every docs build. If you spot a mismatch between this reference and runtime behaviour, please report it on the `Tadah!MLIP GitLab <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_.
+.. note:: This page is auto-generated from the blueprint TOML on every docs build. Reports of any mismatch between this reference and runtime behaviour are welcome on the `Tadah!MLIP GitLab <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_.
 
 This section describes the format of the configuration file used by Tadah!MLIP.
 
-Nested fitting (``tadah hpo``, see :ref:`nested_fitting`) reads the same file, given with ``--config``, as the training configuration of every potential it trains.
+Nested fitting (``tadah hpo``, :ref:`nested_fitting`) reads the same file, given with ``--config``, as the training configuration of every potential it trains.
 
 For example, the configuration file can control the training process, specifying one or more datasets for use during the training stage. It defines cutoff functions and corresponding radii along with the regression model and descriptor choices.
 
@@ -54,17 +54,17 @@ Typically, only a subset of KEYS is needed to train a model. Tadah!MLIP will use
      what():  Key not found: DBFILE
    Aborted (core dumped)
 
-This message indicates that the :ref:`DBFILE` KEY was not specified in the :file:`config.train` file. To resolve this, add the :ref:`DBFILE` key and its corresponding value to :file:`config.train`.
+This message indicates that the :ref:`DBFILE` KEY was not specified in the :file:`config.train` file. The :ref:`DBFILE` key with its value, added to :file:`config.train`, resolves it.
 
 Key Specifics
 -------------
 
-The meaning of some keys can vary with the chosen command. Check the documentation for that specific command, model or descriptor to see which keys are required and how they are interpreted. While we strive to keep key meanings consistent across Tadah!MLIP, occasional differences may still occur.
+The meaning of some keys can vary with the chosen command. The documentation of that command, model or descriptor states which keys are required and how they are interpreted. Key meanings are kept consistent across Tadah!MLIP where possible, but occasional differences may still occur.
 
 Comments
 --------
 
-Use the ``#`` symbol to add comments in the configuration file. Both inline and full-line comments are supported.
+The ``#`` symbol starts a comment in the configuration file. Both inline and full-line comments are supported.
 
 
 Key Values and Formats
@@ -106,7 +106,7 @@ Each key takes a set number of values. A wrong count is not refused for every ke
 * **Too many values**: Tadah!MLIP refuses the line with a message, or ignores the extra values without one. Ignored values can cause failures later in the run whose cause is hard to see, in rare cases a segmentation fault.
 * **Too few values**: Tadah!MLIP usually refuses the line; in rare cases it crashes.
 
-Give every key exactly the number of values it expects.
+Every key needs exactly the number of values it expects.
 
 .. _SupportedKEYS:
 

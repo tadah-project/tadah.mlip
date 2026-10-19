@@ -10,7 +10,7 @@ capability.
 Scope
 .....
 
-In this tutorial we optimise the HPs **only against a validation data set**.  
+This tutorial optimises the HPs **only against a validation data set**.  
 Doing so will generally lead to some degree of over-fitting to that validation set.
 How to add physics-based constraints or extra test sets to mitigate over-fitting is
 covered in a separate example.
@@ -37,14 +37,14 @@ Files provided
 Running the example
 ...................
 
-Invoke the nested fitting run with:
+The nested fitting run starts with:
 
 .. code-block:: bash
 
    tadah hpo --config config.train --validation config.val --hpotarget config.hpo
 
 The program iterates until it reaches the maximum number of evaluations set in
-``config.hpo`` or until you stop it manually (e.g. with <Ctrl-C>).  
+``config.hpo`` or until it is stopped manually (e.g. with <Ctrl-C>).  
 Whenever it finds a parameter set that improves upon the current best loss,
 it writes the corresponding potential to ``best_pot.tadah``.
 
@@ -75,8 +75,8 @@ Its first column is the improvement ordinal ``k`` (1 for the first best,
 * ``best_outvar.tadah``
 * ``best_stats.tadah``
 
-These “best\_” logs allow you to track the progress of the optimisation without
-having to parse the full history.
+These “best\_” logs show the progress of the optimisation without parsing the
+full history.
 
 The ``DUMP``/``BDUMP`` lines additionally archive potentials:
 ``newPotsDir/pot_<iter>.tadah`` for every 100th iteration and

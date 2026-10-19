@@ -5,7 +5,7 @@ Descriptors
 
 This page lists every two-body (``D2_*``) and many-body (``DM_*``) descriptor
 compiled into Tadah!MLIP.  The class name shown in each heading is exactly the
-keyword you write in your configuration file.
+keyword of the configuration file.
 
 For new scalar-density work, :ref:`DM_Embed <dm_embed>` selects density basis,
 embedding basis, spatial cutoff and optional envelope in independent component
@@ -14,19 +14,19 @@ blocks. Existing flat descriptors remain supported.
 General workflow
 ----------------
 
-#.  Decide which descriptor families you need (two-body, many-body, or both).
-#.  Switch the family **on** with the corresponding *INIT* flag::
+#.  A configuration uses two-body descriptors, many-body descriptors, or both.
+#.  Each family is switched **on** with the corresponding *INIT* flag::
 
         INIT2B  true      # activate two-body block
         INITMB  false     # skip many-body block
 
     At least one of ``INIT2B`` / ``INITMB`` must be ``true``.  If both are
-    ``true`` Tadah! will build one descriptor of each type **unless** you say
-    otherwise with ``TYPE2B`` / ``TYPEMB``.
-#.  Provide **exactly one** line per descriptor you want to build, using the
-    formats below.  If you need to concatenate several descriptors of the same
-    family, use the meta classes ``D2_mJoin`` or ``DM_mJoin`` and list the
-    components *in a block* right after the meta keyword.
+    ``true`` Tadah! builds one descriptor of each type **unless** ``TYPE2B`` /
+    ``TYPEMB`` say otherwise.
+#.  Each descriptor to build has **exactly one** line, in the formats below.
+    Several descriptors of the same family are concatenated with the meta
+    classes ``D2_mJoin`` or ``DM_mJoin``, which list the components *in a
+    block* right after the meta keyword.
 
 .. _bias_term:
 
@@ -72,8 +72,8 @@ The layout is the same on every path (``tadah train``, ``predict``,
   or ``Kern_Linear`` requires ``BIAS true``: the weights fitted to the normalised descriptors
   are converted to weights of the raw descriptors, and the constant this
   moves goes into the intercepts. A linear potential with ``NORM true`` and
-  ``BIAS false``, which earlier versions wrote, is refused when it predicts:
-  retrain it with ``NORM false`` or ``BIAS true``. Its conversion had no
+  ``BIAS false``, which earlier versions wrote, is refused when it predicts;
+  it needs retraining with ``NORM false`` or ``BIAS true``. Its conversion had no
   intercept column for the constant: ``M_KRR Kern_Linear`` (until 1.6.0) and
   ``M_BLR BF_Linear`` (up to 1.2.0) took descriptor component 0 for an
   intercept, so the energies and forces are wrong; ``M_BLR BF_Linear`` from
@@ -87,21 +87,21 @@ The layout is the same on every path (``tadah train``, ``predict``,
   fixed stoichiometry, or ``Nb27 Ta27`` and ``Nb54 Ta54``), or no energy
   weight at all, are refused before the fit, naming the species, the rank
   found and the model's intercept weights, and the remedies the
-  configuration can take: under ``NORM false`` use ``BIAS false`` with
+  configuration can take: under ``NORM false``, ``BIAS false`` with
   explicit ``ESHIFT`` values (a per-species reference energy, such as the
   isolated atom's) or ``ESHIFT_ATOM`` (isolated-atom structures in the
-  data), add structures of other compositions (for example of the pure
-  elements, or an isolated atom of each species), or pin intercepts with
+  data), structures of other compositions (for example of the pure
+  elements, or an isolated atom of each species), or intercepts pinned with
   ``FIXINDEX``/``FIXWEIGHT`` (the weights the message names); under ``NORM
   true``, where a linear model needs ``BIAS true`` and ``FIXINDEX`` is
-  refused, add structures of other compositions or set ``NORM false``.
+  refused, structures of other compositions or ``NORM false``.
   ``ESHIFT_DBATOM`` is no remedy: its least-squares fit of the species
   energies is singular on such data and sets every ``ESHIFT`` to 0 (with a
   WARNING), so the constant goes into the descriptor weights.
   ``tadah train`` checks before it computes any descriptor, ``tadah hpo``
   at startup. A non-linear kernel's intercepts are those of the basis
-  its fit draws, which starts with the intercept vectors (see
-  :ref:`Non-linear models <nonlinear_models>`), whatever basis a potential
+  its fit draws, which starts with the intercept vectors
+  (:ref:`Non-linear models <nonlinear_models>`), whatever basis a potential
   used as the training configuration holds: a dot-product kernel's weights
   1 to N. A model without intercept columns (``Kern_RBF``) is not refused,
   and neither is ``M_KRR`` implementation ``2``, whose energies-only solve
@@ -122,9 +122,9 @@ earlier, whose ``pair_style tadah`` used one shared column too, LAMMPS and
 ``tadah predict`` agreed. Its weights do not fit the descriptor of this
 version: ``tadah predict`` and ``pair_style tadah`` refuse it, naming
 ``WEIGHTS``, ``DSIZE``, ``BIAS`` and ``ATOM``.
-Retrain it, with its training configuration or with the potential itself
-(:ref:`retrain_from_potential`: an ``M_BLR`` potential of those versions
-has its ``DBFILE`` line; add one to an ``M_KRR`` potential): ``tadah train
+It needs retraining, with its training configuration or with the potential
+itself (:ref:`retrain_from_potential`: an ``M_BLR`` potential of those
+versions has its ``DBFILE`` line; an ``M_KRR`` potential needs one added): ``tadah train
 -c pot.tadah`` replaces its ``WEIGHTS``, ``NMEAN`` and ``NSTDEV``.
 Single-species potentials are not affected.
 
@@ -143,8 +143,8 @@ where
 
 * ``<Name>`` is copied from the headings below (case-sensitive).
 * ``[param …]`` are the extra integers/doubles required by a given class
-  (see its table for details).
-* ``<EL1> <EL2>`` are element symbols (use ``*`` for "any"). Multiple pairs
+  (its table gives the details).
+* ``<EL1> <EL2>`` are element symbols (``*`` stands for "any"). Multiple pairs
   are allowed, e.g. ``DM_EAD 1 4 4 Ti Ti Ti Nb``.
 * ``L`` is the maximum angular momentum number needed by DM descriptors.
 * ``N_C``, ``N_S`` are the sizes of the *centre* and *width* grids
@@ -152,7 +152,7 @@ where
 * ``N_CE``, ``N_SE`` appear only when a non-linear embedding function is used
   (``CEMBFUNC`` / ``SEMBFUNC``).
 
-Remember to supply matching auxiliary keys:
+Each descriptor needs matching auxiliary keys:
 
 =============  =========================================================
 ``RCTYPE2B``   cutoff function(s) – one per descriptor in ``TYPE2B``
@@ -163,7 +163,7 @@ Remember to supply matching auxiliary keys:
 
 (and the analogous ``*MB`` variants for many-body descriptors).
 
-Ordering matters: we recommend writing the block
+Ordering matters: the recommended layout keeps the block
 
 .. code-block:: ini
 
@@ -173,7 +173,7 @@ Ordering matters: we recommend writing the block
    CGRID2B  …
    SGRID2B  …
 
-together before starting the next descriptor family, so the eye can verify
+together, before the next descriptor family starts, so the eye can verify
 that list lengths match.
 
 .. _composite_descriptors:
@@ -181,23 +181,23 @@ that list lengths match.
 Composite Descriptors
 ---------------------
 
-Tadah!MLIP lets you **stitch several primitive descriptors together into one
-feature vector** – a *composite descriptor* – so you can embed physical
-insight (e.g. "add a short-range ZBL shield to a Blip term") without editing
+Tadah!MLIP **stitches several primitive descriptors together into one
+feature vector** – a *composite descriptor* – which embeds physical insight
+(e.g. "a short-range ZBL shield added to a Blip term") without editing
 source code.  The idea is implemented via the meta-classes ``D2_mJoin``
 (two-body) and ``DM_mJoin`` (many-body).
 
 Key points
 ~~~~~~~~~~
 
-* Activate the relevant family first: ``INIT2B`` / ``INITMB``.
-* Declare the meta descriptor:
+* The relevant family is activated first: ``INIT2B`` / ``INITMB``.
+* The meta descriptor is declared:
 
   ``TYPE2B  D2_mJoin``  *or* ``TYPEMB  DM_mJoin``
 
-* Immediately follow with one **TYPE** line per constituent descriptor,
-  in the order you want them concatenated.
-* Provide matching lists for every auxiliary key
+* One **TYPE** line per constituent descriptor follows immediately, in
+  the order of concatenation.
+* Every auxiliary key has a matching list
   (``RCTYPE*``, ``RCUT*``, ``CGRID*``, ``SGRID*``,
   and, if required, ``C/SEMBFUNC``).
   List length **must** equal the number of constituents.
@@ -267,15 +267,15 @@ Composite 2-body terms with ``D2_mJoin``
 Reading the tables below
 ------------------------
 
-Following this overview you will find the *Two-Body* and *Many-Body* sections.
+The *Two-Body* and *Many-Body* sections follow this overview.
 Each entry shows
 
 * a short description and equation,
-* **Required config keys**, i.e. the options you must specify in the
-  configuration file.
+* **Required config keys**, i.e. the options the configuration file must
+  specify.
 
-Copy the class name into the ``TYPE2B`` / ``TYPEMB`` line, supply the required
-keys, and you are ready to train.
+With the class name in the ``TYPE2B`` / ``TYPEMB`` line and the required keys
+supplied, the configuration is ready to train.
 
 --------------
 
@@ -303,7 +303,7 @@ Two-Body
    * - ``D2_Dummy``
      - Identity descriptor (all ones); for testing
    * - ``D2_mJoin``
-     - Concatenate multiple D2 descriptors into one vector
+     - Concatenates multiple D2 descriptors into one vector
 
 D2_LJ
 ~~~~~
@@ -408,7 +408,7 @@ Many-Body
    * - ``DM_Dummy``
      - Identity descriptor (all ones); for testing
    * - ``DM_mJoin``
-     - Concatenate multiple DM descriptors into one vector
+     - Concatenates multiple DM descriptors into one vector
 
 DM_Blip
 ~~~~~~~
@@ -462,7 +462,7 @@ many-body cutoff ``RCTYPEMB``, :math:`\psi_n` the basis function of centre
      - :math:`W f_c(r) \sum_n a_n\,\psi_n(r)`, amplitudes of any sign
      - None: :math:`\rho` can go negative (in the tail, say). This is the
        density of every tadah before 1.6.0, bit for bit when Tadah.MODELS
-       is compiled without fused multiply-adds (see below).
+       is compiled without fused multiply-adds (as described below).
    * - ``NONNEG``
      - :math:`W \max(f_c(r),0) \sum_n a_n\,\psi_n(r)`, every
        :math:`a_n \ge 0`
@@ -522,8 +522,8 @@ MONOTONE)``), as for ``EMBF0``. It is not an ``OPTIM`` target.
   :math:`dS/dr = -\sqrt{s_n/\pi}\,e^{-s_n (r-c_n)^2}`. Like the Gaussian
   itself, the step has no compact support.
 * the knot family (basis code 2, any ``KDEGMB``): **refused** under
-  ``MONOTONE``. Use ``NONNEG``: a non-negative knot density is already
-  non-increasing with a non-increasing cutoff.
+  ``MONOTONE``; ``NONNEG`` serves instead: a non-negative knot density is
+  already non-increasing with a non-increasing cutoff.
 
 Under ``MONOTONE`` an amplitude is the height of a step, not of a bump:
 :math:`\partial\rho/\partial a_n = W S_n f_c` equals :math:`W f_c`
@@ -532,7 +532,7 @@ everywhere inside the bump's inner edge, so :math:`a_n` is how much
 density inside that bump's outer edge, the core included. Below the
 innermost inner edge every :math:`S_n = 1`, so :math:`\rho = W f_c(r)
 \sum_n a_n` there: constant under ``Cut_Dummy``, following the cutoff
-otherwise. Keep this non-local meaning in mind when sizing
+otherwise. This non-local meaning matters when sizing
 ``OPTIM AMPGRIDMB`` boxes: a change to an outer amplitude shifts the density
 by the same amount (times :math:`W f_c`) all the way in to the core.
 Monotonicity holds to rounding only: the Blip5 step has 1-ulp rises for
@@ -581,9 +581,9 @@ refused with::
    0 by construction) or MONOTONE (rho = W f_c sum a_n S_n(r), S_n the
    integrated bump, a_n >= 0: rho >= 0 and non-increasing by construction).
 
-The key is new in tadah 1.6.0: add ``RHOFORM SIGNED`` to a potential written
-before 1.6.0 to use it unchanged (bit for bit in a Tadah.MODELS compiled
-without fused multiply-adds, see above). ``tadah predict``, ``tadah analysis
+The key is new in tadah 1.6.0: a potential written before 1.6.0 is used
+unchanged with ``RHOFORM SIGNED`` added (bit for bit in a Tadah.MODELS
+compiled without fused multiply-adds, as described above). ``tadah predict``, ``tadah analysis
 descriptor``, ``tadah analysis bfunc`` and ``tadah properties pairwise`` refuse a key-less DM_REAM
 potential even when the task configuration sets ``RHOFORM`` (the form
 belongs to the potential, whose amplitudes were fitted in it), and a task
@@ -598,7 +598,7 @@ RHOFORM``. Changing the key of an existing potential is safe only from
 ``SIGNED`` to ``NONNEG`` when every amplitude is already :math:`\ge 0` and
 every pair weight :math:`> 0` (the density is then unchanged);
 ``MONOTONE`` reads the same amplitudes as step heights, which is a different
-density. To get a density in a positive form, fit it in that form:
+density. A density in a positive form is fitted in that form:
 :ref:`tadah refit <refit_rhoform>` with ``RHOFORM`` in the refit
 configuration.
 
@@ -650,7 +650,7 @@ line is read as ``ZERO``. It takes ``ZERO`` or ``FREE`` only, in any case;
 any other value is an error at its line when the configuration, task file
 or potential is read (``Invalid value for key EMBF0 on line N of
 pot.tadah: 'ZEROO' (allowed: ZERO, FREE)``). It is not an ``OPTIM`` target (:ref:`hpo_embf0`). ``EMBF0`` has no
-effect on a potential without a DM_REAM block (see :ref:`RHOFORM and EMBF0 without a DM_REAM block <dm_ream_only_keys>`).
+effect on a potential without a DM_REAM block (:ref:`RHOFORM and EMBF0 without a DM_REAM block <dm_ream_only_keys>`).
 
 .. list-table:: What changes between ZERO and FREE for the same weights
    :header-rows: 1
@@ -670,8 +670,8 @@ effect on a potential without a DM_REAM block (see :ref:`RHOFORM and EMBF0 witho
      - One global setting for every DM_REAM block; only the DM_REAM block
        vanishes at :math:`\rho = 0`, other many-body blocks keep their value.
 
-To reproduce the energies of a potential written by tadah 1.5.0 or earlier,
-add ``EMBF0 FREE`` to it. A trained DM_REAM potential loaded without the key
+A potential written by tadah 1.5.0 or earlier reproduces its energies with
+``EMBF0 FREE`` added. A trained DM_REAM potential loaded without the key
 prints a warning: ``tadah`` logs it once per process, and the LAMMPS pair
 style prints a LAMMPS ``WARNING`` (screen and ``log.lammps``) on every
 ``pair_coeff`` that loads one, with a banner that reads ``EMBF0 ZERO (key
@@ -690,8 +690,8 @@ DM_mEAD variants
 ~~~~~~~~~~~~~~~~
 
 These descriptors combine the mEAD density accumulation with a non-linear
-embedding function **F** applied before the quadratic sum.  Choose the label
-that matches the embedding function you want:
+embedding function **F** applied before the quadratic sum.  The label
+selects the embedding function:
 
 .. list-table::
    :header-rows: 1

@@ -1,13 +1,13 @@
 .. _contact:
 
-Contribute to Tadah!
-====================
+Contributing to Tadah!
+======================
 
-Tadah! is open-source, and we invite everyone to contribute
+Tadah! is open-source, and contributions from everyone are welcome.
 
 Getting Help
 ------------
 
-If you need assistance or have questions, feel free to contact us:
+Questions and requests for assistance go to:
 
 - **Email**: marcin.kirsz@ed.ac.uk 

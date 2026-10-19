@@ -251,6 +251,7 @@ A clean-up release for wider testing: one version everywhere, documentation that
 - `[mlip]` `FastCellFrac` and `FastEnergyEvaluator` (no callers; `FastCellFrac` missed images), and `NNFinder::calc_naive`, `calc_binned`, `deduplicate` and `num_shifts`.
 
 ### Fixed
+- `[models]` The API reference of the `DM_mEAD` descriptors (`DM_mRLR`, `DM_mSQRT`, `DM_mBlipEnv`) gives their Gaussian density as exp(-eta (r_ij - r_s)^2) f_c(r_ij), as the code computes it; it gave exp(eta (r_ij - r_s)).
 - `[mlip]` **The pre-flight audit does not warn about a fixed `CGRIDMB` whose every centre is 0.** Such a basis falls off from the origin, so it is largest at the nearest neighbours whatever their distance and cannot miss the neighbour shells; its width (`SGRIDMB`) and the cutoff are still audited. The audit warned that the centre could miss the neighbour distances of the training data.
 - `[hpo]` **A bump centre beyond the low bound of an `OPTIM RCUT2B` or `OPTIM RCUTMB` box is warned about at startup** with a smooth cutoff (`CGRID2B bump 1 centre 4 lies beyond the OPTIM RCUT2B low bound 3.5: a candidate whose RCUT2B is below the centre keeps only the bump's inner shoulder (pathological) ...`). The check read the cutoff of the training configuration only, so a search that tried smaller cutoffs was not warned about.
 - `[models]` `D2_Blip`, `D2_BP` and `D2_Blip5` list their grids under `CGRID2B` and `SGRID2B` in the log of `tadah train -v 2`; they labelled them `CGRIDMB` and `SGRIDMB`, the keys of the many-body grids.

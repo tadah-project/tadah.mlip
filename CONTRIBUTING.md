@@ -583,8 +583,10 @@ six pages under `docs/source/nfp/reference/` (git ignores them; the hub,
 `index.rst`, is committed) from HPO's registries: the target-file registry,
 `blueprint/hpotarget.toml` and its part files, read and checked by HPO's
 own loader, `blueprint/hpotarget_registry.py` (the generator reads its API
-1 and stops on another); the optimiser list, `blueprint/optimizers_gen.toml`;
-and the annealers' keys, `blueprint/anneal_keys.toml`. Each id of the
+1 and stops on another), with the descriptions of the optimisers,
+`blueprint/optimizers_doc.toml`; the optimiser list,
+`blueprint/optimizers_gen.toml`; and the annealers' keys,
+`blueprint/anneal_keys.toml`. Each id of the
 target-file registry (`OPTIMIZER.MAXEVAL`, `PC_LAMMPS.--hotvar`,
 `BLOCK.STRATEGY`, `PARAM.ASA:ASA.Temperature_Ratio_Scale`) is the target of
 one entry of the `hpo` domain (`docs/tools/hpotarget_domain.py`), and so
@@ -593,25 +595,38 @@ the generator gives no place stops it, naming the id. An entry's text,
 values, default, examples and messages are the registry's, so a change to
 a key reaches the pages through its registry entry in HPO (HPO's
 `blueprint/README.md` says how an entry is written and checked), and the
-next build writes the pages again. Any page cites an entry with a role:
+next build writes the pages again. In that text the name of an entry
+becomes a role, which links at its first mention in an entry (a name of
+several entries, the one closest to the entry's block or group, or an
+inline literal when none is), an abbreviation of the registry's
+`[abbreviations]` is spelled out at its first use on a page, and an
+example is a code block with its doc as the caption. The generator stops,
+naming what is missing, on a field of an example it does not show, an
+optimiser or a library without a description, an annealer key without an
+example and an annealer range the code checks by hand without its
+`range_doc`. Any page cites an entry with a role:
 
 ```rst
 :hpo:key:`MAXEVAL`            a key, option, form, loss function, STRATEGY
-                              type, INIT method, environment variable or rule
+                              type, INIT method or environment variable
 :hpo:key:`OPTIMIZER.MAXEVAL`  the same, by id
 :hpo:block:`STRATEGY`         a block
 :hpo:opt:`NLOPT:LN_SBPLX`     an optimiser (LIB:ALGO, the ALGO alone, a LIB)
 :hpo:param:`GRID_POINTS`      a PARAM key
+:hpo:topic:`RULE.<name>`      a rule, or another entry headed by words,
+                              by id
 :hpo:key:`!MAXEVAL`           the name without a link, still checked
 ```
 
-A role shows the name as inline literal text linked to its entry. Each of
-these is a build warning at the page and line of the role, so that
-`sphinx-build -W` fails: a name no entry of the role's kind has (the
-warning names the role that takes it, or close names); a name of several
-entries (the warning lists their ids, any of which resolves it); a name
-the registry lists as removed (`[[removed]]`, or a retired `PARAM` key of
-the annealers; the warning gives the hint `tadah hpo` prints). Removing
+A role shows the name as inline literal text linked to its entry; a topic
+shows its title as text. A name of one entry that the registry also lists
+as removed cites that entry. Each of these is a build warning at the page
+and line of the role, so that `sphinx-build -W` fails: a name no entry of
+the role's kind has (the warning names the role that takes it, or close
+names); a name of several entries (the warning lists their ids, any of
+which resolves it); a name the registry lists as removed and no entry has
+(`[[removed]]`, or a retired `PARAM` key of the annealers; the warning
+gives the hint `tadah hpo` prints). Removing
 or renaming a key in the registry therefore names every page that still
 cites it. The cases of `tadah_docs_tools` on the generated pages read the
 HPO checkout the build finds and are skipped without one that has the
@@ -623,7 +638,9 @@ column on windows 1024 px and wider, so that a code line of 80 characters
 fits whole, also in a list inside a list, wraps code lines on narrower
 windows, and gives the name of a field list a column of at most 30% of the
 list's width, in which a longer name wraps (at a blank where there is one,
-else anywhere). `conf.py` sets the sidebar to two levels under each caption
+else anywhere). It sets the heading of a topic of the reference (a rule) in
+the font of the text, where the theme sets every entry heading in the font
+of code. `conf.py` sets the sidebar to two levels under each caption
 (`navigation_depth` 2; the other theme options are written out with the
 defaults of `sphinx_rtd_theme` 3), and the "Nested Fitting" toctree of
 `index.rst` has `:titlesonly:`. The `nfp_checks` Sphinx extension

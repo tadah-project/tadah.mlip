@@ -159,6 +159,35 @@ class ReadAnnealKeysTableTest(unittest.TestCase):
                 }
                 self.assertEqual(actual, expected)
 
+    def test_auto_is_listed_for_the_kinds_that_accept_it(self):
+        # A key's AUTO token is a value of the kinds in its auto_kinds (all
+        # its kinds when the field is absent): CHAIN_LENGTH and NT take AUTO
+        # in the serial TADAH:ANNEAL only, so the TADAH:ANNEAL_PA table
+        # lists integers >= 1 for them. The shipped registry is read too.
+        # Before the fix: every kind of an AUTO key listed AUTO, which
+        # TADAH:ANNEAL_PA accepted and resolved to 0 evaluations per
+        # temperature step.
+        sys.path.insert(0, CONFIG)
+        try:
+            rak = importlib.import_module('read_anneal_keys')
+        finally:
+            sys.path.remove(CONFIG)
+        key = dict(name='LEN', type='count', kinds=['serial', 'pa'],
+                   group='steps', rank=1, default_pa=50, min=1,
+                   accepts_auto=0.0, auto_kinds=['serial'],
+                   doc='Proposals per rung.')
+        self.assertEqual(rak.range_for(key, 'serial'), '>= 1 | ``AUTO``')
+        self.assertEqual(rak.range_for(key, 'pa'), '>= 1')
+        everywhere = dict(key)
+        del everywhere['auto_kinds']
+        self.assertEqual(rak.range_for(everywhere, 'pa'), '>= 1 | ``AUTO``')
+        data = rak._load(rak.locate_toml())
+        for name in ('CHAIN_LENGTH', 'NT'):
+            with self.subTest(key=name):
+                k = next(k for k in data['key'] if k['name'] == name)
+                self.assertIn('``AUTO``', rak.range_for(k, 'serial'))
+                self.assertNotIn('AUTO', rak.range_for(k, 'pa'))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -83,6 +83,11 @@ NOISE subblock
 ``AUTO`` and ``CALIBRATION``. Its parent is ``OPTIMIZER``, and it contains
 keys only. See :doc:`nfp_noise`.
 
+.. versionchanged:: 1.6.0
+   An optimiser key inside ``NOISE``, such as ``LIB``, is refused. 1.5.0
+   applied it to the main search, as if it stood directly inside
+   ``OPTIMIZER``.
+
 STRATEGY subblock
 -----------------
 

@@ -4871,7 +4871,11 @@ TEST_CASE("Subcommand: explain: a configuration key that is no option of a "
  * iterates "are evaluated there, and such a point can become the best";
  * then it gave that slope the wrong sign, "... graded by its
  * distance to the box, whose slope points back into it, it counts against
- * MAXEVAL ...": the slope check fails. */
+ * MAXEVAL ...": the slope check fails.
+ * A refusal names its recommended replacement ("The recommended
+ * replacement is NLOPT:LN_BOBYQA", "The recommended replacements are
+ * NLOPT:LD_LBFGS ..."); before HPO's help was rewritten for a user it said
+ * "Use ...", and the two checks of the replacement fail on that text. */
 TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
           "LIB:ALGO describes one",
           "[TadahCLI][exit-status][explain][explain_algo]") {
@@ -4916,7 +4920,7 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     INFO("CERES:LBFGS: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
     CHECK(contains(r.out, "Options for CERES:LBFGS\n   * REFUSED: "));
-    CHECK(contains(r.out, "Use NLOPT:LD_LBFGS"));
+    CHECK(contains(r.out, "The recommended replacements are NLOPT:LD_LBFGS"));
     CHECK_FALSE(contains(r.out, "PARAM tol_gradinf"));
   }
   {
@@ -4924,7 +4928,7 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     INFO("NLOPT:LN_NEWUOA: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
     CHECK(contains(r.out, "Options for NLOPT:LN_NEWUOA\n   * REFUSED: "));
-    CHECK(contains(r.out, "Use NLOPT:LN_BOBYQA"));
+    CHECK(contains(r.out, "The recommended replacement is NLOPT:LN_BOBYQA"));
   }
   {
     const CliRun r = run_tadah({"tadah", "explain", "NLOPT:LD_FOO"});

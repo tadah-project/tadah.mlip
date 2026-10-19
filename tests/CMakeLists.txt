@@ -191,12 +191,17 @@ add_subdirectory(catch_discovery)
 # Unit tests of the docs input lookup (docs/source/config/source_locator.py),
 # of the hpo.html redirect check (docs/tools/check_redirect.py), of the
 # configuration-keys and CLI page generators (docs/source/config/read_toml.py,
-# docs/source/cli/generate_cli.py) and of the ANNEAL key tables' generator
+# docs/source/cli/generate_cli.py), of the ANNEAL key tables' generator
 # (docs/source/config/read_anneal_keys.py, which needs Python 3.11 or later
-# for tomllib). They never use the network.
+# for tomllib), of the layout and structure rules of the build
+# (docs/tools/nfp_checks.py), of the browser check of built pages
+# (docs/tools/check_layout.py) and of the runs of the Nested Fitting pages
+# (nfp_docs/check_nfp_run.py, doc_commands/doc_commands.py). They never use
+# the network.
 #
-# Some cases need node, sphinx-build or the Python modules sphinx,
-# sphinx_rtd_theme or yaml, and skip themselves when one is missing.
+# Some cases need node, sphinx-build, a Chromium-family browser or the
+# Python modules sphinx, sphinx_rtd_theme or yaml, and skip themselves when
+# one is missing.
 # unittest still exits 0 then, ending with "OK (skipped=N)";
 # that run is reported as Skipped, not Passed, so a pass means every case
 # ran. A failing run ends with "FAILED (...)" and stays a failure. "Ran 0
@@ -213,6 +218,60 @@ set_tests_properties(tadah_docs_tools PROPERTIES
   ENVIRONMENT PYTHONDONTWRITEBYTECODE=1
   SKIP_REGULAR_EXPRESSION "\nOK \\(skipped=[0-9]+"
   FAIL_REGULAR_EXPRESSION "\nRan 0 tests ")
+
+# The site's stylesheet in a headless browser: docs_layout/
+# check_docs_layout.py builds a small project with the theme, theme options
+# and stylesheets of docs/source/conf.py and checks it with
+# docs/tools/check_layout.py at 1280, 1024, 900, 768 and 390 px. Code lines
+# of 80 characters fit on desktop windows (1024 px and wider), also in a
+# list inside a list and in a note; code wraps on narrower windows; tables,
+# field lists, inline literals, display maths and images stay in the text
+# column. A 120-character line must scroll at 1280 and 1024 px, which shows
+# that the check sees an overflow. Skipped (77) without sphinx,
+# sphinx_rtd_theme or a Chromium-family browser.
+add_test(NAME tadah_docs_layout
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/docs_layout/check_docs_layout.py
+    --docs-source ${PROJECT_SOURCE_DIR}/docs/source
+    --workdir ${CMAKE_CURRENT_BINARY_DIR}/docs_layout)
+set_tests_properties(tadah_docs_layout PROPERTIES
+  LABELS docs
+  TIMEOUT 300
+  SKIP_RETURN_CODE 77
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
+# The Nested Fitting pages of the real site in a headless browser:
+# docs_layout/check_site_layout.py builds the documentation as
+# CONTRIBUTING.md describes -- Doxygen with this build's docs/Doxyfile, then
+# sphinx-build -W --keep-going with its XML and the CORE and HPO sources of
+# this build -- in the build tree, and checks every page under nfp/ with
+# docs/tools/check_layout.py at 1280, 1024, 900, 768 and 390 px; every page
+# source under docs/source/nfp must be a built page. Skipped (77) without
+# Doxygen, a Python module of docs/requirements.txt or a Chromium-family
+# browser, and while docs/source/nfp holds no page. Without NFP the build
+# does not configure HPO, and the docs build looks its sources up itself.
+# The project looks for Doxygen after it adds this directory.
+find_package(Doxygen QUIET)
+set(_site_layout_args
+  --docs-source ${PROJECT_SOURCE_DIR}/docs/source
+  --doxyfile ${CMAKE_BINARY_DIR}/docs/Doxyfile
+  --workdir ${CMAKE_CURRENT_BINARY_DIR}/docs_site
+  --core-source ${Tadah.CORE_SOURCE_DIR})
+if(DOXYGEN_EXECUTABLE)
+  list(APPEND _site_layout_args --doxygen ${DOXYGEN_EXECUTABLE})
+endif()
+if(TADAH_ENABLE_NFP)
+  list(APPEND _site_layout_args --hpo-source ${Tadah.HPO_SOURCE_DIR})
+endif()
+add_test(NAME tadah_docs_site_layout
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/docs_layout/check_site_layout.py
+    ${_site_layout_args})
+set_tests_properties(tadah_docs_site_layout PROPERTIES
+  LABELS docs
+  TIMEOUT 1800
+  SKIP_RETURN_CODE 77
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
 
 
 # ------------------------------------------------------------------
@@ -325,6 +384,54 @@ foreach(_inc IN LISTS _cli_example_includes)
   set_tests_properties(tadah_cli_example_${_ex} PROPERTIES
     LABELS examples
     TIMEOUT 900
+    SKIP_RETURN_CODE 77
+    ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+endforeach()
+
+
+# ------------------------------------------------------------------
+# 9b. The runs of the Nested Fitting pages (docs/source/nfp/files)
+# ------------------------------------------------------------------
+# One entry, tadah_nfp_<id> (label examples, and the labels its line adds,
+# such as slow), per line of docs/source/nfp/files/manifest.txt:
+# nfp_docs/check_nfp_run.py runs the `tadah` commands of the page's bash
+# code blocks in a scratch copy of the files, checks that each exits 0 and
+# writes its results, and compares the run with the expected.csv the page
+# quotes, within the line's tolerances. A page that runs `tadah hpo` is
+# Skipped in a build without NFP. `check_nfp_run.py --list` reads the
+# manifest (a malformed line stops the configure step, naming it).
+set(_nfp_manifest ${PROJECT_SOURCE_DIR}/docs/source/nfp/files/manifest.txt)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${_nfp_manifest})
+execute_process(
+  COMMAND ${Python3_EXECUTABLE} -B
+    ${CMAKE_CURRENT_SOURCE_DIR}/nfp_docs/check_nfp_run.py --list ${_nfp_manifest}
+  OUTPUT_VARIABLE _nfp_runs
+  ERROR_VARIABLE _nfp_runs_error
+  RESULT_VARIABLE _nfp_runs_result)
+if(NOT _nfp_runs_result EQUAL 0)
+  message(FATAL_ERROR "nfp_docs/check_nfp_run.py --list failed: ${_nfp_runs_error}")
+endif()
+string(REPLACE "\n" ";" _nfp_runs "${_nfp_runs}")
+foreach(_run IN LISTS _nfp_runs)
+  if(_run STREQUAL "")
+    continue()
+  endif()
+  string(REPLACE "|" ";" _run "${_run}")
+  list(GET _run 0 _id)
+  list(GET _run 1 _labels)
+  list(GET _run 2 _timeout)
+  string(REPLACE "," ";" _labels "${_labels}")
+  math(EXPR _ctest_timeout "${_timeout} + 120")
+  add_test(NAME tadah_nfp_${_id}
+    COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/nfp_docs/check_nfp_run.py
+      --manifest ${_nfp_manifest} --id ${_id}
+      --tadah $<TARGET_FILE:tadah>
+      --workdir ${CMAKE_CURRENT_BINARY_DIR}/nfp_docs/${_id}
+      --nfp ${_cli_example_nfp})
+  set_tests_properties(tadah_nfp_${_id} PROPERTIES
+    LABELS "${_labels}"
+    TIMEOUT ${_ctest_timeout}
     SKIP_RETURN_CODE 77
     ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
 endforeach()

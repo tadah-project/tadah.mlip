@@ -72,11 +72,12 @@ lists the enabled columns.
 
 The run writes these files, ``hpo_run.log`` and ``best_pot.tadah`` into
 the working directory. A working directory without write permission, or
-an existing history file, journal or lock of ``best_pot.tadah`` that
-cannot be written, stops the run, and ``tadah hpo --check``, at startup,
-before any data is loaded. A history file, the journal or the lock that
-is a symbolic link is written through the link, and is checked where the
-link leads; ``best_pot.tadah`` is replaced, link and all.
+an existing history file, journal or lock of ``best_pot.tadah`` that the
+run cannot open (to write; the lock to read and write), stops the run,
+and ``tadah hpo --check``, at startup, before any data is loaded. A
+history file, the journal or the lock that is a symbolic link is written
+through the link, and is checked where the link leads;
+``best_pot.tadah`` is replaced, link and all.
 
 Potential archives
 ------------------
@@ -94,8 +95,11 @@ evaluation as ``directory/pot_<evaluation>.tadah``.
 
 The directories are checked when the target file is read, where the
 operating system puts them: symbolic links are followed and ``..`` is
-taken from the directory reached. An existing directory must have write
-permission. A directory that does not exist must be in an existing
+taken from the directory reached. A path that is itself a symbolic link
+must lead to an existing directory, because the run creates no directory
+through a link: ``DUMP 100 pots``, with ``pots`` a link to a directory
+that does not exist, is refused at its line. An existing directory must
+have write permission. A directory that does not exist must be in an existing
 directory with write permission, since only the last directory of the
 path is created, or in the directory of the other line, which the run
 creates first (``DUMP 100 archive`` with ``BDUMP 5 archive/best``, in

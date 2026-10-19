@@ -72,8 +72,10 @@ lists the enabled columns.
 
 The run writes these files, ``hpo_run.log`` and ``best_pot.tadah`` into
 the working directory. A working directory without write permission, or
-an existing history file that cannot be written, stops the run, and
-``tadah hpo --check``, at startup, before any data is loaded.
+an existing history file, journal or lock of ``best_pot.tadah`` that
+cannot be written, stops the run, and ``tadah hpo --check``, at startup,
+before any data is loaded. A file that is a symbolic link is written
+through the link.
 
 Potential archives
 ------------------

@@ -206,6 +206,9 @@ Key points
   descriptor does.
 * More or fewer values are refused, and so is a list key that no
   constituent reads.
+* A ``DM_Poly`` descriptor with the RLR or Blip embedding reads
+  ``C/SEMBFUNC`` whole and cannot be a constituent; one with the SQRT
+  embedding is joined with every ``SEMBFUNC`` value 1.
 * Each constituent can target its own element pair(s), cutoff type and
   distance.
 

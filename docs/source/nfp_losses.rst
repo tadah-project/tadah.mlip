@@ -62,14 +62,17 @@ loss.
 Loss scope
 ----------
 
-* :doc:`Validation metrics <nfp_validation_targets>` use the root loss.
+* :doc:`Validation metrics <nfp_validation_targets>` use the root loss of
+  the last ``LOSS`` line.
 * Each :doc:`PC_LAMMPS <nfp_lammps_targets>` line captures the root loss
   in force when that line is read. Its ``--varloss`` options can override
   the loss separately for each variable.
 * Each :doc:`PC_OBSERVABLE <nfp_observable_targets>` line has its own
   ``--loss`` option, defaulting to ``L2`` independently of root ``LOSS``.
 
-Put ``LOSS`` before the ``PC_LAMMPS`` lines it should affect. For a
+``LOSS`` precedes the ``PC_LAMMPS`` lines it affects. A second ``LOSS``
+line follows a ``PC_LAMMPS`` or ``PC_FAILPROBE`` line that takes the
+first, or is refused. For a
 successful evaluation, HPO divides the sum of enabled weighted loss
 terms by the number of terms. Each enabled validation metric
 contributes one term, each LAMMPS ``--varloss`` one term, and each typed
@@ -90,8 +93,10 @@ or above ``0.999 * FAILSCORE`` as failures when selecting usable results.
 
 This root setting differs from ``PC_LAMMPS --failscore``, which supplies
 replacement *variable values* for a failed script. The evaluation retains
-its failed status. Put root ``FAILSCORE`` before script
-lines so their default replacement values use it.
+its failed status. Each script line takes the root ``FAILSCORE`` above it
+as its default replacement value; ``--failscore`` gives it its own. A
+second ``FAILSCORE`` line follows a script line that takes the first, or
+is refused, and the ceiling of every loss is the last.
 
 FAILSCORE_GRADING
 -----------------

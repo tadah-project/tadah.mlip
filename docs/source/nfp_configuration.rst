@@ -159,10 +159,15 @@ indices refines the block-wide ``STEP``.
 ``REFINE`` groups the refinement settings of the surrounding ``STRATEGY``.
 
 ``LOSS``, ``FAILSCORE`` and ``PC_SCRIPT_TIMEOUT`` precede the
-``PC_LAMMPS`` and ``PC_FAILPROBE`` lines they affect. Each target line
-captures those settings when it is read, so the three may be given again
-for the lines after them. Repeated ``OPTIM`` lines select distinct
-dimensions.
+``PC_LAMMPS`` and ``PC_FAILPROBE`` lines they affect. Each such line
+captures those settings when it is read, and the options ``--varloss``,
+``--failscore`` and ``--maxtime`` give it values of its own. A second
+line of one of the three follows a ``PC_LAMMPS`` or ``PC_FAILPROBE`` line
+that takes the first, or is refused. The run-wide uses take the last
+line: the validation metrics' loss, the ceiling of every loss and the
+``PROCESS`` worker deadline.
+
+Repeated ``OPTIM`` lines select distinct dimensions.
 
 .. raw:: html
 

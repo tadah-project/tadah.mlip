@@ -18,6 +18,19 @@ default 1280, 1024, 900, 768 and 390 px), and a page fails at a width when
     out) or reaches past the text column (the page's ``role="main"``
     element).
 
+A page is measured once it is ready, that is when
+
+  * it has loaded (the load event: its stylesheets, scripts and images),
+    and so have its web fonts;
+  * on a page with the Read the Docs theme's script, the theme has put
+    every table of the text (not that of a field list) in a
+    ``div.wy-table-responsive``: it does that from a document-ready
+    handler, which can run well after the load event;
+  * the document has not changed from one animation frame to the next.
+
+A page that is not ready within READY_TIMEOUT (30) seconds is an error
+that names what the check still waits for.
+
 Elements of the navigation sidebar are not measured. Each problem is one
 line, ``<page>:<element>:<width>px: <what>``, where <element> is the kind,
 its number among the page's elements of that kind and the id of the
@@ -32,7 +45,8 @@ a page loads from elsewhere (MathJax from its CDN) do not run, and display
 maths is measured as the TeX source the page holds.
 
 Exit status: 0 when no page has a problem, 1 when one has, 2 on a usage
-error (no page matches, no browser, a page that does not load).
+error (no page matches, no browser, a page that does not load or does not
+become ready).
 """
 import argparse
 import fcntl
@@ -50,20 +64,72 @@ WIDTHS = (1280, 1024, 900, 768, 390)
 HEIGHT = 900
 BROWSERS = ('chromium', 'chromium-browser', 'google-chrome')
 TIMEOUT = 60   # seconds for one browser reply or one page load
+READY_TIMEOUT = 30   # seconds for a loaded page to become ready (< TIMEOUT)
 
 Problem = namedtuple('Problem', 'page element width detail')
 Problem.__str__ = lambda p: f'{p.page}:{p.element}:{p.width}px: {p.detail}'
 
 
 class LayoutError(Exception):
-    """The check could not run (no browser, a page that does not load)."""
+    """The check could not run (no browser, a page that does not load or
+    does not become ready)."""
 
 
-# Runs in the page after the load event; resolves to a JSON-able object.
+# Called in the page after the load event with the time limit in seconds;
+# resolves to null once the page is ready to be measured (see the module
+# docstring), or at the time limit to what it still waits for. The Read the
+# Docs theme defines window.SphinxRtdTheme and puts each table of the text
+# in a div.wy-table-responsive, the box MEASURE measures, from a
+# document-ready handler. jQuery runs such a handler from a timer task, and
+# the theme's goes through two of them: on a busy machine they can come
+# long after the load event.
+READY = r'''
+async (timeout) => {
+  const end = performance.now() + 1000 * timeout;
+  const frame = () => new Promise(r => requestAnimationFrame(r));
+  let changed = false;
+  const watch = new MutationObserver(() => { changed = true; });
+  watch.observe(document, {subtree: true, childList: true, attributes: true,
+                           characterData: true});
+  const unboxed = () => window.SphinxRtdTheme === undefined ? 0 :
+    Array.from(document.querySelectorAll('table.docutils:not(.field-list)'))
+      .filter(t => !t.parentElement.classList.contains('wy-table-responsive'))
+      .length;
+  try {
+    await frame();
+    changed = false;
+    watch.takeRecords();
+    for (;;) {
+      await frame();
+      const waiting = [];
+      if (document.readyState !== 'complete') {
+        waiting.push('the document is still loading');
+      }
+      if (document.fonts && document.fonts.status !== 'loaded') {
+        waiting.push('web fonts are still loading');
+      }
+      const n = unboxed();
+      if (n > 0) {
+        waiting.push('the theme has not put ' + n +
+                     ' table(s) in a div.wy-table-responsive');
+      }
+      if (changed || watch.takeRecords().length > 0) {
+        waiting.push('the document changes between animation frames');
+      }
+      changed = false;
+      if (waiting.length === 0) { return null; }
+      if (performance.now() > end) { return waiting.join('; '); }
+    }
+  } finally {
+    watch.disconnect();
+  }
+}
+'''
+
+
+# Called in the page once it is ready; returns a JSON-able object.
 MEASURE = r'''
-(async () => {
-  if (document.fonts && document.fonts.ready) { await document.fonts.ready; }
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+() => {
   const W = window.innerWidth;
   const out = {window: W, problems: []};
   const inSidebar = el => el.closest('.wy-nav-side, .sphinxsidebar') !== null;
@@ -136,7 +202,7 @@ MEASURE = r'''
     }
   }
   return out;
-})()
+}
 '''
 
 
@@ -263,7 +329,11 @@ class Browser:
             if 'method' in reply:
                 self.events.append(reply)
 
-    def measure(self, url, width):
+    def evaluate(self, url, width, script):
+        """Load *url* in a window *width* px wide, wait until the page is
+        ready (READY) and return the value of *script*: the text of a
+        JavaScript function, called in the page without arguments (a promise
+        it returns is awaited), whose value is JSON-able."""
         self.call('Emulation.setDeviceMetricsOverride',
                   {'width': width, 'height': HEIGHT, 'deviceScaleFactor': 1,
                    'mobile': False}, session=True)
@@ -272,13 +342,24 @@ class Browser:
         if nav.get('errorText'):
             raise LayoutError(f'{url} did not load: {nav["errorText"]}')
         self.wait_event('Page.loadEventFired')
+        expression = (f'(async () => {{ const waiting = await ({READY})'
+                      f'({READY_TIMEOUT}); return waiting === null ? '
+                      f'{{value: await ({script})()}} : {{waiting}}; }})()')
         result = self.call('Runtime.evaluate',
-                           {'expression': MEASURE, 'awaitPromise': True,
+                           {'expression': expression, 'awaitPromise': True,
                             'returnByValue': True}, session=True)
         if 'exceptionDetails' in result:
-            raise LayoutError(f'{url}: the measurement failed: '
+            raise LayoutError(f'{url}: the script in the page failed: '
                               f'{result["exceptionDetails"]}')
-        return result['result']['value']
+        value = result['result']['value']
+        if 'waiting' in value:
+            raise LayoutError(f'{url}: not ready after {READY_TIMEOUT} s: '
+                              f'{value["waiting"]}')
+        return value.get('value')
+
+    def measure(self, url, width):
+        """The report of MEASURE on *url* in a window *width* px wide."""
+        return self.evaluate(url, width, MEASURE)
 
     def close(self):
         try:

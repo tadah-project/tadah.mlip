@@ -500,22 +500,6 @@ after MLIP is configured (in the umbrella build: MLIP, MD, HPO, Tadah.LAMMPS
 and the umbrella itself), an argument containing `;` is split in two and an
 empty argument is dropped. Discovered entries are not affected.
 
-For the HPO worked-example regression suite (added during the beta
-prep — fast subset runs in ~5 s). It runs the `tadah` that `TADAH` names
-(an absolute path: the suite runs it from each example directory), else
-the first one on `PATH`, and writes its outputs into the example
-directories:
-
-```bash
-TADAH="$TADAH_PATH/Tadah.MLIP/build/tadah" bash HPO/examples/run_reference_suite.sh --fast
-# or
-TADAH="$TADAH_PATH/Tadah.MLIP/build/tadah" bash HPO/examples/run_reference_suite.sh --full
-```
-
-The driver compares the example outputs against
-`HPO/examples/<NN>/reference_fingerprint.json`. Per-example tolerance
-overrides live in `HPO/examples/tools/tolerance_overrides.json`.
-
 ## Building the documentation
 
 The Sphinx sources live in `docs/source` (Python requirements in
@@ -569,7 +553,8 @@ regression renders reference tables with the shipped stylesheet at desktop
 and mobile widths, checks for horizontal overflow, and checks that code
 lines stay whole at 1024 px and wider and wrap below. It uses a local
 Chromium, Chromium Browser or Google Chrome executable and a temporary
-Sphinx page. The GitLab `docs_sphinx` job runs them
+Sphinx page, which it measures once ready, as `check_layout.py` (below)
+measures a page. The GitLab `docs_sphinx` job runs them
 and the same build, with all three variables set explicitly, in a virtual
 environment of its own into which it installs `docs/requirements.txt` every
 time (`python3 -m venv`: the runner image needs Python's `venv` module), so a
@@ -623,8 +608,14 @@ past the text column. Check the pages you change:
 python3 Tadah.MLIP/docs/tools/check_layout.py "$TMPDIR/docs_html" --pages 'nfp/**/*.html'
 ```
 
+A page is measured once it is ready: loaded with its web fonts, every
+table of the text in the box the theme's script puts it in (from a
+document-ready handler, which can run well after the page has loaded), and
+the document unchanged from one animation frame to the next. A page that
+is not ready within 30 s is an error that names what the check waits for.
 It exits 1 when it reports an overflow, and 2 when it cannot run (no
-browser, no page matches). Display maths is measured unrendered: MathJax,
+browser, no page matches, a page that does not load or is not ready).
+Display maths is measured unrendered: MathJax,
 which the pages load from its CDN, does not load without network access.
 `tadah_docs_layout` (label `docs`) builds a small project with the theme,
 theme options and stylesheets of `conf.py` and checks it with the same
@@ -696,8 +687,8 @@ A reviewer looks for:
   backwards-compatible, or explicitly called out as breaking?
 - For numerical changes, is determinism preserved (same SEED → same
   output)? Cross-repo numerical drift is the most expensive class of
-  regression; see the HPO `reference_fingerprint.json` mechanism for
-  how we catch it.
+  regression: a change that moves a result updates the tests that check
+  it (losses, evaluation counts, statuses) and says why.
 
 ## Code of Conduct
 

@@ -3,27 +3,27 @@ Quick Start
 
 This section covers the fundamentals and command line interface (CLI) of Tadah!MLIP. The CLI provides necessary tools to train and test models. The trained model (interatomic potential) can be used to run molecular dynamics simulations with LAMMPS via the Tadah!LAMMPS plugin.
 
-For installation instructions, see :ref:`installation`. For CLI examples, see :ref:`cli_examples`.
+:ref:`installation` gives the installation instructions, and :ref:`cli_examples` the CLI examples.
 
-If you plan to use Tadah! as a C++ library, we recommend completing this Quick-Start guide first; once you have the basics, head over to the :ref:`api_examples` and the full API reference.
+For Tadah! as a C++ library, the recommended order is this Quick-Start guide first, for the basics, then the :ref:`api_examples` and the full API reference.
 
 Overview
 --------
 
-To train a model, a config file (see :ref:`config_file`) and a dataset (see :ref:`dataset`) are required.
+Training a model requires a config file (:ref:`config_file`) and a dataset (:ref:`dataset`).
 
 For prediction, a potential (trained model) and a dataset are required. The potential file is an output of the training process. It is an ASCII text file containing key-value pairs that fully determine the potential.
 
 Built-in Help
 -------------
 
-Tadah! provides some basic help. Try running it with the ``-h`` flag.
+Tadah! provides some basic help, printed with the ``-h`` flag:
 
 .. code-block:: bash
 
     tadah -h
 
-To read more about a particular subcommand, try:
+Each subcommand has its own help:
 
 .. code-block:: bash
 
@@ -34,7 +34,7 @@ To read more about a particular subcommand, try:
 Training
 --------
 
-To train a model, run the following command in a terminal:
+The following command trains a model:
 
 .. code-block:: bash
 
@@ -42,9 +42,9 @@ To train a model, run the following command in a terminal:
 
 - ``-v 2``: Enables verbosity INFO level, resulting in detailed output being printed to the screen during the training process.
 
-The example ``config.train`` below fits energies and stresses (its ``STRESS true`` key). To also fit forces, add the ``-F`` flag, or the ``FORCE true`` key; for stresses, ``-S`` does what ``STRESS true`` does. Each changes the fitted potential (see the effect of the stresses below).
+The example ``config.train`` below fits energies and stresses (its ``STRESS true`` key). The ``-F`` flag, or the ``FORCE true`` key, also fits forces; for stresses, ``-S`` does what ``STRESS true`` does. Each changes the fitted potential (the effect of the stresses is shown below).
 
-*Note*: Command line flags take precedence over those defined in the config file.
+Command line flags take precedence over those defined in the config file.
 
 The ``config.train`` is type of a :ref:`config_file`. Training datasets, descriptors, cutoffs, model, and all parameters are specified in the config file. The output of this command is a trained model as a ``pot.tadah`` file.
 
@@ -57,13 +57,13 @@ An example dataset can be downloaded from :download:`here <quickstart/db.train>`
 The keys of the file:
 
 - :ref:`DBFILE` specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory.
-- :ref:`STRESS` ``true`` fits the stresses as well as the energies (see below).
+- :ref:`STRESS` ``true`` fits the stresses as well as the energies (as described below).
 - The two-body (pair) block: :ref:`INIT2B` turns it on; :ref:`TYPE2B`, :ref:`RCUT2B` and :ref:`RCTYPE2B` set the descriptor (``D2_Blip``: four blip, i.e. cubic B-spline, radial functions), its cutoff distance and its cutoff function; :ref:`SGRID2B` and :ref:`CGRID2B` set the inverse widths and the centres of the blips. It is the pair block of :ref:`cli_example_1`.
 - The many-body block: :ref:`INITMB`, :ref:`TYPEMB`, :ref:`RCUTMB` and :ref:`RCTYPEMB` likewise. ``DM_mBlipEnv`` gives each atom an energy :math:`F(\rho)` of a pair density :math:`\rho` summed over its neighbours: :ref:`CGRIDMB` and :ref:`SGRIDMB` set the Gaussian that the density is built from, :ref:`CEMBFUNC` and :ref:`SEMBFUNC` the blips that :math:`F` is built from, :ref:`RCUTENV` takes :math:`F` smoothly to zero at low density, and :ref:`WATOM` scales the density of this dataset to about 1. :ref:`cli_example_3` explains these keys and how they were chosen.
-- Both blocks use the ``Cut_Cos`` cutoff (see :ref:`cutoffs`): the energy and the force of a pair go smoothly to zero at the cutoff distance, so the energy is conserved when a pair crosses it in molecular dynamics. (``Cut_Dummy`` truncates instead; it is for testing only.)
+- Both blocks use the ``Cut_Cos`` cutoff (:ref:`cutoffs`): the energy and the force of a pair go smoothly to zero at the cutoff distance, so the energy is conserved when a pair crosses it in molecular dynamics. (``Cut_Dummy`` truncates instead; it is for testing only.)
 - :ref:`MODEL` selects Kernel Ridge Regression with a linear kernel, so the energy is linear in the descriptors, and :ref:`LAMBDA` sets its regularisation.
 
-For a detailed explanation of KEYS and a general discussion about the configuration files, see :ref:`ConfigSection`.
+:ref:`ConfigSection` explains every key in detail and discusses the configuration files in general.
 
 Training takes about a second. On the prediction dataset below (``tadah predict -F -S -A``) the potential has an energy RMSE of 0.27 meV/atom, a force RMSE of 0.030 eV/Å and a stress RMSE of 4.3e-4 eV/Å³.
 
@@ -74,7 +74,7 @@ Training takes about a second. On the prediction dataset below (``tadah predict 
 Prediction
 ----------
 
-To predict energies on :download:`prediction dataset <quickstart/db.predict>` using an existing ``pot.tadah`` model, run:
+The following command predicts energies on the :download:`prediction dataset <quickstart/db.predict>` with an existing ``pot.tadah`` model:
 
 .. code-block:: bash
 
@@ -83,7 +83,7 @@ To predict energies on :download:`prediction dataset <quickstart/db.predict>` us
 - ``-v 2``: Enables verbosity INFO level, resulting in detailed output being printed to the screen.
 - ``-A``: Provides some basic analysis of the prediction, such as the RMSE (Root Mean Square Error) between true and predicted values.
 
-To also predict forces, add the ``-F`` flag; for stresses, add the ``-S`` flag.
+The ``-F`` flag also predicts forces, and the ``-S`` flag stresses.
 
 The output of the ``predict`` subcommand includes three files:
 
@@ -99,7 +99,7 @@ Prediction errors
 ``tadah predict --error`` gives each predicted value its predictive
 standard deviation. It needs a potential trained with ``OALGO 3``, which
 writes the covariance of the weights :ref:`WCOV` and the noise variance of
-each row type :ref:`WNOISE` (see :ref:`weight_covariance`):
+each row type :ref:`WNOISE` (:ref:`weight_covariance`):
 
 .. math::
 
@@ -120,12 +120,12 @@ energy's :math:`\sigma_E/N` (eV/atom) and, with ``-F`` and ``-S``, the
 largest force (eV/Å) and stress (eV/Å³) :math:`\sigma` of the structure.
 
 ``--error`` refuses a potential without ``WCOV`` and ``WNOISE`` and says
-why it has none: it was fitted with another ``OALGO`` (retrain it with
-``OALGO 3``) or with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``:
-retrain it with implementation 1); or, with ``OALGO 3``, it is a potential
+why it has none: it was fitted with another ``OALGO`` (a retrain with
+``OALGO 3`` gives them) or with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``:
+a retrain with implementation 1 gives them); or, with ``OALGO 3``, it is a potential
 of Tadah! 1.0.0 to 1.5.0, whose ``SIGMA``
-is ignored (retrain it), its fit had no more observations than effective
-weights, so its noise variance was undefined (add data and retrain it), or
+is ignored (a retrain gives them), its fit had no more observations than effective
+weights, so its noise variance was undefined (more data and a retrain give them), or
 its weights were set from ``FIXWEIGHT`` without a fit. It refuses forces
 (``-F``) or stresses (``-S``) of a potential whose fit had no force or
 stress rows with a non-zero weight, since its ``WNOISE`` has no noise
@@ -152,8 +152,8 @@ Task File
 ---------
 
 A **task file** is a plain-text wrapper around Tadah!MLIP’s config syntax.  
-You can use it for a **single** command (as an alternative to a CLI invocation)
-*or* chain several ``TASK`` blocks in the same file to execute them
+It serves for a **single** command (as an alternative to a CLI invocation)
+*or* chains several ``TASK`` blocks in the same file, which run
 sequentially.  All key–value pairs inside the file follow the normal config
 rules. The `CONFIG` key can be used to nest config files, allowing for reuse of settings or
 to keep a full training or prediction setup in a dedicated config file.
@@ -162,7 +162,7 @@ Basic rules
 ^^^^^^^^^^^
 
 #. Each command starts with a line beginning with the keyword ``TASK`` followed
-   by the sub-command name exactly as you would type it on the CLI.
+   by the sub-command name exactly as it is typed on the CLI.
 
 #. The lines that follow are ordinary KEY/VALUE pairs.  
 
@@ -208,7 +208,7 @@ Basic rules
   | …                       | …                  |
   +-------------------------+--------------------+
 
-In other words, *anything you can set on the command line can also be set with an upper-case key in the task file*.
+In other words, *anything set on the command line can also be set with an upper-case key in the task file*.
 
 Example
 ^^^^^^^
@@ -218,26 +218,26 @@ prediction run:
 
 .. literalinclude:: quickstart/taskfile.txt
 
-You would execute it with
+The command below runs it:
 
 .. code-block:: bash
 
     tadah --task taskfile.txt
 
-and Tadah!MLIP will first run the training step, produce ``pot.tadah``, and
-then feed that potential into the subsequent prediction step-all in one go.
+Tadah!MLIP first runs the training step, produces ``pot.tadah``, and then
+feeds that potential into the subsequent prediction step, all in one go.
 
 Hints
 ^^^^^
 
-* Use ``CONFIG other_file.txt`` inside a task block if you prefer to keep a
-  full training or prediction setup in a dedicated config file, as the
-  ``train`` task of the example does with ``config.train``.
+* ``CONFIG other_file.txt`` inside a task block keeps a full training or
+  prediction setup in a dedicated config file, as the ``train`` task of the
+  example does with ``config.train``.
 
 * Indexing of positional items (e.g. ``--index 1`` -> ``INDEX 1``) starts
   from **1**.
 
-* Comments start with ``#`` and run to the end of the line, just like in
+* Comments start with ``#`` and run to the end of the line, as in
   ordinary config files, on a ``TASK`` line too
   (``TASK train   # first task``).
 
@@ -265,8 +265,8 @@ Practical rules
 • Training on a dataset expressed in *any* units still works, provided *all*
   quantities in *all* structures use the same unit system.
 
-• The generated model keeps those units.  When you couple it to LAMMPS you
-  must pick a compatible `units` style—e.g. ``metal`` for eV / Å, ``real`` for
+• The generated model keeps those units.  Coupled to LAMMPS, it needs a
+  compatible `units` style—e.g. ``metal`` for eV / Å, ``real`` for
   kcal mol⁻¹ / Å, and so on.
 
 • Some post-processing and analysis helpers (notably the ``--analytics`` flag)
@@ -275,8 +275,8 @@ Practical rules
 
 .. important::
 
-   Unless you have a compelling reason to deviate, **use eV for energy and Å
-   for length**.  That choice is tested across the entire Tadah! tool-chain and
+   **eV for energy and Å for length** is the recommended choice, unless there
+   is a compelling reason to deviate.  That choice is tested across the entire Tadah! tool-chain and
    matches the *metal* unit style in LAMMPS out of the box.
 
 .. _config_file:
@@ -286,7 +286,7 @@ Config File
 
 The Tadah! configuration file manages the training process by specifying datasets, cutoff functions, radii, regression models, and descriptor choices. It supports two- and many-body descriptors. The file's structure consists of KEY/VALUE pairs, with each pair on a separate line. The KEY is a string followed by its VALUE, and the format of the VALUE depends on the KEY.
 
-For a list and explanation of supported KEY-VALUE pairs, see :ref:`ConfigSection`.
+:ref:`ConfigSection` lists and explains the supported KEY-VALUE pairs.
 
 .. _dataset:
 
@@ -295,7 +295,7 @@ Dataset Format
 
 Datasets are included using the :ref:`DBFILE` key in a Config file. More than one dataset can be specified.
 
-There is no restriction on the number of atoms in different structures, so it's okay to have a structure with 12 atoms and another one with 24 atoms in the same dataset.
+There is no restriction on the number of atoms in different structures, so one dataset can hold a structure with 12 atoms and another with 24 atoms.
 
 The dataset has the following structure:
 
@@ -314,8 +314,8 @@ The dataset has the following structure:
     ...
     <blank line>
 
-- The first line is a comment line; it will be used as a label for a structure. Do not leave a blank line.
-- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0. Do not leave a blank line. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor, and (CASTEP ``.castep``, VASP ``vasprun.xml``) ``fweight`` 0 for one without forces, and says so in one INFO line, so that a ``STRESS true`` (``FORCE true``) fit ignores them instead of fitting zeros. A stress or force line that cannot be read (a value the code could not print, ``*****``; VASP OUTCAR ``in kB``, ``vasprun.xml``, CASTEP ``.castep``) gives that weight 0 too, with a WARNING naming the file and the line. Any other value a converter cannot read refuses the file, naming it and the line (or the calculation); a file that ends inside a step (a run stopped while writing it: inside one of the step's blocks, during its SCF or between its blocks) keeps the steps before it and skips that step, with a WARNING naming the file and the step, and a ``vasprun.xml`` that ends after a complete calculation, without its closing tag, is read whole, with a WARNING that nothing was skipped. The force and stress metrics (``tadah predict -A``, ``PC_FRMSE`` and ``PC_SRMSE`` in ``tadah hpo``) leave such a structure out too; a dataset in which every structure has that weight 0 is not measured (``nan``, left out of the average), and a run in which no dataset has the data is refused. ``tadah data balance --rescale`` keeps a weight of 0.
+- The first line is a comment line; it is used as a label for a structure. It must not be a blank line.
+- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0; a blank line is not allowed in its place. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor, and (CASTEP ``.castep``, VASP ``vasprun.xml``) ``fweight`` 0 for one without forces, and says so in one INFO line, so that a ``STRESS true`` (``FORCE true``) fit ignores them instead of fitting zeros. A stress or force line that cannot be read (a value the code could not print, ``*****``; VASP OUTCAR ``in kB``, ``vasprun.xml``, CASTEP ``.castep``) gives that weight 0 too, with a WARNING naming the file and the line. Any other value a converter cannot read refuses the file, naming it and the line (or the calculation); a file that ends inside a step (a run stopped while writing it: inside one of the step's blocks, during its SCF or between its blocks) keeps the steps before it and skips that step, with a WARNING naming the file and the step, and a ``vasprun.xml`` that ends after a complete calculation, without its closing tag, is read whole, with a WARNING that nothing was skipped. The force and stress metrics (``tadah predict -A``, ``PC_FRMSE`` and ``PC_SRMSE`` in ``tadah hpo``) leave such a structure out too; a dataset in which every structure has that weight 0 is not measured (``nan``, left out of the average), and a run in which no dataset has the data is refused. ``tadah data balance --rescale`` keeps a weight of 0.
 - The three cell lines are the lattice vectors **a**, **b** and **c**, one
   vector per line, as Cartesian components in Å (the lattice vectors are the
   *rows* of the 3×3 block). A vector is **not** written down a column.
@@ -359,7 +359,7 @@ The dataset has the following structure:
 
 If forces and/or stresses are not available, they can be set to zero to satisfy the parser.
 
-Also see :ref:`units`.
+Units are described in :ref:`units`.
 
 .. _dataset_cell_migration:
 
@@ -368,7 +368,7 @@ Also see :ref:`units`.
    **Datasets written by older versions** may hold a wrong cell. Only
    structures whose 3×3 cell block is not symmetric can be affected, and
    ``tadah analysis dataset_stats`` lists them by index and label.
-   Re-convert such a structure from its source file if it was written
+   Such a structure needs re-converting from its source file if it was written
 
    - before 1.3.0-beta.1 from a VASP OUTCAR or a CASTEP ``.castep``,
      ``.md`` or ``.geom`` file: the cell was stored transposed (the
@@ -380,7 +380,7 @@ Also see :ref:`units`.
 
    Structure files that ``tadah data write -s`` exported (VASP POSCAR,
    LAMMPS data, CASTEP ``.cell``) from a non-orthogonal CIF or COD entry
-   before 1.6.0 hold a transposed cell; export them again. Potentials and
+   before 1.6.0 hold a transposed cell; they need exporting again. Potentials and
    ``tadah hpo`` results fitted to affected structures need to be
    regenerated.
 
@@ -398,11 +398,11 @@ Also see :ref:`units`.
    energy(σ→0), which differs from F by a fraction of that term (a third
    for Methfessel–Paxton order 1, half for Gaussian smearing; 6.2 meV/atom
    for the same structures). Both vary by structure and grow with the
-   smearing width ``SIGMA``. To tell which build converted a dataset,
-   compare a stored stress with the OUTCAR's ``in kB`` line: a current
+   smearing width ``SIGMA``. A stored stress compared with the OUTCAR's
+   ``in kB`` line tells which build converted a dataset: a current
    build stores the ``in kB`` value times −6.241509074e-4 (eV/Å³), an
    earlier one times +6.241509074e-4.
-   **Re-convert them** from the source files with ``tadah data convert``;
+   **They need re-converting** from the source files with ``tadah data convert``;
    neither can be repaired in place exactly (the entropy term is not
    stored). A fit with ``STRESS true`` on the old stress fitted its
    negative. An MD OUTCAR with a step at 10000 K or more, converted by any
@@ -413,12 +413,12 @@ Also see :ref:`units`.
    steps after it, up to the next temperature it could read (a 6580 K run
    of 5000 steps of 54 atoms gave 4939 structures, one of 3348 atoms: 62
    steps in one). A structure whose atom count is a multiple of the run's
-   ``NIONS`` tells such a dataset; re-convert it too. Datasets from CASTEP,
+   ``NIONS`` tells such a dataset; it needs re-converting too. Datasets from CASTEP,
    from the LAMMPS examples shipped with Tadah!, or written with ASE
    already have the tension-positive sign. The
    stress of a CASTEP ``.md`` file converted by such an earlier build still
    holds its kinetic part (about :math:`N k_B T / V`, e.g. 0.43 GPa at
-   633 K for 8 Si atoms in 163 Å³); re-convert it too.
+   633 K for 8 Si atoms in 163 Å³); it needs re-converting too.
 
 Tadah! and LAMMPS
 -----------------
@@ -457,7 +457,7 @@ Tadah! 1.5.0 and earlier read only the first file a pair style was
 given: a later ``pair_coeff`` went on with that potential without a
 message, under the notices of the new file.
 
-See :ref:`installation_lammps` for Tadah!LAMMPS interface installation instructions.
+:ref:`installation_lammps` gives the installation instructions of the Tadah!LAMMPS interface.
 
 What to expect
 ^^^^^^^^^^^^^^
@@ -497,7 +497,7 @@ the descriptors of every atom (the generic kernel), here in about a second per
 A potential that takes the fast path states in the LAMMPS log how accurate
 it is. For example, a D2_LJ potential (``TYPE2B D2_LJ Ta Ta``, ``RCUT2B 6.5``,
 ``RCTYPE2B Cut_Dummy``, ``MODEL M_KRR Kern_Linear``; the Quick Start potential
-up to Tadah! 1.5.0, which does not hold bcc Ta: see below) logs
+up to Tadah! 1.5.0, which does not hold bcc Ta, as described below) logs
 
 ::
 
@@ -554,7 +554,7 @@ above bcc. It is not a production Ta potential:
   far too fast (by 5.3 eV/atom from 3.29 Å to 3.8 Å).
 - At the 3 fs timestep of ``in.ml``, runs started at 6000 K and 10000 K do not
   fail, but the total energy wanders by 0.70 and 1.01 meV/atom; at 1 fs, by
-  0.08 and 0.10 meV/atom. Use a smaller timestep for hot systems.
+  0.08 and 0.10 meV/atom. Hot systems need a smaller timestep.
 - Other elastic constants, defects, surfaces, liquids and the melting point were
   not checked.
 
@@ -567,4 +567,4 @@ at its own lattice constant of 2.93 to 3.06 Å): it is mechanically unstable.
 Support for Multi-species Systems
 ---------------------------------
 
-Tadah! can generate machine-learned potentials for both single-component and multi-component systems. The interatomic potential adapts based on the species present in the training dataset, allowing for accurate modeling of different material compositions.
+Tadah! can generate machine-learned potentials for both single-component and multi-component systems. The interatomic potential adapts based on the species present in the training dataset, allowing for accurate modelling of different material compositions.

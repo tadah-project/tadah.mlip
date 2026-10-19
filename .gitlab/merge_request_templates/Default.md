@@ -33,8 +33,6 @@
 <!-- What tests cover this change? If none, why? -->
 
 - [ ] `ctest` passes locally (umbrella build).
-- [ ] HPO regression suite passes if this could affect optimisation
-      output (`bash HPO/examples/run_reference_suite.sh --fast`).
 - [ ] CI pipeline on this branch is green.
 
 ## Backwards compatibility

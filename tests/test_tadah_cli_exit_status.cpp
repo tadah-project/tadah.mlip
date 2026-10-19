@@ -3203,7 +3203,7 @@ TEST_CASE("Subcommand: hpo in a tadah built without NFP is refused, naming "
 }
 
 /* Pins: in a tadah built without TADAH_ENABLE_NFP, `tadah -h` lists hpo as
- * "hpo Optimize the model architecture and hyperparameters. tadah hpo needs
+ * "hpo Optimises the model architecture and hyperparameters. tadah hpo needs
  * the Nested Fitting Procedure, ...; reconfigure with -DTADAH_ENABLE_NFP=ON
  * (see Installation)." (whitespace collapsed: the listing wraps), `tadah
  * hpo -h` has the same two sentences, and `tadah explain hpo` ends with a
@@ -3216,7 +3216,7 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo say "
           "that a tadah built without NFP has no hpo",
           "[TadahCLI][exit-status][not-built]") {
   ScratchCwd cwd("hpo_not_built_help");
-  const std::string described = std::string("Optimize the model architecture "
+  const std::string described = std::string("Optimises the model architecture "
                                             "and hyperparameters. ") +
                                 kHpoNotBuilt + ".";
   {
@@ -3245,7 +3245,7 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo say "
 }
 #else
 /* Pins: in a tadah built with TADAH_ENABLE_NFP, `tadah -h` lists hpo as
- * "hpo Optimize the model architecture and hyperparameters.", and neither
+ * "hpo Optimises the model architecture and hyperparameters.", and neither
  * it, `tadah hpo -h` nor `tadah explain hpo` (each exits 0 and prints
  * something) says "which this tadah was built without".
  * Before the fix: passes as well (a pin: only a tadah without NFP has the
@@ -3264,7 +3264,7 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo of a "
   }
   const CliRun h = run_tadah({"tadah", "-h"});
   CHECK(contains(one_line(h.out),
-                 "hpo Optimize the model architecture and hyperparameters."));
+                 "hpo Optimises the model architecture and hyperparameters."));
 }
 #endif  // TADAH_ENABLE_NFP
 
@@ -4861,7 +4861,11 @@ TEST_CASE("Subcommand: explain: a configuration key that is no option of a "
  * iterates "are evaluated there, and such a point can become the best";
  * then it gave that slope the wrong sign, "... graded by its
  * distance to the box, whose slope points back into it, it counts against
- * MAXEVAL ...": the slope check fails. */
+ * MAXEVAL ...": the slope check fails.
+ * A refusal names its recommended replacement ("The recommended
+ * replacement is NLOPT:LN_BOBYQA", "The recommended replacements are
+ * NLOPT:LD_LBFGS ..."); before HPO's help was rewritten for a user it said
+ * "Use ...", and the two checks of the replacement fail on that text. */
 TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
           "LIB:ALGO describes one",
           "[TadahCLI][exit-status][explain][explain_algo]") {
@@ -4906,7 +4910,7 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     INFO("CERES:LBFGS: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
     CHECK(contains(r.out, "Options for CERES:LBFGS\n   * REFUSED: "));
-    CHECK(contains(r.out, "Use NLOPT:LD_LBFGS"));
+    CHECK(contains(r.out, "The recommended replacements are NLOPT:LD_LBFGS"));
     CHECK_FALSE(contains(r.out, "PARAM tol_gradinf"));
   }
   {
@@ -4914,7 +4918,7 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     INFO("NLOPT:LN_NEWUOA: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
     CHECK(contains(r.out, "Options for NLOPT:LN_NEWUOA\n   * REFUSED: "));
-    CHECK(contains(r.out, "Use NLOPT:LN_BOBYQA"));
+    CHECK(contains(r.out, "The recommended replacement is NLOPT:LN_BOBYQA"));
   }
   {
     const CliRun r = run_tadah({"tadah", "explain", "NLOPT:LD_FOO"});
@@ -5051,9 +5055,9 @@ TEST_CASE("Subcommand: explain: a key without a long description prints its "
   const CliRun add = run_tadah({"tadah", "explain", "refit.add"});
   INFO("refit.add: status " << add.status << "\n" << reported(add));
   CHECK(add.status == 0);
-  CHECK(contains(add.out, "Insert one basis function into the curve selected "
+  CHECK(contains(add.out, "Inserts one basis function into the curve selected "
                           "by --func"));
-  CHECK_FALSE(contains(add.out, "`tadah refit --edit`: insert a basis "
+  CHECK_FALSE(contains(add.out, "`tadah refit --edit`: inserts a basis "
                                 "function at this centre"));
 }
 

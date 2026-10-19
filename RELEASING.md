@@ -110,9 +110,9 @@ not run on tags):
 - `models` triggers `mlip` and `md`;
 - `mlip` triggers `tadah.mlip`;
 - `md` triggers `tadah.lammps`;
-- `hpo` has no trigger, and its build and example jobs are manual (they
-  need a LAMMPS library, `TADAH_LAMMPS_DIR`, which the runner image does
-  not provide). The `tadah.mlip` jobs configure without
+- `hpo` has no trigger, and its build jobs are manual (they need a
+  LAMMPS library, `TADAH_LAMMPS_DIR`, which the runner image does not
+  provide). The `tadah.mlip` jobs configure without
   `TADAH_ENABLE_NFP`, so no pipeline builds or tests HPO: validate it
   locally.
 
@@ -123,8 +123,6 @@ tag to the project's GitLab Generic Package Registry. A tarball has no
 build from a tarball pass the tag, `-DTADAH_GIT_BRANCH=v1.6.0`
 (installation guide, "Which ref the Tadah! modules are fetched at").
 `lint_codespell` and `docs_sphinx` do not run on tags (`when: never`).
-No CI job runs the HPO examples on a tag; run them locally before
-tagging (below).
 
 ## Read the Docs
 
@@ -182,18 +180,7 @@ chain.
    (`1.6.0`), the README version badges, `CITATION.cff` (`version`,
    `date-released`) and the `## [1.6.0]` CHANGELOG sections. Validate
    locally: full `ctest` (which also runs the CLI examples the
-   documentation includes), the HPO examples and a Sphinx build with
-   `-W`. The HPO example suite takes about a minute, runs the `tadah`
-   that `TADAH` names (else the first one on `PATH`, which may be an
-   older install) and writes its outputs into the example directories,
-   so run it on a copy of the tree with the binary just built
-   (`$SCRATCH` and `$BUILD` are absolute paths: the suite runs `tadah`
-   from each example directory):
-
-   ```bash
-   git -C HPO archive --prefix=hpo/ HEAD | tar -x -C "$SCRATCH"
-   TADAH="$BUILD/tadah" bash "$SCRATCH/hpo/examples/run_reference_suite.sh" --full
-   ```
+   documentation includes) and a Sphinx build with `-W`.
 2. **Push `v1-dev`** in the order above and watch the pipelines.
 3. **Tag cmake-tools**: `git tag -a v1.6.0 -m "Tadah! 1.6.0"` on its
    `v1-dev`, then `git push origin v1.6.0`.

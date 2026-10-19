@@ -9821,13 +9821,17 @@ TEST_CASE("Task file: a TASK hpo section with WEIGHTS is a potential, whose "
   }
 }
 
-/* Pins: `tadah hpo -h` lists --check with its description. */
+/* Pins: `tadah hpo -h` lists --check with its description, in the third
+ * person as every help text ("Checks the setup of tadah hpo without
+ * running it: ...").
+ * Before the help was in the third person: it read "Check the setup of
+ * tadah hpo without running it: make its startup checks, ...". */
 TEST_CASE("Subcommand: hpo -h lists --check",
           "[TadahCLI][hpo][hpo-check]") {
   const CliRun r = run_tadah({"tadah", "hpo", "-h"});
   INFO("status " << r.status << "\n" << reported(r));
   CHECK(r.status == 0);
   CHECK(contains(r.out, "--check"));
-  CHECK(contains(r.out, "Check the setup of tadah hpo"));
+  CHECK(contains(r.out, "Checks the setup of tadah hpo"));
 }
 #endif  // TADAH_ENABLE_NFP

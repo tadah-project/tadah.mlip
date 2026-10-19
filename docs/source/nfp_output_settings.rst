@@ -74,8 +74,9 @@ The run writes these files, ``hpo_run.log`` and ``best_pot.tadah`` into
 the working directory. A working directory without write permission, or
 an existing history file, journal or lock of ``best_pot.tadah`` that
 cannot be written, stops the run, and ``tadah hpo --check``, at startup,
-before any data is loaded. A file that is a symbolic link is written
-through the link.
+before any data is loaded. A history file, the journal or the lock that
+is a symbolic link is written through the link, and is checked where the
+link leads; ``best_pot.tadah`` is replaced, link and all.
 
 Potential archives
 ------------------
@@ -91,14 +92,16 @@ evaluation as ``directory/pot_<evaluation>.tadah``.
 ``directory/best_pot_<improvement>.tadah``. Both require integer
 ``N >= 1``. Without the line, that archive is disabled.
 
-The directories are checked when the target file is read. An existing
-directory must have write permission. A directory that does not exist
-must be in an existing directory with write permission, since only the
-last directory of the path is created, or in the other line's new
-directory (``DUMP 100 archive`` with ``BDUMP 5 archive/best``, in either
-order). Otherwise the run, and ``tadah hpo --check``, stop at the line.
-The run creates a missing directory right before its first evaluation, the
-outer one first, so a run that stops before then creates none.
+The directories are checked when the target file is read, where the
+operating system puts them: symbolic links are followed and ``..`` is
+taken from the directory reached. An existing directory must have write
+permission. A directory that does not exist must be in an existing
+directory with write permission, since only the last directory of the
+path is created, or in the directory of the other line, which the run
+creates first (``DUMP 100 archive`` with ``BDUMP 5 archive/best``, in
+either order). Otherwise the run, and ``tadah hpo --check``, stop at the
+line. The run creates a missing directory right before its first
+evaluation, so a run that stops before then creates none.
 
 ``DUMP`` archives evaluated candidates, including failed fits and
 candidates whose losses exceed the current best. Archiving is limited

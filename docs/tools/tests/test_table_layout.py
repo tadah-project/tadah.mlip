@@ -2,45 +2,45 @@
 
 Requires Sphinx, sphinx_rtd_theme and a local Chromium-family browser.
 The browser reads only a temporary, locally generated documentation page.
+The page is measured as docs/tools/check_layout.py measures one: once it
+is ready, the theme's script having put the tables in their boxes.
 """
-import html
-from html.parser import HTMLParser
 import importlib.util
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+import check_layout  # noqa: E402
 
-SOURCE = Path(__file__).resolve().parents[2] / 'source'
-BROWSER = next((shutil.which(name) for name in
-                ('chromium', 'chromium-browser', 'google-chrome')
-                if shutil.which(name)), None)
+SOURCE = HERE.parents[1] / 'source'
+BROWSER = check_layout.find_browser()
 HAVE_SPHINX = all(importlib.util.find_spec(name) for name in
                   ('sphinx', 'sphinx_rtd_theme'))
 
-
-class ReportParser(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.recording = False
-        self.report = ''
-
-    def handle_starttag(self, tag, attrs):
-        if tag == 'script' and dict(attrs).get('id') == 'layout-report':
-            self.recording = True
-
-    def handle_endtag(self, tag):
-        if tag == 'script':
-            self.recording = False
-
-    def handle_data(self, data):
-        if self.recording:
-            self.report += data
+# The tables, paragraphs and code block of the page as the browser lays
+# them out.
+REPORT = r'''
+() => {
+  const tables = Array.from(document.querySelectorAll('.wy-table-responsive'));
+  const code = getComputedStyle(document.querySelector('.highlight pre'));
+  return {
+    width: window.innerWidth,
+    tables: tables.map(el => ({client: el.clientWidth, scroll: el.scrollWidth})),
+    paragraphs: Array.from(document.querySelectorAll('.rst-content p')).map(
+      el => ({client: el.clientWidth, scroll: el.scrollWidth})),
+    content: document.querySelector('.rst-content').getBoundingClientRect().width,
+    tableWidths: tables.map(el => el.querySelector('table').getBoundingClientRect().width),
+    codeWhitespace: code.whiteSpace,
+    codeWrap: code.overflowWrap
+  };
+}
+'''
 
 
 @unittest.skipUnless(HAVE_SPHINX and BROWSER,
@@ -124,58 +124,29 @@ Archive path: ``runs/parameter_search/validation_candidates/selected_components/
                  str(src), str(out)], capture_output=True, text=True, timeout=60)
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             page = out / 'index.html'
-            measure = '''<script>
-window.addEventListener('load', function () { setTimeout(function () {
-  const tables = Array.from(document.querySelectorAll('.wy-table-responsive'));
-  const report = {
-    width: window.innerWidth,
-    tables: tables.map(el => ({client: el.clientWidth, scroll: el.scrollWidth})),
-    paragraphs: Array.from(document.querySelectorAll('.rst-content p')).map(
-      el => ({client: el.clientWidth, scroll: el.scrollWidth})),
-    content: document.querySelector('.rst-content').getBoundingClientRect().width,
-    tableWidths: tables.map(el => el.querySelector('table').getBoundingClientRect().width),
-    codeWhitespace: getComputedStyle(document.querySelector('.highlight pre')).whiteSpace,
-    codeWrap: getComputedStyle(document.querySelector('.highlight pre')).overflowWrap
-  };
-  const el = document.createElement('script');
-  el.id = 'layout-report'; el.type = 'application/json';
-  el.textContent = JSON.stringify(report); document.body.appendChild(el);
-}, 100); });
-</script>'''
-            page.write_text(page.read_text().replace('</body>', measure + '</body>'))
-            for width in (1280, 900, 520):
-                with self.subTest(viewport=width):
-                    result = subprocess.run(
-                        [BROWSER, '--headless', '--no-sandbox', '--disable-gpu',
-                         '--disable-background-networking', '--no-first-run',
-                         '--disable-dev-shm-usage', '--no-proxy-server',
-                         f'--user-data-dir={root / ("profile-" + str(width))}',
-                         f'--window-size={width},900', '--virtual-time-budget=1000',
-                         '--dump-dom', page.as_uri()],
-                        capture_output=True, text=True, timeout=30)
-                    self.assertEqual(result.returncode, 0, result.stderr)
-                    parser = ReportParser()
-                    parser.feed(result.stdout)
-                    self.assertTrue(parser.report, result.stderr)
-                    report = json.loads(html.unescape(parser.report))
-                    self.assertEqual(len(report['tables']), 2)
-                    for table, table_width in zip(report['tables'], report['tableWidths']):
-                        self.assertLessEqual(table['scroll'], table['client'] + 1,
-                                             report)
-                        self.assertLessEqual(table_width, report['content'] + 1,
-                                             report)
-                    # Code lines are kept whole on desktop windows (1024 px
-                    # and wider) and wrap on narrower ones.
-                    if width >= 1024:
-                        self.assertEqual((report['codeWhitespace'],
-                                          report['codeWrap']), ('pre', 'normal'))
-                    else:
-                        self.assertEqual((report['codeWhitespace'],
-                                          report['codeWrap']),
-                                         ('pre-wrap', 'anywhere'))
-                    for paragraph in report['paragraphs']:
-                        self.assertLessEqual(paragraph['scroll'], paragraph['client'] + 1,
-                                             report)
+            with check_layout.Browser(BROWSER) as browser:
+                for width in (1280, 900, 520):
+                    with self.subTest(viewport=width):
+                        report = browser.evaluate(page.as_uri(), width, REPORT)
+                        self.assertEqual(report['width'], width, report)
+                        self.assertEqual(len(report['tables']), 2)
+                        for table, table_width in zip(report['tables'], report['tableWidths']):
+                            self.assertLessEqual(table['scroll'], table['client'] + 1,
+                                                 report)
+                            self.assertLessEqual(table_width, report['content'] + 1,
+                                                 report)
+                        # Code lines are kept whole on desktop windows (1024 px
+                        # and wider) and wrap on narrower ones.
+                        if width >= 1024:
+                            self.assertEqual((report['codeWhitespace'],
+                                              report['codeWrap']), ('pre', 'normal'))
+                        else:
+                            self.assertEqual((report['codeWhitespace'],
+                                              report['codeWrap']),
+                                             ('pre-wrap', 'anywhere'))
+                        for paragraph in report['paragraphs']:
+                            self.assertLessEqual(paragraph['scroll'], paragraph['client'] + 1,
+                                                 report)
 
 
 if __name__ == '__main__':

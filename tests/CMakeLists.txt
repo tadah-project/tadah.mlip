@@ -212,9 +212,10 @@ add_subdirectory(catch_discovery)
 add_test(NAME tadah_docs_tools
   COMMAND ${Python3_EXECUTABLE} -m unittest discover
     -s ${PROJECT_SOURCE_DIR}/docs/tools/tests -v)
+# A browser page that never becomes ready fails in 30 s (check_layout.py).
 set_tests_properties(tadah_docs_tools PROPERTIES
   LABELS docs
-  TIMEOUT 120
+  TIMEOUT 600
   ENVIRONMENT PYTHONDONTWRITEBYTECODE=1
   SKIP_REGULAR_EXPRESSION "\nOK \\(skipped=[0-9]+"
   FAIL_REGULAR_EXPRESSION "\nRan 0 tests ")

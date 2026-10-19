@@ -722,6 +722,17 @@ an error (``EXPLORE MAX_ADD must be an integer from 0 to 2147483647, got
      ENDOPTIMIZER
    ENDFUSE
 
+A stage takes one ``OPTIMIZER`` block and sets each of its keys once, as
+a target file does: a key given twice in an ``OPTIMIZER`` or ``INNER``
+block (``MAXEVAL`` and its alias ``MAXITER`` are one key), a second
+``OPTIMIZER`` block and a repeated ``ENABLED`` or ``MAX_ADD`` are refused
+(``REFINE: MAXEVAL is set twice in the OPTIMIZER block; each key is given
+once``).
+
+.. versionchanged:: 1.6.0
+   1.5.0 used the later value of a repeated key, and a second
+   ``OPTIMIZER`` block replaced the settings of the first.
+
 Legal optimisers and the stop-criteria each one reads.  A block takes
 only the stop-criteria of its ``ALGO``; a block with ``ALGO NONE`` or
 ``UNIFORM`` runs no optimiser and takes none, except those another stage

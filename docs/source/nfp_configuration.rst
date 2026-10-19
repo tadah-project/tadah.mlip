@@ -138,11 +138,10 @@ configures the run. A key set twice, in one block, in a repeated block or
 in two such blocks, is refused, and the message names the line of the
 first.
 
-Lines that add are no repeats. A ``METHOD`` line adds to its list, and
-``OPTIM``, ``PC_LAMMPS`` and ``PC_OBSERVABLE`` lines, and ``PC_ERMSE``
-and ``PC_FRMSE`` lines of other datasets, add to the file's. A
-``STEP <KEY>`` override of other indices refines the block-wide
-``STEP``.
+Lines that add are no repeats: ``METHOD`` lines, ``OPTIM``,
+``PC_LAMMPS`` and ``PC_OBSERVABLE`` lines, and ``PC_ERMSE`` and
+``PC_FRMSE`` lines of other datasets. A ``STEP <KEY>`` override of other
+indices refines the block-wide ``STEP``.
 
 .. versionchanged:: 1.6.0
    A key set twice for one optimiser, its starting points, the ``NOISE``,

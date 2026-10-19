@@ -20,9 +20,10 @@ HAVE_SPHINX = all(importlib.util.find_spec(m) for m in
                   ('sphinx', 'sphinx_rtd_theme'))
 
 # Entries as the generator writes them: two keys of one name in two
-# blocks, a key cited by a long id, a block, an optimiser, a PARAM key, a
-# removed keyword, a library target before its section, and an entry with
-# a second id.
+# blocks, and a removed keyword of that name; a STRATEGY type whose name is
+# a removed keyword too; a key cited by a long id, a block, an optimiser, a
+# PARAM key, a removed keyword, a library target before its section, an
+# entry with a second id, and a topic (a rule) headed by words.
 ENTRIES = '''\
 Reference
 =========
@@ -47,6 +48,29 @@ Reference
    :text: SEED
 
    The seed of the starting points.
+
+.. hpo:removed:: REMOVED.SEED
+   :names: SEED
+   :text: SEED
+   :hint: moved into an INIT block.
+   :scope: key
+
+.. hpo:key:: STRATEGY.TYPE.PRESTAGE
+   :names: PRESTAGE
+   :text: PRESTAGE
+
+   An exploration, then a refinement.
+
+.. hpo:removed:: REMOVED.PRESTAGE
+   :names: PRESTAGE
+   :text: PRESTAGE
+   :hint: replaced by TYPE PRESTAGE.
+   :scope: key
+
+.. hpo:topic:: RULE.one_optimiser
+   :text: A block names one optimiser
+
+   A rule between two keys.
 
 .. hpo:key:: PC_OBSERVABLE.cohesive_energy.--max-wall-time
    :names: --max-wall-time
@@ -201,7 +225,43 @@ class RoleTest(unittest.TestCase):
         self.assertNotIn('xref', re.search(r'<p>Later.*?</p>', html['guide'],
                                            re.S).group(0))
 
+    def test_a_live_entry_wins_over_a_removed_name(self):
+        # Pins: a name of one entry that is also a removed keyword cites the
+        # entry (TYPE PRESTAGE, the removed top-level PRESTAGE).
+        # Before the fix: a warning listed STRATEGY.TYPE.PRESTAGE and
+        # REMOVED.PRESTAGE, and the second, as advised, warned again.
+        status, warnings, html = build({
+            'reference.rst': ENTRIES,
+            'guide.rst': page('Guide', 'A type :hpo:key:`PRESTAGE`.')},
+            strict=True)
+        self.assertEqual((status, warnings), (0, []))
+        self.assertEqual(links(html['guide']), [
+            ('reference.html#STRATEGY.TYPE.PRESTAGE', 'PRESTAGE')])
+
+    def test_a_topic_is_shown_by_its_title_in_words(self):
+        # Pins: an entry headed by words (a rule) is a topic; cited by id
+        # with :hpo:topic:, it shows its title as text, not as code, and its
+        # entry carries the class topic, which the stylesheet sets in the
+        # font of the text.
+        # Before the fix: a rule was a key, shown as code.
+        status, warnings, html = build({
+            'reference.rst': ENTRIES,
+            'guide.rst': page('Guide', 'See :hpo:topic:`RULE.one_optimiser`'
+                              ' and :hpo:topic:`!RULE.one_optimiser`.')},
+            strict=True)
+        self.assertEqual((status, warnings), (0, []))
+        m = re.search(r'<a class="reference internal" href="reference.html'
+                      r'#RULE.one_optimiser"[^>]*>(.*?)</a>', html['guide'])
+        self.assertIn('A block names one optimiser', m.group(1))
+        self.assertNotIn('<code', m.group(1))
+        self.assertEqual(html['guide'].count('A block names one optimiser'),
+                         2)
+        self.assertRegex(html['reference'], r'<dl class="hpo topic"')
+
     def test_an_ambiguous_name_is_a_warning_naming_the_candidates(self):
+        # Pins: the warning lists the entries of the name, each of which
+        # resolves it, and not a removed keyword of that name.
+        # Before the fix: it listed REMOVED.SEED too.
         status, warnings, html = build({
             'reference.rst': ENTRIES,
             'guide.rst': page('Guide', 'Line three.\n\nThe :hpo:key:`SEED`.')},

@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from fractions import Fraction
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.normpath(os.path.join(HERE, '..'))
@@ -86,8 +87,8 @@ def run_script(env, *args, cwd=None, bytecode=False):
 
 def targets(text):
     """The ids a page declares: entries, their second ids and targets."""
-    ids = re.findall(r'^\.\. hpo:(?:key|block|opt|param|removed|target):: '
-                     r'(\S+)$', text, re.M)
+    ids = re.findall(r'^\.\. hpo:(?:key|block|opt|param|topic|removed|'
+                     r'target):: (\S+)$', text, re.M)
     for also in re.findall(r'^   :also: (.+)$', text, re.M):
         ids += also.split()
     return ids
@@ -95,7 +96,7 @@ def targets(text):
 
 def code_blocks(text):
     """The non-blank lines of each code block of a page, without the indent
-    of the block."""
+    of the block and without the options of the directive (:caption:)."""
     def indent(line):
         return len(line) - len(line.lstrip())
     blocks, lines, i = [], text.split('\n'), 0
@@ -104,6 +105,8 @@ def code_blocks(text):
         i += 1
         if not m:
             continue
+        while i < len(lines) and re.match(r'^\s+:\w+:', lines[i]):
+            i += 1
         outer, content = len(m.group(1)), []
         while i < len(lines) and (not lines[i].strip()
                                   or indent(lines[i]) > outer):
@@ -175,6 +178,128 @@ def field_bodies(text, name):
 #: The name each annealer starts its messages with (anneal_core.h).
 ANNEALER = {'serial': 'TADAH:ANNEAL', 'pt': 'TADAH:ANNEAL_PT',
             'pa': 'TADAH:ANNEAL_PA'}
+
+_ENTRY = re.compile(r'^\.\. hpo:(\w+):: (\S+)\n((?:(?:   .*)?\n)*)', re.M)
+
+
+def entries_of(text):
+    """{id: (directive, body)} of the entries of a page; the body is the
+    entry's indented lines, the indent of three removed."""
+    return {m.group(2): (m.group(1), '\n'.join(
+        l[3:] for l in m.group(3).split('\n'))) for m in _ENTRY.finditer(text)}
+
+
+def field_of(body, name):
+    """The body of the field *name* of an entry, its lines joined by
+    newlines, or None."""
+    found = field_bodies(body, name)
+    return found[0] if found else None
+
+
+def paragraphs_of(body):
+    """The paragraphs of an entry body before its field list and after its
+    options, each with its lines joined."""
+    out, current = [], []
+    for line in body.split('\n'):
+        if re.match(r'^:[\w ]+:(\s|$)', line):
+            if out or current:
+                break
+            continue
+        if not line.strip():
+            if current:
+                out.append(' '.join(current))
+                current = []
+            continue
+        current.append(line.strip())
+    if current:
+        out.append(' '.join(current))
+    return out
+
+
+def plain_prose(text):
+    """The prose of a page as prose_of gives it, without its roles, its
+    references, its directive lines and its section titles: the words a
+    reader sees outside links and literals."""
+    lines, out = text.split('\n'), []
+    for i, line in enumerate(lines):
+        if line.startswith('.. '):
+            continue
+        if i + 1 < len(lines) and re.match(r'^[=\-~]{3,}$', lines[i + 1]):
+            continue
+        out.append(line)
+    text = re.sub(r'``[^`]*``', ' ', '\n'.join(out))
+    text = re.sub(r':(?:hpo:\w+|ref|term):`[^`]*`', ' ', text)
+    return prose_of(text)
+
+
+def words_of(rst):
+    """The words a reader sees of a piece of reStructuredText: a role shows
+    its title, or its target without a title."""
+    rst = re.sub(r':[\w:]+:`!?([^`<]*?)\s*<[^>]*>`', r'\1', rst)
+    rst = re.sub(r':[\w:]+:`!?([^`]*)`', r'\1', rst)
+    rst = re.sub(r'\\(.)', r'\1', rst.replace('``', ''))
+    return ' '.join(rst.split())
+
+
+def field_items(body, name):
+    """The top-level items of the field *name* of an entry body: each code
+    block or paragraph, its lines as they are, or None without the
+    field."""
+    lines = body.split('\n')
+    for i, line in enumerate(lines):
+        if line.strip() != f':{name}:':
+            continue
+        outer = len(line) - len(line.lstrip())
+        rest = []
+        for nxt in lines[i + 1:]:
+            if nxt.strip() and len(nxt) - len(nxt.lstrip()) <= outer:
+                break
+            rest.append(nxt)
+        inner = min(len(l) - len(l.lstrip()) for l in rest if l.strip())
+        items, current = [], []
+        for l in rest:
+            if l.strip() and len(l) - len(l.lstrip()) == inner and current \
+                    and not current[-1].strip():
+                items.append('\n'.join(current).strip())
+                current = []
+            current.append(l)
+        if current:
+            items.append('\n'.join(current).strip())
+        return items
+    return None
+
+
+def number_admits(phrase, value):
+    """Whether the Values phrase of a number admits *value*: an integer or
+    a number, with its range (from a to b, >= a, <= b, above a, below b,
+    and the two-sided forms "above a, up to b" and "from a, below b")."""
+    m = re.match(r'(an integer|a number|a positive(?: [a-z]+)* number)\b(.*)',
+                 phrase)
+    if not m:
+        return True
+    noun, rest = m.group(1), m.group(2)
+    value = Fraction(value)
+    if noun == 'an integer' and value.denominator != 1:
+        return False
+    if noun.startswith('a positive') and value <= 0:
+        return False
+    num = r'(-?[0-9][0-9.e+-]*)'
+    checks = [(r'from ' + num + r' to ' + num, lambda a, b: a <= value <= b),
+              (r'above ' + num + r', up to ' + num,
+               lambda a, b: a < value <= b),
+              (r'from ' + num + r', below ' + num,
+               lambda a, b: a <= value < b),
+              (r'above ' + num + r' and below ' + num,
+               lambda a, b: a < value < b),
+              (r'>= ' + num, lambda a: value >= a),
+              (r'<= ' + num, lambda a: value <= a),
+              (r'above ' + num, lambda a: value > a),
+              (r'below ' + num, lambda a: value < a)]
+    for pattern, test in checks:
+        mm = re.match(r'\s*' + pattern, rest)
+        if mm:
+            return test(*(Fraction(g) for g in mm.groups()))
+    return True
 
 
 def logical_lines(text):
@@ -500,37 +625,435 @@ class PagesTest(unittest.TestCase):
         # hub and the six pages build with -W: every role of the pages
         # finds its entry, no code line is longer than 80 characters, no
         # table is wider than two columns, no inline literal is too long.
-        with tempfile.TemporaryDirectory(prefix='tadah_hpo_pages_') as tmp:
-            src = os.path.join(tmp, 'src')
-            ref = os.path.join(src, 'nfp', 'reference')
-            os.makedirs(ref)
-            shutil.copy(os.path.join(SOURCE, 'nfp', 'reference', 'index.rst'),
-                        ref)
-            for name in PAGES:
-                with open(os.path.join(ref, name + '.rst'), 'w',
-                          encoding='utf-8') as fh:
-                    fh.write(self.pages[name])
-            files = {
-                'index.rst': 'Fixture\n=======\n\n.. toctree::\n'
-                             '   :caption: Nested Fitting\n   :titlesonly:\n\n'
-                             '   overview\n   nfp/reference/index\n',
-                'overview.rst': '.. _nested_fitting:\n\nOverview\n========\n',
-                'conf.py': (f'import sys\nsys.path.insert(0, {TOOLS!r})\n'
-                            "project = 'Fixture'\n"
-                            "extensions = ['hpotarget_domain', 'nfp_checks']\n"
-                            "html_theme = 'sphinx_rtd_theme'\n"
-                            "html_theme_options = {'navigation_depth': 2}\n")}
-            for name, text in files.items():
-                with open(os.path.join(src, name), 'w', encoding='utf-8') as fh:
-                    fh.write(text)
-            proc = subprocess.run(
-                [sys.executable, '-m', 'sphinx', '-b', 'html', '-q', '-W',
-                 '--keep-going', src, os.path.join(tmp, 'html')],
-                capture_output=True, text=True, timeout=600)
-        warnings = [l for l in proc.stderr.splitlines() if 'WARNING' in l]
+        status, warnings, _html = build_pages(self.pages)
         self.assertEqual(warnings, [])
-        self.assertEqual(proc.returncode, 0, proc.stderr[-2000:])
+        self.assertEqual(status, 0)
 
+    # ---- the entries ------------------------------------------------------
+    def page_entries(self):
+        out = {}
+        for name in PAGES:
+            for ident, (kind, body) in entries_of(self.pages[name]).items():
+                out[ident] = (name, kind, body)
+        return out
+
+    def test_where_leaves_out_a_block_that_refuses_the_key(self):
+        # Pins: the Where field of a key of the optimiser group cites each
+        # block of the group but one that refuses the key (an INNER block
+        # refuses SEED, STOPVAL and GRAD_STRATEGY).
+        # Before the fix: it cited BLOCK.INNER for those three.
+        entries = self.page_entries()
+        refused = [(b, r.key) for b in self.reg.blocks for r in b.refuse]
+        self.assertTrue(refused)
+        for block, name in refused:
+            key = next(k for k in self.reg.keys
+                       if k.group and k.name == name)
+            with self.subTest(key=key.id, block=block.name):
+                where = field_of(entries[key.id][2], 'Where')
+                self.assertNotIn(f'BLOCK.{block.name}`', where)
+                for other in self.reg.groups[key.group].blocks:
+                    if other != block.name:
+                        self.assertIn(f'BLOCK.{other}`', where)
+
+    def test_rule_entries_show_their_title(self):
+        # Pins: a rule's entry is a topic, headed by the rule's title, and
+        # a field that names rules cites them with :hpo:topic:, so that the
+        # page shows the titles, in words, and no rule id.
+        # Before the fix: the heading and the links showed the id after
+        # RULE. (inner_block_required) as code.
+        entries = self.page_entries()
+        for rule in self.reg.rules:
+            with self.subTest(rule=rule.id):
+                _page, kind, body = entries[rule.id]
+                self.assertEqual(kind, 'topic')
+                self.assertIn(f':text: {rule.title}\n', body)
+        for name in PAGES:
+            text = self.pages[name]
+            self.assertNotRegex(text, r':hpo:key:`RULE\.')
+            prose = plain_prose(text)
+            for rule in self.reg.rules:
+                self.assertNotIn(rule.id[len('RULE.'):], prose, name)
+
+    def test_entry_text_holds_no_placeholder(self):
+        # Pins: no paragraph or field outside a quoted message holds a
+        # {name} placeholder of a message (a rule says what its message
+        # holds in words, after the message).
+        # Before the fix: rule paragraphs read "{list} names those ...".
+        for name in PAGES:
+            with self.subTest(page=name):
+                self.assertNotRegex(prose_of(self.pages[name]),
+                                    r'(?<!\$)\{[A-Za-z_]+\}')
+
+    def test_no_shorthand_or_registry_field_in_the_text(self):
+        # Pins: the text of the pages names no field of the registry's
+        # schema (positive_only) and has no developer shorthand or class of
+        # a library (per-dim, rhobeg, an OUTER STEP, GradientProblemSolver).
+        # Before the fix: OPTIM AUTO read "the keys of positive_only", and
+        # the STEP and bounds notes of the optimisers had the shorthand.
+        loader = self.rhr.load_loader(os.path.join(self.hpo, 'blueprint'))
+        fields = {f for table in loader.SCHEMA.values() for f in table
+                  if '_' in f.strip('_')}
+        self.assertIn('positive_only', fields)
+        shorthand = re.compile(r'per-dim\b|\bdims?\b|rhobeg|rhoend|'
+                               r'\bOUTER\b|GradientProblemSolver|'
+                               r'(?<!Ceres )\bSolver\b|-grad\b|'
+                               r'DIAGNOSTICS counts')
+        for name in PAGES:
+            prose = prose_of(self.pages[name])
+            with self.subTest(page=name):
+                self.assertEqual([f for f in sorted(fields)
+                                  if re.search(r'\b' + f + r'\b', prose)],
+                                 [])
+                self.assertIsNone(shorthand.search(prose))
+
+    def test_the_lammps_script_entry(self):
+        # Pins: pc_options holds the entry LAMMPS_SCRIPT, what the script of
+        # a PC_LAMMPS line provides, with the fixture the registry names as
+        # its script, and the entries of PC_LAMMPS and PC_FAILPROBE cite it.
+        # Before the fix: no page said how a script takes the candidate
+        # potential (pair_coeff * * EXTERN).
+        entries = self.page_entries()
+        page, kind, body = entries['LAMMPS_SCRIPT']
+        self.assertEqual((page, kind), ('pc_options', 'topic'))
+        self.assertIn('EXTERN', body)
+        fixture = self.reg.fixtures[
+            self.reg.lammps_script.fields['fixture']].text
+        self.assertIn([l.strip() for l in fixture.strip().split('\n')],
+                      code_blocks(body))
+        for key in ('ROOT.PC_LAMMPS', 'ROOT.PC_FAILPROBE'):
+            self.assertIn(':hpo:topic:`LAMMPS_SCRIPT`',
+                          field_of(entries[key][2], 'Script') or '', key)
+
+    def test_seed_of_an_optimiser_that_draws_no_random_numbers(self):
+        # Pins: an optimiser that draws no random numbers does not list SEED
+        # among what it reads, and its entry says SEED has no effect; the
+        # SEED entry says which optimisers refuse SEED, without the claim
+        # that such an optimiser refuses it.
+        # Before the fix: DIRECT, StoGO and AGS showed "Reads: SEED" and
+        # "Random draws: never", and SEED said they refuse it.
+        entries = self.page_entries()
+        never = [f"{o['lib']}:{o['algo']}"
+                 for o in self.optimizers['optimizer']
+                 if o['status'] == 'registered'
+                 and o.get('random_draws') == 'never']
+        self.assertTrue(never)
+        for name in never:
+            body = entries[name][2]
+            with self.subTest(optimiser=name):
+                self.assertNotIn('OPTIMIZER.SEED', field_of(body, 'Reads')
+                                 or '')
+                self.assertIn('SEED', field_of(body, 'Random draws'))
+                self.assertIn('no effect', field_of(body, 'Random draws'))
+        seed = ' '.join(paragraphs_of(entries['OPTIMIZER.SEED'][2]))
+        self.assertNotIn('draws no random numbers is refused', seed)
+
+    def test_values_admit_no_refused_value(self):
+        # Pins: the Values field of an argument does not admit a number
+        # that an invalid case of the entry refuses for its range or for a
+        # fraction: an exclusive minimum is "above", a whole number "an
+        # integer". Refusals of one optimiser (a group key's message that
+        # names it) and those of the context are not ranges of the key.
+        # Before the fix: nine ASA options read "a number >= 0" and refused
+        # 0; GRID_POINTS and the integer ASA options took fractions.
+        entries = self.page_entries()
+        refusal = re.compile(r'must be (an integer|a positive|>=? ?-?\d|'
+                             r'<=? ?-?\d)|requires PARAM \S+ > 0|'
+                             r'to be an integer|must be a finite ratio >=')
+        checked = 0
+        for e in self.reg.entries():
+            args = [a for a in getattr(e, 'args', [])
+                    if a.kind in ('integer', 'number', 'positive')]
+            if len(args) != 1 or e.id not in entries:
+                continue
+            values = field_of(entries[e.id][2], 'Values') or ''
+            m = re.search(r'``<' + re.escape(args[0].name) + r'>``: '
+                          r'(.*?)(?:;|\.(?:\s|$))', values, re.S)
+            if not m:
+                continue
+            for case in e.invalid:
+                toks = case.text.split()
+                if toks and toks[0] == 'PARAM':
+                    toks = toks[1:]
+                if (len(toks) != 2 or not refusal.search(case.error)
+                        or not re.fullmatch(r'-?\d+(\.\d+)?', toks[1])):
+                    continue
+                if getattr(e, 'group', '') and re.search(
+                        r'[A-Z]+:[A-Z_0-9]+', case.error):
+                    continue
+                checked += 1
+                with self.subTest(entry=e.id, text=case.text):
+                    self.assertFalse(number_admits(m.group(1), toks[1]),
+                                     m.group(1))
+        self.assertGreater(checked, 30)
+
+    def test_annealer_entries(self):
+        # Pins: each annealer key has an example of the registry; its
+        # values read as those of the other pages (no bare "float", "> 0",
+        # "(0, 1]" or "|"); each rule of the key reads as a refusal and its
+        # message is quoted, with the annealer's name, as program output.
+        # Before the fix: 40 of 44 had no example, the values were
+        # shorthand, and "Unused when T_INIT is set" hid a refusal.
+        text = self.pages['anneal_params']
+        entries = entries_of(text)
+        rules = self.anneal['rule']
+        for k in self.anneal['key']:
+            body = entries['PARAM.TADAH:ANNEAL.' + k['name']][1]
+            with self.subTest(key=k['name']):
+                self.assertIsNotNone(field_of(body, 'Example'))
+                values = field_of(body, 'Values')
+                self.assertNotRegex(values, r'^float|^integer|^[(\[<>]|\|')
+                for r in rules:
+                    if r['key'] != k['name']:
+                        continue
+                    kinds = [kd for kd in ANNEALER if kd in k['kinds']]
+                    self.assertTrue(any(
+                        f"{ANNEALER[kd]}: {r['msg']}" in b
+                        for b in blocks_of(body, 'text') for kd in kinds),
+                        r['msg'])
+                self.assertNotIn('Unused', field_of(body, 'Rules') or '')
+
+    def test_optimiser_entries_describe_the_algorithm(self):
+        # Pins: the entry of each available optimiser, and the section of
+        # each library, starts with the description of the registry's
+        # optimiser descriptions; an abbreviation of the registry's table is
+        # spelled out at its first use on each page.
+        # Before the fix: the entries had capabilities only, and MLSL,
+        # AUGLAG, StoGO, AGS or DIRECT were never spelled out.
+        docs = self.reg.optimizer_docs
+        entries = entries_of(self.pages['optimisers'])
+        spelled = [f' ({s})' for s in self.reg.abbreviations.values()]
+        for name, doc in docs.optimizers.items():
+            with self.subTest(optimiser=name):
+                first = words_of(paragraphs_of(entries[name][1])[0])
+                for s in spelled:
+                    first, doc = first.replace(s, ''), doc.replace(s, '')
+                self.assertEqual(first.split()[:4], doc.split()[:4])
+        for lib, doc in docs.libraries.items():
+            m = re.search(r'\n' + lib + r'\n-+\n\n(.+?)\n\n',
+                          self.pages['optimisers'], re.S)
+            self.assertEqual(words_of(m.group(1)).split()[:4],
+                             doc.split()[:4], lib)
+        for name in PAGES:
+            prose = re.sub(r'\s+', ' ', plain_prose(self.pages[name]))
+            for abbr, spelled in self.reg.abbreviations.items():
+                m = re.search(r'(?<![\w-])' + re.escape(abbr) + r'(?![\w-])',
+                              prose)
+                if not m:
+                    continue
+                around = prose[max(0, m.start() - len(spelled) - 3):
+                               m.end() + len(spelled) + 3].lower()
+                with self.subTest(page=name, abbreviation=abbr):
+                    self.assertIn(spelled.lower()[:12], around)
+
+    def test_examples_are_captioned_code(self):
+        # Pins: in an Example field each code block after the first has its
+        # caption (the registry's doc), and no paragraph stands between two
+        # blocks; an example run with an environment variable says so in
+        # its caption.
+        # Before the fix: a doc was a paragraph before its block, so it read
+        # as the caption of the block above it, and the TADAH_OPTIM_SCALE
+        # example showed "OPTIM_SCALE AUTO" alone.
+        for name in PAGES:
+            for ident, (_kind, body) in entries_of(self.pages[name]).items():
+                parts = field_items(body, 'Example')
+                if not parts:
+                    continue
+                with self.subTest(entry=ident):
+                    self.assertTrue(all(p.startswith('.. code-block::')
+                                        for p in parts), parts)
+                    for b in parts[1:]:
+                        self.assertIn(':caption:', b)
+        env = entries_of(self.pages['target_keys'])['ENV.TADAH_OPTIM_SCALE']
+        self.assertIn('TADAH_OPTIM_SCALE=none',
+                      ' '.join(field_items(env[1], 'Example')))
+
+    def test_a_case_field_the_pages_do_not_show_stops_the_generator(self):
+        # Pins: a field of an example that the generator does not render
+        # stops it, naming the field.
+        import dataclasses
+        loader = self.rhr.load_loader(os.path.join(self.hpo, 'blueprint'))
+        self.rhr.check_case_fields(loader.Case)
+        Wider = dataclasses.make_dataclass(
+            'Wider', [('files', dict, dataclasses.field(default_factory=dict))],
+            bases=(loader.Case,))
+        with self.assertRaisesRegex(self.rhr.GenerationError, 'files'):
+            self.rhr.check_case_fields(Wider)
+
+    def test_values_placeholders_are_in_the_syntax(self):
+        # Pins: each <name> the Values field describes is in the Syntax of
+        # the entry (an argument of words only lists its words); a refused
+        # entry has no Repeat field; STEP's Repeat is its own rule.
+        # Before the fix: 22 entries named a placeholder Syntax does not
+        # show (NOISE AUTO ``<on>``), and --ncpu had a Repeat field.
+        checked = 0
+        for name in PAGES:
+            for ident, (_kind, body) in entries_of(self.pages[name]).items():
+                values = field_of(body, 'Values')
+                syntax = field_of(body, 'Syntax')
+                if not values or not syntax:
+                    continue
+                for ph in re.findall(r'``(<[^>]+>)``:', values):
+                    checked += 1
+                    with self.subTest(entry=ident, placeholder=ph):
+                        self.assertIn(ph, syntax)
+                if field_of(body, 'Refused') is not None:
+                    self.assertIsNone(field_of(body, 'Repeat'), ident)
+        self.assertGreater(checked, 100)
+        step = entries_of(self.pages['optimizer_keys'])['OPTIMIZER.STEP'][1]
+        self.assertIn('adds an override', field_of(step, 'Repeat'))
+
+    def test_the_hub_and_the_finite_difference_keys(self):
+        # Pins: the hub promises no field an entry lacks; the keys of the
+        # finite differences say where they are read, the gradient-based
+        # optimisers, and those cite them in their PARAM field.
+        # Before the fix: "Each entry gives the syntax, the values, the
+        # default, where the key may appear and an example", and fd_step
+        # had no Where.
+        with open(os.path.join(SOURCE, 'nfp', 'reference', 'index.rst'),
+                  encoding='utf-8') as fh:
+            hub = ' '.join(fh.read().split())
+        self.assertNotIn('Each entry gives the syntax', hub)
+        entries = entries_of(self.pages['optimisers'])
+        gradient = [f"{o['lib']}:{o['algo']}"
+                    for o in self.optimizers['optimizer']
+                    if o['status'] == 'registered' and o['gradient_based']]
+        self.assertTrue(gradient)
+        for p in self.reg.params:
+            if p.optimizers != ['*']:
+                continue
+            where = field_of(entries[p.id][1], 'Where') or ''
+            for name in gradient:
+                with self.subTest(param=p.id, optimiser=name):
+                    self.assertIn(f'`{name}`', where)
+                    self.assertIn(f'`{p.id}`',
+                                  field_of(entries[name][1], 'PARAM'))
+
+    def test_key_names_in_the_text_are_roles(self):
+        # Pins: a name of one entry (a key, block, option, PARAM key,
+        # optimiser LIB:ALGO, ...) in the text of the pages is a role, a
+        # link at its first mention in an entry; "the optimiser list" links
+        # to the optimisers page.
+        # Before the fix: FAILSCORE's text named FAILSCORE_GRADING and
+        # PC_LAMMPS as plain text, and "the optimiser list" linked nowhere.
+        names = {}
+        for name in PAGES:
+            for m in re.finditer(r'^\.\. hpo:(\w+):: (\S+)\n((?:   :\w+:.*\n)*)',
+                                 self.pages[name], re.M):
+                if m.group(1) == 'removed':
+                    continue
+                nm = re.search(r'   :names: (.+)\n', m.group(3))
+                for n in (nm.group(1).split() if nm else []):
+                    names.setdefault(n, set()).add(m.group(2))
+        unique = {n for n, ids in names.items() if len(ids) == 1
+                  and (n.startswith('-') or '_' in n or n.isupper())
+                  and not any(':' in i and i.split(':')[1] == n
+                              and '_' not in n for i in ids)}
+        self.assertIn('FAILSCORE_GRADING', unique)
+        for name in PAGES:
+            prose = plain_prose(self.pages[name])
+            bare = sorted({n for n in unique if re.search(
+                r'(?<![\w.:-])' + re.escape(n) + r'(?![\w:-])', prose)})
+            with self.subTest(page=name):
+                self.assertEqual(bare, [])
+        keys = self.pages['optimizer_keys']
+        self.assertIn(':ref:`the optimiser list <nfp_ref_optimisers>`', keys)
+        self.assertNotIn('the optimiser list', plain_prose(keys))
+
+    @unittest.skipUnless(HAVE_SPHINX, 'Sphinx and sphinx_rtd_theme are required')
+    def test_bare_names_resolve_to_the_generated_entries(self):
+        # Pins: a role that cites a bare name of the real registry links to
+        # the entry of that name: a key, a block, an algorithm, a library,
+        # a PARAM key of NLopt's grid, of an annealer and of ASA, an option,
+        # a STRATEGY type that is also a removed keyword (the live entry
+        # wins), and a rule by its id, shown as its title. A name of
+        # several entries is one warning that lists them, and a removed
+        # name one warning with its hint.
+        # Before the fix: removing the :names: of every entry still passed
+        # every test; PRESTAGE warned, listing REMOVED.PRESTAGE as an id
+        # that resolves it.
+        rule = self.reg.rules[0]
+        cite = {
+            ':hpo:key:`MAXEVAL`': 'OPTIMIZER.MAXEVAL',
+            ':hpo:block:`STRATEGY`': 'BLOCK.STRATEGY',
+            ':hpo:opt:`LN_SBPLX`': 'NLOPT:LN_SBPLX',
+            ':hpo:opt:`NLOPT`': 'NLOPT',
+            ':hpo:param:`GRID_POINTS`': 'PARAM.TADAH:GRID.GRID_POINTS',
+            ':hpo:param:`T_HOT`': 'PARAM.TADAH:ANNEAL.T_HOT',
+            ':hpo:param:`Temperature_Ratio_Scale`':
+                'PARAM.ASA:ASA.Temperature_Ratio_Scale',
+            ':hpo:key:`--skip-above`': 'PC_EMAE.--skip-above',
+            ':hpo:key:`PRESTAGE`': 'STRATEGY.TYPE.PRESTAGE',
+            f':hpo:topic:`{rule.id}`': rule.id,
+        }
+        warned = [':hpo:key:`SEED`', ':hpo:key:`--hotvar`',
+                  ':hpo:key:`INIT_K`', ':hpo:param:`L`']
+        guide = 'Guide\n=====\n\n' + '\n\n'.join(
+            f'Line {r}.' for r in list(cite) + warned) + '\n'
+        status, warnings, html = build_pages(
+            self.pages, {'nfp/guide.rst': guide}, toctree=['nfp/guide'])
+        self.assertNotEqual(status, 0)
+        page = html['nfp/guide']
+        found = re.findall(r'<a class="reference internal" href="'
+                           r'reference/\w+\.html#([^"]+)"', page)
+        self.assertEqual(found, list(cite.values()))
+        self.assertIn(f'>{rule.title}<', page)
+        self.assertEqual(len(warnings), 4, warnings)
+        live = ['INIT.SEED', 'OPTIMIZER.SEED', 'RHOBARGATE.SEED',
+                'RHOGATE.SEED']
+        self.assertIn("hpo:key: 'SEED' names 4 entries: " + ', '.join(live),
+                      warnings[0])
+        self.assertIn("hpo:key: '--hotvar' names 2 entries", warnings[1])
+        self.assertIn("hpo:key: 'INIT_K' was removed from the target file",
+                      warnings[2])
+        self.assertIn("hpo:param: 'L' was removed from the target file",
+                      warnings[3])
+
+
+def build_pages(pages, extra=None, toctree=()):
+    """Builds the hub and the generated *pages* with the hpo domain and the
+    layout rules (-W --keep-going), with *extra* pages (path -> text) in
+    the toctree *toctree*: (exit status, warning lines, {page: html})."""
+    with tempfile.TemporaryDirectory(prefix='tadah_hpo_pages_') as tmp:
+        src = os.path.join(tmp, 'src')
+        ref = os.path.join(src, 'nfp', 'reference')
+        os.makedirs(ref)
+        shutil.copy(os.path.join(SOURCE, 'nfp', 'reference', 'index.rst'),
+                    ref)
+        for name in PAGES:
+            with open(os.path.join(ref, name + '.rst'), 'w',
+                      encoding='utf-8') as fh:
+                fh.write(pages[name])
+        entries = ''.join(f'   {t}\n' for t in toctree)
+        files = dict({
+            'index.rst': 'Fixture\n=======\n\n.. toctree::\n'
+                         '   :caption: Nested Fitting\n   :titlesonly:\n\n'
+                         '   overview\n   nfp/reference/index\n' + entries,
+            'overview.rst': '.. _nested_fitting:\n\nOverview\n========\n',
+            'conf.py': (f'import sys\nsys.path.insert(0, {TOOLS!r})\n'
+                        "project = 'Fixture'\n"
+                        "extensions = ['hpotarget_domain', 'nfp_checks']\n"
+                        "html_theme = 'sphinx_rtd_theme'\n"
+                        "html_theme_options = {'navigation_depth': 2}\n")},
+            **(extra or {}))
+        for name, text in files.items():
+            path = os.path.join(src, name)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w', encoding='utf-8') as fh:
+                fh.write(text)
+        out = os.path.join(tmp, 'html')
+        proc = subprocess.run(
+            [sys.executable, '-m', 'sphinx', '-b', 'html', '-q', '-W',
+             '--keep-going', src, out],
+            capture_output=True, text=True, timeout=600)
+        html = {}
+        for name in extra or {}:
+            path = os.path.join(out, name[:-4] + '.html')
+            if os.path.isfile(path):
+                with open(path, encoding='utf-8') as fh:
+                    html[name[:-4]] = fh.read()
+    warnings = [l.replace(src + os.sep, '') for l in proc.stderr.splitlines()
+                if 'WARNING' in l]
+    return proc.returncode, warnings, html
 
 if __name__ == '__main__':
     unittest.main()

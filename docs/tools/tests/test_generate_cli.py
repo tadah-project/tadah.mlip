@@ -123,5 +123,42 @@ class GenerateCliTest(unittest.TestCase):
             '      mt19937_64.'])
 
 
+    def test_a_retired_option_gives_its_conversion(self):
+        # Pins: a retired key (CORE's blueprint field `retired`) whose
+        # command-line option is kept to give the conversion is listed with
+        # "**Retired**:" and its reason, "**Replaced by**:" and
+        # "**Conversion**:", and no default or examples; parse_blueprint
+        # reads the field.
+        # Before the fix: the field was not read, and the option read as an
+        # ordinary one.
+        bk = self.gc.BlueprintKey()
+        bk.keyName = 'train.wdbfile_auto'
+        bk.value_type = ['DOUBLE']
+        bk.value_format = ['<double>']
+        bk.description = 'Retired: the dataset balance.'
+        bk.cli_long_flag = '--wdbfile-auto'
+        bk.retired = {'reason': 'It weighted each dataset by n_d^-a.',
+                      'replacement': 'WDBFILE',
+                      'conversion': 'WDBFILE n_d^-a, one per dataset.'}
+        out = self.gc.build_key_info(bk)
+        self.assertEqual(out[0], '  --wdbfile-auto  <double>')
+        self.assertIn('    **Retired**: It weighted each dataset by n_d^-a.',
+                      out)
+        self.assertIn('    **Replaced by**: WDBFILE', out)
+        self.assertIn('    **Conversion**: WDBFILE n_d^-a, one per dataset.',
+                      out)
+        self.assertFalse(any('**Default**' in l or '**Examples**' in l
+                             for l in out))
+        data = {'value_type': ['DOUBLE'], 'value_format': ['<double>'],
+                'value_N': [1], 'examples': [],
+                'retired': dict(bk.retired)}
+        parsed = self.gc.build_blueprint_key('train.wdbfile_auto', data)
+        self.assertEqual(parsed.retired, bk.retired)
+        plain = self.gc.build_blueprint_key(
+            'train.lambda', {'value_type': ['DOUBLE'],
+                             'value_format': ['<double>'], 'value_N': [1]})
+        self.assertEqual(plain.retired, {})
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -650,6 +650,33 @@ class PagesTest(unittest.TestCase):
                 out[ident] = (name, kind, body)
         return out
 
+    def test_every_validation_metric_is_under_validation_metrics(self):
+        # Pins: every top-level key whose registry doc says it is a loss
+        # term on a metric of the validation datasets ("A loss term on the
+        # ... of the validation datasets") has its entry in the section
+        # "Validation metrics" of pc_options, and the section holds no
+        # other key's entry; PC_SRMSE_GPA, the stress metric in GPa, is one
+        # of them.
+        # Before the fix: the generator listed the metrics by name, with
+        # PC_SRMSE, so PC_SRMSE_GPA, which replaces it, was placed under
+        # "LAMMPS scripts".
+        text = self.pages['pc_options']
+        heads = [(m.start(), m.group(1)) for m in re.finditer(
+            r'^([^\n]+)\n-{3,}$', text, re.M)]
+        names = [h for _, h in heads]
+        self.assertIn('Validation metrics', names)
+        start = heads[names.index('Validation metrics')][0]
+        end = heads[names.index('Validation metrics') + 1][0]
+        section = text[start:end]
+        declared = set(re.findall(r'^\.\. hpo:key:: ROOT\.(\S+)$', section,
+                                  re.M))
+        metrics = {k.name for k in self.reg.keys
+                   if k.blocks == ['ROOT'] and not k.alias_of
+                   and re.match(r'A loss term on the .* of the validation '
+                                r'datasets', ' '.join(k.doc.split()))}
+        self.assertIn('PC_SRMSE_GPA', metrics)
+        self.assertEqual(declared, metrics)
+
     def test_where_leaves_out_a_block_that_refuses_the_key(self):
         # Pins: the Where field of a key of the optimiser group cites each
         # block of the group but one that refuses the key (an INNER block

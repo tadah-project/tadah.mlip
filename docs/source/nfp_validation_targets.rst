@@ -28,8 +28,10 @@ the root of the :doc:`target file <nfp_configuration>`.
 A validation file is required whenever any validation metric is enabled.
 ``FORCE`` and ``STRESS`` in the training configuration control training;
 validation computes forces for ``PC_FRMSE`` and stresses for
-``PC_SRMSE`` independently. Those two training switches are refused in
-the validation file.
+``PC_SRMSE_GPA`` independently. The validation set is not fitted, so the
+keys that set a fit are refused in the validation file: ``FORCE``,
+``STRESS``, ``ENERGY``, ``ENORM``, the error scales ``ESIGMA``, ``FSIGMA``
+and ``SSIGMA``, and the retired keys (:ref:`fit_objective_conversion`).
 
 Metric keys
 -----------
@@ -40,8 +42,9 @@ has one global line: a second one is refused, and the message names the
 line of the first.
 
 .. versionchanged:: 1.6.0
-   A repeated ``PC_EMAE``, ``PC_ErRMSE``, ``PC_ERSQ`` or ``PC_SRMSE``
-   line is refused. 1.5.0 used the last one.
+   A repeated ``PC_EMAE``, ``PC_ErRMSE`` or ``PC_ERSQ`` line is refused.
+   1.5.0 used the last one. ``PC_SRMSE_GPA`` replaces ``PC_SRMSE`` (six
+   entries in eV/Å³), which is refused with the conversion.
 
 .. list-table:: Metrics and units
    :header-rows: 1
@@ -65,9 +68,9 @@ line of the first.
    * - ``PC_FRMSE``
      - Force-component RMSE
      - eV/Å
-   * - ``PC_SRMSE``
-     - Stress-component RMSE
-     - eV/Å³
+   * - ``PC_SRMSE_GPA``
+     - Stress RMSE over the nine entries of each tensor
+     - GPa
 
 Keep the spelling ``PC_ErRMSE``: root keywords are case-sensitive.
 For the global form, HPO takes the unweighted arithmetic mean of the
@@ -77,7 +80,8 @@ target and weight.
 Dataset-specific targets
 ------------------------
 
-Only ``PC_ERMSE`` and ``PC_FRMSE`` support indexed declarations:
+Only ``PC_ERMSE``, ``PC_FRMSE`` and ``PC_SRMSE_GPA`` support indexed
+declarations:
 
 .. code-block:: none
 
@@ -106,17 +110,18 @@ the mean of dataset losses differs from taking the loss of the mean metric.
 Missing reference data
 ----------------------
 
-A structure with force weight zero is excluded from the force metric;
-one with stress weight zero is excluded from the stress metric. A
+A structure with force priority zero (``fweight`` 0) is excluded from the
+force metric; one with stress priority zero (``sweight`` 0) from the stress
+metric. A
 dataset with no such reference data is unmeasured for that metric and
 has ``nan`` in its metric columns.
 
 Global force and stress metrics average only the measured datasets.
-For indexed ``PC_FRMSE``, an unmeasured dataset needs an explicit zero
-weight: it contributes no loss, but the indexed average still divides
+For indexed ``PC_FRMSE`` and ``PC_SRMSE_GPA``, an unmeasured dataset needs
+an explicit zero weight: it contributes no loss, but the indexed average still divides
 by the total number of validation datasets. Startup rejects a metric
-with no measured dataset, or a positive indexed force weight assigned
-to an unmeasured dataset. Empty validation datasets are also rejected.
+with no measured dataset, or a positive indexed force or stress weight
+assigned to an unmeasured dataset. Empty validation datasets are also rejected.
 
 Early-rejection options
 -----------------------

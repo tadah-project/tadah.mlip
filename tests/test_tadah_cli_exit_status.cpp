@@ -44,8 +44,8 @@
 //
 // The [oalgo] cases run `tadah train` with OALGO 4 and OALGO 2 on fewer
 // data rows than weights, and on fewer non-zero data rows than weights (a
-// structure of weight 0; a dimer's y and z force rows and an isolated
-// atom's energy, of weight 1); they run in every build.
+// structure of priority 0; a dimer's y and z force rows and an isolated
+// atom's energy, of priority 1); they run in every build.
 //
 // The [task-file] cases run `tadah --task` on a task file whose TASK lines
 // carry an inline comment, and on task files with a TASK line that has no
@@ -1609,14 +1609,14 @@ std::string metric_line(const std::string& out, const std::string& metric) {
 }
 
 /* Pins: `tadah predict -F -S -A` leaves a structure stored with force and
- * stress weight 0 (weights line `1 0 0`) out of the force and stress
+ * stress priority 0 (priorities line `1 0 0`) out of the force and stress
  * metrics: on S1, W, S3, where W's reference forces (50 eV/A) and stress
  * (0.5 eV/A^3) are far from the prediction, every Force and Stress MAE,
  * RMSE and R^2 line equals the one for S1, S3 alone.
  * Before the fix: W was included, so the force metrics were off by O(10)
  * eV/A and the stress metrics by O(0.1) eV/A^3. */
-TEST_CASE("Subcommand: predict -A leaves structures with weight 0 out of the "
-          "force and stress metrics",
+TEST_CASE("Subcommand: predict -A leaves structures with priority 0 out of "
+          "the force and stress metrics",
           "[TadahCLI][predict][weight0]") {
   ScratchCwd cwd("predict_weight0");
   std::ofstream("pot.tadah") << kPairPotential;
@@ -1651,14 +1651,16 @@ std::vector<std::string> fields_of(const std::string& line) {
 }
 
 /* Pins: `tadah predict -A` measures a dataset whose structures all have force
- * weight 0 (stress weight 0) in no force (stress) metric: with -F -A on
- * S.tadah (weights 1) and nof.tadah (force weights 0) it exits 0, prints nan
+ * priority 0 (stress priority 0) in no force (stress) metric: with -F -A on
+ * S.tadah (priorities 1) and nof.tadah (fweight 0) it exits 0, prints nan
  * for nof.tadah in each Force line, a mean equal to S.tadah's value, and a
  * line naming nof.tadah as not measured; the same with -S for nos.tadah
- * (stress weights 0). With only the file without the data it exits 1 before
- * predicting, naming it and the weight. The other weight refuses nothing
- * (nof.tadah -S -A and nos.tadah -F -A, and -A alone, exit 0).
- * Before the fix: the run with both files was refused. */
+ * (sweight 0). With only the file without the data it exits 1 before
+ * predicting, naming it and the priority ("force priority 0", "stress
+ * priority 0"). The other priority refuses nothing (nof.tadah -S -A and
+ * nos.tadah -F -A, and -A alone, exit 0).
+ * Before the fix: the run with both files was refused. (Until the priority
+ * wording the refusal said "force weight 0".) */
 TEST_CASE("Subcommand: predict -A leaves out a dataset without the data, and "
           "refuses when no dataset has it",
           "[TadahCLI][predict][weight0]") {
@@ -1671,8 +1673,8 @@ TEST_CASE("Subcommand: predict -A leaves out a dataset without the data, and "
   std::ofstream("nos.tadah") << weighted_entry("N1", "1 1 0", "1.40 1.30 1.20", "0.1", "0")
                              << weighted_entry("N2", "1 1 0", "1.60 1.25 1.30", "-0.1", "0");
   struct Case { std::string file, flag, metric, weight; };
-  for (const Case& c : {Case{"nof.tadah", "-F", "Force", "force weight 0"},
-                        Case{"nos.tadah", "-S", "Stress", "stress weight 0"}}) {
+  for (const Case& c : {Case{"nof.tadah", "-F", "Force", "force priority 0"},
+                        Case{"nos.tadah", "-S", "Stress", "stress priority 0"}}) {
     INFO(c.file);
     {
       const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "S.tadah",
@@ -1702,8 +1704,8 @@ TEST_CASE("Subcommand: predict -A leaves out a dataset without the data, and "
       CHECK_FALSE(std::filesystem::exists("energy.pred"));
     }
   }
-  // The other weight refuses nothing: nof.tadah has stress weights 1 and
-  // nos.tadah force weights 1.
+  // The other priority refuses nothing: nof.tadah has sweight 1 and
+  // nos.tadah fweight 1.
   const std::vector<std::tuple<std::string, std::string, std::string>> other = {
       {"nof.tadah", "-S", "Stress RMSE"}, {"nos.tadah", "-F", "Force RMSE"}};
   for (const auto& c : other) {
@@ -1730,17 +1732,19 @@ std::string entry_with_energy_weight(const std::string& label, const std::string
   return e;
 }
 
-/* Pins: `tadah predict -A` leaves a structure stored with energy weight 0
- * (weights line `0 1 1`, a placeholder energy of 1000 eV) out of the energy
- * metrics: on S1, W, S3 every Energy MAE, RMSE and R^2 line equals the one
- * for S1, S3 alone. A dataset whose structures all have energy weight 0
- * (noe.tadah) is not measured: with S.tadah, each Energy line prints nan
- * for it and a mean equal to S.tadah's value, and a note names it; alone
- * it exits 0 (the energy is predicted whatever the metrics measure).
+/* Pins: `tadah predict -A` leaves a structure stored with energy priority 0
+ * (priorities line `0 1 1`, a placeholder energy of 1000 eV) out of the
+ * energy metrics: on S1, W, S3 every Energy MAE, RMSE and R^2 line equals
+ * the one for S1, S3 alone. A dataset whose structures all have energy
+ * priority 0 (noe.tadah) is not measured: with S.tadah, each Energy line
+ * prints nan for it and a mean equal to S.tadah's value, and a note names
+ * it and "energy priority 0"; alone it exits 0 (the energy is predicted
+ * whatever the metrics measure).
  * Before the fix: W's 1000 eV were counted, and noe.tadah's placeholders
- * gave numbers. */
-TEST_CASE("Subcommand: predict -A leaves structures with energy weight 0 out "
-          "of the energy metrics",
+ * gave numbers. (Until the priority wording the note said "energy weight
+ * 0".) */
+TEST_CASE("Subcommand: predict -A leaves structures with energy priority 0 "
+          "out of the energy metrics",
           "[TadahCLI][predict][weight0]") {
   ScratchCwd cwd("predict_eweight0");
   std::ofstream("pot.tadah") << kPairPotential;
@@ -1778,7 +1782,7 @@ TEST_CASE("Subcommand: predict -A leaves structures with energy weight 0 out "
     CHECK((f[4] == "nan" || f[4] == "-nan"));  // as printed (no isnan: fast-math)
   }
   CHECK(contains(rep, "noe.tadah"));
-  CHECK(contains(rep, "energy weight 0"));
+  CHECK(contains(rep, "energy priority 0"));
   const CliRun alone = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "noe.tadah", "-A"});
   INFO("alone: status " << alone.status << "\n" << reported(alone));
   CHECK(alone.status == 0);
@@ -1829,21 +1833,26 @@ std::vector<double> predicted_values(const std::string& file) {
 }
 
 /* Pins: `tadah predict --error` predicts the same energies, forces and
- * stresses as `tadah predict`, whatever the weights: on two structures with
- * weights `0.25 0.36 0.49` and a potential with EWEIGHT 4, FWEIGHT 9 and
- * SWEIGHT 16 (and the weight covariance WCOV = I, WNOISE 1 for E, F and
- * S), energy.pred, forces.pred and stress.pred agree to 1e-12, and so do
- * the -A metric lines.
+ * stresses as `tadah predict`, whatever the priorities and error scales:
+ * on two structures with priorities `0.25 0.36 0.49` and a potential with
+ * ESIGMA 250, ENORM SQRT, FSIGMA 0.25 0.1 and SSIGMA 40 0.05 (and the
+ * weight covariance WCOV = I, WNOISE 1 for E, F and S), energy.pred,
+ * forces.pred and stress.pred agree to 1e-12, and so do the -A metric
+ * lines (a design matrix with the row factors of a fit, sqrt(priority) /
+ * error scale, would change every value).
  * Before the fix: the --error path predicted from the weighted design
  * matrix, so each value was multiplied by the square root of its weight
- * times the global weight (energies by 1, forces by 1.8, stresses by 2.8).
- * Before WCOV and WNOISE (the covariance was SIGMA = I in this case's
- * potential): the potential failed to parse ("Invalid key: WCOV"). */
+ * times the global weight (energies by 1, forces by 1.8, stresses by 2.8,
+ * with the EWEIGHT 4, FWEIGHT 9 and SWEIGHT 16 the potential had before the
+ * error scales). Before WCOV and WNOISE (the covariance was SIGMA = I in
+ * this case's potential): the potential failed to parse ("Invalid key:
+ * WCOV"). */
 TEST_CASE("Subcommand: predict --error predicts what predict predicts",
           "[TadahCLI][predict][weight0]") {
   ScratchCwd cwd("predict_error_weights");
   std::ofstream("pot.tadah") << kPairPotential
-                             << "EWEIGHT     4\nFWEIGHT     9\nSWEIGHT     16\n"
+                             << "ESIGMA     250\nENORM     SQRT\nENERGY     true\n"
+                                "FSIGMA     0.25     0.1\nSSIGMA     40     0.05\n"
                                 "WCOV     4     1 0 0 0     0 1 0 0     0 0 1 0     0 0 0 1\n"
                                 "WNOISE     E 1     F 1     S 1\n";
   std::ofstream("d.tadah")
@@ -1881,8 +1890,8 @@ TEST_CASE("Subcommand: predict --error predicts what predict predicts",
  * --ffilter 0.01, below its reference forces of 0.1 eV/A), naming the file
  * and saying so, with or without -F.
  * Before the fix: with -F it said every structure had force weight 0 (their
- * force weights are 1); without -F it printed energy metrics of no
- * structure. */
+ * fweight is 1); without -F it printed energy metrics of no structure. The
+ * check that the message names no priority 0 reads both wordings. */
 TEST_CASE("Subcommand: predict -A refuses a dataset left empty by the filters",
           "[TadahCLI][predict][weight0]") {
   ScratchCwd cwd("predict_filtered_empty");
@@ -1902,6 +1911,7 @@ TEST_CASE("Subcommand: predict -A refuses a dataset left empty by the filters",
     CHECK(contains(rep, "hot.tadah"));
     CHECK(contains(rep, "no structures after loading"));
     CHECK_FALSE(contains(rep, "force weight 0"));
+    CHECK_FALSE(contains(rep, "force priority 0"));
     CHECK_FALSE(std::filesystem::exists("energy.pred"));
   }
 }
@@ -1971,17 +1981,26 @@ TEST_CASE("Subcommand: data dedup keeps the first of three equal structures",
   CHECK(dataset_labels("out.tadah") == std::vector<std::string>{"T1", "T4"});
 }
 
-/* Pins: `tadah data balance --rescale -F -S` keeps a weight of 0: it marks
- * a quantity the structure has no data for (the DFT readers write sweight 0
- * for a structure without a stress tensor) or that is excluded, so
- * rescaling leaves it 0. Of B1 (weights 1 1 1) and B2 (weights 1 0 0, no
- * forces or stress data), B2 keeps fweight 0 and sweight 0 while B1's are
- * rescaled.
- * Before the fix: every weight was rescaled, so B2's zero stress and forces
- * were fitted again (fweight and sweight 1 below the thresholds). */
-TEST_CASE("Subcommand: data balance --rescale keeps a weight of 0",
+/* Pins: `tadah data balance --eshift -5` shifts the energy of each
+ * structure by -5 eV per atom and writes the priorities of the data file
+ * as they are: of B1 (priorities 1 1 1, -11.5 eV) and B2 (1 0 0, no forces
+ * or stress data, -11.4 eV), two atoms each, the output has B1 at -1.5 eV
+ * with 1 1 1 and B2 at -1.4 eV with 1 0 0. The options of the retired
+ * rescaling, --rescale, --threshold, --force (-F) and --stress (-S), are
+ * refused: each exits non-zero, naming the option and why ("tadah data
+ * balance shifts energies only"), without writing the output; so is a
+ * task file whose TASK data balance section has RESCALE true, naming
+ * RESCALE and its line, and one whose GLOBAL section has RESCALE true,
+ * which reaches its TASK data balance section, naming the GLOBAL line.
+ * Before the fix: --rescale replaced the priorities by inverse magnitudes
+ * (B1's fweight 1/0.2 and sweight 1/sqrt(3 * 0.01^2), B2's 0 kept), so the
+ * runs with the four options exited 0 and wrote the output; then the
+ * command line refused them as unknown options ("The following argument
+ * was not expected"), and the task files ran with RESCALE ignored. */
+TEST_CASE("Subcommand: data balance shifts energies, keeps the priorities and "
+          "refuses the options of the removed rescaling",
           "[TadahCLI][exit-status][data]") {
-  ScratchCwd cwd("balance_zero_weight");
+  ScratchCwd cwd("balance_priorities");
   {
     std::ofstream os("db.tadah");
     os << "B1\n1 1 1\n-11.5\n3.3 0 0\n0 3.3 0\n0 0 3.3\n0.01 0 0\n0 0.01 0\n0 0 0.01\n"
@@ -1989,18 +2008,62 @@ TEST_CASE("Subcommand: data balance --rescale keeps a weight of 0",
        << "B2\n1 0 0\n-11.4\n3.31 0 0\n0 3.31 0\n0 0 3.31\n0 0 0\n0 0 0\n0 0 0\n"
           "Ta 0 0 0 0 0 0\nTa 1.655 1.655 1.655 0 0 0\n\n";
   }
-  const CliRun r = run_tadah({"tadah", "data", "balance", "-d", "db.tadah",
-                              "-o", "out.tadah", "--rescale", "-F", "-S"});
-  INFO("status " << r.status << "\n" << reported(r));
-  REQUIRE(r.status == 0);
-  tadah::core::PeriodicTable::initialize();
-  tadah::mlip::StructureDB db;
-  db.add("out.tadah");
-  REQUIRE(db.size() == 2);
-  CHECK(db(0).fweight == Approx(1.0 / 0.2));
-  CHECK(db(0).sweight == Approx(1.0 / std::sqrt(3 * 0.01 * 0.01)));
-  CHECK(db(1).fweight == 0.0);
-  CHECK(db(1).sweight == 0.0);
+  {
+    const CliRun r = run_tadah({"tadah", "data", "balance", "-d", "db.tadah",
+                                "-o", "out.tadah", "--eshift", "-5.0"});
+    INFO("status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    tadah::core::PeriodicTable::initialize();
+    tadah::mlip::StructureDB db;
+    db.add("out.tadah");
+    REQUIRE(db.size() == 2);
+    CHECK(db(0).energy == Approx(-1.5).margin(1e-12));
+    CHECK(db(1).energy == Approx(-1.4).margin(1e-12));
+    CHECK(db(0).eweight == 1.0);
+    CHECK(db(0).fweight == 1.0);
+    CHECK(db(0).sweight == 1.0);
+    CHECK(db(1).eweight == 1.0);
+    CHECK(db(1).fweight == 0.0);
+    CHECK(db(1).sweight == 0.0);
+  }
+  const std::vector<std::vector<std::string>> removed = {
+      {"--rescale"}, {"--threshold", "0.1"}, {"--force"}, {"-F"},
+      {"--stress"}, {"-S"}};
+  for (const auto& option : removed) {
+    std::filesystem::remove("out2.tadah");
+    std::vector<std::string> args = {"tadah", "data", "balance", "-d",
+                                     "db.tadah", "-o", "out2.tadah",
+                                     "--eshift", "-5.0"};
+    args.insert(args.end(), option.begin(), option.end());
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO(option[0] << ": status " << r.status << "\n" << rep);
+    CHECK(r.status != 0);
+    CHECK(contains(rep, option[0]));
+    CHECK(contains(rep, "tadah data balance shifts energies only"));
+    CHECK_FALSE(std::filesystem::exists("out2.tadah"));
+  }
+  std::ofstream("b4.task") << "TASK data balance\n  DBFILE db.tadah\n"
+                              "  ESHIFT -8.0\n  RESCALE true\n"
+                              "  OUTFILE balX.tadah\n";
+  const CliRun t = run_tadah({"tadah", "--task", "b4.task"});
+  const std::string rep = reported(t);
+  INFO("task file: status " << t.status << "\n" << rep);
+  CHECK(t.status != 0);
+  CHECK(contains(rep, "RESCALE (line 4 of b4.task) in TASK data balance"));
+  CHECK(contains(rep, "tadah data balance shifts energies only"));
+  CHECK_FALSE(std::filesystem::exists("balX.tadah"));
+  std::ofstream("b5.task") << "RESCALE true\nTASK data balance\n"
+                              "  DBFILE db.tadah\n  ESHIFT -8.0\n"
+                              "  OUTFILE balY.tadah\n";
+  const CliRun g = run_tadah({"tadah", "--task", "b5.task"});
+  const std::string grep = reported(g);
+  INFO("GLOBAL RESCALE: status " << g.status << "\n" << grep);
+  CHECK(g.status != 0);
+  CHECK(contains(grep, "RESCALE (line 1 of b5.task) in the GLOBAL section "
+                       "reaches TASK data balance"));
+  CHECK(contains(grep, "tadah data balance shifts energies only"));
+  CHECK_FALSE(std::filesystem::exists("balY.tadah"));
 }
 
 /* Pins: `tadah data dedup` on two copies of a structure whose cell block
@@ -3389,8 +3452,8 @@ namespace {
 /* What the OALGO 2 and 4 messages say of the zero data rows. */
 const char *const kZeroDataRows =
     " (a data row that is zero in every column adds nothing to the rank: a "
-    "row of weight 0, or a row the descriptors make zero, such as the y and "
-    "z force rows of a linear molecule along x)";
+    "row of priority 0, or a row the descriptors make zero, such as the y "
+    "and z force rows of a linear molecule along x)";
 
 }  // namespace
 
@@ -3464,19 +3527,19 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
   CHECK(std::filesystem::exists("pot1.tadah"));
 }
 
-/* Pins: the case above with a third structure of energy weight 0 (its
- * weights line '0.0 1.0 1.0'), whose energy row is zero in the design
+/* Pins: the case above with a third structure of energy priority 0 (its
+ * priorities line '0.0 1.0 1.0'), whose energy row is zero in the design
  * matrix: `tadah train` with OALGO 4 exits 1 with "OALGO 4 (normal
  * equations, Cholesky) cannot fit these 3 weights: the design matrix has 2
  * non-zero data rows of 3 (a data row that is zero in every column adds
- * nothing to the rank: a row of weight 0, or a row the descriptors make
+ * nothing to the rank: a row of priority 0, or a row the descriptors make
  * zero, such as the y and z force rows of a linear molecule along x) for 3
  * weights, LAMBDA 0: fewer non-zero data rows than weights, so it does not
  * have full column rank and the least-squares weights are not unique." and
  * the remedies, and writes no potential; OALGO 2 the same with "OALGO 2
- * (DGELS, QR)"; OALGO 1 fits it (exit 0). Zero rows of weight 1: the next
- * case. (Until the zero-row wording fix the parenthesis was "(a row of
- * weight 0 is zero)".)
+ * (DGELS, QR)"; OALGO 1 fits it (exit 0). Zero rows of priority 1: the
+ * next case. (Until the zero-row wording fix the parenthesis was "(a row of
+ * weight 0 is zero)", and until the priority wording "a row of weight 0".)
  * Before the fix: the pre-check counted the zero row as data (3 data rows
  * for 3 weights) and LAPACK decided: both exited 1, OALGO 4 with "the
  * matrix Phi^T Phi of the design matrix (3 data rows for 3 weights, LAMBDA
@@ -3488,7 +3551,7 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
  * zero row for 3 weights, test_linear_regressor_messages.cpp's OALGO 4
  * fitted without an error). */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
-          "rows than weights, a structure of weight 0 included",
+          "rows than weights, a structure of priority 0 included",
           "[TadahCLI][exit-status][train][oalgo]") {
   ScratchCwd cwd("train_oalgo_weight_zero_rows");
   std::ofstream("db.tadah")
@@ -3547,15 +3610,15 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
   CHECK(std::filesystem::exists("pot1.tadah"));
 }
 
-/* Pins: data rows that are zero with weight 1 are counted as zero, and the
- * message does not blame weight 0 (every weights line is '1.0 1.0 1.0',
- * EWEIGHT and FWEIGHT are 1): `tadah train` with OALGO 4 and with OALGO 2
+/* Pins: data rows that are zero with priority 1 are counted as zero, and
+ * the message does not blame priority 0 (every priorities line is '1.0 1.0
+ * 1.0'): `tadah train` with OALGO 4 and with OALGO 2
  * exits 1 and writes no potential,
  *  - on a Ta dimer along x with FORCE true and TYPE2B D2_BP 4 4 (4
  *    weights), whose y and z force rows are zero (1 energy and 6 force
  *    rows, 3 not zero): "... cannot fit these 4 weights: the design matrix
  *    has 3 non-zero data rows of 7 (a data row that is zero in every
- *    column adds nothing to the rank: a row of weight 0, or a row the
+ *    column adds nothing to the rank: a row of priority 0, or a row the
  *    descriptors make zero, such as the y and z force rows of a linear
  *    molecule along x) for 4 weights, LAMBDA 0: fewer non-zero data rows
  *    than weights, ...";
@@ -3568,7 +3631,7 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
  * parenthesis was "(a row of weight 0 is zero)", which sent the user to
  * look for a weight 0 that none of these rows has. */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 counts zero data rows of "
-          "weight 1, a dimer's y and z forces and an isolated atom's energy",
+          "priority 1, a dimer's y and z forces and an isolated atom's energy",
           "[TadahCLI][exit-status][train][oalgo]") {
   ScratchCwd cwd("train_oalgo_zero_rows_weight_one");
   std::ofstream("dimer.tadah")
@@ -6721,22 +6784,22 @@ TEST_CASE("Subcommand: train refuses the SBASIS of M_KRR Kern_Linear 2 "
 #ifdef TADAH_ENABLE_NFP
 /* Pins: a task file with two `TASK hpo` blocks (one evaluation each, at
  * the CONFIG seed of OPTIM CGRID2B (1); PC_ERMSE and PC_FRMSE), A with
- * LAMBDA 1e-4 and FWEIGHT 1, then B with LAMBDA 0.1 and FWEIGHT 100: exit
+ * LAMBDA 1e-4 and FSIGMA 1, then B with LAMBDA 0.1 and FSIGMA 0.1: exit
  * 0, and the best_pot.tadah the second run writes is B's: LAMBDA 0.1,
- * FWEIGHT 100, and the weights of `tadah train -c` with B's configuration
+ * FSIGMA 0.1, and the weights of `tadah train -c` with B's configuration
  * (1e-10 relative: the same fit at the seed).
  * Before the fix: the second run evaluated the first run's model (the
  * thread's trainer of A, with only CGRID2B rewritten): best_pot.tadah had
- * LAMBDA 1e-4, FWEIGHT 1 and A's weights. */
+ * LAMBDA 1e-4, A's error scale (FSIGMA 1) and A's weights. */
 TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
           "[TadahCLI][hpo][task-file][retrain]") {
   ScratchCwd cwd("two_hpo_tasks");
   std::ofstream("db.tadah") << retrain_dataset();
   { std::ofstream os("config.val"); os << "DBFILE db.tadah\n"; }
   std::ofstream("configA.tadah")
-      << retrain_config("M_BLR BF_Linear", "LAMBDA 1e-4\nOALGO 4\nFWEIGHT 1\n");
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 1e-4\nOALGO 4\nFSIGMA 1\n");
   std::ofstream("configB.tadah")
-      << retrain_config("M_BLR BF_Linear", "LAMBDA 0.1\nOALGO 4\nFWEIGHT 100\n");
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 0.1\nOALGO 4\nFSIGMA 0.1\n");
   {
     std::ofstream os("config.hpo");
     os << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
@@ -6755,11 +6818,11 @@ TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
   const std::string best = slurp("best_pot.tadah");
   INFO("best_pot.tadah:\n" << best);
   const auto lambda = line_tokens(best, "LAMBDA");
-  const auto fweight = line_tokens(best, "FWEIGHT");
+  const auto fsigma = line_tokens(best, "FSIGMA");
   REQUIRE(lambda.size() == 2);
-  REQUIRE(fweight.size() == 2);
+  REQUIRE(fsigma.size() >= 2);
   CHECK(std::strtod(lambda[1].c_str(), nullptr) == 0.1);
-  CHECK(std::strtod(fweight[1].c_str(), nullptr) == 100.0);
+  CHECK(std::strtod(fsigma[1].c_str(), nullptr) == 0.1);
 
   const CliRun t = run_tadah({"tadah", "train", "-c", "configB.tadah", "-o", "potB.tadah"});
   INFO("train B: status " << t.status << "\n" << reported(t));
@@ -6965,7 +7028,7 @@ TEST_CASE("Subcommand: train --uncertainty lists the standard deviation of "
  * directions (gamma = 2), so the noise variance, and with it the weight
  * covariance, is undefined. `tadah train --uncertainty` exits 1 before
  * writing pot.tadah, naming --uncertainty, the 2 observations and the
- * remedy of that reason ("add data with a non-zero weight"); without
+ * remedy of that reason ("add data of priority above 0"); without
  * --uncertainty it exits 0 and writes a potential without WCOV and WNOISE,
  * with a WARNING that no weight covariance was computed; `tadah predict
  * --error` with that potential (OALGO 3) exits 1 naming WCOV and the ways
@@ -7001,7 +7064,7 @@ TEST_CASE("Subcommand: train --uncertainty refuses a fit without a noise "
     CHECK(t.status == 1);
     CHECK(contains(rep, "--uncertainty"));
     CHECK(contains(rep, "2 observations"));
-    CHECK(contains(rep, "add data with a non-zero weight"));
+    CHECK(contains(rep, "add data of priority above 0"));
     CHECK_FALSE(std::filesystem::exists("pot.tadah"));
   }
   {
@@ -7032,29 +7095,30 @@ TEST_CASE("Subcommand: train --uncertainty refuses a fit without a noise "
   }
 }
 
-/* Pins: a fit without energies (EWEIGHT 0, FORCE true, OALGO 3, LAMBDA 0:
- * 18 force components of 3 dimers for 4 weights) trains with
+/* Pins: a fit without energies (ENERGY false, FORCE true, OALGO 3, LAMBDA
+ * 0: 18 force components of 3 dimers for 4 weights) trains with
  * --uncertainty (exit 0, weights.tadah with 4 rows), its potential has
  * WCOV and a WNOISE with F and no E, and the training log has a WARNING
- * naming EWEIGHT 0 and --error; `tadah predict` with it exits 0, and
+ * naming ENERGY false and --error; `tadah predict` with it exits 0, and
  * `tadah predict -F --error`, `tadah predict --error` and `tadah
  * properties pairwise --error` exit 1 naming the energies, WNOISE and
- * EWEIGHT 0 (every prediction has an energy, and the fit has no noise
+ * ENERGY false (every prediction has an energy, and the fit has no noise
  * variance of energies), not "retrain the potential with OALGO 3" (it has
  * OALGO 3).
  * Before the fix: train exited 0 without the WARNING, and every --error
  * run exited 1 with "WNOISE lists no E (energies): every prediction has an
  * energy. `tadah train` writes WCOV and WNOISE for a fit with OALGO 3;
  * retrain the potential with OALGO 3." (the reader refused what the writer
- * wrote, and its remedy did not apply). */
+ * wrote, and its remedy did not apply). Until the error scales the fit
+ * without energies was EWEIGHT 0, which the messages named. */
 TEST_CASE("Subcommand: predict --error refuses a potential fitted without "
-          "energies, naming EWEIGHT 0",
+          "energies, naming ENERGY false",
           "[TadahCLI][predict][uncertainty]") {
   ScratchCwd cwd("error_without_energies");
   std::ofstream("db.tadah") << retrain_dataset();
   // VERBOSE 1: the WARNING below is a Logger WARNING.
   std::ofstream("config.train") << replace_key_line(
-      retrain_config("M_BLR BF_Linear", "LAMBDA 0\nOALGO 3\nEWEIGHT 0\n"),
+      retrain_config("M_BLR BF_Linear", "LAMBDA 0\nOALGO 3\nENERGY false\n"),
       "VERBOSE", "VERBOSE 1");
   {
     const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
@@ -7064,7 +7128,7 @@ TEST_CASE("Subcommand: predict --error refuses a potential fitted without "
     REQUIRE(t.status == 0);
     CHECK(weights_rows("weights.tadah").size() == 4u);
     CHECK(contains(rep, "WARNING"));
-    CHECK(contains(rep, "EWEIGHT 0"));
+    CHECK(contains(rep, "ENERGY false"));
     CHECK(contains(rep, "--error"));
   }
   const std::string pot = slurp("pot.tadah");
@@ -7090,7 +7154,7 @@ TEST_CASE("Subcommand: predict --error refuses a potential fitted without "
     CHECK(r.status == 1);
     CHECK(contains(rep, "energies"));
     CHECK(contains(rep, "WNOISE"));
-    CHECK(contains(rep, "EWEIGHT 0"));
+    CHECK(contains(rep, "ENERGY false"));
     CHECK_FALSE(contains(rep, "retrain the potential with OALGO 3"));
   }
 }
@@ -7248,20 +7312,24 @@ std::string zero_wcov_block(const std::string& pot, std::size_t lo,
 
 /* Pins: `tadah properties pairwise --error` with the two-body plus
  * many-body potential (OALGO 3; weights 1-4 the D2_BP columns, 5-9 the
- * DM_mBlipEnv ones, BIAS false) exits 0 and gives every block an "Error
- * eV/atom" column of standard deviations of the energy per atom, none
- * negative: the total's sqrt(phi^T WCOV phi + WNOISE_E)/2, each part's
- * sqrt(phi_p^T WCOV phi_p)/2 with phi_p the part's columns (no noise: the
- * parts are not observations). Each is checked: (a) the total's error at
- * every distance is the energy error per atom `tadah predict --error`
- * gives the same dimers (error.pred, 1e-10 relative); (b) with WCOV's
- * many-body block (rows and columns 5-9) set to 0 the many-body part's
- * error is 0 at every distance, the two-body part's is the one of the
- * potential (1e-10 relative) and the total's square is the two-body
- * part's square plus WNOISE_E/4; (c) with the two-body block (1-4) set to
- * 0, the same with the parts exchanged. Beyond both cutoffs (r = 5.5 and 6
- * A) phi is 0: the parts' errors are 0 and the total's is sqrt(WNOISE_E)/2
- * (1e-12 relative), WNOISE_E from pot.tadah.
+ * DM_mBlipEnv ones, BIAS false; ENORM ATOM, the default) exits 0 and gives
+ * every block an "Error eV/atom" column of standard deviations of the
+ * energy per atom of the dimer (N = 2 atoms), none negative: the total's
+ * sqrt(phi^T WCOV phi / N^2 + WNOISE_E), WNOISE_E being the noise variance
+ * of the energy per atom (that of a total energy is N^2 WNOISE_E under
+ * ENORM ATOM), each part's sqrt(phi_p^T WCOV phi_p)/2 with phi_p the
+ * part's columns (no noise: the parts are not observations). Each is
+ * checked: (a) the total's error at every distance is the energy error per
+ * atom `tadah predict --error` gives the same dimers (error.pred, 1e-10
+ * relative); (b) with WCOV's many-body block (rows and columns 5-9) set to
+ * 0 the many-body part's error is 0 at every distance, the two-body part's
+ * is the one of the potential (1e-10 relative) and the total's square is
+ * the two-body part's square plus WNOISE_E; (c) with the two-body block
+ * (1-4) set to 0, the same with the parts exchanged. Beyond both cutoffs (r
+ * = 5.5 and 6 A) phi is 0: the parts' errors are 0 and the total's is
+ * sqrt(WNOISE_E) (1e-12 relative), WNOISE_E from pot.tadah. (Until the
+ * error scales WNOISE E was the noise variance of a total energy, and the
+ * total's error sqrt(phi^T WCOV phi + WNOISE_E)/2.)
  * Before the fix: exit 1, "ColumnLayout: total_cols=4 disagrees with
  * DSIZE=9" (the parts' contexts carried the full potential's DSIZE).
  * (This case asserted only r >= 0 inside the cutoffs until WCOV and
@@ -7313,7 +7381,7 @@ TEST_CASE("Subcommand: properties pairwise --error on a two-body plus "
       CHECK(r[2] >= 0.0);
       if (r[0] > 5.25) {
         if (std::string(title) == "Total potential")
-          CHECK(r[2] == Approx(std::sqrt(wnoise_e) / 2.0).epsilon(1e-12));
+          CHECK(r[2] == Approx(std::sqrt(wnoise_e)).epsilon(1e-12));
         else
           CHECK(r[2] == 0.0);
       }
@@ -7352,8 +7420,7 @@ TEST_CASE("Subcommand: properties pairwise --error on a two-body plus "
       CHECK(z_zero[j][2] == 0.0);
       CHECK(z_kept[j][2] == Approx(kept[j][2]).epsilon(1e-10).margin(1e-300));
       CHECK(z_tot[j][2] * z_tot[j][2] ==
-            Approx(z_kept[j][2] * z_kept[j][2] + wnoise_e / 4.0)
-                .epsilon(1e-10));
+            Approx(z_kept[j][2] * z_kept[j][2] + wnoise_e).epsilon(1e-10));
     }
   }
 }
@@ -8165,15 +8232,18 @@ TEST_CASE("Subcommand: hpo leaves the VERBOSE nobody wrote out of "
 /* ---- [dataset keys]: the keys that prepared the training data -----------
  *
  * A potential's key lines are only what is needed to use the model -- the
- * model's keys, the resolved ESHIFT values and LSCALE. EFILTER, FFILTER,
- * ESHIFT_ATOM, ESHIFT_DBATOM, EWEIGHT_TEMP, ZERO_COM_FORCE, WDBFILE and
- * WDBFILE_AUTO prepared the training data: tadah writes them into the
- * training record; tadah predict ignores them in a potential (an older one
- * has them as key lines too), so a filter applies to the data predicted
- * only when predict is given it; --no-eshift compares the model with the
- * reference energies as they are; a retrain from a potential (and tadah
- * hpo -c of one) takes none of them from the potential, so it works with
- * any number of datasets. */
+ * model's keys, its error scales, the resolved ESHIFT values and LSCALE.
+ * EFILTER, FFILTER, ESHIFT_ATOM, ESHIFT_DBATOM, ZERO_COM_FORCE and WDBFILE
+ * prepared the training data: tadah writes them into the training record;
+ * tadah predict ignores them in a potential (an older one has them as key
+ * lines too), so a filter applies to the data predicted only when predict
+ * is given it; --no-eshift compares the model with the reference energies
+ * as they are; a retrain from a potential (and tadah hpo -c of one) takes
+ * none of them from the potential, so it works with any number of
+ * datasets. The retired EWEIGHT_TEMP and WDBFILE_AUTO, which prepared the
+ * training data of a potential of an earlier version, are no key of a
+ * potential tadah writes either: a load of one that has them gives one
+ * notice that lists them. */
 
 namespace {
 
@@ -8206,16 +8276,40 @@ std::string dataset_keys_config(const std::string& dbfile,
 }
 
 /* The training-only dataset keys. */
-const char* const kDatasetKeys[] = {"EFILTER",      "FFILTER",
-                                    "ESHIFT_ATOM",  "ESHIFT_DBATOM",
-                                    "EWEIGHT_TEMP", "ZERO_COM_FORCE",
-                                    "WDBFILE",      "WDBFILE_AUTO"};
+const char* const kDatasetKeys[] = {"EFILTER",        "FFILTER",
+                                    "ESHIFT_ATOM",    "ESHIFT_DBATOM",
+                                    "ZERO_COM_FORCE", "WDBFILE"};
 
-/* The key lines of the eight with the values of a potential of an earlier
- * version trained with them (as the training configuration set them). */
+/* The keys retired in Tadah! 1.6.0: no potential tadah writes has a line of
+ * them. */
+const char* const kRetiredKeys[] = {"EWEIGHT", "FWEIGHT", "SWEIGHT",
+                                    "WDBFILE_AUTO", "EWEIGHT_TEMP"};
+
+/* The error scales every potential a fit writes has a line of. */
+const char* const kErrorScaleKeys[] = {"ESIGMA", "FSIGMA", "SSIGMA", "ENORM",
+                                       "ENERGY"};
+
+/* The key lines of the six and of the retired EWEIGHT_TEMP and
+ * WDBFILE_AUTO with the values of a potential of an earlier version trained
+ * with them (as the training configuration set them), in this order. */
 const char* const kOlderDatasetKeyLines =
     "EFILTER -0.6 -0.4\nFFILTER 1.0\nZERO_COM_FORCE true\n"
     "ESHIFT_DBATOM true\nEWEIGHT_TEMP 300\nWDBFILE 1 0\nWDBFILE_AUTO 1\n";
+
+/* The number of lines of @p text (each ends with a newline). */
+std::size_t lines_in(const std::string& text) {
+  return static_cast<std::size_t>(std::count(text.begin(), text.end(), '\n'));
+}
+
+/* The lines of @p text that contain @p needle. */
+std::size_t count_lines_with(const std::string& text,
+                             const std::string& needle) {
+  std::istringstream in(text);
+  std::size_t n = 0;
+  for (std::string line; std::getline(in, line);)
+    if (line.find(needle) != std::string::npos) ++n;
+  return n;
+}
 
 }  // namespace
 
@@ -8223,10 +8317,12 @@ const char* const kOlderDatasetKeyLines =
  * retrain_dataset(), E/N -0.5 eV and forces of 0.2 eV/A at most; with
  * EFILTER -0.6 -0.4, FFILTER 1.0, ZERO_COM_FORCE true and ESHIFT_DBATOM
  * true, which keep them all) writes pot.tadah with no key line of any of
- * the eight dataset keys (its ESHIFT line, the shift ESHIFT_DBATOM
- * resolved, stays) and the
- * training record "DBFILE db.tadah", "EFILTER -0.6 -0.4", "FFILTER 1.0",
- * "ESHIFT_DBATOM true", "ZERO_COM_FORCE true", "VERBOSE 0"; `tadah predict
+ * the six dataset keys (its ESHIFT line, the shift ESHIFT_DBATOM resolved,
+ * stays) or of the retired EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO and
+ * EWEIGHT_TEMP, a line of each of ESIGMA, FSIGMA, SSIGMA, ENORM and
+ * ENERGY, and the training record "DBFILE db.tadah", "EFILTER -0.6 -0.4",
+ * "FFILTER 1.0", "ESHIFT_DBATOM true", "ZERO_COM_FORCE true", "VERBOSE 0";
+ * `tadah predict
  * -p pot.tadah -d pred.tadah -F`, pred.tadah being the three dimers, LOW
  * (E/N -1.5 eV, outside the EFILTER window) and HOT (forces of 8.7 eV/A,
  * above FFILTER), exits 0, predicts all five structures (energy.pred has 5
@@ -8239,7 +8335,9 @@ const char* const kOlderDatasetKeyLines =
  * its record was "DBFILE db.tadah", "VERBOSE 0" after the opening line
  * "(not read by tadah)"; predict applied the potential's filters: 3 rows,
  * and the WARNING "Multiple ESHIFT sources set; precedence: explicit > ATOM
- * > DBATOM." (ESHIFT_DBATOM true beside the ESHIFT line). */
+ * > DBATOM." (ESHIFT_DBATOM true beside the ESHIFT line). Before the error
+ * scales the potential had EWEIGHT, FWEIGHT and SWEIGHT lines and no
+ * ESIGMA, FSIGMA, SSIGMA, ENORM or ENERGY line. */
 TEST_CASE("Subcommand: predict of a potential trained with filters and "
           "ESHIFT_DBATOM predicts every structure it is given",
           "[TadahCLI][predict][dataset-keys][training-record]") {
@@ -8263,6 +8361,14 @@ TEST_CASE("Subcommand: predict of a potential trained with filters and "
   for (const char* key : kDatasetKeys) {
     INFO("key " << key);
     CHECK(line_tokens(pot, key).empty());
+  }
+  for (const char* key : kRetiredKeys) {
+    INFO("key " << key);
+    CHECK(line_tokens(pot, key).empty());
+  }
+  for (const char* key : kErrorScaleKeys) {
+    INFO("key " << key);
+    CHECK_FALSE(line_tokens(pot, key).empty());
   }
   CHECK(line_tokens(pot, "ESHIFT").size() == 2u);  // ESHIFT and one value
 
@@ -8299,15 +8405,19 @@ TEST_CASE("Subcommand: predict of a potential trained with filters and "
  * bare.tadah does (five structures, the reference energies unshifted: the
  * ESHIFT_DBATOM of the potential derives no shift from the data predicted),
  * and at -v 2 says so in one INFO line: "tadah predict: old.tadah: EFILTER
- * -0.6 -0.4, FFILTER 1.0, ESHIFT_DBATOM true, EWEIGHT_TEMP 300,
- * ZERO_COM_FORCE true, WDBFILE 1 0 and WDBFILE_AUTO 1 prepared the
- * training data of the potential and are not applied to the data
- * predicted (tadah keeps such keys in a potential's training record, not
- * as key lines); --efilter, --ffilter and --zero-com-force filter the data
- * predicted.".
+ * -0.6 -0.4, FFILTER 1.0, ESHIFT_DBATOM true, ZERO_COM_FORCE true and
+ * WDBFILE 1 0 prepared the training data of the potential and are not
+ * applied to the data predicted (tadah keeps such keys in a potential's
+ * training record, not as key lines); --efilter, --ffilter and
+ * --zero-com-force filter the data predicted."; the retired EWEIGHT_TEMP
+ * and WDBFILE_AUTO get one notice, which names each with its line ("Retired
+ * keys EWEIGHT_TEMP (line <n> of old.tadah) and WDBFILE_AUTO (line <m> of
+ * old.tadah) are ignored").
  * Before the fix: predict applied old.tadah's EFILTER and FFILTER (3 rows)
  * and its ESHIFT_DBATOM, which fitted a shift to the data predicted and
- * subtracted it from the reference energies: energy.pred differs. */
+ * subtracted it from the reference energies: energy.pred differs. Before
+ * the error scales the INFO line named EWEIGHT_TEMP 300 and WDBFILE_AUTO 1
+ * among the seven, and no notice named them retired. */
 TEST_CASE("Subcommand: predict ignores the keys that prepared the training "
           "data of an older potential",
           "[TadahCLI][predict][dataset-keys]") {
@@ -8345,12 +8455,19 @@ TEST_CASE("Subcommand: predict ignores the keys that prepared the training "
   CHECK(slurp("forces.pred") == slurp("forces_bare.pred"));
   CHECK(contains(rep,
                  "tadah predict: old.tadah: EFILTER -0.6 -0.4, FFILTER 1.0, "
-                 "ESHIFT_DBATOM true, EWEIGHT_TEMP 300, ZERO_COM_FORCE true, "
-                 "WDBFILE 1 0 and WDBFILE_AUTO 1 prepared the training data "
-                 "of the potential and are not applied to the data predicted "
-                 "(tadah keeps such keys in a potential's training record, "
-                 "not as key lines); --efilter, --ffilter and "
-                 "--zero-com-force filter the data predicted."));
+                 "ESHIFT_DBATOM true, ZERO_COM_FORCE true and WDBFILE 1 0 "
+                 "prepared the training data of the potential and are not "
+                 "applied to the data predicted (tadah keeps such keys in a "
+                 "potential's training record, not as key lines); "
+                 "--efilter, --ffilter and --zero-com-force filter the data "
+                 "predicted."));
+  const std::size_t first = lines_in(bare);  // EFILTER is line first + 1
+  CHECK(count_lines_with(rep, "Retired keys") == 1u);
+  CHECK(contains(rep, "Retired keys EWEIGHT_TEMP (line " +
+                          std::to_string(first + 5) +
+                          " of old.tadah) and WDBFILE_AUTO (line " +
+                          std::to_string(first + 7) +
+                          " of old.tadah) are ignored"));
   CHECK_FALSE(contains(rep, "Multiple ESHIFT sources"));
 }
 
@@ -8742,10 +8859,12 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
  * section "POTENTIAL pot.tadah" (trained on db.tadah, the three dimers at
  * E/N -0.5 eV, with ESHIFT_DBATOM true: its ESHIFT line -0.5), "DBFILE
  * db.tadah", "NO_ESHIFT true", "ESHIFT_DBATOM true", "WDBFILE 1 1" (two
- * values, one dataset), "WDBFILE_AUTO 1" and "EWEIGHT_TEMP 300", exits 0
- * with no "Multiple ESHIFT sources" WARNING and no "WDBFILE size" refusal,
- * and the True column of energy.pred is the reference energies as they
- * are, -0.5 each (no shift is derived from the data predicted).
+ * values, one dataset), and the retired "WDBFILE_AUTO 1" and "EWEIGHT_TEMP
+ * 300", exits 0 with no "Multiple ESHIFT sources" WARNING and no "WDBFILE
+ * size" refusal, one notice naming the two retired keys (a prediction
+ * fits nothing: it does not refuse them), and the True column of
+ * energy.pred is the reference energies as they are, -0.5 each (no shift
+ * is derived from the data predicted).
  * Before the fix: the TASK predict's ESHIFT_DBATOM applied to the data
  * predicted (tadah 1.5.x and v1-dev before the dataset keys record removed
  * only WDBFILE, WDBFILE_AUTO and EWEIGHT_TEMP from it): with the ESHIFT
@@ -8777,6 +8896,9 @@ TEST_CASE("Subcommand: a TASK predict prepares the data predicted only with "
   REQUIRE(r.status == 0);
   CHECK_FALSE(contains(rep, "Multiple ESHIFT sources"));
   CHECK_FALSE(contains(rep, "WDBFILE size"));
+  CHECK(count_lines_with(rep, "Retired keys") == 1u);
+  CHECK(contains(rep, "Retired keys WDBFILE_AUTO (line 7 of run.task) and "
+                      "EWEIGHT_TEMP (line 8 of run.task) are ignored"));
   const std::vector<double> truth = column_values("energy.pred", 1);
   REQUIRE(truth.size() == 3u);
   for (double t : truth) CHECK(t == Approx(-0.5).margin(1e-12));
@@ -8876,6 +8998,14 @@ TEST_CASE("Subcommand: hpo keeps the keys that prepared the training data in "
     for (const char* key : kDatasetKeys) {
       INFO("key " << key);
       CHECK(line_tokens(best, key).empty());
+    }
+    for (const char* key : kRetiredKeys) {
+      INFO("key " << key);
+      CHECK(line_tokens(best, key).empty());
+    }
+    for (const char* key : kErrorScaleKeys) {
+      INFO("key " << key);
+      CHECK_FALSE(line_tokens(best, key).empty());
     }
     CHECK(line_tokens(best, "ESHIFT").size() == 2u);
   }
@@ -10038,3 +10168,133 @@ TEST_CASE("Subcommand: hpo: a -c potential with values its descriptors do not "
   CHECK(pot_key("best_pot.tadah", "KDEG2B").empty());
 }
 #endif  // TADAH_ENABLE_NFP
+
+/* ---- [retired]: the published potentials of Tadah! 1.x -----------------
+ *
+ * The potentials published with the documentation for this Tadah!
+ * (docs/source/mlips: Tadah.Kr1, Tadah.Kr2 and tadah.n2; ta-dah.kr1 and
+ * ta-dah.kr2 are in the file format of the discontinued Ta-dah!, which no
+ * Tadah! reads) were written by Tadah! before 1.6.0: each has EWEIGHT,
+ * FWEIGHT and SWEIGHT lines, which 1.6.0 retired. They stay as published:
+ * every program that loads them works, with one notice per load that lists
+ * those lines, and a fit refuses them with the conversion. */
+
+namespace {
+
+/* The 1-based numbers of the lines of @p file whose first word is @p key. */
+std::vector<std::size_t> key_line_numbers(const std::string& file,
+                                          const std::string& key) {
+  std::ifstream in(file);
+  std::vector<std::size_t> out;
+  std::size_t n = 0;
+  for (std::string line; std::getline(in, line);) {
+    ++n;
+    std::istringstream ls(line);
+    std::string first;
+    if (ls >> first && first == key) out.push_back(n);
+  }
+  return out;
+}
+
+}  // namespace
+
+/* Pins: for each published potential P (copied into the scratch directory,
+ * as a user downloads it), `tadah predict -p P -d D` (D a Kr dimer 4 A
+ * apart for the Kr potentials, two N2 molecules for Tadah!N2) exits 0 with
+ * energy.pred and gives one notice, "Retired keys EWEIGHT (line a of P),
+ * FWEIGHT (line b of P) and SWEIGHT (line c of P) are ignored: ...", a, b
+ * and c being the lines of the file that start with these keys; and `tadah
+ * train -c T`, T being P with a DBFILE line of D added (the retrain route
+ * of the Training page), exits 1 without writing pot.tadah, naming each
+ * line and its conversion ("ESIGMA = 1000/(N sqrt(EWEIGHT))", "FSIGMA =
+ * 1/sqrt(FWEIGHT)", "SSIGMA = 160.2/sqrt(SWEIGHT)"), the FWEIGHT and
+ * SWEIGHT lines, of the forces and stresses each leaves out, as converted
+ * by deleting the line. The Kr potentials converted as the refusal says
+ * (those two lines deleted, EWEIGHT 1 as ESIGMA 500 for the 2-atom dimer)
+ * train: exit 0 and pot.tadah. (The converted Tadah!N2 is refused by the
+ * DIMER rule of a fit, which another case checks.)
+ * Before the fix: the three were keys of the potential, which predict read
+ * without a notice and a retrain applied (EWEIGHT 1: the squared residual
+ * of the total energy); then the refusal gave FSIGMA = 1/sqrt(FWEIGHT) and
+ * SSIGMA = 160.2/sqrt(SWEIGHT) for those lines too, and the configuration
+ * converted so (FSIGMA 1, SSIGMA 160.2) was refused again. */
+TEST_CASE("Subcommand: the published potentials load with one notice of "
+          "their retired keys, and a fit refuses them with the conversion",
+          "[TadahCLI][predict][train][retired]") {
+  ScratchCwd cwd("published_retired");
+  const std::string dir = TADAH_PUBLISHED_MLIPS_DIR;
+  std::ofstream("kr.tadah")
+      << "Kr dimer\n1 1 1\n-0.01\n40 0 0\n0 40 0\n0 0 40\n0 0 0\n0 0 0\n"
+         "0 0 0\nKr 10 10 10 0 0 0\nKr 14 10 10 0 0 0\n\n";
+  std::ofstream("n2.tadah")
+      << "N2 pair\n1 1 1\n-0.005\n40 0 0\n0 40 0\n0 0 40\n0 0 0\n0 0 0\n"
+         "0 0 0\nN 10 10 9.45 0 0 0\nN 10 10 10.55 0 0 0\n"
+         "N 14 10 9.45 0 0 0\nN 14 10 10.55 0 0 0\n\n";
+  for (const char* name : {"Tadah.Kr1", "Tadah.Kr2", "tadah.n2"}) {
+    INFO(name);
+    std::filesystem::copy_file(dir + "/" + name, name);
+    const std::string data =
+        std::string(name) == "tadah.n2" ? "n2.tadah" : "kr.tadah";
+    std::string listed;
+    for (const char* key : {"EWEIGHT", "FWEIGHT", "SWEIGHT"}) {
+      const std::vector<std::size_t> at = key_line_numbers(name, key);
+      REQUIRE(at.size() == 1u);
+      listed += std::string(key == std::string("EWEIGHT") ? ""
+                            : key == std::string("FWEIGHT") ? ", "
+                                                           : " and ") +
+                key + " (line " + std::to_string(at[0]) + " of " + name + ")";
+    }
+    {
+      std::filesystem::remove("energy.pred");
+      const CliRun p = run_tadah({"tadah", "predict", "-p", name, "-d", data});
+      const std::string rep = reported(p);
+      INFO("predict: status " << p.status << "\n" << rep);
+      CHECK(p.status == 0);
+      CHECK(std::filesystem::exists("energy.pred"));
+      CHECK(count_lines_with(rep, "Retired keys") == 1u);
+      CHECK(contains(rep, "Retired keys " + listed + " are ignored"));
+    }
+    {
+      std::filesystem::remove("pot.tadah");
+      std::ofstream(std::string(name) + ".train")
+          << slurp(name) << "\nDBFILE " << data << "\n";
+      const CliRun t = run_tadah({"tadah", "train", "-c",
+                                  std::string(name) + ".train"});
+      const std::string rep = reported(t);
+      INFO("train: status " << t.status << "\n" << rep);
+      CHECK(t.status == 1);
+      CHECK(contains(rep, "ESIGMA = 1000/(N sqrt(EWEIGHT))"));
+      CHECK(contains(rep, "FSIGMA = 1/sqrt(FWEIGHT)"));
+      CHECK(contains(rep, "SSIGMA = 160.2/sqrt(SWEIGHT)"));
+      CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+      for (const char* key : {"FWEIGHT", "SWEIGHT"}) {
+        const std::string sw = key == std::string("FWEIGHT") ? "FORCE"
+                                                             : "STRESS";
+        CHECK(contains(rep, "line " +
+                                std::to_string(key_line_numbers(name, key)[0]) +
+                                " of " + name + ".train; " + sw +
+                                " false here: converted by deleting the "
+                                "line)"));
+      }
+    }
+    if (std::string(name) == "tadah.n2") continue;
+    {
+      std::filesystem::remove("pot.tadah");
+      std::istringstream in(slurp(name));
+      std::ofstream out(std::string(name) + ".converted");
+      for (std::string line; std::getline(in, line);) {
+        std::istringstream ls(line);
+        std::string key;
+        ls >> key;
+        if (key == "FWEIGHT" || key == "SWEIGHT") continue;
+        out << (key == "EWEIGHT" ? std::string("ESIGMA 500") : line) << "\n";
+      }
+      out << "DBFILE " << data << "\n";
+    }
+    const CliRun c = run_tadah({"tadah", "train", "-c",
+                                std::string(name) + ".converted"});
+    INFO("converted: status " << c.status << "\n" << reported(c));
+    CHECK(c.status == 0);
+    CHECK(std::filesystem::exists("pot.tadah"));
+  }
+}

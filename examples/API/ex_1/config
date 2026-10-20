@@ -22,6 +22,5 @@ BIAS true
 NORM false
 VERBOSE 2
 
-EWEIGHT 1.0
-#FWEIGHT 1e-2
-#SWEIGHT 1e-3
+ESIGMA 1     # energies per atom to 1 meV/atom (the default)
+SSIGMA 0.5   # stresses to 0.5 GPa (the default)

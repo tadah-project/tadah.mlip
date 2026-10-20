@@ -107,7 +107,7 @@ Derivative-free phases use loss values alone.
 
 ``ANALYTICAL`` requires a supported linear fit with training data,
 ``OALGO 4``, fixed ``LAMBDA >= 0``, ``NORM false``, ``STRESS false``
-and no ``FIXINDEX`` pins or ``PC_SRMSE`` target. Startup also checks
+and no ``FIXINDEX`` pins or ``PC_SRMSE_GPA`` target. Startup also checks
 the selected descriptor parameters. For typed observables, ``MAPE``,
 ``RMSLE`` and ``--unconverged force-scaled`` require the numerical
 contribution provided by ``HYBRID``.

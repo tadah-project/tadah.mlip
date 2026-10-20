@@ -182,8 +182,10 @@ precedence **explicit > ATOM > DBATOM**:
 * **ESHIFT_DBATOM** — a least-squares atomic-energy fit over the
   configurations of the database that have an energy (``min ‖y − Mβ‖²``,
   with ``M[i,k]`` the count of species ``k`` in config ``i``). Robust when the dataset has
-  compositional diversity but no isolated-atom configs. When the
-  compositions do not determine the fit (every structure of one
+  compositional diversity but no isolated-atom configs. A species that
+  only configurations with ``eweight`` 0 contain has no energy to fit: its
+  ``ESHIFT`` is 0, a WARNING names it, and the other species are fitted.
+  When the compositions do not determine the fit (every structure of one
   composition, say) its normal matrix is singular: every ``ESHIFT`` is
   then 0, with a WARNING.
 

@@ -31,6 +31,12 @@ docs/source/config/config_keys.rst
 docs/source/config/anneal_keys_serial.rst
 docs/source/config/anneal_keys_pt.rst
 docs/source/config/anneal_keys_pa.rst
+docs/source/nfp/reference/target_keys.rst
+docs/source/nfp/reference/optimizer_keys.rst
+docs/source/nfp/reference/pc_options.rst
+docs/source/nfp/reference/optimisers.rst
+docs/source/nfp/reference/anneal_params.rst
+docs/source/nfp/reference/asa_params.rst
 docs/build/
 
 # ctest scratch

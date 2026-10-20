@@ -96,6 +96,7 @@ This site also publishes selected interatomic potentials developed by |gja_link|
    nfp_reference.rst
    hpo_examples.rst
    nfp_review_pending.rst
+   nfp/reference/index.rst
 
 ----
 

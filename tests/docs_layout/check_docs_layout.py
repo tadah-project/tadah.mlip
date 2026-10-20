@@ -14,9 +14,11 @@ checks it with docs/tools/check_layout.py at 1280, 1024, 900, 768 and
     list, in a numbered list, in a note and from a ``literalinclude``;
   * a two-column table with long inline literals, field lists with long
     field names (``Template Parameters``, as the API pages have, also in a
-    definition list) and bodies of long words, a paragraph with a
-    40-character inline literal, display maths and an image wider than the
-    text column.
+    definition list) and bodies of long words, a field list in an object
+    description whose body holds a name of 30 characters in its text and
+    one of 31 in an inline literal of a bullet list (as an entry of the
+    Nested Fitting reference pages does), a paragraph with a 40-character
+    inline literal, display maths and an image wider than the text column.
 
 The stylesheet must fit all of it at every width: 80-character lines are
 shown whole on desktop windows (1024 px and wider) and wrap on narrower
@@ -59,6 +61,13 @@ FIELDS = '''\
                         GaussianRadial, ...). Default: BlipRadial.
                       * **AggMode** -- Aggregation mode (PowerSpectrum,
                         OrbitalWise). Default: PowerSpectrum.'''
+
+# A field list as an entry of the reference pages shows one: a body with a
+# long name in its text, and long names in the inline literals of a list.
+ENTRY = '''\
+:Default: the value of Limit_Invalid_Generated_States.
+:Syntax: - ``PARAM User_Parameter_Temperature <value>``
+         - ``PARAM User_Parameter_Temperature[<i>] <value>``'''
 
 
 def block(lines, indent, language='none'):
@@ -136,6 +145,12 @@ A class template
    In a definition list.
 
 {indent(FIELDS, '   ')}
+
+.. describe:: User_Parameter_Temperature
+
+   The fields of a ``PARAM`` key.
+
+{indent(ENTRY, '   ')}
 
 .. math::
 

@@ -140,12 +140,12 @@ class ReadAnnealKeysTableTest(unittest.TestCase):
                     'COUNT': [
                         'Default: ' + ('6' if kind == 'serial' else '4'),
                         'Values: >= 1',
-                        'Number of repetitions. Invalid with ACTIVE ON.',
+                        'Number of repetitions. Refused when ACTIVE is ON.',
                     ],
                     'SCALE': [
                         'Default: 0.25', 'Values: [0, 1]',
-                        'Proposal scale. Requires ACTIVE ON. '
-                        'Unused when ACTIVE is OFF. Only with MODE LOCAL.',
+                        'Proposal scale. Refused unless ACTIVE is ON. '
+                        'Refused unless MODE is LOCAL.',
                     ],
                     'MODE': [
                         'Default: LOCAL', 'Values: LOCAL | GLOBAL',
@@ -154,7 +154,7 @@ class ReadAnnealKeysTableTest(unittest.TestCase):
                     'ACTIVE': [
                         'Default: ON', 'Values: ON | OFF',
                         'Enables proposal adaptation. '
-                        'Unused when COUNT is set.',
+                        'Refused when COUNT is set.',
                     ],
                 }
                 self.assertEqual(actual, expected)

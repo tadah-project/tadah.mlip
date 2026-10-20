@@ -38,8 +38,10 @@ from sphinx.errors import ConfigError as _ConfigError
 
 _CONFDIR = os.path.dirname(os.path.abspath(__file__))
 _sys.path.insert(0, os.path.join(_CONFDIR, 'config'))
-# docs/tools holds the check_redirect extension (see html_extra_path) and
-# nfp_checks, the layout and structure rules of the pages (see extensions).
+# docs/tools holds the check_redirect extension (see html_extra_path),
+# nfp_checks, the layout and structure rules of the pages, and
+# hpotarget_domain, the entries of the target-file reference and the :hpo:
+# roles that cite them (see extensions).
 _sys.path.insert(0, os.path.join(_CONFDIR, '..', 'tools'))
 import source_locator as _loc
 import blueprint_source as _bps
@@ -76,7 +78,8 @@ extensions = ['breathe',
               'sphinx_exec_code',
               'matplotlib.sphinxext.plot_directive',
               'check_redirect',
-              'nfp_checks']
+              'nfp_checks',
+              'hpotarget_domain']
 
 # plot_directive: deterministic inline figures (temperature ladders,
 # acceptance curves, ...). No source links; PNG only, keeps builds fast.
@@ -277,3 +280,6 @@ def setup(app):
     run('cli', 'generate_cli.py')   # requires blueprint.toml from read_toml.py
     # ANNEAL-family key tables from HPO's registry (single source of truth)
     run('config', 'read_anneal_keys.py')
+    # The Nested Fitting reference pages (nfp/reference/, but its index.rst)
+    # from HPO's target-file registry, optimiser list and anneal keys.
+    run('config', 'read_hpo_registry.py')

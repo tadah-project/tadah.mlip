@@ -2954,50 +2954,57 @@ namespace {
 /* The lines of a potential's training record (defined with the
  * training-record cases below). */
 std::vector<std::string> record_of(const std::string& pot);
+/* `text` with the line of `key` replaced by `line` ("" removes it; defined
+ * with the [retrain] cases below). */
+std::string with_line(const std::string& text, const std::string& key,
+                      const std::string& line);
 }  // namespace
 
 /* Pins: a potential used as the training configuration (tadah train -c,
- * the retrain route the multi-species BIAS refusal names) does not ask for
- * --uncertainty with the UNCERTAINTY true that an earlier version wrote
- * into every potential trained with it: the two-species legacy potential
- * (1 + 3 WEIGHTS, OALGO 1, UNCERTAINTY true) plus a DBFILE retrains (exit
- * 0) with a WARNING naming the file, the line ("its UNCERTAINTY true asked
- * the run that wrote it for weights.tadah, not this run, and is ignored")
- * and --uncertainty, and no development stage ("development"), writes no
- * weights.tadah, and its potential has 2 + 3 WEIGHTS, no UNCERTAINTY line
- * and no UNCERTAINTY in its training record (the line was not read);
- * --uncertainty on the command line is still a request (exit 1, OALGO 3);
- * and a training configuration (no WEIGHTS) with UNCERTAINTY true and
- * OALGO 1 is refused naming the configuration file as UNCERTAINTY's
- * source.
- * Before the fix: the retrain exited 1, "tadah train --uncertainty needs
- * OALGO 3 ... the configuration has OALGO 1", with no --uncertainty given,
- * and every potential tadah train wrote had an UNCERTAINTY line.
- * Before the fix that reads no UNCERTAINTY line of a potential: the line
- * was read and ignored by its origin, with the WARNING "its UNCERTAINTY
- * true is the record of the run that trained it (tadah 1.5.x and 1.6.0
- * development builds wrote UNCERTAINTY into every potential) ...", and the
- * record listed "UNCERTAINTY true": the WARNING, "development" and record
- * checks fail. */
-TEST_CASE("Subcommand: train -c with a potential does not take its "
-          "UNCERTAINTY for --uncertainty",
+ * the retrain route the multi-species BIAS refusal names) with the
+ * UNCERTAINTY line tadah train 1.5.0 wrote into every potential (the
+ * two-species legacy potential: 1 + 3 WEIGHTS, OALGO 1, UNCERTAINTY true,
+ * DBFILE) is refused (exit 1), naming the line as a retired key
+ * ("UNCERTAINTY true (line N of legacy_cfg.tadah)") and its conversion,
+ * the deletion of the line, and writes neither a potential nor
+ * weights.tadah; with the line deleted it retrains (exit 0), its
+ * potential with 2 + 3 WEIGHTS and no UNCERTAINTY line or record line; a
+ * training configuration (no WEIGHTS) with UNCERTAINTY true is refused
+ * alike, naming config.train; and --uncertainty on the command line is
+ * refused as the option of the retired key.
+ * Before the fix: the potential's line was not read (a WARNING said that
+ * it asked the run that wrote it for weights.tadah) and the retrain exited
+ * 0; the configuration's line and --uncertainty were requests, refused
+ * with OALGO 1 for needing OALGO 3. */
+TEST_CASE("Subcommand: train -c refuses the UNCERTAINTY line of a potential "
+          "and of a configuration",
           "[TadahCLI][train][uncertainty][bias]") {
   ScratchCwd cwd("uncertainty_legacy");
   std::ofstream("db.tadah") << nbta_dataset(false);
-  std::ofstream("legacy_cfg.tadah") << kNbTaKeys << "UNCERTAINTY true\n"
-                                    << "WEIGHTS -8.2 0.1 -0.05 0.02\n"
-                                    << "DBFILE db.tadah\n";
+  const std::string legacy = std::string(kNbTaKeys) + "UNCERTAINTY true\n" +
+                             "WEIGHTS -8.2 0.1 -0.05 0.02\n" +
+                             "DBFILE db.tadah\n";
+  std::ofstream("legacy_cfg.tadah") << legacy;
   const CliRun t = run_tadah({"tadah", "train", "-c", "legacy_cfg.tadah",
                               "-o", "re.tadah"});
   const std::string rep = reported(t);
   INFO("retrain: status " << t.status << "\n" << rep);
-  CHECK(t.status == 0);
-  CHECK(contains(rep, "legacy_cfg.tadah"));
-  CHECK(contains(rep, "UNCERTAINTY true"));
-  CHECK(contains(rep, "--uncertainty"));
-  CHECK(contains(rep, "its UNCERTAINTY true asked the run that wrote it for "
-                      "weights.tadah, not this run, and is ignored"));
-  CHECK_FALSE(contains(rep, "development"));
+  CHECK(t.status == 1);
+  CHECK(contains(rep, "UNCERTAINTY true (line "));
+  CHECK(contains(rep, " of legacy_cfg.tadah)"));
+  CHECK(contains(rep, "retired"));
+  CHECK(contains(rep, "Deleting the option, or the UNCERTAINTY line, "
+                      "converts it"));
+  CHECK_FALSE(std::filesystem::exists("re.tadah"));
+  CHECK_FALSE(std::filesystem::exists("weights.tadah"));
+
+  std::ofstream("converted.tadah") << with_line(legacy, "UNCERTAINTY", "");
+  const CliRun ok = run_tadah({"tadah", "train", "-c", "converted.tadah",
+                               "-o", "re.tadah"});
+  const std::string okrep = reported(ok);
+  INFO("converted: status " << ok.status << "\n" << okrep);
+  CHECK(ok.status == 0);
+  CHECK_FALSE(contains(okrep, "UNCERTAINTY"));
   CHECK_FALSE(std::filesystem::exists("weights.tadah"));
   REQUIRE(std::filesystem::exists("re.tadah"));
   const std::string pot = slurp("re.tadah");
@@ -3008,14 +3015,6 @@ TEST_CASE("Subcommand: train -c with a potential does not take its "
     CHECK(line.rfind("UNCERTAINTY", 0) != 0);
   }
 
-  const CliRun u = run_tadah({"tadah", "train", "-c", "legacy_cfg.tadah",
-                              "-o", "re2.tadah", "--uncertainty"});
-  const std::string urep = reported(u);
-  INFO("--uncertainty: status " << u.status << "\n" << urep);
-  CHECK(u.status == 1);
-  CHECK(contains(urep, "OALGO 3"));
-  CHECK_FALSE(std::filesystem::exists("re2.tadah"));
-
   std::ofstream("config.train") << kNbTaKeys << "UNCERTAINTY true\n"
                                 << "DBFILE db.tadah\n";
   const CliRun c = run_tadah({"tadah", "train", "-c", "config.train", "-o",
@@ -3023,9 +3022,17 @@ TEST_CASE("Subcommand: train -c with a potential does not take its "
   const std::string crep = reported(c);
   INFO("configuration: status " << c.status << "\n" << crep);
   CHECK(c.status == 1);
-  CHECK(contains(crep, "OALGO 3"));
-  CHECK(contains(crep, "configuration file config.train"));
+  CHECK(contains(crep, "UNCERTAINTY true (line "));
+  CHECK(contains(crep, " of config.train)"));
   CHECK_FALSE(std::filesystem::exists("re3.tadah"));
+
+  const CliRun u = run_tadah({"tadah", "train", "-c", "converted.tadah",
+                              "-o", "re2.tadah", "--uncertainty"});
+  const std::string urep = reported(u);
+  INFO("--uncertainty: status " << u.status << "\n" << urep);
+  CHECK(u.status == 1);
+  CHECK(contains(urep, "--uncertainty: UNCERTAINTY is a retired key"));
+  CHECK_FALSE(std::filesystem::exists("re2.tadah"));
 }
 
 /* Pins: a linear NORM potential (M_BLR BF_Linear, BIAS true, NORM true on
@@ -6840,6 +6847,186 @@ TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
 }
 #endif  // TADAH_ENABLE_NFP
 
+/* ---- [uncertainty]: uncertainty output is not part of Tadah! 1.6.0 ----
+ *
+ * Its error bars were not calibrated (they were too narrow for many
+ * structures): tadah predict --error and tadah properties pairwise --error
+ * are retired options, tadah train --uncertainty the option of the retired
+ * key UNCERTAINTY, and WCOV and WNOISE, which a development build of
+ * Tadah! 1.6.0 wrote for an OALGO 3 fit, retired keys. The predictions and
+ * the fit are unaffected. */
+
+namespace {
+
+const std::string kNotPart =
+    "Uncertainty output is not part of Tadah! 1.6.0: its error bars were "
+    "not calibrated (they were too narrow for many structures).";
+
+/* Two Ta dimers in 5 A cells (the [weight0] entries). */
+std::string two_dimers() {
+  return weighted_entry("S1", "1 1 1", "1.40 1.30 1.20", "0.1", "0.001") +
+         weighted_entry("S2", "1 1 1", "1.60 1.25 1.30", "-0.1", "0.002");
+}
+
+}  // namespace
+
+/* Pins: `tadah predict --error` and `tadah properties pairwise --error`
+ * exit 1 before writing anything, with the reason: "--error of tadah
+ * predict is retired: tadah predict --error gave ... Uncertainty output is
+ * not part of Tadah! 1.6.0: its error bars were not calibrated (they were
+ * too narrow for many structures). Replaced by: nothing in Tadah! 1.6.0.
+ * Deleting the option converts it: ...", and likewise for tadah properties
+ * pairwise; without --error both exit 0.
+ * Before the fix: both exited 0 and wrote standard deviations (energy.pred
+ * with a fourth column and error.pred; the curve's error column). */
+TEST_CASE("Subcommand: predict --error and properties pairwise --error are "
+          "refused with the reason",
+          "[TadahCLI][predict][uncertainty]") {
+  ScratchCwd cwd("error_retired");
+  std::ofstream("pot.tadah") << kPairPotential;
+  std::ofstream("d.tadah") << two_dimers();
+  const CliRun e = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                              "d.tadah", "--error"});
+  const std::string re = reported(e);
+  INFO("predict --error: status " << e.status << "\n" << re);
+  CHECK(e.status == 1);
+  CHECK(contains(re, "--error of tadah predict is retired: tadah predict "
+                     "--error gave"));
+  CHECK(contains(re, kNotPart));
+  CHECK(contains(re, "Replaced by: nothing in Tadah! 1.6.0. Deleting the "
+                     "option converts it"));
+  CHECK_FALSE(std::filesystem::exists("energy.pred"));
+  CHECK_FALSE(std::filesystem::exists("error.pred"));
+  const CliRun p = run_tadah({"tadah", "properties", "pairwise", "-p",
+                              "pot.tadah", "-r", "2.0", "5.0", "4",
+                              "--atompair", "Ta", "Ta", "-o", "pw.dat",
+                              "--error"});
+  const std::string rp = reported(p);
+  INFO("properties pairwise --error: status " << p.status << "\n" << rp);
+  CHECK(p.status == 1);
+  CHECK(contains(rp, "--error of tadah properties pairwise is retired: "
+                     "tadah properties pairwise --error gave"));
+  CHECK(contains(rp, kNotPart));
+  CHECK_FALSE(std::filesystem::exists("pw.dat"));
+
+  const CliRun ok = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                               "d.tadah"});
+  INFO("predict: status " << ok.status << "\n" << reported(ok));
+  CHECK(ok.status == 0);
+  CHECK(std::filesystem::exists("energy.pred"));
+  const CliRun okp = run_tadah({"tadah", "properties", "pairwise", "-p",
+                                "pot.tadah", "-r", "2.0", "5.0", "4",
+                                "--atompair", "Ta", "Ta", "-o", "pw.dat"});
+  INFO("properties pairwise: status " << okp.status << "\n" << reported(okp));
+  CHECK(okp.status == 0);
+  CHECK(std::filesystem::exists("pw.dat"));
+}
+
+/* Pins: `tadah train --uncertainty` exits 1 before training, with the
+ * reason ("--uncertainty: UNCERTAINTY is a retired key: tadah train
+ * --uncertainty wrote ... Uncertainty output is not part of Tadah!
+ * 1.6.0 ..."), and writes neither pot.tadah nor weights.tadah; without it
+ * the OALGO 3 configuration trains (exit 0) and its potential has no WCOV
+ * and no WNOISE line.
+ * Before the fix: it trained and wrote weights.tadah, and the potential had
+ * WCOV and WNOISE. */
+TEST_CASE("Subcommand: train --uncertainty is refused with the reason",
+          "[TadahCLI][train][uncertainty]") {
+  ScratchCwd cwd("uncertainty_retired");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.train")
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 1e-3\nOALGO 3\n");
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                              "pot.tadah", "--uncertainty"});
+  const std::string rep = reported(t);
+  INFO("train --uncertainty: status " << t.status << "\n" << rep);
+  CHECK(t.status == 1);
+  CHECK(contains(rep, "--uncertainty: UNCERTAINTY is a retired key: tadah "
+                      "train --uncertainty wrote"));
+  CHECK(contains(rep, kNotPart));
+  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  CHECK_FALSE(std::filesystem::exists("weights.tadah"));
+  const CliRun ok = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                               "pot.tadah"});
+  INFO("train: status " << ok.status << "\n" << reported(ok));
+  REQUIRE(ok.status == 0);
+  const std::string pot = slurp("pot.tadah");
+  CHECK(line_tokens(pot, "WCOV").empty());
+  CHECK(line_tokens(pot, "WNOISE").empty());
+  CHECK_FALSE(std::filesystem::exists("weights.tadah"));
+}
+
+/* Pins: `tadah explain` of predict.error, properties.pairwise.error,
+ * train.uncertainty, UNCERTAINTY, WCOV and WNOISE exits 0 and gives the
+ * reason, after "RETIRED: " (that uncertainty output is not part of Tadah!
+ * 1.6.0, its error bars not calibrated), "REPLACED BY: nothing in Tadah!
+ * 1.6.0" and the conversion.
+ * Before the fix: each explained a working option or key. */
+TEST_CASE("Subcommand: explain gives why --error, --uncertainty, WCOV and "
+          "WNOISE are retired",
+          "[TadahCLI][explain][uncertainty]") {
+  ScratchCwd cwd("explain_uncertainty");
+  for (const char* name : {"predict.error", "properties.pairwise.error",
+                           "train.uncertainty", "UNCERTAINTY", "WCOV",
+                           "WNOISE"}) {
+    const CliRun x = run_tadah({"tadah", "explain", name});
+    INFO("explain " << name << ": status " << x.status << "\n"
+                    << reported(x));
+    CHECK(x.status == 0);
+    CHECK(contains(x.out, "RETIRED: "));
+    CHECK(contains(x.out, kNotPart));
+    CHECK(contains(x.out, "REPLACED BY: nothing in Tadah! 1.6.0"));
+    CHECK(contains(x.out, "CONVERSION: Deleting the"));
+  }
+}
+
+/* Pins: a potential with the WCOV and WNOISE lines a development build of
+ * Tadah! 1.6.0 wrote for an OALGO 3 fit (the [weight0] pair potential with
+ * OALGO 3 on line 18, WCOV of N = 4 on line 19 and WNOISE E 1 F 1 S 1 on
+ * line 20) predicts what the potential without them predicts (exit 0,
+ * energy.pred the same), with one notice "Retired keys WCOV (line 19 of
+ * pot.tadah) and WNOISE (line 20 of pot.tadah) are ignored"; `tadah train
+ * -c` of it with a DBFILE line exits 1 naming the two lines, WCOV by its
+ * first values ("WCOV 4 1 0 and 14 more values (line 19 of
+ * retrain.train)"), and writes no potential.
+ * Before the fix: no notice, and the retrain wrote the WCOV and WNOISE of
+ * its own fit. */
+TEST_CASE("Subcommand: a potential with WCOV and WNOISE predicts with one "
+          "notice, and a retrain from it is refused",
+          "[TadahCLI][predict][train][uncertainty]") {
+  ScratchCwd cwd("wcov_retired");
+  const std::string with_covariance =
+      std::string(kPairPotential) + "OALGO     3\n" +
+      "WCOV     4     1 0 0 0     0 1 0 0     0 0 1 0     0 0 0 1\n" +
+      "WNOISE     E 1     F 1     S 1\n";
+  std::ofstream("pot.tadah") << with_covariance;
+  std::ofstream("plain.tadah") << kPairPotential << "OALGO     3\n";
+  std::ofstream("d.tadah") << two_dimers();
+  const CliRun plain = run_tadah({"tadah", "predict", "-p", "plain.tadah",
+                                  "-d", "d.tadah", "-o", "plain.pred"});
+  REQUIRE(plain.status == 0);
+  const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                              "d.tadah", "-o", "pot.pred"});
+  const std::string rp = reported(p);
+  INFO("predict: status " << p.status << "\n" << rp);
+  CHECK(p.status == 0);
+  CHECK(slurp("pot.pred") == slurp("plain.pred"));
+  CHECK(contains(rp, "Retired keys WCOV (line 19 of pot.tadah) and WNOISE "
+                     "(line 20 of pot.tadah) are ignored"));
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("retrain.train")
+      << as_training_config(with_covariance, "db.tadah");
+  const CliRun t = run_tadah({"tadah", "train", "-c", "retrain.train", "-o",
+                              "re.tadah"});
+  const std::string rt = reported(t);
+  INFO("train: status " << t.status << "\n" << rt);
+  CHECK(t.status == 1);
+  CHECK(contains(rt, "WCOV 4 1 0 and 14 more values (line 19 of "
+                     "retrain.train)"));
+  CHECK(contains(rt, "WNOISE E 1 F 1 S 1 (line 20 of retrain.train)"));
+  CHECK_FALSE(std::filesystem::exists("re.tadah"));
+}
+
 /* ---- [uncertainty]: the weight covariance of a potential --------------
  *
  * An OALGO 3 fit writes WCOV (the covariance of the WEIGHTS) and WNOISE
@@ -7509,24 +7696,21 @@ TEST_CASE("Subcommand: train -c of a potential without a DBFILE line is "
     }
 }
 
-/* Pins: `tadah refit --edit` of a potential with an UNCERTAINTY line, as
- * tadah 1.5.x and 1.6.0 development builds wrote them (the outputs of a
- * dense refit of the small Ta setfl, with "UNCERTAINTY true" appended, as
- * old.tadah), writes old_edited.tadah without it (UNCERTAINTY is a switch
- * of the train task, and a potential does not record it), and so does an
- * edit of that potential; a retrain of the edited potential (a DBFILE line
- * added) gives no WARNING about an UNCERTAINTY of the potential.
- * Before the fix: refit --edit writes its input's context, and
- * remove_run_inputs (TrainEngine::dumpPotFile) did not remove UNCERTAINTY:
- * both edits wrote "UNCERTAINTY true", and the retrain warned "its
- * UNCERTAINTY true is the record of the run that trained it (tadah 1.5.x
- * and 1.6.0 development builds wrote UNCERTAINTY into every potential)" of
- * a file this build wrote.
- * Since the fix that reads no UNCERTAINTY line of a potential that WARNING
- * is gone, so the retrain's output is checked to name no UNCERTAINTY at
- * all (a pin: it named none before that fix either). */
-TEST_CASE("Subcommand: refit --edit writes no UNCERTAINTY line",
-          "[TadahCLI][exit-status][refit][potential-content]") {
+/* Pins: `tadah refit --edit` of a potential with the UNCERTAINTY line
+ * tadah train 1.5.0 wrote into every potential (the outputs of a dense
+ * refit of the small Ta setfl, with "UNCERTAINTY true" appended, as
+ * old.tadah) loads it with the notice of a retired key ("Retired key
+ * UNCERTAINTY (line N of old.tadah) is ignored") and writes old_edited.tadah with the line as it
+ * is, and so does an edit of that potential: an edit keeps the retired
+ * lines of its input. A retrain of the edited potential (a DBFILE line
+ * added) is refused naming the line; with the line deleted (its
+ * conversion) it trains and names no UNCERTAINTY.
+ * Before the fix: UNCERTAINTY was not retired: the edits wrote no
+ * UNCERTAINTY line (the input's line went into the training record) and the
+ * retrain of the edited potential exited 0. */
+TEST_CASE("Subcommand: refit --edit keeps the UNCERTAINTY line of a "
+          "potential as a retired line",
+          "[TadahCLI][exit-status][refit][potential-content][uncertainty]") {
   ScratchCwd cwd("refit_edit_uncertainty");
   { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
   std::ofstream("config.refit")
@@ -7542,12 +7726,16 @@ TEST_CASE("Subcommand: refit --edit writes no UNCERTAINTY line",
     const CliRun r = run_tadah({"tadah", "refit", "--edit", "old.tadah",
                                 "--func", "phi", "--add", "2.5", "-o",
                                 "old_edited.tadah"});
-    INFO("--edit old.tadah: status " << r.status << "\n" << reported(r));
+    const std::string rep = reported(r);
+    INFO("--edit old.tadah: status " << r.status << "\n" << rep);
     REQUIRE(r.status == 0);
+    CHECK(contains(rep, "Retired key UNCERTAINTY (line "));
+    CHECK(contains(rep, " of old.tadah) is ignored"));
   }
   const std::string edited = slurp("old_edited.tadah");
   INFO(edited);
-  CHECK(line_tokens(edited, "UNCERTAINTY").empty());
+  CHECK(line_tokens(edited, "UNCERTAINTY") ==
+        std::vector<std::string>{"UNCERTAINTY", "true"});
   {
     const CliRun r = run_tadah({"tadah", "refit", "--edit",
                                 "old_edited.tadah", "--func", "phi", "--add",
@@ -7555,7 +7743,8 @@ TEST_CASE("Subcommand: refit --edit writes no UNCERTAINTY line",
     INFO("--edit old_edited.tadah: status " << r.status << "\n"
                                             << reported(r));
     REQUIRE(r.status == 0);
-    CHECK(line_tokens(slurp("twice.tadah"), "UNCERTAINTY").empty());
+    CHECK(line_tokens(slurp("twice.tadah"), "UNCERTAINTY") ==
+          std::vector<std::string>{"UNCERTAINTY", "true"});
   }
   std::ofstream("db.tadah") << bcc_ta_entry("B1", 3.25, -23.1)
                             << bcc_ta_entry("B2", 3.30, -23.4)
@@ -7565,8 +7754,18 @@ TEST_CASE("Subcommand: refit --edit writes no UNCERTAINTY line",
                               "retrained.tadah"});
   const std::string rep = reported(t);
   INFO("train: status " << t.status << "\n" << rep);
-  CHECK(t.status == 0);
-  CHECK_FALSE(contains(rep, "UNCERTAINTY"));
+  CHECK(t.status == 1);
+  CHECK(contains(rep, "UNCERTAINTY true (line "));
+  CHECK(contains(rep, "retired"));
+  CHECK_FALSE(std::filesystem::exists("retrained.tadah"));
+  std::ofstream("converted.train")
+      << as_training_config(with_line(edited, "UNCERTAINTY", ""), "db.tadah");
+  const CliRun c = run_tadah({"tadah", "train", "-c", "converted.train",
+                              "-o", "retrained.tadah"});
+  const std::string crep = reported(c);
+  INFO("converted: status " << c.status << "\n" << crep);
+  CHECK(c.status == 0);
+  CHECK_FALSE(contains(crep, "UNCERTAINTY"));
 }
 
 /* Pins: the documented retrain of a potential that tadah refit writes --
@@ -7834,7 +8033,7 @@ TEST_CASE("Subcommand: hpo --validation takes one file",
 /* ---- [potential record]: the training record of a potential --------------
  *
  * A potential keeps the keys it does not use -- the DBFILE, VALIDATION,
- * HPOTARGET, UNCERTAINTY, VERBOSE, NUMERIC, OUTFILE, AUDIT, AUDIT_SAMPLE
+ * HPOTARGET, VERBOSE, NUMERIC, OUTFILE, AUDIT, AUDIT_SAMPLE
  * and HEALTH_LOG its run was given, and the keys that prepared its
  * training data ([dataset keys] below) -- in a comment block above its key
  * lines, for the user's record; no loader of a potential reads it (tadah
@@ -9037,28 +9236,26 @@ TEST_CASE("Subcommand: hpo keeps the keys that prepared the training data in "
 /* Pins: `tadah hpo -c seed.tadah --hpotarget config.hpo --validation
  * config.val` (write_hpo_potential_fixture), seed.tadah being the
  * potential `tadah train -c config.tadah` writes (no ESHIFT line) without
- * its record, with the key lines "UNCERTAINTY true", "ESHIFT_ATOM false"
- * and "ESHIFT_DBATOM true" of an earlier version and "DBFILE db.tadah",
- * exits 0; none of the three lines is read: best_pot.tadah has no ESHIFT
- * line (no shift is derived from the run's data), its training record is
- * "DBFILE db.tadah", "VALIDATION config.val", "HPOTARGET config.hpo", the
- * journal (hpo_run.log) has the WARNING "tadah hpo: the configuration file
+ * its record, with the key lines "ESHIFT_ATOM false" and "ESHIFT_DBATOM
+ * true" of an earlier version and "DBFILE db.tadah", exits 0; neither
+ * toggle is read: best_pot.tadah has no ESHIFT line (no shift is derived
+ * from the run's data), its training record is "DBFILE db.tadah",
+ * "VALIDATION config.val", "HPOTARGET config.hpo", and the journal
+ * (hpo_run.log) has the WARNING "tadah hpo: the configuration file
  * seed.tadah is a potential (it has WEIGHTS): its ESHIFT_DBATOM true
  * prepared the training data of the fit that wrote it, not of this run,
  * and is ignored ... Give --eshift-dbatom on the command line, or an
  * ESHIFT_DBATOM line in a configuration file that includes the potential
- * with CONFIG, to apply it to this run ...", and neither the journal nor
- * the run's output says "UNCERTAINTY true" (tadah hpo takes no
- * UNCERTAINTY, so the notice does not name it; ESHIFT_ATOM false is at its
+ * with CONFIG, to apply it to this run ..." (ESHIFT_ATOM false is at its
  * default).
- * Before the fix: the toggles of a potential without an ESHIFT line and
- * its UNCERTAINTY line were read: ESHIFT_DBATOM derived a shift
- * (best_pot.tadah had an ESHIFT line), the record listed "ESHIFT_ATOM
- * false", "ESHIFT_DBATOM true" and "UNCERTAINTY true" as the run's, and no
- * WARNING named the toggle: the ESHIFT, record and WARNING checks fail. */
-TEST_CASE("Subcommand: hpo -c reads no UNCERTAINTY, ESHIFT_ATOM or "
-          "ESHIFT_DBATOM line of a seed potential",
-          "[TadahCLI][hpo][dataset-keys][training-record][uncertainty]") {
+ * Before the fix: the toggles of a potential without an ESHIFT line were
+ * read: ESHIFT_DBATOM derived a shift (best_pot.tadah had an ESHIFT line),
+ * the record listed "ESHIFT_ATOM false" and "ESHIFT_DBATOM true" as the
+ * run's, and no WARNING named the toggle: the ESHIFT, record and WARNING
+ * checks fail. */
+TEST_CASE("Subcommand: hpo -c reads no ESHIFT_ATOM or ESHIFT_DBATOM line of "
+          "a seed potential",
+          "[TadahCLI][hpo][dataset-keys][training-record]") {
   ScratchCwd cwd("dataset_keys_hpo_seed_toggles");
   write_hpo_potential_fixture();
   {
@@ -9071,8 +9268,7 @@ TEST_CASE("Subcommand: hpo -c reads no UNCERTAINTY, ESHIFT_ATOM or "
   REQUIRE(line_tokens(trained, "ESHIFT").empty());
   std::ofstream("seed.tadah")
       << without_record(trained)
-      << "UNCERTAINTY true\nESHIFT_ATOM false\nESHIFT_DBATOM true\n"
-         "DBFILE db.tadah\n";
+      << "ESHIFT_ATOM false\nESHIFT_DBATOM true\nDBFILE db.tadah\n";
   const CliRun r = run_tadah({"tadah", "hpo", "-c", "seed.tadah",
                               "--hpotarget", "config.hpo", "--validation",
                               "config.val"});
@@ -9089,14 +9285,47 @@ TEST_CASE("Subcommand: hpo -c reads no UNCERTAINTY, ESHIFT_ATOM or "
                           "ESHIFT_DBATOM line in a configuration file that "
                           "includes the potential with CONFIG, to apply it "
                           "to this run"));
-  CHECK_FALSE(contains(journal, "UNCERTAINTY true"));
-  CHECK_FALSE(contains(rep, "UNCERTAINTY true"));
   const std::string best = slurp("best_pot.tadah");
   INFO("best_pot.tadah:\n" << best);
   CHECK(line_tokens(best, "ESHIFT").empty());
   CHECK(record_of(best) ==
         std::vector<std::string>{"DBFILE db.tadah", "VALIDATION config.val",
                                  "HPOTARGET config.hpo"});
+}
+
+/* Pins: `tadah hpo -c seed.tadah` of a seed potential with the UNCERTAINTY
+ * line tadah train 1.5.0 wrote into every potential ("UNCERTAINTY
+ * true", the potential `tadah train -c config.tadah` writes, without its
+ * record, with that line and "DBFILE db.tadah") is refused (exit 1) before any
+ * evaluation, naming the line as a retired key ("UNCERTAINTY true (line N
+ * of seed.tadah)") and its conversion, and writes no best_pot.tadah.
+ * Before the fix: the line was not read (tadah hpo takes no UNCERTAINTY)
+ * and the run exited 0. */
+TEST_CASE("Subcommand: hpo -c refuses the UNCERTAINTY line of a seed "
+          "potential",
+          "[TadahCLI][hpo][uncertainty]") {
+  ScratchCwd cwd("hpo_seed_uncertainty");
+  write_hpo_potential_fixture();
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
+                                "trained.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  std::ofstream("seed.tadah")
+      << without_record(slurp("trained.tadah"))
+      << "UNCERTAINTY true\nDBFILE db.tadah\n";
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "seed.tadah",
+                              "--hpotarget", "config.hpo", "--validation",
+                              "config.val"});
+  const std::string rep = reported(r) + slurp("hpo_run.log");
+  INFO("hpo -c seed.tadah: status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "UNCERTAINTY true (line "));
+  CHECK(contains(rep, " of seed.tadah)"));
+  CHECK(contains(rep, "Deleting the option, or the UNCERTAINTY line, "
+                      "converts it"));
+  CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
 }
 
 /* Pins: the documented route from a refit to tadah hpo says how to give a

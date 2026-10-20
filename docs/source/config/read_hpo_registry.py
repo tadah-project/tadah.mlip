@@ -35,9 +35,12 @@ a rule each refers to has a place in its page's Rules section; an entry
 is a directive of the hpo domain (docs/tools/hpotarget_domain.py) whose
 Sphinx target is the registry id, so that the :hpo: roles find it. An
 entry headed by words (a rule, a section of the registry, the LAMMPS
-script) is a topic. Its body is the registry's text and a field list
-(Syntax, Values, Default, Where, Repeat, Rules, Override, Example and the
-like; an empty field is left out).
+script) is a topic. Its body is the registry's text (doc, long_doc,
+quirk) and a field list (Syntax, Values, Default, Where, Repeat, Rules,
+Override, Checks, Example and the like; an empty field is left out). The
+Checks field quotes the message of each check of the entry (checks, a
+block's requires and close_checks) as program output, captioned with the
+check's doc, which says when it comes.
 
 The registry's text becomes reStructuredText here (Writer.text): a name of
 one entry of the registry is a role, which links at its first mention in
@@ -56,7 +59,9 @@ The HPO checkout is found as read_anneal_keys.py finds it
 (source_locator.py); a checkout without the registry, a registry the
 loader refuses, or a loader of another API stops the build with the
 reason, and so does a Python without tomllib (3.10 and older), a field of
-an example these pages do not show, and an optimiser or an annealer key
+the registry these pages do not account for (FIELDS, SECTION_FIELDS: each
+field is shown or listed with the reason it is not), a repeat rule or a
+check stage they have no words for, and an optimiser or an annealer key
 the registries leave without the text the pages need.
 """
 
@@ -105,14 +110,180 @@ INT_LIMITS = {'INT_MAX': 2**31 - 1, 'UINT_MAX': 2**32 - 1,
 #: the value is (blueprint/README.md: any word, the rest of the line, a
 #: LAMMPS time spec, a loss function).
 TEXT_DESCRIBES = ('name', 'tokens', 'timespec', 'loss')
-#: The fields of an example (the loader's Case) and what the pages make of
-#: them: the text is the code, the doc and the environment the caption;
-#: the others say how the tests run it. A field not listed stops the
-#: generator, so that a new one is shown or listed here.
-CASE_FIELDS = {'text': 'code', 'doc': 'caption', 'env': 'caption',
-               'owner': 'test', 'part': 'test', 'kind': 'test',
-               'index': 'test', 'wrap': 'test', 'check': 'test',
-               'context': 'test', 'error': 'test', 'at': 'test'}
+#: Fields every entry of the registry has, and what the pages make of them.
+_ENTRY_FIELDS = {
+    'id': 'the target of the entry',
+    'part': 'not shown: the file the entry is written in',
+    'examples': 'Example: each a code block, its doc the caption',
+    'invalid': 'not shown: the conformance test runs them',
+    'untested': 'not shown: why no invalid line shows a message',
+}
+_TEST = 'not shown: how the conformance test runs a case'
+#: Every field of every object of the target-file registry (the loader's
+#: dataclasses, by class name) and what the pages make of it. A field that
+#: is not shown says why: a message whose condition a field of the entry
+#: states in words (Repeat, Where, Values, Keys), or a field of the tests.
+#: The generator stops on a field or a class not listed here
+#: (check_fields), so that a field the registry gains is shown on the
+#: pages or listed here with the reason it is not.
+FIELDS = {
+    'Registry': {
+        'directory': 'not shown: where the files are',
+        'files': 'not shown: the files read',
+        'full': 'not shown: whether every part file was read',
+        'meta': 'read: the files of the other registries',
+        'lexing': 'topic LEXING', 'reading': 'topic READING',
+        'structure': 'topic STRUCTURE', 'optim': 'the entry of OPTIM',
+        'lammps_script': 'topic LAMMPS_SCRIPT',
+        'groups': 'topics', 'blocks': 'entries', 'keys': 'entries',
+        'line_options': 'entries', 'forms': 'entries',
+        'removed': 'entries', 'rules': 'topics', 'envs': 'entries',
+        'loss_functions': 'entries', 'strategy_types': 'entries',
+        'init_methods': 'entries', 'optim_targets': 'entries',
+        'params': 'entries', 'param_excluded': 'entries',
+        'param_policies': 'entries',
+        'wrappers': _TEST, 'contexts': _TEST,
+        'fixtures': 'the script of LAMMPS_SCRIPT; the others: ' + _TEST,
+        'abbreviations': 'spelled out at their first use on a page',
+        'optimizer_docs': 'the first paragraph of an optimiser or library',
+        'notes': "not shown: the loader's notes on a part read alone",
+    },
+    'Meta': {
+        'version': 'not shown: checked by the loader',
+        'api': 'not shown: checked by the generator (LOADER_API)',
+        'parts': 'not shown: the files the loader reads',
+        'anneal_keys': 'read: the PARAM keys of the annealers',
+        'optimizers': 'read: the optimiser list',
+        'optimizer_docs': 'read by the loader',
+    },
+    'Section': dict(_ENTRY_FIELDS, fields='SECTION_FIELDS',
+                    doc='paragraph', long_doc='paragraph'),
+    'Group': dict(_ENTRY_FIELDS, name='the scope of its text',
+                  blocks='Where', doc='paragraph', long_doc='paragraph',
+                  leftover_msg='not shown: the Values of each key say how '
+                               'many values it takes'),
+    'Block': dict(_ENTRY_FIELDS, name='heading', end='Syntax',
+                  parents='Where', repeat='Repeat',
+                  repeat_msg='not shown: the Repeat field states it',
+                  misplaced_msg='not shown: the Where field states it',
+                  unknown_msg='not shown: the Keys field states it',
+                  unknown_first='not shown: the order of the checks',
+                  aliases='Alias', refuse='Refused',
+                  refuse_msg='not shown: the Refused field states it',
+                  unreachable_msgs='not shown: no target file reaches them',
+                  requires='Checks', close_checks='Checks',
+                  doc='paragraph', long_doc='paragraph', quirk='paragraph'),
+    'Key': dict(_ENTRY_FIELDS, name='heading', synopsis='Syntax',
+                repeat='Repeat',
+                repeat_msg='not shown: the Repeat field states it',
+                repeat_doc='Repeat', group='Where', blocks='Where',
+                args='Values',
+                misplaced_msg='not shown: the Where field states it',
+                default='Default', alias_of='Alias of', refused='Refused',
+                env='Override', checks='Checks', doc='paragraph',
+                long_doc='paragraph', quirk='paragraph'),
+    'LineOption': dict(_ENTRY_FIELDS, option='heading', lines='Where',
+                       synopsis='Syntax', args='Values', repeat='Repeat',
+                       repeat_msg='not shown: the Repeat field states it',
+                       default='Default', refused='Refused',
+                       checks='Checks', doc='paragraph',
+                       long_doc='paragraph', quirk='paragraph'),
+    'Form': dict(_ENTRY_FIELDS, line='Where', word='heading',
+                 synopsis='Syntax', args='Values', refused='Refused',
+                 checks='Checks', doc='paragraph', long_doc='paragraph',
+                 quirk='paragraph'),
+    'Removed': dict(_ENTRY_FIELDS, name='heading', hint='Message',
+                    doc='paragraph'),
+    'Rule': dict(_ENTRY_FIELDS, title='heading', check='Checked',
+                 msg='Message', msg_doc='Message', keys='Keys',
+                 doc='paragraph', quirk='paragraph'),
+    'Env': dict(_ENTRY_FIELDS, name='heading', key='Overrides',
+                values='Values',
+                msg='not shown: the Values field and the text state it',
+                checks='Checks', doc='paragraph'),
+    'LossFunction': dict(_ENTRY_FIELDS, name='heading', params='Values',
+                         doc='paragraph'),
+    'StrategyType': dict(_ENTRY_FIELDS, name='heading', keys='Keys',
+                         checks='Checks', doc='paragraph',
+                         quirk='paragraph'),
+    'InitMethod': dict(_ENTRY_FIELDS, name='heading', args='Values',
+                       refused='Refused', checks='Checks', doc='paragraph',
+                       quirk='paragraph'),
+    'OptimTarget': dict(_ENTRY_FIELDS, key='heading', status='Status',
+                        indices='Indices', msg='Message', condition='When',
+                        doc='paragraph'),
+    'Param': dict(_ENTRY_FIELDS, name='heading', optimizers='Where',
+                  args='Values', default='Default', indexed='Syntax',
+                  checks='Checks', doc='paragraph', long_doc='paragraph',
+                  quirk='paragraph'),
+    'ParamExcluded': dict(_ENTRY_FIELDS, name='heading',
+                          optimizers='Where', why='Refused',
+                          doc='paragraph'),
+    'ParamPolicy': dict(_ENTRY_FIELDS, optimizers='Where',
+                        msg='not shown: the text says which keys the '
+                            'optimiser takes',
+                        checks='Checks', doc='paragraph', quirk='paragraph'),
+    'Case': {'text': 'code', 'doc': 'caption', 'env': 'caption',
+             'owner': _TEST, 'part': _TEST, 'kind': _TEST, 'index': _TEST,
+             'wrap': _TEST, 'check': _TEST, 'context': _TEST,
+             'error': _TEST, 'at': _TEST, 'msg_of': _TEST},
+    'Check': {'msg': 'Checks: the message', 'doc': 'Checks: the caption'},
+    'Untested': {'msg': 'not shown', 'why': 'not shown'},
+    'Arg': {'name': 'Values', 'kind': 'Values', 'optional': 'Values',
+            'repeat': 'Values', 'min': 'Values', 'max': 'Values',
+            'min_open': 'Values', 'integral': 'Values', 'words': 'Values',
+            'refused_words': 'Values: the words; their messages not shown',
+            'what': 'not shown: a part of the message',
+            'msg': 'not shown: the Values field states it',
+            'noun': 'Values', 'default': 'Values', 'doc': 'Values'},
+    'Default': {'literal': 'Default', 'text': 'Default',
+                'unchecked': 'not shown: why the tests check no setting'},
+    'Refusal': {'key': 'Refused', 'why': 'Refused'},
+    'LossParam': {'name': 'Values', 'default': 'Values', 'gt': 'Values',
+                  'doc': 'Values'},
+    'Wrapper': {f: _TEST for f in ('name', 'part', 'text', 'doc', 'block',
+                                   'optimizer', 'context')},
+    'TrainingContext': {f: _TEST for f in ('name', 'part', 'config', 'doc',
+                                           'has_train_db',
+                                           'has_validation')},
+    'Fixture': {'name': 'not shown', 'part': 'not shown',
+                'path': 'Script: the caption', 'text': 'Script',
+                'doc': 'Script: the caption'},
+    'OptimizerDocs': {'libraries': 'the first paragraph of a library',
+                      'optimizers': 'the first paragraph of an optimiser'},
+}
+_READER_MSG = 'not shown: the Values of an argument state its range'
+_STRUCTURE_MSG = 'not shown: the text of the section states it'
+#: The fields of each section (Section.fields, by section id) and what the
+#: pages make of them; check_fields stops on one not listed.
+SECTION_FIELDS = {
+    'LEXING': {'comment': 'not shown: the doc states it',
+               'continuation': 'not shown: the long_doc states it',
+               'key_case': 'not shown: the doc states it',
+               'error_frame': 'not shown: the long_doc states it',
+               'unfinished_msg': _STRUCTURE_MSG,
+               'missing_file_msg': 'not shown: a message of the command',
+               'bool_true': 'Values of a boolean',
+               'bool_false': 'Values of a boolean',
+               'timespec_words': 'Values of a time'},
+    'READING': {f: _READER_MSG for f in (
+        'integer_msg', 'integer_range_msg', 'note_msg', 'finite_msg',
+        'positive_msg', 'underflow_note', 'requires_value_msg',
+        'single_value_msg', 'bool_msg', 'timespec_msg',
+        'script_timeout_msg', 'script_timeout_large_msg')},
+    'STRUCTURE': dict({f: _STRUCTURE_MSG for f in (
+        'end_without_open_msg', 'end_mismatch_msg', 'end_takes_no_value_msg',
+        'open_takes_no_value_msg', 'unclosed_msg', 'unknown_root_msg')},
+        check_order='not shown: the order of the checks',
+        removed_msg='Message of a removed key'),
+    'OPTIM': {'synopsis': 'Syntax of OPTIM',
+              'positive_only': 'not shown: the text of OPTIM AUTO names '
+                               'these keys',
+              'auto_excluded_prefix': 'not shown: the text of OPTIM AUTO '
+                                      'states it',
+              'checks': 'Checks of OPTIM'},
+    'LAMMPS_SCRIPT': {'fixture': 'Script'},
+}
 #: The ids of the entries headed by words, which are topics.
 TOPIC_IDS = ('LEXING', 'READING', 'STRUCTURE', 'LAMMPS_SCRIPT')
 TOPIC_PREFIXES = ('RULE.', 'GROUP.')
@@ -124,15 +295,50 @@ class GenerationError(Exception):
     """The registries cannot be written as reference pages; says why."""
 
 
-def check_case_fields(case_cls):
-    """Stops when the examples of the registry have a field these pages do
-    not account for (CASE_FIELDS)."""
-    unknown = sorted(f.name for f in dataclasses.fields(case_cls)
-                     if f.name not in CASE_FIELDS)
+def check_fields(root):
+    """Stops when *root* (the registry, or any object of it) or an object it
+    holds has a field that FIELDS does not list for its class, or a section
+    a field that SECTION_FIELDS does not list, naming each as Class.field
+    (or SECTION.field)."""
+    unknown, seen = set(), set()
+
+    def walk(obj):
+        if isinstance(obj, dict):
+            for value in obj.values():
+                walk(value)
+        elif isinstance(obj, (list, tuple)):
+            for value in obj:
+                walk(value)
+        elif dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+            if id(obj) in seen:
+                return
+            seen.add(id(obj))
+            name = type(obj).__name__
+            listed = FIELDS.get(name, {})
+            for f in dataclasses.fields(obj):
+                if f.name not in listed:
+                    unknown.add(f'{name}.{f.name}')
+                walk(getattr(obj, f.name))
+            if name == 'Section':
+                listed = SECTION_FIELDS.get(obj.id, {})
+                unknown.update(f'{obj.id}.{k}' for k in obj.fields
+                               if k not in listed)
+    walk(root)
     if unknown:
-        raise GenerationError('the examples of the registry have a field the '
-                              'reference pages do not show: '
-                              + ', '.join(unknown))
+        raise GenerationError(
+            'the registry has fields the reference pages do not account '
+            'for (FIELDS and SECTION_FIELDS of read_hpo_registry.py): '
+            + ', '.join(sorted(unknown)))
+
+
+def wording(table, value, ident, what):
+    """The words *table* has for *value* of the entry *ident*; a value it
+    has none for stops the generator."""
+    if value not in table:
+        raise GenerationError(f'{ident}: the {what} {value!r} has no wording '
+                              'on the reference pages; known: '
+                              + ', '.join(sorted(table)))
+    return table[value]
 
 
 # ------------------------------------------------------------- text ----
@@ -300,14 +506,18 @@ def annealer_message(kind, text):
     return f'{ANNEALERS[kind]}: {text}'
 
 
-def message(text, width=CODE_WIDTH):
+def message(text, width=CODE_WIDTH, caption=''):
     """A message of tadah hpo as a block of program output, its lines
-    broken at blanks to at most *width* characters where a word allows."""
+    broken at blanks to at most *width* characters where a word allows,
+    with *caption* (already reStructuredText) when there is one."""
     lines = []
     for line in text.rstrip('\n').split('\n'):
         lines += textwrap.wrap(line, width, break_long_words=False,
                                break_on_hyphens=False) or ['']
-    return ['.. code-block:: text', ''] + ['   ' + l if l else '' for l in lines]
+    head = ['.. code-block:: text']
+    if caption:
+        head.append('   :caption: ' + caption)
+    return head + [''] + ['   ' + l if l else '' for l in lines]
 
 
 # ------------------------------------------------------------ entries ----
@@ -371,6 +581,13 @@ class Entry:
                 caption.append(self.rst(case.doc))
             blocks.append(render(case.text, width, ' '.join(caption)))
         return self.field('Example', *blocks)
+
+    def checks(self, checks):
+        """The Checks field: the message of each check as program output,
+        captioned with its doc, which says when the message comes (a
+        placeholder of the message it names is an inline literal)."""
+        return self.field('Checks', *[message(c.msg, caption=self.rst(c.doc))
+                                      for c in checks])
 
     def render(self):
         out = [f'.. hpo:{self.directive}:: {self.ident}']
@@ -448,8 +665,8 @@ OPTION_REPEAT = {
 }
 BLOCK_REPEAT = {
     'error': 'Once: a second block is refused.',
-    'error_per_parent': 'Once in each enclosing block: a second one is '
-                        'refused.',
+    'error_per_parent': 'Once per optimiser: a second block for the '
+                        'optimiser of the enclosing block is refused.',
     'merge': 'A second block continues the first.',
 }
 CHECKED = {'parse': 'when the file is read',
@@ -465,6 +682,7 @@ _TOKEN = re.compile(
     r'`(?P<code>[^`]+)`'
     r'|(?<![\w-])(?P<opt>--(?:[A-Za-z][\w-]*)?)(?![\w-])'
     r'|(?P<list>the optimiser list)'
+    r'|(?<!\$)(?P<placeholder>\{[A-Za-z_][A-Za-z0-9_]*\})'
     r'|(?<![\w.:$\-])(?P<word>[A-Za-z][A-Za-z0-9_]*'
     r'(?:[.:][A-Za-z][A-Za-z0-9_]*)*(?:[-+][A-Za-z0-9]+)*)(?![\w-])')
 
@@ -612,6 +830,9 @@ class Writer:
                 opt = m.group('opt')
                 pieces.append((True, self.cite_name(opt, entry, prev)
                                if opt in self.names else literal(opt)))
+            elif m.group('placeholder') is not None:
+                # A placeholder of a message, which a check's doc names.
+                pieces.append((True, literal(m.group('placeholder'))))
             elif m.group('list') is not None:
                 pieces.append((True, ':ref:`the optimiser list '
                                      '<nfp_ref_optimisers>`'))
@@ -745,12 +966,14 @@ class Writer:
 
     def repeat(self, entry, rule, table, refused, own=''):
         """The Repeat field: the key's own rule when it has one; none for a
-        refused key or option."""
+        refused key or option. A rule the table has no words for stops the
+        generator in any case."""
+        words = wording(table, rule, entry.ident, 'repeat rule')
         if refused:
             return entry
         if own:
             return entry.line('Repeat', entry.rst(own))
-        return entry.line('Repeat', table[rule])
+        return entry.line('Repeat', words)
 
     # ---- registry entries -----------------------------------------------
     def key_entry(self, k, merge_optim=False):
@@ -764,6 +987,7 @@ class Writer:
         if merge_optim:
             optim = self.reg.optim
             entry.para(optim.doc)
+            entry.para(optim.long_doc)
             synopsis = optim.fields['synopsis']
             examples += optim.examples
         entry.items('Syntax', [literal(s) for s in synopsis])
@@ -790,6 +1014,10 @@ class Writer:
             self.rules(entry, 'OPTIM')
         if k.env:
             entry.line('Override', role('key', 'ENV.' + k.env))
+        checks = list(k.checks)
+        if merge_optim:
+            checks += self.reg.optim.fields.get('checks', [])
+        entry.checks(checks)
         return entry.examples(examples)
 
     def option_entry(self, o):
@@ -809,6 +1037,7 @@ class Writer:
         if o.refused:
             entry.line('Refused', entry.rst(o.refused))
         self.rules(entry, o.id)
+        entry.checks(o.checks)
         return entry.examples(o.examples)
 
     def cite_line(self, name):
@@ -832,16 +1061,19 @@ class Writer:
         options = [o for o in self.reg.line_options if f.id in o.lines]
         entry.line('Options', ', '.join(role('key', o.id) for o in options))
         self.rules(entry, f.id)
+        entry.checks(f.checks)
         return entry.examples(f.examples)
 
     def block_entry(self, b):
         entry = self.entry('block', b.id, b.name, names=[b.name],
                            scope=self.scope_of(b.id))
         entry.para(b.doc)
+        entry.para(b.long_doc)
         entry.para(b.quirk)
         entry.line('Syntax', f'{literal(b.name)} … {literal(b.end)}')
         entry.line('Where', self.blocks(b.parents))
-        entry.line('Repeat', BLOCK_REPEAT[b.repeat])
+        entry.line('Repeat', wording(BLOCK_REPEAT, b.repeat, b.id,
+                                     'repeat rule'))
         refused = {r.key for r in b.refuse}
         keys = [role('key', k.id) for k in self.reg.keys_in_block(b.name)
                 if k.name not in refused]
@@ -853,16 +1085,19 @@ class Writer:
         children = [c.name for c in self.reg.blocks if b.name in c.parents]
         entry.line('Blocks', self.blocks(children))
         self.rules(entry, b.id)
+        entry.checks(list(b.requires) + list(b.close_checks))
         return entry.examples(b.examples)
 
     def section_entry(self, s, text):
         entry = self.entry('topic', s.id, text, scope=self.scope_of(s.id))
         entry.para(s.doc)
+        entry.para(s.long_doc)
         return entry.examples(s.examples)
 
     def group_entry(self, g):
         entry = self.entry('topic', g.id, 'Optimiser keys', scope={g.name})
         entry.para(g.doc)
+        entry.para(g.long_doc)
         entry.line('Where', self.blocks(g.blocks))
         entry.line('Keys', ', '.join(role('key', k.id) for k in self.reg.keys
                                      if k.group == g.name))
@@ -874,7 +1109,7 @@ class Writer:
         entry = self.entry('topic', s.id, 'The LAMMPS script',
                            scope={'PC_LAMMPS', 'PC_FAILPROBE'})
         entry.para(s.doc)
-        entry.para(s.fields.get('long_doc', ''))
+        entry.para(s.long_doc)
         fixture = self.reg.fixtures[s.fields['fixture']]
         caption = (f'`{fixture.path}`: {fixture.doc[:1].lower()}'
                    f'{fixture.doc[1:]}' if fixture.doc else '')
@@ -897,13 +1132,14 @@ class Writer:
         entry.para(e.doc)
         entry.line('Overrides', self.cite(e.key))
         entry.line('Values', ', '.join(literal(v) for v in e.values))
+        entry.checks(e.checks)
         return entry.examples(e.examples)
 
     def rule_entry(self, r):
         entry = self.entry('topic', r.id, r.title, scope=self.scope_of(r.id))
         entry.para(r.doc)
         entry.para(r.quirk)
-        entry.line('Checked', CHECKED[r.check])
+        entry.line('Checked', wording(CHECKED, r.check, r.id, 'check'))
         entry.line('Keys', ', '.join(self.cite(i) for i in r.keys))
         if r.msg:
             entry.field('Message', message(r.msg),
@@ -934,6 +1170,7 @@ class Writer:
         entry.line('Syntax', literal('TYPE ' + t.name))
         entry.line('Keys', ', '.join(role('key', i) for i in t.keys))
         self.rules(entry, t.id)
+        entry.checks(t.checks)
         return entry.examples(t.examples)
 
     def init_method_entry(self, m):
@@ -948,6 +1185,7 @@ class Writer:
         self.values(entry, m.args, synopsis)
         if m.refused:
             entry.line('Refused', entry.rst(m.refused))
+        entry.checks(m.checks)
         return entry.examples(m.examples)
 
     def optim_target_entry(self, t):
@@ -979,6 +1217,7 @@ class Writer:
             entry.line('Where', ', '.join(self.opt(o) for o in p.optimizers))
         else:
             entry.line('Where', self.finite_difference_users())
+        entry.checks(p.checks)
         return entry.examples(p.examples)
 
     def finite_difference_users(self):
@@ -1009,6 +1248,7 @@ class Writer:
         entry.para(p.doc)
         entry.para(p.quirk)
         entry.line('Where', ', '.join(self.opt(o) for o in p.optimizers))
+        entry.checks(p.checks)
         return entry.examples(p.examples) if examples else entry
 
     # ---- the optimiser list -----------------------------------------------
@@ -1243,7 +1483,7 @@ class Writer:
 
     def pages(self):
         reg = self.reg
-        check_case_fields(type(next(iter(reg.cases()))))
+        check_fields(reg)
         pc_lines = {'PC_EMAE', 'PC_ERMSE', 'PC_ErRMSE', 'PC_ERSQ', 'PC_SRMSE',
                     'PC_FRMSE', 'PC_LAMMPS', 'PC_FAILPROBE', 'PC_OBSERVABLE',
                     'LOSS', 'OPTIM'}

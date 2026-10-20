@@ -33,9 +33,8 @@ Flag               Config key       Effect
 
 .. versionchanged:: 1.6.0
    ``--uncertainty`` and an ``UNCERTAINTY`` or ``ERROR`` line are refused:
-   uncertainty output is not part of Tadah! 1.6.0. The errors of Tadah!
-   1.0.0 to 1.5.0 were not standard deviations, and no calibrated estimate
-   replaces them.
+   uncertainty output is removed. The errors of Tadah! 1.0.0 to 1.5.0 were
+   not standard deviations, and no calibrated estimate replaces them.
 
 Training data must be supplied as one or more Tadah! database files via
 ``DBFILE`` in the configuration; :ref:`dataset` gives the on-disk format.
@@ -569,8 +568,7 @@ are the ``FIXWEIGHT`` values and says so before it reads a dataset::
    lines from the training configuration (the Training page of the
    documentation, Retraining from a potential).
 
-It is a warning, not a refusal: such a fit can be deliberate (under
-``OALGO 3`` it gives the noise of the data about the pinned weights).  1.5.0 said
+It is a warning, not a refusal: such a fit can be deliberate. 1.5.0 said
 nothing, and a refit potential retrained this way kept its weights.
 
 ``tadah hpo`` runs without a training ``DBFILE`` only when ``FIXINDEX`` and

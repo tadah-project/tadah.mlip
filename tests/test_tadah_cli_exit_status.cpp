@@ -1990,12 +1990,13 @@ TEST_CASE("Subcommand: data dedup keeps the first of three equal structures",
  * refused: each exits non-zero, naming the option and why ("tadah data
  * balance shifts energies only"), without writing the output; so is a
  * task file whose TASK data balance section has RESCALE true, naming
- * RESCALE and its line.
+ * RESCALE and its line, and one whose GLOBAL section has RESCALE true,
+ * which reaches its TASK data balance section, naming the GLOBAL line.
  * Before the fix: --rescale replaced the priorities by inverse magnitudes
  * (B1's fweight 1/0.2 and sweight 1/sqrt(3 * 0.01^2), B2's 0 kept), so the
  * runs with the four options exited 0 and wrote the output; then the
  * command line refused them as unknown options ("The following argument
- * was not expected"), and the task file ran, RESCALE ignored. */
+ * was not expected"), and the task files ran with RESCALE ignored. */
 TEST_CASE("Subcommand: data balance shifts energies, keeps the priorities and "
           "refuses the options of the removed rescaling",
           "[TadahCLI][exit-status][data]") {
@@ -2052,6 +2053,17 @@ TEST_CASE("Subcommand: data balance shifts energies, keeps the priorities and "
   CHECK(contains(rep, "RESCALE (line 4 of b4.task) in TASK data balance"));
   CHECK(contains(rep, "tadah data balance shifts energies only"));
   CHECK_FALSE(std::filesystem::exists("balX.tadah"));
+  std::ofstream("b5.task") << "RESCALE true\nTASK data balance\n"
+                              "  DBFILE db.tadah\n  ESHIFT -8.0\n"
+                              "  OUTFILE balY.tadah\n";
+  const CliRun g = run_tadah({"tadah", "--task", "b5.task"});
+  const std::string grep = reported(g);
+  INFO("GLOBAL RESCALE: status " << g.status << "\n" << grep);
+  CHECK(g.status != 0);
+  CHECK(contains(grep, "RESCALE (line 1 of b5.task) in the GLOBAL section "
+                       "reaches TASK data balance"));
+  CHECK(contains(grep, "tadah data balance shifts energies only"));
+  CHECK_FALSE(std::filesystem::exists("balY.tadah"));
 }
 
 /* Pins: `tadah data dedup` on two copies of a structure whose cell block

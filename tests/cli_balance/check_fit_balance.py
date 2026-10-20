@@ -2,17 +2,18 @@
 """The balance table of a fit, as `tadah train` and `tadah hpo` print it and
 keep it in the training record of the potential they write.
 
-    check_fit_balance.py --tadah <tadah> --case train|hpo|hpo_killed
+    check_fit_balance.py --tadah <tadah> --case train|hpo|hpo_killed|pinned
 
 Each case runs `tadah` on a tiny self-contained problem (Ta cells of four
 atoms in two datasets, energies and forces, D2_BP, no LAMMPS) in a fresh
 temporary directory and checks:
 
   train       `tadah train` prints one table -- a "Fit balance: LAMBDA ..."
-              line, the column header, a row per quantity of every dataset
-              and of each dataset, the prior's row -- and then the legend,
-              one line per column; the training record of pot.tadah ends
-              with the same lines (its last lines, before the end of the
+              line, the line of the error scales, the column header, a row
+              per quantity of every dataset and of each dataset, the
+              prior's row -- and then the legend, one line per column and
+              one on what sums; the training record of pot.tadah ends with
+              the same lines (its last lines, before the end of the
               record). At -v 0 nothing is printed and the record holds the
               table all the same. A task file of two TASK train sections
               prints two tables and the legend once.
@@ -24,11 +25,22 @@ temporary directory and checks:
   hpo_killed  `tadah hpo` killed by SIGKILL once its first best potential is
               on disk: best_pot.tadah has the table of its fit in its
               training record (that of a retrain of it).
+  pinned      FIXINDEX pins both coefficients (FIXWEIGHT, which tadah hpo
+              searches): `tadah train` prints and records "Fit balance: none
+              (FIXINDEX pins every coefficient: none was fitted)" under
+              OALGO 1 and 3, and so does the training record of the
+              best_pot.tadah of `tadah hpo` -- which skips the fit under
+              OALGO 1 and fits under OALGO 3 -- and of a retrain of it.
+  none        M_KRR implementation 2, whose fit has no table: `tadah train`
+              and `tadah hpo` print the none line, wrapped to lines of at
+              most 78 characters, without the legend of the columns, and
+              their potentials record the same lines.
 
 Every file lives in a fresh temporary directory, removed afterwards unless
---keep is given. A case that runs `tadah hpo` needs a build with
-TADAH_ENABLE_NFP: with --nfp OFF it exits 77, which CTest reports as
-Skipped.
+--keep is given. The cases hpo and hpo_killed need a build with
+TADAH_ENABLE_NFP: with --nfp OFF they exit 77, which CTest reports as
+Skipped; the cases pinned and none then run their tadah train part
+alone.
 """
 import argparse
 import math
@@ -78,8 +90,46 @@ OPTIM SGRID2B (2) 4.0 6.0
 BDUMP 1 bests
 """
 
-COLUMNS = ["quantity", "dataset", "n", "sigma", "RMSE", "unit", "r/sigma",
-           "share", "gamma"]
+COLUMNS = ["quantity", "dataset", "n", "RMSE", "unit", "r/sigma", "share",
+           "gamma"]
+HEAD = re.compile(r"Fit balance: LAMBDA \S+( \(evidence approximation: \S+\))?"
+                  r"(; ENORM SQRT)?; \d+ coefficients"
+                  r"( \(FIXINDEX pins \d+ more\))?, rank (\d+)$")
+SCALE_KEY = {"energy": "ESIGMA", "force": "FSIGMA", "stress": "SSIGMA"}
+PINNED = ("Fit balance: none (FIXINDEX pins every coefficient: none was "
+          "fitted)")
+LEGEND_END = ("  Over the rows 'all' and the prior's: share sums to 1, gamma to "
+              "the rank.")
+
+# M_KRR implementation 2 (energies only: FORCE false, ESIGMA its default).
+CONFIG_KRR2 = """DBFILE train1.db train2.db
+INIT2B true
+INITMB false
+TYPE2B D2_BP 2 2 Ta Ta
+CGRID2B 0.5 1.4
+SGRID2B 3.0 5.0
+RCTYPE2B Cut_Cos
+RCUT2B 5.0
+MODEL M_KRR Kern_Linear 2
+SBASIS 3
+LAMBDA 1e-3
+BIAS false
+"""
+
+CONFIG_PINNED_HPO = """OPTIMIZER
+  STRATEGY
+    TYPE PLAIN
+    LIB TADAH
+    ALGO RANDOM
+    MAXEVAL 6
+    SEED 3
+  ENDSTRATEGY
+ENDOPTIMIZER
+LOSS L2
+QFLUSH 1
+PC_ERMSE 0 1
+OPTIM FIXWEIGHT (1) 0.1 0.5
+"""
 
 
 def structure(k, shift):
@@ -110,6 +160,11 @@ def write_inputs(work):
     (work / "val.db").write_text("".join(structure(k, 2.1) for k in range(2)))
     (work / "config.train").write_text(CONFIG)
     (work / "config.val").write_text("DBFILE val.db\n")
+    for oalgo in (1, 3):
+        (work / f"pinned{oalgo}.train").write_text(
+            CONFIG.replace("OALGO 3", f"OALGO {oalgo}") +
+            "FIXINDEX 1 2\nFIXWEIGHT 0.3 -0.2\n")
+    (work / "krr2.train").write_text(CONFIG_KRR2)
 
 
 def run(tadah, work, *args, check=True):
@@ -148,14 +203,16 @@ def record_table(path):
 
 def printed_tables(output):
     """Each table the output prints: from a "Fit balance:" line to its
-    prior's row."""
+    prior's row (to its last line for none)."""
     lines = output.splitlines()
     tables, i = [], 0
     while i < len(lines):
         if lines[i].startswith("Fit balance:"):
             t = [lines[i]]
             i += 1
-            while i < len(lines) and lines[i].startswith("  "):
+            none = t[0].startswith("Fit balance: none (")
+            while i < len(lines) and lines[i].startswith(
+                    "    " if none else "  "):
                 t.append(lines[i])
                 i += 1
                 if t[-1].startswith("  prior"):
@@ -171,17 +228,36 @@ def legend_count(output):
                if line.startswith("  gamma ") and "effective" in line)
 
 
+def unwrap(lines, k):
+    """The text of the line lines[k] and of the lines after it that
+    continue it (four blanks), joined by a blank; the index after them."""
+    text = lines[k]
+    k += 1
+    while k < len(lines) and lines[k].startswith("    "):
+        text += " " + lines[k].strip()
+        k += 1
+    return text, k
+
+
 def table_failures(table, quantities, datasets):
     """What is wrong with the lines of @p table of a fit of @p quantities in
     @p datasets datasets."""
     f = []
-    if not table or not re.match(r"Fit balance: LAMBDA \S+; \d+ coefficients"
-                                 r"( \(FIXINDEX pins \d+ more\))?, rank \d+$",
-                                 table[0]):
-        return [f"no table header: {table[:1]}"]
-    if len(table) < 2 or table[1].split() != COLUMNS:
-        f.append(f"column header: {table[1:2]}")
-    rows = [line.split() for line in table[2:]]
+    if not table:
+        return ["no table"]
+    head, k = unwrap(table, 0)
+    m = HEAD.match(head)
+    if not m:
+        return [f"no table header: {head}"]
+    rank = int(m.group(4))
+    scales, k = unwrap(table, k) if k < len(table) else ("", k)
+    if not scales.startswith("  error scales: ") or \
+            [c.split()[0] for c in scales[16:].split("; ")] != \
+            [SCALE_KEY[q] for q in quantities]:
+        f.append(f"error scales of {quantities}: {scales}")
+    if len(table) <= k or table[k].split() != COLUMNS:
+        f.append(f"column header: {table[k:k + 1]}")
+    rows = [line.split() for line in table[k + 1:]]
     want = []
     for q in quantities:
         want.append((q, "all"))
@@ -193,9 +269,8 @@ def table_failures(table, quantities, datasets):
     if not rows or rows[-1][0] != "prior" or len(rows[-1]) != 3:
         f.append(f"no prior row: {table[-1:]}")
         return f
-    # gamma: every quantity's row of every dataset plus the prior's is the
-    # rank; share: they sum to 1 (to the printed digits).
-    rank = int(table[0].rsplit(" ", 1)[1])
+    # gamma: the rows of every dataset and the prior's sum to the rank;
+    # share: they sum to 1 (to the printed digits).
     gamma = sum(float(r[-1]) for r in rows[:-1] if r[1] == "all")
     gamma += float(rows[-1][2])
     share = sum(float(r[-2]) for r in rows[:-1] if r[1] == "all")
@@ -222,8 +297,7 @@ def case_train(tadah, work):
         failures.append("the table is not the end of the training record")
     if legend_count(out) != 1:
         failures.append(f"the legend is printed {legend_count(out)} times")
-    elif out.splitlines()[-1] != "  gamma     effective parameters; with "\
-                                 "the prior's, the rank":
+    elif out.splitlines()[-1] != LEGEND_END:
         failures.append(f"the legend does not follow the table:\n{out}")
 
     quiet = run(tadah, work, "train", "-c", "config.train", "-v", "0",
@@ -321,15 +395,82 @@ def case_hpo_killed(tadah, work):
     return failures
 
 
+def case_pinned(tadah, work, nfp):
+    """FIXINDEX pins every coefficient: the none line of tadah train, of
+    best_pot.tadah and of a retrain of it are the same (tadah hpo only with
+    @p nfp, a build with TADAH_ENABLE_NFP)."""
+    failures = []
+    for oalgo in (1, 3):
+        out = run(tadah, work, "train", "-c", f"pinned{oalgo}.train", "-o",
+                  f"pinned{oalgo}.tadah")
+        printed = printed_tables(out)
+        rec = record_table(work / f"pinned{oalgo}.tadah")
+        if printed != [[PINNED]] or rec != [PINNED]:
+            failures.append(f"tadah train (OALGO {oalgo}) printed {printed} "
+                            f"and recorded {rec}, expected [{PINNED!r}]")
+    if not nfp:
+        return failures
+    (work / "pinned.hpo").write_text(CONFIG_PINNED_HPO)
+    for oalgo in (1, 3):
+        best = work / "best_pot.tadah"
+        if best.exists():
+            best.unlink()
+        out = run(tadah, work, "hpo", "-c", f"pinned{oalgo}.train",
+                  "--hpotarget", "pinned.hpo", "--validation", "config.val")
+        rec = record_table(best)
+        if rec != [PINNED]:
+            failures.append(f"tadah hpo (OALGO {oalgo}) recorded {rec} in "
+                            f"best_pot.tadah, expected [{PINNED!r}]:\n{out}")
+        printed = printed_tables(out)
+        if printed != [[PINNED]]:
+            failures.append(f"tadah hpo (OALGO {oalgo}) printed {printed}")
+        again = retrain_table(tadah, work, "best_pot.tadah")
+        if again != rec:
+            failures.append(f"a retrain of best_pot.tadah (OALGO {oalgo}) "
+                            f"has {again}, best_pot.tadah {rec}")
+    return failures
+
+
+def case_none(tadah, work, nfp):
+    """A fit without a table: its none line, wrapped, printed without the
+    legend and recorded (tadah hpo only with @p nfp)."""
+    failures = []
+    out = run(tadah, work, "train", "-c", "krr2.train", "-o", "krr2.tadah")
+    printed = printed_tables(out)
+    rec = record_table(work / "krr2.tadah")
+    if len(printed) != 1 or printed[0] != rec or \
+            not rec[0].startswith("Fit balance: none (MODEL M_KRR"):
+        return [f"tadah train printed {printed} and recorded {rec}"]
+    if len(rec) < 2 or any(not line.startswith("    ") for line in rec[1:]) \
+            or max(len(line) for line in rec) > 78:
+        failures.append(f"the none line is not wrapped to 78 characters, "
+                        f"with lines of four blanks after the first: {rec}")
+    if legend_count(out):
+        failures.append(f"tadah train printed the legend after none:\n{out}")
+    if not nfp:
+        return failures
+    (work / "config.hpo").write_text(CONFIG_HPO.format(maxeval=4))
+    out = run(tadah, work, "hpo", "-c", "krr2.train", "--hpotarget",
+              "config.hpo", "--validation", "config.val")
+    best = record_table(work / "best_pot.tadah")
+    if printed_tables(out) != [best] or best != rec:
+        failures.append(f"tadah hpo printed {printed_tables(out)}, "
+                        f"best_pot.tadah has {best}, tadah train {rec}")
+    if legend_count(out):
+        failures.append(f"tadah hpo printed the legend after none:\n{out}")
+    return failures
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--tadah", required=True)
     ap.add_argument("--case", required=True,
-                    choices=("train", "hpo", "hpo_killed"))
+                    choices=("train", "hpo", "hpo_killed", "pinned",
+                             "none"))
     ap.add_argument("--nfp", default="ON", choices=("ON", "OFF"))
     ap.add_argument("--keep", action="store_true")
     opts = ap.parse_args()
-    if opts.case != "train" and opts.nfp == "OFF":
+    if opts.case not in ("train", "pinned", "none") and opts.nfp == "OFF":
         print(f"SKIP: the case {opts.case} runs tadah hpo, which needs a "
               "build with TADAH_ENABLE_NFP=ON")
         return SKIP
@@ -338,7 +479,10 @@ def main():
     try:
         write_inputs(work)
         case = {"train": case_train, "hpo": case_hpo,
-                "hpo_killed": case_hpo_killed}[opts.case]
+                "hpo_killed": case_hpo_killed,
+                "pinned": lambda t, w: case_pinned(t, w, opts.nfp == "ON"),
+                "none": lambda t, w: case_none(t, w, opts.nfp == "ON"),
+                }[opts.case]
         failures = case(tadah, work)
     except AssertionError as e:
         failures = [str(e)]

@@ -63,10 +63,23 @@ README = '''Example B
 '''
 
 TABLE = '''Fit balance: LAMBDA 1e-07; 14 coefficients, rank 14
-  quantity  dataset      n  sigma     RMSE  unit      r/sigma     share  gamma
-  energy    all        100  1       0.1317  meV/atom   0.1317  0.005681  1.073
-  force     all      16200  0.1 0  0.01369  eV/Å       0.1369    0.9942  11.93
-  prior                                                        1.19e-04  1.001
+  error scales: ESIGMA 1 meV/atom; FSIGMA 0.1 0 eV/Å
+  quantity  dataset      n     RMSE  unit      r/sigma     share  gamma
+  energy    all        100   0.1317  meV/atom   0.1317  0.005681  1.073
+  force     all      16200  0.01369  eV/Å       0.1369    0.9942  11.93
+  prior                                                 1.19e-04  1.001
+'''
+
+# A table of LAMBDA -1 whose first line and error scales are wrapped.
+TABLE_EA = '''Fit balance: LAMBDA -1 (evidence approximation: 0.0598433); ENORM SQRT;
+    8 coefficients (FIXINDEX pins 1 more), rank 8
+  error scales: ESIGMA 1 meV per sqrt(atom); FSIGMA 0.1 0.05 eV/Å;
+    SSIGMA 0.5 0 GPa
+  quantity  dataset      n     RMSE  unit      r/sigma     share  gamma
+  energy    all        100   0.1317  meV/atom    1.215  0.005681  1.073
+  force     all      16200  0.01369  eV/Å       0.1369    0.9900  5.930
+  stress    all        600   0.5000  GPa         1.000  0.004319  1.000
+  prior                                                 1.19e-04  1.001
 '''
 
 
@@ -137,13 +150,25 @@ class CliExampleTest(unittest.TestCase):
         self.assertIn('ok: the fit balance table of mine.tadah is '
                       'mine.balance.txt', out)
 
+    def test_a_wrapped_balance_table_within_its_tolerance_passes(self):
+        self.put('ex_b/mine.balance.txt', TABLE_EA)
+        # The lambda of the evidence approximation within two units of its
+        # sixth digit.
+        self.put('ex_b/table', TABLE_EA.replace('0.0598433', '0.0598435'))
+        status, out = self.run_check()
+        self.assertEqual(status, 0, out)
+        self.put('ex_b/table', TABLE_EA.replace('0.0598433', '0.0598436'))
+        status, out = self.run_check()
+        self.assertEqual(status, 1, out)
+        self.assertIn('lambda 0.0598436, expected 0.0598433', out)
+
     def test_a_balance_table_outside_its_tolerance_fails(self):
         self.put('ex_b/mine.balance.txt', TABLE)
         cases = {
             ('0.1317  meV', '0.1320  meV'): 'RMSE 0.1320, expected 0.1317',
             ('1.19e-04', '1.22e-04'): 'share 1.22e-04, expected 1.19e-04',
             ('16200', '16201'): 'n 16201, expected 16200',
-            ('0.1 0  0.01369', '0.2 0  0.01369'): 'sigma 0.2 0, expected 0.1 0',
+            ('FSIGMA 0.1 0', 'FSIGMA 0.2 0'): 'FSIGMA 0.2 0 eV/Å", expected',
             ('rank 14', 'rank 13'): 'rank 13',
             ('eV/Å ', 'GPa  '): 'unit GPa, expected eV/Å',
             ('  force     all', '  stress    all'): 'stress',
@@ -160,10 +185,10 @@ class CliExampleTest(unittest.TestCase):
     def test_a_table_of_other_rows_fails(self):
         self.put('ex_b/mine.balance.txt', TABLE)
         lines = TABLE.splitlines()
-        self.put('ex_b/table', '\n'.join(lines[:3] + lines[4:]) + '\n')
+        self.put('ex_b/table', '\n'.join(lines[:4] + lines[5:]) + '\n')
         status, out = self.run_check()
         self.assertEqual(status, 1, out)
-        self.assertIn('has 4 lines, mine.balance.txt 5', out)
+        self.assertIn('has 5 lines, mine.balance.txt 6', out)
 
     def test_a_potential_without_a_table_fails(self):
         self.put('ex_b/mine.balance.txt', TABLE)

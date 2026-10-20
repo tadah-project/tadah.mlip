@@ -7884,13 +7884,15 @@ std::vector<std::string> balance_of(const std::string& pot) {
 }
 
 /* Whether @p table is a fit balance table of the energies (and forces) of
- * one dataset: "Fit balance: LAMBDA ...", the column header, the rows of
- * the quantities over every dataset and the prior's row. */
+ * one dataset: "Fit balance: LAMBDA ...", the line of the error scales, the
+ * column header, the rows of the quantities over every dataset and the
+ * prior's row. */
 bool is_balance_table(const std::vector<std::string>& table) {
-  return table.size() >= 4 &&
+  return table.size() >= 5 &&
          table[0].rfind("Fit balance: LAMBDA ", 0) == 0 &&
-         table[1].rfind("  quantity  dataset", 0) == 0 &&
-         table[2].rfind("  energy    all ", 0) == 0 &&
+         table[1].rfind("  error scales: ESIGMA ", 0) == 0 &&
+         table[2].rfind("  quantity  dataset", 0) == 0 &&
+         table[3].rfind("  energy    all ", 0) == 0 &&
          table.back().rfind("  prior", 0) == 0;
 }
 

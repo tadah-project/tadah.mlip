@@ -22,11 +22,11 @@ An example may ship the fit balance table of a potential a ``tadah train``
 command writes: <stem>.balance.txt for <stem>.tadah, the table as tadah
 prints it, which the documentation quotes. The table of the training record
 of the potential the run writes must have its lines: the same words, counts
-and error scales, and each other number (RMSE, r/sigma, share, gamma, the
-lambda of the evidence approximation) within two units of the last digit
-the expected table prints (4 significant digits, 3 in exponent form, 6 for
-the lambda). An expected table that no command of the README writes is an
-error.
+and error scales (its first lines, to the column header, word for word),
+and each other number (RMSE, r/sigma, share, gamma, the lambda of the
+evidence approximation) within two units of the last digit the expected
+table prints (4 significant digits, 3 in exponent form, 6 for the lambda).
+An expected table that no command of the README writes is an error.
 
 A README without a ``tadah`` command is an error. An example that runs
 ``tadah hpo`` needs a build with TADAH_ENABLE_NFP; with --nfp OFF it runs
@@ -50,11 +50,10 @@ SKIP = 77
 RECORD_OPEN = '# --- training record (no key is read from it) ---'
 RECORD_END = '# --- end of training record ---'
 BALANCE = '.balance.txt'
-# The words of a row before its numbers and the columns of its numbers:
-# quantity, dataset, n, sigma (one value for the energy, a and b for the
-# others), RMSE, unit, r/sigma, share, gamma.
-COLUMNS = ['quantity', 'dataset', 'n', 'sigma', 'RMSE', 'unit', 'r/sigma',
-           'share', 'gamma']
+# The columns of a row: quantity, dataset, n, RMSE, unit, r/sigma, share,
+# gamma (the error scales are a line of their own above the header).
+COLUMNS = ['quantity', 'dataset', 'n', 'RMSE', 'unit', 'r/sigma', 'share',
+           'gamma']
 
 
 def readme_commands(readme):
@@ -127,11 +126,13 @@ def compare_tables(got, want, potential, expected):
         return [f'the fit balance table of {potential} has {len(got)} '
                 f'lines, {expected} {len(want)}:\n' + '\n'.join(got)]
     fails = []
+    header = False  # past the column header
     for k, (g_line, w_line) in enumerate(zip(got, want)):
         where = f'{expected}:{k + 1}'
         g, w = g_line.split(), w_line.split()
-        if k == 0:
-            # Fit balance: LAMBDA <l>[ (evidence approximation: <x>)]; ...
+        if not header and w[:1] != ['quantity']:
+            # Fit balance: LAMBDA <l>[ (evidence approximation: <x>)]; ...,
+            # the lines that continue it and those of the error scales.
             m_g = re.search(r'approximation: (\S+)\);', g_line)
             m_w = re.search(r'approximation: (\S+)\);', w_line)
             if m_g and m_w:
@@ -144,13 +145,14 @@ def compare_tables(got, want, potential, expected):
             if g_line.split() != w_line.split():
                 fails.append(f'{where}: "{g_line}", expected "{w_line}"')
             continue
-        if k == 1 or g[:1] == ['prior'] or w[:1] == ['prior']:
-            if g[:1] != w[:1] or len(g) != len(w):
+        if w[:1] == ['quantity']:
+            header = True
+            if g != w:
                 fails.append(f'{where}: "{g_line}", expected "{w_line}"')
-                continue
-            if k == 1:
-                if g != w:
-                    fails.append(f'{where}: "{g_line}", expected "{w_line}"')
+            continue
+        if g[:1] == ['prior'] or w[:1] == ['prior']:
+            if g[:1] != w[:1] or len(g) != len(w) or len(w) != 3:
+                fails.append(f'{where}: "{g_line}", expected "{w_line}"')
                 continue
             for name, a, b in zip(('share', 'gamma'), g[1:], w[1:]):
                 f = compare_number(name, a, b, 4, where)
@@ -161,19 +163,15 @@ def compare_tables(got, want, potential, expected):
             fails.append(f'{where}: quantity {g[:1]}, expected {w[:1]}: '
                          f'"{g_line}"')
             continue
-        two = 0 if w[0] == 'energy' else 1
-        if len(g) != len(w) or len(w) != 9 + two:
+        if len(g) != len(w) or len(w) != len(COLUMNS):
             fails.append(f'{where}: "{g_line}", expected "{w_line}"')
             continue
-        words = {'dataset': (g[1], w[1]), 'n': (g[2], w[2]),
-                 'sigma': (' '.join(g[3:4 + two]), ' '.join(w[3:4 + two])),
-                 'unit': (g[5 + two], w[5 + two])}
-        for name, (a, b) in words.items():
-            if a != b:
-                fails.append(f'{where}: {name} {a}, expected {b}')
-        for name, i in (('RMSE', 4), ('r/sigma', 6), ('share', 7),
-                        ('gamma', 8)):
-            f = compare_number(name, g[i + two], w[i + two], 4, where)
+        for name, i in (('dataset', 1), ('n', 2), ('unit', 4)):
+            if g[i] != w[i]:
+                fails.append(f'{where}: {name} {g[i]}, expected {w[i]}')
+        for name, i in (('RMSE', 3), ('r/sigma', 5), ('share', 6),
+                        ('gamma', 7)):
+            f = compare_number(name, g[i], w[i], 4, where)
             if f:
                 fails.append(f)
     return fails

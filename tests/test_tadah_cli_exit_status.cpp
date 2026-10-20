@@ -7851,20 +7851,49 @@ const char* const kRecordOpen =
 const char* const kRecordEnd = "# --- end of training record ---";
 
 /* The lines of the training record of the potential text @p pot, without
- * their leading "# "; empty when it has none. */
-std::vector<std::string> record_of(const std::string& pot) {
+ * their leading "# ", those of its fit balance table (balance_of) left
+ * out; empty when it has none. */
+std::vector<std::string> record_lines(const std::string& pot, bool balance) {
   std::istringstream in(pot);
   std::vector<std::string> out;
-  bool in_block = false;
+  bool in_block = false, in_table = false;
   for (std::string l; std::getline(in, l);) {
     if (!in_block) {
       in_block = l == kRecordOpen;
       continue;
     }
     if (l == kRecordEnd) break;
-    out.push_back(l.rfind("# ", 0) == 0 ? l.substr(2) : l);
+    const std::string line = l.rfind("# ", 0) == 0 ? l.substr(2) : l;
+    if (line.rfind("Fit balance:", 0) == 0)
+      in_table = true;
+    else if (line.rfind("  ", 0) != 0)
+      in_table = false;
+    if (in_table == balance) out.push_back(line);
   }
   return out;
+}
+std::vector<std::string> record_of(const std::string& pot) {
+  return record_lines(pot, false);
+}
+
+/* The fit balance table of the training record of @p pot (its lines from
+ * "Fit balance:" on), which tadah train and best_pot.tadah end the record
+ * with; empty when it has none. */
+std::vector<std::string> balance_of(const std::string& pot) {
+  return record_lines(pot, true);
+}
+
+/* Whether @p table is a fit balance table of the energies (and forces) of
+ * one dataset: "Fit balance: LAMBDA ...", the line of the error scales, the
+ * column header, the rows of the quantities over every dataset and the
+ * prior's row. */
+bool is_balance_table(const std::vector<std::string>& table) {
+  return table.size() >= 5 &&
+         table[0].rfind("Fit balance: LAMBDA ", 0) == 0 &&
+         table[1].rfind("  error scales: ESIGMA ", 0) == 0 &&
+         table[2].rfind("  quantity  dataset", 0) == 0 &&
+         table[3].rfind("  energy    all ", 0) == 0 &&
+         table.back().rfind("  prior", 0) == 0;
 }
 
 /* @p pot without its training record (the block's lines). */
@@ -7909,7 +7938,8 @@ bool record_precedes_keys(const std::string& pot) {
  * record; and the documented retrain, `tadah train -c retrain.train -o
  * pot3.tadah` (pot.tadah, its record a comment, with "DBFILE db2.tadah"
  * added), records "DBFILE db2.tadah" and "OUTFILE pot3.tadah", and
- * db.tadah appears nowhere in pot3.tadah.
+ * db.tadah appears nowhere in pot3.tadah. Each record ends with the fit
+ * balance table of its fit (pot.tadah's and pot2.tadah's the same).
  * Before the fix: no potential had a training record (an earlier rule
  * dropped the keys).
  * Before the opening line was corrected: it read
@@ -7930,6 +7960,7 @@ TEST_CASE("Subcommand: train records the keys the run was given in the "
   const std::string pot = slurp("pot.tadah");
   INFO("pot.tadah:\n" << pot);
   CHECK(record_of(pot) == std::vector<std::string>{"DBFILE db.tadah"});
+  CHECK(is_balance_table(balance_of(pot)));
   CHECK(record_precedes_keys(pot));
   {
     const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
@@ -7942,6 +7973,7 @@ TEST_CASE("Subcommand: train records the keys the run was given in the "
   CHECK(record_of(pot2) ==
         std::vector<std::string>{"DBFILE db.tadah", "VERBOSE 0",
                                  "OUTFILE pot2.tadah"});
+  CHECK(balance_of(pot2) == balance_of(pot));
   for (const char* key : {"DBFILE", "VERBOSE", "OUTFILE"}) {
     INFO("key " << key);
     CHECK(line_tokens(pot2, key).empty());
@@ -7975,13 +8007,15 @@ TEST_CASE("Subcommand: train records the keys the run was given in the "
   INFO("pot3.tadah:\n" << pot3);
   CHECK(record_of(pot3) ==
         std::vector<std::string>{"DBFILE db2.tadah", "OUTFILE pot3.tadah"});
+  CHECK(is_balance_table(balance_of(pot3)));
   CHECK(pot3.find("db.tadah") == std::string::npos);
 }
 
 /* Pins: `tadah refit -c config.refit -o refit_pot.tadah` (a dense coarse
  * refit of the small Ta setfl) writes refit_pot.tadah whose training record
  * is "OUTFILE refit_pot.tadah" (its configuration sets none of the other
- * keys); `tadah refit --edit refit_pot.tadah --func phi --add 2.5 -o
+ * keys; no fit balance table: refit fits curves, no observations); `tadah
+ * refit --edit refit_pot.tadah --func phi --add 2.5 -o
  * edited.tadah -v 0` writes edited.tadah whose record is "edited by tadah
  * refit --edit from refit_pot.tadah" and then the input's record, "OUTFILE
  * refit_pot.tadah" (the edit fits nothing: its record is that of the fit
@@ -8008,6 +8042,7 @@ TEST_CASE("Subcommand: refit records its run, and refit --edit copies the "
   INFO("refit_pot.tadah:\n" << refit_pot);
   CHECK(record_of(refit_pot) ==
         std::vector<std::string>{"OUTFILE refit_pot.tadah"});
+  CHECK(balance_of(refit_pot).empty());  // refit fits no observations
   CHECK(record_precedes_keys(refit_pot));
   {
     const CliRun r = run_tadah({"tadah", "refit", "--edit", "refit_pot.tadah",
@@ -8111,7 +8146,8 @@ TEST_CASE("Subcommand: refit --edit of a potential whose training record "
  * sets DBFILE db.tadah and VERBOSE 0) writes best_pot.tadah whose training
  * record, right above its key lines, is "DBFILE db.tadah", "VALIDATION
  * config.val", "HPOTARGET config.hpo" and "VERBOSE 0" (the configuration
- * file's and the command line's values), with no key line of them; the
+ * file's and the command line's values), then the fit balance table of
+ * the evaluation's fit, with no key line of them; the
  * header's training dataset line ("#   [1] 3 structs, ..." after
  * "#   Training ") names no db.tadah, which the record names; and `tadah
  * predict -p best_pot.tadah -d db.tadah` writes energy.pred byte for byte as
@@ -8138,6 +8174,7 @@ TEST_CASE("Subcommand: hpo records the run's DBFILE, --validation, "
   CHECK(record_of(best) ==
         std::vector<std::string>{"DBFILE db.tadah", "VALIDATION config.val",
                                  "HPOTARGET config.hpo", "VERBOSE 0"});
+  CHECK(is_balance_table(balance_of(best)));
   CHECK(record_precedes_keys(best));
   for (const char* key : {"DBFILE", "VALIDATION", "HPOTARGET", "VERBOSE"}) {
     INFO("key " << key);

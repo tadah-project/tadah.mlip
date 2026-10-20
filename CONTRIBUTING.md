@@ -153,11 +153,16 @@ site, `tadah_docs_site_layout` (see *Building the documentation*).
 `ctest -L examples` runs the CLI examples the documentation includes
 (`tadah_cli_example_<name>`, one per `examples/CLI/<name>/README.rst` that
 `docs/source/examples.rst` includes): `tests/cli_examples` copies the
-example to the build tree, runs every `tadah` command of the README's bash
-code blocks and checks that each exits 0 and leaves its result (the
-potential of `tadah train`; a best potential and a `best_loss.tadah` row
-for `tadah hpo`). An example included in the docs is tested with no further
-registration. The same label has `tadah_quickstart_reproduces_pot`, which
+example to the build tree, beside links to the other examples (a command
+may read `../ex_2/tdata.db`), runs every `tadah` command of the README's
+bash code blocks and checks that each exits 0 and leaves its result (the
+potential of `tadah train`, `pot.tadah` or that of `-o`; a best potential
+and a `best_loss.tadah` row for `tadah hpo`). An example that ships
+`<stem>.balance.txt`, the fit balance table the documentation quotes, has
+it compared with the table in the training record of the `<stem>.tadah`
+its run writes: the same words, counts and error scales, each other number
+within two units of its last printed digit. An example included in the
+docs is tested with no further registration. The same label has `tadah_quickstart_reproduces_pot`, which
 retrains the *Quick Start* potential (`docs/source/quickstart`) with the
 page's `tadah train` and `tadah --task` commands and checks that the shipped
 `pot.tadah` is what they write (its keys, and its predictions on

@@ -175,12 +175,13 @@ precedence **explicit > ATOM > DBATOM**:
 * **Explicit** — ``ESHIFT a b …``, one value per unique species,
   ordered by ``Z``.
 * **ESHIFT_ATOM** — the mean energy of the single-atom
-  (``natoms == 1``) configurations of each species. A species with no
-  isolated-atom config gets ``0`` and a warning; a spread above 1 meV
-  across same-species configs is logged.
+  (``natoms == 1``) configurations of each species that have an energy
+  (``eweight`` not 0). A species with no such isolated-atom config gets
+  ``0`` and a warning; a spread above 1 meV across same-species configs
+  is logged.
 * **ESHIFT_DBATOM** — a least-squares atomic-energy fit over the
-  whole database (``min ‖y − Mβ‖²``, with ``M[i,k]`` the count of
-  species ``k`` in config ``i``). Robust when the dataset has
+  configurations of the database that have an energy (``min ‖y − Mβ‖²``,
+  with ``M[i,k]`` the count of species ``k`` in config ``i``). Robust when the dataset has
   compositional diversity but no isolated-atom configs. When the
   compositions do not determine the fit (every structure of one
   composition, say) its normal matrix is singular: every ``ESHIFT`` is
@@ -232,12 +233,14 @@ Filtering and weighting
 * ``EFILTER lo hi`` drops any configuration whose **per-atom** energy
   ``E/N`` is outside ``[lo, hi]``; ``FFILTER thr`` drops any
   configuration with a single-atom force magnitude above ``thr``. Both
-  run first. ``tadah predict`` applies them to the data it predicts only
+  run first. A configuration with ``eweight`` 0 (``fweight`` 0) has no
+  energy (forces) of its own and is not dropped for it. ``tadah predict`` applies them to the data it predicts only
   when it is given them (``--efilter``, ``--ffilter``), never the
   potential's (:ref:`load_transforms_predict`).
 * ``WDBFILE w_1 … w_n`` multiplies the ``eweight`` / ``fweight`` /
   ``sweight`` of every config in dataset ``i`` by ``w_i`` — one value
-  per ``DBFILE``.
+  ``>= 0`` per ``DBFILE`` (``0`` leaves the dataset out of the fit; a
+  negative value is rejected).
 * ``WDBFILE_AUTO α`` multiplies dataset ``i``'s per-config weight by
   ``N_i^(−α)``, where ``N_i`` is its post-filter config count.
   ``α = 0`` disables it, ``α = 0.5`` is a soft balance, ``α = 1`` makes
@@ -246,7 +249,8 @@ Filtering and weighting
   rejected.
 * ``EWEIGHT_TEMP T`` multiplies each ``eweight`` by
   ``exp(−(E/N − E_min)/(k_B·T))`` (``E_min`` the minimum per-atom
-  energy, ``T`` in Kelvin), biasing the loss toward low-energy configs.
+  energy of the configs with an energy, ``T`` in Kelvin), biasing the
+  loss toward low-energy configs; a config with ``eweight`` 0 keeps it.
   Applied after ESHIFT; ``T <= 0`` is rejected.
 * ``ZERO_COM_FORCE`` subtracts the mean force of each configuration
   so its net force is exactly zero — useful against residual

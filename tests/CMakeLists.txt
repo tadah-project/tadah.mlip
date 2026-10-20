@@ -193,7 +193,11 @@ add_subdirectory(catch_discovery)
 # configuration-keys and CLI page generators (docs/source/config/read_toml.py,
 # docs/source/cli/generate_cli.py), of the ANNEAL key tables' generator
 # (docs/source/config/read_anneal_keys.py, which needs Python 3.11 or later
-# for tomllib), of the layout and structure rules of the build
+# for tomllib), of the Nested Fitting reference pages' generator
+# (docs/source/config/read_hpo_registry.py; its cases on the pages read
+# HPO's registries from the HPO checkout the docs build finds, and are
+# skipped without one) and the :hpo: roles (docs/tools/hpotarget_domain.py),
+# of the layout and structure rules of the build
 # (docs/tools/nfp_checks.py), of the browser check of built pages
 # (docs/tools/check_layout.py) and of the runs of the Nested Fitting pages
 # (nfp_docs/check_nfp_run.py, doc_commands/doc_commands.py). They never use

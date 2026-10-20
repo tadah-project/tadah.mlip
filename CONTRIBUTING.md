@@ -508,11 +508,12 @@ The Sphinx sources live in `docs/source` (Python requirements in
 for download and include live under `docs/source/nfp/files`, which
 `conf.py` excludes from the pages (`exclude_patterns`): an rst or Markdown
 file there, such as an example's README, is not a page. The build needs
-Python 3.11 or later: it generates the ANNEAL key tables from HPO's
-`blueprint/anneal_keys.toml` with `tomllib`
-(`docs/source/config/read_anneal_keys.py`), and on an older Python that
-script stops the build with `read_anneal_keys.py needs Python 3.11 or
-later: ...`, naming the interpreter. The build reads
+Python 3.11 or later: it generates the ANNEAL key tables and the Nested
+Fitting reference pages from HPO's `blueprint/` TOML files with `tomllib`
+(`docs/source/config/read_anneal_keys.py`,
+`docs/source/config/read_hpo_registry.py`), and on an older Python each
+script stops the build with `<script> needs Python 3.11 or later: ...`,
+naming the interpreter. The build reads
 three inputs from outside this repository. It never falls back to
 another branch: when an input is missing it stops and lists every
 location it tried.
@@ -520,7 +521,7 @@ location it tried.
 | Input | Where the build looks, in order |
 |-------|---------------------------------|
 | CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the `CORE` checkout next to `Tadah.MLIP`; `$TADAH_PATH/CORE`; on GitLab CI and Read the Docs only, a shallow clone of the branch or tag being built, named the way cmake-tools' `tadah_get_git_branch` names it: `$CI_COMMIT_REF_NAME`, else `$READTHEDOCS_GIT_IDENTIFIER` (Read the Docs' `latest` and `stable` versions are named after no ref), `$READTHEDOCS_VERSION_NAME`, `$READTHEDOCS_VERSION` |
-| HPO sources (ANNEAL key tables) | the same, with `$TADAH_HPO_SOURCE_DIR` and `HPO` |
+| HPO sources (ANNEAL key tables, Nested Fitting reference pages) | the same, with `$TADAH_HPO_SOURCE_DIR` and `HPO` |
 | Doxygen XML (API pages) | `$TADAH_DOXYGEN_XML_DIR`; otherwise `build/docs/xml`, which `cmake --build build --target docs` writes. Its input is the `include/` directory of each module the build configures (`cmake/doxygen_input.cmake`): CORE, MODELS and MLIP, and HPO only with `TADAH_ENABLE_NFP`, so the Read the Docs build (NFP off) has no HPO API |
 
 A variable that is set must be valid. A source override has to name a
@@ -545,7 +546,10 @@ the `hpo.html` redirect check, the configuration-keys page generator
 (`docs/source/config/read_toml.py`), the CLI page generator
 (`docs/source/cli/generate_cli.py`), the ANNEAL key tables' generator
 (`docs/source/config/read_anneal_keys.py`: its message on a Python
-without `tomllib`), the layout rules of the build (`docs/tools/nfp_checks.py`,
+without `tomllib`), the Nested Fitting reference pages' generator
+(`docs/source/config/read_hpo_registry.py`) and the `:hpo:` roles
+(`docs/tools/hpotarget_domain.py`, both below), the layout rules of the
+build (`docs/tools/nfp_checks.py`,
 below), the browser check of built pages (`docs/tools/check_layout.py`,
 below) and the runs of the Nested Fitting pages
 (`tests/nfp_docs/check_nfp_run.py`, with a stand-in for `tadah`). A browser
@@ -572,13 +576,78 @@ that. The cases that need `node`, a Chromium-family browser, `sphinx-build` or t
 later) skip themselves when one is missing. CTest then reports the entry as *Skipped*, not *Passed*, and its
 output names the skipped cases, so a pass means every case ran.
 
+**The Nested Fitting reference.** `docs/source/config/read_hpo_registry.py`,
+which `conf.py` runs at every build (by hand:
+`python3 docs/source/config/read_hpo_registry.py --out <dir>`), writes the
+six pages under `docs/source/nfp/reference/` (git ignores them; the hub,
+`index.rst`, is committed) from HPO's registries: the target-file registry,
+`blueprint/hpotarget.toml` and its part files, read and checked by HPO's
+own loader, `blueprint/hpotarget_registry.py` (the generator reads its API
+1 and stops on another), with the descriptions of the optimisers,
+`blueprint/optimizers_doc.toml`; the optimiser list,
+`blueprint/optimizers_gen.toml`; and the annealers' keys,
+`blueprint/anneal_keys.toml`. Each id of the
+target-file registry (`OPTIMIZER.MAXEVAL`, `PC_LAMMPS.--hotvar`,
+`BLOCK.STRATEGY`, `PARAM.ASA:ASA.Temperature_Ratio_Scale`) is the target of
+one entry of the `hpo` domain (`docs/tools/hpotarget_domain.py`), and so
+are each `LIB:ALGO`, each library and each annealer's `PARAM` key; an id
+the generator gives no place stops it, naming the id. An entry's text,
+values, default, examples and messages are the registry's, so a change to
+a key reaches the pages through its registry entry in HPO (HPO's
+`blueprint/README.md` says how an entry is written and checked), and the
+next build writes the pages again. In that text the name of an entry
+becomes a role, which links at its first mention in an entry (a name of
+several entries, the one closest to the entry's block or group, or an
+inline literal when none is), an abbreviation of the registry's
+`[abbreviations]` is spelled out at its first use on a page, an example
+is a code block with its doc as the caption, and a check of an entry is
+its message as program output with the check's doc, which says when it
+comes, as the caption. Every field of the registry's objects and sections
+is listed in the generator (`FIELDS`, `SECTION_FIELDS`) as shown on the
+pages or with the reason it is not, such as a field of the tests or a
+message whose condition another field states. The generator stops, naming
+what is missing, on a field or a class it does not list (`Class.field`, or
+`SECTION.field`), a repeat rule or a check stage it has no words for, an
+optimiser or a library without a description, an annealer key without an
+example and an annealer range the code checks by hand without its
+`range_doc`; a field the registry gains is therefore shown or listed
+before the pages build again. Any page cites an entry with a role:
+
+```rst
+:hpo:key:`MAXEVAL`            a key, option, form, loss function, STRATEGY
+                              type, INIT method or environment variable
+:hpo:key:`OPTIMIZER.MAXEVAL`  the same, by id
+:hpo:block:`STRATEGY`         a block
+:hpo:opt:`NLOPT:LN_SBPLX`     an optimiser (LIB:ALGO, the ALGO alone, a LIB)
+:hpo:param:`GRID_POINTS`      a PARAM key
+:hpo:topic:`RULE.<name>`      a rule, or another entry headed by words,
+                              by id
+:hpo:key:`!MAXEVAL`           the name without a link, still checked
+```
+
+A role shows the name as inline literal text linked to its entry; a topic
+shows its title as text. A name of one entry that the registry also lists
+as removed cites that entry. Each of these is a build warning at the page
+and line of the role, so that `sphinx-build -W` fails: a name no entry of
+the role's kind has (the warning names the role that takes it, or close
+names); a name of several entries (the warning lists their ids, any of
+which resolves it); a name the registry lists as removed and no entry has
+(`[[removed]]`, or a retired `PARAM` key of the annealers; the warning
+gives the hint `tadah hpo` prints). Removing
+or renaming a key in the registry therefore names every page that still
+cites it. The cases of `tadah_docs_tools` on the generated pages read the
+HPO checkout the build finds and are skipped without one that has the
+registry; a `$TADAH_HPO_SOURCE_DIR` that names none fails them.
+
 **Layout.** No page may need a horizontal scroll bar. The stylesheet
 `docs/source/_static/tables.css` narrows the side padding of the text
 column on windows 1024 px and wider, so that a code line of 80 characters
 fits whole, also in a list inside a list, wraps code lines on narrower
 windows, and gives the name of a field list a column of at most 30% of the
 list's width, in which a longer name wraps (at a blank where there is one,
-else anywhere). `conf.py` sets the sidebar to two levels under each caption
+else anywhere). It sets the heading of a topic of the reference (a rule) in
+the font of the text, where the theme sets every entry heading in the font
+of code. `conf.py` sets the sidebar to two levels under each caption
 (`navigation_depth` 2; the other theme options are written out with the
 defaults of `sphinx_rtd_theme` 3), and the "Nested Fitting" toctree of
 `index.rst` has `:titlesonly:`. The `nfp_checks` Sphinx extension

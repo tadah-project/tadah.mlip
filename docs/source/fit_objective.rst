@@ -29,18 +29,19 @@ over the observations :math:`i` of the training data. Each observation has
 its residual :math:`r_i` (reference value minus prediction), its
 :term:`error scale` :math:`\sigma_i` and its :term:`priority` :math:`p_i`.
 :math:`\lambda` is :ref:`LAMBDA`, and the penalty runs over every
-coefficient but the intercepts of :ref:`BIAS`. The observations are:
+coefficient but the intercepts of :ref:`BIAS <BIAS>`. The observations are:
 
 - the energy of each structure, with :ref:`ENERGY` ``true`` (the default):
   the residual of the total energy divided by :math:`N`, the number of
   atoms of the structure (:ref:`ENORM` ``ATOM``, the default), or by
   :math:`\sqrt N` (``ENORM SQRT``);
-- each Cartesian force component, with :ref:`FORCE` ``true``;
-- the stress tensor of each structure, with :ref:`STRESS` ``true``: its six
-  independent entries, the off-diagonal ones (xy, xz, yz) with
-  :math:`m_i = 2`. The sum over a tensor is then that over its nine entries,
-  the squared Frobenius norm of the residual tensor, the same in every
-  orientation of the cell. :math:`m_i = 1` for every other observation.
+- each Cartesian force component, with :ref:`FORCE <FORCE>` ``true``;
+- the stress tensor of each structure, with :ref:`STRESS <STRESS>`
+  ``true``: its six independent entries, the off-diagonal ones (xy, xz, yz)
+  with :math:`m_i = 2`. The sum over a tensor is then that over its nine
+  entries, the squared Frobenius norm of the residual tensor, the same in
+  every orientation of the cell. :math:`m_i = 1` for every other
+  observation.
 
 The costs are summed; nothing is averaged per structure, per dataset or
 per quantity. A 54-atom cell gives one energy and 162 force components, a
@@ -122,7 +123,7 @@ The priority of an observation is the product of two numbers, each >= 0:
 
 - the ``eweight``, ``fweight`` or ``sweight`` of the structure, the second
   line of its entry in the data file (:ref:`dataset`);
-- the :ref:`WDBFILE` value of its dataset (1 without ``WDBFILE``).
+- the :ref:`WDBFILE <WDBFILE>` value of its dataset (1 without ``WDBFILE``).
 
 A per-structure value of 0 means that the structure has no such label: its
 energy (forces, stress) is left out of the fit, of the metrics of ``tadah
@@ -165,32 +166,48 @@ cells of 54 atoms with nine coefficients and the default error scales:
 .. literalinclude:: ../../examples/CLI/ex_4_fit_balance/default.balance.txt
    :language: text
 
-The first line gives :ref:`LAMBDA`, the number of coefficients the solve
-fitted and its rank. With ``LAMBDA -1`` it adds the value the evidence
-approximation found; with :ref:`FIXINDEX`, the number of coefficients it
-pins, which the solve did not fit; with ``ENORM SQRT``, the :ref:`ENORM`
-of the energies. The second line gives the error scale of each quantity
-as its key gives it, to 4 significant digits: :ref:`ESIGMA`;
-:ref:`FSIGMA` and :ref:`SSIGMA` with both values, a and b. One row
-follows per quantity, over every dataset (``all``) and, with several
-datasets, per dataset (the k-th :ref:`DBFILE` entry), then the prior's
-row:
+The first line gives :ref:`LAMBDA <LAMBDA>`, the number of coefficients
+the solve fitted and its rank. The rank counts the directions the solve
+keeps: :ref:`OALGO <OALGO>` 2 and 4 keep all of them, ``OALGO`` 1 and 3
+those above the threshold of their second value. With ``LAMBDA -1`` the
+first line also gives the lambda that the evidence approximation found.
+With :ref:`FIXINDEX <FIXINDEX>` it gives the number of coefficients pinned,
+which the solve did not fit. Under ``ENORM SQRT`` it says so
+(:ref:`ENORM <ENORM>`).
+
+The error scales follow: :ref:`ESIGMA <ESIGMA>`, and :ref:`FSIGMA <FSIGMA>`
+and :ref:`SSIGMA <SSIGMA>` with both values, a and b, each to 4 significant
+digits. A line that does not fit in 78 characters continues on the next,
+indented by four blanks.
+
+One row follows per quantity over every dataset (``all``) and, with several
+datasets, one per dataset (the k-th :ref:`DBFILE <DBFILE>` entry), then the
+prior's row. The ``all`` row pools the entries of every dataset.
+
+The rows are of the training data as the fit read it, after :ref:`EFILTER
+<EFILTER>`, :ref:`FFILTER <FFILTER>` and :ref:`ZERO_COM_FORCE
+<ZERO_COM_FORCE>`. A dataset of ``WDBFILE 0`` has no entry in them. In
+``tadah hpo`` they are of its training data, not of the validation data
+that its loss measures. The columns are:
 
 ``n``
    The observations, as the sum counts them: at most three per atom and
    six per stress tensor, as an entry zero by symmetry is not one.
 ``RMSE``, ``unit``
    The root mean square residual over every entry of priority above 0,
-   those zero by symmetry included, in the unit of the metric of the
-   quantity: the energy per atom in meV/atom (under ``ENORM SQRT`` too),
-   the force components in eV/Å, the nine entries of each stress tensor in
-   GPa. These are the entries of the metrics of ``tadah predict -A``.
+   those zero by symmetry included. The unit is that of the quantity's
+   metric: meV/atom for the energy per atom (under ``ENORM SQRT`` too), eV/Å
+   for the force components, GPa for the nine entries of each stress
+   tensor. The row of a dataset is the RMSE that ``tadah predict -A`` gives
+   for it with the same filters. The ``all`` row is not the mean over the
+   datasets that the ``Mean`` column of ``tadah predict -A`` and the
+   ``[avg]`` metrics of ``tadah hpo`` give.
 ``r/sigma``
    The root mean square of residual over error scale, over the same
    entries. Below 1 the residuals are within their error scale. Under
-   ``ENORM SQRT`` the energy's residual is per square root of the atoms
-   and ``ESIGMA`` is in meV per √atom: for cells of N atoms, ``r/sigma``
-   is the RMSE times √N over ``ESIGMA``.
+   ``ENORM SQRT`` the energy's residual is per square root of the atoms,
+   and ``ESIGMA`` is in meV per √atom. For cells of N atoms, ``r/sigma`` is
+   then the RMSE times √N over ``ESIGMA``.
 ``share``
    The part of the minimised sum; that of the prior is the ``LAMBDA``
    penalty.
@@ -199,33 +216,38 @@ row:
    :math:`H` the matrix of the sum and :math:`H_q` the part of the
    quantity's rows: how many coefficients the quantity determines.
 
-Over the ``all`` rows and the prior's row, ``share`` sums to 1 and
-``gamma`` to the rank; the rows of the datasets sum to their ``all`` row.
+A row without an entry of priority above 0 has ``-`` for ``RMSE`` and
+``r/sigma``. Such a row is that of a dataset of ``WDBFILE 0``, of a dataset
+that the filters empty, or of a quantity whose every structure has
+priority 0. Over the ``all`` rows and the prior's row, ``share`` sums to 1
+and ``gamma`` to the rank. The rows of the datasets sum to their ``all``
+row.
 
 The table takes one pass over the n rows and p coefficients of the fit, of
 the order of :math:`n p^2` like the solve. It reads the rows in blocks, so
-its memory is of the order of :math:`p^2` and of 1024 rows, not a copy of
-the rows. ``tadah hpo`` computes it only for an evaluation whose loss may
-make it the best potential, not for the others. A fit of M_KRR
-implementation 2, and one whose ``FIXINDEX`` pins every coefficient, have
-no table: the line reads ``Fit balance: none``, with the reason.
+its memory is of the order of :math:`p^2`, of 1024 rows and of three rows
+per dataset, not a copy of the rows. ``tadah hpo`` computes it only for an
+evaluation whose loss may make it the best potential, not for the others.
+A fit of M_KRR implementation 2, and one whose ``FIXINDEX`` pins every
+coefficient, have no table: the line reads ``Fit balance: none``, with the
+reason.
 
-Reading a starved quantity
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Reading a quantity the others outweigh
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A quantity with a small share and few effective parameters is starved: the
-other quantities set the coefficients, and its residuals are what they
+A quantity with a small share and few effective parameters has its
+coefficients set by the other quantities, and its residuals are what they
 leave. Above, the energies have 0.6 % of the sum and 1.056 effective
-parameters, about the one coefficient only they determine (the constant
-energy per atom of :ref:`BIAS` ``true``); the forces determine the other
-eight. The energies' ``r/sigma`` of 0.1589 shows that this costs nothing
-at the stated accuracy: the coefficients the forces set give energies well
-within ``ESIGMA`` 1 meV/atom.
+parameters. That is about the one coefficient that only they determine,
+the constant energy per atom of :ref:`BIAS <BIAS>` ``true``. The forces
+determine the other eight.
 
-A starved quantity whose ``r/sigma`` is above 1 misses the accuracy its
-error scale states, and a smaller error scale gives it more of the sum.
-The second fit of the example asks for energies ten times as accurate,
-with ``ESIGMA 0.1``:
+The energies' ``r/sigma`` of 0.1589 shows that this costs nothing at the
+stated accuracy: the coefficients the forces set give energies well within
+``ESIGMA`` 1 meV/atom. A quantity the others outweigh whose ``r/sigma`` is
+above 1 misses the accuracy its error scale states. A smaller error scale
+gives it more of the sum. The second fit of the example asks for energies
+ten times as accurate, with ``ESIGMA 0.1``:
 
 .. literalinclude:: ../../examples/CLI/ex_4_fit_balance/esigma.balance.txt
    :language: text
@@ -233,9 +255,9 @@ with ``ESIGMA 0.1``:
 The energies have 34 % of the sum and 4.140 effective parameters. Their
 RMSE falls from 0.1589 to 0.1520 meV/atom, and that of the forces rises
 from 0.01645 to 0.01659 eV/Å. The energies' ``r/sigma`` of 1.520 shows
-that nine coefficients that also fit the forces do not reach 0.1 meV/atom,
-and the forces pay for the gain: :ref:`an error scale adds no capacity to
-the model <fit_objective_wide_range>`.
+that the nine coefficients do not reach 0.1 meV/atom. A third of the sum
+buys 4 % in energy RMSE, and the forces pay for it: :ref:`an error scale
+adds no capacity to the model <fit_objective_wide_range>`.
 
 .. _fit_objective_wide_range:
 

@@ -78,6 +78,16 @@
 // BF_Polynomial2), which the design matrix's column-layout check refused,
 // and `tadah predict` with a KRR potential whose basis does not fit. The hpo
 // case needs NFP.
+//
+// The [hpo-check] cases run `tadah hpo --check` and a task file whose TASK
+// hpo section has CHECK true: a valid setup prints its summary and exits 0
+// without an evaluation or a file; a target file with an unknown key, a
+// missing dataset and a DUMP or BDUMP directory in a directory that does
+// not exist exit non-zero with the message of `tadah hpo`; a run with CHECK
+// false, given or by default, writes no CHECK line into its potentials;
+// CHECK is a setting of the run: `tadah train` writes no CHECK key line,
+// and `tadah hpo -c` of a potential with a CHECK true line runs. They need
+// NFP.
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
@@ -8044,7 +8054,7 @@ TEST_CASE("Subcommand: hpo records the run's DBFILE, --validation, "
  * recorded, and there is no VERBOSE key line either.
  * Before the fix: passes as well (a pin of the provenance rule the HPO
  * CHANGELOG and the Training page state: with HPOTargets built without
- * the provenance, hpo_run_journaled passing nullptr, the record ends with
+ * the provenance, hpo_run_from_startup passing nullptr, the record ends with
  * "VERBOSE 1" and this case fails; the case above sets VERBOSE 0 and
  * passes either way).
  * Before the opening line was corrected: it
@@ -9017,7 +9027,7 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
  * config.val", "HPOTARGET config.hpo" (the task file's keys applied to the
  * run and recorded), and neither the run's output nor the journal says the
  * task file is a potential.
- * Before the fix: hpo_run_journaled removed every key of a configuration
+ * Before the fix: hpo_run removed every key of a configuration
  * with WEIGHTS that was not a command-line option: the journal had the
  * WARNING "tadah hpo: the task file run.task is a potential (it has
  * WEIGHTS): its EFILTER -0.6 -0.4 and WDBFILE 2 prepared the training data
@@ -9460,5 +9470,504 @@ TEST_CASE("Subcommand: hpo --task refuses --hpotarget and --validation",
   CHECK(r.status == 108);
   CHECK(contains(rep, "--force excludes --task"));
   CHECK_FALSE(std::filesystem::exists("hpo_run.log"));
+}
+
+/* ---- [hpo-check]: tadah hpo --check -----------------------------------
+ *
+ * `tadah hpo --check` (or CHECK true in a TASK hpo section) makes every
+ * startup check of `tadah hpo` and prints a summary, without an evaluation
+ * and without a file. Before the feature: `--check` is an unknown option
+ * (CLI11 exits 109, "The following argument was not expected: --check")
+ * and CHECK an unknown configuration key, so every case below fails. */
+namespace {
+
+/* write_hpo_potential_fixture()'s setup, with archives of every potential
+ * (DUMP) and of every new best (BDUMP) in config.hpo: a run creates their
+ * directories, a check does not. */
+void write_hpo_check_fixture() {
+  write_hpo_potential_fixture();
+  std::ofstream("config.hpo")
+      << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
+         "LOSS L2\nPC_ERMSE 0 1\nOPTIM CGRID2B (1) 2.3 2.7\n"
+         "DUMP 1 pots\nBDUMP 1 best_pots\n";
+}
+
+/* The entries of the working directory, the files run_tadah() captures
+ * standard output and error in left out. */
+std::set<std::string> run_directory_entries() {
+  std::set<std::string> out;
+  for (const auto& e : std::filesystem::directory_iterator(".")) {
+    const std::string name = e.path().filename().string();
+    if (name.rfind("cli_", 0) == 0 &&
+        (contains(name, ".stdout") || contains(name, ".stderr")))
+      continue;
+    out.insert(name);
+  }
+  return out;
+}
+
+/* The checks of a check of write_hpo_check_fixture()'s setup: status 0, the
+ * summary on standard output, and no file written (`before`: the entries
+ * of the working directory before the run). */
+void check_hpo_check_passed(const CliRun& r,
+                            const std::set<std::string>& before) {
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(contains(r.out, "tadah hpo --check: config.hpo passed the startup "
+                        "checks"));
+  CHECK(contains(r.out, "Search parameters: 1"));
+  CHECK(contains(r.out, "CGRID2B[1]  [2.3, 2.7]  LIN"));
+  CHECK(contains(r.out, "Optimiser: STRATEGY TYPE PLAIN"));
+  CHECK(contains(r.out, "STRATEGY  NLOPT:LN_SBPLX; stops: MAXEVAL 1"));
+  CHECK(contains(r.out, "Loss terms: LOSS L2"));
+  CHECK(contains(r.out, "PC_ERMSE  target 0, weight 1"));
+  CHECK(contains(r.out, "Data: 3 training structures, 3 validation "
+                        "structures"));
+  CHECK(contains(r.out, "No candidate was evaluated and no file was "
+                        "written."));
+  CHECK(run_directory_entries() == before);
+  for (const char* f : {"hpo_run.log", "loss.tadah", "params.tadah",
+                        "hpo_search_space.tsv", "best_pot.tadah", "pots",
+                        "best_pots"}) {
+    INFO(f);
+    CHECK_FALSE(std::filesystem::exists(f));
+  }
+}
+
+/* The message of `tadah hpo` on standard error: from "HPOEngine error:" to
+ * the end; "" when there is none. */
+std::string engine_error(const CliRun& r) {
+  const auto p = r.err.find("HPOEngine error:");
+  return p == std::string::npos ? std::string() : r.err.substr(p);
+}
+
+/* Whether a potential file has a key line of `key`. */
+bool has_key_line(const std::string& file, const std::string& key) {
+  return !line_tokens(slurp(file), key).empty();
+}
+
+}  // namespace
+
+/* Pins: `tadah hpo --check -c config.tadah --hpotarget config.hpo
+ * --validation config.val` exits 0 and prints the summary: the search
+ * parameter with its box and scale (CGRID2B[1] [2.3, 2.7] LIN), the
+ * optimiser with its stops (NLOPT:LN_SBPLX, MAXEVAL 1), the loss term
+ * (PC_ERMSE target 0, weight 1) and the data loaded (3 training and 3
+ * validation structures). The working directory is as it was: no journal,
+ * no result file, no search-space sidecar, no potential, no DUMP or BDUMP
+ * directory -- no evaluation was made. */
+TEST_CASE("Subcommand: hpo --check passes a valid setup with a summary, "
+          "without an evaluation or a file",
+          "[TadahCLI][hpo][hpo-check]") {
+  ScratchCwd cwd("hpo_check_valid");
+  write_hpo_check_fixture();
+  const auto before = run_directory_entries();
+  const CliRun r = run_tadah({"tadah", "hpo", "--check", "-c", "config.tadah",
+                              "--hpotarget", "config.hpo", "--validation",
+                              "config.val"});
+  check_hpo_check_passed(r, before);
+}
+
+/* Pins: in a task file, CHECK true in a TASK hpo section is --check: `tadah
+ * --task check.task` exits 0 with the summary and writes no file. A run of a
+ * task file takes no command-line option: `tadah hpo --task check.task
+ * --check` exits 108 with "--check excludes --task". CHECK false in the
+ * section, and a `tadah hpo` without --check (CHECK false by default), run:
+ * each writes best_pot.tadah and its DUMP and BDUMP archives, and no
+ * potential has a CHECK line (CHECK is an instruction to tadah hpo, not a
+ * key of the model). */
+TEST_CASE("Task file: CHECK true in a TASK hpo section checks the setup, and "
+          "a run writes no CHECK line into its potentials",
+          "[TadahCLI][hpo][hpo-check][task-file]") {
+  ScratchCwd cwd("hpo_check_task");
+  write_hpo_check_fixture();
+  std::ofstream("check.task")
+      << "TASK hpo\nCONFIG config.tadah\nHPOTARGET config.hpo\n"
+         "VALIDATION config.val\nCHECK true\n";
+  std::ofstream("run.task")
+      << "TASK hpo\nCONFIG config.tadah\nHPOTARGET config.hpo\n"
+         "VALIDATION config.val\nCHECK false\n";
+  {
+    const auto before = run_directory_entries();
+    const CliRun r = run_tadah({"tadah", "--task", "check.task"});
+    check_hpo_check_passed(r, before);
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "--task", "check.task",
+                                "--check"});
+    const std::string rep = reported(r);
+    INFO("--task with --check: status " << r.status << "\n" << rep);
+    CHECK(r.status == 108);
+    CHECK(contains(rep, "--check excludes --task"));
+    CHECK_FALSE(std::filesystem::exists("hpo_run.log"));
+  }
+  const std::vector<std::vector<std::string>> runs = {
+      {"tadah", "--task", "run.task"},
+      {"tadah", "hpo", "-c", "config.tadah", "--hpotarget", "config.hpo",
+       "--validation", "config.val"}};
+  for (const auto& args : runs) {
+    for (const char* d : {"pots", "best_pots"})
+      std::filesystem::remove_all(d);
+    std::filesystem::remove("best_pot.tadah");
+    const CliRun r = run_tadah(args);
+    INFO(args[1] << " " << args[2] << ": status " << r.status << "\n"
+                 << reported(r));
+    REQUIRE(r.status == 0);
+    REQUIRE(std::filesystem::exists("best_pot.tadah"));
+    std::vector<std::string> potentials = {"best_pot.tadah"};
+    for (const char* d : {"pots", "best_pots"}) {
+      REQUIRE(std::filesystem::is_directory(d));
+      for (const auto& e : std::filesystem::directory_iterator(d))
+        potentials.push_back(e.path().string());
+    }
+    REQUIRE(potentials.size() >= 3);
+    for (const auto& p : potentials) {
+      INFO(p << ":\n" << slurp(p));
+      CHECK(has_key_line(p, "WEIGHTS"));
+      CHECK_FALSE(has_key_line(p, "CHECK"));
+    }
+  }
+}
+
+/* Pins: `tadah hpo --check` on a setup `tadah hpo` refuses at startup exits
+ * with the run's status and message, and writes no file (the run writes its
+ * journal): a target file with an unknown key (the parser names it), a
+ * training configuration whose DBFILE names a file that does not exist (the
+ * message names the file), and a DUMP or a BDUMP line whose directory is in
+ * a directory that does not exist (the message names the directory; no
+ * directory is created).
+ * Before the DUMP and BDUMP directories were checked at their line: the
+ * check of such a setup passed (status 0) and the run stopped when it
+ * created the directory (status 1). */
+TEST_CASE("Subcommand: hpo --check refuses a setup with the message of "
+          "tadah hpo, and writes no file",
+          "[TadahCLI][hpo][hpo-check]") {
+  struct Case {
+    const char* name;
+    const char* hpo_line;  // appended to config.hpo
+    const char* dbfile;    // the DBFILE of config.tadah
+    const char* says;      // a part of the message
+  };
+  const Case cases[] = {
+      {"unknown key in the target file", "NOSUCHKEY 1\n", "db.tadah",
+       "NOSUCHKEY"},
+      {"missing training dataset", "", "absent.tadah", "absent.tadah"},
+      {"DUMP directory in a missing directory", "DUMP 1 missing/pots\n",
+       "db.tadah", "missing/pots"},
+      {"BDUMP directory in a missing directory",
+       "BDUMP 1 missing/best_pots\n", "db.tadah", "missing/best_pots"},
+  };
+  for (const Case& c : cases) {
+    INFO("case: " << c.name);
+    /* The check first, then the run, in one directory: a message can name
+     * a file by its absolute path. */
+    ScratchCwd cwd("hpo_check_refused");
+    write_hpo_check_fixture();
+    std::ofstream("config.hpo", std::ios::app) << c.hpo_line;
+    /* Read before the stream that rewrites the file truncates it. */
+    const std::string config =
+        replace_key_line(slurp("config.tadah"), "DBFILE",
+                         std::string("DBFILE ") + c.dbfile);
+    std::ofstream("config.tadah") << config;
+    const auto before = run_directory_entries();
+    const CliRun check = run_tadah({"tadah", "hpo", "--check", "-c",
+                                    "config.tadah", "--hpotarget",
+                                    "config.hpo", "--validation",
+                                    "config.val"});
+    CHECK(run_directory_entries() == before);
+    const CliRun run = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                                  "--hpotarget", "config.hpo",
+                                  "--validation", "config.val"});
+    INFO("tadah hpo: status " << run.status << "\n" << reported(run)
+         << "\ntadah hpo --check: status " << check.status << "\n"
+         << reported(check));
+    CHECK(run.status == 1);
+    CHECK(check.status == run.status);
+    CHECK(contains(engine_error(run), c.says));
+    CHECK(engine_error(check) == engine_error(run));
+    CHECK_FALSE(std::filesystem::exists("missing"));
+  }
+}
+
+/* Pins: CHECK is a setting of the run, as HPOTARGET is, and a potential
+ * neither carries nor sets it:
+ *   - `tadah train -c chk.tadah -o pot.tadah`, chk.tadah the fixture's
+ *     config.tadah with "CHECK true", exits 0, and pot.tadah has no CHECK
+ *     key line; its training record lists "# CHECK true" (tadah train reads
+ *     no CHECK);
+ *   - so do `tadah --task g.task`, CHECK true above its TASK train line,
+ *     and `tadah --task t.task`, CHECK true inside its TASK train section;
+ *   - `tadah hpo -c seed.tadah --hpotarget config.hpo --validation
+ *     config.val`, seed.tadah pot.tadah with "CHECK true" and "DBFILE
+ *     db.tadah" added, runs: status 0, no check summary, best_pot.tadah
+ *     (without a CHECK line), and a WARNING names "CHECK true" as a setting
+ *     of the run that wrote the potential;
+ *   - `tadah hpo --check -c seed.tadah ...` is a check: the summary, and no
+ *     file.
+ * Before the fix: tadah train wrote the key line "CHECK true" in each of
+ * the three, and `tadah hpo -c seed.tadah` read it: it printed the check
+ * summary and exited 0 without a run. */
+TEST_CASE("Subcommand: CHECK is a setting of the run: tadah train writes no "
+          "CHECK line, and hpo -c of a potential with CHECK true runs",
+          "[TadahCLI][hpo][hpo-check][retrain]") {
+  ScratchCwd cwd("hpo_check_setting");
+  write_hpo_check_fixture();
+  {
+    const std::string config = slurp("config.tadah");
+    std::ofstream("chk.tadah") << config << "CHECK true\n";
+  }
+  std::ofstream("g.task") << "CHECK true\nTASK train\nCONFIG config.tadah\n"
+                             "OUTFILE potg.tadah\n";
+  std::ofstream("t.task") << "TASK train\nCONFIG config.tadah\n"
+                             "OUTFILE pott.tadah\nCHECK true\n";
+  const std::vector<std::pair<std::vector<std::string>, std::string>> trains =
+      {{{"tadah", "train", "-c", "chk.tadah", "-o", "pot.tadah"}, "pot.tadah"},
+       {{"tadah", "--task", "g.task"}, "potg.tadah"},
+       {{"tadah", "--task", "t.task"}, "pott.tadah"}};
+  for (const auto& [args, potential] : trains) {
+    const CliRun t = run_tadah(args);
+    INFO(args[1] << " " << args[2] << ": status " << t.status << "\n"
+                 << reported(t));
+    REQUIRE(t.status == 0);
+    REQUIRE(std::filesystem::exists(potential));
+    const std::string text = slurp(potential);
+    INFO(potential << ":\n" << text);
+    CHECK(has_key_line(potential, "WEIGHTS"));
+    CHECK_FALSE(has_key_line(potential, "CHECK"));
+    CHECK(contains(text, "\n# CHECK true\n"));
+  }
+  {
+    const std::string pot = slurp("pot.tadah");
+    std::ofstream("seed.tadah") << pot << "CHECK true\nDBFILE db.tadah\n";
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "seed.tadah",
+                                "--hpotarget", "config.hpo", "--validation",
+                                "config.val"});
+    const std::string rep = reported(r);
+    INFO("hpo -c seed.tadah: status " << r.status << "\n" << rep);
+    CHECK(r.status == 0);
+    CHECK_FALSE(contains(r.out, "passed the startup checks"));
+    CHECK(contains(rep, "its CHECK true was a setting of the run that wrote "
+                        "it, not of this run, and is ignored"));
+    REQUIRE(std::filesystem::exists("best_pot.tadah"));
+    CHECK_FALSE(has_key_line("best_pot.tadah", "CHECK"));
+  }
+  for (const char* d : {"pots", "best_pots"}) std::filesystem::remove_all(d);
+  for (const char* f : {"best_pot.tadah", "hpo_run.log"})
+    std::filesystem::remove(f);
+  {
+    const auto before = run_directory_entries();
+    const CliRun r = run_tadah({"tadah", "hpo", "--check", "-c", "seed.tadah",
+                                "--hpotarget", "config.hpo", "--validation",
+                                "config.val"});
+    INFO("hpo --check -c seed.tadah: status " << r.status << "\n"
+                                              << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "tadah hpo --check: config.hpo passed the startup "
+                          "checks"));
+    CHECK(run_directory_entries() == before);
+  }
+}
+
+/* Pins: a TASK hpo section whose own key lines have WEIGHTS is a potential:
+ * its CHECK true line, a run setting, is not read, as its HPOTARGET line
+ * would not be, so `tadah --task inline.task` (HPOTARGET and VALIDATION
+ * above the TASK hpo line; the section: the key lines of pot.tadah, which
+ * tadah train wrote from config.tadah, then "DBFILE db.tadah" and "CHECK
+ * true") runs: status 0, best_pot.tadah, no check summary, and a WARNING
+ * that names the line and says where CHECK goes ("Write CHECK in ..."). A
+ * CHECK true line above the first TASK line (above.task, the same section
+ * without its CHECK line) is the run's: the check's summary, and no file.
+ * This pins the rule the CHECK help states. */
+TEST_CASE("Task file: a TASK hpo section with WEIGHTS is a potential, whose "
+          "CHECK line is not read; CHECK above the first TASK line is",
+          "[TadahCLI][hpo][hpo-check][task-file]") {
+  ScratchCwd cwd("hpo_check_section_potential");
+  write_hpo_check_fixture();
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
+                                "pot.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string pot = slurp("pot.tadah");
+  std::ofstream("inline.task")
+      << "HPOTARGET config.hpo\nVALIDATION config.val\nTASK hpo\n" << pot
+      << "DBFILE db.tadah\nCHECK true\n";
+  std::ofstream("above.task")
+      << "HPOTARGET config.hpo\nVALIDATION config.val\nCHECK true\n"
+         "TASK hpo\n"
+      << pot << "DBFILE db.tadah\n";
+  {
+    const auto before = run_directory_entries();
+    const CliRun r = run_tadah({"tadah", "--task", "above.task"});
+    INFO("above.task: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(r.out, "tadah hpo --check: config.hpo passed the startup "
+                          "checks"));
+    CHECK(run_directory_entries() == before);
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "--task", "inline.task"});
+    const std::string rep = reported(r);
+    INFO("inline.task: status " << r.status << "\n" << rep);
+    CHECK(r.status == 0);
+    CHECK_FALSE(contains(r.out, "passed the startup checks"));
+    CHECK(contains(rep, "its CHECK true was a setting of the run that wrote "
+                        "it, not of this run, and is ignored"));
+    CHECK(contains(rep, "Write CHECK in "));
+    CHECK(std::filesystem::exists("best_pot.tadah"));
+  }
+}
+
+/* Pins: `tadah hpo -h` lists --check with its description, in the third
+ * person as every help text ("Checks the setup of tadah hpo without
+ * running it: ...").
+ * Before the help was in the third person: it read "Check the setup of
+ * tadah hpo without running it: make its startup checks, ...". */
+TEST_CASE("Subcommand: hpo -h lists --check",
+          "[TadahCLI][hpo][hpo-check]") {
+  const CliRun r = run_tadah({"tadah", "hpo", "-h"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(contains(r.out, "--check"));
+  CHECK(contains(r.out, "Checks the setup of tadah hpo"));
+}
+#endif  // TADAH_ENABLE_NFP
+
+/* ---------------------------------------------------------------------------
+ * A potential with RCTYPE, RCUT and list values its descriptors do not
+ * take, as tadah 1.5.0 wrote them (a joined line of D2_Blip and D2_BP with
+ * a third RCTYPE2B and RCUT2B value and a KDEG2B neither reads), is
+ * trained from: tadah train -c and tadah hpo -c report the values, one
+ * WARNING per key, leave them out and train the potential's model.
+ * Before the fix: both refused it ('TYPE2B names 2 descriptors (D2_Blip,
+ * D2_BP) but RCTYPE2B has 3 values: ...'), after the WARNINGs.
+ * ------------------------------------------------------------------------- */
+namespace {
+
+const char* const kRetrainTaDb =
+    "bcc_ta_a\n1.0 1.0 1.0\n-0.30 0.0\n"
+    "3.301 0.0 0.0\n0.0 3.301 0.0\n0.0 0.0 6.602\n"
+    "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+    "Ta 0.05 -0.03 0.02  0.31 -0.12 0.05\n"
+    "Ta 1.70 1.62 1.68  -0.22 0.17 -0.09\n"
+    "Ta -0.04 0.06 3.33  0.04 0.21 -0.15\n"
+    "Ta 1.61 1.69 4.92  -0.13 -0.26 0.19\n"
+    "\n"
+    "bcc_ta_b\n1.0 1.0 1.0\n-0.24 0.0\n"
+    "3.301 0.0 0.0\n0.0 3.301 0.0\n0.0 0.0 6.602\n"
+    "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+    "Ta 0.10 0.00 -0.05  -0.27 0.08 0.14\n"
+    "Ta 1.66 1.58 1.62  0.19 -0.23 0.06\n"
+    "Ta 0.02 -0.08 3.27  0.11 0.16 -0.21\n"
+    "Ta 1.69 1.71 5.00  -0.03 -0.01 0.01\n"
+    "\n";
+
+/* Trains the joined model into pot.tadah, then writes old_pot.tadah: that
+ * potential with the values 1.5.0 kept and a DBFILE line. */
+void write_old_potential() {
+  { std::ofstream os("train.db"); os << kRetrainTaDb; }
+  {
+    std::ofstream os("config.tadah");
+    os << "DBFILE train.db\nATOM Ta\nWATOM 1\nINIT2B true\nINITMB false\n"
+          "TYPE2B D2_mJoin\nTYPE2B D2_Blip 2 2 Ta Ta\nTYPE2B D2_BP 2 2 Ta Ta\n"
+          "RCTYPE2B Cut_Cos Cut_Cos\nRCUT2B 5 4.5\n"
+          "CGRID2B 2 3 0.5 1.0\nSGRID2B 1 1 2 3\n"
+          "BIAS true\nVERBOSE 0\nMODEL M_BLR BF_Linear\nLAMBDA 1e-3\n";
+  }
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
+                              "pot.tadah"});
+  INFO("train stderr:\n" << t.err << t.what);
+  REQUIRE(t.status == 0);
+  std::ifstream in("pot.tadah");
+  std::ofstream os("old_pot.tadah");
+  for (std::string line; std::getline(in, line);) {
+    std::istringstream ss(line);
+    std::string k;
+    ss >> k;
+    if (k == "RCTYPE2B") line = "RCTYPE2B Cut_Cos Cut_Cos Cut_Tanh";
+    else if (k == "RCUT2B") line = "RCUT2B 5 4.5 6";
+    else if (k == "DBFILE") continue;
+    os << line << "\n";
+  }
+  os << "KDEG2B 5 5\nDBFILE train.db\n";
+}
+
+/* The keys reported once per process (core::report_ignored_key_once): a
+ * case run after another in one process sees none again. */
+std::vector<bool> reported_before() {
+  std::vector<bool> b;
+  for (const char* key : {"RCTYPE2B", "RCUT2B", "KDEG2B"})
+    b.push_back(tadah::core::ignored_key_reported(key));
+  return b;
+}
+
+void check_reported(const std::string& err, const std::vector<bool>& before) {
+  const char* notices[] = {
+      "WARNING: Part of RCTYPE2B (Cut_Tanh) is ignored: TYPE2B names 2 "
+      "descriptors (D2_Blip, D2_BP), which take its first 2 values; the "
+      "potential works unchanged without it",
+      "WARNING: Part of RCUT2B (6) is ignored: TYPE2B names 2 descriptors "
+      "(D2_Blip, D2_BP), which take its first 2 values; the potential "
+      "works unchanged without it",
+      "WARNING: Key KDEG2B (5 5) is ignored: TYPE2B names 2 descriptors "
+      "(D2_Blip, D2_BP), which take none of its values; the potential "
+      "works unchanged without it"};
+  for (std::size_t i = 0; i < 3; ++i) {
+    INFO(notices[i]);
+    CHECK(contains(err, notices[i]) == !before[i]);
+  }
+}
+
+}  // namespace
+
+TEST_CASE("Subcommand: train: a potential with values its descriptors do not "
+          "take retrains, the values reported and left out",
+          "[TadahCLI][train][potential]") {
+  ScratchCwd cwd("retrain_old_pot");
+  write_old_potential();
+  const auto before = reported_before();
+  const CliRun r = run_tadah({"tadah", "train", "-c", "old_pot.tadah", "-o",
+                              "retrained.tadah"});
+  INFO("stderr:\n" << r.err << r.what);
+  REQUIRE(r.status == 0);
+  check_reported(r.err, before);
+  CHECK(pot_key("retrained.tadah", "RCTYPE2B") ==
+        std::vector<std::string>{"Cut_Cos", "Cut_Cos"});
+  CHECK(pot_key("retrained.tadah", "RCUT2B") ==
+        std::vector<std::string>{"5", "4.5"});
+  CHECK(pot_key("retrained.tadah", "KDEG2B").empty());
+  /* the potential's model, trained on the same data */
+  CHECK(pot_key("retrained.tadah", "WEIGHTS") ==
+        pot_key("pot.tadah", "WEIGHTS"));
+}
+
+#ifdef TADAH_ENABLE_NFP
+TEST_CASE("Subcommand: hpo: a -c potential with values its descriptors do not "
+          "take is searched from, the values reported and left out",
+          "[TadahCLI][hpo][potential]") {
+  ScratchCwd cwd("hpo_old_pot");
+  write_old_potential();
+  { std::ofstream os("config.val"); os << "DBFILE train.db\n"; }
+  {
+    std::ofstream os("config.hpo");
+    os << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 2\nENDOPTIMIZER\n"
+          "LOSS L2\nPC_ERMSE 0 1\nOPTIM CGRID2B (1) 1.5 2.5\n";
+  }
+  const auto before = reported_before();
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "old_pot.tadah",
+                              "--hpotarget", "config.hpo",
+                              "--validation", "config.val"});
+  INFO("stderr:\n" << r.err << r.what);
+  REQUIRE(r.status == 0);
+  check_reported(r.err, before);
+  REQUIRE(std::filesystem::exists("best_pot.tadah"));
+  CHECK(pot_key("best_pot.tadah", "RCTYPE2B") ==
+        std::vector<std::string>{"Cut_Cos", "Cut_Cos"});
+  CHECK(pot_key("best_pot.tadah", "RCUT2B") ==
+        std::vector<std::string>{"5", "4.5"});
+  CHECK(pot_key("best_pot.tadah", "KDEG2B").empty());
 }
 #endif  // TADAH_ENABLE_NFP

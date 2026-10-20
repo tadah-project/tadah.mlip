@@ -97,7 +97,7 @@ def default_for(key: dict, kind: str) -> str:
         return special
     raw = key.get(f"default_{kind}", key.get("default"))
     if raw is None:
-        return "``AUTO``" if key.get("accepts_auto") is not None else "auto"
+        return "``AUTO``" if _takes_auto(key, kind) else "auto"
     if key["type"] == "bool":
         return "``ON``" if str(raw).strip() in ("1", "1.0", "true", "True") else "``OFF``"
     # 1.5.0: these keys carry their AUTO/OFF sentinel AS the numeric default,
@@ -106,6 +106,8 @@ def default_for(key: dict, kind: str) -> str:
     # actually types.
     for field, token in (("accepts_auto", "``AUTO``"), ("accepts_off", "``OFF``")):
         sentinel = key.get(field)
+        if field == "accepts_auto" and not _takes_auto(key, kind):
+            continue
         if sentinel is not None and float(raw) == float(sentinel):
             return token
     if key["type"] == "float":
@@ -113,14 +115,24 @@ def default_for(key: dict, kind: str) -> str:
     return str(raw)
 
 
-def _token_suffix(key: dict) -> str:
-    """The 1.5.0 AUTO/OFF tokens a numeric key also accepts."""
-    toks = [t for t, f in (("``AUTO``", "accepts_auto"), ("``OFF``", "accepts_off"))
-            if key.get(f) is not None]
+def _takes_auto(key: dict, kind: str) -> bool:
+    """Whether the key accepts AUTO in `kind`: its auto_kinds, or every kind
+    of the key when the field is absent."""
+    return (key.get("accepts_auto") is not None and
+            kind in key.get("auto_kinds", key["kinds"]))
+
+
+def _token_suffix(key: dict, kind: str) -> str:
+    """The 1.5.0 AUTO/OFF tokens a numeric key also accepts in `kind`."""
+    toks = []
+    if _takes_auto(key, kind):
+        toks.append("``AUTO``")
+    if key.get("accepts_off") is not None:
+        toks.append("``OFF``")
     return (" | " + " | ".join(toks)) if toks else ""
 
 
-def range_for(key: dict) -> str:
+def range_for(key: dict, kind: str) -> str:
     if key["type"] == "enum":
         return " | ".join(f"``{v}``" for v in key["values"])
     if key["type"] == "bool":
@@ -131,9 +143,9 @@ def range_for(key: dict) -> str:
         if key.get("range_doc"):
             return key["range_doc"]
         base = "integer >= 1" if key["type"] == "count" else "float"
-        return base + _token_suffix(key)
+        return base + _token_suffix(key, kind)
     has_min, has_max = "min" in key, "max" in key
-    suffix = _token_suffix(key)
+    suffix = _token_suffix(key, kind)
     if not has_min and not has_max:
         return ("integer >= 0" if key["type"] == "count" else "float") + suffix
     lo = "(" if key.get("min_open") else "["
@@ -218,7 +230,7 @@ def render(kind: str, data: dict) -> str:
                 f"   * - ``{k['name']}``",
                 f"     - Default: {default_for(k, kind)}",
                 "",
-                f"       Values: {range_for(k)}",
+                f"       Values: {range_for(k, kind)}",
                 "",
                 f"       {doc}",
             ]

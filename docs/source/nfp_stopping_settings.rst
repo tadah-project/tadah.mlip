@@ -69,6 +69,7 @@ Some adapters impose stricter ranges or use a setting differently:
   ``tol_gradinf`` tests the gradient's **L2 norm** in this backend.
 * ``DLIB:GFS`` uses nonnegative ``FTOL_ABS`` as its solver accuracy
   setting (default ``1e-3``); the search uses its other configured stops.
+  A negative ``FTOL_ABS`` is refused at startup.
 * ``CERES:STEEPEST_DESCENT`` uses ``FTOL_REL`` (default ``1e-6``),
   ``XTOL_REL`` (default ``1e-8``), both nonnegative, and positive ``PARAM tol_gradinf``
   (default ``1e-10``, largest gradient component). It refuses

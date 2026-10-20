@@ -82,8 +82,13 @@ runs that obtain their starting point through ``METHOD WARM``.
 
 ``RATIO`` and ``FRAC`` are mutually exclusive. A zero-width box is an
 error. To give all selected centres the same absolute half-width, use
-``AUTO FRAC 0 FLOOR 0.1``. ``FLOOR`` and ``GROUP_FLOOR`` affect only
-``FRAC`` boxes.
+``AUTO FRAC 0 FLOOR 0.1``. ``FLOOR`` and ``GROUP_FLOOR`` apply to
+``FRAC`` boxes only: with ``RATIO``, given or the default of a positive
+scale key, they are refused.
+
+.. versionchanged:: 1.6.0
+   ``FLOOR`` and ``GROUP_FLOOR`` with ``RATIO`` are refused. 1.5.0
+   accepted them and ignored them.
 
 For nonnegative density amplitudes, ``FRAC`` bounds are clipped at zero.
 Without either floor option these amplitudes receive

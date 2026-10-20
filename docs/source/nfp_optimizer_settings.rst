@@ -97,6 +97,18 @@ NLopt uses the enclosing optimiser's seed, falling back to its
 ``INIT`` seed when no optimiser seed is present. ``INNER`` has no seed
 of its own.
 
+A ``PRESTAGE`` exploration whose optimiser reads ``SEED`` and that has no
+seed of its own takes the ``STRATEGY``-level ``SEED``. Its own seeds come
+first: the ``EXPLORE`` block's ``SEED`` and, for NLopt, its ``INIT``
+seed. The refinement draws other random numbers from the same ``SEED``,
+so the optimisers of both phases repeat. Starting points that an ``INIT``
+or ``RESTART`` block draws repeat only with that block's ``SEED`` (see
+:doc:`nfp_initialisation`). The journal names the seed of the
+exploration.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 such an exploration was not seeded, so a run did not repeat.
+
 ``TADAH:GRID``, ``DLIB:BFGS`` and ``CERES`` refuse ``SEED`` because they
 draw no random numbers. ``DLIB:GFS`` ignores it with a warning. Every
 NLopt algorithm accepts it, including deterministic ones. Set seeds

@@ -127,8 +127,8 @@ potential (``WARNING: pair tadah: potential 'pot.tadah': Deprecated key
 MBLOCK is ignored: ...``).
 
 A key marked **Retired** weighted the training data of a fit before Tadah!
-1.6.0; another key replaces it (:ref:`fit_objective_conversion` lists the
-conversions). A potential that has it still loads
+1.6.0; other keys or the priorities of the data replace it
+(:ref:`fit_objective_conversion` lists the conversions). A potential that has it still loads
 (``tadah predict``, ``pair_style tadah``, ``tadah analysis``, ``tadah
 properties``, ``tadah refit --edit``): Tadah!MLIP checks its value, ignores
 it and writes one notice per load that lists the retired keys of the file

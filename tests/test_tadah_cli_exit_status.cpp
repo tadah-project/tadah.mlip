@@ -1985,13 +1985,17 @@ TEST_CASE("Subcommand: data dedup keeps the first of three equal structures",
  * structure by -5 eV per atom and writes the priorities of the data file
  * as they are: of B1 (priorities 1 1 1, -11.5 eV) and B2 (1 0 0, no forces
  * or stress data, -11.4 eV), two atoms each, the output has B1 at -1.5 eV
- * with 1 1 1 and B2 at -1.4 eV with 1 0 0. The options of the removed
+ * with 1 1 1 and B2 at -1.4 eV with 1 0 0. The options of the retired
  * rescaling, --rescale, --threshold, --force (-F) and --stress (-S), are
- * refused: each exits non-zero, naming the option, without writing the
- * output.
+ * refused: each exits non-zero, naming the option and why ("tadah data
+ * balance shifts energies only"), without writing the output; so is a
+ * task file whose TASK data balance section has RESCALE true, naming
+ * RESCALE and its line.
  * Before the fix: --rescale replaced the priorities by inverse magnitudes
  * (B1's fweight 1/0.2 and sweight 1/sqrt(3 * 0.01^2), B2's 0 kept), so the
- * runs with the four options exited 0 and wrote the output. */
+ * runs with the four options exited 0 and wrote the output; then the
+ * command line refused them as unknown options ("The following argument
+ * was not expected"), and the task file ran, RESCALE ignored. */
 TEST_CASE("Subcommand: data balance shifts energies, keeps the priorities and "
           "refuses the options of the removed rescaling",
           "[TadahCLI][exit-status][data]") {
@@ -2035,8 +2039,19 @@ TEST_CASE("Subcommand: data balance shifts energies, keeps the priorities and "
     INFO(option[0] << ": status " << r.status << "\n" << rep);
     CHECK(r.status != 0);
     CHECK(contains(rep, option[0]));
+    CHECK(contains(rep, "tadah data balance shifts energies only"));
     CHECK_FALSE(std::filesystem::exists("out2.tadah"));
   }
+  std::ofstream("b4.task") << "TASK data balance\n  DBFILE db.tadah\n"
+                              "  ESHIFT -8.0\n  RESCALE true\n"
+                              "  OUTFILE balX.tadah\n";
+  const CliRun t = run_tadah({"tadah", "--task", "b4.task"});
+  const std::string rep = reported(t);
+  INFO("task file: status " << t.status << "\n" << rep);
+  CHECK(t.status != 0);
+  CHECK(contains(rep, "RESCALE (line 4 of b4.task) in TASK data balance"));
+  CHECK(contains(rep, "tadah data balance shifts energies only"));
+  CHECK_FALSE(std::filesystem::exists("balX.tadah"));
 }
 
 /* Pins: `tadah data dedup` on two copies of a structure whose cell block
@@ -10180,10 +10195,17 @@ std::vector<std::size_t> key_line_numbers(const std::string& file,
  * train -c T`, T being P with a DBFILE line of D added (the retrain route
  * of the Training page), exits 1 without writing pot.tadah, naming each
  * line and its conversion ("ESIGMA = 1000/(N sqrt(EWEIGHT))", "FSIGMA =
- * 1/sqrt(FWEIGHT)", "SSIGMA = 160.2/sqrt(SWEIGHT)").
+ * 1/sqrt(FWEIGHT)", "SSIGMA = 160.2/sqrt(SWEIGHT)"), the FWEIGHT and
+ * SWEIGHT lines, of the forces and stresses each leaves out, as converted
+ * by deleting the line. The Kr potentials converted as the refusal says
+ * (those two lines deleted, EWEIGHT 1 as ESIGMA 500 for the 2-atom dimer)
+ * train: exit 0 and pot.tadah. (The converted Tadah!N2 is refused by the
+ * DIMER rule of a fit, which another case checks.)
  * Before the fix: the three were keys of the potential, which predict read
  * without a notice and a retrain applied (EWEIGHT 1: the squared residual
- * of the total energy). */
+ * of the total energy); then the refusal gave FSIGMA = 1/sqrt(FWEIGHT) and
+ * SSIGMA = 160.2/sqrt(SWEIGHT) for those lines too, and the configuration
+ * converted so (FSIGMA 1, SSIGMA 160.2) was refused again. */
 TEST_CASE("Subcommand: the published potentials load with one notice of "
           "their retired keys, and a fit refuses them with the conversion",
           "[TadahCLI][predict][train][retired]") {
@@ -10233,6 +10255,34 @@ TEST_CASE("Subcommand: the published potentials load with one notice of "
       CHECK(contains(rep, "FSIGMA = 1/sqrt(FWEIGHT)"));
       CHECK(contains(rep, "SSIGMA = 160.2/sqrt(SWEIGHT)"));
       CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+      for (const char* key : {"FWEIGHT", "SWEIGHT"}) {
+        const std::string sw = key == std::string("FWEIGHT") ? "FORCE"
+                                                             : "STRESS";
+        CHECK(contains(rep, "line " +
+                                std::to_string(key_line_numbers(name, key)[0]) +
+                                " of " + name + "; " + sw +
+                                " false here: converted by deleting the "
+                                "line)"));
+      }
     }
+    if (std::string(name) == "tadah.n2") continue;
+    {
+      std::filesystem::remove("pot.tadah");
+      std::istringstream in(slurp(name));
+      std::ofstream out(std::string(name) + ".converted");
+      for (std::string line; std::getline(in, line);) {
+        std::istringstream ls(line);
+        std::string key;
+        ls >> key;
+        if (key == "FWEIGHT" || key == "SWEIGHT") continue;
+        out << (key == "EWEIGHT" ? std::string("ESIGMA 500") : line) << "\n";
+      }
+      out << "DBFILE " << data << "\n";
+    }
+    const CliRun c = run_tadah({"tadah", "train", "-c",
+                                std::string(name) + ".converted"});
+    INFO("converted: status " << c.status << "\n" << reported(c));
+    CHECK(c.status == 0);
+    CHECK(std::filesystem::exists("pot.tadah"));
   }
 }

@@ -237,13 +237,19 @@ class ReadTomlTest(unittest.TestCase):
     def test_page_intro_explains_retired_keys(self):
         # Pins: the page says what a retired key does: a potential that has
         # one loads, with one notice per load, and a fit refuses it with
-        # its conversion.
+        # its conversion; and what replaces it in words that fit every
+        # retired key: other keys or the priorities of the data (EWEIGHT_TEMP
+        # has no key in its place).
+        # Before the fix: it said "another key replaces it".
         page = self.rt.render(blueprint())
         intro = page[:page.index('.. _LAMBDA:')]
         self.assertIn('**Retired**', intro)
         self.assertIn('one notice', intro)
         self.assertIn('refuses', intro)
         self.assertIn('conversion', intro)
+        self.assertIn('other keys or the priorities of the data replace it',
+                      ' '.join(intro.split()))
+        self.assertNotIn('another key replaces it', ' '.join(intro.split()))
 
 
 if __name__ == '__main__':

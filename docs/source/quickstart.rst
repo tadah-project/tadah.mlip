@@ -92,11 +92,11 @@ The output of the ``predict`` subcommand includes three files:
 - ``stress.pred``: The first six rows list components of the stress tensor from the first configuration, followed by six components from the second configuration, and so on. The ordering is xx, xy, xz, yy, yz, zz.
 
 .. versionchanged:: 1.6.0
-   ``--error`` is refused: uncertainty output is not part of Tadah! 1.6.0,
-   its error bars were not calibrated (they were too narrow for many
-   structures). In Tadah! 1.5.0 its errors were not standard deviations
-   (negative ones among them), and with ``EWEIGHT`` or ``FWEIGHT`` other
-   than 1 it scaled the predicted values too.
+   ``--error`` is refused: uncertainty output is not part of Tadah! 1.6.0.
+   In Tadah! 1.0.0 to 1.5.0 its errors were not standard deviations
+   (negative ones among them), and with any ``EWEIGHT``, ``FWEIGHT``,
+   ``SWEIGHT`` or priority of a structure other than 1 it scaled the
+   predicted values too.
 
 .. _task_file:
 

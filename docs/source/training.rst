@@ -32,9 +32,10 @@ Flag               Config key       Effect
 ================== ================ =====================================================================
 
 .. versionchanged:: 1.6.0
-   ``--uncertainty`` and an ``UNCERTAINTY`` line are refused: uncertainty
-   output is not part of Tadah! 1.6.0, its error bars were not calibrated
-   (they were too narrow for many structures).
+   ``--uncertainty`` and an ``UNCERTAINTY`` or ``ERROR`` line are refused:
+   uncertainty output is not part of Tadah! 1.6.0. The errors of Tadah!
+   1.0.0 to 1.5.0 were not standard deviations, and no calibrated estimate
+   replaces them.
 
 Training data must be supplied as one or more Tadah! database files via
 ``DBFILE`` in the configuration; :ref:`dataset` gives the on-disk format.
@@ -456,7 +457,7 @@ every potential of ``tadah train`` or
 ``tadah hpo`` the keys that prepared its training data, ``ESHIFT_ATOM
 false``, ``ESHIFT_DBATOM false`` and ``ZERO_COM_FORCE false`` when its
 configuration set none, the retired ``WDBFILE_AUTO 0``, and a potential of
-``tadah train`` 1.5.0 the retired ``UNCERTAINTY``); it still loads,
+``tadah train`` the retired ``UNCERTAINTY``); it still loads,
 no run takes any of them from it as a setting, and ``tadah refit --edit`` of
 it lists them in the edit's record instead, but for the retired lines, which
 it keeps as they are (:ref:`fit_objective_conversion`). ``tadah predict`` ignores the keys that prepared
@@ -587,12 +588,13 @@ the retrain is the potential's. Its ``ESIGMA``, ``FSIGMA``, ``SSIGMA``,
 the retrain fits with (:ref:`fit_objective`). A potential that ``tadah
 train`` or ``tadah hpo`` of Tadah! 1.0.0 to 1.5.0 wrote has ``EWEIGHT``,
 ``FWEIGHT`` and ``SWEIGHT`` lines instead (and from 1.3.0 a
-``WDBFILE_AUTO`` line; one of ``tadah train`` 1.5.0 an ``UNCERTAINTY``
+``WDBFILE_AUTO`` line; one of ``tadah train`` an ``UNCERTAINTY``
 line): a retrain from it is refused, naming each line and its conversion,
 until the copy has the converted keys in their place or, for a line the
-refusal marks (a quantity the fit leaves out,
+refusal marks (``UNCERTAINTY``, a quantity the fit leaves out,
 ``WDBFILE_AUTO 0``, or any line under M_KRR implementation 2), none
-(:ref:`fit_objective_conversion`). The ``WDBFILE`` values of the
+(:ref:`fit_objective_conversion` gives the conversions of the keys that
+weighted the training data). The ``WDBFILE`` values of the
 conversion of ``WDBFILE_AUTO`` are not read in the copy: they are given as
 the retrain's own, below.
 

@@ -94,9 +94,9 @@ where the key takes a path or an option string (``DBFILE a,b.tadah``), and the
 index lists (:ref:`FIXINDEX`, ``--index``) take commas between their entries
 (``FIXINDEX 13,14`` is ``FIXINDEX 13 14``). A name holds neither: in the keys
 whose values are names (:ref:`ATOM`, :ref:`TYPE2B`, :ref:`TYPEMB`,
-:ref:`RCTYPE2B`, :ref:`RCTYPEMB`, :ref:`MODEL`, :ref:`WATOM`)
-``ATOM Ta,Nb`` and ``TYPE2B D2_Blip 4 4 Fe+Fe`` are refused the same way. A
-``+`` is a sign in a number (``+2``, ``1e+5``).
+:ref:`RCTYPE2B`, :ref:`RCTYPEMB`, :ref:`MODEL`, :ref:`WATOM`,
+:ref:`WNOISE`) ``ATOM Ta,Nb`` and ``TYPE2B D2_Blip 4 4 Fe+Fe`` are refused
+the same way. A ``+`` is a sign in a number (``+2``, ``1e+5``).
 
 Value Limits
 ------------

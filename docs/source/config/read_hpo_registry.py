@@ -426,10 +426,11 @@ def number(value):
 def number_range(noun, lo=None, hi=None, lo_open=False, hi_open=False):
     """A number of *noun* ("a number", "an integer") and its range in
     words: from a to b, >= a, above a, <= b, below b, and the two-sided
-    forms "above a, up to b", "from a, below b", "above a and below b"."""
+    forms "above a, up to b", "from a, below b", "above a and below b";
+    a range of one value, from a to a, is that value."""
     if lo is not None and hi is not None:
         if not lo_open and not hi_open:
-            return f'{noun} from {lo} to {hi}'
+            return lo if lo == hi else f'{noun} from {lo} to {hi}'
         if lo_open and hi_open:
             return f'{noun} above {lo} and below {hi}'
         if lo_open:

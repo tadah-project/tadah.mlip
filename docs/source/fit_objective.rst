@@ -218,6 +218,18 @@ lines, so the edited potential is refused too. The conversions:
      - the line deleted (``WDBFILE`` as it is)
    * - ``EWEIGHT_TEMP T``
      - no key: ``WDBFILE`` and the ``eweight`` of each structure
+   * - any of them under M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``)
+     - the line deleted, with ``ESIGMA 1000`` (or ``LAMBDA`` × 10⁶ with
+       ``ESIGMA 1``): the solve of Tadah! 1.5.0, :math:`(K + \lambda I)\,w
+       = t` on the energies per atom in eV, which read none of them
+
+A retrain does not read a potential's ``WDBFILE`` line
+(:ref:`retrain_from_potential`). The ``WDBFILE`` values of a converted
+potential, those of the ``WDBFILE_AUTO`` conversion or of its own
+``WDBFILE`` line, are given on the command line (``--wdbfile``) or in a
+file that includes the potential with ``CONFIG``. In the potential they
+are not read (a WARNING says so), and the fit differs from that of Tadah!
+1.5.0.
 
 ``tadah explain EWEIGHT`` (and so on) prints the same conversion. A
 configuration that sets none of the five keys trains without a message, but

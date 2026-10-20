@@ -6581,7 +6581,8 @@ TEST_CASE("Subcommand: train refuses a DBFILE that lists one dataset twice",
 }
 
 /* Pins: `tadah train` with MODEL M_KRR Kern_Linear 2 on three Ta dimers of
- * energies -1.3, -0.9 and -0.4 eV (D2_BP 4, BIAS false: DSIZE 4; LAMBDA 0)
+ * energies -1.3, -0.9 and -0.4 eV (D2_BP 4, BIAS false: DSIZE 4; LAMBDA 0;
+ * FORCE false: implementation 2 fits energies only and refuses FORCE true)
  * writes 4 WEIGHTS, the descriptor weights of its basis vectors, and no
  * BASIS, with SBASIS 3 and 4 (e0 and 2 or 3 drawn dimers); `tadah predict`
  * with the potential exits 0, and with SBASIS 4 (every dimer drawn) it
@@ -6598,9 +6599,11 @@ TEST_CASE("Subcommand: train with M_KRR Kern_Linear 2 writes descriptor "
   ScratchCwd cwd("pot_content_krr2");
   std::ofstream("db.tadah") << distinct_energy_dataset();
   for (const char* sbasis : {"3", "4"}) DYNAMIC_SECTION("SBASIS " << sbasis) {
-    std::ofstream("config.train") << retrain_config(
-        "M_KRR Kern_Linear 2",
-        std::string("SBASIS ") + sbasis + "\nLAMBDA 0\nOALGO 1\n");
+    std::ofstream("config.train") << replace_key_line(
+        retrain_config("M_KRR Kern_Linear 2",
+                       std::string("SBASIS ") + sbasis +
+                           "\nLAMBDA 0\nOALGO 1\n"),
+        "FORCE", "FORCE false");
     const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
                                 "pot.tadah"});
     INFO("train: status " << t.status << "\n" << reported(t));

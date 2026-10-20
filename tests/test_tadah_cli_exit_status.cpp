@@ -10260,7 +10260,7 @@ TEST_CASE("Subcommand: the published potentials load with one notice of "
                                                              : "STRESS";
         CHECK(contains(rep, "line " +
                                 std::to_string(key_line_numbers(name, key)[0]) +
-                                " of " + name + "; " + sw +
+                                " of " + name + ".train; " + sw +
                                 " false here: converted by deleting the "
                                 "line)"));
       }

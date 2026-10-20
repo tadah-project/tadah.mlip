@@ -22,5 +22,5 @@ BIAS true
 NORM false
 VERBOSE 2
 
-ESIGMA 1     # energy error scale, meV/atom
-SSIGMA 0.5   # stress error scale, GPa
+ESIGMA 1     # energies per atom to 1 meV/atom (the default)
+SSIGMA 0.5   # stresses to 0.5 GPa (the default)

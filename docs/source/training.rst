@@ -582,11 +582,13 @@ example, ``SBASIS`` or the descriptor. The other key lines are the model of
 the first fit, with its ``LSCALE`` and ``ESHIFT``: the energy reference of
 the retrain is the potential's. Its ``ESIGMA``, ``FSIGMA``, ``SSIGMA``,
 ``ENORM`` and ``ENERGY`` lines are the error scales of the first fit, which
-the retrain fits with (:ref:`fit_objective`). A potential of Tadah! 1.5.0
-has ``EWEIGHT``, ``FWEIGHT``, ``SWEIGHT`` and ``WDBFILE_AUTO`` lines
-instead: a retrain from it is refused, naming each line and its
-conversion, until the copy has the converted keys in their place
-(:ref:`fit_objective_conversion`).
+the retrain fits with (:ref:`fit_objective`). A potential that ``tadah
+train`` or ``tadah hpo`` of Tadah! 1.0.0 to 1.5.0 wrote has ``EWEIGHT``,
+``FWEIGHT`` and ``SWEIGHT`` lines instead (and from 1.3.0 a
+``WDBFILE_AUTO`` line): a retrain from it is refused, naming each line and
+its conversion, until the copy has the converted keys in their place or,
+for a line the refusal marks (a quantity the fit leaves out, or
+``WDBFILE_AUTO 0``), none (:ref:`fit_objective_conversion`).
 
 The keys that prepared the training data of the first fit (``EFILTER``,
 ``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``, ``ZERO_COM_FORCE``,

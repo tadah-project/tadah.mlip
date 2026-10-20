@@ -47,7 +47,9 @@ per quantity. A 54-atom cell gives one energy and 162 force components, a
 2-atom cell one energy and 6 force components. A row of priority 0 is not
 an observation, and neither is a row the model cannot change: a force
 component that is zero by symmetry, such as the y and z forces of a dimer
-along x.
+along x or the forces of an atom at a centre of symmetry. Such a row is
+zero to rounding (no value above 1e-10 of the largest of its column), so a
+rigid translation of the atoms changes neither the count nor the fit.
 
 Error scales
 ------------
@@ -67,8 +69,9 @@ quantity: meV/atom for energies (:ref:`ESIGMA`, default 1), eV/Å for forces
 with :math:`M_s` the root mean square of the structure's own reference force
 components (for stresses, of the nine entries of its reference stress).
 :math:`a` must be above 0, so a structure with small forces keeps a finite
-error scale. M_KRR implementation 2 takes the default error scales only
-(:ref:`MODEL`).
+error scale. M_KRR implementation 2 fits energies only, their residuals per
+atom over ``ESIGMA``, and refuses an ``FSIGMA`` or ``SSIGMA`` other than the
+default and ``ENORM SQRT`` (:ref:`MODEL`).
 
 Only the ratios of the error scales and :ref:`LAMBDA` shape the fit: every
 error scale multiplied by :math:`c` fits as ``LAMBDA`` multiplied by
@@ -174,14 +177,15 @@ Converting the retired keys
 ---------------------------
 
 ``EWEIGHT``, ``FWEIGHT``, ``SWEIGHT``, ``WDBFILE_AUTO`` and
-``EWEIGHT_TEMP`` are retired. Every potential of Tadah! 1.0.0 to 1.5.0 has
-``EWEIGHT``, ``FWEIGHT``, ``SWEIGHT`` and ``WDBFILE_AUTO`` lines. Such a
+``EWEIGHT_TEMP`` are retired. A potential that ``tadah train`` or ``tadah
+hpo`` of Tadah! 1.0.0 to 1.5.0 wrote has ``EWEIGHT``, ``FWEIGHT`` and
+``SWEIGHT`` lines, and from 1.3.0 a ``WDBFILE_AUTO`` line. Such a
 potential loads wherever it is read (``tadah predict``, ``pair_style
 tadah``, ``tadah analysis``, ``tadah properties``, ``tadah refit
 --edit``), with one notice per load that lists the lines. Every fit refuses
-a configuration that has one, naming each line and its conversion; ``tadah
-refit --edit`` keeps the lines, so the edited potential is refused too. The
-conversions:
+a configuration that has one, naming each line and its conversion, and
+marks a line that deleting it converts; ``tadah refit --edit`` keeps the
+lines, so the edited potential is refused too. The conversions:
 
 .. list-table::
    :header-rows: 1
@@ -196,19 +200,22 @@ conversions:
    * - ``EWEIGHT 0``
      - ``ENERGY false``
    * - ``FWEIGHT w``
-     - ``FSIGMA`` = 1 / √w eV/Å
+     - ``FSIGMA`` = 1 / √w eV/Å; with ``FORCE false``, the line deleted
+       (``FSIGMA`` keeps its default)
    * - ``FWEIGHT 0``
      - ``FORCE false``
    * - ``SWEIGHT w``
      - ``SSIGMA`` = 160.2 / √w GPa, exact for the diagonal entries only (a
-       fit counts each off-diagonal entry twice)
+       fit counts each off-diagonal entry twice); with ``STRESS false``,
+       the line deleted (``SSIGMA`` keeps its default)
    * - ``SWEIGHT 0``
      - ``STRESS false``
    * - ``WDBFILE_AUTO a``
-     - ``WDBFILE`` with the values :math:`n_d^{-a}`, :math:`n_d` the
-       number of structures of dataset d after ``EFILTER`` and ``FFILTER``
+     - each ``WDBFILE`` value (1 for every dataset without ``WDBFILE``)
+       multiplied by :math:`n_d^{-a}`, :math:`n_d` the number of structures
+       of dataset d after ``EFILTER`` and ``FFILTER``
    * - ``WDBFILE_AUTO 0``
-     - no ``WDBFILE``
+     - the line deleted (``WDBFILE`` as it is)
    * - ``EWEIGHT_TEMP T``
      - no key: ``WDBFILE`` and the ``eweight`` of each structure
 
@@ -217,7 +224,8 @@ configuration that sets none of the five keys trains without a message, but
 to another fit: the defaults of Tadah! 1.5.0 (``EWEIGHT``, ``FWEIGHT`` and
 ``SWEIGHT`` 1) are ``ESIGMA`` 1000/N meV/atom (18.5 at 54 atoms),
 ``FSIGMA`` 1 eV/Å and ``SSIGMA`` 160.2 GPa. ``tadah data balance`` shifts
-energies only; in a target file of ``tadah hpo``,
+energies only, and refuses its options ``--rescale``, ``--threshold``,
+``--force`` and ``--stress``; in a target file of ``tadah hpo``,
 :hpo:key:`PC_SRMSE_GPA` replaces ``PC_SRMSE``.
 
 .. versionchanged:: 1.6.0

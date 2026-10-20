@@ -28,8 +28,10 @@ the root of the :doc:`target file <nfp_configuration>`.
 A validation file is required whenever any validation metric is enabled.
 ``FORCE`` and ``STRESS`` in the training configuration control training;
 validation computes forces for ``PC_FRMSE`` and stresses for
-``PC_SRMSE_GPA`` independently. Those two training switches are refused in
-the validation file.
+``PC_SRMSE_GPA`` independently. The validation set is not fitted, so the
+keys that set a fit are refused in the validation file: ``FORCE``,
+``STRESS``, ``ENERGY``, ``ENORM``, the error scales ``ESIGMA``, ``FSIGMA``
+and ``SSIGMA``, and the retired keys (:ref:`fit_objective_conversion`).
 
 Metric keys
 -----------
@@ -118,8 +120,8 @@ Global force and stress metrics average only the measured datasets.
 For indexed ``PC_FRMSE`` and ``PC_SRMSE_GPA``, an unmeasured dataset needs
 an explicit zero weight: it contributes no loss, but the indexed average still divides
 by the total number of validation datasets. Startup rejects a metric
-with no measured dataset, or a positive indexed force weight assigned
-to an unmeasured dataset. Empty validation datasets are also rejected.
+with no measured dataset, or a positive indexed force or stress weight
+assigned to an unmeasured dataset. Empty validation datasets are also rejected.
 
 Early-rejection options
 -----------------------

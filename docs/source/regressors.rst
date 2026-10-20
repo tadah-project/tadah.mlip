@@ -34,8 +34,11 @@ Quick syntax guide
 For ``M_KRR`` a third token selects the implementation: ``1`` (the
 default) fits energies, forces and stresses by least squares over the
 design matrix; ``2`` fits energies only, solving
-:math:`(K + \lambda I) w = t` on the basis vectors (``SBASIS`` of them,
-drawn from the training structures, for every kernel). With ``Kern_Linear``
+:math:`(K + \lambda s^2 I) w = t` on the basis vectors (``SBASIS`` of them,
+drawn from the training structures, for every kernel), :math:`s` the energy
+error scale :ref:`ESIGMA` in eV: :ref:`LAMBDA` weighs against the energies
+per atom over ``ESIGMA``, as in implementation ``1``
+(:ref:`fit_objective`). With ``Kern_Linear``
 the model's weights are the descriptor weights of the basis vectors,
 :math:`\sum_j w_j \mathbf{b}_j`, the same model, since the kernel is linear:
 its potential has ``DSIZE`` ``WEIGHTS`` and no ``BASIS``, as with

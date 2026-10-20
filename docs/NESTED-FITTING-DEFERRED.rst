@@ -645,11 +645,7 @@ searched by the optimiser:
 **All-fixed polish** — the ``tadah refit`` workload.  ``FIXINDEX`` covers
 every weight, so the LS solve is vacuous and skipped (including the
 per-evaluation design-matrix build); the optimiser searches the
-coefficients directly.  Under ``OALGO 3`` each evaluation still fits:
-an ``OALGO 3`` fit with every weight pinned gives the potential a zero
-``WCOV`` and the ``WNOISE`` of the pinned weights' residuals on the
-training data, as ``tadah train`` writes them, so ``tadah predict
---error`` can use a ``best_pot.tadah`` (the noise alone):
+coefficients directly:
 
 .. code-block:: none
 
@@ -5767,10 +5763,8 @@ section) are those of the fit that wrote it and are not read, with a
 ``WARNING`` on the console and in the journal; ``ESHIFT_ATOM``/
 ``ESHIFT_DBATOM`` with or without its ``ESHIFT`` line, so a seed's toggle
 derives no shift from the run's data (:ref:`retrain_from_potential`). Its
-``UNCERTAINTY`` line is not read either (``tadah hpo`` takes no
-``UNCERTAINTY``, and the warning does not name it), nor are its run
-settings (``VALIDATION``, ``HPOTARGET``, ``VERBOSE``, ``NUMERIC``, ...: see
-:ref:`hpo_potential_archives`). The run's own -- on the command line, or
+run settings are not read either (``VALIDATION``, ``HPOTARGET``,
+``VERBOSE``, ``NUMERIC``, ...: see :ref:`hpo_potential_archives`). The run's own -- on the command line, or
 on a line of the task file or of a configuration file that includes the
 potential -- apply.
 

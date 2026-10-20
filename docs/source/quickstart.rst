@@ -91,67 +91,12 @@ The output of the ``predict`` subcommand includes three files:
 - ``forces.pred``: Similar idea as above, but now forces are listed. The first row is the force on the first atom in the x-direction from the first dataset, the second row is the force on the first atom in the y-direction, and so on.
 - ``stress.pred``: The first six rows list components of the stress tensor from the first configuration, followed by six components from the second configuration, and so on. The ordering is xx, xy, xz, yy, yz, zz.
 
-.. _predict_error:
-
-Prediction errors
-^^^^^^^^^^^^^^^^^
-
-``tadah predict --error`` gives each predicted value its predictive
-standard deviation. It needs a potential trained with ``OALGO 3``, which
-writes the covariance of the weights :ref:`WCOV` and the noise variance of
-each row type :ref:`WNOISE` (:ref:`weight_covariance`):
-
-.. math::
-
-   \sigma_i = \sqrt{\phi_i^\top \Sigma_w \phi_i + s_t^2}
-
-:math:`\phi_i` is the row of the value (its derivatives with respect to the
-weights: an energy, a force component or a stress component), built as
-``tadah predict`` evaluates the model, :math:`\Sigma_w` is ``WCOV`` and
-:math:`s_t^2` the noise variance of an observation of the value from the
-potential's ``WNOISE``: that of its type for a force component and a
-diagonal stress entry, half of it for an off-diagonal stress entry (which
-the fit counts twice), and :math:`N^{2q}` times ``WNOISE E`` for the energy
-of a structure of :math:`N` atoms (``WNOISE E`` is per atom; :math:`q = 1`
-under ``ENORM ATOM``, :math:`1/2` under ``ENORM SQRT``). The first term is
-the variance of the predicted value, which the uncertainty of the weights
-gives; the second is the noise variance of an observation, from the fit's
-residuals. :math:`\sigma_i` is therefore the standard deviation of the
-difference between the prediction and a reference value of the kind the
-potential was fitted to. ``energy.pred``, ``forces.pred`` and
-``stress.pred`` get a fourth column with it (the energy's per atom,
-:math:`\sigma_E/N`), and ``error.pred`` lists for every structure its
-energy's :math:`\sigma_E/N` (eV/atom) and, with ``-F`` and ``-S``, the
-largest force (eV/Å) and stress (eV/Å³) :math:`\sigma` of the structure.
-
-``--error`` refuses a potential without ``WCOV`` and ``WNOISE`` and says
-why it has none: it was fitted with another ``OALGO`` (a retrain with
-``OALGO 3`` gives them) or with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``:
-a retrain with implementation 1 gives them); or, with ``OALGO 3``, it is a potential
-of Tadah! 1.0.0 to 1.5.0, whose ``SIGMA``
-is ignored (a retrain gives them), its fit had no more observations than effective
-weights, so its noise variance was undefined (more data and a retrain give them), or
-its weights were set from ``FIXWEIGHT`` without a fit. It refuses forces
-(``-F``) or stresses (``-S``) of a potential whose fit had no force or
-stress rows with a non-zero weight, since its ``WNOISE`` has no noise
-variance of them; and, as every prediction has an energy, it refuses every
-prediction of a potential fitted without energies (``ENERGY false``, or
-every structure's ``eweight`` 0: its ``WNOISE`` has no ``E``), which ``tadah
-train`` warns about when it writes it. Such a potential's ``WCOV``, and the
-standard deviations of ``--uncertainty``, are those of its fit. It refuses a
-``WNOISE`` without an ``ESIGMA`` line beside it. The noise variance is that
-of an observation of priority 1 and of the absolute part of the error scale
-(:ref:`weight_covariance`); observations of other priorities were fitted
-with other noise levels.
-
 .. versionchanged:: 1.6.0
-   Before 1.6.0 the errors were computed from ``SIGMA``, a transposed and
-   unscaled matrix,
-   as :math:`\sqrt{\phi_i^\top \mathrm{diag}(\Sigma) \phi_i}` minus the
-   square root of the mean of that over all rows, so most of them were
-   negative and none was the standard deviation of a prediction; with
-   ``NORM true`` and a linear model the predicted values themselves were
-   off.
+   ``--error`` is refused: uncertainty output is not part of Tadah! 1.6.0,
+   its error bars were not calibrated (they were too narrow for many
+   structures). In Tadah! 1.5.0 its errors were not standard deviations
+   (negative ones among them), and with ``EWEIGHT`` or ``FWEIGHT`` other
+   than 1 it scaled the predicted values too.
 
 .. _task_file:
 

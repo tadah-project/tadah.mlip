@@ -114,6 +114,10 @@ Ta {x1} 1.6505 4.9515  0.0 0.0 0.0
 
 """
 
+# ESIGMA 250 meV/atom: the energy row of the one 4-atom training structure
+# keeps the factor 1 (1/(4 x 0.25 eV)), so the fits, their losses and the
+# CGRID2B[2] at which the validation ERMSE passes the 9.9 cap are those of
+# the cases as they were written.
 CONFIG_TADAH = """DBFILE train.db
 INIT2B true
 INITMB false
@@ -126,6 +130,7 @@ MODEL M_BLR BF_Linear
 LAMBDA {lam}
 OALGO {oalgo}
 BIAS {bias}
+ESIGMA 250
 """
 
 OBJECTIVE = """LOSS L2

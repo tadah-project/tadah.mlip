@@ -6723,20 +6723,20 @@ TEST_CASE("Subcommand: train refuses the SBASIS of M_KRR Kern_Linear 2 "
  * the CONFIG seed of OPTIM CGRID2B (1); PC_ERMSE and PC_FRMSE), A with
  * LAMBDA 1e-4 and FWEIGHT 1, then B with LAMBDA 0.1 and FWEIGHT 100: exit
  * 0, and the best_pot.tadah the second run writes is B's: LAMBDA 0.1,
- * FWEIGHT 100, and the weights of `tadah train -c` with B's configuration
+ * FSIGMA 0.1, and the weights of `tadah train -c` with B's configuration
  * (1e-10 relative: the same fit at the seed).
  * Before the fix: the second run evaluated the first run's model (the
  * thread's trainer of A, with only CGRID2B rewritten): best_pot.tadah had
- * LAMBDA 1e-4, FWEIGHT 1 and A's weights. */
+ * LAMBDA 1e-4, A's error scale (FSIGMA 1) and A's weights. */
 TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
           "[TadahCLI][hpo][task-file][retrain]") {
   ScratchCwd cwd("two_hpo_tasks");
   std::ofstream("db.tadah") << retrain_dataset();
   { std::ofstream os("config.val"); os << "DBFILE db.tadah\n"; }
   std::ofstream("configA.tadah")
-      << retrain_config("M_BLR BF_Linear", "LAMBDA 1e-4\nOALGO 4\nFWEIGHT 1\n");
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 1e-4\nOALGO 4\nFSIGMA 1\n");
   std::ofstream("configB.tadah")
-      << retrain_config("M_BLR BF_Linear", "LAMBDA 0.1\nOALGO 4\nFWEIGHT 100\n");
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 0.1\nOALGO 4\nFSIGMA 0.1\n");
   {
     std::ofstream os("config.hpo");
     os << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
@@ -6755,11 +6755,11 @@ TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
   const std::string best = slurp("best_pot.tadah");
   INFO("best_pot.tadah:\n" << best);
   const auto lambda = line_tokens(best, "LAMBDA");
-  const auto fweight = line_tokens(best, "FWEIGHT");
+  const auto fsigma = line_tokens(best, "FSIGMA");
   REQUIRE(lambda.size() == 2);
-  REQUIRE(fweight.size() == 2);
+  REQUIRE(fsigma.size() >= 2);
   CHECK(std::strtod(lambda[1].c_str(), nullptr) == 0.1);
-  CHECK(std::strtod(fweight[1].c_str(), nullptr) == 100.0);
+  CHECK(std::strtod(fsigma[1].c_str(), nullptr) == 0.1);
 
   const CliRun t = run_tadah({"tadah", "train", "-c", "configB.tadah", "-o", "potB.tadah"});
   INFO("train B: status " << t.status << "\n" << reported(t));

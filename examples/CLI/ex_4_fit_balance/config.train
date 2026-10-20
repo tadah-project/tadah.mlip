@@ -1,0 +1,22 @@
+# The training data of Example 2: 100 snapshots of bcc Ta cells of 54 atoms
+# from LAMMPS molecular dynamics with the Ta1_Ravelo_2013 EAM potential.
+DBFILE   ../ex_2/tdata.db
+
+# Each cell has one energy and 162 force components: the fit counts
+# 100 energies and 16200 force components.
+FORCE    true
+
+INIT2B   true
+TYPE2B   D2_Blip 8 8 Ta Ta     # 8 radial functions: 8 coefficients
+RCTYPE2B Cut_Cos
+RCUT2B   5.3
+SGRID2B  GEOM 8 0.1 1.5
+CGRID2B  LIN 8 1.0 5.3
+
+MODEL    M_BLR BF_Linear
+BIAS     true                  # one more coefficient, a constant energy
+                               # per atom: only the energies determine it
+OALGO    3
+LAMBDA   0                     # no ridge: the prior has no share
+
+# ESIGMA (1 meV/atom) and FSIGMA (0.1 eV/A) keep their defaults.

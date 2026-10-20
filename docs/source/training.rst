@@ -330,6 +330,8 @@ A minimal single-species, two-body, kernel-ridge example::
 
    # --- training record (no key is read from it) ---
    # DBFILE db.train
+   # Fit balance: LAMBDA 0; ...
+   #   ...
    # --- end of training record ---
    ATOM     Ta
    BIAS     false
@@ -411,6 +413,8 @@ lines right above the key lines::
    # WDBFILE 1 0.5
    # VERBOSE 0
    # OUTFILE pot2.tadah
+   # Fit balance: LAMBDA 0; ...
+   #   ...
    # --- end of training record ---
 
 It has one line for each of these keys the run was given, in the order
@@ -426,11 +430,12 @@ none. A key nobody set is not
 listed: the defaults tadah takes (``VERBOSE 1``, ``OUTFILE pot.tadah``,
 ``ESHIFT_ATOM false``, ...) are left out, so ``tadah train -c config.train`` records the ``DBFILE`` of
 ``config.train`` alone, and ``-o pot2.tadah -v 0`` adds ``VERBOSE 0`` and
-``OUTFILE pot2.tadah``. The potentials of ``tadah train``, ``tadah refit``
-and ``tadah hpo`` (``best_pot.tadah``, its rank-local copies and the
-``DUMP`` and ``BDUMP`` archives) have it; a run that set none of these keys
-writes no block. ``tadah refit --edit`` copies the record of its input
-(:ref:`refit_edit`).
+``OUTFILE pot2.tadah``. The potentials of ``tadah train`` and
+``best_pot.tadah`` (and its rank-local copies) end the block with the
+balance table of their fit (:ref:`fit_balance`), and so always have it. The
+other potentials of ``tadah refit`` and ``tadah hpo`` (the ``DUMP`` and
+``BDUMP`` archives) have it when the run set one of these keys. ``tadah
+refit --edit`` copies the record of its input (:ref:`refit_edit`).
 
 No key is read from the block: ``tadah predict``, ``tadah train -c``,
 ``tadah hpo -c``, ``pair_style tadah`` and ``tadah refit --edit``, when they
@@ -445,7 +450,9 @@ block is malformed: an opening line without its end line (since every
 writer puts the key lines right after the record, deleting the end line
 makes the refusal name the opening line and the potential's first key
 line), an end line without its opening line, or a line inside the block
-that does not start with ``#``. Nothing else reads the block.
+that does not start with ``#``. ``tadah hpo`` reads the block of the
+``best_pot.tadah`` it wrote, when the run ends, to print its balance
+table. Nothing else reads the block.
 
 A potential of an earlier version may have some of these keys as key
 lines (an ``M_BLR`` potential its ``DBFILE``, a potential of tadah 1.5.x

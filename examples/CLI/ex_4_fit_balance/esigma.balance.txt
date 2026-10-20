@@ -1,0 +1,5 @@
+Fit balance: LAMBDA 0; 9 coefficients, rank 9
+  quantity  dataset      n  sigma     RMSE  unit      r/sigma   share  gamma
+  energy    all        100  0.1      0.152  meV/atom     1.52  0.3411   4.14
+  force     all      16200  0.1 0  0.01659  eV/Å       0.1659  0.6589   4.86
+  prior                                                             0      0

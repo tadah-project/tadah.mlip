@@ -145,6 +145,83 @@ data. ``LAMBDA -1`` (with ``OALGO 3``) finds it by the evidence
 approximation. A configuration written for Tadah! 1.5.0 may need another
 ``LAMBDA``: the error scales change the size of the sum.
 
+.. _fit_balance:
+
+The balance table
+-----------------
+
+The balance table of a fit shows how the sum above is shared among its
+quantities and datasets, and how many of the coefficients each of them
+determines. ``tadah train`` prints it after its fit, and ``tadah hpo``
+prints that of its best potential once, when the run ends; at ``-v 0``
+neither prints it. The potentials of ``tadah train`` and ``best_pot.tadah``
+keep it at the end of their :ref:`training record <training_record>`; the
+``DUMP`` and ``BDUMP`` archives of ``tadah hpo`` do not.
+
+The first fit of :ref:`cli_example_4` fits the energies and forces of 100
+cells of 54 atoms with nine coefficients and the default error scales:
+
+.. literalinclude:: ../../examples/CLI/ex_4_fit_balance/default.balance.txt
+   :language: text
+
+The first line gives ``LAMBDA``, the coefficients the solve fitted and its
+rank. One row follows per quantity the fit observes, over every dataset
+(``all``) and, with several datasets, per dataset (the k-th ``DBFILE``
+entry), then the prior's row:
+
+``n``
+   The observations, as the sum counts them: six per stress tensor.
+``sigma``
+   The error scale: ``ESIGMA``, or ``FSIGMA`` or ``SSIGMA`` as a b.
+``RMSE``, ``unit``
+   The root mean square residual in the unit of the metric of the
+   quantity: the energy per atom in meV/atom (under ``ENORM SQRT`` too),
+   the force components in eV/Å, the nine entries of each stress tensor in
+   GPa.
+``r/sigma``
+   The root mean square of residual over error scale, over the same
+   entries. Below 1 the residuals are within their error scale.
+``share``
+   The part of the minimised sum; that of the prior is the ``LAMBDA``
+   penalty. The column sums to 1.
+``gamma``
+   The effective parameters, :math:`\mathrm{tr}(H^{-1} H_q)` with
+   :math:`H` the matrix of the sum and :math:`H_q` the part of the
+   quantity's rows: how many coefficients the quantity determines. With the
+   prior's row the column sums to the rank.
+
+The table takes one pass over the n observations and p coefficients of
+the fit, of the order of :math:`n p^2` like the solve. ``tadah hpo``
+computes it from the fit of each evaluation whose loss may make it the best
+potential, never for every evaluation. A fit of M_KRR implementation 2 has no table: its
+line reads ``Fit balance: none``, with the reason.
+
+Reading a starved quantity
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A quantity with a small share and few effective parameters is starved: the
+other quantities set the coefficients, and its residuals are what they
+leave. Above, the energies have 0.6 % of the sum and 1.056 effective
+parameters, about the one coefficient only they determine (the constant
+energy per atom of ``BIAS true``); the forces determine the other eight.
+Their ``r/sigma``, 0.1589, shows that this costs nothing at the stated
+accuracy: the coefficients the forces set give energies well within
+``ESIGMA`` 1 meV/atom.
+
+A starved quantity whose ``r/sigma`` is above 1 misses the accuracy its
+error scale states. A smaller error scale gives it more of the sum, as the
+second fit of the example, with ``ESIGMA 0.1``, shows:
+
+.. literalinclude:: ../../examples/CLI/ex_4_fit_balance/esigma.balance.txt
+   :language: text
+
+The energies have 34 % of the sum and 4.14 effective parameters; their RMSE
+falls from 0.1589 to 0.152 meV/atom, and that of the forces rises from
+0.01645 to 0.01659 eV/Å. Their ``r/sigma`` of 1.52 shows that the fit still
+misses the accuracy asked for, and the forces pay for each gain: error
+scales and priorities move accuracy between the data, and more
+coefficients add to it.
+
 Data that spans a wide range
 ----------------------------
 

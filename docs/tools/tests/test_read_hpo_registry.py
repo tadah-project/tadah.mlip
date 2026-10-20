@@ -272,7 +272,10 @@ def field_items(body, name):
 def number_admits(phrase, value):
     """Whether the Values phrase of a number admits *value*: an integer or
     a number, with its range (from a to b, >= a, <= b, above a, below b,
-    and the two-sided forms "above a, up to b" and "from a, below b")."""
+    and the two-sided forms "above a, up to b" and "from a, below b"), or
+    the one value a range of one value is."""
+    if re.fullmatch(r'-?[0-9][0-9.e+-]*', phrase):
+        return Fraction(value) == Fraction(phrase)
     m = re.match(r'(an integer|a number|a positive(?: [a-z]+)* number)\b(.*)',
                  phrase)
     if not m:
@@ -402,6 +405,16 @@ class TextTest(unittest.TestCase):
         self.assertEqual(rhr.wrap_line('MAXEVAL 200', 40), ['MAXEVAL 200'])
         with self.assertRaisesRegex(rhr.GenerationError, 'with a comment'):
             rhr.wrap_line(line + ' # why', 40)
+
+    def test_a_range_of_one_value_is_that_value(self):
+        # Pins: a range whose minimum is its maximum reads as that value
+        # (ASA's User_Tangents takes 0 only); the other ranges keep their
+        # words.
+        # Before the fix: "an integer from 0 to 0".
+        rhr = generator()
+        self.assertEqual(rhr.number_range('an integer', '0', '0'), '0')
+        self.assertEqual(rhr.number_range('an integer', '0', '1'),
+                         'an integer from 0 to 1')
 
     @unittest.skipIf(not HAVE_DOCUTILS, 'docutils is required')
     def test_markup_characters_are_kept_as_text(self):
@@ -1030,10 +1043,56 @@ class PagesTest(unittest.TestCase):
                 self.assertIn('once per optimiser', repeat.lower())
                 self.assertNotIn('each enclosing block', repeat)
 
+    #: For each field of [lexing] and [structure] that the pages leave out
+    #: because the text of the section states it (SECTION_FIELDS), what the
+    #: text of its topic says.
+    STATED = {
+        ('LEXING', 'comment'):
+            r'everything from # to the end of a line is a comment',
+        ('LEXING', 'continuation'):
+            r'A line that ends with \\ continues on the next line',
+        ('LEXING', 'key_case'): r'its key, matched as written',
+        ('LEXING', 'error_frame'): r'Each error names the line it is about',
+        ('LEXING', 'unfinished_msg'):
+            r'A file whose last line ends with \\ is refused',
+        ('STRUCTURE', 'end_without_open_msg'):
+            r'An END line without an open block',
+        ('STRUCTURE', 'end_mismatch_msg'):
+            r'an END line closes the innermost open block',
+        ('STRUCTURE', 'end_takes_no_value_msg'):
+            r'A line that opens or closes a block holds its key alone',
+        ('STRUCTURE', 'open_takes_no_value_msg'):
+            r'A line that opens or closes a block holds its key alone',
+        ('STRUCTURE', 'unclosed_msg'):
+            r'every block is closed before the file ends',
+        ('STRUCTURE', 'unknown_root_msg'):
+            r'An unknown key is refused, at the top level and in every '
+            r'block',
+    }
+
     def test_fields_left_out_are_stated_in_the_text(self):
-        # Guard: the keys of [optim]'s positive_only and its
-        # auto_excluded_prefix are not shown as fields; the entry of
-        # OPTIM AUTO states both in its text.
+        # Pins: each field of [lexing] and [structure] that the pages leave
+        # out because the doc, the long_doc or the text of the section
+        # states it is stated by the text of its topic, and a field given
+        # that reason has a phrase here. Guard: the keys of [optim]'s
+        # positive_only and its auto_excluded_prefix are not shown as
+        # fields; the entry of OPTIM AUTO states both in its text.
+        # Before the fix: no page said that a file whose last line ends
+        # with a backslash is refused ('unfinished line N'), nor that an
+        # END line without an open block or an unknown key is refused,
+        # and the reason of each said the text states it.
+        claimed = {(section, name)
+                   for section, fields in self.rhr.SECTION_FIELDS.items()
+                   for name, why in fields.items()
+                   if re.search(r'the (doc|long_doc|text of the section) '
+                                r'states it', why)}
+        self.assertEqual(claimed, set(self.STATED))
+        entries = self.page_entries()
+        for (section, name), phrase in sorted(self.STATED.items()):
+            with self.subTest(field=f'{section}.{name}'):
+                body = ' '.join(words_of(p) for p in
+                                paragraphs_of(entries[section][2]))
+                self.assertRegex(body, phrase)
         optim = self.reg.optim.fields
         body = ' '.join(words_of(p) for p in paragraphs_of(
             self.page_entries()['OPTIM.AUTO'][2]))

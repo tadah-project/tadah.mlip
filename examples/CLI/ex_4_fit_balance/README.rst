@@ -2,7 +2,9 @@ Example 4 - Reading the Fit Balance Table
 -----------------------------------------
 
 This example shows what the balance table of a fit tells about the balance
-between energies and forces, and what a smaller ``ESIGMA`` changes. It fits
+between energies and forces, and what a smaller ``ESIGMA`` changes. It
+applies when a fit's energies, forces or stresses miss the accuracy asked
+for, and when choosing ``ESIGMA``, ``FSIGMA`` and ``SSIGMA``. It fits
 the energies and forces of the training data of :ref:`cli_example_2` twice:
 with the default error scales, and with ``ESIGMA`` ten times smaller. The
 columns of the table and how to read them are described in
@@ -43,7 +45,8 @@ The two fits run in the example's directory, each in under a second:
    tadah train -c esigma.train -o esigma.tadah
 
 Each fit prints its balance table and the legend of its columns, and its
-potential keeps the table at the end of its training record. The tables are those of :download:`default.balance.txt
+potential keeps the table at the end of its training record. The tables
+are those of :download:`default.balance.txt
 <../../examples/CLI/ex_4_fit_balance/default.balance.txt>` and
 :download:`esigma.balance.txt
 <../../examples/CLI/ex_4_fit_balance/esigma.balance.txt>`, within two units

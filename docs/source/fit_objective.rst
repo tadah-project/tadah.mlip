@@ -156,7 +156,8 @@ determines. ``tadah train`` prints it after its fit, and ``tadah hpo``
 prints that of its best potential once, when the run ends; at ``-v 0``
 neither prints it. The potentials of ``tadah train`` and ``best_pot.tadah``
 keep it at the end of their :ref:`training record <training_record>`; the
-``DUMP`` and ``BDUMP`` archives of ``tadah hpo`` do not.
+:hpo:key:`DUMP <ROOT.DUMP>` and :hpo:key:`!BDUMP <ROOT.BDUMP>` archives of
+``tadah hpo`` do not.
 
 The first fit of :ref:`cli_example_4` fits the energies and forces of 100
 cells of 54 atoms with nine coefficients and the default error scales:
@@ -164,37 +165,50 @@ cells of 54 atoms with nine coefficients and the default error scales:
 .. literalinclude:: ../../examples/CLI/ex_4_fit_balance/default.balance.txt
    :language: text
 
-The first line gives ``LAMBDA``, the coefficients the solve fitted and its
-rank. One row follows per quantity the fit observes, over every dataset
-(``all``) and, with several datasets, per dataset (the k-th ``DBFILE``
-entry), then the prior's row:
+The first line gives :ref:`LAMBDA`, the number of coefficients the solve
+fitted and its rank. With ``LAMBDA -1`` it adds the value the evidence
+approximation found; with :ref:`FIXINDEX`, the number of coefficients it
+pins, which the solve did not fit; with ``ENORM SQRT``, the :ref:`ENORM`
+of the energies. The second line gives the error scale of each quantity
+as its key gives it, to 4 significant digits: :ref:`ESIGMA`;
+:ref:`FSIGMA` and :ref:`SSIGMA` with both values, a and b. One row
+follows per quantity, over every dataset (``all``) and, with several
+datasets, per dataset (the k-th :ref:`DBFILE` entry), then the prior's
+row:
 
 ``n``
-   The observations, as the sum counts them: six per stress tensor.
-``sigma``
-   The error scale: ``ESIGMA``, or ``FSIGMA`` or ``SSIGMA`` as a b.
+   The observations, as the sum counts them: at most three per atom and
+   six per stress tensor, as an entry zero by symmetry is not one.
 ``RMSE``, ``unit``
-   The root mean square residual in the unit of the metric of the
+   The root mean square residual over every entry of priority above 0,
+   those zero by symmetry included, in the unit of the metric of the
    quantity: the energy per atom in meV/atom (under ``ENORM SQRT`` too),
    the force components in eV/Å, the nine entries of each stress tensor in
-   GPa.
+   GPa. These are the entries of the metrics of ``tadah predict -A``.
 ``r/sigma``
    The root mean square of residual over error scale, over the same
-   entries. Below 1 the residuals are within their error scale.
+   entries. Below 1 the residuals are within their error scale. Under
+   ``ENORM SQRT`` the energy's residual is per square root of the atoms
+   and ``ESIGMA`` is in meV per √atom: for cells of N atoms, ``r/sigma``
+   is the RMSE times √N over ``ESIGMA``.
 ``share``
    The part of the minimised sum; that of the prior is the ``LAMBDA``
-   penalty. The column sums to 1.
+   penalty.
 ``gamma``
    The effective parameters, :math:`\mathrm{tr}(H^{-1} H_q)` with
    :math:`H` the matrix of the sum and :math:`H_q` the part of the
-   quantity's rows: how many coefficients the quantity determines. With the
-   prior's row the column sums to the rank.
+   quantity's rows: how many coefficients the quantity determines.
 
-The table takes one pass over the n observations and p coefficients of
-the fit, of the order of :math:`n p^2` like the solve. ``tadah hpo``
-computes it from the fit of each evaluation whose loss may make it the best
-potential, never for every evaluation. A fit of M_KRR implementation 2 has no table: its
-line reads ``Fit balance: none``, with the reason.
+Over the ``all`` rows and the prior's row, ``share`` sums to 1 and
+``gamma`` to the rank; the rows of the datasets sum to their ``all`` row.
+
+The table takes one pass over the n rows and p coefficients of the fit, of
+the order of :math:`n p^2` like the solve. It reads the rows in blocks, so
+its memory is of the order of :math:`p^2` and of 1024 rows, not a copy of
+the rows. ``tadah hpo`` computes it only for an evaluation whose loss may
+make it the best potential, not for the others. A fit of M_KRR
+implementation 2, and one whose ``FIXINDEX`` pins every coefficient, have
+no table: the line reads ``Fit balance: none``, with the reason.
 
 Reading a starved quantity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -203,24 +217,27 @@ A quantity with a small share and few effective parameters is starved: the
 other quantities set the coefficients, and its residuals are what they
 leave. Above, the energies have 0.6 % of the sum and 1.056 effective
 parameters, about the one coefficient only they determine (the constant
-energy per atom of ``BIAS true``); the forces determine the other eight.
-Their ``r/sigma``, 0.1589, shows that this costs nothing at the stated
-accuracy: the coefficients the forces set give energies well within
-``ESIGMA`` 1 meV/atom.
+energy per atom of :ref:`BIAS` ``true``); the forces determine the other
+eight. The energies' ``r/sigma`` of 0.1589 shows that this costs nothing
+at the stated accuracy: the coefficients the forces set give energies well
+within ``ESIGMA`` 1 meV/atom.
 
 A starved quantity whose ``r/sigma`` is above 1 misses the accuracy its
-error scale states. A smaller error scale gives it more of the sum, as the
-second fit of the example, with ``ESIGMA 0.1``, shows:
+error scale states, and a smaller error scale gives it more of the sum.
+The second fit of the example asks for energies ten times as accurate,
+with ``ESIGMA 0.1``:
 
 .. literalinclude:: ../../examples/CLI/ex_4_fit_balance/esigma.balance.txt
    :language: text
 
-The energies have 34 % of the sum and 4.14 effective parameters; their RMSE
-falls from 0.1589 to 0.152 meV/atom, and that of the forces rises from
-0.01645 to 0.01659 eV/Å. Their ``r/sigma`` of 1.52 shows that the fit still
-misses the accuracy asked for, and the forces pay for each gain: error
-scales and priorities move accuracy between the data, and more
-coefficients add to it.
+The energies have 34 % of the sum and 4.140 effective parameters. Their
+RMSE falls from 0.1589 to 0.1520 meV/atom, and that of the forces rises
+from 0.01645 to 0.01659 eV/Å. The energies' ``r/sigma`` of 1.520 shows
+that nine coefficients that also fit the forces do not reach 0.1 meV/atom,
+and the forces pay for the gain: :ref:`an error scale adds no capacity to
+the model <fit_objective_wide_range>`.
+
+.. _fit_objective_wide_range:
 
 Data that spans a wide range
 ----------------------------

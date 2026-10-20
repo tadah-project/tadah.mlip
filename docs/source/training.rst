@@ -435,24 +435,23 @@ listed: the defaults tadah takes (``VERBOSE 1``, ``OUTFILE pot.tadah``,
 balance table of their fit (:ref:`fit_balance`), and so always have it. The
 other potentials of ``tadah refit`` and ``tadah hpo`` (the ``DUMP`` and
 ``BDUMP`` archives) have it when the run set one of these keys. ``tadah
-refit --edit`` copies the record of its input (:ref:`refit_edit`).
+refit --edit`` copies the record of its input without its balance table
+(:ref:`refit_edit`).
 
 No key is read from the block: ``tadah predict``, ``tadah train -c``,
 ``tadah hpo -c``, ``pair_style tadah`` and ``tadah refit --edit``, when they
 read the potential's keys, skip every line that starts with ``#``. A
 potential loads, predicts and retrains as it would without the block, and
 the ``VERBOSE`` of its record does not set the log level. A potential
-without a record (one of an earlier version) loads as before. ``tadah refit
---edit`` alone reads the block itself, to copy it into the edit
-(:ref:`refit_edit`): what is written in it is carried into the edited
-potential, and the edit is refused, naming the file and the lines, when the
-block is malformed: an opening line without its end line (since every
-writer puts the key lines right after the record, deleting the end line
-makes the refusal name the opening line and the potential's first key
-line), an end line without its opening line, or a line inside the block
-that does not start with ``#``. ``tadah hpo`` reads the block of the
-``best_pot.tadah`` it wrote, when the run ends, to print its balance
-table. Nothing else reads the block.
+without a record (one of an earlier version) loads as before. Two programs
+read the block itself: ``tadah refit --edit``, to copy it into the edit
+(:ref:`refit_edit`), and ``tadah hpo``, to print the balance table of the
+``best_pot.tadah`` it wrote when the run ends. The edit is refused, naming
+the file and the lines, when the block is malformed: an opening line
+without its end line (since every writer puts the key lines right after
+the record, deleting the end line makes the refusal name the opening line
+and the potential's first key line), an end line without its opening line,
+or a line inside the block that does not start with ``#``.
 
 A potential of an earlier version may have some of these keys as key
 lines (an ``M_BLR`` potential its ``DBFILE``, a potential of tadah 1.5.x

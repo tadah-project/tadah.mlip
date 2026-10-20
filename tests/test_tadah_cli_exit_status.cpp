@@ -5380,7 +5380,7 @@ TEST_CASE("Subcommand: train and predict work for every non-linear model",
 
 /* Pins: for each non-linear model, with NORM false and NORM true, `tadah
  * train` with OALGO 3 (LAMBDA 0) exits 0 and writes a potential without
- * WCOV, WNOISE or SIGMA (uncertainty output is not part of Tadah! 1.6.0),
+ * WCOV, WNOISE or SIGMA (uncertainty output is removed),
  * and `tadah predict -F -S` with it exits 0 with 6 energies and 63 force
  * components, each a number (|value| < 1e3).
  * Before the fix: the potentials had WCOV and WNOISE (this case, then named
@@ -6738,7 +6738,7 @@ TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
 }
 #endif  // TADAH_ENABLE_NFP
 
-/* ---- [uncertainty]: uncertainty output is not part of Tadah! 1.6.0 ----
+/* ---- [uncertainty]: uncertainty output is removed ----
  *
  * The errors of Tadah! 1.0.0 to 1.5.0 were not standard deviations, and
  * no calibrated estimate replaces them: tadah predict --error and tadah
@@ -6750,10 +6750,10 @@ TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
 
 namespace {
 
-const std::string kNotPart =
-    "Uncertainty output is not part of Tadah! 1.6.0: the errors of Tadah! "
-    "1.0.0 to 1.5.0 were not standard deviations, and no calibrated "
-    "estimate replaces them.";
+const std::string kRemoved =
+    "Uncertainty output is removed: the errors of Tadah! 1.0.0 to 1.5.0 "
+    "were not standard deviations, and no calibrated estimate replaces "
+    "them.";
 
 /* Two Ta dimers in 5 A cells (the [weight0] entries). */
 std::string two_dimers() {
@@ -6767,15 +6767,16 @@ std::string two_dimers() {
  * exit 1 before writing anything, with the reason: "--error of tadah
  * predict is retired: tadah predict --error wrote an error computed from
  * SIGMA beside every predicted value (some of the errors negative).
- * Uncertainty output is not part of Tadah! 1.6.0: the errors of Tadah!
- * 1.0.0 to 1.5.0 were not standard deviations, and no calibrated estimate
- * replaces them. Replaced by: nothing in Tadah! 1.6.0. Deleting the
- * option converts it: ...", and likewise for tadah properties pairwise;
- * without --error both exit 0.
+ * Uncertainty output is removed: the errors of Tadah! 1.0.0 to 1.5.0 were
+ * not standard deviations, and no calibrated estimate replaces them.
+ * Replaced by: nothing. Deleting the option converts it: ...", and
+ * likewise for tadah properties pairwise; without --error both exit 0.
  * Before the fix: both exited 0 and wrote errors (energy.pred with a
  * fourth column and error.pred; the curve's error column); then the
  * reasons said that they gave standard deviations, too narrow for many
- * structures (what a development build gave, not a release). */
+ * structures (what a development build gave, not a release); then that
+ * uncertainty output was not part of Tadah! 1.6.0, replaced by "nothing in
+ * Tadah! 1.6.0". */
 TEST_CASE("Subcommand: predict --error and properties pairwise --error are "
           "refused with the reason",
           "[TadahCLI][predict][uncertainty]") {
@@ -6790,9 +6791,9 @@ TEST_CASE("Subcommand: predict --error and properties pairwise --error are "
   CHECK(contains(re, "--error of tadah predict is retired: tadah predict "
                      "--error wrote an error computed from SIGMA beside "
                      "every predicted value"));
-  CHECK(contains(re, kNotPart));
-  CHECK(contains(re, "Replaced by: nothing in Tadah! 1.6.0. Deleting the "
-                     "option converts it"));
+  CHECK(contains(re, kRemoved));
+  CHECK(contains(re, "Replaced by: nothing. Deleting the option converts "
+                     "it"));
   CHECK_FALSE(std::filesystem::exists("energy.pred"));
   CHECK_FALSE(std::filesystem::exists("error.pred"));
   const CliRun p = run_tadah({"tadah", "properties", "pairwise", "-p",
@@ -6806,7 +6807,7 @@ TEST_CASE("Subcommand: predict --error and properties pairwise --error are "
                      "tadah properties pairwise --error wrote an error "
                      "computed from SIGMA beside every value of the energy "
                      "curve"));
-  CHECK(contains(rp, kNotPart));
+  CHECK(contains(rp, kRemoved));
   CHECK_FALSE(std::filesystem::exists("pw.dat"));
 
   const CliRun ok = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
@@ -6824,10 +6825,10 @@ TEST_CASE("Subcommand: predict --error and properties pairwise --error are "
 
 /* Pins: `tadah train --uncertainty` exits 1 before training, with the
  * reason ("--uncertainty: UNCERTAINTY is a retired key: tadah train
- * --uncertainty wrote ... Uncertainty output is not part of Tadah!
- * 1.6.0 ..."), and writes neither pot.tadah nor weights.tadah; without it
- * the OALGO 3 configuration trains (exit 0) and its potential has no WCOV
- * and no WNOISE line.
+ * --uncertainty wrote ... Uncertainty output is removed: ..."), and
+ * writes neither pot.tadah nor weights.tadah; without it the OALGO 3
+ * configuration trains (exit 0) and its potential has no WCOV and no
+ * WNOISE line.
  * Before the fix: it trained and wrote weights.tadah, and the potential had
  * WCOV and WNOISE. */
 TEST_CASE("Subcommand: train --uncertainty is refused with the reason",
@@ -6845,7 +6846,7 @@ TEST_CASE("Subcommand: train --uncertainty is refused with the reason",
                       "train --uncertainty wrote weights.tadah, each "
                       "coefficient of the fit beside a diagonal entry of "
                       "SIGMA."));
-  CHECK(contains(rep, kNotPart));
+  CHECK(contains(rep, kRemoved));
   CHECK_FALSE(std::filesystem::exists("pot.tadah"));
   CHECK_FALSE(std::filesystem::exists("weights.tadah"));
   const CliRun ok = run_tadah({"tadah", "train", "-c", "config.train", "-o",
@@ -6890,7 +6891,7 @@ TEST_CASE("Subcommand: train refuses an ERROR or UNCERTAINTY line of its "
   CHECK(contains(rep, "ERROR: ERROR, the key of --error, asked tadah "
                       "predict and tadah properties pairwise for errors "
                       "computed from SIGMA."));
-  CHECK(contains(rep, kNotPart));
+  CHECK(contains(rep, kRemoved));
   CHECK_FALSE(std::filesystem::exists("e.tadah"));
 
   std::ofstream("plain.train") << config;
@@ -6922,7 +6923,7 @@ TEST_CASE("Subcommand: train refuses an ERROR or UNCERTAINTY line of its "
                       "deleting the line)"));
   CHECK(contains(rtf, "UNCERTAINTY: tadah train --uncertainty wrote "
                       "weights.tadah"));
-  CHECK(contains(rtf, kNotPart));
+  CHECK(contains(rtf, kRemoved));
   CHECK_FALSE(std::filesystem::exists("t.tadah"));
 
   std::ofstream("g.task") << "ERROR true\nTASK train\n  CONFIG plain.train\n"
@@ -6933,19 +6934,20 @@ TEST_CASE("Subcommand: train refuses an ERROR or UNCERTAINTY line of its "
   CHECK(g.status == 1);
   CHECK(contains(rg, "ERROR true (line 1 of g.task; converted by deleting "
                      "the line)"));
-  CHECK(contains(rg, kNotPart));
+  CHECK(contains(rg, kRemoved));
   CHECK_FALSE(std::filesystem::exists("g.tadah"));
 }
 
 /* Pins: `tadah explain` of predict.error, properties.pairwise.error,
  * train.uncertainty, UNCERTAINTY, ERROR, WCOV and WNOISE exits 0 and gives
- * the reason, after "RETIRED: " (that uncertainty output is not part of
- * Tadah! 1.6.0, the errors of Tadah! 1.0.0 to 1.5.0 not being standard
- * deviations and no calibrated estimate replacing them), "REPLACED BY:
- * nothing in Tadah! 1.6.0" and the conversion.
+ * the reason, after "RETIRED: " (that uncertainty output is removed, the
+ * errors of Tadah! 1.0.0 to 1.5.0 not being standard deviations and no
+ * calibrated estimate replacing them), the line "REPLACED BY: nothing" and
+ * the conversion.
  * Before the fix: each explained a working option or key (ERROR the key
  * of a configuration); then the reasons said that the error bars were too
- * narrow for many structures. */
+ * narrow for many structures; then that uncertainty output was not part
+ * of Tadah! 1.6.0, replaced by "nothing in Tadah! 1.6.0". */
 TEST_CASE("Subcommand: explain gives why --error, --uncertainty, ERROR, "
           "WCOV and WNOISE are retired",
           "[TadahCLI][explain][uncertainty]") {
@@ -6958,8 +6960,8 @@ TEST_CASE("Subcommand: explain gives why --error, --uncertainty, ERROR, "
                     << reported(x));
     CHECK(x.status == 0);
     CHECK(contains(x.out, "RETIRED: "));
-    CHECK(contains(x.out, kNotPart));
-    CHECK(contains(x.out, "REPLACED BY: nothing in Tadah! 1.6.0"));
+    CHECK(contains(x.out, kRemoved));
+    CHECK(contains(x.out, "\nREPLACED BY: nothing\n"));
     CHECK(contains(x.out, "CONVERSION: Deleting the"));
   }
 }
@@ -7016,8 +7018,8 @@ TEST_CASE("Subcommand: a potential with WCOV and WNOISE predicts with one "
 /* ---- the pairwise blocks, and SIGMA ------------------------------------
  *
  * SIGMA, what Tadah! 1.0.0 to 1.5.0 wrote for an OALGO 3 fit, is a
- * deprecated key. Uncertainty output is not part of Tadah! 1.6.0 (the
- * [uncertainty] cases above). */
+ * deprecated key. Uncertainty output is removed (the [uncertainty] cases
+ * above). */
 
 namespace {
 

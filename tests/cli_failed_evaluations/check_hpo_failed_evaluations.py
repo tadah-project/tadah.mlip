@@ -11,9 +11,13 @@ Cases (--case):
   random_skip  TADAH:RANDOM, MAXEVAL 20; a validation skip cap no potential
                meets fails every evaluation.
   gfs_throws   DLIB:GFS, MAXEVAL 24, eight dimensions; every training throws
-               (OALGO 3 with BIAS true and LAMBDA != 0). This is how
-               examples/CLI/ex_2 failed before its OALGO fix: dlib crashed
-               (SIGSEGV) at its first trust-region step.
+               (OALGO 2 with LAMBDA 0 refuses the one data row, the
+               structure's energy, for the four weights of D2_BP 4; the
+               startup checks read no descriptors). Every evaluation of
+               examples/CLI/ex_2 failed in this way before its OALGO fix
+               (OALGO 3 with BIAS true and LAMBDA != 0, which tadah hpo
+               refuses when a run starts), and dlib crashed (SIGSEGV) at its
+               first trust-region step.
   gfs_mixed    DLIB:GFS, MAXEVAL 40, one dimension; the three starting
                points fail, the upper half of the box is usable. dlib
                crashed here too. GFS picks some points at random, and which
@@ -119,7 +123,7 @@ SGRID2B 3.0 5.0 4.0 2.0
 RCTYPE2B Cut_Cos
 RCUT2B 5.0
 MODEL M_BLR BF_Linear
-LAMBDA 1e-3
+LAMBDA {lam}
 OALGO {oalgo}
 BIAS {bias}
 """
@@ -148,7 +152,8 @@ OPTIM SGRID2B (2) 4.0 6.0
 """,
     },
     "gfs_throws": {
-        "oalgo": 3, "bias": "true", "evals": 24, "usable": False,
+        "oalgo": 2, "bias": "false", "lam": "0", "evals": 24,
+        "usable": False,
         "hpo": """OPTIMIZER
   STRATEGY
     TYPE PLAIN
@@ -304,7 +309,8 @@ def write_inputs(work, case):
         (work / name).write_text(STRUCTURE.format(
             energy=energy, x0=repr(0.0 + offset), x1=repr(1.6505 + offset)))
     (work / "config.val").write_text("DBFILE val.db\n")
-    tadah = CONFIG_TADAH.format(oalgo=case["oalgo"], bias=case["bias"])
+    tadah = CONFIG_TADAH.format(oalgo=case["oalgo"], bias=case["bias"],
+                               lam=case.get("lam", "1e-3"))
     if "tadah_grids" in case:
         cgrid, sgrid, n = case["tadah_grids"]
         tadah = (tadah.replace("TYPE2B D2_BP 4 4 Ta Ta",

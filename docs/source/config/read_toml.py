@@ -126,8 +126,9 @@ every ignored key, :ref:`EMBF0 and RHOFORM without a DM_REAM block
 potential (``WARNING: pair tadah: potential 'pot.tadah': Deprecated key
 MBLOCK is ignored: ...``).
 
-A key marked **Retired** weighted the training data of a fit of an earlier
-version; another key replaces it. A potential that has it still loads
+A key marked **Retired** weighted the training data of a fit before Tadah!
+1.6.0; another key replaces it (:ref:`fit_objective_conversion` lists the
+conversions). A potential that has it still loads
 (``tadah predict``, ``pair_style tadah``, ``tadah analysis``, ``tadah
 properties``, ``tadah refit --edit``): Tadah!MLIP checks its value, ignores
 it and writes one notice per load that lists the retired keys of the file

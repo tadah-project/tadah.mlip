@@ -81,11 +81,12 @@ The layout is the same on every path (``tadah train``, ``predict``,
   refused the configuration) dropped the constant, so the energies are off
   by the same amount for every atom and the forces are right.
 * Only energies determine the constants (their force and stress rows are
-  zero). The training structures with an energy weight (``eweight`` x
-  ``EWEIGHT`` > 0) must therefore have compositions that determine the
+  zero). The training structures whose energies the fit observes (an energy
+  priority, ``eweight`` x ``WDBFILE``, above 0, with ``ENERGY true``:
+  :ref:`fit_objective`) must therefore have compositions that determine the
   model's intercepts: data whose structures all have one composition (a
-  fixed stoichiometry, or ``Nb27 Ta27`` and ``Nb54 Ta54``), or no energy
-  weight at all, are refused before the fit, naming the species, the rank
+  fixed stoichiometry, or ``Nb27 Ta27`` and ``Nb54 Ta54``), or no observed
+  energy at all, are refused before the fit, naming the species, the rank
   found and the model's intercept weights, and the remedies the
   configuration can take: under ``NORM false``, ``BIAS false`` with
   explicit ``ESHIFT`` values (a per-species reference energy, such as the

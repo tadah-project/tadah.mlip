@@ -32,9 +32,11 @@ Welcome to the Tadah! Website
      and apply to prediction only when given to ``tadah predict``
      (:ref:`load_transforms_predict`).
 
-   An upgrade from 1.4 or earlier starts with the breaking changes in the
-   :doc:`changelog` — notably the ``ON``/``OFF``/``AUTO`` vocabulary
-   for optimiser ``PARAM`` keys and 1-based indices in HPO output.
+   An upgrade starts with the breaking changes in the :doc:`changelog` —
+   notably the error scales and priorities of a fit, which replace
+   ``EWEIGHT``, ``FWEIGHT`` and ``SWEIGHT`` (:ref:`fit_objective`), and,
+   from 1.4 or earlier, the ``ON``/``OFF``/``AUTO`` vocabulary for
+   optimiser ``PARAM`` keys and 1-based indices in HPO output.
    `Issue reports <report any issues_>`_ are welcome.
 
    .. _report any issues: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues
@@ -75,6 +77,7 @@ This site also publishes selected interatomic potentials developed by |gja_link|
    examples.rst
    config/config_keys.rst
    training.rst
+   fit_objective.rst
    regressors.rst
    descriptors.rst
    dm_embed.rst

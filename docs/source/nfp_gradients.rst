@@ -44,7 +44,8 @@ fallback is acceptable.
 
 The current analytical fit path requires a training ``DBFILE``,
 ``OALGO 4``, fixed ``LAMBDA >= 0``, and ``BF_Linear`` or ``Kern_Linear``.
-It rejects ``FIXINDEX``, ``STRESS true``, ``NORM true`` and ``PC_SRMSE``.
+It rejects ``FIXINDEX``, ``STRESS true``, ``NORM true``, ``PC_SRMSE_GPA``
+and a search of an error scale (``ESIGMA``, ``FSIGMA``, ``SSIGMA``).
 Each selected descriptor parameter and observable must also supply a
 supported derivative. These requirements apply to the analytical fit path.
 

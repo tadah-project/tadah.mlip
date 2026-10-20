@@ -57,7 +57,7 @@ An example dataset can be downloaded from :download:`here <quickstart/db.train>`
 The keys of the file:
 
 - :ref:`DBFILE` specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory.
-- :ref:`STRESS` ``true`` fits the stresses as well as the energies (as described below).
+- :ref:`STRESS` ``true`` fits the stresses as well as the energies (as described below). The fit weights them with the default error scales, 1 meV/atom for the energy per atom and 0.5 GPa for the stress (:ref:`ESIGMA`, :ref:`SSIGMA`; :ref:`fit_objective` describes the sum a fit minimises).
 - The two-body (pair) block: :ref:`INIT2B` turns it on; :ref:`TYPE2B`, :ref:`RCUT2B` and :ref:`RCTYPE2B` set the descriptor (``D2_Blip``: four blip, i.e. cubic B-spline, radial functions), its cutoff distance and its cutoff function; :ref:`SGRID2B` and :ref:`CGRID2B` set the inverse widths and the centres of the blips. It is the pair block of :ref:`cli_example_1`.
 - The many-body block: :ref:`INITMB`, :ref:`TYPEMB`, :ref:`RCUTMB` and :ref:`RCTYPEMB` likewise. ``DM_mBlipEnv`` gives each atom an energy :math:`F(\rho)` of a pair density :math:`\rho` summed over its neighbours: :ref:`CGRIDMB` and :ref:`SGRIDMB` set the Gaussian that the density is built from, :ref:`CEMBFUNC` and :ref:`SEMBFUNC` the blips that :math:`F` is built from, :ref:`RCUTENV` takes :math:`F` smoothly to zero at low density, and :ref:`WATOM` scales the density of this dataset to about 1. :ref:`cli_example_3` explains these keys and how they were chosen.
 - Both blocks use the ``Cut_Cos`` cutoff (:ref:`cutoffs`): the energy and the force of a pair go smoothly to zero at the cutoff distance, so the energy is conserved when a pair crosses it in molecular dynamics. (``Cut_Dummy`` truncates instead; it is for testing only.)
@@ -65,9 +65,9 @@ The keys of the file:
 
 :ref:`ConfigSection` explains every key in detail and discusses the configuration files in general.
 
-Training takes about a second. On the prediction dataset below (``tadah predict -F -S -A``) the potential has an energy RMSE of 0.27 meV/atom, a force RMSE of 0.030 eV/Å and a stress RMSE of 4.3e-4 eV/Å³.
+Training takes about a second. On the prediction dataset below (``tadah predict -F -S -A``) the potential has an energy RMSE of 0.29 meV/atom, a force RMSE of 0.032 eV/Å and a stress RMSE of 0.049 GPa.
 
-**Why the stresses.** All structures of ``db.train`` have one volume, so their energies say little about how the energy changes with volume; the stresses are its derivative with respect to strain. With ``STRESS true`` the bcc lattice constant of the potential (where the stress is zero, at 0 K) is 3.294 Å, close to the 3.304 Å of the EAM potential that generated the data. Fitted to energies only it is 3.380 Å, to energies and forces 3.389 Å, and to energies, forces and stresses (``-F`` with this file) 3.354 Å. These fits give a stable bcc crystal too (:math:`C' = (C_{11}-C_{12})/2 > 0`), which conserves energy in the LAMMPS example below, but the example's lattice, 3.30 Å, then starts at a pressure of 6.8 to 10.5 GPa instead of 0.1 GPa.
+**Why the stresses.** All structures of ``db.train`` have one volume, so their energies say little about how the energy changes with volume; the stresses are its derivative with respect to strain. With ``STRESS true`` the bcc lattice constant of the potential (where the stress is zero, at 0 K) is 3.288 Å, close to the 3.304 Å of the EAM potential that generated the data, and fitted to energies, forces and stresses (``-F`` with this file) it is 3.294 Å. Fitted to energies only it is 3.381 Å, and to energies and forces 3.389 Å. These two fits give a stable bcc crystal too (:math:`C' = (C_{11}-C_{12})/2 > 0`), which conserves energy in the LAMMPS example below, but the example's lattice, 3.30 Å, then starts at a pressure of 9.6 and 10.5 GPa instead of −0.5 GPa.
 
 .. _prediction:
 
@@ -108,9 +108,14 @@ each row type :ref:`WNOISE` (:ref:`weight_covariance`):
 :math:`\phi_i` is the row of the value (its derivatives with respect to the
 weights: an energy, a force component or a stress component), built as
 ``tadah predict`` evaluates the model, :math:`\Sigma_w` is ``WCOV`` and
-:math:`s_t^2` the ``WNOISE`` of the value's type. The first term is the
-variance of the predicted value, which the uncertainty of the weights gives;
-the second is the noise variance of an observation, from the fit's
+:math:`s_t^2` the noise variance of an observation of the value from the
+potential's ``WNOISE``: that of its type for a force component and a
+diagonal stress entry, half of it for an off-diagonal stress entry (which
+the fit counts twice), and :math:`N^{2q}` times ``WNOISE E`` for the energy
+of a structure of :math:`N` atoms (``WNOISE E`` is per atom; :math:`q = 1`
+under ``ENORM ATOM``, :math:`1/2` under ``ENORM SQRT``). The first term is
+the variance of the predicted value, which the uncertainty of the weights
+gives; the second is the noise variance of an observation, from the fit's
 residuals. :math:`\sigma_i` is therefore the standard deviation of the
 difference between the prediction and a reference value of the kind the
 potential was fitted to. ``energy.pred``, ``forces.pred`` and
@@ -130,12 +135,14 @@ its weights were set from ``FIXWEIGHT`` without a fit. It refuses forces
 (``-F``) or stresses (``-S``) of a potential whose fit had no force or
 stress rows with a non-zero weight, since its ``WNOISE`` has no noise
 variance of them; and, as every prediction has an energy, it refuses every
-prediction of a potential fitted without energies (``EWEIGHT 0``, or every
-structure's ``eweight`` 0: its ``WNOISE`` has no ``E``), which ``tadah
+prediction of a potential fitted without energies (``ENERGY false``, or
+every structure's ``eweight`` 0: its ``WNOISE`` has no ``E``), which ``tadah
 train`` warns about when it writes it. Such a potential's ``WCOV``, and the
-standard deviations of ``--uncertainty``, are those of its fit. The noise variance is that of a
-structure of weight 1; structures with their own weights (``EWEIGHT_TEMP``,
-``WDBFILE``, data balancing) were fitted with other noise levels.
+standard deviations of ``--uncertainty``, are those of its fit. It refuses a
+``WNOISE`` without an ``ESIGMA`` line beside it. The noise variance is that
+of an observation of priority 1 and of the absolute part of the error scale
+(:ref:`weight_covariance`); observations of other priorities were fitted
+with other noise levels.
 
 .. versionchanged:: 1.6.0
    Before 1.6.0 the errors were computed from ``SIGMA``, a transposed and
@@ -265,6 +272,12 @@ Practical rules
 • Training on a dataset expressed in *any* units still works, provided *all*
   quantities in *all* structures use the same unit system.
 
+• The error scales of a fit are given for data in eV and Å: ``ESIGMA`` in
+  meV/atom, ``FSIGMA`` in eV/Å and ``SSIGMA`` in GPa (:ref:`fit_objective`).
+  With data in other units a fit reads ``ESIGMA``/1000 and ``FSIGMA`` in the
+  energy and length units of the data, and ``SSIGMA`` times
+  6.241509074e-3 in its stress unit, so their values need converting.
+
 • The generated model keeps those units.  Coupled to LAMMPS, it needs a
   compatible `units` style—e.g. ``metal`` for eV / Å, ``real`` for
   kcal mol⁻¹ / Å, and so on.
@@ -315,7 +328,7 @@ The dataset has the following structure:
     <blank line>
 
 - The first line is a comment line; it is used as a label for a structure. It must not be a blank line.
-- ``eweight``, ``fweight``, ``sweight`` are optional weighting parameters used for training. If this line is missing, it defaults to 1.0 1.0 1.0; a blank line is not allowed in its place. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor, and (CASTEP ``.castep``, VASP ``vasprun.xml``) ``fweight`` 0 for one without forces, and says so in one INFO line, so that a ``STRESS true`` (``FORCE true``) fit ignores them instead of fitting zeros. A stress or force line that cannot be read (a value the code could not print, ``*****``; VASP OUTCAR ``in kB``, ``vasprun.xml``, CASTEP ``.castep``) gives that weight 0 too, with a WARNING naming the file and the line. Any other value a converter cannot read refuses the file, naming it and the line (or the calculation); a file that ends inside a step (a run stopped while writing it: inside one of the step's blocks, during its SCF or between its blocks) keeps the steps before it and skips that step, with a WARNING naming the file and the step, and a ``vasprun.xml`` that ends after a complete calculation, without its closing tag, is read whole, with a WARNING that nothing was skipped. The force and stress metrics (``tadah predict -A``, ``PC_FRMSE`` and ``PC_SRMSE`` in ``tadah hpo``) leave such a structure out too; a dataset in which every structure has that weight 0 is not measured (``nan``, left out of the average), and a run in which no dataset has the data is refused. ``tadah data balance --rescale`` keeps a weight of 0. A weight is a number >= 0: a negative weight is refused as the file is read, naming the file and the structure. A structure with ``eweight`` 0 has no energy of its own. The energy metrics, the shift ``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` derive, ``EFILTER``, ``EWEIGHT_TEMP`` and ``tadah analysis dataset_stats`` leave it out. The energy metrics of ``tadah hpo`` (``PC_EMAE``, ``PC_ERMSE``, ``PC_ErRMSE`` and ``PC_ERSQ``) do not measure a validation dataset of only such structures, and refuse a run in which no validation dataset has an energy. ``tadah predict -A`` does not measure such a dataset either (``nan``, left out of the mean), and prints ``nan`` Energy lines, without a refusal, when no dataset has an energy. ``FFILTER`` and ``dataset_stats`` leave out the forces of a structure with ``fweight`` 0.
+- ``eweight``, ``fweight``, ``sweight`` are the priorities of the structure's energy, forces and stress in a fit (:ref:`fit_objective`). If this line is missing, it defaults to 1.0 1.0 1.0; a blank line is not allowed in its place. ``tadah data convert`` writes ``sweight`` 0 for a structure whose source file has no stress tensor, and (CASTEP ``.castep``, VASP ``vasprun.xml``) ``fweight`` 0 for one without forces, and says so in one INFO line, so that a ``STRESS true`` (``FORCE true``) fit ignores them instead of fitting zeros. A stress or force line that cannot be read (a value the code could not print, ``*****``; VASP OUTCAR ``in kB``, ``vasprun.xml``, CASTEP ``.castep``) gives that priority 0 too, with a WARNING naming the file and the line. Any other value a converter cannot read refuses the file, naming it and the line (or the calculation); a file that ends inside a step (a run stopped while writing it: inside one of the step's blocks, during its SCF or between its blocks) keeps the steps before it and skips that step, with a WARNING naming the file and the step, and a ``vasprun.xml`` that ends after a complete calculation, without its closing tag, is read whole, with a WARNING that nothing was skipped. The force and stress metrics (``tadah predict -A``, ``PC_FRMSE`` and ``PC_SRMSE_GPA`` in ``tadah hpo``) leave such a structure out too; a dataset in which every structure has that priority 0 is not measured (``nan``, left out of the average), and a run in which no dataset has the data is refused. A priority is a number >= 0: a negative one is refused as the file is read, naming the file and the structure. A structure with ``eweight`` 0 has no energy of its own. The fit, the energy metrics, the shift ``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` derive, ``EFILTER`` and ``tadah analysis dataset_stats`` leave it out. The energy metrics of ``tadah hpo`` (``PC_EMAE``, ``PC_ERMSE``, ``PC_ErRMSE`` and ``PC_ERSQ``) do not measure a validation dataset of only such structures, and refuse a run in which no validation dataset has an energy. ``tadah predict -A`` does not measure such a dataset either (``nan``, left out of the mean), and prints ``nan`` Energy lines, without a refusal, when no dataset has an energy. ``FFILTER`` and ``dataset_stats`` leave out the forces of a structure with ``fweight`` 0.
 - The three cell lines are the lattice vectors **a**, **b** and **c**, one
   vector per line, as Cartesian components in Å (the lattice vectors are the
   *rows* of the 3×3 block). A vector is **not** written down a column.
@@ -468,15 +481,15 @@ energy (NVE), printing every 100 steps. With the shipped ``pot.tadah``:
 
 - the total energy (``TotEng``) stays constant to about 0.1 meV/atom (at most
   0.08 meV/atom from its initial value in the printed rows);
-- the temperature falls from 1000 K to about 440 K: started from perfect
+- the temperature falls from 1000 K to about 500 K: started from perfect
   lattice positions, about half of the initial kinetic energy goes into the
-  potential energy (in a 10,000-step run it settles near 500 K);
-- the pressure starts at about 0.1 GPa;
+  potential energy (in a 10,000-step run it settles near 490 K);
+- the pressure starts at about −0.5 GPa;
 - the crystal stays bcc.
 
 The lattice constant in ``in.ml`` must match the potential. This potential's own
-bcc lattice constant is 3.294 Å (at 0 K); at 3.5 Å the same run starts at
-−16 GPa. A crystal far from the potential's lattice can tear apart at the
+bcc lattice constant is 3.288 Å (at 0 K); at 3.5 Å the same run starts at
+−19 GPa. A crystal far from the potential's lattice can tear apart at the
 fixed volume of an NVE run and turn the released energy into heat: the
 D2_LJ potential that this guide shipped up to Tadah! 1.5.0 has its own bcc
 lattice near 2.9 Å, and with the 3.5 Å lattice of the ``in.ml`` of that
@@ -539,30 +552,31 @@ What this example potential is and is not
 
 It is a small model for learning the tools, fitted to thermal snapshots of
 one crystal at one volume, generated by another potential. Near the training
-volume it describes bcc Ta reasonably: lattice constant 3.294 Å (EAM: 3.304 Å),
-energy −8.102 eV/atom (EAM: −8.10 eV/atom), :math:`C' = (C_{11}-C_{12})/2`
-of 60 GPa and bulk modulus of 132 GPa at that lattice, and fcc 0.123 eV/atom
+volume it describes bcc Ta reasonably: lattice constant 3.288 Å (EAM: 3.304 Å),
+energy −8.104 eV/atom (EAM: −8.10 eV/atom), :math:`C' = (C_{11}-C_{12})/2`
+of 57 GPa and bulk modulus of 115 GPa at that lattice, and fcc 0.117 eV/atom
 above bcc. It is not a production Ta potential:
 
 - The repulsion of the pair term is finite: the energy of a Ta dimer is
-  12.6 eV at 0.2 Å and about 14 eV as the distance goes to zero, so atoms that
-  collide hard enough (radiation damage, shocks) pass through each other.
+  12.3 eV at 0.2 Å and about 13.6 eV as the distance goes to zero, so atoms
+  that collide hard enough (radiation damage, shocks) pass through each other.
 - The density is built from a Gaussian of the distance centred at 2.88 Å, so
   it falls when neighbours come much closer than that: strongly compressed bcc
   has a spurious local energy minimum near a lattice constant of 2.25 Å
-  (−2.36 eV/atom). Expanding the crystal beyond about 3.5 Å raises the energy
-  far too fast (by 5.3 eV/atom from 3.29 Å to 3.8 Å).
+  (−2.72 eV/atom). Expanding the crystal beyond about 3.5 Å raises the energy
+  far too fast (by 5.2 eV/atom from 3.29 Å to 3.8 Å).
 - At the 3 fs timestep of ``in.ml``, runs started at 6000 K and 10000 K do not
-  fail, but the total energy wanders by 0.70 and 1.01 meV/atom; at 1 fs, by
-  0.08 and 0.10 meV/atom. Hot systems need a smaller timestep.
+  fail, but the total energy wanders by 0.73 and 1.06 meV/atom (every 10
+  steps of the 1000); at 1 fs, by 0.08 and 0.14 meV/atom. Hot systems need a
+  smaller timestep.
 - Other elastic constants, defects, surfaces, liquids and the melting point were
   not checked.
 
 A Lennard-Jones pair potential cannot replace it. Refitted to the same data
 (with the ``Cut_Dummy``, ``Cut_Cos`` or ``Cut_PolyS`` cutoff, to energies,
 energies and stresses, or energies, forces and stresses), ``D2_LJ`` gives a bcc
-crystal with :math:`C' < 0` for each of these nine fits (−78 to −178 GPa, each
-at its own lattice constant of 2.93 to 3.06 Å): it is mechanically unstable.
+crystal with :math:`C' < 0` for each of these nine fits (−51 to −173 GPa, each
+at its own lattice constant of 2.94 to 3.28 Å): it is mechanically unstable.
 
 Support for Multi-species Systems
 ---------------------------------

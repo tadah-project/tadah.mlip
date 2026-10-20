@@ -43,8 +43,7 @@ in order:
 
 #. **Loading the structures** declared by every ``DBFILE`` key into memory.
 #. **Applying load-time data transforms** (``LSCALE``, ``ESHIFT*``,
-   ``EFILTER`` / ``FFILTER``, ``EWEIGHT_TEMP``, ``WDBFILE`` /
-   ``WDBFILE_AUTO``, ``ZERO_COM_FORCE``; :ref:`load_transforms`).
+   ``EFILTER`` / ``FFILTER``, ``ZERO_COM_FORCE``; :ref:`load_transforms`).
 #. **Building the neighbour list** out to ``RCUTMAX``: every periodic image
    of every atom closer than the cutoff, for any cell (triclinic, or
    thinner than the cutoff) and for atoms inside or outside the cell
@@ -54,7 +53,9 @@ in order:
    FAIL-level finding), which checks dataset statistics and
    per-descriptor metadata for ρ-collapse and out-of-range parameter
    combinations.
-#. **Fitting the regression model** declared by ``MODEL``.
+#. **Fitting the regression model** declared by ``MODEL``: it minimises
+   the sum of :ref:`fit_objective`, with the error scales of the
+   configuration and the priorities of the data (``WDBFILE`` among them).
 #. **Writing ``pot.tadah``** (or whatever ``--outfile`` requests) and, with
    ``--uncertainty``, ``weights.tadah``.
 
@@ -82,8 +83,9 @@ Two of them — ``LSCALE`` and the resolved ``ESHIFT`` — belong to the model,
 its length scale and its energy reference: they are key lines of
 ``pot.tadah``, and ``tadah predict`` applies them to the data it predicts.
 The others (``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``,
-``EWEIGHT_TEMP``, ``ZERO_COM_FORCE``, ``WDBFILE``, ``WDBFILE_AUTO``) only
-prepared the training data: the potential lists them in its
+``ZERO_COM_FORCE``), and ``WDBFILE``, the priority of each dataset in the
+fit (:ref:`fit_objective`), only prepared the training data: the potential
+lists them in its
 :ref:`training record <training_record>`, not as key lines, ``tadah
 predict`` does not apply them (:ref:`load_transforms_predict`), and a
 retrain from the potential does not take them from it
@@ -98,15 +100,11 @@ The transforms run in a fixed order, and the order matters because
 several feed the next:
 
 #. **Outlier filter** (``EFILTER`` / ``FFILTER``) — runs first, so an
-   extreme outlier cannot poison the later least-squares and
-   reweighting steps.
+   extreme outlier cannot poison the later least-squares step (the
+   ``ESHIFT_DBATOM`` fit).
 #. **Length rescale** (``LSCALE``).
 #. **ESHIFT** — the per-element shifts are determined, then subtracted.
-#. **Boltzmann reweight** (``EWEIGHT_TEMP``) — after ESHIFT, so the
-   Boltzmann factor sees the shifted, user-meaningful energies.
 #. **COM-force zeroing** (``ZERO_COM_FORCE``).
-#. **Per-dataset weights** — ``WDBFILE`` composed multiplicatively with
-   ``WDBFILE_AUTO``.
 #. **Equilibrium-volume diagnostic** — logs the lowest post-transform
    ``E/N`` configuration as a reference-state sanity check.
 
@@ -122,9 +120,7 @@ Key                          One-line summary
 ``ESHIFT_DBATOM``            Derives ESHIFT by least-squares atomic-energy fit over the database.
 ``EFILTER  <lo> <hi>``       Drops configurations whose per-atom energy is outside ``[lo, hi]``.
 ``FFILTER  <thr>``           Drops configurations with an atom whose force magnitude is above ``thr``.
-``WDBFILE  <w_1> ... <w_n>`` Per-dataset weight multipliers; one per ``DBFILE``.
-``WDBFILE_AUTO  <α>``        Automatic size balancing: per-config weight × ``1 / N_i^α``, ``α ∈ [0,1]``.
-``EWEIGHT_TEMP  <T>``        Boltzmann reweighting at temperature ``T`` (Kelvin).
+``WDBFILE  <w_1> ... <w_n>`` Per-dataset priorities, applied in the fit; one per ``DBFILE``.
 ``ZERO_COM_FORCE``           Subtracts the mean force per configuration.
 ============================ ===========================================================================
 
@@ -229,8 +225,8 @@ are. A potential of an earlier version has its toggle as a key line beside
    configuration must also declare its density form ``RHOFORM``
    (`pot.tadah format`_), described in :ref:`DM_REAM <dm_ream>`.
 
-Filtering and weighting
-~~~~~~~~~~~~~~~~~~~~~~~
+Filters and the net force
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * ``EFILTER lo hi`` drops any configuration whose **per-atom** energy
   ``E/N`` is outside ``[lo, hi]``; ``FFILTER thr`` drops any
@@ -239,21 +235,9 @@ Filtering and weighting
   energy (forces) of its own and is not dropped for it. ``tadah predict`` applies them to the data it predicts only
   when it is given them (``--efilter``, ``--ffilter``), never the
   potential's (:ref:`load_transforms_predict`).
-* ``WDBFILE w_1 … w_n`` multiplies the ``eweight`` / ``fweight`` /
-  ``sweight`` of every config in dataset ``i`` by ``w_i`` — one value
-  ``>= 0`` per ``DBFILE`` (``0`` leaves the dataset out of the fit; a
-  negative value is rejected).
-* ``WDBFILE_AUTO α`` multiplies dataset ``i``'s per-config weight by
-  ``N_i^(−α)``, where ``N_i`` is its post-filter config count.
-  ``α = 0`` disables it, ``α = 0.5`` is a soft balance, ``α = 1`` makes
-  every dataset contribute equal aggregate loss. It composes
-  multiplicatively with ``WDBFILE``; ``α`` outside ``[0, 1]`` is
-  rejected.
-* ``EWEIGHT_TEMP T`` multiplies each ``eweight`` by
-  ``exp(−(E/N − E_min)/(k_B·T))`` (``E_min`` the minimum per-atom
-  energy of the configs with an energy, ``T`` in Kelvin), biasing the
-  loss toward low-energy configs; a config with ``eweight`` 0 keeps it.
-  Applied after ESHIFT; ``T <= 0`` is rejected.
+* ``WDBFILE w_1 … w_n`` changes no structure: it is the priority of each
+  dataset in the fit, one value ``>= 0`` per ``DBFILE``
+  (:ref:`fit_objective`).
 * ``ZERO_COM_FORCE`` subtracts the mean force of each configuration
   so its net force is exactly zero — useful against residual
   translational forces left by incomplete DFT relaxation.
@@ -277,10 +261,13 @@ predicted as it is. A filter applies only when predict is given it:
   ``-v 2`` a line says how many were left out: ``Outlier filter: dropped 18
   by energy, 0 by force.``); ``--zero-com-force`` subtracts each
   structure's mean force from the forces it reads (the ``True`` columns).
-* ``WDBFILE``, ``WDBFILE_AUTO``, ``EWEIGHT_TEMP``, ``ESHIFT_ATOM`` and
-  ``ESHIFT_DBATOM`` are never applied: they weighted the training set or
-  derived its shift, and the data predicted keep their own weights; nor are
-  those of a ``TASK predict`` of a task file.
+* ``WDBFILE``, ``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` are never applied:
+  they gave the training data their priorities or derived its shift, and
+  the data predicted keep their own priorities; nor are those of a ``TASK
+  predict`` of a task file. A potential of Tadah! 1.5.0 has a line of the
+  retired ``WDBFILE_AUTO``, and one trained with ``EWEIGHT_TEMP`` a line
+  of it: ``tadah predict`` reads them with one notice
+  (:ref:`fit_objective_conversion`).
 
 A potential of an earlier version has these keys as key lines; ``tadah
 predict`` ignores them, and at ``-v 2`` one line names those it ignored
@@ -347,17 +334,22 @@ A minimal single-species, two-body, kernel-ridge example::
    ATOM     Ta
    BIAS     false
    DIMER    false   0   false
-   EWEIGHT  1
-   FWEIGHT  1
+   ENERGY   true
+   ENORM    ATOM
+   ESIGMA   1
+   FORCE    false
+   FSIGMA   0.100000000000000006   0
    INIT2B   true
    INITMB   false
    LAMBDA   0
+   LSCALE   1
    MODEL    M_KRR   Kern_Linear   1
    NORM     false
    OALGO    1
    RCTYPE2B Cut_Dummy
    RCUT2B   6.5
-   SWEIGHT  1
+   SSIGMA   0.5   0
+   STRESS   false
    TYPE2B   D2_LJ   Ta   Ta
    WATOM    73
    WEIGHTS  14.20421334...   2604.39696519...
@@ -367,8 +359,10 @@ Three categories of key lines appear:
 #. **Configuration echo** — every key that fully specifies the model
    geometry: descriptor type and parameters (``TYPE2B``, ``RCUT2B``,
    ``RCTYPE2B``, ``INIT2B`` / ``INITMB``, …), model choice and
-   hyperparameters (``MODEL``, ``LAMBDA``, ``NORM``, ``BIAS``, …), and
-   the species list (``ATOM`` / ``WATOM``), with the other keys of the
+   hyperparameters (``MODEL``, ``LAMBDA``, ``NORM``, ``BIAS``, …), the
+   error scales of the fit (``ESIGMA``, ``FSIGMA``, ``SSIGMA``, ``ENORM``,
+   ``ENERGY``: :ref:`fit_objective`), and the species list (``ATOM`` /
+   ``WATOM``), with the other keys of the
    training configuration but ``DBFILE``, the keys that prepared the
    training data and the settings of the run: the
    :ref:`training record <training_record>` above the key lines names those
@@ -383,8 +377,8 @@ Three categories of key lines appear:
    (explicit or via ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM``), ``ESHIFT``, so
    prediction re-applies them automatically and a retrain from the
    potential uses them. The ``ESHIFT_ATOM`` / ``ESHIFT_DBATOM`` toggles,
-   the filters and the weights of the training data are no key lines (the
-   :ref:`training record <training_record>` lists them).
+   the filters and the dataset priorities of the training data are no key
+   lines (the :ref:`training record <training_record>` lists them).
 
 DM_REAM potentials always carry explicit ``EMBF0`` and ``RHOFORM`` lines;
 the writer spells ``RHOFORM`` in upper case and drops a stray one from a
@@ -403,8 +397,8 @@ The key lines are what is needed to use the model: its settings and its
 fit, its ``LSCALE`` and its resolved ``ESHIFT``. The keys a potential does
 not use are not key lines: the training datasets, ``DBFILE``; the keys that
 only prepared the training data, ``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``,
-``ESHIFT_DBATOM``, ``EWEIGHT_TEMP``, ``ZERO_COM_FORCE``, ``WDBFILE`` and
-``WDBFILE_AUTO`` (:ref:`load_transforms`); and these settings of the run:
+``ESHIFT_DBATOM``, ``ZERO_COM_FORCE`` and ``WDBFILE`` (:ref:`load_transforms`);
+and these settings of the run:
 ``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``,
 ``HEALTH_LOG`` and ``UNCERTAINTY``, the ``HPOTARGET`` and
 ``VALIDATION`` of a ``tadah hpo`` run, and ``CHECK``, the setting of
@@ -421,7 +415,7 @@ lines right above the key lines::
 
 It has one line for each of these keys the run was given, in the order
 ``DBFILE``, ``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``,
-``EWEIGHT_TEMP``, ``ZERO_COM_FORCE``, ``WDBFILE``, ``WDBFILE_AUTO``,
+``ZERO_COM_FORCE``, ``WDBFILE``,
 ``VALIDATION``, ``HPOTARGET``, ``CHECK``, ``UNCERTAINTY``, ``VERBOSE``,
 ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG``,
 with the values
@@ -430,7 +424,7 @@ as the configuration file, the task file or the command line wrote them
 and ``tadah refit``, which do not read it; a ``tadah hpo`` potential lists
 none. A key nobody set is not
 listed: the defaults tadah takes (``VERBOSE 1``, ``OUTFILE pot.tadah``,
-``ESHIFT_ATOM false``, ``WDBFILE_AUTO 0``, ...) are left out, so ``tadah train -c config.train`` records the ``DBFILE`` of
+``ESHIFT_ATOM false``, ...) are left out, so ``tadah train -c config.train`` records the ``DBFILE`` of
 ``config.train`` alone, and ``-o pot2.tadah -v 0`` adds ``VERBOSE 0`` and
 ``OUTFILE pot2.tadah``. The potentials of ``tadah train``, ``tadah refit``
 and ``tadah hpo`` (``best_pot.tadah``, its rank-local copies and the
@@ -459,10 +453,11 @@ its ``UNCERTAINTY``, a ``best_pot.tadah`` its run's ``HPOTARGET`` and
 ``VERBOSE``, and its ``VALIDATION`` when the run had a validation file, and
 every potential of ``tadah train`` or
 ``tadah hpo`` the keys that prepared its training data, ``ESHIFT_ATOM
-false``, ``ESHIFT_DBATOM false``, ``WDBFILE_AUTO 0`` and ``ZERO_COM_FORCE
-false`` when its configuration set none); it still loads, no run takes any
-of them from it as a setting, and ``tadah refit --edit`` of it lists them in
-the edit's record instead. ``tadah predict`` ignores the keys that prepared
+false``, ``ESHIFT_DBATOM false`` and ``ZERO_COM_FORCE false`` when its
+configuration set none, and the retired ``WDBFILE_AUTO 0``); it still loads,
+no run takes any of them from it as a setting, and ``tadah refit --edit`` of
+it lists them in the edit's record instead, but for the retired lines, which
+it keeps as they are (:ref:`fit_objective_conversion`). ``tadah predict`` ignores the keys that prepared
 the training data (:ref:`load_transforms_predict`); a retrain, ``tadah
 hpo -c`` and ``tadah analysis check_bounds -c`` read none of its lines of
 the keys of the record but ``DBFILE`` (:ref:`retrain_from_potential`); and
@@ -585,14 +580,20 @@ those ``FIXINDEX`` pins excepted, the ``BASIS`` of a non-linear kernel,
 it is read when the model is built, so the retrain may also change, for
 example, ``SBASIS`` or the descriptor. The other key lines are the model of
 the first fit, with its ``LSCALE`` and ``ESHIFT``: the energy reference of
-the retrain is the potential's.
+the retrain is the potential's. Its ``ESIGMA``, ``FSIGMA``, ``SSIGMA``,
+``ENORM`` and ``ENERGY`` lines are the error scales of the first fit, which
+the retrain fits with (:ref:`fit_objective`). A potential of Tadah! 1.5.0
+has ``EWEIGHT``, ``FWEIGHT``, ``SWEIGHT`` and ``WDBFILE_AUTO`` lines
+instead: a retrain from it is refused, naming each line and its
+conversion, until the copy has the converted keys in their place
+(:ref:`fit_objective_conversion`).
 
 The keys that prepared the training data of the first fit (``EFILTER``,
-``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``, ``EWEIGHT_TEMP``,
-``ZERO_COM_FORCE``, ``WDBFILE``, ``WDBFILE_AUTO``) are in its training
-record, not among its key lines, and a retrain does not take them from the
-potential, whatever version wrote it: a retrain works with any number of
-datasets, and with none of the first fit's filters or weights. The
+``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``, ``ZERO_COM_FORCE``,
+``WDBFILE``) are in its training record, not among its key lines, and a
+retrain does not take them from the potential, whatever version wrote it: a
+retrain works with any number of datasets, and with none of the first fit's
+filters or dataset priorities. The
 retrain's own are given as in any training run, and are recorded in the new
 potential's record: on the command line, or on a line of a task file or of
 a configuration file that includes the potential with ``CONFIG``, before or
@@ -612,7 +613,7 @@ A file that has ``WEIGHTS`` (a potential or a copy of one) is a potential,
 wherever the run reads it: given with ``-c``, or included with ``CONFIG`` by
 a configuration file or by a ``TASK train`` or ``TASK hpo`` section (a
 ``tadah hpo`` seed too). Its lines of the keys of the training record but
-``DBFILE`` are not read: those of the eight, with or without an ``ESHIFT``
+``DBFILE`` are not read: those of the six, with or without an ``ESHIFT``
 line, its ``UNCERTAINTY`` line, the switch of the run that wrote it
 (:ref:`weight_covariance`), and its run settings, ``VALIDATION``,
 ``HPOTARGET``, ``CHECK``, ``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
@@ -731,8 +732,8 @@ there, to its convergence tolerance).
 A ``DBFILE`` that lists one dataset file twice (the same path, two spellings
 of it, or a link to it) is refused, naming both entries, by ``tadah train``
 and, at startup, by ``tadah hpo``: each entry is a dataset, so each of its
-structures would be fitted twice. ``WDBFILE`` gives a dataset more
-weight.
+structures would be fitted twice. ``WDBFILE`` gives a dataset a higher
+priority.
 
 .. versionchanged:: 1.6.0
    An ``M_BLR`` potential had the ``DBFILE`` line it was trained on (an
@@ -790,7 +791,7 @@ integers are always exact. ``#`` comment lines (such as the header
   ``sample``, ``dedup`` and ``balance`` follow the same rule: every
   number with ``NUMERIC`` significant digits (default ``18``, exact — a
   rewritten dataset trains on exactly the values the command computed,
-  e.g. the ``--rescale`` weights of ``balance``), and a WARNING below 17.
+  e.g. the energies ``balance`` shifted), and a WARNING below 17.
   So do the LAMMPS data and VASP POSCAR exports of ``tadah data write``
   (both formats read E-notation; ``tadah`` reads its POSCAR export back
   exactly); the CASTEP cell export keeps ``NUMERIC`` decimal places, with
@@ -829,14 +830,15 @@ weights, the posterior covariance of Bayesian linear regression,
    \qquad
    \gamma = \sum_{i\ \mathrm{kept}} \frac{s_i^2}{s_i^2 + \lambda},
 
-with :math:`\Phi` the design matrix, :math:`W` the row weights
-(``eweight`` × ``EWEIGHT`` and so on), :math:`\lambda` the fit's ``LAMBDA``
-(the evidence approximation's for ``LAMBDA -1``), RSS the weighted residual
-sum of squares, :math:`n_\mathrm{obs}` the number of rows with a non-zero
-weight (the observations: structures stored with ``fweight 0`` add no force
-rows, for example) and :math:`s_i` the singular values of
-:math:`W^{1/2}\Phi`. :math:`s^2` is the noise variance of a row of unit
-weight. The solve keeps a singular direction when its :math:`s_i` is above
+with :math:`\Phi` the design matrix, :math:`W` the weight of each row in
+the fit, its priority over the square of its error scale
+(:ref:`fit_objective`), :math:`\lambda` the fit's ``LAMBDA`` (the evidence
+approximation's for ``LAMBDA -1``), RSS the weighted residual sum of
+squares, :math:`n_\mathrm{obs}` the number of observations (the rows of
+priority above 0 that are not zero in every column: structures stored with
+``fweight 0`` add no force rows, for example) and :math:`s_i` the singular
+values of :math:`W^{1/2}\Phi`. :math:`s^2` is the noise variance of a row
+of unit weight. The solve keeps a singular direction when its :math:`s_i` is above
 ``rcond`` times the largest (``rcond`` the second value of ``OALGO``,
 1e-8 by default); :math:`\gamma` sums over the kept directions, and the
 inverse is over them too: a direction the solve leaves out of the weights
@@ -847,13 +849,16 @@ their number. ``pot.tadah`` gets two keys:
   parameterisation of ``WEIGHTS`` (with ``NORM true`` and ``BF_Linear`` or
   ``Kern_Linear`` that of the weights of the raw descriptors). A weight
   ``FIXINDEX`` pins has no variance: its row and column are 0.
-- :ref:`WNOISE`: the noise variance of one value of each row type the fit
-  had rows of with a non-zero weight, :math:`s^2/W_t` for ``E``
-  (``EWEIGHT``), ``F`` (``FWEIGHT``) and ``S`` (``SWEIGHT``), in raw units
-  (eV², (eV/Å)², (eV/Å³)²), for a structure of weight 1. A fit without
-  energies of a non-zero weight (``EWEIGHT 0``) lists no ``E``: ``tadah
-  predict --error`` refuses such a potential, since every prediction has an
-  energy, and ``tadah train`` warns when it writes it.
+- :ref:`WNOISE`: the noise variance of one observation of each type the
+  fit observed, :math:`s^2 \sigma_t^2`, :math:`\sigma_t` the absolute part
+  of the error scale of the type in the units of the data: for ``E`` that
+  of the energy per atom ((eV/atom)²; under ``ENORM SQRT`` that of
+  :math:`E/\sqrt N`), for ``F`` a force component ((eV/Å)²) and for ``S`` a
+  diagonal stress entry ((eV/Å³)²), for an observation of priority 1. A fit
+  without energies (``ENERGY false``, or every structure's ``eweight`` 0)
+  lists no ``E``: ``tadah predict --error`` refuses such a potential, since
+  every prediction has an energy, and ``tadah train`` warns when it writes
+  it.
 
 When the fit has no more observations than effective weights
 (:math:`n_\mathrm{obs} \le \gamma`) the noise variance is undefined: no
@@ -886,8 +891,8 @@ that includes the potential; a refusal names where it came from.
 and with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``, whose solve of
 the kernel matrix computes no covariance; implementation 1 computes one), and
 before ``pot.tadah`` is written when the covariance is undefined; the message
-says why and what to change (for too few observations: more data with a
-non-zero weight).
+says why and what to change (for too few observations: more data of
+priority above 0).
 
 .. versionchanged:: 1.6.0
    ``WCOV`` and ``WNOISE`` replace ``SIGMA``, which Tadah! 1.0.0 to 1.5.0
@@ -899,9 +904,9 @@ non-zero weight).
    and with ``FIXINDEX`` the file had a row per free weight only. The
    evidence approximation (``LAMBDA -1``) counts the observations alone
    (it counted the design matrix's augmentation rows, one per weight, and
-   its rows of weight 0), so the λ and the weights of a ``LAMBDA -1`` fit
+   its rows of priority 0), so the λ and the weights of a ``LAMBDA -1`` fit
    change: by a little when only the augmentation rows were counted, by
-   orders of magnitude in λ when the fit has many rows of weight 0 (a
+   orders of magnitude in λ when the fit has many rows of priority 0 (a
    ``FORCE true`` fit of structures stored with ``fweight 0``).
 
 Diagnostic output (verbose 2)
@@ -920,6 +925,8 @@ Related pages
 
 * :ref:`training` — quickstart introduction.
 * :ref:`ConfigSection` — every configuration key, with defaults.
+* :ref:`fit_objective` — the sum a fit minimises, its error scales and
+  priorities.
 * :ref:`prediction` — using a ``pot.tadah`` with ``tadah predict``.
 * :ref:`nested_fitting` — driving training from an outer
   hyperparameter optimiser.

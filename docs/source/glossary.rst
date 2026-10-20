@@ -28,6 +28,16 @@ Glossary and Abbreviations
    Learned Parameter
       Coefficient found by regression (:math:`\mathbf w`).
 
+   Error scale
+      The residual of an observation that costs one priority unit in a fit,
+      in the unit of the metric that measures it: ``ESIGMA`` (meV/atom),
+      ``FSIGMA`` (eV/Å), ``SSIGMA`` (GPa) (:ref:`fit_objective`).
+
+   Priority
+      A number >= 0 that multiplies the cost of an observation in a fit: the
+      ``eweight``, ``fweight`` or ``sweight`` of a structure times the
+      ``WDBFILE`` value of its dataset (:ref:`fit_objective`).
+
    Performance constraint
       A measurable (physical) property used as part of the loss.
 

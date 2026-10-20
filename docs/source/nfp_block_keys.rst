@@ -22,7 +22,7 @@ These keys appear outside ``OPTIMIZER``.
    * - ``LOSS``, ``FAILSCORE``, ``FAILSCORE_GRADING``
      - Loss function and failed evaluations: :doc:`nfp_losses`.
    * - ``PC_EMAE``, ``PC_ERMSE``, ``PC_ErRMSE``, ``PC_ERSQ``,
-       ``PC_FRMSE``, ``PC_SRMSE``
+       ``PC_FRMSE``, ``PC_SRMSE_GPA``
      - Validation metrics: :doc:`nfp_validation_targets`.
    * - ``PC_LAMMPS``, ``PC_FAILPROBE``
      - Script-derived targets and failure probe: :doc:`nfp_lammps_targets`.

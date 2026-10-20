@@ -1485,9 +1485,9 @@ class Writer:
     def pages(self):
         reg = self.reg
         check_fields(reg)
-        pc_lines = {'PC_EMAE', 'PC_ERMSE', 'PC_ErRMSE', 'PC_ERSQ', 'PC_SRMSE',
-                    'PC_FRMSE', 'PC_LAMMPS', 'PC_FAILPROBE', 'PC_OBSERVABLE',
-                    'LOSS', 'OPTIM'}
+        pc_lines = {'PC_EMAE', 'PC_ERMSE', 'PC_ErRMSE', 'PC_ERSQ',
+                    'PC_SRMSE_GPA', 'PC_FRMSE', 'PC_LAMMPS', 'PC_FAILPROBE',
+                    'PC_OBSERVABLE', 'LOSS', 'OPTIM'}
 
         def lines_key(k):
             return k.blocks == ['ROOT'] and (
@@ -1587,7 +1587,7 @@ class Writer:
                   'that make up the search space.')
         metrics = [k for k in reg.keys if lines_key(k)
                    and k.name in ('PC_EMAE', 'PC_ERMSE', 'PC_ErRMSE',
-                                  'PC_ERSQ', 'PC_SRMSE', 'PC_FRMSE')]
+                                  'PC_ERSQ', 'PC_SRMSE_GPA', 'PC_FRMSE')]
         pc.section('Validation metrics', self.place(pc, with_options(metrics)))
         # The script lines first, then what a script provides, then the
         # settings of the scripts.

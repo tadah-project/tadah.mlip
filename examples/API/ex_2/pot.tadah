@@ -1,22 +1,25 @@
-ATOM     Ta
-BIAS     true
-CGRID2B     LIN     4     1.0     5.3
-DIMER     false     0     false
-EWEIGHT     1.0
-FWEIGHT     1.0
-INIT2B     true
-INITMB     false
-LAMBDA     1e-8
-MODEL     M_BLR     BF_Linear
-NORM     false
-NUMERIC     14
-OALGO     1
-RCTYPE2B     Cut_Cos
-RCUT2B     5.3
-SGRID2B     GEOM     4     0.1     1.0
-SWEIGHT     1.0
-TYPE2B     D2_Blip     4     4     Ta     Ta
-VERBOSE     2
-WATOM     73
-WEIGHTS     -5.318656330932407528     0.380609748134734693     -0.336665868854840844     -0.054088440523269311     -0.082908752531337310
+ATOM              Ta
+BIAS              true
+CGRID2B           LIN   4   1   5.29999999999999982
+DIMER             false   0   false
+ENERGY            true
+ENORM             ATOM
+ESIGMA            1
+FORCE             false
+FSIGMA            0.100000000000000006   0
+INIT2B            true
+INITMB            false
+LAMBDA            1.00000000000000002e-08
+MODEL             M_BLR   BF_Linear
+NORM              false
+OALGO             1
+RCTYPE2B          Cut_Cos
+RCUT2B            5.29999999999999982
+SGRID2B           GEOM   4   0.100000000000000006   1
+SSIGMA            0.5
+STRESS            true
+TYPE2B            D2_Blip   4   4   Ta   Ta
+VERBOSE           2
+WATOM             73
+WEIGHTS           -5.35567937606469968   0.411328429820838726   -0.36815432864368397   -0.052383176997998715   -0.0782578120041150793
 

@@ -22,6 +22,5 @@ BIAS true
 NORM false
 VERBOSE 2
 
-EWEIGHT 1.0
-#FWEIGHT 1e-2
-#SWEIGHT 1e-3
+ESIGMA 1     # energy error scale, meV/atom
+SSIGMA 0.5   # stress error scale, GPa

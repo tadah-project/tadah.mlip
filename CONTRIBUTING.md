@@ -599,12 +599,19 @@ next build writes the pages again. In that text the name of an entry
 becomes a role, which links at its first mention in an entry (a name of
 several entries, the one closest to the entry's block or group, or an
 inline literal when none is), an abbreviation of the registry's
-`[abbreviations]` is spelled out at its first use on a page, and an
-example is a code block with its doc as the caption. The generator stops,
-naming what is missing, on a field of an example it does not show, an
+`[abbreviations]` is spelled out at its first use on a page, an example
+is a code block with its doc as the caption, and a check of an entry is
+its message as program output with the check's doc, which says when it
+comes, as the caption. Every field of the registry's objects and sections
+is listed in the generator (`FIELDS`, `SECTION_FIELDS`) as shown on the
+pages or with the reason it is not, such as a field of the tests or a
+message whose condition another field states. The generator stops, naming
+what is missing, on a field or a class it does not list (`Class.field`, or
+`SECTION.field`), a repeat rule or a check stage it has no words for, an
 optimiser or a library without a description, an annealer key without an
 example and an annealer range the code checks by hand without its
-`range_doc`. Any page cites an entry with a role:
+`range_doc`; a field the registry gains is therefore shown or listed
+before the pages build again. Any page cites an entry with a role:
 
 ```rst
 :hpo:key:`MAXEVAL`            a key, option, form, loss function, STRATEGY

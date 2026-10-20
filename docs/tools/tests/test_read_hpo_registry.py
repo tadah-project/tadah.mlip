@@ -867,17 +867,181 @@ class PagesTest(unittest.TestCase):
         self.assertIn('TADAH_OPTIM_SCALE=none',
                       ' '.join(field_items(env[1], 'Example')))
 
-    def test_a_case_field_the_pages_do_not_show_stops_the_generator(self):
-        # Pins: a field of an example that the generator does not render
-        # stops it, naming the field.
+    def test_a_registry_field_the_pages_do_not_account_for_stops_them(self):
+        # Pins: the generator accounts for every field of every object of
+        # the registry (an entry, an example, a check, an argument, ...) and
+        # of every section: the registry passes, the msg_of of its invalid
+        # lines included, and a field it does not list stops it, naming the
+        # class (or section) and the field, wherever the object is held; so
+        # does an object of a class it does not know.
+        # Before the fix: only the fields of an example were checked, and
+        # msg_of stopped the generator.
+        import copy
         import dataclasses
-        loader = self.rhr.load_loader(os.path.join(self.hpo, 'blueprint'))
-        self.rhr.check_case_fields(loader.Case)
-        Wider = dataclasses.make_dataclass(
-            'Wider', [('files', dict, dataclasses.field(default_factory=dict))],
-            bases=(loader.Case,))
-        with self.assertRaisesRegex(self.rhr.GenerationError, 'files'):
-            self.rhr.check_case_fields(Wider)
+        self.assertTrue(any(c.msg_of for c in self.reg.cases()))
+        self.rhr.check_fields(self.reg)
+        error = self.rhr.GenerationError
+
+        def wider(obj, name):
+            cls = type(obj)
+            new = dataclasses.make_dataclass(
+                cls.__name__, [(name, str, dataclasses.field(default='x'))],
+                bases=(cls,))
+            out = copy.copy(obj)
+            out.__class__ = new
+            return out
+        case = wider(next(iter(self.reg.cases())), 'files')
+        key = copy.copy(self.reg.keys[0])
+        key.examples = [case]
+        with self.assertRaisesRegex(error, r'\bCase\.files\b'):
+            self.rhr.check_fields(key)
+        with self.assertRaisesRegex(error, r'\bKey\.flavour\b'):
+            self.rhr.check_fields(wider(self.reg.keys[0], 'flavour'))
+        check = next(c for k in self.reg.keys for c in k.checks)
+        with self.assertRaisesRegex(error, r'\bCheck\.when\b'):
+            self.rhr.check_fields(wider(check, 'when'))
+        lexing = copy.copy(self.reg.lexing)
+        lexing.fields = dict(lexing.fields, flavour='x')
+        with self.assertRaisesRegex(error, r'\bLEXING\.flavour\b'):
+            self.rhr.check_fields(lexing)
+        widget = dataclasses.make_dataclass('Widget', [('name', str)])
+        with self.assertRaisesRegex(error, r'\bWidget\.name\b'):
+            self.rhr.check_fields(widget('x'))
+        # The generator itself stops on such a registry.
+        reg = copy.copy(self.reg)
+        reg.keys = [key] + list(self.reg.keys[1:])
+        with self.assertRaisesRegex(error, r'\bCase\.files\b'):
+            self.rhr.render(reg, self.optimizers, self.anneal)
+
+    def test_an_unknown_value_of_a_rule_field_stops_the_generator(self):
+        # Pins: a repeat rule or a check stage the generator has no words
+        # for stops it with the entry and the value, not a KeyError.
+        # Before the fix: a KeyError and a traceback.
+        import copy
+        reg = copy.copy(self.reg)
+        block = copy.copy(self.reg.blocks[0])
+        block.repeat = 'twice'
+        reg.blocks = [block] + list(self.reg.blocks[1:])
+        with self.assertRaisesRegex(self.rhr.GenerationError,
+                                    rf"{block.id}: .*'twice'"):
+            self.rhr.render(reg, self.optimizers, self.anneal)
+        reg = copy.copy(self.reg)
+        key = copy.copy(self.reg.keys[0])
+        key.repeat = 'twice'
+        reg.keys = [key] + list(self.reg.keys[1:])
+        with self.assertRaisesRegex(self.rhr.GenerationError,
+                                    rf"{re.escape(key.id)}: .*'twice'"):
+            self.rhr.render(reg, self.optimizers, self.anneal)
+
+    def test_the_long_docs_of_sections_blocks_and_groups(self):
+        # Pins: the long_doc of each section ([lexing], [reading],
+        # [structure], [optim], [lammps_script]), of each block and of the
+        # optimiser group is a paragraph of its entry, as the registry
+        # writes it ([optim]'s in the entry of OPTIM).
+        # Before the fix: none of them was shown; the LAMMPS script entry
+        # lost its long_doc when the registry took it out of the section's
+        # fields.
+        entries = self.page_entries()
+        spelled = [f' ({s})' for s in self.reg.abbreviations.values()]
+        sections = [self.reg.lexing, self.reg.reading, self.reg.structure,
+                    self.reg.optim, self.reg.lammps_script]
+        items = [s for s in sections if s is not None] + list(
+            self.reg.blocks) + list(self.reg.groups.values())
+        checked = 0
+        for e in items:
+            if not e.long_doc:
+                continue
+            checked += 1
+            ident = 'ROOT.OPTIM' if e.id == 'OPTIM' else e.id
+            with self.subTest(entry=e.id):
+                text = ' '.join(words_of(p) for p in
+                                paragraphs_of(entries[ident][2]))
+                for s in spelled:
+                    text = text.replace(s, '')
+                self.assertIn(' '.join(e.long_doc.replace('`', '').split()),
+                              text)
+        self.assertGreaterEqual(checked, 12)
+
+    def test_checks_are_quoted_with_when_they_come(self):
+        # Pins: each check of an entry (its checks; a block's requires and
+        # close_checks; the checks of [optim], in the entry of OPTIM; the
+        # checks of an environment variable) is a code block of program
+        # output in the entry's Checks field, its caption the check's doc,
+        # in which a placeholder of the message is an inline literal.
+        # Before the fix: no check was shown, among them the limit of
+        # TADAH_PC_WORKER_TIMEOUT and every check of [optim].
+        entries = self.page_entries()
+        spelled = [f' ({s})' for s in self.reg.abbreviations.values()]
+        checked = 0
+        for e in self.reg.entries():
+            name = type(e).__name__
+            if name == 'Section':
+                checks = list(e.fields.get('checks', []))
+            elif name == 'Block':
+                checks = list(e.requires) + list(e.close_checks)
+            else:
+                checks = list(getattr(e, 'checks', []))
+            if not checks:
+                continue
+            ident = 'ROOT.OPTIM' if e.id == 'OPTIM' else e.id
+            items = field_items(entries[ident][2], 'Checks') or []
+            shown = []
+            for item in items:
+                m = re.match(r'\.\. code-block:: text\n\s+:caption: (.*)\n'
+                             r'\n((?:.*\n?)*)$', item)
+                self.assertIsNotNone(m, (ident, item[:80]))
+                shown.append((m.group(1), ' '.join(m.group(2).split())))
+            for c in checks:
+                checked += 1
+                with self.subTest(entry=ident, message=c.msg[:60]):
+                    msg = ' '.join(c.msg.split())
+                    captions = [cap for cap, text in shown if text == msg]
+                    self.assertTrue(captions, msg)
+                    doc = ' '.join(c.doc.replace('`', '').split())
+                    found = []
+                    for cap in captions:
+                        words = words_of(cap)
+                        for s in spelled:
+                            words = words.replace(s, '')
+                        found.append(words)
+                        self.assertIsNone(re.search(
+                            r'(?<!\$)\{\w+\}', re.sub(r'``[^`]*``', '', cap)),
+                            cap)
+                    self.assertIn(doc, found)
+        self.assertGreater(checked, 300)
+        env = self.reg.by_id()['ENV.TADAH_PC_WORKER_TIMEOUT']
+        self.assertTrue(env.checks)
+        body = entries['ENV.TADAH_PC_WORKER_TIMEOUT'][2]
+        self.assertIn('9.2e15', ' '.join(field_items(body, 'Checks')))
+
+    def test_a_block_given_once_per_optimiser(self):
+        # Pins: the Repeat field of a block the parser takes once for each
+        # optimiser (INNER: the STRATEGY and REFINE blocks share one, and so
+        # do two EXPLORE blocks) says so.
+        # Before the fix: "Once in each enclosing block", which an INNER
+        # block in REFINE after one in STRATEGY contradicts.
+        entries = self.page_entries()
+        blocks = [b for b in self.reg.blocks
+                  if b.repeat == 'error_per_parent']
+        self.assertTrue(blocks)
+        for b in blocks:
+            with self.subTest(block=b.id):
+                repeat = field_of(entries[b.id][2], 'Repeat')
+                self.assertIn('once per optimiser', repeat.lower())
+                self.assertNotIn('each enclosing block', repeat)
+
+    def test_fields_left_out_are_stated_in_the_text(self):
+        # Guard: the keys of [optim]'s positive_only and its
+        # auto_excluded_prefix are not shown as fields; the entry of
+        # OPTIM AUTO states both in its text.
+        optim = self.reg.optim.fields
+        body = ' '.join(words_of(p) for p in paragraphs_of(
+            self.page_entries()['OPTIM.AUTO'][2]))
+        for name in optim.get('positive_only', []):
+            self.assertRegex(body, r'\b' + re.escape(name) + r'\b')
+        prefix = optim.get('auto_excluded_prefix')
+        if prefix:
+            self.assertIn(f'starts with {prefix}', body)
 
     def test_values_placeholders_are_in_the_syntax(self):
         # Pins: each <name> the Values field describes is in the Syntax of

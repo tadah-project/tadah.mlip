@@ -201,6 +201,50 @@ class ReadTomlTest(unittest.TestCase):
             'MBLOCK')
         self.assertIn('   **Deprecated.** Line one.\n   Line two.\n', sec)
 
+    def test_retired_key_keeps_its_label_with_reason_replacement_and_conversion(self):
+        # Pins: a retired key (CORE's blueprint field `retired`, a table of
+        # reason, replacement and conversion) keeps its section and label
+        # (an anchor the published pages cite), after the title a warning
+        # "**Retired.**" with the reason, then "Replaced by:" and
+        # "Conversion:", before the format line; it shows no example and no
+        # default (a retired key has neither).
+        # Before the fix: the field was not rendered: the section read as
+        # an ordinary key.
+        bp = blueprint()
+        bp['TYPES']['DOUBLE'] = {'value_type': ['DOUBLE'],
+                                 'value_format': ['<double>'],
+                                 'value_N': [1],
+                                 'examples': ['2.0']}
+        bp['ALLOWED_KEYS']['FWEIGHT'] = {
+            'INHERIT': ['TYPES.DOUBLE'],
+            'description': 'Retired: the force weight.',
+            'examples': [],
+            'retired': {'reason': 'It weighted each force component.',
+                        'replacement': 'FSIGMA, the force error scale',
+                        'conversion': 'FSIGMA = 1/sqrt(FWEIGHT) eV/A.'}}
+        sec = self.section(self.rt.render(bp), 'FWEIGHT')
+        self.assertTrue(sec.startswith('.. _FWEIGHT:\n\nFWEIGHT\n'))
+        self.assertIn('.. warning::\n\n   **Retired.** It weighted each force '
+                      'component.\n', sec)
+        self.assertIn('   Replaced by: FSIGMA, the force error scale\n', sec)
+        self.assertIn('   Conversion: FSIGMA = 1/sqrt(FWEIGHT) eV/A.\n', sec)
+        self.assertLess(sec.index('**Retired.**'), sec.index('[*DOUBLE*]'))
+        self.assertNotIn('*Example*', sec)
+        self.assertNotIn('*Default*', sec)
+        self.assertNotIn('**Retired.**', self.section(self.rt.render(bp),
+                                                      'LAMBDA'))
+
+    def test_page_intro_explains_retired_keys(self):
+        # Pins: the page says what a retired key does: a potential that has
+        # one loads, with one notice per load, and a fit refuses it with
+        # its conversion.
+        page = self.rt.render(blueprint())
+        intro = page[:page.index('.. _LAMBDA:')]
+        self.assertIn('**Retired**', intro)
+        self.assertIn('one notice', intro)
+        self.assertIn('refuses', intro)
+        self.assertIn('conversion', intro)
+
 
 if __name__ == '__main__':
     unittest.main()

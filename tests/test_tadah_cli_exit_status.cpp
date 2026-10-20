@@ -1720,6 +1720,70 @@ TEST_CASE("Subcommand: predict -A leaves out a dataset without the data, and "
   }
 }
 
+/* The entry of weighted_entry() with the reference energy `energy`. */
+std::string entry_with_energy_weight(const std::string& label, const std::string& weights,
+                                     const std::string& energy,
+                                     const std::string& second_atom) {
+  std::string e = weighted_entry(label, weights, second_atom, "0.1", "0.001");
+  const std::string from = "\n-1.0\n";
+  e.replace(e.find(from), from.size(), "\n" + energy + "\n");
+  return e;
+}
+
+/* Pins: `tadah predict -A` leaves a structure stored with energy weight 0
+ * (weights line `0 1 1`, a placeholder energy of 1000 eV) out of the energy
+ * metrics: on S1, W, S3 every Energy MAE, RMSE and R^2 line equals the one
+ * for S1, S3 alone. A dataset whose structures all have energy weight 0
+ * (noe.tadah) is not measured: with S.tadah, each Energy line prints nan
+ * for it and a mean equal to S.tadah's value, and a note names it; alone
+ * it exits 0 (the energy is predicted whatever the metrics measure).
+ * Before the fix: W's 1000 eV were counted, and noe.tadah's placeholders
+ * gave numbers. */
+TEST_CASE("Subcommand: predict -A leaves structures with energy weight 0 out "
+          "of the energy metrics",
+          "[TadahCLI][predict][weight0]") {
+  ScratchCwd cwd("predict_eweight0");
+  std::ofstream("pot.tadah") << kPairPotential;
+  const std::string s1 = entry_with_energy_weight("S1", "1 1 1", "-1.0", "1.40 1.30 1.20");
+  const std::string w = entry_with_energy_weight("W", "0 1 1", "1000.0", "1.50 1.45 1.35");
+  const std::string s3 = entry_with_energy_weight("S3", "1 1 1", "-1.2", "1.60 1.25 1.30");
+  std::ofstream("full.tadah") << s1 << w << s3;
+  std::ofstream("kept.tadah") << s1 << s3;
+  std::ofstream("S.tadah") << s1 << s3;
+  std::ofstream("noe.tadah")
+      << entry_with_energy_weight("N1", "0 1 1", "1000.0", "1.40 1.30 1.20")
+      << entry_with_energy_weight("N2", "0 1 1", "2000.0", "1.60 1.25 1.30");
+  const CliRun full = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "full.tadah", "-A"});
+  INFO("full: status " << full.status << "\n" << reported(full));
+  REQUIRE(full.status == 0);
+  const CliRun kept = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "kept.tadah", "-A"});
+  INFO("kept: status " << kept.status << "\n" << reported(kept));
+  REQUIRE(kept.status == 0);
+  for (const char* metric : {"Energy MAE", "Energy RMSE", "Energy R^2"}) {
+    INFO(metric);
+    const std::string line = metric_line(kept.out, metric);
+    REQUIRE_FALSE(line.empty());
+    CHECK(metric_line(full.out, metric) == line);
+  }
+  const CliRun both = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "S.tadah",
+                                 "noe.tadah", "-A"});
+  const std::string rep = reported(both);
+  INFO("both files: status " << both.status << "\n" << rep);
+  CHECK(both.status == 0);
+  for (const std::string kind : {" MAE", " RMSE", " R^2"}) {
+    const std::vector<std::string> f = fields_of(metric_line(both.out, "Energy" + kind));
+    INFO("Energy" + kind << ": " << metric_line(both.out, "Energy" + kind));
+    REQUIRE(f.size() == 5u);  // name (2 words), mean, Val1, Val2
+    CHECK(f[2] == f[3]);
+    CHECK((f[4] == "nan" || f[4] == "-nan"));  // as printed (no isnan: fast-math)
+  }
+  CHECK(contains(rep, "noe.tadah"));
+  CHECK(contains(rep, "energy weight 0"));
+  const CliRun alone = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "noe.tadah", "-A"});
+  INFO("alone: status " << alone.status << "\n" << reported(alone));
+  CHECK(alone.status == 0);
+}
+
 /* Pins: `tadah predict` does not re-apply the training-only weight knobs a
  * potential records (`tadah train` writes its whole configuration into
  * pot.tadah): with `WDBFILE 1 0` in the potential, `predict -F -A` on two

@@ -25,6 +25,9 @@ class BlueprintKey:
         self.cli_excludes = []
         self.cli_needs = []
         self.cli_required = False
+        # CORE's blueprint field `retired` (reason, replacement and
+        # conversion); empty for a key that is not retired.
+        self.retired = {}
 
 class BlueprintKeyGroup:
     def __init__(self):
@@ -161,6 +164,7 @@ def build_blueprint_key(full_key, data):
     bk.cli_excludes = data.get("cli_excludes", [])
     bk.cli_needs = data.get("cli_needs", [])
     bk.cli_required = bool(data.get("cli_required", False))
+    bk.retired = dict(data.get("retired", {}) or {})
 
     return bk
 
@@ -468,6 +472,16 @@ def build_key_info(bk: BlueprintKey):
     out.append(firstLine)
 
     out.append(f"    {bk.description.strip()}")
+
+    # A retired key: its option is kept only to give the conversion.
+    if bk.retired:
+        def one(field):
+            return " ".join(str(bk.retired.get(field, "")).split())
+        out.append(f"    **Retired**: {one('reason')}")
+        out.append(f"    **Replaced by**: {one('replacement')}")
+        out.append(f"    **Conversion**: {one('conversion')}")
+        out.append("")
+        return out
 
 
 

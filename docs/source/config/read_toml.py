@@ -126,6 +126,16 @@ every ignored key, :ref:`EMBF0 and RHOFORM without a DM_REAM block
 potential (``WARNING: pair tadah: potential 'pot.tadah': Deprecated key
 MBLOCK is ignored: ...``).
 
+A key marked **Retired** weighted the training data of a fit of an earlier
+version; another key replaces it. A potential that has it still loads
+(``tadah predict``, ``pair_style tadah``, ``tadah analysis``, ``tadah
+properties``, ``tadah refit --edit``): Tadah!MLIP checks its value, ignores
+it and writes one notice per load that lists the retired keys of the file
+(``WARNING: Retired keys EWEIGHT (line 8 of old.tadah) and ... are ignored:
+...``). Every fit (``tadah train``, the fits of nested fitting, a
+program's own training) refuses a configuration that has one, with its
+conversion; ``tadah explain <KEY>`` gives the conversion too.
+
 '''
 
 def _deepcopy(obj):
@@ -190,6 +200,20 @@ def render_key(key_name: str, entry: dict) -> str:
     if entry.get('deprecated', ""):
         reason = entry['deprecated'].strip().replace('\n', '\n   ')
         out.append(f"\n.. warning::\n\n   **Deprecated.** {reason}\n\n")
+
+    # ---------------------------------------------------------------------
+    # Retired key (blueprint field `retired`: reason, replacement and
+    # conversion): a potential that has it loads, a fit refuses it with the
+    # conversion. Its section and label stay, for the pages that cite it.
+    # ---------------------------------------------------------------------
+    retired = entry.get('retired') or {}
+    if retired:
+        def one(field):
+            return ' '.join(str(retired.get(field, '')).split())
+        out.append("\n.. warning::\n\n"
+                   f"   **Retired.** {one('reason')}\n\n"
+                   f"   Replaced by: {one('replacement')}\n\n"
+                   f"   Conversion: {one('conversion')}\n\n")
 
     # ---------------------------------------------------------------------
     # VALUE TYPE + FORMAT

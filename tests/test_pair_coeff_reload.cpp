@@ -32,8 +32,12 @@
 //
 // One case gives pair_style tadah a potential of an earlier version, whose
 // key lines include the keys that prepared its training data (EFILTER,
-// FFILTER, ESHIFT_ATOM, ESHIFT_DBATOM, EWEIGHT_TEMP, ZERO_COM_FORCE, WDBFILE,
-// WDBFILE_AUTO): pair_style tadah reads none of them.
+// FFILTER, ESHIFT_ATOM, ESHIFT_DBATOM, ZERO_COM_FORCE, WDBFILE, and the
+// retired EWEIGHT_TEMP and WDBFILE_AUTO): pair_style tadah reads none of
+// them. Another gives it a potential of Tadah! 1.5.0 and the published
+// Tadah!Kr1, whose retired EWEIGHT, FWEIGHT and SWEIGHT lines (and
+// WDBFILE_AUTO) change nothing: each pair_coeff writes one WARNING that
+// lists them.
 //
 // It needs pair_style tadah, so a build without TADAH_ENABLE_NFP skips it.
 
@@ -52,14 +56,17 @@
 #include <pair_tadah.h>
 #endif
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <exception>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 #include <unistd.h>
 
@@ -137,7 +144,9 @@ const char* const kLjTaNb =
     "WATOM     73     41\n"
     "WEIGHTS     14.204213349318765225     2604.396965191186154698\n";
 
-/* E: the descriptors of A, M_BLR BF_Polynomial2. */
+/* E: the descriptors of A, M_BLR BF_Polynomial2 (as in Tadah.LAMMPS, without
+ * the lines of the keys EWEIGHT, FWEIGHT, SWEIGHT and WDBFILE_AUTO, which
+ * Tadah! 1.6.0 retired and no load of a potential reads). */
 const char* const kPoly2Ta =
     "ATOM           Ta\n"
     "BIAS           false\n"
@@ -148,9 +157,7 @@ const char* const kPoly2Ta =
     "DIMER          false   0   false\n"
     "ESHIFT_ATOM    false\n"
     "ESHIFT_DBATOM  false\n"
-    "EWEIGHT        1\n"
     "FORCE          false\n"
-    "FWEIGHT        1\n"
     "INIT2B         true\n"
     "INITMB         true\n"
     "LAMBDA         9.99999999999999955e-07\n"
@@ -168,11 +175,9 @@ const char* const kPoly2Ta =
     "0.464158883361277919   0.999999999999999889\n"
     "SGRIDMB        8\n"
     "STRESS         true\n"
-    "SWEIGHT        1\n"
     "TYPE2B         D2_Blip   4   4   Ta   Ta\n"
     "TYPEMB         DM_mBlipEnv   0   1   1   5   5   Ta   Ta\n"
     "WATOM          0.308999999999999997\n"
-    "WDBFILE_AUTO   0\n"
     "WEIGHTS        35.6589071552540062   3.66711246876482999   "
     "14.9821352083998462   -12.4461670658942953   14.060495641135903   "
     "27.9792881344421716   30.3471487066385563   15.9190005053368999   "
@@ -190,6 +195,50 @@ const char* const kPoly2Ta =
     "-2.02101303656082765   5.40584654332275161   -0.845723481246445252   "
     "3.79298054776447202   -6.06431610500038332\n"
     "ZERO_COM_FORCE false\n";
+
+/* A potential of Tadah! 1.5.0, byte for byte as `tadah train -c
+ * config.train` of tadah 1.5.0 wrote it (D2_Blip 3 3 Ta Ta, Cut_Cos at
+ * 5 A, M_BLR BF_Linear, FORCE true, OALGO 3, EWEIGHT 1.0 and FWEIGHT 100, on
+ * three 54-atom bcc Ta cells; MLIP's tests_data/potentials_1_5 has the same
+ * file): its EWEIGHT, FWEIGHT, SWEIGHT and WDBFILE_AUTO lines, retired in
+ * Tadah! 1.6.0, are lines 8, 10, 23 and 27. */
+const char* const kTa150 =
+    "ATOM              Ta\n"
+    "BIAS              false\n"
+    "CGRID2B           2.799999999999999822   3.500000000000000000   4."
+    "200000000000000178\n"
+    "DBFILE            db3.tadah\n"
+    "DIMER             false   0   false\n"
+    "ESHIFT_ATOM       false\n"
+    "ESHIFT_DBATOM     false\n"
+    "EWEIGHT           1.0\n"
+    "FORCE             true\n"
+    "FWEIGHT           100\n"
+    "INIT2B            true\n"
+    "INITMB            false\n"
+    "LAMBDA            0\n"
+    "LSCALE            1.0\n"
+    "MODEL             M_BLR   BF_Linear\n"
+    "NORM              false\n"
+    "OALGO             3\n"
+    "RCTYPE2B          Cut_Cos\n"
+    "RCUT2B            5.0\n"
+    "SGRID2B           2.000000000000000000   2.000000000000000000   2."
+    "000000000000000000\n"
+    "SIGMA             3   0.000000005483394400   0.000000003255527335 "
+    "  -0.000000005498611896   0.000000003255527335   0.000000020119369"
+    "433   -0.000000008406723265   -0.000000005498611896   -0.000000008"
+    "406723265   0.000000195920250400\n"
+    "STRESS            false\n"
+    "SWEIGHT           1.0\n"
+    "TYPE2B            D2_Blip   3   3   Ta   Ta\n"
+    "UNCERTAINTY       false\n"
+    "WATOM             73\n"
+    "WDBFILE_AUTO      0.0\n"
+    "WEIGHTS           -0.037356236243018211   -0.056813410107936016   "
+    "-0.057448075219024446\n"
+    "ZERO_COM_FORCE    false\n"
+    "\n";
 
 /* A potential file written for the test case, removed however it ends. */
 struct PotFile {
@@ -945,15 +994,125 @@ TEST_CASE("pair_style tadah: a second pair_coeff logs the lines of the "
 #endif
 }
 
+#ifdef TADAH_ENABLE_NFP
+/* The lines of @p text that contain every one of @p needles. */
+static std::size_t lines_with_all(const std::string& text,
+                                  const std::vector<std::string>& needles) {
+  std::istringstream in(text);
+  std::size_t n = 0;
+  for (std::string line; std::getline(in, line);) {
+    bool all = true;
+    for (const auto& w : needles) all = all && line.find(w) != std::string::npos;
+    if (all) ++n;
+  }
+  return n;
+}
+
+/* @p text without its lines whose first word is one of @p keys. */
+static std::string without_key_lines(const std::string& text,
+                                     const std::vector<std::string>& keys) {
+  std::istringstream in(text);
+  std::string out;
+  for (std::string line; std::getline(in, line);) {
+    std::istringstream ls(line);
+    std::string first;
+    ls >> first;
+    if (std::find(keys.begin(), keys.end(), first) == keys.end())
+      out += line + "\n";
+  }
+  return out;
+}
+#endif
+
+/* Pins: a potential of Tadah! 1.5.0 (kTa150, its EWEIGHT, FWEIGHT, SWEIGHT
+ * and WDBFILE_AUTO lines on lines 8, 10, 23 and 27) and the published
+ * Tadah!Kr1 (docs/source/mlips/Tadah.Kr1, a copy: its EWEIGHT, FWEIGHT and
+ * SWEIGHT lines on lines 7, 9 and 20), each given to pair_coeff twice in
+ * one LAMMPS instance (pair_coeff, run 0, pair_coeff, run 0), write one
+ * LAMMPS WARNING per pair_coeff that lists the retired keys with their
+ * lines ("WARNING: pair tadah: potential '<file>': Retired keys EWEIGHT
+ * (line 8 of <file>), FWEIGHT (line 10 of <file>), SWEIGHT (line 23 of
+ * <file>) and WDBFILE_AUTO (line 27 of <file>) are ignored: ..."): two in
+ * the log of the instance, none on standard error; and both runs give the
+ * energy and force norm of a fresh instance given the same file without
+ * those lines, to 1e-12.
+ * Before the fix: the keys were stored as keys of the model, with no
+ * WARNING. */
+TEST_CASE("pair_style tadah: a potential with retired keys gives one notice "
+          "per pair_coeff, and the energy of the file without them",
+          "[pair_coeff][lammps][retired]") {
+#ifndef TADAH_ENABLE_NFP
+  TADAH_SKIP("pair_style tadah is not built (TADAH_ENABLE_NFP OFF)");
+#else
+  tadah::core::PeriodicTable::initialize();
+  struct Case {
+    std::string tag, text, species;
+    std::vector<std::pair<std::string, int>> retired;  // key, line
+  };
+  const std::string kr1 =
+      read_text(std::string(TADAH_PUBLISHED_MLIPS_DIR) + "/Tadah.Kr1");
+  REQUIRE_FALSE(kr1.empty());
+  const std::vector<Case> cases = {
+      {"ta150", kTa150, "Ta",
+       {{"EWEIGHT", 8}, {"FWEIGHT", 10}, {"SWEIGHT", 23},
+        {"WDBFILE_AUTO", 27}}},
+      {"kr1", kr1, "Kr", {{"EWEIGHT", 7}, {"FWEIGHT", 9}, {"SWEIGHT", 20}}}};
+  for (const Case& c : cases) {
+    INFO(c.tag);
+    const PotFile pot(c.tag, c.text.c_str());
+    std::vector<std::string> keys;
+    std::string listed;
+    for (std::size_t k = 0; k < c.retired.size(); ++k) {
+      keys.push_back(c.retired[k].first);
+      listed += (k == 0 ? "" : k + 1 == c.retired.size() ? " and " : ", ") +
+                c.retired[k].first + " (line " +
+                std::to_string(c.retired[k].second) + " of " + pot.path + ")";
+    }
+    const std::string bare_text = without_key_lines(c.text, keys);
+    const PotFile bare(c.tag + "_bare", bare_text.c_str());
+    const Energy want = fresh_file(bare.path, c.species, 1);
+
+    const std::string log_path = "pair_coeff_reload_" +
+                                 std::to_string(::getpid()) + "_" + c.tag +
+                                 ".log";
+    const RemoveOnExit remove_log{log_path};
+    std::ostringstream err;
+    std::streambuf* old = std::cerr.rdbuf(err.rdbuf());
+    Energy first, second;
+    {
+      LMPPtr lmp = make_instance(log_path);
+      make_cell(lmp, 1);
+      ok(lmp, "pair_coeff * * " + pot.path + " " + c.species);
+      first = run0(lmp);
+      ok(lmp, "pair_coeff * * " + pot.path + " " + c.species);
+      second = run0(lmp);
+    }  // LAMMPS destroyed: log.lammps flushed and closed
+    std::cerr.rdbuf(old);
+    const std::string log = read_text(log_path);
+    INFO("log.lammps:\n" << log << "\nstderr:\n" << err.str());
+    INFO("without the retired lines: " << want << "; first run: " << first
+                                       << "; second run: " << second);
+    CHECK(same(first, want));
+    CHECK(same(second, want));
+    CHECK(lines_with_all(log, {"WARNING: pair tadah: potential '" + pot.path +
+                                   "'",
+                               "Retired keys " + listed + " are ignored"}) ==
+          2u);
+    CHECK(lines_with_all(log, {"Retired key"}) == 2u);
+    CHECK(err.str().find("Retired key") == std::string::npos);
+  }
+#endif
+}
+
 /* Pins: pair_coeff * * B-old Ta, B-old being the pair potential B with the
  * key lines of the keys that prepared the training data of a potential of
  * an earlier version (EFILTER -12 -2, FFILTER 0.01, ESHIFT_ATOM true,
  * ESHIFT_DBATOM true, EWEIGHT_TEMP 300, ZERO_COM_FORCE true, WDBFILE 1 0,
  * WDBFILE_AUTO 1), gives B's energy and force norm, to 1e-12: pair_style
  * tadah reads none of the eight (tadah predict ignores them, and tadah
- * train writes them into the training record), so a potential that has
- * them as key lines runs in
- * LAMMPS as one without them.
+ * train writes the six that are not retired into the training record), so
+ * a potential that has them as key lines runs in LAMMPS as one without
+ * them.
  * Before the fix: passes as well (a pin: LammpsTadah builds the model from
  * the descriptor and model keys only). */
 TEST_CASE("pair_style tadah: the dataset keys of an older potential change "

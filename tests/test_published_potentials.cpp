@@ -320,7 +320,12 @@ TEST_CASE("Published potentials: Tadah!N2 with element pairs other than "
    * so its descriptors must be declared for `* *`. Declared for `N N` they
    * applied to no pair the evaluation sees, and the model predicted from
    * zero descriptors without a word. The published file (`* *`) loads; the
-   * same file with `N N` pairs is refused wherever it is loaded. */
+   * same file with `N N` pairs is refused wherever it is loaded. A fit
+   * refuses the published file for its retired EWEIGHT, FWEIGHT and SWEIGHT
+   * lines first (the CLI case "the published potentials load with one
+   * notice ..."), so the trainer is built from the file as a retrain
+   * converts it, without those lines: the `N N` file is refused, the `* *`
+   * one is not. */
   const std::string msg =
       "DIMER evaluates every atom as Z=1; declare TYPE2B/TYPEMB with * * "
       "element pairs";
@@ -342,6 +347,21 @@ TEST_CASE("Published potentials: Tadah!N2 with element pairs other than "
   }
   const Context n_n = CoreUserConfigParser().parse(lines);
   REQUIRE(n_n.get<bool>("DIMER", 0));
+  // The two files as a retrain converts them: without the retired lines.
+  std::vector<std::string> converted, converted_n_n;
+  {
+    std::ifstream in(kMlipsDir + "/tadah.n2");
+    REQUIRE(in.is_open());
+    std::size_t i = 0;
+    for (std::string line; std::getline(in, line); ++i) {
+      if (line.rfind("EWEIGHT", 0) == 0 || line.rfind("FWEIGHT", 0) == 0 ||
+          line.rfind("SWEIGHT", 0) == 0)
+        continue;
+      converted.push_back(line);
+      converted_n_n.push_back(lines.at(i));
+    }
+    REQUIRE(converted.size() + 3 == lines.size());
+  }
 
   /* tadah predict */
   CHECK_THROWS_WITH(Potential(n_n), Catch::Contains(msg));
@@ -350,9 +370,9 @@ TEST_CASE("Published potentials: Tadah!N2 with element pairs other than "
   /* tadah train */
   {
     tadah::mlip::memory::MLIPWorkspaceManager ws;
-    Context ctx = n_n;
+    Context ctx = CoreUserConfigParser().parse(converted_n_n);
     CHECK_THROWS_WITH(Trainer(ctx, ws), Catch::Contains(msg));
-    Context published = load(kMlipsDir + "/tadah.n2", Forces::no);
+    Context published = CoreUserConfigParser().parse(converted);
     CHECK_NOTHROW(Trainer(published, ws));
   }
 

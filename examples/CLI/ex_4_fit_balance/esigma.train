@@ -1,0 +1,4 @@
+# The fit of config.train with energies ten times tighter than the
+# default error scale of 1 meV/atom.
+CONFIG   config.train
+ESIGMA   0.1

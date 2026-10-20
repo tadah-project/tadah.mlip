@@ -280,6 +280,57 @@ set_tests_properties(tadah_docs_site_layout PROPERTIES
 
 
 # ------------------------------------------------------------------
+# 7b. The balance table of a fit
+# ------------------------------------------------------------------
+# cli_balance/check_fit_balance.py runs `tadah train` and `tadah hpo` on a
+# tiny problem (no LAMMPS, no network): tadah train prints the table of its
+# fit once, with the legend of its columns, and its potential's training
+# record ends with the same lines (-v 0: printed nothing, recorded all the
+# same; a task file of two TASK train sections: two tables, one legend);
+# tadah hpo prints the table of best_pot.tadah once, at the end of the run,
+# the table of its training record and of a retrain of it, and its BDUMP
+# archives have none; a run killed by SIGKILL after its first best has the
+# table in best_pot.tadah. Before the fix: no table, printed or recorded.
+# With FIXINDEX pinning every coefficient, tadah train, the best_pot.tadah
+# of tadah hpo and a retrain of it have the same none line (OALGO 1 and 3);
+# the none line of M_KRR implementation 2, wrapped to 78 characters, is
+# printed without the legend by tadah train and tadah hpo. Before the fix:
+# tadah train wrote a table of 0 coefficients, tadah hpo none; tadah hpo
+# printed the legend after a none line of more than one line.
+add_test(NAME tadah_fit_balance_train
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/cli_balance/check_fit_balance.py
+    --tadah $<TARGET_FILE:tadah> --case train)
+set_tests_properties(tadah_fit_balance_train PROPERTIES
+  LABELS "train"
+  TIMEOUT 300
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+foreach(_case pinned none)
+  add_test(NAME tadah_fit_balance_${_case}
+    COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/cli_balance/check_fit_balance.py
+      --tadah $<TARGET_FILE:tadah> --case ${_case}
+      --nfp $<IF:$<BOOL:${TADAH_ENABLE_NFP}>,ON,OFF>)
+  set_tests_properties(tadah_fit_balance_${_case} PROPERTIES
+    LABELS "train;hpo"
+    TIMEOUT 300
+    ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+endforeach()
+if(TADAH_ENABLE_NFP)
+  foreach(_case hpo hpo_killed)
+    add_test(NAME tadah_fit_balance_${_case}
+      COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/cli_balance/check_fit_balance.py
+        --tadah $<TARGET_FILE:tadah> --case ${_case})
+    set_tests_properties(tadah_fit_balance_${_case} PROPERTIES
+      LABELS "hpo"
+      TIMEOUT 300
+      ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+  endforeach()
+endif()
+
+
+# ------------------------------------------------------------------
 # 8. `tadah hpo` stopped by a signal exits with 128 + the signal number
 # ------------------------------------------------------------------
 # cli_signal/check_hpo_signal.py runs `tadah hpo` on a tiny problem (no

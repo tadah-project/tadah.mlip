@@ -18,3 +18,7 @@ Examples
 .. _cli_example_3:
 
 .. include:: ../../examples/CLI/ex_3_DM_mBlipEnv/README.rst
+
+.. _cli_example_4:
+
+.. include:: ../../examples/CLI/ex_4_fit_balance/README.rst

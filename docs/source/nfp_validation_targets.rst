@@ -30,10 +30,10 @@ A validation file is required whenever any validation metric is enabled.
 validation computes forces for ``PC_FRMSE`` and stresses for
 ``PC_SRMSE_GPA`` independently. The validation file holds ``DBFILE``,
 ``EFILTER`` and ``FFILTER`` (and ``CONFIG``); every other key is refused
-at its line (:ref:`validation`). The validation set is not
-fitted, so this includes the keys that set a fit: ``FORCE``, ``STRESS``,
-``ENERGY``, ``ENORM``, the error scales ``ESIGMA``, ``FSIGMA`` and
-``SSIGMA``, ``WDBFILE`` and the retired keys
+at its line (:ref:`validation`). The validation set is not fitted, so
+this includes the keys that set a fit: ``FORCE``, ``STRESS``, ``ENERGY``,
+``ENORM``, the :term:`error scales <error scale>` ``ESIGMA``, ``FSIGMA``
+and ``SSIGMA``, ``WDBFILE`` and the retired keys
 (:ref:`fit_objective_conversion`).
 
 Metric keys

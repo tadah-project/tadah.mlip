@@ -40,10 +40,11 @@ Glossary and Abbreviations
       ``WDBFILE`` value of its dataset (:ref:`fit_objective`).
 
    Balance table
-      The table that a fit prints and keeps in the training record of its
-      potential: per quantity and dataset, the observations, the residuals
-      and the share of the minimised sum and of the coefficients that each
-      determines (:ref:`fit_balance`).
+      The table of a fit, printed by ``tadah train`` and, for its best
+      potential, by ``tadah hpo``, and kept in the training record of the
+      potential: per quantity and dataset, the observations, the residuals,
+      the share of the minimised sum and the effective parameters of each
+      (:ref:`fit_balance`).
 
    Effective parameters
       How many of the coefficients a quantity, a dataset or the prior

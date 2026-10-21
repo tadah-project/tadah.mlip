@@ -57,7 +57,7 @@ An example dataset can be downloaded from :download:`here <quickstart/db.train>`
 The keys of the file:
 
 - :ref:`DBFILE` specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory.
-- :ref:`STRESS` ``true`` fits the stresses as well as the energies (as described below). The fit weights them with the default error scales, 1 meV/atom for the energy per atom and 0.5 GPa for the stress (:ref:`ESIGMA`, :ref:`SSIGMA`; :ref:`fit_objective` describes the sum a fit minimises).
+- :ref:`STRESS` ``true`` fits the stresses as well as the energies (as described below). The fit weights them with the default :term:`error scales <error scale>`, 1 meV/atom for the energy per atom and 0.5 GPa for the stress (:ref:`ESIGMA`, :ref:`SSIGMA`; :ref:`fit_objective` describes the sum a fit minimises).
 - The two-body (pair) block: :ref:`INIT2B` turns it on; :ref:`TYPE2B`, :ref:`RCUT2B` and :ref:`RCTYPE2B` set the descriptor (``D2_Blip``: four blip, i.e. cubic B-spline, radial functions), its cutoff distance and its cutoff function; :ref:`SGRID2B` and :ref:`CGRID2B` set the inverse widths and the centres of the blips. It is the pair block of :ref:`cli_example_1`.
 - The many-body block: :ref:`INITMB`, :ref:`TYPEMB`, :ref:`RCUTMB` and :ref:`RCTYPEMB` likewise. ``DM_mBlipEnv`` gives each atom an energy :math:`F(\rho)` of a pair density :math:`\rho` summed over its neighbours: :ref:`CGRIDMB` and :ref:`SGRIDMB` set the Gaussian that the density is built from, :ref:`CEMBFUNC` and :ref:`SEMBFUNC` the blips that :math:`F` is built from, :ref:`RCUTENV` takes :math:`F` smoothly to zero at low density, and :ref:`WATOM` scales the density of this dataset to about 1. :ref:`cli_example_3` explains these keys and how they were chosen.
 - Both blocks use the ``Cut_Cos`` cutoff (:ref:`cutoffs`): the energy and the force of a pair go smoothly to zero at the cutoff distance, so the energy is conserved when a pair crosses it in molecular dynamics. (``Cut_Dummy`` truncates instead; it is for testing only.)
@@ -95,7 +95,7 @@ The output of the ``predict`` subcommand includes three files:
    ``--error`` is refused: uncertainty output is removed.
    In Tadah! 1.0.0 to 1.5.0 its errors were not standard deviations
    (negative ones among them), and with any ``EWEIGHT``, ``FWEIGHT``,
-   ``SWEIGHT`` or priority of a structure other than 1 it scaled the
+   ``SWEIGHT`` or :term:`priority` of a structure other than 1 it scaled the
    predicted values too.
 
 .. _task_file:

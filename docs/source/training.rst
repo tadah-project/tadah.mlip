@@ -58,8 +58,9 @@ in order:
    per-descriptor metadata for ρ-collapse and out-of-range parameter
    combinations.
 #. **Fitting the regression model** declared by ``MODEL``: it minimises
-   the sum of :ref:`fit_objective`, with the error scales of the
-   configuration and the priorities of the data (``WDBFILE`` among them).
+   the sum of :ref:`fit_objective`, with the :term:`error scales
+   <error scale>` of the configuration and the :term:`priorities
+   <priority>` of the data (``WDBFILE`` among them).
 #. **Writing ``pot.tadah``** (or whatever ``--outfile`` requests).
 
 .. versionchanged:: 1.6.0
@@ -437,7 +438,7 @@ listed: the defaults tadah takes (``VERBOSE 1``, ``OUTFILE pot.tadah``,
 ``config.train`` alone, and ``-o pot2.tadah -v 0`` adds ``VERBOSE 0`` and
 ``OUTFILE pot2.tadah``. The potentials of ``tadah train`` and
 ``best_pot.tadah`` (and its rank-local copies) end the block with the
-balance table of their fit (:ref:`fit_balance`), and so always have it. The
+:term:`balance table` of their fit (:ref:`fit_balance`), and so always have it. The
 other potentials of ``tadah refit`` and ``tadah hpo`` (the ``DUMP`` and
 ``BDUMP`` archives) have it when the run set one of these keys. ``tadah
 refit --edit`` copies the record of its input without its balance table

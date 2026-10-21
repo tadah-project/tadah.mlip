@@ -117,6 +117,57 @@ std::string num(double v) {
   return o.str();
 }
 
+/* The lines of in.ml, its pair_coeff line pointing at the shipped
+ * potential. */
+std::vector<std::string> quickstart_script() {
+  std::vector<std::string> script = read_lines(kQuickstartDir + "/in.ml");
+  const std::string pot = kQuickstartDir + "/pot.tadah";
+  REQUIRE(pot.find('"') == std::string::npos);
+  int pair_coeff_lines = 0;
+  for (std::string& line : script) {
+    const std::vector<std::string> t = tokens_of(line);
+    if (t.empty() || t[0] != "pair_coeff") continue;
+    ++pair_coeff_lines;
+    REQUIRE(t == std::vector<std::string>{"pair_coeff", "*", "*",
+                                          "pot.tadah", "Ta"});
+    line = "pair_coeff * * \"" + pot + "\" Ta";
+  }
+  REQUIRE(pair_coeff_lines == 1);
+  return script;
+}
+
+/* @p script with the line whose first word is @p key replaced by @p line
+ * (one such line). */
+void replace_line(std::vector<std::string>& script, const std::string& key,
+                  const std::string& line) {
+  int n = 0;
+  for (std::string& l : script) {
+    const std::vector<std::string> t = tokens_of(l);
+    if (t.empty() || t[0] != key) continue;
+    ++n;
+    l = line;
+  }
+  REQUIRE(n == 1);
+}
+
+/* The thermo rows of @p script run in an in-process LAMMPS (250 atoms). */
+std::vector<Row> run_rows(const std::vector<std::string>& script) {
+  const std::string log_path =
+      "quickstart_variant_" + std::to_string(::getpid()) + ".log";
+  const RemoveOnExit log_guard{log_path};
+  LammpsRunner runner;
+  auto lmp = runner.create_instance(
+      {"lmp", "-log", log_path, "-screen", "none"});
+  REQUIRE(lmp != nullptr);
+  if (!runner.run_script(lmp, script, tadah::core::Context{})) {
+    lmp.reset();
+    FAIL("the script stopped; LAMMPS log:\n" << read_text(log_path));
+  }
+  REQUIRE(lmp->atom->natoms == 250);
+  lmp.reset();  // closes the log
+  return thermo_rows(read_text(log_path));
+}
+
 }  // namespace
 #endif
 
@@ -150,19 +201,7 @@ TEST_CASE("quickstart: in.ml with the shipped pot.tadah conserves energy and "
   tadah::core::PeriodicTable::initialize();
 
   /* in.ml, its pair_coeff line pointing at the shipped potential. */
-  std::vector<std::string> script = read_lines(kQuickstartDir + "/in.ml");
-  const std::string pot = kQuickstartDir + "/pot.tadah";
-  REQUIRE(pot.find('"') == std::string::npos);
-  int pair_coeff_lines = 0;
-  for (std::string& line : script) {
-    const std::vector<std::string> t = tokens_of(line);
-    if (t.empty() || t[0] != "pair_coeff") continue;
-    ++pair_coeff_lines;
-    REQUIRE(t == std::vector<std::string>{"pair_coeff", "*", "*",
-                                          "pot.tadah", "Ta"});
-    line = "pair_coeff * * \"" + pot + "\" Ta";
-  }
-  REQUIRE(pair_coeff_lines == 1);
+  const std::vector<std::string> script = quickstart_script();
 
   const std::string log_path =
       "quickstart_md_" + std::to_string(::getpid()) + ".log";
@@ -229,5 +268,70 @@ TEST_CASE("quickstart: in.ml with the shipped pot.tadah conserves energy and "
   CHECK(std::fabs(first.press) < 1e5);
   CHECK(dpe > -0.05);
   CHECK(nbcc >= 0.9 * natoms);
+  /* The numbers the Quick Start page quotes of this run: the total energy
+   * moves by up to 0.08 meV/atom from its initial value in the printed rows
+   * (to half a unit of the last digit), the temperature at step 1000 is
+   * about 500 K (within 25 K) and the step-0 pressure about -0.5 GPa
+   * (within 0.05 GPa, -5000 +- 500 bar). */
+  CHECK(std::fabs(1e3 * max_dev - 0.08) <= 0.005);
+  CHECK(std::fabs(last.temp - 500.0) <= 25.0);
+  CHECK(std::fabs(first.press + 5000.0) <= 500.0);
+#endif
+}
+
+/* Pins (a guard of the numbers the Quick Start page quotes): in.ml at a
+ * lattice constant of 3.5 A instead of 3.30 A starts at about -19 GPa
+ * (step-0 pressure within 0.5 GPa of -1.9e5 bar), far from the potential's
+ * own lattice (3.288 A). */
+TEST_CASE("quickstart: in.ml at a lattice constant of 3.5 A starts at about "
+          "-19 GPa",
+          "[quickstart][lammps]") {
+#ifndef TADAH_ENABLE_NFP
+  TADAH_SKIP("pair_style tadah is not built (TADAH_ENABLE_NFP OFF)");
+#else
+  tadah::core::PeriodicTable::initialize();
+  std::vector<std::string> script = quickstart_script();
+  replace_line(script, "lattice", "lattice bcc 3.5");
+  replace_line(script, "run", "run 0");
+  const std::vector<Row> rows = run_rows(script);
+  REQUIRE(rows.size() == 1);
+  INFO("P(step 0) = " << rows[0].press << " bar");
+  CHECK(std::fabs(rows[0].press + 1.9e5) <= 5e3);
+#endif
+}
+
+/* Pins (a guard of the numbers the Quick Start page quotes): in.ml started
+ * at 6000 K and 10000 K, at its 3 fs timestep and at 1 fs, with the thermo
+ * rows every 10 steps of its 1000, runs to the end, and the total energy
+ * wanders (max |TotEng_k - TotEng_0| / N) by 0.73 and 1.06 meV/atom at
+ * 3 fs, 0.08 and 0.14 meV/atom at 1 fs, each within 10 %. */
+TEST_CASE("quickstart: hot runs of in.ml need a smaller timestep",
+          "[quickstart][lammps]") {
+#ifndef TADAH_ENABLE_NFP
+  TADAH_SKIP("pair_style tadah is not built (TADAH_ENABLE_NFP OFF)");
+#else
+  tadah::core::PeriodicTable::initialize();
+  struct Case {
+    double temp, dt, wander;  // K, ps, meV/atom
+  };
+  for (const Case& c : {Case{6000, 0.003, 0.73}, Case{10000, 0.003, 1.06},
+                        Case{6000, 0.001, 0.08}, Case{10000, 0.001, 0.14}}) {
+    DYNAMIC_SECTION(c.temp << " K, timestep " << c.dt << " ps") {
+      std::vector<std::string> script = quickstart_script();
+      replace_line(script, "velocity",
+                   "velocity        all  create " + num(c.temp) +
+                       " 4981299 dist gaussian");
+      replace_line(script, "timestep", "timestep " + num(c.dt));
+      replace_line(script, "thermo", "thermo 10");
+      const std::vector<Row> rows = run_rows(script);
+      REQUIRE(rows.size() == 101);
+      double max_dev = 0.0;
+      for (const Row& r : rows)
+        max_dev = std::max(max_dev,
+                           std::fabs(r.etotal - rows[0].etotal) / 250.0);
+      INFO("max |TotEng - TotEng_0| / N = " << 1e3 * max_dev << " meV/atom");
+      CHECK(std::fabs(1e3 * max_dev - c.wander) <= 0.1 * c.wander);
+    }
+  }
 #endif
 }

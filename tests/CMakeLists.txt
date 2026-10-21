@@ -513,6 +513,23 @@ set_tests_properties(tadah_quickstart_reproduces_pot PROPERTIES
   TIMEOUT 600
   ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
 
+# The numbers the Quick Start page quotes of its potential and of fits of
+# its data (quickstart/check_quickstart_numbers.py): the RMSEs of tadah
+# predict -A, bcc and fcc Ta, a dimer, the lattice constants of other fits
+# and the lambda of LAMBDA -1, each within half a unit of its last quoted
+# digit. (The numbers of its LAMMPS runs are the test_tadah cases
+# "quickstart: ...".)
+add_test(NAME tadah_quickstart_numbers
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/quickstart/check_quickstart_numbers.py
+    --tadah $<TARGET_FILE:tadah>
+    --quickstart ${PROJECT_SOURCE_DIR}/docs/source/quickstart
+    --workdir ${CMAKE_CURRENT_BINARY_DIR}/quickstart_numbers)
+set_tests_properties(tadah_quickstart_numbers PROPERTIES
+  LABELS examples
+  TIMEOUT 600
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
 
 # ------------------------------------------------------------------
 # 11. Header self-containment (cmake-tools' tadah_add_header_check)

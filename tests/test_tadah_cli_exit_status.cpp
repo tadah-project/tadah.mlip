@@ -8605,18 +8605,20 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
  * predict has an option for alone: `tadah --task run.task`, its TASK predict
  * section "POTENTIAL pot.tadah" (trained on db.tadah, the three dimers at
  * E/N -0.5 eV, with ESHIFT_DBATOM true: its ESHIFT line -0.5), "DBFILE
- * db.tadah", "NO_ESHIFT true", "ESHIFT_DBATOM true", "WDBFILE 1 1" (two
- * values, one dataset), and the retired "WDBFILE_AUTO 1" and "EWEIGHT_TEMP
- * 300", exits 0 with no "Multiple ESHIFT sources" WARNING and no "WDBFILE
- * size" refusal, one notice naming the two retired keys (a prediction
+ * db.tadah", "NO_ESHIFT true", "ESHIFT_DBATOM true", and the retired
+ * "WDBFILE_AUTO 1" and "EWEIGHT_TEMP 300", exits 0 with no "Multiple ESHIFT
+ * sources" WARNING, one notice naming the two retired keys (a prediction
  * fits nothing: it does not refuse them), and the True column of
  * energy.pred is the reference energies as they are, -0.5 each (no shift
- * is derived from the data predicted).
+ * is derived from the data predicted). The same section with "WDBFILE 1 1"
+ * (two values, one dataset) exits 1: WDBFILE sets a fit, and a TASK
+ * predict refuses it, naming the line.
  * Before the fix: the TASK predict's ESHIFT_DBATOM applied to the data
  * predicted (tadah 1.5.x and v1-dev before the dataset keys record removed
  * only WDBFILE, WDBFILE_AUTO and EWEIGHT_TEMP from it): with the ESHIFT
  * removed by NO_ESHIFT the toggle fitted -0.5 to the data predicted and
- * subtracted it, and the True column was 0 for each structure. */
+ * subtracted it, and the True column was 0 for each structure; the
+ * WDBFILE line was accepted and had no effect. */
 TEST_CASE("Subcommand: a TASK predict prepares the data predicted only with "
           "the keys predict has an option for",
           "[TadahCLI][predict][dataset-keys][task-file]") {
@@ -8629,12 +8631,24 @@ TEST_CASE("Subcommand: a TASK predict prepares the data predicted only with "
     INFO("train: status " << t.status << "\n" << reported(t));
     REQUIRE(t.status == 0);
   }
+  {
+    std::ofstream("w.task") << "TASK predict\n"
+                               "  POTENTIAL pot.tadah\n"
+                               "  DBFILE db.tadah\n"
+                               "  WDBFILE 1 1\n";
+    const CliRun w = run_tadah({"tadah", "--task", "w.task"});
+    const std::string wrep = reported(w);
+    INFO("--task w.task: status " << w.status << "\n" << wrep);
+    CHECK(w.status == 1);
+    CHECK(contains(wrep, "WDBFILE (line 4 of w.task) in TASK predict: "
+                         "WDBFILE sets the fit of tadah train and tadah hpo, "
+                         "and tadah predict fits nothing"));
+  }
   std::ofstream("run.task") << "TASK predict\n"
                                "  POTENTIAL pot.tadah\n"
                                "  DBFILE db.tadah\n"
                                "  NO_ESHIFT true\n"
                                "  ESHIFT_DBATOM true\n"
-                               "  WDBFILE 1 1\n"
                                "  WDBFILE_AUTO 1\n"
                                "  EWEIGHT_TEMP 300\n";
   const CliRun r = run_tadah({"tadah", "--task", "run.task"});
@@ -8642,10 +8656,9 @@ TEST_CASE("Subcommand: a TASK predict prepares the data predicted only with "
   INFO("--task run.task: status " << r.status << "\n" << rep);
   REQUIRE(r.status == 0);
   CHECK_FALSE(contains(rep, "Multiple ESHIFT sources"));
-  CHECK_FALSE(contains(rep, "WDBFILE size"));
   CHECK(count_lines_with(rep, "Retired keys") == 1u);
-  CHECK(contains(rep, "Retired keys WDBFILE_AUTO (line 7 of run.task) and "
-                      "EWEIGHT_TEMP (line 8 of run.task) are ignored"));
+  CHECK(contains(rep, "Retired keys WDBFILE_AUTO (line 6 of run.task) and "
+                      "EWEIGHT_TEMP (line 7 of run.task) are ignored"));
   const std::vector<double> truth = column_values("energy.pred", 1);
   REQUIRE(truth.size() == 3u);
   for (double t : truth) CHECK(t == Approx(-0.5).margin(1e-12));

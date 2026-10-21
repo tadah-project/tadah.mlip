@@ -45,8 +45,8 @@ has one global line: a second one is refused, and the message names the
 line of the first.
 
 .. versionchanged:: 1.6.0
-   A repeated ``PC_EMAE``, ``PC_ErRMSE`` or ``PC_ERSQ`` line is refused.
-   1.5.0 used the last one. ``PC_SRMSE_GPA`` replaces ``PC_SRMSE`` (six
+   A repeated ``PC_EMAE``, ``PC_ErRMSE`` or ``PC_ERSQ`` line is refused
+   (1.5.0 used the last one). ``PC_SRMSE_GPA`` replaces ``PC_SRMSE`` (six
    entries in eV/Å³), which is refused with the conversion.
 
 .. list-table:: Metrics and units
@@ -113,18 +113,20 @@ the mean of dataset losses differs from taking the loss of the mean metric.
 Missing reference data
 ----------------------
 
-A structure with force priority zero (``fweight`` 0) is excluded from the
-force metric; one with stress priority zero (``sweight`` 0) from the stress
-metric. A
-dataset with no such reference data is unmeasured for that metric and
-has ``nan`` in its metric columns.
+A structure with energy :term:`priority` 0 (``eweight`` 0) is left out
+of the energy metrics (``PC_EMAE``, ``PC_ERMSE``, ``PC_ErRMSE`` and
+``PC_ERSQ``), one with force priority 0 (``fweight`` 0) of ``PC_FRMSE``,
+and one with stress priority 0 (``sweight`` 0) of ``PC_SRMSE_GPA``
+(:ref:`dataset`). A dataset without a structure that has the quantity is
+not measured by its metrics: its metric columns hold ``nan``.
 
-Global force and stress metrics average only the measured datasets.
-For indexed ``PC_FRMSE`` and ``PC_SRMSE_GPA``, an unmeasured dataset needs
-an explicit zero weight: it contributes no loss, but the indexed average still divides
-by the total number of validation datasets. Startup rejects a metric
-with no measured dataset, or a positive indexed force or stress weight
-assigned to an unmeasured dataset. Empty validation datasets are also rejected.
+The global metrics of every quantity average only the measured datasets.
+For indexed ``PC_ERMSE``, ``PC_FRMSE`` and ``PC_SRMSE_GPA``, an unmeasured
+dataset needs a weight of 0: it contributes no loss, and the indexed
+average still divides by the number of validation datasets. Startup
+refuses a metric with no measured dataset and a weight above 0 of an
+indexed metric on an unmeasured dataset. A validation dataset that the
+filters leave empty is refused too.
 
 Early-rejection options
 -----------------------

@@ -170,7 +170,7 @@ cells of 54 atoms with nine coefficients and the default error scales:
 The first line gives :ref:`LAMBDA <LAMBDA>`, the number of coefficients
 the solve fitted and its rank. The rank counts the directions the solve
 keeps: :ref:`OALGO <OALGO>` 2 and 4 keep all of them, ``OALGO`` 1 and 3
-those above the threshold of their second value. With ``LAMBDA -1`` the
+those above the rank threshold that their second value sets. With ``LAMBDA -1`` the
 first line also gives the lambda that the evidence approximation found.
 With :ref:`FIXINDEX <FIXINDEX>` it gives the number of coefficients pinned,
 which the solve did not fit. Under ``ENORM SQRT`` it says so

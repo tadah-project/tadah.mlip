@@ -78,6 +78,7 @@ This site also publishes selected interatomic potentials developed by |gja_link|
    config/config_keys.rst
    training.rst
    fit_objective.rst
+   fit_balance.rst
    regressors.rst
    descriptors.rst
    dm_embed.rst

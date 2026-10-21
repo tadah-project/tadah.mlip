@@ -1607,6 +1607,19 @@ std::string metric_line(const std::string& out, const std::string& metric) {
   return "";
 }
 
+/* The whitespace-separated fields after the row name `metric` of the line
+ * of `out` that starts with it (e.g. "Force RMSE (eV/Å)": the mean, then
+ * one value per dataset); none without such a line. */
+std::vector<std::string> metric_fields(const std::string& out,
+                                       const std::string& metric) {
+  const std::string line = metric_line(out, metric);
+  std::vector<std::string> f;
+  if (line.empty()) return f;
+  std::istringstream is(line.substr(metric.size()));
+  for (std::string w; is >> w;) f.push_back(w);
+  return f;
+}
+
 /* Pins: `tadah predict -F -S -A` leaves a structure stored with force and
  * stress priority 0 (priorities line `1 0 0`) out of the force and stress
  * metrics: on S1, W, S3, where W's reference forces (50 eV/A) and stress
@@ -1641,14 +1654,6 @@ TEST_CASE("Subcommand: predict -A leaves structures with priority 0 out of "
   }
 }
 
-/* The whitespace-separated fields of `line`. */
-std::vector<std::string> fields_of(const std::string& line) {
-  std::istringstream is(line);
-  std::vector<std::string> out;
-  for (std::string f; is >> f;) out.push_back(f);
-  return out;
-}
-
 /* Pins: `tadah predict -A` measures a dataset whose structures all have force
  * priority 0 (stress priority 0) in no force (stress) metric: with -F -A on
  * S.tadah (priorities 1) and nof.tadah (fweight 0) it exits 0, prints nan
@@ -1671,9 +1676,9 @@ TEST_CASE("Subcommand: predict -A leaves out a dataset without the data, and "
                              << weighted_entry("N2", "1 0 1", "1.60 1.25 1.30", "0", "0.002");
   std::ofstream("nos.tadah") << weighted_entry("N1", "1 1 0", "1.40 1.30 1.20", "0.1", "0")
                              << weighted_entry("N2", "1 1 0", "1.60 1.25 1.30", "-0.1", "0");
-  struct Case { std::string file, flag, metric, weight; };
-  for (const Case& c : {Case{"nof.tadah", "-F", "Force", "force priority 0"},
-                        Case{"nos.tadah", "-S", "Stress", "stress priority 0"}}) {
+  struct Case { std::string file, flag, metric, unit, weight; };
+  for (const Case& c : {Case{"nof.tadah", "-F", "Force", " (eV/Å)", "force priority 0"},
+                        Case{"nos.tadah", "-S", "Stress", " (GPa)", "stress priority 0"}}) {
     INFO(c.file);
     {
       const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "S.tadah",
@@ -1681,12 +1686,12 @@ TEST_CASE("Subcommand: predict -A leaves out a dataset without the data, and "
       const std::string rep = reported(r);
       INFO("both files: status " << r.status << "\n" << rep);
       CHECK(r.status == 0);
-      for (const std::string kind : {" MAE", " RMSE", " R^2"}) {
-        const std::vector<std::string> f = fields_of(metric_line(r.out, c.metric + kind));
+      for (const std::string kind : {" MAE" + c.unit, " RMSE" + c.unit, std::string(" R^2")}) {
+        const std::vector<std::string> f = metric_fields(r.out, c.metric + kind);
         INFO(c.metric + kind << ": " << metric_line(r.out, c.metric + kind));
-        REQUIRE(f.size() == 5u);  // name (2 words), mean, Val1, Val2
-        CHECK(f[2] == f[3]);
-        CHECK((f[4] == "nan" || f[4] == "-nan"));  // as printed (no isnan: fast-math)
+        REQUIRE(f.size() == 3u);  // mean, Val1, Val2
+        CHECK(f[0] == f[1]);
+        CHECK((f[2] == "nan" || f[2] == "-nan"));  // as printed (no isnan: fast-math)
       }
       CHECK(contains(rep, c.file));
       CHECK(contains(rep, "not measured"));
@@ -1773,12 +1778,12 @@ TEST_CASE("Subcommand: predict -A leaves structures with energy priority 0 "
   const std::string rep = reported(both);
   INFO("both files: status " << both.status << "\n" << rep);
   CHECK(both.status == 0);
-  for (const std::string kind : {" MAE", " RMSE", " R^2"}) {
-    const std::vector<std::string> f = fields_of(metric_line(both.out, "Energy" + kind));
+  for (const std::string kind : {" MAE (meV/atom)", " RMSE (meV/atom)", " R^2"}) {
+    const std::vector<std::string> f = metric_fields(both.out, "Energy" + kind);
     INFO("Energy" + kind << ": " << metric_line(both.out, "Energy" + kind));
-    REQUIRE(f.size() == 5u);  // name (2 words), mean, Val1, Val2
-    CHECK(f[2] == f[3]);
-    CHECK((f[4] == "nan" || f[4] == "-nan"));  // as printed (no isnan: fast-math)
+    REQUIRE(f.size() == 3u);  // mean, Val1, Val2
+    CHECK(f[0] == f[1]);
+    CHECK((f[2] == "nan" || f[2] == "-nan"));  // as printed (no isnan: fast-math)
   }
   CHECK(contains(rep, "noe.tadah"));
   CHECK(contains(rep, "energy priority 0"));
@@ -5812,10 +5817,10 @@ TEST_CASE("Subcommand: hpo trains a non-linear KRR model in every evaluation",
                                 "-d", "db.tadah", "-A"});
     INFO("predict: status " << p.status << "\n" << reported(p));
     REQUIRE(p.status == 0);
-    std::istringstream ml(metric_line(p.out, "Energy RMSE"));
-    std::string w1, w2;
-    double mean = 0;  // meV/atom, as stats.tadah
-    REQUIRE(ml >> w1 >> w2 >> mean);
+    const std::vector<std::string> ml =
+        metric_fields(p.out, "Energy RMSE (meV/atom)");
+    REQUIRE_FALSE(ml.empty());
+    const double mean = std::stod(ml[0]);  // meV/atom, as stats.tadah
     CHECK(mean == Approx(std::strtod((*ermse)[ibest].c_str(), nullptr))
                       .epsilon(2e-6));
     for (const std::string& col : loss_columns) {
@@ -8605,18 +8610,20 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
  * predict has an option for alone: `tadah --task run.task`, its TASK predict
  * section "POTENTIAL pot.tadah" (trained on db.tadah, the three dimers at
  * E/N -0.5 eV, with ESHIFT_DBATOM true: its ESHIFT line -0.5), "DBFILE
- * db.tadah", "NO_ESHIFT true", "ESHIFT_DBATOM true", "WDBFILE 1 1" (two
- * values, one dataset), and the retired "WDBFILE_AUTO 1" and "EWEIGHT_TEMP
- * 300", exits 0 with no "Multiple ESHIFT sources" WARNING and no "WDBFILE
- * size" refusal, one notice naming the two retired keys (a prediction
+ * db.tadah", "NO_ESHIFT true", "ESHIFT_DBATOM true", and the retired
+ * "WDBFILE_AUTO 1" and "EWEIGHT_TEMP 300", exits 0 with no "Multiple ESHIFT
+ * sources" WARNING, one notice naming the two retired keys (a prediction
  * fits nothing: it does not refuse them), and the True column of
  * energy.pred is the reference energies as they are, -0.5 each (no shift
- * is derived from the data predicted).
+ * is derived from the data predicted). The same section with "WDBFILE 1 1"
+ * (two values, one dataset) exits 1: WDBFILE sets a fit, and a TASK
+ * predict refuses it, naming the line.
  * Before the fix: the TASK predict's ESHIFT_DBATOM applied to the data
  * predicted (tadah 1.5.x and v1-dev before the dataset keys record removed
  * only WDBFILE, WDBFILE_AUTO and EWEIGHT_TEMP from it): with the ESHIFT
  * removed by NO_ESHIFT the toggle fitted -0.5 to the data predicted and
- * subtracted it, and the True column was 0 for each structure. */
+ * subtracted it, and the True column was 0 for each structure; the
+ * WDBFILE line was accepted and had no effect. */
 TEST_CASE("Subcommand: a TASK predict prepares the data predicted only with "
           "the keys predict has an option for",
           "[TadahCLI][predict][dataset-keys][task-file]") {
@@ -8629,12 +8636,24 @@ TEST_CASE("Subcommand: a TASK predict prepares the data predicted only with "
     INFO("train: status " << t.status << "\n" << reported(t));
     REQUIRE(t.status == 0);
   }
+  {
+    std::ofstream("w.task") << "TASK predict\n"
+                               "  POTENTIAL pot.tadah\n"
+                               "  DBFILE db.tadah\n"
+                               "  WDBFILE 1 1\n";
+    const CliRun w = run_tadah({"tadah", "--task", "w.task"});
+    const std::string wrep = reported(w);
+    INFO("--task w.task: status " << w.status << "\n" << wrep);
+    CHECK(w.status == 1);
+    CHECK(contains(wrep, "WDBFILE (line 4 of w.task) in TASK predict: "
+                         "WDBFILE sets the fit of tadah train and tadah hpo, "
+                         "and tadah predict fits nothing"));
+  }
   std::ofstream("run.task") << "TASK predict\n"
                                "  POTENTIAL pot.tadah\n"
                                "  DBFILE db.tadah\n"
                                "  NO_ESHIFT true\n"
                                "  ESHIFT_DBATOM true\n"
-                               "  WDBFILE 1 1\n"
                                "  WDBFILE_AUTO 1\n"
                                "  EWEIGHT_TEMP 300\n";
   const CliRun r = run_tadah({"tadah", "--task", "run.task"});
@@ -8642,10 +8661,9 @@ TEST_CASE("Subcommand: a TASK predict prepares the data predicted only with "
   INFO("--task run.task: status " << r.status << "\n" << rep);
   REQUIRE(r.status == 0);
   CHECK_FALSE(contains(rep, "Multiple ESHIFT sources"));
-  CHECK_FALSE(contains(rep, "WDBFILE size"));
   CHECK(count_lines_with(rep, "Retired keys") == 1u);
-  CHECK(contains(rep, "Retired keys WDBFILE_AUTO (line 7 of run.task) and "
-                      "EWEIGHT_TEMP (line 8 of run.task) are ignored"));
+  CHECK(contains(rep, "Retired keys WDBFILE_AUTO (line 6 of run.task) and "
+                      "EWEIGHT_TEMP (line 7 of run.task) are ignored"));
   const std::vector<double> truth = column_values("energy.pred", 1);
   REQUIRE(truth.size() == 3u);
   for (double t : truth) CHECK(t == Approx(-0.5).margin(1e-12));

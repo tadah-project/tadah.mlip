@@ -168,9 +168,14 @@ page's `tadah train` and `tadah --task` commands and checks that the shipped
 `pot.tadah` is what they write (its keys, and its predictions on
 `db.predict`): after a change to `config.train`, or to the code, that changes
 the potential, regenerate `pot.tadah` with `tadah train -c config.train` in
-that directory and check the numbers the page quotes. The Catch test case
-`quickstart: in.ml with the shipped pot.tadah ...` (test_tadah, NFP builds)
-runs the page's LAMMPS example, `in.ml`, with it.
+that directory and check the numbers the page quotes. Those numbers are
+checked too: `tadah_quickstart_numbers` (same label,
+`tests/quickstart/check_quickstart_numbers.py`) computes those of the
+potential and of fits of its data (the RMSEs of `tadah predict -A`, bcc and
+fcc Ta, a dimer, the lattice constants of other fits, the lambda of
+`LAMBDA -1`), each within half a unit of its last quoted digit, and the
+Catch test cases `quickstart: ...` (test_tadah, NFP builds) run the page's
+LAMMPS example, `in.ml`, with it and check the numbers of its runs.
 The label also has one entry per run of the Nested Fitting pages,
 `tadah_nfp_<id>`, one per line of `docs/source/nfp/files/manifest.txt`
 (`<id> | <page.rst> | <dir> | <labels> | <timeout> | <tolerances>`; the

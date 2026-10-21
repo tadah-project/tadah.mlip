@@ -58,8 +58,9 @@ in order:
    per-descriptor metadata for ρ-collapse and out-of-range parameter
    combinations.
 #. **Fitting the regression model** declared by ``MODEL``: it minimises
-   the sum of :ref:`fit_objective`, with the error scales of the
-   configuration and the priorities of the data (``WDBFILE`` among them).
+   the sum of :ref:`fit_objective`, with the :term:`error scales
+   <error scale>` of the configuration and the :term:`priorities
+   <priority>` of the data (``WDBFILE`` among them).
 #. **Writing ``pot.tadah``** (or whatever ``--outfile`` requests).
 
 .. versionchanged:: 1.6.0
@@ -264,10 +265,14 @@ predicted as it is. A filter applies only when predict is given it:
   ``-v 2`` a line says how many were left out: ``Outlier filter: dropped 18
   by energy, 0 by force.``); ``--zero-com-force`` subtracts each
   structure's mean force from the forces it reads (the ``True`` columns).
-* ``WDBFILE``, ``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` are never applied:
-  they gave the training data their priorities or derived its shift, and
-  the data predicted keep their own priorities; nor are those of a ``TASK
-  predict`` of a task file. A potential of Tadah! 1.5.0 has a line of the
+* ``WDBFILE``, ``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` of the potential are
+  never applied: they gave the training data their priorities or derived
+  its shift, and the data predicted keep their own priorities. A ``TASK
+  predict`` of a task file does not apply its ``ESHIFT_ATOM`` and
+  ``ESHIFT_DBATOM`` either, and refuses ``WDBFILE`` and the other keys
+  that set a fit (``ESIGMA``, ``FSIGMA``, ``SSIGMA``, ``ENORM``,
+  ``ENERGY``: :ref:`fit_objective`), naming the line, as ``tadah predict``
+  fits nothing. A potential of Tadah! 1.5.0 has a line of the
   retired ``WDBFILE_AUTO``, and one trained with ``EWEIGHT_TEMP`` a line
   of it: ``tadah predict`` reads them with one notice
   (:ref:`fit_objective_conversion`).
@@ -433,7 +438,7 @@ listed: the defaults tadah takes (``VERBOSE 1``, ``OUTFILE pot.tadah``,
 ``config.train`` alone, and ``-o pot2.tadah -v 0`` adds ``VERBOSE 0`` and
 ``OUTFILE pot2.tadah``. The potentials of ``tadah train`` and
 ``best_pot.tadah`` (and its rank-local copies) end the block with the
-balance table of their fit (:ref:`fit_balance`), and so always have it. The
+:term:`balance table` of their fit (:ref:`fit_balance`), and so always have it. The
 other potentials of ``tadah refit`` and ``tadah hpo`` (the ``DUMP`` and
 ``BDUMP`` archives) have it when the run set one of these keys. ``tadah
 refit --edit`` copies the record of its input without its balance table

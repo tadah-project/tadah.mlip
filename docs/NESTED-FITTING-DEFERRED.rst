@@ -25,6 +25,11 @@ Next pass
 Known corrections incorporated in the new reference
 ---------------------------------------------------
 
+* The keys of the fitting weights below are those of Tadah! 1.5.0: PC_SRMSE
+  (six stress entries in eV/Å³) is PC_SRMSE_GPA (nine entries in GPa), and
+  EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO and EWEIGHT_TEMP are retired keys;
+  the error scales and priorities of a fit are on the page What a Fit
+  Minimises.
 * STRATEGY is optional; INIT is valid in OPTIMIZER, STRATEGY, EXPLORE and REFINE.
 * INNER belongs inside STRATEGY, EXPLORE or REFINE, not directly in OPTIMIZER.
 * PC_OBSERVABLE has its own L2 default, independent of root LOSS.

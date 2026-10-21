@@ -30,13 +30,25 @@ Glossary and Abbreviations
 
    Error scale
       The residual of an observation that costs one priority unit in a fit,
-      in the unit of the metric that measures it: ``ESIGMA`` (meV/atom),
-      ``FSIGMA`` (eV/Å), ``SSIGMA`` (GPa) (:ref:`fit_objective`).
+      in the unit of the metric that measures it: ``ESIGMA`` (meV/atom;
+      meV per √atom under ``ENORM SQRT``), ``FSIGMA`` (eV/Å), ``SSIGMA``
+      (GPa) (:ref:`fit_objective`).
 
    Priority
       A number >= 0 that multiplies the cost of an observation in a fit: the
       ``eweight``, ``fweight`` or ``sweight`` of a structure times the
       ``WDBFILE`` value of its dataset (:ref:`fit_objective`).
+
+   Balance table
+      The table of a fit, printed by ``tadah train`` and, for its best
+      potential, by ``tadah hpo``, and kept in the training record of the
+      potential: per quantity and dataset, the observations, the residuals,
+      the share of the minimised sum and the effective parameters of each
+      (:ref:`fit_balance`).
+
+   Effective parameters
+      How many of the coefficients a quantity, a dataset or the prior
+      determines (:ref:`fit_balance`).
 
    Performance constraint
       A measurable (physical) property used as part of the loss.

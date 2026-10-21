@@ -1289,7 +1289,7 @@ version wrote, or one of the keys that prepared its training data
 edit and is not read (the edit runs at its own ``-v`` and ``NUMERIC``): the
 edit's record lists it.
 What the input's record says is copied as it is, hand edits included, but
-for the balance table of its fit (:ref:`fit_balance`): the table describes
+for the :term:`balance table` of its fit (:ref:`fit_balance`): the table describes
 the input's coefficients, which the edit changes.
 An input whose record is malformed is refused before anything is written,
 naming the file and the lines: an opening line without its end line (the

@@ -1,7 +1,7 @@
 Example 4 - Reading the Fit Balance Table
 -----------------------------------------
 
-This example shows what the balance table of a fit tells about the balance
+This example shows what the :term:`balance table` of a fit tells about the balance
 between energies and forces, and what a smaller :ref:`ESIGMA <ESIGMA>`
 changes. It applies when a fit's energies, forces or stresses miss the
 accuracy asked for, and when choosing ``ESIGMA``, :ref:`FSIGMA <FSIGMA>` and
@@ -66,6 +66,6 @@ Variations
 
 A smaller ``FSIGMA`` moves the balance to the forces instead.
 :ref:`STRESS <STRESS>` ``true`` adds a stress row with its own share and
-effective parameters. A second dataset in :ref:`DBFILE <DBFILE>` adds a row
+:term:`effective parameters`. A second dataset in :ref:`DBFILE <DBFILE>` adds a row
 per quantity and dataset; a :ref:`WDBFILE <WDBFILE>` value below 1 for it
 lowers its share and its effective parameters.

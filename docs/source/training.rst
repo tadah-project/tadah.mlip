@@ -264,10 +264,14 @@ predicted as it is. A filter applies only when predict is given it:
   ``-v 2`` a line says how many were left out: ``Outlier filter: dropped 18
   by energy, 0 by force.``); ``--zero-com-force`` subtracts each
   structure's mean force from the forces it reads (the ``True`` columns).
-* ``WDBFILE``, ``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` are never applied:
-  they gave the training data their priorities or derived its shift, and
-  the data predicted keep their own priorities; nor are those of a ``TASK
-  predict`` of a task file. A potential of Tadah! 1.5.0 has a line of the
+* ``WDBFILE``, ``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` of the potential are
+  never applied: they gave the training data their priorities or derived
+  its shift, and the data predicted keep their own priorities. A ``TASK
+  predict`` of a task file does not apply its ``ESHIFT_ATOM`` and
+  ``ESHIFT_DBATOM`` either, and refuses ``WDBFILE`` and the other keys
+  that set a fit (``ESIGMA``, ``FSIGMA``, ``SSIGMA``, ``ENORM``,
+  ``ENERGY``: :ref:`fit_objective`), naming the line, as ``tadah predict``
+  fits nothing. A potential of Tadah! 1.5.0 has a line of the
   retired ``WDBFILE_AUTO``, and one trained with ``EWEIGHT_TEMP`` a line
   of it: ``tadah predict`` reads them with one notice
   (:ref:`fit_objective_conversion`).

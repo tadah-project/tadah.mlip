@@ -151,9 +151,9 @@ approximation. A configuration written for Tadah! 1.5.0 may need another
 The balance table
 -----------------
 
-The balance table of a fit shows how the sum above is shared among its
-quantities and datasets, and how many of the coefficients each of them
-determines. ``tadah train`` prints it after its fit, and ``tadah hpo``
+The :term:`balance table` of a fit shows how the sum above is shared among
+its quantities and datasets, and how many of the coefficients each of
+them determines. ``tadah train`` prints it after its fit, and ``tadah hpo``
 prints that of its best potential once, when the run ends; at ``-v 0``
 neither prints it. The potentials of ``tadah train`` and ``best_pot.tadah``
 keep it at the end of their :ref:`training record <training_record>`; the
@@ -212,8 +212,8 @@ that its loss measures. The columns are:
    The part of the minimised sum; that of the prior is the ``LAMBDA``
    penalty.
 ``gamma``
-   The effective parameters, :math:`\mathrm{tr}(H^{-1} H_q)` with
-   :math:`H` the matrix of the sum and :math:`H_q` the part of the
+   The :term:`effective parameters`, :math:`\mathrm{tr}(H^{-1} H_q)`
+   with :math:`H` the matrix of the sum and :math:`H_q` the part of the
    quantity's rows: how many coefficients the quantity determines.
 
 A row without an entry of priority above 0 has ``-`` for ``RMSE`` and

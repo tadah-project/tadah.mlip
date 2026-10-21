@@ -38,6 +38,16 @@ Glossary and Abbreviations
       ``eweight``, ``fweight`` or ``sweight`` of a structure times the
       ``WDBFILE`` value of its dataset (:ref:`fit_objective`).
 
+   Balance table
+      The table that a fit prints and keeps in the training record of its
+      potential: per quantity and dataset, the observations, the residuals
+      and the share of the minimised sum and of the coefficients that each
+      determines (:ref:`fit_balance`).
+
+   Effective parameters
+      How many of the coefficients a quantity, a dataset or the prior
+      determines (:ref:`fit_balance`).
+
    Performance constraint
       A measurable (physical) property used as part of the loss.
 

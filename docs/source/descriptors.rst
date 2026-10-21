@@ -66,9 +66,9 @@ The layout is the same on every path (``tadah train``, ``predict``,
   does not normalise them. ``FIXINDEX``/``FIXWEIGHT`` is refused with ``NORM
   true`` (``tadah train`` and ``tadah hpo``): the fit would pin weights of
   the normalised descriptors, and their conversion to weights of the raw
-  descriptors moves them, so the potential would hold neither the
-  ``FIXWEIGHT`` values it records nor a zero covariance for them (1.5.0's
-  ``tadah train`` fitted such a configuration). ``NORM true`` with ``BF_Linear``
+  descriptors moves them, so the potential would not hold the
+  ``FIXWEIGHT`` values it records (1.5.0's ``tadah train`` fitted such a
+  configuration). ``NORM true`` with ``BF_Linear``
   or ``Kern_Linear`` requires ``BIAS true``: the weights fitted to the normalised descriptors
   are converted to weights of the raw descriptors, and the constant this
   moves goes into the intercepts. A linear potential with ``NORM true`` and

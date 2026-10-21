@@ -113,24 +113,20 @@ int main() {
     // predict energies (and forces if FORCE true). Result is saved
     // to new StructureDB object - it will only contain predicted values
     // so there are no atom positions, etc...
-    //t_type pred_err;    // TODO dump it ...
-    ////StructureDB stpred = model.predict(param_file, stdb,dc2,pred_err);
     //std::cout << "Predicting..." << std::flush;
     //StructureDB stpred = model.predict(param_file,st_desc_db, stdb);
     //std::cout << "Done!" << std::endl;
 
-    t_type predicted_error;    // container for prediction error
     param_file.add("OUTFILE","energy.pred");
     param_file.add("OUTFILE","forces.pred");
     param_file.add("OUTFILE","stress.pred");
     std::cout << "Predicting..." << std::flush;
     StructureDB stpred = model.predict(param_file,stdb,dc2);
-    //StructureDB stpred = model.predict(param_file,stdb,dc2,predicted_error);
     std::cout << "Done!" << std::endl;
 
     std::cout << "Dumping results to disk..." << std::flush;
     Output output(param_file);
-    output.print_predict_all(stdb,stpred,predicted_error);
+    output.print_predict_all(stdb,stpred);
     std::cout << "Done!" << std::endl;
 
     return 0;

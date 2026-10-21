@@ -12,7 +12,7 @@ Command
 
 ::
 
-   tadah train -c <config.train> [--force] [--stress] [--uncertainty] \
+   tadah train -c <config.train> [--force] [--stress] \
                [--outfile <pot.tadah>] [--verbose <0|1|2>]
 
 The required input is a single :ref:`config file <config_file>`
@@ -28,9 +28,13 @@ Flag               Config key       Effect
 ``-o <file>``      ``OUTFILE``      Trained-model output file (default ``pot.tadah``).
 ``-F``             ``FORCE``        Trains on forces in addition to energies (default off).
 ``-S``             ``STRESS``       Trains on stresses in addition to energies (default off).
-``--uncertainty``  ``UNCERTAINTY``  Writes every weight with its standard deviation, ``weights.tadah``; needs ``OALGO 3`` (default off).
 ``-v <0|1|2>``     ``VERBOSE``      Log level: 0 ERROR, 1 WARNING, 2 INFO (default 1).
 ================== ================ =====================================================================
+
+.. versionchanged:: 1.6.0
+   ``--uncertainty`` and an ``UNCERTAINTY`` or ``ERROR`` line are refused:
+   uncertainty output is removed. The errors of Tadah! 1.0.0 to 1.5.0 were
+   not standard deviations, and no calibrated estimate replaces them.
 
 Training data must be supplied as one or more Tadah! database files via
 ``DBFILE`` in the configuration; :ref:`dataset` gives the on-disk format.
@@ -56,8 +60,7 @@ in order:
 #. **Fitting the regression model** declared by ``MODEL``: it minimises
    the sum of :ref:`fit_objective`, with the error scales of the
    configuration and the priorities of the data (``WDBFILE`` among them).
-#. **Writing ``pot.tadah``** (or whatever ``--outfile`` requests) and, with
-   ``--uncertainty``, ``weights.tadah``.
+#. **Writing ``pot.tadah``** (or whatever ``--outfile`` requests).
 
 .. versionchanged:: 1.6.0
    The neighbour list holds every periodic image. Earlier versions missed
@@ -304,8 +307,6 @@ File               Contents
 ``pot.tadah``      The trained interatomic potential. Path overridable via ``--outfile`` /
                    ``OUTFILE``. This is the only required artefact and the file consumed by
                    ``tadah predict`` and the LAMMPS ``pair_style tadah``.
-``weights.tadah``  Every weight with its standard deviation, written only when
-                   ``--uncertainty`` / ``UNCERTAINTY true`` is set (``OALGO 3``).
 ================== ============================================================================
 
 A potential file that cannot be written (its directory does not exist, or
@@ -401,8 +402,8 @@ not use are not key lines: the training datasets, ``DBFILE``; the keys that
 only prepared the training data, ``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``,
 ``ESHIFT_DBATOM``, ``ZERO_COM_FORCE`` and ``WDBFILE`` (:ref:`load_transforms`);
 and these settings of the run:
-``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``,
-``HEALTH_LOG`` and ``UNCERTAINTY``, the ``HPOTARGET`` and
+``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE`` and
+``HEALTH_LOG``, the ``HPOTARGET`` and
 ``VALIDATION`` of a ``tadah hpo`` run, and ``CHECK``, the setting of
 ``tadah hpo --check``. For the record, the potential keeps
 the values its run was given in its *training record*, a block of comment
@@ -420,7 +421,7 @@ lines right above the key lines::
 It has one line for each of these keys the run was given, in the order
 ``DBFILE``, ``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``,
 ``ZERO_COM_FORCE``, ``WDBFILE``,
-``VALIDATION``, ``HPOTARGET``, ``CHECK``, ``UNCERTAINTY``, ``VERBOSE``,
+``VALIDATION``, ``HPOTARGET``, ``CHECK``, ``VERBOSE``,
 ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG``,
 with the values
 as the configuration file, the task file or the command line wrote them
@@ -454,13 +455,14 @@ and the potential's first key line), an end line without its opening line,
 or a line inside the block that does not start with ``#``.
 
 A potential of an earlier version may have some of these keys as key
-lines (an ``M_BLR`` potential its ``DBFILE``, a potential of tadah 1.5.x
-its ``UNCERTAINTY``, a ``best_pot.tadah`` its run's ``HPOTARGET`` and
+lines (an ``M_BLR`` potential its ``DBFILE``, a ``best_pot.tadah`` its
+run's ``HPOTARGET`` and
 ``VERBOSE``, and its ``VALIDATION`` when the run had a validation file, and
 every potential of ``tadah train`` or
 ``tadah hpo`` the keys that prepared its training data, ``ESHIFT_ATOM
 false``, ``ESHIFT_DBATOM false`` and ``ZERO_COM_FORCE false`` when its
-configuration set none, and the retired ``WDBFILE_AUTO 0``); it still loads,
+configuration set none, the retired ``WDBFILE_AUTO 0``, and a potential of
+``tadah train`` the retired ``UNCERTAINTY``); it still loads,
 no run takes any of them from it as a setting, and ``tadah refit --edit`` of
 it lists them in the edit's record instead, but for the retired lines, which
 it keeps as they are (:ref:`fit_objective_conversion`). ``tadah predict`` ignores the keys that prepared
@@ -493,7 +495,7 @@ changes a force or an energy.
    refit --edit`` refuses a block opened by any other line at its end
    line. tadah 1.5.x
    wrote some of these keys as key lines (the ``DBFILE`` of an ``M_BLR``
-   potential, ``UNCERTAINTY``, a ``best_pot.tadah``'s ``HPOTARGET``,
+   potential, a ``best_pot.tadah``'s ``HPOTARGET``,
    ``VERBOSE`` and ``NUMERIC`` and, when its run had a validation file,
    ``VALIDATION``, ``AUDIT_SAMPLE``, and the keys that prepared the
    training data) and left the others out, and a run read them as its own:
@@ -566,8 +568,7 @@ are the ``FIXWEIGHT`` values and says so before it reads a dataset::
    lines from the training configuration (the Training page of the
    documentation, Retraining from a potential).
 
-It is a warning, not a refusal: such a fit can be deliberate (under
-``OALGO 3`` it gives the noise of the data about the pinned weights).  1.5.0 said
+It is a warning, not a refusal: such a fit can be deliberate. 1.5.0 said
 nothing, and a refit potential retrained this way kept its weights.
 
 ``tadah hpo`` runs without a training ``DBFILE`` only when ``FIXINDEX`` and
@@ -591,11 +592,13 @@ the retrain is the potential's. Its ``ESIGMA``, ``FSIGMA``, ``SSIGMA``,
 the retrain fits with (:ref:`fit_objective`). A potential that ``tadah
 train`` or ``tadah hpo`` of Tadah! 1.0.0 to 1.5.0 wrote has ``EWEIGHT``,
 ``FWEIGHT`` and ``SWEIGHT`` lines instead (and from 1.3.0 a
-``WDBFILE_AUTO`` line): a retrain from it is refused, naming each line and
-its conversion, until the copy has the converted keys in their place or,
-for a line the refusal marks (a quantity the fit leaves out,
+``WDBFILE_AUTO`` line; one of ``tadah train`` an ``UNCERTAINTY``
+line): a retrain from it is refused, naming each line and its conversion,
+until the copy has the converted keys in their place or, for a line the
+refusal marks (``UNCERTAINTY``, a quantity the fit leaves out,
 ``WDBFILE_AUTO 0``, or any line under M_KRR implementation 2), none
-(:ref:`fit_objective_conversion`). The ``WDBFILE`` values of the
+(:ref:`fit_objective_conversion` gives the conversions of the keys that
+weighted the training data). The ``WDBFILE`` values of the
 conversion of ``WDBFILE_AUTO`` are not read in the copy: they are given as
 the retrain's own, below.
 
@@ -625,8 +628,7 @@ wherever the run reads it: given with ``-c``, or included with ``CONFIG`` by
 a configuration file or by a ``TASK train`` or ``TASK hpo`` section (a
 ``tadah hpo`` seed too). Its lines of the keys of the training record but
 ``DBFILE`` are not read: those of the six, with or without an ``ESHIFT``
-line, its ``UNCERTAINTY`` line, the switch of the run that wrote it
-(:ref:`weight_covariance`), and its run settings, ``VALIDATION``,
+line, and its run settings, ``VALIDATION``,
 ``HPOTARGET``, ``CHECK``, ``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
 ``AUDIT_SAMPLE`` and ``HEALTH_LOG`` (a ``best_pot.tadah`` of tadah 1.5.x has
 ``HPOTARGET``, ``VERBOSE`` and ``NUMERIC``, and ``VALIDATION`` when its run
@@ -636,8 +638,8 @@ would without them. A ``WARNING`` names the potential's lines that are not
 at their default (the task's default of the key when it has one, such as
 tadah train's ``OUTFILE pot.tadah``, else the key's: ``VERBOSE 1``,
 ``NUMERIC 18``), that the run does not give
-itself and that its task reads (``tadah hpo`` reads no ``UNCERTAINTY`` or
-``OUTFILE``, ``tadah train`` no ``VALIDATION``, ``HPOTARGET``, ``CHECK`` or
+itself and that its task reads (``tadah hpo`` reads no ``OUTFILE``,
+``tadah train`` no ``VALIDATION``, ``HPOTARGET``, ``CHECK`` or
 ``HEALTH_LOG``): a potential of an earlier version has them as key lines,
 and so has a copy with one added::
 
@@ -706,14 +708,9 @@ one of them``; with ``--eshift``, ``The ESHIFT given with --eshift, ...:
 to derive ESHIFT from the data of this run, leave out --eshift and give the
 run one of them`` (``leave out --eshift, delete the ESHIFT line and give
 the run one of them`` when ``--eshift`` replaced an ``ESHIFT`` line of the
-configuration). Likewise ``--uncertainty``, or an
-``UNCERTAINTY true`` line of the task file or of a file that includes the
-copy, asks a retrain for ``weights.tadah``; the copy's own ``UNCERTAINTY
-true`` line asks for nothing, and when the run gives no ``UNCERTAINTY`` of
-its own the warning says so (``its UNCERTAINTY true asked the run that wrote
-it for weights.tadah, not this run, and is ignored``). A retrain
-reproduces the first fit when it is given the keys its record lists, on
-the command line or in the file that includes the copy.
+configuration). A retrain reproduces the first fit when it is given the
+keys its record lists, on the command line or in the file that includes
+the copy.
 
 .. versionchanged:: 1.6.0
    A potential had the keys that prepared its training data as key lines,
@@ -724,9 +721,8 @@ the command line or in the file that includes the copy.
    ``ZERO_COM_FORCE`` applied to the retrain's; its ``ESHIFT_ATOM`` or
    ``ESHIFT_DBATOM`` was overruled by its ``ESHIFT`` line (``Multiple ESHIFT
    sources set``) and, without one, derived the shift from the retrain's
-   data; its ``UNCERTAINTY true`` made a retrain write ``weights.tadah``;
-   its run settings were the retrain's (a ``best_pot.tadah``'s ``VERBOSE``
-   and ``NUMERIC 12`` set the retrain's verbosity and digits, and an
+   data; its run settings were the retrain's (a ``best_pot.tadah``'s
+   ``VERBOSE`` and ``NUMERIC 12`` set the retrain's verbosity and digits, and an
    ``OUTFILE`` line its output file). A
    line of the run that included such a potential with ``CONFIG`` was
    mixed with the potential's line of the same key: one after the
@@ -739,6 +735,14 @@ the evidence approximation found (the fit's :math:`\lambda = \alpha/\beta`;
 they are the approximation's starting guesses in a configuration), so a
 retrain starts the approximation from them (on the same datasets it stops
 there, to its convergence tolerance).
+
+.. versionchanged:: 1.6.0
+   The evidence approximation counts the observations alone (it counted the
+   design matrix's augmentation rows, one per weight, and its rows of
+   priority 0), so the λ and the weights of a ``LAMBDA -1`` fit change: by
+   a little when only the augmentation rows were counted, by orders of
+   magnitude in λ when the fit has many rows of priority 0 (a ``FORCE
+   true`` fit of structures stored with ``fweight 0``).
 
 A ``DBFILE`` that lists one dataset file twice (the same path, two spellings
 of it, or a link to it) is refused, naming both entries, by ``tadah train``
@@ -791,7 +795,7 @@ integers are always exact. ``#`` comment lines (such as the header
   the knot and Blip descriptors warn of a knot or a bump past the cutoff.
   So a potential written with a low ``NUMERIC`` loads with the cutoffs and
   grids it was fitted with; only the fitted numbers (``WEIGHTS``,
-  ``WCOV``, ``NMEAN``, ...) and the other settings are rounded. The
+  ``NMEAN``, ``NSTDEV``, ...) and the other settings are rounded. The
   configuration-keys page marks these keys (*In a potential file*).
 * ``NUMERIC`` never limits the values held in memory: calculations
   always run at full double precision, whatever it is set to. Every
@@ -824,101 +828,6 @@ hpo`` writes (:ref:`hpo_potential_archives`).
    -c`` and ``tadah refit --edit`` of such a file write exact potentials
    (the first two name the line in a WARNING, the edit moves it into its
    training record).
-
-.. _weight_covariance:
-
-Weight covariance and weights.tadah
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-A fit with ``OALGO 3`` (the SVD solve) computes the covariance of its
-weights, the posterior covariance of Bayesian linear regression,
-
-.. math::
-
-   \Sigma_w = s^2 \left(\Phi^\top W \Phi + \lambda I\right)^{-1},
-   \qquad
-   s^2 = \frac{\mathrm{RSS}}{n_\mathrm{obs} - \gamma},
-   \qquad
-   \gamma = \sum_{i\ \mathrm{kept}} \frac{s_i^2}{s_i^2 + \lambda},
-
-with :math:`\Phi` the design matrix, :math:`W` the weight of each row in
-the fit, its priority over the square of its error scale
-(:ref:`fit_objective`), :math:`\lambda` the fit's ``LAMBDA`` (the evidence
-approximation's for ``LAMBDA -1``), RSS the weighted residual sum of
-squares, :math:`n_\mathrm{obs}` the number of observations (the rows of
-priority above 0 that are not zero in every column: structures stored with
-``fweight 0`` add no force rows, for example) and :math:`s_i` the singular
-values of :math:`W^{1/2}\Phi`. :math:`s^2` is the noise variance of a row
-of unit weight. The solve keeps a singular direction when its :math:`s_i` is above
-``rcond`` times the largest (``rcond`` the second value of ``OALGO``,
-1e-8 by default); :math:`\gamma` sums over the kept directions, and the
-inverse is over them too: a direction the solve leaves out of the weights
-is left out of :math:`\Sigma_w` and of :math:`\gamma`, and a WARNING gives
-their number. ``pot.tadah`` gets two keys:
-
-- :ref:`WCOV`: N, then the N×N matrix :math:`\Sigma_w` column-major, in the
-  parameterisation of ``WEIGHTS`` (with ``NORM true`` and ``BF_Linear`` or
-  ``Kern_Linear`` that of the weights of the raw descriptors). A weight
-  ``FIXINDEX`` pins has no variance: its row and column are 0.
-- :ref:`WNOISE`: the noise variance of one observation of each type the
-  fit observed, :math:`s^2 \sigma_t^2`, :math:`\sigma_t` the absolute part
-  of the error scale of the type in the units of the data: for ``E`` that
-  of the energy per atom ((eV/atom)²; under ``ENORM SQRT`` that of
-  :math:`E/\sqrt N`), for ``F`` a force component ((eV/Å)²) and for ``S`` a
-  diagonal stress entry ((eV/Å³)²), for an observation of priority 1. A fit
-  without energies (``ENERGY false``, or every structure's ``eweight`` 0)
-  lists no ``E``: ``tadah predict --error`` refuses such a potential, since
-  every prediction has an energy, and ``tadah train`` warns when it writes
-  it.
-
-When the fit has no more observations than effective weights
-(:math:`n_\mathrm{obs} \le \gamma`) the noise variance is undefined: no
-``WCOV`` and ``WNOISE`` are written, and a WARNING says why. Any other
-``OALGO`` writes neither. ``tadah predict --error`` reads them
-(:ref:`predict_error`).
-
-``--uncertainty`` writes ``weights.tadah``: every weight with its standard
-deviation, the square root of the diagonal of :math:`\Sigma_w` (0 for a
-pinned weight)::
-
-   Index   Mean weight        Std. dev.
-       0   1.420421e+01       3.117841e-02
-       1   2.604397e+03       4.882103e+00
-       …
-
-``Index`` matches the ordering of the ``WEIGHTS`` row in ``pot.tadah``.
-``UNCERTAINTY`` is a switch of the run, not part of the model: a potential
-has no ``UNCERTAINTY`` line (its :ref:`training record <training_record>`
-lists the run's). The ``UNCERTAINTY`` line of a potential, one tadah 1.5.x
-wrote into every potential or one added to a copy, is not read by a run
-that reads the potential (``tadah train -c pot.tadah`` with a ``DBFILE``
-line added, a file or a task section that includes it with ``CONFIG``): an
-``UNCERTAINTY true`` line asks for nothing, and a WARNING names the file
-(:ref:`retrain_from_potential`). ``--uncertainty`` asks for
-``weights.tadah``, and so does ``UNCERTAINTY true`` in a training
-configuration (a file without ``WEIGHTS``), in a task file or in a file
-that includes the potential; a refusal names where it came from.
-``--uncertainty`` is refused before training with an ``OALGO`` other than 3
-and with M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``, whose solve of
-the kernel matrix computes no covariance; implementation 1 computes one), and
-before ``pot.tadah`` is written when the covariance is undefined; the message
-says why and what to change (for too few observations: more data of
-priority above 0).
-
-.. versionchanged:: 1.6.0
-   ``WCOV`` and ``WNOISE`` replace ``SIGMA``, which Tadah! 1.0.0 to 1.5.0
-   wrote with a
-   transposed formula
-   (:math:`V^\top R V` instead of :math:`V R V^\top`) and without
-   :math:`s^2`; it is a deprecated key now, ignored with a notice. The third
-   column of ``weights.tadah``, headed ``Uncertainty``, was its diagonal,
-   and with ``FIXINDEX`` the file had a row per free weight only. The
-   evidence approximation (``LAMBDA -1``) counts the observations alone
-   (it counted the design matrix's augmentation rows, one per weight, and
-   its rows of priority 0), so the λ and the weights of a ``LAMBDA -1`` fit
-   change: by a little when only the augmentation rows were counted, by
-   orders of magnitude in λ when the fit has many rows of priority 0 (a
-   ``FORCE true`` fit of structures stored with ``fweight 0``).
 
 Diagnostic output (verbose 2)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

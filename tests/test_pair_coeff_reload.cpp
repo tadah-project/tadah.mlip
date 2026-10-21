@@ -200,8 +200,8 @@ const char* const kPoly2Ta =
  * config.train` of tadah 1.5.0 wrote it (D2_Blip 3 3 Ta Ta, Cut_Cos at
  * 5 A, M_BLR BF_Linear, FORCE true, OALGO 3, EWEIGHT 1.0 and FWEIGHT 100, on
  * three 54-atom bcc Ta cells; MLIP's tests_data/potentials_1_5 has the same
- * file): its EWEIGHT, FWEIGHT, SWEIGHT and WDBFILE_AUTO lines, retired in
- * Tadah! 1.6.0, are lines 8, 10, 23 and 27. */
+ * file): its EWEIGHT, FWEIGHT, SWEIGHT, UNCERTAINTY and WDBFILE_AUTO lines,
+ * retired in Tadah! 1.6.0, are lines 8, 10, 23, 25 and 27. */
 const char* const kTa150 =
     "ATOM              Ta\n"
     "BIAS              false\n"
@@ -1024,20 +1024,21 @@ static std::string without_key_lines(const std::string& text,
 }
 #endif
 
-/* Pins: a potential of Tadah! 1.5.0 (kTa150, its EWEIGHT, FWEIGHT, SWEIGHT
- * and WDBFILE_AUTO lines on lines 8, 10, 23 and 27) and the published
- * Tadah!Kr1 (docs/source/mlips/Tadah.Kr1, a copy: its EWEIGHT, FWEIGHT and
- * SWEIGHT lines on lines 7, 9 and 20), each given to pair_coeff twice in
- * one LAMMPS instance (pair_coeff, run 0, pair_coeff, run 0), write one
- * LAMMPS WARNING per pair_coeff that lists the retired keys with their
- * lines ("WARNING: pair tadah: potential '<file>': Retired keys EWEIGHT
- * (line 8 of <file>), FWEIGHT (line 10 of <file>), SWEIGHT (line 23 of
- * <file>) and WDBFILE_AUTO (line 27 of <file>) are ignored: ..."): two in
- * the log of the instance, none on standard error; and both runs give the
- * energy and force norm of a fresh instance given the same file without
- * those lines, to 1e-12.
+/* Pins: a potential of Tadah! 1.5.0 (kTa150, its EWEIGHT, FWEIGHT, SWEIGHT,
+ * UNCERTAINTY and WDBFILE_AUTO lines on lines 8, 10, 23, 25 and 27) and the
+ * published Tadah!Kr1 (docs/source/mlips/Tadah.Kr1, a copy: its EWEIGHT,
+ * FWEIGHT and SWEIGHT lines on lines 7, 9 and 20), each given to pair_coeff
+ * twice in one LAMMPS instance (pair_coeff, run 0, pair_coeff, run 0),
+ * write one LAMMPS WARNING per pair_coeff that lists the retired keys with
+ * their lines ("WARNING: pair tadah: potential '<file>': Retired keys
+ * EWEIGHT (line 8 of <file>), FWEIGHT (line 10 of <file>), SWEIGHT (line 23
+ * of <file>), UNCERTAINTY (line 25 of <file>) and WDBFILE_AUTO (line 27 of
+ * <file>) are ignored: ..."): two in the log of the instance, none on
+ * standard error; and both runs give the energy and force norm of a fresh
+ * instance given the same file without those lines, to 1e-12.
  * Before the fix: the keys were stored as keys of the model, with no
- * WARNING. */
+ * WARNING; before UNCERTAINTY was retired, the WARNING did not list its
+ * line. */
 TEST_CASE("pair_style tadah: a potential with retired keys gives one notice "
           "per pair_coeff, and the energy of the file without them",
           "[pair_coeff][lammps][retired]") {
@@ -1055,7 +1056,7 @@ TEST_CASE("pair_style tadah: a potential with retired keys gives one notice "
   const std::vector<Case> cases = {
       {"ta150", kTa150, "Ta",
        {{"EWEIGHT", 8}, {"FWEIGHT", 10}, {"SWEIGHT", 23},
-        {"WDBFILE_AUTO", 27}}},
+        {"UNCERTAINTY", 25}, {"WDBFILE_AUTO", 27}}},
       {"kr1", kr1, "Kr", {{"EWEIGHT", 7}, {"FWEIGHT", 9}, {"SWEIGHT", 20}}}};
   for (const Case& c : cases) {
     INFO(c.tag);

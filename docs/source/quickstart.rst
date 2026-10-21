@@ -424,11 +424,11 @@ What to expect
 gives them random velocities for 1000 K and runs 1000 steps of 3 fs at constant
 energy (NVE), printing every 100 steps. With the shipped ``pot.tadah``:
 
-- the total energy (``TotEng``) stays constant to about 0.1 meV/atom (at most
-  0.08 meV/atom from its initial value in the printed rows);
+- the total energy (``TotEng``) stays constant to about 0.1 meV/atom (it
+  moves by up to 0.08 meV/atom from its initial value in the printed rows);
 - the temperature falls from 1000 K to about 500 K: started from perfect
   lattice positions, about half of the initial kinetic energy goes into the
-  potential energy (in a 10,000-step run it settles near 490 K);
+  potential energy;
 - the pressure starts at about −0.5 GPa;
 - the crystal stays bcc.
 
@@ -520,8 +520,8 @@ above bcc. It is not a production Ta potential:
 A Lennard-Jones pair potential cannot replace it. Refitted to the same data
 (with the ``Cut_Dummy``, ``Cut_Cos`` or ``Cut_PolyS`` cutoff, to energies,
 energies and stresses, or energies, forces and stresses), ``D2_LJ`` gives a bcc
-crystal with :math:`C' < 0` for each of these nine fits (−51 to −173 GPa, each
-at its own lattice constant of 2.94 to 3.28 Å): it is mechanically unstable.
+crystal with :math:`C' < 0` at its own lattice constant for each of these nine
+fits: it is mechanically unstable.
 
 Support for Multi-species Systems
 ---------------------------------

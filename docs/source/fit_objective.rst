@@ -49,8 +49,9 @@ per quantity. A 54-atom cell gives one energy and 162 force components, a
 an observation, and neither is a row the model cannot change: a force
 component that is zero by symmetry, such as the y and z forces of a dimer
 along x or the forces of an atom at a centre of symmetry. Such a row is
-zero to rounding (no value above 1e-10 of the largest of its column), so a
-rigid translation of the atoms changes neither the count nor the fit.
+zero to rounding: no value above 1e-10 of the largest of its column over
+the rows of priority above 0. A rigid translation of the atoms changes
+neither the count nor the fit, and neither does a dataset of priority 0.
 
 Error scales
 ------------

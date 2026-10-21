@@ -30,8 +30,9 @@ Glossary and Abbreviations
 
    Error scale
       The residual of an observation that costs one priority unit in a fit,
-      in the unit of the metric that measures it: ``ESIGMA`` (meV/atom),
-      ``FSIGMA`` (eV/Å), ``SSIGMA`` (GPa) (:ref:`fit_objective`).
+      in the unit of the metric that measures it: ``ESIGMA`` (meV/atom;
+      meV per √atom under ``ENORM SQRT``), ``FSIGMA`` (eV/Å), ``SSIGMA``
+      (GPa) (:ref:`fit_objective`).
 
    Priority
       A number >= 0 that multiplies the cost of an observation in a fit: the

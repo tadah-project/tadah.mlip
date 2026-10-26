@@ -180,6 +180,14 @@ and ``suggest_bounds``. Its lines follow these rules:
      * - ``-o``, ``--outfile``
        - ``OUTFILE``
 
+- A key marked *Command key* in :ref:`ConfigSection`, such as
+  ``ANALYTICS`` (``-A`` of ``tadah predict``) or ``REFIT_MODE`` (a key of
+  the ``tadah refit`` configuration), is refused at its line in the
+  configuration file of a command that does not read it, and the error
+  names the commands that read it. The settings of a ``tadah hpo`` run,
+  ``HPOTARGET``, ``VALIDATION``, ``CHECK`` and ``HEALTH_LOG``, are
+  accepted in every training configuration and listed in the potential's
+  :ref:`training record <training_record>`.
 - An error of a line names the line and the file (for a line of a file
   included with ``CONFIG``, that file): a key that is no configuration key,
   a value that the key does not take (with the values the key takes, the
@@ -198,6 +206,12 @@ and ``suggest_bounds``. Its lines follow these rules:
    its own: its lines go into the configuration file of a command that
    takes ``-c``, the options ``-c`` needs stay on the command line, and the
    lines of another command become its options.
+
+.. versionchanged:: 1.6.0
+   Tadah! 1.5.0 accepted a line of a *Command key* in every configuration
+   file, and ``tadah train`` wrote it into the potential, where it changed
+   nothing. Such a potential loads without that line, with a warning
+   (:ref:`SupportedKEYS`).
 
 .. _dataset:
 

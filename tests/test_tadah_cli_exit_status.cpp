@@ -9586,6 +9586,46 @@ TEST_CASE("Subcommand: tadah and its commands have no option --task",
   }
 }
 
+/* Pins: an argument that no command takes is named first, with CLI11's
+ * exit status 109, also when the command line lacks an option, gives one
+ * without an option it needs or with one it excludes: `tadah train --foo`
+ * (no -c), `tadah predict -d db.tadah --foo` (-d needs -p) and `tadah data
+ * sample -d db.tadah -o out.tadah --uniform 2 --random 2 --foo` (--random
+ * excludes --uniform) each exit 109 with "The following argument was not
+ * expected: --foo", and none says "Exactly 1 option", "requires" or
+ * "excludes".
+ * Before the fix: CLI11 reported what the command lacked, needed or
+ * excluded first: "Exactly 1 option from [-c,--config] is required" (exit
+ * 106; "[-t,--task,-c,--config]" while --task was an option), "--dbfile
+ * requires --potential" (107) and "--random excludes --uniform" (108),
+ * without --foo. */
+TEST_CASE("Subcommand: an argument no command takes is named before what "
+          "the command lacks, needs or excludes",
+          "[TadahCLI][exit-status][one_command]") {
+  ScratchCwd cwd("extras_first");
+  struct Leg {
+    std::vector<std::string> args;
+    const char* other;  // what CLI11 reported first before the fix
+  };
+  const std::vector<Leg> legs = {
+      {{"tadah", "train", "--foo"}, "Exactly 1 option"},
+      {{"tadah", "predict", "-d", "db.tadah", "--foo"}, "requires"},
+      {{"tadah", "data", "sample", "-d", "db.tadah", "-o", "out.tadah",
+        "--uniform", "2", "--random", "2", "--foo"},
+       "excludes"},
+  };
+  for (const Leg& leg : legs) {
+    std::string line;
+    for (const std::string& a : leg.args) line += (line.empty() ? "" : " ") + a;
+    const CliRun r = run_tadah(leg.args);
+    const std::string rep = reported(r);
+    INFO(line << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 109);
+    CHECK(contains(rep, "The following argument was not expected: --foo"));
+    CHECK_FALSE(contains(rep, leg.other));
+  }
+}
+
 /* Pins: tadah runs one command per run: a command line with two commands,
  * `tadah train -c config.train -o a.tadah predict -d db.tadah -p
  * a.tadah` and `tadah train -c config.train -o a.tadah train -c

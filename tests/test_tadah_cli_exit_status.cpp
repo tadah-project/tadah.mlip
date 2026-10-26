@@ -8290,6 +8290,69 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
   }
 }
 
+/* Pins: `tadah train -c` reads a configuration as the concatenation of its
+ * lines, a CONFIG include in place of its line. inc.train is the pair
+ * configuration of the [retrain] cases on b.tadah (its line 13 is "BIAS
+ * false"):
+ *   - run.train "BIAS true", "CONFIG inc.train" exits 1 with "Key BIAS is
+ *     set on line 1 of run.train and on line 13 of inc.train (CONFIG on line
+ *     2 of run.train): a key of one value is set once in a configuration
+ *     file and the files it includes with CONFIG", and writes no pot.tadah;
+ *   - below.train "CONFIG inc.train", "BIAS true" exits 1 with "Key BIAS is
+ *     set on line 13 of inc.train (CONFIG on line 1 of below.train) and on
+ *     line 2 of below.train: ...";
+ *   - two.train "DBFILE a.tadah", "CONFIG inc.train", "OUTFILE two.tadah"
+ *     exits 0, and the training record of two.tadah lists "DBFILE a.tadah
+ *     b.tadah" (both datasets, in line order), "VERBOSE 0" (inc.train's)
+ *     and "OUTFILE two.tadah".
+ * Before the fix: run.train trained with the include's BIAS false and
+ * below.train with BIAS true (exit 0, a potential written), and two.tadah
+ * recorded "DBFILE b.tadah": the include's DBFILE replaced a.tadah without
+ * a message. */
+TEST_CASE("Subcommand: train -c reads a CONFIG include in place of its line: "
+          "a key of one value set twice is refused, DBFILE lines add up",
+          "[TadahCLI][train][config-include]") {
+  ScratchCwd cwd("config_includes");
+  std::ofstream("a.tadah") << retrain_dataset();
+  std::ofstream("b.tadah") << dimers_with_energy("-1.1");
+  std::ofstream("inc.train") << dataset_keys_config("b.tadah", "");
+  const std::string once =
+      ": a key of one value is set once in a configuration file and the "
+      "files it includes with CONFIG";
+  {
+    std::ofstream("run.train") << "BIAS true\nCONFIG inc.train\n";
+    const CliRun r = run_tadah({"tadah", "train", "-c", "run.train"});
+    const std::string rep = reported(r);
+    INFO("-c run.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key BIAS is set on line 1 of run.train and on line "
+                        "13 of inc.train (CONFIG on line 2 of run.train)" +
+                            once));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  {
+    std::ofstream("below.train") << "CONFIG inc.train\nBIAS true\n";
+    const CliRun r = run_tadah({"tadah", "train", "-c", "below.train"});
+    const std::string rep = reported(r);
+    INFO("-c below.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key BIAS is set on line 13 of inc.train (CONFIG on "
+                        "line 1 of below.train) and on line 2 of below.train" +
+                            once));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  std::ofstream("two.train") << "DBFILE a.tadah\nCONFIG inc.train\n"
+                                "OUTFILE two.tadah\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "two.train"});
+  INFO("-c two.train: status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  const std::string two = slurp("two.tadah");
+  INFO("two.tadah:\n" << two);
+  CHECK(record_of(two) == std::vector<std::string>{"DBFILE a.tadah b.tadah",
+                                                   "VERBOSE 0",
+                                                   "OUTFILE two.tadah"});
+}
+
 /* Pins: `tadah predict -F --zero-com-force` zeroes the net reference force
  * of each structure predicted: pot.tadah trained on db.tadah (the three
  * dimers, both atoms of each with the force f f f, so the net force is 2f

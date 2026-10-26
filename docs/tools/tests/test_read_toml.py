@@ -254,6 +254,75 @@ class ReadTomlTest(unittest.TestCase):
         self.assertNotIn('A key marked **Retired** weighted the training data',
                          intro)
 
+    def command_blueprint(self):
+        """blueprint() with a key only commands read (ANALYTICS, the option
+        --analytics of predict), a key of a nested command's configuration
+        file (REFIT_MODE of refit, written out in its group) and a key no
+        command reads (QUANTITY), as CORE marks them (command_only)."""
+        bp = blueprint()
+        bp['ALLOWED_KEYS']['analytics'] = {
+            'INHERIT': ['TYPES.UINT'], 'description': 'Performs analytics.',
+            'cli_long_flag': '--analytics', 'cli_short_flag': '-A',
+            'command_only': True}
+        bp['ALLOWED_KEYS']['refit_mode'] = {
+            'INHERIT': ['TYPES.UINT'], 'description': 'Refit mode.',
+            'cli_long_flag': '', 'command_only': True}
+        bp['ALLOWED_KEYS']['quantity'] = {
+            'INHERIT': ['TYPES.UINT'], 'description': 'Generic quantity.',
+            'cli_long_flag': '--quantity', 'command_only': True}
+        bp['TASKS'] = {
+            'predict': {'description': 'Predicts.', 'long_description': '',
+                        'examples': [],
+                        'keys': {'INHERIT': ['ALLOWED_KEYS.analytics']}},
+            'data': {'description': 'Data.', 'long_description': '',
+                     'examples': [],
+                     'print': {'description': 'Prints.',
+                               'long_description': '', 'examples': [],
+                               'keys': {'INHERIT':
+                                        ['ALLOWED_KEYS.analytics']}}},
+            'refit': {'description': 'Refits.', 'long_description': '',
+                      'examples': [],
+                      'groups': {'input': {
+                          'description': 'One of:',
+                          'keys': {'refit_mode': {}}}}},
+        }
+        return bp
+
+    def test_command_only_key_names_the_commands_that_read_it(self):
+        # Pins: a key that only commands read (blueprint field command_only,
+        # CORE) says so in its entry, naming the commands whose options or
+        # keys list it and its option: "A key of ``tadah data print`` and
+        # ``tadah predict`` (the option ``--analytics``, ``-A``)"; a key of
+        # a command's configuration file without an option, "A key of
+        # ``tadah refit``"; one that no command reads, "A key that no
+        # command reads"; each says that a configuration file of another
+        # command refuses its line and that a potential is read without
+        # it. An ordinary key says none of it.
+        # Before the fix: the entries of such keys read as keys of the
+        # training configuration (an example line "analytics 20").
+        page = self.rt.render(self.command_blueprint())
+        sec = ' '.join(self.section(page, 'analytics').split())
+        self.assertIn('A key of ``tadah data print`` and ``tadah predict`` '
+                      '(the option ``--analytics``, ``-A``)', sec)
+        self.assertIn('a configuration file of another command refuses its '
+                      'line', sec)
+        self.assertIn('a potential', sec)
+        refit = ' '.join(self.section(page, 'refit_mode').split())
+        self.assertIn('A key of ``tadah refit``:', refit)
+        quantity = ' '.join(self.section(page, 'quantity').split())
+        self.assertIn('A key that no command reads', quantity)
+        self.assertNotIn('A key of', self.section(page, 'LAMBDA'))
+
+    def test_page_intro_explains_command_only_keys(self):
+        # Pins: the page says that the keys of commands are not keys of a
+        # configuration file of another command (refused at their line)
+        # and that a potential is read without them, with a warning.
+        # Before the fix: the intro did not mention them.
+        page = self.rt.render(self.command_blueprint())
+        intro = ' '.join(page[:page.index('.. _LAMBDA:')].split())
+        self.assertIn('only some commands read', intro)
+        self.assertIn('refused at its line', intro)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -35,8 +35,11 @@ Keys
      - Repeatable starting-point methods, with the same syntax as
        :doc:`nfp_initialisation`.
    * - ``K_TOTAL K``
-     - Integer >= 1 with the same meaning as in ``INIT``: the number of
-       points of each restart, at most the points the chain gives.
+     - Integer >= 1 with the same meaning as in ``INIT``: each restart
+       keeps the first ``K`` points of the block's chain. A value at or
+       above the points the methods give caps nothing and is refused, so
+       a block without a ``METHOD`` line, which gives one ``CONFIG``
+       point, takes no ``K_TOTAL``.
    * - ``SEED n``
      - Unsigned 64-bit seed for the restart-point chain. Restart round
        ``r`` draws with ``n + r`` (unsigned 64-bit arithmetic).

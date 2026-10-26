@@ -53,7 +53,8 @@ Repeat ``METHOD`` to concatenate methods into one chain.
        values are taken. See the mismatch policy below.
 
 An absent ``INIT`` block, or an empty method chain, supplies one ``CONFIG``
-point. An explicit chain supplies only its declared methods. Near-duplicate
+point; inside ``EXPLORE`` it leaves the exploration the main starting
+points. An explicit chain supplies only its declared methods. Near-duplicate
 points in a chain are removed in transformed coordinates, retaining the
 first occurrence. ``METHOD NOISE_AUTO`` is reserved and rejected.
 
@@ -70,7 +71,10 @@ Other keys
      - Integer >= 1. The block keeps the first ``K`` points of its
        chain, a single method included. A value at or above the points
        the methods give (``CONFIG`` and ``WARM`` give one each) caps
-       nothing and is refused. Omission keeps every point.
+       nothing and is refused. Inside ``EXPLORE``, a block without a
+       method gives the exploration the main starting points, which its
+       ``K_TOTAL`` does not cap, so ``K_TOTAL`` is refused there too.
+       Omission keeps every point.
    * - ``SEED n``
      - Unsigned 64-bit seed for the sampling methods. Omission draws a
        seed from ``std::random_device``. This is separate from the

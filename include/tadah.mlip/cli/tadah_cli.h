@@ -124,8 +124,14 @@ private:
    */
   void addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bpTask);
 
-  // task name train or data.split as in blueprint
-void handleCmdCallback(const std::string &blueprintTaskName);
+  /**
+   * @brief The callback of the command @p cmd, the blueprint task
+   *        @p blueprintTaskName (TRAIN, DATA.split): stores its options as
+   *        a CLITask and records it among the commands given. A command
+   *        that groups others (DATA) records nothing; given without one of
+   *        its commands it throws CLI::ValidationError naming them.
+   */
+  void handleCmdCallback(const std::string &blueprintTaskName, CLI::App *cmd);
 std::string handleFooterCallback(const core::BlueprintTask &bpTask);
 
 private:
@@ -138,6 +144,10 @@ private:
    */
   // std::unordered_map<CLI::App*, std::vector<CLITask>> cliTasks_;
   std::vector<CLITask> cliTasks_;
+
+  /// The blueprint tasks of the commands given, in order: one per run
+  /// (TadahCLI::run refuses a second).
+  std::vector<std::string> commandsGiven_;
 
   /**
    * @brief Stores references to first-level commands by lowercase name.

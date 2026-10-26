@@ -1284,14 +1284,15 @@ TEST_CASE("Subcommand: data sample -i takes 1-based indices up to the last struc
 
 /* Pins: `tadah data sample` needs exactly one selection: without --uniform,
  * --random or --index (the help's former example) it exits 1 naming the
- * three options, "tadah data sample: say what to sample: --uniform N
+ * three options, "tadah data sample needs one selection: --uniform N
  * (every N-th structure), --random N (N structures at random) or --index
  * <indices>", and writes nothing (two selections, which the command line
  * refuses as excluding each other: test_command_inputs.cpp of MLIP).
  * Before the fix: no selection wrote an empty dataset with exit 0; with two,
  * the first (UNIFORM, then RANDOM, then INDEX) ran and the other was ignored
  * silently. Then the message of no selection ended with a note on the keys
- * of a file, which the check of its end fails on. */
+ * of a file, which the check of its end fails on, and began "tadah data
+ * sample: say what to sample: ...". */
 TEST_CASE("Subcommand: data sample needs exactly one selection",
           "[TadahCLI][exit-status][data][sample]") {
   ScratchCwd cwd("sample_selection");
@@ -1301,7 +1302,7 @@ TEST_CASE("Subcommand: data sample needs exactly one selection",
     const std::string rep = reported(r);
     INFO("status " << r.status << "\n" << rep);
     CHECK(r.status == 1);
-    CHECK(contains(rep, "tadah data sample: say what to sample: --uniform N "
+    CHECK(contains(rep, "tadah data sample needs one selection: --uniform N "
                         "(every N-th structure), --random N (N structures at "
                         "random) or --index <indices>\n"));
     CHECK_FALSE(std::filesystem::exists("out.tadah"));
@@ -9674,6 +9675,98 @@ TEST_CASE("Subcommand: a command line with two commands is refused before "
   INFO("predict: status " << p.status << "\n" << reported(p));
   CHECK(p.status == 0);
   CHECK(std::filesystem::exists("energy.pred"));
+}
+
+/* Pins: a command line that gives a second command is refused before any
+ * command runs, with the message of one command per run and exit status
+ * 105, in every form CLI11 reads it:
+ *  - the command that holds the one CLI11 reads, typed again (`tadah data
+ *    print -d db.tadah data split -d db.tadah -o part1.tadah part2.tadah
+ *    --even`: "the command line gives 2, tadah data print and tadah data
+ *    split");
+ *  - a command given before, typed again after another (`tadah predict ...
+ *    analysis cutoff ... predict ...`: "gives 3, tadah predict, tadah
+ *    analysis cutoff and tadah predict");
+ *  - a second command that lacks an option (`tadah predict -d db.tadah -p
+ *    a.tadah predict -p a.tadah`, `tadah explain train.verbose train`);
+ *  - the same command and its group typed again (`tadah analysis cutoff
+ *    ... analysis cutoff ...`);
+ *  - a command that groups others, given alone after a command (`tadah data
+ *    print -d db.tadah data`, `tadah predict ... analysis predict ...`);
+ * and nothing is written (part1.tadah, part2.tadah, energy.pred,
+ * cutoff.txt). An argument
+ * that names no command keeps CLI11's exit status 109 ("The following
+ * argument was not expected: predictx", "... --foo").
+ * Before the fix: exit 109 naming the second command's words as arguments
+ * no command takes ("The following argument was not expected: data", "...
+ * analysis", "The following arguments were not expected: db.tadah -d
+ * a.tadah -p predict"), exit 106 for what the second command lacked
+ * ("At least 1 option from [-s,--structure,-d,--dbfile] is required",
+ * "Exactly 1 option from [-c,--config] is required"), and exit 105 with
+ * "tadah analysis takes one of its commands: ..." for the group given
+ * alone after predict. */
+TEST_CASE("Subcommand: a second command is refused in every form, also "
+          "where CLI11 takes its name for an argument",
+          "[TadahCLI][exit-status][one_command]") {
+  ScratchCwd cwd("second_command_forms");
+  write_ta_dimer_training();
+  const std::vector<std::string> outputs = {"part1.tadah", "part2.tadah",
+                                            "energy.pred", "cutoff.txt"};
+  const std::string head =
+      "tadah runs one command per run: the command line gives ";
+  const std::vector<std::string> cutoff = {
+      "analysis", "cutoff", "-o", "cutoff.txt", "-r", "0", "3.14", "100",
+      "--type", "Cut_Cos"};
+  auto line = [](std::initializer_list<std::vector<std::string>> parts) {
+    std::vector<std::string> out = {"tadah"};
+    for (const auto &p : parts) out.insert(out.end(), p.begin(), p.end());
+    return out;
+  };
+  const std::vector<std::string> predict = {"predict", "-d", "db.tadah",
+                                            "-p", "a.tadah"};
+  const std::vector<std::pair<std::vector<std::string>, std::string>> cases =
+      {{line({{"data", "print", "-d", "db.tadah", "data", "split", "-d",
+               "db.tadah", "-o", "part1.tadah", "part2.tadah", "--even"}}),
+        "2, tadah data print and tadah data split"},
+       {line({predict, cutoff, predict}),
+        "3, tadah predict, tadah analysis cutoff and tadah predict"},
+       {line({predict, {"predict", "-p", "a.tadah"}}),
+        "2, tadah predict and tadah predict"},
+       {line({{"explain", "train.verbose", "train"}}),
+        "2, tadah explain and tadah train"},
+       {line({cutoff, cutoff}),
+        "2, tadah analysis cutoff and tadah analysis cutoff"},
+       {line({{"data", "print", "-d", "db.tadah", "data"}}),
+        "2, tadah data print and tadah data"},
+       {line({predict, {"analysis"}, predict}),
+        "3, tadah predict, tadah analysis and tadah predict"}};
+  for (const auto& c : cases) {
+    for (const auto& f : outputs) std::filesystem::remove(f);
+    std::string words;
+    for (const std::string& a : c.first) words += (words.empty() ? "" : " ") + a;
+    const CliRun r = run_tadah(c.first);
+    const std::string rep = reported(r);
+    INFO(words << "\nstatus " << r.status << "\n" << rep);
+    CHECK(r.status == 105);
+    CHECK(contains(rep, head + c.second +
+                            " (each runs as a tadah command of its own)"));
+    for (const auto& f : outputs) {
+      INFO("written: " << f);
+      CHECK_FALSE(std::filesystem::exists(f));
+    }
+  }
+  const std::vector<std::pair<std::vector<std::string>, std::string>> extras =
+      {{line({predict, {"-A", "predictx"}}), "predictx"},
+       {line({{"data", "print", "-d", "db.tadah", "--foo"}}), "--foo"}};
+  for (const auto& c : extras) {
+    const CliRun r = run_tadah(c.first);
+    const std::string rep = reported(r);
+    INFO(c.second << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 109);
+    CHECK(contains(rep, "The following argument was not expected: " +
+                            c.second));
+    CHECK_FALSE(contains(rep, head));
+  }
 }
 
 /* Pins: a command that groups others runs nothing itself: `tadah data`,

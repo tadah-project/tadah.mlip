@@ -75,11 +75,13 @@ Loss scope
   root loss in force when that line is read. Its ``--loss`` option
   overrides it for that term.
 
-``LOSS`` precedes the ``PC_LAMMPS`` and ``PC_OBSERVABLE`` lines it
-affects. A second ``LOSS`` line follows such a line that takes the
-first, or is refused. In a target file without validation metrics, a
-``LOSS`` line that no such line follows is refused too. For a
-successful evaluation, HPO divides the sum of enabled weighted loss
+``LOSS`` precedes the terms it affects: a ``--varloss`` term or a
+``PC_OBSERVABLE`` line that names no loss function reads it. A second
+``LOSS`` line is refused unless such a term between reads the first. In
+a target file without validation metrics, a ``LOSS`` line that no such
+term follows is refused too.
+
+For a successful evaluation, HPO divides the sum of enabled weighted loss
 terms by the number of terms. Each enabled validation metric
 contributes one term, each LAMMPS ``--varloss`` one term, and each typed
 observable one term. Indexed validation targets first form their own
@@ -99,10 +101,10 @@ or above ``0.999 * FAILSCORE`` as failures when selecting usable results.
 
 This root setting differs from ``PC_LAMMPS --failscore``, which supplies
 replacement *variable values* for a failed script. The evaluation retains
-its failed status. Each script line takes the root ``FAILSCORE`` above it
-as its default replacement value; ``--failscore`` gives it its own. A
-second ``FAILSCORE`` line follows a script line that takes the first, or
-is refused, and the ceiling of every loss is the last.
+its failed status. A script line without ``--failscore`` reads the root
+``FAILSCORE`` above it as its replacement value; ``--failscore`` gives it
+its own. A second ``FAILSCORE`` line is refused unless a script line
+between reads the first, and the ceiling of every loss is the last.
 
 FAILSCORE_GRADING
 -----------------

@@ -83,9 +83,14 @@ Relaxation options
        Zero disables it.
    * - ``--fmax-converged <force>``
      - ``0.1``
-     - Force tolerance of the relaxation in eV/Å, above 0: the
-       relaxation stops when the largest atomic force falls below it,
-       and one that ends above it is unconverged.
+     - Force tolerance of the relaxation, above 0: the relaxation
+       stops when the largest atomic force, in eV/Å, and the strain
+       force of the cell both fall below it. The strain force is
+       :math:`|\partial E/\partial\varepsilon|/(3V)` for the
+       isotropic strain :math:`\varepsilon` and the cell volume
+       :math:`V`; in the bcc cell the atomic forces vanish by
+       symmetry, so the strain force decides. A relaxation that stops
+       before then is unconverged.
    * - ``--unconverged const <value>``
      - ``const 100``
      - Report this finite value for an unconverged relaxation.
@@ -103,13 +108,17 @@ target that the term's loss cannot measure is refused
 (:doc:`nfp_losses`).
 
 Each relaxation starts from the lattice constant that the previous
-evaluation of the same search relaxed to. Each replica of
-``TADAH:ANNEAL_PT`` and each walker of ``TADAH:ANNEAL_PA`` keeps its own.
+evaluation of its sequence relaxed to. Each replica of
+``TADAH:ANNEAL_PT``, each walker of ``TADAH:ANNEAL_PA`` and each position
+in an ASA block has its own sequence. Every other optimiser evaluates on
+the first one, so the lattice constant carries over from one
+``MULTISTART`` start, and from one ``PRESTAGE`` phase, to the next.
 
 .. versionchanged:: 1.6.0
    A term takes the root ``LOSS`` above its line; 1.5.0 took ``L2``
-   unless ``--loss`` named another. ``--fmax-converged`` sets the force
-   tolerance of the relaxation, which 1.5.0 fixed at 0.1 eV/Å.
+   unless ``--loss`` named another. ``--fmax-converged`` sets the
+   tolerance of the relaxation; 1.5.0 relaxed to 0.1 and the option
+   changed nothing in the bcc cell.
 
 Gradient compatibility
 ----------------------
@@ -122,9 +131,13 @@ Derivative-free phases use loss values alone.
 ``ANALYTICAL`` requires a supported linear fit with training data,
 ``OALGO 4``, fixed ``LAMBDA >= 0``, ``NORM false``, ``STRESS false``
 and no ``FIXINDEX`` pins or ``PC_SRMSE_GPA`` target. Startup also checks
-the selected descriptor parameters. For typed observables, ``MAPE``,
-``RMSLE`` and ``--unconverged force-scaled`` require the numerical
-contribution provided by ``HYBRID``.
+the selected descriptor parameters. For typed observables,
+``--unconverged force-scaled`` requires the numerical contribution
+provided by ``HYBRID``. A term has an analytical derivative under every
+:doc:`loss function <nfp_losses>`, ``MAPE`` and ``RMSLE`` included.
+
+.. versionchanged:: 1.6.0
+   1.5.0 took finite differences for a term under ``MAPE`` or ``RMSLE``.
 
 ``GRAD_STRATEGY`` belongs to the phase owning the objective. An NLopt
 ``INNER`` search obtains gradients through that enclosing phase.

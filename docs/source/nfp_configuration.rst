@@ -159,16 +159,20 @@ indices refines the block-wide ``STEP``.
 ``REFINE`` groups the refinement settings of the surrounding ``STRATEGY``.
 
 ``LOSS``, ``FAILSCORE`` and ``PC_SCRIPT_TIMEOUT`` precede the lines
-they affect: a ``PC_LAMMPS`` line takes all three, a ``PC_FAILPROBE``
-line ``FAILSCORE`` and ``PC_SCRIPT_TIMEOUT``, and a ``PC_OBSERVABLE``
-line ``LOSS``. Each such line captures those settings when it is read,
-and the options ``--varloss``, ``--loss``, ``--failscore`` and
-``--maxtime`` give it values of its own. A second line of one of the
-three follows a line that takes the first, or is refused. A
-``PC_SCRIPT_TIMEOUT`` line that no such line follows is refused, and so
-is such a ``LOSS`` line in a file without validation metrics. The
-run-wide uses take the last line: the validation metrics' loss, the
-ceiling of every loss and the ``PROCESS`` worker deadline.
+they affect. A line reads such a setting when it uses it: a
+``PC_LAMMPS`` or ``PC_FAILPROBE`` line without ``--failscore`` reads
+``FAILSCORE``, one without ``--maxtime`` reads ``PC_SCRIPT_TIMEOUT``,
+and a ``--varloss`` term or a ``PC_OBSERVABLE`` line that names no loss
+function reads ``LOSS``. Each line captures the values it reads when it
+is read.
+
+A second line of one of the three is refused unless a line between
+reads the first. A ``PC_SCRIPT_TIMEOUT`` line that no line
+after it reads is refused, and so is such a ``LOSS`` line in a file
+without validation metrics. The validation metrics take the last
+``LOSS`` line, and the ceiling of every loss the last ``FAILSCORE``
+line. The ``PROCESS`` worker deadline of a line's scripts derives from
+that line's own limit.
 
 Repeated ``OPTIM`` lines select distinct dimensions.
 

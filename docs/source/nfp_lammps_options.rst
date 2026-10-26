@@ -31,8 +31,8 @@ Required options
    unlike validation and typed-observable weights, a negative weight is
    accepted here. The default loss is root ``LOSS`` as it stood when
    this line was read. An optional :doc:`loss name <nfp_losses>` and
-   parameter override it for this variable only. A target that the loss
-   cannot measure is refused.
+   parameter override it for this variable only, which then does not
+   read ``LOSS``. A target that the loss cannot measure is refused.
 
 Inputs and diagnostics
 ----------------------
@@ -53,15 +53,17 @@ Timeout and failed-script values
 
 ``--maxtime <time>``
    Override ``PC_SCRIPT_TIMEOUT`` for this script: ``off``, ``unlimited``
-   or a positive ``[[HH:]MM:]SS`` time.
+   or a positive ``[[HH:]MM:]SS`` time. The line then does not read
+   ``PC_SCRIPT_TIMEOUT``.
 
 ``--failscore <value>``
    Value substituted for this script's output and loss variables if it
    fails. Any finite number is accepted for ``PC_LAMMPS``; default:
    root ``FAILSCORE`` when the line is read. The substituted variable
    passes through its configured loss for reporting, but the whole
-   evaluation still receives a failure score. On ``PC_FAILPROBE`` this
-   option instead requires a positive number.
+   evaluation still receives a failure score. The line then does not
+   read root ``FAILSCORE``. On ``PC_FAILPROBE`` this option instead
+   requires a positive number.
 
 Warm variables
 --------------
@@ -75,12 +77,18 @@ Warm variables
 
 The script must define the returned value as an equal-style variable.
 HPO injects the cached seed before running it. Scripts without
-``--hotvar`` that reference a returned hot value run after its producer.
-Each hot-variable name must have only one producing script.
-A line that defines the same name with ``--invar``, ``-var`` or ``-v``
-is refused, when the name is a ``--hotvar`` of the line or one its
-script reads: those options create index-style variables, which
-conflict with equal-style injection.
+``--hotvar`` that reference a returned hot value (``${name}``,
+``v_name``, or ``$name`` for a one-character name) run after its
+producer and are injected its value. A script with ``--hotvar`` is
+injected its own seeds only. Each hot-variable name must have only one
+producing script.
+
+A line that defines a name with ``--invar``, ``-var`` or ``-v`` is
+refused when the name is a ``--hotvar`` of the line, or, on a line
+without ``--hotvar``, a ``--hotvar`` that its script references: those
+options create index-style variables, which conflict with equal-style
+injection. A line with ``--hotvar`` may define another line's hot name,
+and its script then reads that definition.
 
 Violation variables
 -------------------
@@ -91,10 +99,10 @@ Violation variables
    The optional scale must be finite and positive; default ``1``.
 
 A positive violation marks the simulation as failed, and its evaluation
-fails. With ``FAILSCORE_GRADING ON``, ``scale * value`` grades its
-severity. With grading ``OFF``, the evaluation scores ``FAILSCORE``,
-``hpo_run.log`` has a warning naming the variable, and an explicit
-scale is refused. In either mode an unreadable or non-finite fail
+fails; in both modes ``hpo_run.log`` has a warning naming the variable.
+With ``FAILSCORE_GRADING ON``, ``scale * value`` grades its severity.
+With grading ``OFF``, the evaluation scores ``FAILSCORE``, and an
+explicit scale is refused. In either mode an unreadable or non-finite fail
 variable fails the simulation. Define it before commands that might
 prevent the script from reaching its end.
 

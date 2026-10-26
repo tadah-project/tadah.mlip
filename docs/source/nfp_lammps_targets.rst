@@ -66,8 +66,8 @@ Deadlines exceeding the worker's millisecond-counter range are refused.
 90 seconds; ``off`` disables the limit, while ``0`` is invalid. Each script line
 captures the current value when parsed; ``--maxtime`` overrides it for
 that line. A ``PC_SCRIPT_TIMEOUT`` line that no ``PC_LAMMPS`` or
-``PC_FAILPROBE`` line follows is refused. Root ``MAXTIME`` is another
-name for this key. ``MAXTIME``
+``PC_FAILPROBE`` line without ``--maxtime`` follows is refused. Root
+``MAXTIME`` is another name for this key. ``MAXTIME``
 inside an optimiser block instead limits an optimiser search.
 
 The environment variables ``TADAH_PC_ISOLATION`` and
@@ -109,15 +109,18 @@ indicating no detected violation. Additional outputs are diagnostics.
    * - ``--failscore <value>``
      - Finite positive replacement value when the probe fails;
        defaults to root ``FAILSCORE`` at the probe line. A scalar at
-       or above this value also counts as probe failure.
+       or above this value also counts as probe failure, and so does a
+       negative or non-finite one.
    * - ``--invar``, ``--outvar``, ``--maxtime``
      - Same syntax as :doc:`LAMMPS line options <nfp_lammps_options>`.
 
 A probe takes no ``--varloss``, ``--hotvar`` or ``--failvar`` and adds no
 loss term: a target file whose only script line is a probe has no loss
 source and is refused. With grading ``OFF``, the threshold still rejects
-and the severity measure is unused; a script or scalar-readback failure
-fails the evaluation in both modes. The probe's requested output
+and the severity measure is unused. A probe failure (a script or
+scalar-readback failure, or a scalar that counts as one) fails the
+evaluation in both modes, and a failing scalar is journalled in
+``hpo_run.log``. The probe's requested output
 variables must follow the same equal-style contract as other script
 outputs.
 

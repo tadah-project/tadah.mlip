@@ -52,15 +52,9 @@ in order:
    of every atom closer than the cutoff, for any cell (triclinic, or
    thinner than the cutoff) and for atoms inside or outside the cell
    (:doc:`API/nn_finder`).
-#. **Running the pre-flight audit** when enabled (``AUDIT`` is ``off`` by
-   default; ``warn`` reports findings, ``error`` refuses to launch on a
-   FAIL-level finding, with exit status 1), which checks dataset
-   statistics and per-descriptor metadata for ρ-collapse and out-of-range
-   parameter combinations. A radial channel of a many-body density fails
-   when it reaches none of the neighbour distances within its cutoff: a
-   Gaussian when it is below 1e-6 at all of them, a blip when its support
-   holds none. A Gaussian centred at the origin whose width reaches the
-   first neighbours passes.
+#. **Running the pre-flight audit** when enabled (:ref:`AUDIT`, ``off`` by
+   default): it checks the parameters of each descriptor against the
+   neighbour distances of the data.
 #. **Fitting the regression model** declared by ``MODEL``: it minimises
    the sum of :ref:`fit_objective`, with the :term:`error scales
    <error scale>` of the configuration and the :term:`priorities

@@ -9629,8 +9629,8 @@ TEST_CASE("Subcommand: an argument no command takes is named before what "
 /* Pins: tadah runs one command per run: a command line with two commands,
  * `tadah train -c config.train -o a.tadah predict -d db.tadah -p
  * a.tadah` and `tadah train -c config.train -o a.tadah train -c
- * config.train -o b.tadah`, exits non-zero before either runs (no a.tadah,
- * no b.tadah, no energy.pred), naming the commands it gives: "tadah runs
+ * config.train -o b.tadah`, exits 105 before either runs (no a.tadah, no
+ * b.tadah, no energy.pred), naming the commands it gives: "tadah runs
  * one command per run: the command line gives 2, tadah train and tadah
  * predict" (and "..., tadah train and tadah train"). Each command alone
  * runs.
@@ -9658,7 +9658,7 @@ TEST_CASE("Subcommand: a command line with two commands is refused before "
     const CliRun r = run_tadah(c.first);
     const std::string rep = reported(r);
     INFO(c.second << "\nstatus " << r.status << "\n" << rep);
-    CHECK(r.status != 0);
+    CHECK(r.status == 105);
     CHECK(contains(rep, c.second));
     for (const auto& f : outputs) {
       INFO("written: " << f);
@@ -9677,7 +9677,7 @@ TEST_CASE("Subcommand: a command line with two commands is refused before "
 }
 
 /* Pins: a command that groups others runs nothing itself: `tadah data`,
- * `tadah data -v 2`, `tadah properties` and `tadah analysis` exit non-zero
+ * `tadah data -v 2`, `tadah properties` and `tadah analysis` exit 105
  * naming the commands of the group: "tadah data takes one of its commands:
  * balance, convert, dedup, merge, print, sample, split or write",
  * "tadah properties takes one of its commands: pairwise", "tadah analysis
@@ -9706,7 +9706,7 @@ TEST_CASE("Subcommand: a command that groups others is refused without one "
     const CliRun r = run_tadah(c.first);
     const std::string rep = reported(r);
     INFO(c.first.size() << " words: status " << r.status << "\n" << rep);
-    CHECK(r.status != 0);
+    CHECK(r.status == 105);
     CHECK(contains(rep, c.second));
   }
 }

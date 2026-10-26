@@ -1371,9 +1371,8 @@ TEST_CASE("Subcommand: data sample to an unwritable file exits 1",
   CHECK_FALSE(std::filesystem::exists("nodir"));
 }
 
-/* Pins: the index list of `tadah data sample -i` (and INDEX in a task
- * file) is one list however it is spaced, as the command-line schema
- * accepts it: on S1 ... S5, '-i "1, 3"' and '-i 1, 3' give S1, S3,
+/* Pins: the index list of `tadah data sample -i` is one list however it
+ * is spaced, as the command-line schema accepts it: on S1 ... S5, '-i "1, 3"' and '-i 1, 3' give S1, S3,
  * '-i "1 - 3"' S1, S2, S3, '-i "1-5 : 2"' S1, S3, S5, and '-i "1, 3, 5"'
  * S1, S3, S5.
  * Before the fix: each command-line value was parsed on its own, so '1,'

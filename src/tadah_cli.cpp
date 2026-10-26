@@ -19,6 +19,8 @@
 
 #include <boost/algorithm/string.hpp> // for boost::split
 #include <algorithm>
+#include <cctype>
+#include <cstdlib>
 #include <map>
 #include <iostream>
 #include <stdexcept>
@@ -131,12 +133,19 @@ int TadahCLI::run(int argc, char** argv) {
   bool exit_early = false;
   int exit_code = 0;
 
+  // The commands the words give, counted before CLI11 reads the line: a
+  // second command is refused whatever CLI11 would report first (an
+  // option the first command lacks, needs or excludes).
+  commandsTyped_ = commandsOfWords(
+      std::vector<std::string>(argv + std::min(argc, 1), argv + argc));
+
   try {
+    if (commandsTyped_.size() > 1)
+      throw CLI::ValidationError(commandLineRefusal());
     app_.parse(argc, argv);
 
-    // One command per run, and a command that groups others with one of
-    // its commands: refused before any command runs (the commands run
-    // after the parse).
+    // A command that groups others with one of its commands: refused
+    // before any command runs (the commands run after the parse).
     const std::string refusal = commandLineRefusal();
     if (!refusal.empty()) throw CLI::ValidationError(refusal);
 
@@ -163,12 +172,11 @@ int TadahCLI::run(int argc, char** argv) {
 
   } catch (const CLI::ParseError &e) {
     exit_early = true;
-    // A second command is refused first, in every form CLI11 reports it
-    // (an argument no command takes, what the second command lacks), and
-    // a command that groups others given alone; then an argument no
-    // command takes (`tadah train --task f`: --task is an option of no
-    // command) is named before what a command lacks, needs or excludes,
-    // which CLI11 checks first.
+    // A second command is refused first (counted from the words before
+    // the parse, whatever CLI11 reports), and a command that groups others
+    // given alone; then an argument no command takes (`tadah train --task
+    // f`: --task is an option of no command) is named before what a
+    // command lacks, needs or excludes, which CLI11 checks first.
     const std::string refusal = commandLineRefusal();
     const std::vector<std::string> extras = app_.remaining(true);
     const bool requirement =
@@ -266,14 +274,11 @@ std::string TadahCLI::handleFooterCallback(const core::BlueprintTask &bpTask) {
 void TadahCLI::handleCmdCallback(const std::string &blueprintName,
                                  CLI::App *cmd) {
   // A command that groups others (tadah data) runs nothing itself: it is
-  // given with one of its commands, whose callback has recorded it. Given
-  // alone, it is recorded, and refused once the command line is read
-  // (commandLineRefusal), after a second command.
-  if (!members_of(blueprintName).empty()) {
-    if (cmd->get_subcommands().empty()) commandsGiven_.push_back(blueprintName);
-    return;
-  }
-  commandsGiven_.push_back(blueprintName);
+  // given with one of its commands, whose callback stores the options.
+  // Given alone, it is refused once the command line is read
+  // (commandLineRefusal).
+  (void)cmd;
+  if (!members_of(blueprintName).empty()) return;
 
   CLITask cliTask;
   cliTask.blueprintTaskName = blueprintName;
@@ -575,67 +580,130 @@ void TadahCLI::setDefaultsLabels() {
   processBlueprintTasks(topLevelAction, groupAction);
 }
 
-std::vector<std::string> TadahCLI::commandsOfLine() const {
-  // The commands CLI11 read, in the order it read them: those whose parse
-  // ended (commandsGiven_, a command that groups others given alone among
-  // them), then one whose parse an error ended (an option it lacks, needs
-  // or excludes), the last CLI11 read: each read of a command counts
-  // (CLI::App::count()).
-  std::vector<std::string> commands = commandsGiven_;
-  for (const auto &kv : commandApps_) {
-    if (!members_of(kv.first).empty()) continue;
-    const std::size_t ended = static_cast<std::size_t>(
-        std::count(commandsGiven_.begin(), commandsGiven_.end(), kv.first));
-    for (std::size_t n = ended; n < kv.second->count(); ++n)
-      commands.push_back(kv.first);
-  }
+std::vector<std::string> TadahCLI::commandsOfWords(
+    const std::vector<std::string> &words) const {
+  const auto &tasks = core::BlueprintParser::getTasksMapRef();
+  // How many words an option of the command `task` takes: {min, max}; a
+  // flag {0, 0}; an option this command does not have, {0, 0} (CLI11 names
+  // it as an argument no command takes).
+  auto arity = [&](const std::string &task, const std::string &word) {
+    const auto t = tasks.find(task);
+    if (t == tasks.end()) return std::make_pair(0, 0);
+    auto of = [&](const core::BlueprintKey &k) {
+      const bool flag = k.value_N.size() == 1 && !k.value_type.empty() &&
+                        k.value_type[0] == "BOOL";
+      const int most = k.value_N.empty() ? 1 : std::abs(k.value_N[0]);
+      return flag ? std::make_pair(0, 0) : std::make_pair(1, most);
+    };
+    for (const auto &k : t->second.blueprintKeys)
+      if (!k.cli_long_flag.empty() &&
+          (word == k.cli_long_flag || word == k.cli_short_flag))
+        return of(k);
+    for (const auto &g : t->second.groups)
+      for (const auto &k : g.blueprintKeys)
+        if (!k.cli_long_flag.empty() &&
+            (word == k.cli_long_flag || word == k.cli_short_flag))
+          return of(k);
+    return std::make_pair(0, 0);
+  };
+  // The required positionals of the command `task` (a long flag that is no
+  // option: OPTION of tadah explain).
+  auto positionals = [&](const std::string &task) {
+    const auto t = tasks.find(task);
+    std::size_t n = 0;
+    if (t == tasks.end()) return n;
+    for (const auto &k : t->second.blueprintKeys)
+      if (!k.cli_long_flag.empty() && k.cli_long_flag[0] != '-' &&
+          k.cli_required)
+        ++n;
+    return n;
+  };
+  auto is_option = [](const std::string &w) {
+    return w.size() > 1 && w[0] == '-' &&
+           !std::isdigit(static_cast<unsigned char>(w[1])) && w[1] != '.';
+  };
+  // The group of the command `task` ("DATA" for DATA.print, itself for a
+  // group), "" for a command of no group.
+  auto group_of = [&](const std::string &task) {
+    if (!members_of(task).empty()) return task;
+    const auto dot = task.find('.');
+    return dot == std::string::npos ? std::string() : task.substr(0, dot);
+  };
+  // The command a word names where `current` stands: a member of its group
+  // (CLI11 reads a command of the parent too), else a first-level command;
+  // "" for none.
+  auto command_named = [&](const std::string &current,
+                           const std::string &w) -> std::string {
+    const std::string group = group_of(current);
+    if (!group.empty()) {
+      const auto m = commandNames_.find(core::to_lower(group) + " " + w);
+      if (m != commandNames_.end()) return m->second;
+    }
+    const auto top = commandNames_.find(w);
+    if (top == commandNames_.end() || top->first.find(' ') != std::string::npos)
+      return "";
+    return top->second;
+  };
 
-  // Then the commands the arguments no command took name. CLI11 reads a
-  // command again only where the command before it ends, and not the
-  // command that holds the one it reads, so a command typed again can be
-  // such an argument ("tadah predict ... analysis cutoff ... predict ...":
-  // predict; "tadah data print ... data split ...": data). A group's name
-  // followed by one of its commands names that command; without one, it is
-  // the name of a command of the group that CLI11 read without it (split
-  // above), or the group given alone.
-  std::map<std::string, long> unnamed;  // per group: its commands read
-                                        // without the group's name
-  for (const auto &kv : commandApps_) {
-    const std::vector<std::string> members = members_of(kv.first);
-    if (members.empty()) continue;
-    long reads = -static_cast<long>(kv.second->count());
-    for (const std::string &m : members)
-      reads += static_cast<long>(commandApps_.at(kv.first + "." + m)->count());
-    unnamed[kv.first] = reads;
-  }
-  const std::vector<std::string> extras = app_.remaining(true);
-  for (std::size_t i = 0; i < extras.size(); ++i) {
-    const auto top = commandNames_.find(extras[i]);
-    if (top == commandNames_.end() ||
-        top->first.find(' ') != std::string::npos)
-      continue;  // not the name of a command (a first-level one)
-    const std::string &name = top->second;
-    if (!members_of(name).empty()) {
-      if (i + 1 < extras.size()) {
-        const auto member = commandNames_.find(extras[i] + " " + extras[i + 1]);
-        if (member != commandNames_.end()) {
-          commands.push_back(member->second);
-          ++i;
-          continue;
+  std::vector<std::string> commands;
+  std::string current;          // the command the words stand in ("": tadah)
+  std::size_t pending = 0;      // its required positionals still unread
+  for (std::size_t i = 0; i < words.size(); ++i) {
+    const std::string &w = words[i];
+    if (w == "--") break;
+    if (is_option(w)) {
+      // --name=value and -Xvalue hold their first value.
+      std::string name = w;
+      bool attached = false;
+      if (w[1] == '-') {
+        const std::size_t eq = w.find('=');
+        if (eq != std::string::npos) {
+          name = w.substr(0, eq);
+          attached = true;
         }
+      } else if (w.size() > 2) {
+        name = w.substr(0, 2);
+        attached = arity(current, name).second > 0;
       }
-      if (unnamed[name] > 0) {
-        --unnamed[name];
-        continue;
+      std::pair<int, int> take = arity(current, name);
+      if (attached) {
+        take.first = std::max(0, take.first - 1);
+        take.second = std::max(0, take.second - 1);
+      }
+      int taken = 0;
+      for (; taken < take.first && i + 1 < words.size(); ++taken) ++i;
+      while (taken < take.second && i + 1 < words.size() &&
+             !is_option(words[i + 1]) && words[i + 1] != "--" &&
+             command_named(current, words[i + 1]).empty()) {
+        ++i;
+        ++taken;
+      }
+      continue;
+    }
+    if (pending > 0) {  // a required positional takes the word
+      --pending;
+      continue;
+    }
+    std::string named = command_named(current, w);
+    if (named.empty()) continue;  // an argument no command takes
+    // A group's name followed by one of its commands names that command.
+    if (!members_of(named).empty() && i + 1 < words.size()) {
+      const auto m =
+          commandNames_.find(core::to_lower(named) + " " + words[i + 1]);
+      if (m != commandNames_.end()) {
+        named = m->second;
+        ++i;
       }
     }
-    commands.push_back(name);
+    commands.push_back(named);
+    current = named;
+    pending = positionals(named);
   }
   return commands;
 }
 
 std::string TadahCLI::commandLineRefusal() const {
-  const std::vector<std::string> commands = commandsOfLine();
+  const std::vector<std::string> &commands = commandsTyped_;
   if (commands.size() > 1) {
     std::string list;
     for (std::size_t i = 0; i < commands.size(); ++i)

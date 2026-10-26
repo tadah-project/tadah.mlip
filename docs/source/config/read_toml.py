@@ -138,6 +138,14 @@ it and writes one notice per load that lists the retired keys of the file
 program's own training) refuses a configuration that has one, with its
 conversion; ``tadah explain <KEY>`` gives the conversion too.
 
+A key marked **Command key** is one that only some commands read: an option
+of their command line, such as ``ANALYTICS`` (``-A`` of ``tadah predict``),
+or a key of their configuration file, such as ``REFIT_MODE`` (``tadah
+refit``). Its entry names the commands. In a configuration file of another
+command its line is refused at its line, naming the commands that read it. A
+potential that holds such a line is read without it, with one warning per
+key on standard error.
+
 '''
 
 def _deepcopy(obj):
@@ -184,8 +192,48 @@ def _resolve_inheritance(entry: dict, types_tbl: dict) -> dict:
     return merged
 
 
-def render_key(key_name: str, entry: dict) -> str:
-    """Return the rst section of one ALLOWED_KEYS entry (inheritance resolved)."""
+def commands_reading(blueprint: dict) -> dict:
+    """Map each key (upper case) to the commands, as typed ("tadah data
+    print"), whose [TASKS.*] table lists it: among its options (an INHERIT
+    of ALLOWED_KEYS.<key>, or a key written out) or the keys of its option
+    groups, sorted."""
+    readers = {}
+
+    def note(command, keys_table):
+        if not isinstance(keys_table, dict):
+            return
+        names = [ref.split('.', 1)[1] for ref in keys_table.get('INHERIT', [])
+                 if ref.startswith('ALLOWED_KEYS.')]
+        names += [k for k, v in keys_table.items() if isinstance(v, dict)]
+        for name in names:
+            readers.setdefault(name.upper(), set()).add(command)
+
+    def walk(prefix, table):
+        for name, sub in table.items():
+            if not isinstance(sub, dict) or name in ('keys', 'groups'):
+                continue
+            command = prefix + ' ' + name.lower()
+            note(command, sub.get('keys'))
+            for group in (sub.get('groups') or {}).values():
+                if isinstance(group, dict):
+                    note(command, group.get('keys'))
+            walk(command, sub)
+
+    walk('tadah', blueprint.get('TASKS', {}))
+    return {k: sorted(v) for k, v in readers.items()}
+
+
+def _listed(items):
+    """"a", "a and b", "a, b and c"."""
+    if len(items) < 2:
+        return ''.join(items)
+    return ', '.join(items[:-1]) + ' and ' + items[-1]
+
+
+def render_key(key_name: str, entry: dict, readers=None) -> str:
+    """Return the rst section of one ALLOWED_KEYS entry (inheritance resolved).
+    @p readers: the commands that read the key (commands_reading()), for a
+    key that only commands read (blueprint field `command_only`)."""
     out = []
 
     # ---------------------------------------------------------------------
@@ -247,6 +295,26 @@ def render_key(key_name: str, entry: dict) -> str:
     if entry.get('exact_in_potential'):
         out.append("   *In a potential file*: written exactly, whatever "
                    "NUMERIC is (a load checks it exactly)\n")
+
+    # ---------------------------------------------------------------------
+    # A key that only commands read (blueprint field `command_only`, CORE):
+    # an option of their command line or a key of their configuration
+    # file. A configuration file of another command refuses its line, and a
+    # potential is read without it.
+    # ---------------------------------------------------------------------
+    if entry.get('command_only'):
+        commands = ['``%s``' % c for c in (readers or [])]
+        flag = entry.get('cli_long_flag', '')
+        option = ''
+        if flag.startswith('--'):
+            short = entry.get('cli_short_flag', '')
+            option = ' (the option ``%s``%s)' % (
+                flag, ', ``%s``' % short if short else '')
+        who = ('A key of %s%s' % (_listed(commands), option) if commands
+               else 'A key that no command reads')
+        out.append("\n   *Command key*: %s: a configuration file of another "
+                   "command refuses its line, and a potential that holds it "
+                   "is read without it, with a warning.\n" % who)
 
     # ---------------------------------------------------------------------
     # Allowed values (blueprint field `allowed_values`): the only values of
@@ -330,10 +398,12 @@ def render(blueprint: dict) -> str:
     """Return the whole config_keys.rst page for a parsed blueprint."""
     allowed_keys = blueprint.get('ALLOWED_KEYS', {})
     types_table = blueprint.get('TYPES', {})
+    readers = commands_reading(blueprint)
     parts = [header]
     for key_name, raw_entry in allowed_keys.items():
         parts.append(render_key(key_name,
-                                _resolve_inheritance(raw_entry, types_table)))
+                                _resolve_inheritance(raw_entry, types_table),
+                                readers.get(key_name.upper(), [])))
     return "".join(parts)
 
 

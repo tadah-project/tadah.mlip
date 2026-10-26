@@ -180,6 +180,12 @@ and ``suggest_bounds``. Its lines follow these rules:
      * - ``-o``, ``--outfile``
        - ``OUTFILE``
 
+- A key that only other commands read is refused at its line, naming the
+  commands that read it: an option of another command's command line,
+  such as ``ANALYTICS`` (``-A`` of ``tadah predict``), or a key of another
+  command's configuration file, such as ``REFIT_MODE`` (``tadah refit``).
+  A potential written by an earlier version may hold such a line: it is
+  not read, and a warning on standard error names it.
 - An error of a line names the line and the file (for a line of a file
   included with ``CONFIG``, that file): a key that is no configuration key,
   a value that the key does not take (with the values the key takes, the
@@ -198,6 +204,10 @@ and ``suggest_bounds``. Its lines follow these rules:
    its own: its lines go into the configuration file of a command that
    takes ``-c``, the options ``-c`` needs stay on the command line, and the
    lines of another command become its options.
+
+.. versionchanged:: 1.6.0
+   A line of a key that only other commands read is refused. Tadah! 1.5.0
+   accepted it and wrote it into the potential, where it changed nothing.
 
 .. _dataset:
 

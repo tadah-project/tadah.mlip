@@ -158,14 +158,17 @@ indices refines the block-wide ``STEP``.
 ``TYPE PRESTAGE`` precedes the opening of ``EXPLORE`` or ``REFINE``.
 ``REFINE`` groups the refinement settings of the surrounding ``STRATEGY``.
 
-``LOSS``, ``FAILSCORE`` and ``PC_SCRIPT_TIMEOUT`` precede the
-``PC_LAMMPS`` and ``PC_FAILPROBE`` lines they affect. Each such line
-captures those settings when it is read, and the options ``--varloss``,
-``--failscore`` and ``--maxtime`` give it values of its own. A second
-line of one of the three follows a ``PC_LAMMPS`` or ``PC_FAILPROBE`` line
-that takes the first, or is refused. The run-wide uses take the last
-line: the validation metrics' loss, the ceiling of every loss and the
-``PROCESS`` worker deadline.
+``LOSS``, ``FAILSCORE`` and ``PC_SCRIPT_TIMEOUT`` precede the lines
+they affect: a ``PC_LAMMPS`` line takes all three, a ``PC_FAILPROBE``
+line ``FAILSCORE`` and ``PC_SCRIPT_TIMEOUT``, and a ``PC_OBSERVABLE``
+line ``LOSS``. Each such line captures those settings when it is read,
+and the options ``--varloss``, ``--loss``, ``--failscore`` and
+``--maxtime`` give it values of its own. A second line of one of the
+three follows a line that takes the first, or is refused. A
+``PC_SCRIPT_TIMEOUT`` line that no such line follows is refused, and so
+is such a ``LOSS`` line in a file without validation metrics. The
+run-wide uses take the last line: the validation metrics' loss, the
+ceiling of every loss and the ``PROCESS`` worker deadline.
 
 Repeated ``OPTIM`` lines select distinct dimensions.
 

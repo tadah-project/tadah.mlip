@@ -32,7 +32,8 @@ Property and loss options
      - Meaning
    * - ``--species <element>``
      - Required
-     - Element used to construct the crystal and isolated atom.
+     - Element used to construct the crystal and isolated atom: an
+       element symbol, and an element of the potential.
    * - ``--target <energy>``
      - Required
      - Finite target cohesive energy in eV/atom.
@@ -43,18 +44,18 @@ Property and loss options
      - Required
      - Lattice-constant window in Å, with finite bounds and
        ``hi > lo``. Only ``a0`` is supported. The initial value defaults
-       to the midpoint and is clamped to this window.
+       to the midpoint; one outside the window is refused.
    * - ``--lattice bcc``
      - ``bcc``
      - Only ``bcc`` is implemented.
    * - ``--supercell <nx> <ny> <nz>``
      - ``4 4 4``
      - Positive integer repeats along each axis, up to 2147483647.
-   * - ``--loss <name>``
-     - ``L2``
-     - One :doc:`loss name <nfp_losses>`, independent of root ``LOSS``.
-       ``HUBER`` and ``TUKEY`` use their default parameters; this option
-       takes no parameter value.
+   * - ``--loss <name> [<parameter>]``
+     - Root ``LOSS``
+     - One :doc:`loss name <nfp_losses>`, with the parameter of
+       ``HUBER`` and ``TUKEY``. Without it the term takes the root
+       ``LOSS`` read above the line (``L2`` without one).
 
 Relaxation options
 ------------------
@@ -82,7 +83,9 @@ Relaxation options
        Zero disables it.
    * - ``--fmax-converged <force>``
      - ``0.1``
-     - Maximum accepted atomic force in eV/Å after relaxation.
+     - Force tolerance of the relaxation in eV/Å, above 0: the
+       relaxation stops when the largest atomic force falls below it,
+       and one that ends above it is unconverged.
    * - ``--unconverged const <value>``
      - ``const 100``
      - Report this finite value for an unconverged relaxation.
@@ -95,7 +98,18 @@ The two ``--unconverged`` forms select alternative behaviours.
 An unconverged relaxation returning a finite substitute still supplies
 that value to its configured loss. A relaxed lattice constant outside
 the allowed window, or a non-finite result or loss, fails the term and
-therefore the evaluation.
+therefore the evaluation. Each option is given once on a line, and a
+target that the term's loss cannot measure is refused
+(:doc:`nfp_losses`).
+
+Each relaxation starts from the lattice constant that the previous
+evaluation of the same search relaxed to. Each replica of
+``TADAH:ANNEAL_PT`` and each walker of ``TADAH:ANNEAL_PA`` keeps its own.
+
+.. versionchanged:: 1.6.0
+   A term takes the root ``LOSS`` above its line; 1.5.0 took ``L2``
+   unless ``--loss`` named another. ``--fmax-converged`` sets the force
+   tolerance of the relaxation, which 1.5.0 fixed at 0.1 eV/Å.
 
 Gradient compatibility
 ----------------------

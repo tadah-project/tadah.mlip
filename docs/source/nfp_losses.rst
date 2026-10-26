@@ -46,16 +46,20 @@ by its weight; :math:`\epsilon=10^{-12}`.
    :math:`\log\cosh r`, evaluated in a numerically stable form.
 
 ``MAPE``
-   :math:`|r|/(|y|+\epsilon)`. A fractional loss using the measured
-   value in the denominator.
+   :math:`|r|/|t|`. A fractional loss relative to the target.
 
 ``RMSLE``
    :math:`[\log(y+\epsilon)-\log(t+\epsilon)]^2`.
-   Both logarithm arguments must be positive.
+   A measured value at or below :math:`-\epsilon` fails the evaluation.
 
 An explicit ``HUBER`` or ``TUKEY`` parameter must be finite and positive.
 Other losses accept the name alone. ``RMSLE`` is a squared logarithmic
-loss.
+loss. A target that its loss cannot measure is refused at its line: a
+target of 0 under ``MAPE``, and one at or below :math:`-\epsilon` under
+``RMSLE``.
+
+.. versionchanged:: 1.6.0
+   ``MAPE`` divides by the target; 1.5.0 divided by the measured value.
 
 .. _where-the-setting-applies:
 
@@ -67,12 +71,14 @@ Loss scope
 * Each :doc:`PC_LAMMPS <nfp_lammps_targets>` line captures the root loss
   in force when that line is read. Its ``--varloss`` options can override
   the loss separately for each variable.
-* Each :doc:`PC_OBSERVABLE <nfp_observable_targets>` line has its own
-  ``--loss`` option, defaulting to ``L2`` independently of root ``LOSS``.
+* Each :doc:`PC_OBSERVABLE <nfp_observable_targets>` line captures the
+  root loss in force when that line is read. Its ``--loss`` option
+  overrides it for that term.
 
-``LOSS`` precedes the ``PC_LAMMPS`` lines it affects. A second ``LOSS``
-line follows a ``PC_LAMMPS`` or ``PC_FAILPROBE`` line that takes the
-first, or is refused. For a
+``LOSS`` precedes the ``PC_LAMMPS`` and ``PC_OBSERVABLE`` lines it
+affects. A second ``LOSS`` line follows such a line that takes the
+first, or is refused. In a target file without validation metrics, a
+``LOSS`` line that no such line follows is refused too. For a
 successful evaluation, HPO divides the sum of enabled weighted loss
 terms by the number of terms. Each enabled validation metric
 contributes one term, each LAMMPS ``--varloss`` one term, and each typed
@@ -113,5 +119,14 @@ The environment variable ``TADAH_FAILSCORE_GRADING`` accepts ``ON`` or
 ``OFF`` and overrides the file.
 
 LAMMPS ``--failvar`` and :doc:`PC_FAILPROBE <nfp_lammps_targets>` supply
-violation measures. :doc:`Feasibility gates <nfp_feasibility>` can
-reject candidates before training.
+violation measures. A ``--failvar`` value above 0, or a probe scalar
+above ``--gate``, fails the evaluation in both modes: it scores
+``FAILSCORE`` under ``OFF`` and a graded score under ``ON``. The settings
+that only grade a failure, ``PC_FAILPROBE --s0`` and an explicit
+``--failvar`` scale, are refused under ``OFF``.
+:doc:`Feasibility gates <nfp_feasibility>` can reject candidates before
+training.
+
+.. versionchanged:: 1.6.0
+   Under ``FAILSCORE_GRADING OFF``, 1.5.0 ignored a ``--failvar`` value
+   above 0 and a probe scalar above ``--gate``.

@@ -130,9 +130,9 @@ and :doc:`nfp_stopping_settings`; each driver supports its own subset.
 For example, ``RANDOM``, ``GFS`` and ``ANNEAL_PT`` need an effective stop
 condition, and StoGO requires ``MAXEVAL``.
 
-A run with ``PC_LAMMPS`` must use a derivative-free driver or
-``DLIB:BFGS`` with its internal finite differences. An MLSL/AUGLAG driver
-is compatible when its local search is derivative-free. For validation
+A run with ``PC_LAMMPS`` must use a derivative-free driver. An
+MLSL/AUGLAG driver is compatible when its local search is
+derivative-free. For validation
 metrics and typed observables, check :doc:`nfp_gradients` before selecting
 a gradient-based method.
 

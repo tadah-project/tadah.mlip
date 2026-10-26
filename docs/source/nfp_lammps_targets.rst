@@ -65,7 +65,9 @@ Deadlines exceeding the worker's millisecond-counter range are refused.
 ``PC_SCRIPT_TIMEOUT`` accepts ``90``, ``1:30`` and ``00:01:30`` for
 90 seconds; ``off`` disables the limit, while ``0`` is invalid. Each script line
 captures the current value when parsed; ``--maxtime`` overrides it for
-that line. Root ``MAXTIME`` is a legacy alias for this key. ``MAXTIME``
+that line. A ``PC_SCRIPT_TIMEOUT`` line that no ``PC_LAMMPS`` or
+``PC_FAILPROBE`` line follows is refused. Root ``MAXTIME`` is another
+name for this key. ``MAXTIME``
 inside an optimiser block instead limits an optimiser search.
 
 The environment variables ``TADAH_PC_ISOLATION`` and
@@ -98,11 +100,12 @@ indicating no detected violation. Additional outputs are diagnostics.
    * - Option
      - Meaning
    * - ``--gate <threshold>``
-     - With grading ``ON``, reject if the probe scalar exceeds this
-       finite threshold. Omit it to disable probe-based rejection.
+     - Reject if the probe scalar exceeds this finite threshold: the
+       evaluation fails, with a graded score under ``ON`` and
+       ``FAILSCORE`` under ``OFF``. Without it no probe value rejects.
    * - ``--s0 <scale>``
      - Finite positive saturation scale for the grading curve;
-       default ``1``.
+       default ``1``. Refused with grading ``OFF``.
    * - ``--failscore <value>``
      - Finite positive replacement value when the probe fails;
        defaults to root ``FAILSCORE`` at the probe line. A scalar at
@@ -111,10 +114,12 @@ indicating no detected violation. Additional outputs are diagnostics.
      - Same syntax as :doc:`LAMMPS line options <nfp_lammps_options>`.
 
 A probe takes no ``--varloss``, ``--hotvar`` or ``--failvar`` and adds no
-ordinary loss term. With grading ``OFF``, its threshold and severity
-measure are inactive; a script or scalar-readback failure still fails
-the evaluation. The probe's requested output variables must follow the
-same equal-style contract as other script outputs.
+loss term: a target file whose only script line is a probe has no loss
+source and is refused. With grading ``OFF``, the threshold still rejects
+and the severity measure is unused; a script or scalar-readback failure
+fails the evaluation in both modes. The probe's requested output
+variables must follow the same equal-style contract as other script
+outputs.
 
 .. toctree::
    :maxdepth: 1

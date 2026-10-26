@@ -26,7 +26,12 @@ One command per run
 
 Each ``tadah`` invocation runs one command. A command line that gives two,
 such as ``tadah train -c config.train predict ...``, is refused before
-either runs. A series of commands runs as a shell script of ``tadah``
+either runs, and before the options of either are checked. The commands
+are counted from the words of the line. An option takes the values it
+needs, whatever they are, and further values up to the next option or
+command name: in ``tadah train -c predict`` the word ``predict`` is the
+file of ``-c``, and ``tadah data print -d a.tadah predict`` gives two
+commands. A series of commands runs as a shell script of ``tadah``
 invocations. The options of a command go on its command line, and the
 commands that take ``-c`` read their keys from a configuration file too
 (:ref:`config_file`).

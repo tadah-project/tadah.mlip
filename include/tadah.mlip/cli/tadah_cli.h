@@ -128,23 +128,30 @@ private:
   /**
    * @brief The callback of the command @p cmd, the blueprint task
    *        @p blueprintTaskName (TRAIN, DATA.split): stores its options as
-   *        a CLITask and records it among the commands given. A command
-   *        that groups others (DATA) records nothing when one of its
-   *        commands was given, and itself when none was
-   *        (commandLineRefusal() refuses it).
+   *        a CLITask. A command that groups others (DATA) stores nothing
+   *        (commandLineRefusal() refuses it given alone).
    */
   void handleCmdCallback(const std::string &blueprintTaskName, CLI::App *cmd);
 
   /**
-   * @brief The commands of the command line read so far, as blueprint
-   *        tasks: those CLI11 read, in the order it read them (a command
-   *        that groups others given alone among them, and last one whose
-   *        parse an error ended), then those the arguments no command took
-   *        name (a command typed again where CLI11 does not read it: "tadah
-   *        data print -d db.tadah data split ...", "tadah predict ...
-   *        analysis cutoff ... predict ...").
+   * @brief The commands that the words @p words of a command line (those
+   *        after "tadah") give, as blueprint tasks, in the order typed,
+   *        read before CLI11 checks any command's options.
+   *
+   * Each option of a command takes the words it takes, as CLI11 reads
+   * them: a flag none; another option its first word whatever it is (a
+   * file named like a command is its value), and its further words up to
+   * the number it takes while they are neither an option (a word starting
+   * with '-' that is not a negative number) nor the name of a command; a
+   * required positional of a command (the name of tadah explain) its word.
+   * Any other word that names a command is a command: a first-level name
+   * ("train"; "data" with a member's name after it, "data split", the
+   * member, or alone the group), or, after a command of a group, the name
+   * of another member of that group ("tadah data print ... split ...").
+   * "--" ends the commands.
    */
-  std::vector<std::string> commandsOfLine() const;
+  std::vector<std::string> commandsOfWords(
+      const std::vector<std::string> &words) const;
 
   /**
    * @brief Why the command line is refused before any command runs (""
@@ -168,9 +175,10 @@ private:
   // std::unordered_map<CLI::App*, std::vector<CLITask>> cliTasks_;
   std::vector<CLITask> cliTasks_;
 
-  /// The blueprint tasks of the commands given whose parse ended, in
-  /// order: one per run (TadahCLI::run refuses a second).
-  std::vector<std::string> commandsGiven_;
+  /// The blueprint tasks of the commands the command line gives, in the
+  /// order typed (commandsOfWords()): one per run (TadahCLI::run refuses a
+  /// second before CLI11 reads the line).
+  std::vector<std::string> commandsTyped_;
 
   /// The CLI11 app of each command by its blueprint task (TRAIN, DATA,
   /// DATA.split).

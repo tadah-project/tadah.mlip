@@ -254,6 +254,187 @@ class ReadTomlTest(unittest.TestCase):
         self.assertNotIn('A key marked **Retired** weighted the training data',
                          intro)
 
+    def command_blueprint(self):
+        """blueprint() with a key only commands read (ANALYTICS, the option
+        --analytics of predict, default false), a key of a nested command's
+        configuration file (REFIT_MODE of refit, which reads a
+        configuration file, written out in its group), a key no command
+        reads (QUANTITY), the positional argument of explain (OPTION) and
+        an option that one command retires (THRESHOLD: a retired option of
+        data balance, read by data dedup), as CORE marks them
+        (command_only)."""
+        bp = blueprint()
+        bp['ALLOWED_KEYS']['analytics'] = {
+            'INHERIT': ['TYPES.UINT'], 'description': 'Performs analytics.',
+            'cli_long_flag': '--analytics', 'cli_short_flag': '-A',
+            'default_value': ['false'], 'command_only': True}
+        bp['ALLOWED_KEYS']['refit_mode'] = {
+            'INHERIT': ['TYPES.UINT'], 'description': 'Refit mode.',
+            'cli_long_flag': '', 'command_only': True}
+        bp['ALLOWED_KEYS']['quantity'] = {
+            'INHERIT': ['TYPES.UINT'], 'description': 'Generic quantity.',
+            'cli_long_flag': '--quantity', 'command_only': True}
+        bp['ALLOWED_KEYS']['option'] = {
+            'INHERIT': ['TYPES.UINT'], 'description': 'Positional argument.',
+            'cli_long_flag': 'OPTION', 'command_only': True}
+        bp['ALLOWED_KEYS']['threshold'] = {
+            'INHERIT': ['TYPES.UINT'], 'description': 'Threshold.',
+            'cli_long_flag': '--threshold', 'command_only': True}
+        retired = {'reason': 'It rescaled the priorities.',
+                   'replacement': 'the priorities of the data',
+                   'conversion': 'No option converts it.'}
+        bp['TASKS'] = {
+            'predict': {'description': 'Predicts.', 'long_description': '',
+                        'examples': [],
+                        'keys': {'INHERIT': ['ALLOWED_KEYS.analytics']}},
+            'explain': {'description': 'Explains.', 'long_description': '',
+                        'examples': [],
+                        'keys': {'INHERIT': ['ALLOWED_KEYS.option']}},
+            'data': {'description': 'Data.', 'long_description': '',
+                     'examples': [],
+                     'print': {'description': 'Prints.',
+                               'long_description': '', 'examples': [],
+                               'keys': {'INHERIT':
+                                        ['ALLOWED_KEYS.analytics']}},
+                     'balance': {'description': 'Balances.',
+                                 'long_description': '', 'examples': [],
+                                 'keys': {'INHERIT':
+                                          ['ALLOWED_KEYS.threshold'],
+                                          'threshold': {
+                                              'description': 'Retired.',
+                                              'retired': retired}}},
+                     'dedup': {'description': 'Removes duplicates.',
+                               'long_description': '', 'examples': [],
+                               'keys': {'INHERIT':
+                                        ['ALLOWED_KEYS.threshold']}}},
+            'refit': {'description': 'Refits.', 'long_description': '',
+                      'examples': [],
+                      'groups': {'input': {
+                          'description': 'One of:',
+                          'keys': {'INHERIT': ['ALLOWED_KEYS.config'],
+                                   'refit_mode': {}}}}},
+        }
+        return bp
+
+    def test_command_only_key_names_the_commands_that_read_it(self):
+        # Pins: a key that only commands read (blueprint field command_only,
+        # CORE) is marked so in its entry, with a link to the rule of such
+        # a key (the Quick Start's Config File section, its owner), and
+        # named as CORE's messages name it: the option and the commands
+        # whose options or keys list it, "the option ``--analytics``
+        # (``-A``) of ``tadah data print`` and ``tadah predict``"; a key of
+        # a command's configuration file without an option, "a key of
+        # ``tadah refit``"; one that no command reads, "read by no command;
+        # every configuration file refuses its line". The entry does not
+        # restate the rule of every such key. An ordinary key says none of
+        # it.
+        # Before the fix: each of the 79 entries restated the rule ("a
+        # configuration file of another command refuses its line, and a
+        # potential that holds it is read without it, with a warning"),
+        # and QUANTITY's said that a configuration file of another command
+        # refuses its line, of a key no command reads.
+        page = self.rt.render(self.command_blueprint())
+        sec = ' '.join(self.section(page, 'analytics').split())
+        self.assertIn('*Command key* (:ref:`config_file`): the option '
+                      '``--analytics`` (``-A``) of ``tadah data print`` and '
+                      '``tadah predict``.', sec)
+        self.assertNotIn('refuses its line', sec)
+        self.assertNotIn('potential', sec)
+        refit = ' '.join(self.section(page, 'refit_mode').split())
+        self.assertIn('*Command key* (:ref:`config_file`): a key of '
+                      '``tadah refit``.', refit)
+        self.assertNotIn('refuses its line', refit)
+        quantity = ' '.join(self.section(page, 'quantity').split())
+        self.assertIn('*Command key* (:ref:`config_file`): read by no '
+                      'command; every configuration file refuses its line.',
+                      quantity)
+        self.assertNotIn('another command', quantity)
+        self.assertNotIn('Command key', self.section(page, 'LAMBDA'))
+
+    def test_command_key_note_is_a_paragraph_of_its_own(self):
+        # Pins: the note of a command key ends its paragraph, so that the
+        # default after it is a paragraph of its own.
+        # Before the fix: the note ended with one newline, and "*Default*:
+        # false" was rendered inside the note's paragraph.
+        sec = self.section(self.rt.render(self.command_blueprint()),
+                           'analytics')
+        self.assertIn('``tadah predict``.\n\n   *Default*: false\n', sec)
+
+    def test_a_command_that_retires_an_option_does_not_read_it(self):
+        # Pins: a command whose table writes the key out as retired (an
+        # option it refuses with the reason, such as --threshold of tadah
+        # data balance) is not a command that reads it: THRESHOLD is read
+        # by tadah data dedup alone, and its entry names that command
+        # alone, as CORE's commands_reading_key does.
+        # Before the fix: the entry named tadah data balance and tadah
+        # data dedup.
+        bp = self.command_blueprint()
+        self.assertEqual(self.rt.commands_reading(bp)['THRESHOLD'],
+                         ['tadah data dedup'])
+        sec = ' '.join(self.section(self.rt.render(bp), 'threshold').split())
+        self.assertIn('the option ``--threshold`` of ``tadah data dedup``.',
+                      sec)
+        self.assertNotIn('balance', sec)
+
+    def test_positional_key_is_the_argument_of_its_command(self):
+        # Pins: a key whose cli_long_flag does not start with "-" is the
+        # positional argument of the commands that read it (OPTION of tadah
+        # explain), named so: "the argument of ``tadah explain``", as
+        # CORE's messages name it.
+        # Before the fix: "A key of ``tadah explain``", of a command that
+        # reads no configuration file.
+        sec = ' '.join(self.section(self.rt.render(self.command_blueprint()),
+                                    'option').split())
+        self.assertIn('*Command key* (:ref:`config_file`): the argument of '
+                      '``tadah explain``.', sec)
+        self.assertNotIn('a key of', sec)
+
+    def test_command_key_of_no_configuration_file_shows_no_example(self):
+        # Pins: an example of a key is shown as a line of a configuration
+        # file ("<KEY>   <value>"); a command key that no command reading a
+        # configuration file reads (an option of tadah predict or tadah
+        # data, the argument of tadah explain, a key no command reads) has
+        # no such line, as every configuration file refuses it, so its
+        # entry shows no example: the reference of the command-line
+        # options gives the options of each command with their examples. A
+        # command key of a command that reads a configuration file (a key
+        # of tadah refit) keeps its examples, as does every other key.
+        # Before the fix: ANALYTICS showed the example "analytics   20", a
+        # line every configuration file refuses.
+        page = self.rt.render(self.command_blueprint())
+        for key in ('analytics', 'quantity', 'option', 'threshold'):
+            with self.subTest(key=key):
+                self.assertNotIn('*Example*', self.section(page, key))
+        self.assertIn('*Example* 1::\n\n       refit_mode   20\n',
+                      self.section(page, 'refit_mode'))
+        self.assertIn('*Example* 1::\n\n       LAMBDA   20\n',
+                      self.section(page, 'LAMBDA'))
+
+    def test_page_intro_explains_command_only_keys(self):
+        # Pins: the page says what a key marked Command key is, that its
+        # entry names the commands and shows an example line only when one
+        # of them reads a configuration file, that a configuration file of
+        # another command refuses its line (one clause and a link to the
+        # Quick Start's rule, its owner), and that a potential is read
+        # without it, with one warning per key that goes where the warning
+        # of a deprecated key goes: standard error, or log.lammps under
+        # pair_style tadah.
+        # Before the fix: it said that the line "is refused at its line"
+        # and that the warning of a potential goes to standard error,
+        # which pair_style tadah writes to its log instead.
+        page = self.rt.render(self.command_blueprint())
+        intro = ' '.join(page[:page.index('.. _LAMBDA:')].split())
+        self.assertIn('only some commands read', intro)
+        self.assertIn('Its entry names the commands, and shows an example '
+                      'line only when one of them reads a configuration '
+                      'file.', intro)
+        self.assertIn('A configuration file of another command refuses its '
+                      'line (:ref:`config_file`).', intro)
+        self.assertIn('one warning per key, which goes where the warning of '
+                      'a deprecated key goes (standard error, or '
+                      '``log.lammps`` under ``pair_style tadah``)', intro)
+        self.assertNotIn('is refused at its line', intro)
+
 
 if __name__ == '__main__':
     unittest.main()

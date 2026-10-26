@@ -787,6 +787,25 @@ class PagesTest(unittest.TestCase):
         seed = ' '.join(paragraphs_of(entries['OPTIMIZER.SEED'][2]))
         self.assertNotIn('draws no random numbers is refused', seed)
 
+    def test_an_nlopt_entry_names_the_parameters_its_algorithm_reads(self):
+        # Pins: the PARAM field of an NLopt algorithm's entry names the
+        # PARAM keys NLopt reads for it (algorithm_params of the optimiser
+        # list), as literals: tolg for LD_LBFGS, magic_eps for GN_DIRECT_L;
+        # an algorithm that reads none says so (LN_SBPLX). Another
+        # library's entry adds nothing of the kind.
+        # Before the fix: the field named the NLopt PARAM policy alone, and
+        # the generator stopped on the optimiser list of the refusal of
+        # unread PARAM keys and SEED ("KeyError: 'warns_unread_seed'").
+        entries = self.page_entries()
+        param = {name: field_of(entries[name][2], 'PARAM') or ''
+                 for name in ('NLOPT:LD_LBFGS', 'NLOPT:GN_DIRECT_L',
+                              'NLOPT:LN_SBPLX', 'DLIB:BFGS')}
+        self.assertIn('NLopt reads ``tolg``', param['NLOPT:LD_LBFGS'])
+        self.assertIn('NLopt reads ``magic_eps``', param['NLOPT:GN_DIRECT_L'])
+        self.assertIn('NLopt reads no parameter of this algorithm',
+                      param['NLOPT:LN_SBPLX'])
+        self.assertNotIn('NLopt reads', param['DLIB:BFGS'])
+
     def test_values_admit_no_refused_value(self):
         # Pins: the Values field of an argument does not admit a number
         # that an invalid case of the entry refuses for its range or for a

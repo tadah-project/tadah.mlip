@@ -65,8 +65,8 @@ Some adapters impose stricter ranges or use a setting differently:
 
 * ``DLIB:BFGS`` uses ``FTOL_ABS`` (default ``1e-7``) as its
   objective-change stop, or positive ``PARAM tol_gradinf`` as an
-  alternative. Both together are rejected. Despite its name,
-  ``tol_gradinf`` tests the gradient's **L2 norm** in this backend.
+  alternative, which tests the largest gradient component, as under
+  ``CERES``. Both together are rejected.
 * ``DLIB:GFS`` uses nonnegative ``FTOL_ABS`` as its solver accuracy
   setting (default ``1e-3``); the search uses its other configured stops.
   A negative ``FTOL_ABS`` is refused at startup.

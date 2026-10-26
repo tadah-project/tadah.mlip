@@ -71,9 +71,11 @@ from the parser's registry. Optimiser attributes such as ``POPULATION``,
 .. note::
 
    Population annealing uses proposal scales as uniform initial-jitter
-   bounds for ``INIT_MODE JITTER AUTO``. Its accepted calibration controls
-   are inactive. Supported initialisation choices are ``INIT_MODE JITTER``,
-   ``INIT_MODE JITTER <fraction>`` and ``INIT_MODE UNIFORM``. Measured
-   ``JITTER AUTO`` calibration is available in parallel tempering.
+   bounds for ``INIT_MODE JITTER AUTO``, which takes no tolerance here; it
+   refuses the ``INIT_JITTER_*`` calibration keys. Supported
+   initialisation choices are ``INIT_MODE JITTER``, ``INIT_MODE JITTER
+   <fraction>``, ``INIT_MODE JITTER AUTO`` and ``INIT_MODE UNIFORM``.
+   Measured ``JITTER AUTO <p>`` calibration is available in parallel
+   tempering.
 
 .. include:: config/anneal_keys_pa.rst

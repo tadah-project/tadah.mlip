@@ -21,7 +21,7 @@ initialisation settings. ``EXPLORE`` has its own settings.
    INIT
      METHOD CONFIG
      METHOD LHS 4
-     K_TOTAL 5
+     K_TOTAL 3
      SEED 123
    ENDINIT
 
@@ -41,7 +41,7 @@ Repeat ``METHOD`` to concatenate methods into one chain.
        configuration. No arguments.
    * - ``METHOD RANDOM K``
      - ``K`` independent uniform samples in transformed search
-       coordinates. ``K`` is an integer at least zero.
+       coordinates; integer ``K >= 1``.
    * - ``METHOD LHS K``
      - ``K`` Latin-hypercube samples in transformed coordinates;
        integer ``K >= 1``.
@@ -67,11 +67,10 @@ Other keys
    * - Key
      - Values and effect
    * - ``K_TOTAL K``
-     - Nonnegative integer. With several methods, caps the retained
-       points (``0`` means no cap). With a single ``RANDOM``, ``LHS`` or
-       ``SOBOL`` method, a positive value replaces that method's ``K``.
-       ``CONFIG`` and ``WARM`` still supply at most one point. Omission
-       uses the method counts.
+     - Integer >= 1. The block keeps the first ``K`` points of its
+       chain, a single method included. A value at or above the points
+       the methods give (``CONFIG`` and ``WARM`` give one each) caps
+       nothing and is refused. Omission keeps every point.
    * - ``SEED n``
      - Unsigned 64-bit seed for the sampling methods. Omission draws a
        seed from ``std::random_device``. This is separate from the

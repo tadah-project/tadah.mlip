@@ -28,13 +28,9 @@ Policy keys
      - ``PLAIN``
      - ``PLAIN``, ``MULTISTART`` or ``PRESTAGE``.
    * - ``N_STARTS``
-     - ``1``
-     - Positive integer; ``MULTISTART`` only.
-   * - ``PARALLEL``
-     - ``1``
-     - Positive integer. Separate starts currently run sequentially;
-       requesting more than ``1`` for a batch produces a warning and
-       retains sequential execution.
+     - Unset
+     - Integer >= 2; ``MULTISTART`` only, which requires it (one start is
+       ``PLAIN``).
    * - ``BUDGET_PER_START``
      - Unset
      - Integer in ``[1, 2147483647]``; per-start ``MAXEVAL`` override for
@@ -78,10 +74,9 @@ If ``BUDGET_PER_START`` is absent, a main ``MAXEVAL M`` is divided among
 larger than ``M``. A supplied ``BUDGET_PER_START`` replaces this division.
 ``MAXTIME`` applies separately to each search.
 
-A backend that accepts all seeds in one run, currently ``DLIB:GFS``,
-runs once with those seeds and rejects ``BUDGET_PER_START``. Separate
-starts currently run sequentially, including when ``PARALLEL > 1``
-requests concurrent starts. ``THREADS`` controls parallel evaluation
+A backend that accepts all seeds in one run, ``DLIB:GFS``, runs once
+with those seeds and rejects ``BUDGET_PER_START``. Separate starts run
+one after another. ``THREADS`` sets the workers that run the evaluation
 work within each search.
 
 .. _explore-then-refine-prestage:

@@ -45,12 +45,17 @@ Common keys
        it. Defaults and valid sizes depend on the algorithm.
    * - ``VECTOR_ARR n``
      - NLopt stored-vector count for ``LD_LBFGS``, ``LD_VAR1``,
-       ``LD_VAR2`` and the ``LD_TNEWTON`` family. Other backends refuse it.
+       ``LD_VAR2`` and the ``LD_TNEWTON_PRECOND`` algorithms. Other
+       algorithms, ``LD_TNEWTON`` and ``LD_TNEWTON_RESTART`` included,
+       refuse it.
    * - ``THREADS n``
      - Positive integer, default ``1``. The main optimiser's value sizes
        the shared worker pool for training, prediction and LAMMPS scripts.
        The pool retains this size during ``EXPLORE`` and ``INNER`` searches.
-       ``CERES`` rejects an explicit ``THREADS`` setting.
+       ``DLIB:GFS``, ``ASA:ASA``, ``TADAH:ANNEAL_PT`` and
+       ``TADAH:ANNEAL_PA`` also read the value of their ``EXPLORE`` block;
+       ``INNER``, an ``EXPLORE`` block of another optimiser and ``CERES``
+       refuse it.
    * - ``SEED n``
      - Unsigned 64-bit optimiser seed. See the seed rules below.
    * - ``STEP fraction``
@@ -109,16 +114,19 @@ exploration.
 .. versionchanged:: 1.6.0
    In 1.5.0 such an exploration was not seeded, so a run did not repeat.
 
-``TADAH:GRID``, ``DLIB:BFGS`` and ``CERES`` refuse ``SEED`` because they
-draw no random numbers. ``DLIB:GFS`` ignores it with a warning. Every
-NLopt algorithm accepts it, including deterministic ones. Set seeds
+``TADAH:GRID``, ``DLIB:GFS``, ``DLIB:BFGS`` and ``CERES`` refuse ``SEED``
+because they draw no random numbers, except as a ``PRESTAGE`` refinement
+whose ``SEED`` the exploration takes. Every NLopt algorithm accepts it,
+including deterministic ones. Set seeds
 explicitly for stochastic search and sampling; see
 :doc:`nfp_initialisation` and :doc:`nfp_restart`.
 
 Algorithm parameters: ``PARAM``
 -------------------------------
 
-Keep parameter names in the case shown by their reference.
+Parameter names keep the case shown by their reference. Each value is a
+number, except the words of the finite-difference ``PARAM fd_kernel`` and
+of the annealing keys; a word given to another key is refused.
 
 .. list-table::
    :header-rows: 1
@@ -139,10 +147,11 @@ Keep parameter names in the case shown by their reference.
        ``max_ls_iter``; see :doc:`nfp_gradients` and
        :doc:`nfp_stopping_settings`.
    * - ``NLOPT``
-     - Shared finite-difference settings plus numeric NLopt
-       ``set_param`` settings. Their applicability belongs to the chosen
-       NLopt algorithm and requires confirmation in that algorithm's
-       parameter reference.
+     - Shared finite-difference settings plus the numeric NLopt
+       parameters the chosen algorithm reads (``tolg`` of ``LD_LBFGS``,
+       ``magic_eps`` of the ``GN_DIRECT`` algorithms); the optimiser
+       reference names them for each algorithm, and any other name is
+       refused.
    * - ``TADAH:ANNEAL``, ``ANNEAL_PA``
      - :doc:`anneal` and :doc:`anneal_pa`.
    * - ``TADAH:ANNEAL_PT``

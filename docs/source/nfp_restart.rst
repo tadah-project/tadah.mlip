@@ -26,18 +26,17 @@ Keys
    * - Key
      - Values and effect
    * - ``AFTER_STAGNATION N``
-     - Nonnegative integer, default ``0``. Trigger after ``N``
-       evaluations without a new best within the active window.
+     - Integer >= 1, required. Trigger after ``N`` evaluations without a
+       better loss within the active window.
    * - ``MAX N``
-     - Nonnegative integer, default ``0``. Maximum number of additional
-       policy launches.
+     - Integer >= 1, required. Maximum number of additional policy
+       launches.
    * - ``METHOD ...``
      - Repeatable starting-point methods, with the same syntax as
        :doc:`nfp_initialisation`.
    * - ``K_TOTAL K``
-     - Nonnegative count control with the same semantics as ``INIT``:
-       caps a chain, but a positive value overrides a lone sampling
-       method's count.
+     - Integer >= 1 with the same meaning as in ``INIT``: the number of
+       points of each restart, at most the points the chain gives.
    * - ``SEED n``
      - Unsigned 64-bit seed for the restart-point chain. Restart round
        ``r`` draws with ``n + r`` (unsigned 64-bit arithmetic).
@@ -45,8 +44,9 @@ Keys
      - ``warn`` (default), ``error`` or ``skip``; applies to this block's
        ``WARM`` entries.
 
-Both ``AFTER_STAGNATION`` and ``MAX`` must be positive for restarts to
-be active. An empty method chain uses ``CONFIG``. The initial launch
+A ``RESTART`` block without ``AFTER_STAGNATION`` or ``MAX`` is refused,
+as is a value of 0: such a block would never restart the search. An
+empty method chain uses ``CONFIG``. The initial launch
 uses ``INIT``; the restart chain is used only after stagnation.
 
 .. _what-restarts:

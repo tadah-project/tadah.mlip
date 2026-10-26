@@ -1301,9 +1301,6 @@ class Writer:
         never = o.get('random_draws') == 'never'
         reads = [r for r in o['reads'] if not (never and r == 'SEED')]
         text = ', '.join(role('key', 'OPTIMIZER.' + r) for r in reads)
-        if o['warns_unread_seed']:
-            text = (text + '; ' if text else '') + \
-                'a ' + role('key', '!OPTIMIZER.SEED') + ' line gets a warning'
         entry.line('Reads', text)
         # How the optimiser uses STEP, as the ALGO help says it; when it
         # refuses STEP, the reason its message gives (the message reads
@@ -1334,8 +1331,15 @@ class Writer:
             entry.line('INNER', sentence(inner))
         if o['accepts_multi_seed']:
             entry.line('Start points', 'one run takes several')
-        entry.line('PARAM', ', '.join(role('param', i)
-                                      for i in self.params_of(name)))
+        param = ', '.join(role('param', i) for i in self.params_of(name))
+        if o['lib'] == 'NLOPT':
+            # The PARAM keys NLopt reads for the algorithm (its
+            # algorithm_params in the optimiser list); any other is refused.
+            own = o.get('algorithm_params', [])
+            param += ('; NLopt reads ' + ', '.join(literal(p) for p in own)
+                      if own else
+                      '; NLopt reads no parameter of this algorithm')
+        entry.line('PARAM', param)
         return entry
 
     def params_of(self, name):

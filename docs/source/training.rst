@@ -627,6 +627,12 @@ A line of a configuration file that includes the potential with
    EFILTER -9 -2
    OUTFILE pot2.tadah
 
+A key that the potential's own lines set, such as ``BIAS``, ``MODEL`` or
+``RCUT2B``, is changed in the copy, not by a line of the including file:
+the lines of an included file are read in place of its ``CONFIG`` line
+(:ref:`config_file`), so such a line is a second line of the key, and a
+second line of a key of one value is refused.
+
 A file that has ``WEIGHTS`` (a potential or a copy of one) is a potential,
 wherever the run reads it: given with ``-c``, or included with ``CONFIG`` by
 a configuration file (a ``tadah hpo`` seed too). Its lines of the keys of the training record but

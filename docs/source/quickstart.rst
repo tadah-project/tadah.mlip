@@ -160,7 +160,33 @@ and ``suggest_bounds``. Its lines follow these rules:
 - Comments start with ``#`` and run to the end of the line.
 - Boolean values are written in lowercase: ``true``, ``false``.
 - ``CONFIG other.cfg`` includes another configuration file, so several
-  configuration files can share settings.
+  configuration files can share settings. The lines of ``other.cfg`` are
+  read in place of the ``CONFIG`` line, and a file can have several
+  ``CONFIG`` lines. A key of one value (*Max number of
+  values* 1 in :ref:`ConfigSection`) is set once in all the files: a second
+  line of it, above or below the ``CONFIG`` line, is refused. The lines of a
+  key of several values, such as :ref:`DBFILE <DBFILE>`, add up in line
+  order. A relative path in any of the files is relative to the working
+  directory (:ref:`CONFIG <CONFIG>` gives the rules).
+
+  The file ``run.train`` below includes ``common.train``, whose first two
+  lines are ``DBFILE eos.tadahdb`` and ``BIAS false``:
+
+  .. code-block:: ini
+
+     CONFIG common.train
+     DBFILE elastic.tadahdb
+
+  ``tadah train -c run.train`` fits both datasets, ``eos.tadahdb`` first.
+  A third line, ``BIAS true``, is refused, as it would be above the
+  ``CONFIG`` line:
+
+  .. code-block:: text
+
+     Key BIAS is set on line 2 of common.train (CONFIG on line 1 of
+     run.train) and on line 3 of run.train: a key of one value is set once
+     in a configuration file and the files it includes with CONFIG
+
 - An option of the command and the configuration key of the same name set
   the same thing, and the option on the command line overrides the line of
   the file:
@@ -206,6 +232,11 @@ and ``suggest_bounds``. Its lines follow these rules:
    its own: its lines go into the configuration file of a command that
    takes ``-c``, the options ``-c`` needs stay on the command line, and the
    lines of another command become its options.
+
+.. versionchanged:: 1.6.0
+   Tadah! 1.5.0 let the included file's lines replace the lines of their
+   keys above the ``CONFIG`` line without a message (a ``DBFILE`` above it
+   was dropped), and a second line of a key of one value replace the first.
 
 .. versionchanged:: 1.6.0
    Tadah! 1.5.0 accepted a line of a *Command key* in every configuration

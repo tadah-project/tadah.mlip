@@ -141,10 +141,12 @@ conversion; ``tadah explain <KEY>`` gives the conversion too.
 A key marked **Command key** is one that only some commands read: an option
 of their command line, such as ``ANALYTICS`` (``-A`` of ``tadah predict``),
 or a key of their configuration file, such as ``REFIT_MODE`` (``tadah
-refit``). Its entry names the commands. In a configuration file of another
-command its line is refused at its line, naming the commands that read it. A
-potential that holds such a line is read without it, with one warning per
-key on standard error.
+refit``). Its entry names the commands, and shows an example line only when
+one of them reads a configuration file. A configuration file of another
+command refuses its line (:ref:`config_file`). A potential that holds such a
+line loads without it, with one warning per key, which goes where the
+warning of a deprecated key goes (standard error, or ``log.lammps`` under
+``pair_style tadah``).
 
 '''
 
@@ -196,7 +198,9 @@ def commands_reading(blueprint: dict) -> dict:
     """Map each key (upper case) to the commands, as typed ("tadah data
     print"), whose [TASKS.*] table lists it: among its options (an INHERIT
     of ALLOWED_KEYS.<key>, or a key written out) or the keys of its option
-    groups, sorted."""
+    groups, sorted. A command whose table writes the key out as retired
+    (an option it refuses with the reason) does not read it, as CORE's
+    commands_reading_key has it."""
     readers = {}
 
     def note(command, keys_table):
@@ -205,8 +209,11 @@ def commands_reading(blueprint: dict) -> dict:
         names = [ref.split('.', 1)[1] for ref in keys_table.get('INHERIT', [])
                  if ref.startswith('ALLOWED_KEYS.')]
         names += [k for k, v in keys_table.items() if isinstance(v, dict)]
+        retired = {k.upper() for k, v in keys_table.items()
+                   if isinstance(v, dict) and v.get('retired')}
         for name in names:
-            readers.setdefault(name.upper(), set()).add(command)
+            if name.upper() not in retired:
+                readers.setdefault(name.upper(), set()).add(command)
 
     def walk(prefix, table):
         for name, sub in table.items():
@@ -230,10 +237,13 @@ def _listed(items):
     return ', '.join(items[:-1]) + ' and ' + items[-1]
 
 
-def render_key(key_name: str, entry: dict, readers=None) -> str:
+def render_key(key_name: str, entry: dict, readers=None,
+               config_commands=()) -> str:
     """Return the rst section of one ALLOWED_KEYS entry (inheritance resolved).
     @p readers: the commands that read the key (commands_reading()), for a
-    key that only commands read (blueprint field `command_only`)."""
+    key that only commands read (blueprint field `command_only`);
+    @p config_commands: the commands that read a configuration file (those
+    that read CONFIG, the key of -c)."""
     out = []
 
     # ---------------------------------------------------------------------
@@ -298,23 +308,27 @@ def render_key(key_name: str, entry: dict, readers=None) -> str:
 
     # ---------------------------------------------------------------------
     # A key that only commands read (blueprint field `command_only`, CORE):
-    # an option of their command line or a key of their configuration
-    # file. A configuration file of another command refuses its line, and a
-    # potential is read without it.
+    # an option of their command line, their positional argument (a
+    # cli_long_flag that does not start with "-") or a key of their
+    # configuration file, named as CORE's messages name it
+    # (command_key_role). The rule of such a key is on the page the note
+    # links to; the note is a paragraph of its own.
     # ---------------------------------------------------------------------
     if entry.get('command_only'):
-        commands = ['``%s``' % c for c in (readers or [])]
+        commands = _listed(['``%s``' % c for c in (readers or [])])
         flag = entry.get('cli_long_flag', '')
-        option = ''
-        if flag.startswith('--'):
+        if not commands:
+            role = ('read by no command; every configuration file refuses '
+                    'its line')
+        elif flag.startswith('-'):
             short = entry.get('cli_short_flag', '')
-            option = ' (the option ``%s``%s)' % (
-                flag, ', ``%s``' % short if short else '')
-        who = ('A key of %s%s' % (_listed(commands), option) if commands
-               else 'A key that no command reads')
-        out.append("\n   *Command key*: %s: a configuration file of another "
-                   "command refuses its line, and a potential that holds it "
-                   "is read without it, with a warning.\n" % who)
+            role = 'the option ``%s``%s of %s' % (
+                flag, ' (``%s``)' % short if short else '', commands)
+        elif flag:
+            role = 'the argument of %s' % commands
+        else:
+            role = 'a key of %s' % commands
+        out.append("\n   *Command key* (:ref:`config_file`): %s.\n\n" % role)
 
     # ---------------------------------------------------------------------
     # Allowed values (blueprint field `allowed_values`): the only values of
@@ -379,9 +393,15 @@ def render_key(key_name: str, entry: dict, readers=None) -> str:
     # Examples: each is a value of the key (CORE's rule for the blueprint),
     # one of several lines one value per line; each line is shown as a line
     # of the key, as CoreUserConfigParser lists the examples of a refused
-    # value.
+    # value. A command key that no command reading a configuration file
+    # reads has no such line (every configuration file refuses it): its
+    # entry shows no example, and the reference of the command-line options
+    # gives its examples.
     # ---------------------------------------------------------------------
     examples = entry.get('examples', [])
+    if entry.get('command_only') and not any(
+            c in config_commands for c in (readers or [])):
+        examples = []
     for idx, example in enumerate(examples, start=1):
         out.append(f"   *Example* {idx}::\n\n")
         for line in example.splitlines():
@@ -399,11 +419,13 @@ def render(blueprint: dict) -> str:
     allowed_keys = blueprint.get('ALLOWED_KEYS', {})
     types_table = blueprint.get('TYPES', {})
     readers = commands_reading(blueprint)
+    config_commands = set(readers.get('CONFIG', []))
     parts = [header]
     for key_name, raw_entry in allowed_keys.items():
         parts.append(render_key(key_name,
                                 _resolve_inheritance(raw_entry, types_table),
-                                readers.get(key_name.upper(), [])))
+                                readers.get(key_name.upper(), []),
+                                config_commands))
     return "".join(parts)
 
 

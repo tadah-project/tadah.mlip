@@ -42,13 +42,11 @@ Analytical availability depends on the model, fit, loss terms and chosen
 optimiser. Setup validates derivative support for the selected combination. ``HYBRID`` is the explicit choice when numerical
 fallback is acceptable.
 
-The current analytical fit path requires a training ``DBFILE``,
-``OALGO 4``, fixed ``LAMBDA >= 0``, and ``BF_Linear`` or ``Kern_Linear``.
-It rejects ``FIXINDEX``, ``STRESS true``, ``NORM true``, ``PC_SRMSE_GPA``
-and a search of an :term:`error scale` (``ESIGMA``, ``FSIGMA``, ``SSIGMA``)
-or of a dataset :term:`priority` (``WDBFILE``).
+The analytical fit path needs the settings listed under
+:hpo:key:`GRAD_STRATEGY <OPTIMIZER.GRAD_STRATEGY>`: startup refuses a
+setup without them, naming the first setting it lacks.
 Each selected descriptor parameter and observable must also supply a
-supported derivative. These requirements apply to the analytical fit path.
+supported derivative.
 
 Finite-difference keys
 ----------------------

@@ -128,13 +128,12 @@ to ``ANALYTICAL`` when typed observables are present. Explicit
 ``ANALYTICAL`` and ``HYBRID`` are accepted; ``NUMERICAL`` is refused.
 Derivative-free phases use loss values alone.
 
-``ANALYTICAL`` requires a supported linear fit with training data,
-``OALGO 4``, fixed ``LAMBDA >= 0``, ``NORM false``, ``STRESS false``
-and no ``FIXINDEX`` pins or ``PC_SRMSE_GPA`` target. Startup also checks
-the selected descriptor parameters. For typed observables,
-``--unconverged force-scaled`` requires the numerical contribution
-provided by ``HYBRID``. A term has an analytical derivative under every
-:doc:`loss function <nfp_losses>`, ``MAPE`` and ``RMSLE`` included.
+``ANALYTICAL`` needs the settings of the analytical gradient listed under
+:hpo:key:`GRAD_STRATEGY <OPTIMIZER.GRAD_STRATEGY>`. For typed
+observables, ``--unconverged force-scaled`` requires the numerical
+contribution provided by ``HYBRID``. A term has an analytical derivative
+under every :doc:`loss function <nfp_losses>`, ``MAPE`` and ``RMSLE``
+included.
 
 .. versionchanged:: 1.6.0
    1.5.0 took finite differences for a term under ``MAPE`` or ``RMSLE``.

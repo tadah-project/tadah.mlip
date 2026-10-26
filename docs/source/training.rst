@@ -52,11 +52,9 @@ in order:
    of every atom closer than the cutoff, for any cell (triclinic, or
    thinner than the cutoff) and for atoms inside or outside the cell
    (:doc:`API/nn_finder`).
-#. **Running the pre-flight audit** when enabled (``AUDIT`` is ``off`` by
-   default; ``warn`` reports findings, ``error`` refuses to launch on a
-   FAIL-level finding), which checks dataset statistics and
-   per-descriptor metadata for ρ-collapse and out-of-range parameter
-   combinations.
+#. **Running the pre-flight audit** when enabled (:ref:`AUDIT`, ``off`` by
+   default): it checks the parameters of each descriptor against the
+   neighbour distances of the data.
 #. **Fitting the regression model** declared by ``MODEL``: it minimises
    the sum of :ref:`fit_objective`, with the :term:`error scales
    <error scale>` of the configuration and the :term:`priorities

@@ -9922,3 +9922,445 @@ TEST_CASE("Subcommand: refit --retarget refuses NUMERIC in its "
   CHECK(e.status == 0);
   CHECK(std::filesystem::exists("pot_edited.tadah"));
 }
+
+/* ---- [one_command]: the commands are counted from the words ---------- */
+
+/* Pins: the commands of a command line are counted from its words before
+ * CLI11 checks any command's options, each option taking the words it
+ * takes (a command name after an option that takes one value is that
+ * value): `tadah predict -p x train -c y` exits 105 with "the command line
+ * gives 2, tadah predict and tadah train", `tadah train -c a predict -p b
+ * hpo -c c` with "gives 3, tadah train, tadah predict and tadah hpo",
+ * `tadah data print -d a split -d b data` with "gives 3, tadah data print,
+ * tadah data split and tadah data" and `tadah data print data split` with
+ * "gives 2, tadah data print and tadah data split"; `tadah train -c
+ * predict` reads predict as the file of -c (no second command: exit 1, the
+ * file does not open).
+ * Before the fix: the count followed how far CLI11 had read: the first
+ * exited 106 ("At least 1 option from [-s,--structure,-d,--dbfile] is
+ * required", predict's requirement, before train was read), the second
+ * gave 2 (train and predict, hpo unread), the third 2 (data split absorbed
+ * the trailing data) and the fourth "tadah data print and tadah data". */
+TEST_CASE("Subcommand: the commands of a command line are counted from its "
+          "words",
+          "[TadahCLI][exit-status][one_command]") {
+  ScratchCwd cwd("command_words");
+  const std::string head =
+      "tadah runs one command per run: the command line gives ";
+  const std::vector<std::pair<std::vector<std::string>, std::string>> cases =
+      {{{"tadah", "predict", "-p", "x", "train", "-c", "y"},
+        "2, tadah predict and tadah train"},
+       {{"tadah", "train", "-c", "a", "predict", "-p", "b", "hpo", "-c", "c"},
+        "3, tadah train, tadah predict and tadah hpo"},
+       {{"tadah", "data", "print", "-d", "a", "split", "-d", "b", "data"},
+        "3, tadah data print, tadah data split and tadah data"},
+       {{"tadah", "data", "print", "data", "split"},
+        "2, tadah data print and tadah data split"}};
+  for (const auto& c : cases) {
+    std::string words;
+    for (const std::string& a : c.first)
+      words += (words.empty() ? "" : " ") + a;
+    const CliRun r = run_tadah(c.first);
+    const std::string rep = reported(r);
+    INFO(words << "\nstatus " << r.status << "\n" << rep);
+    CHECK(r.status == 105);
+    CHECK(contains(rep, head + c.second +
+                            " (each runs as a tadah command of its own)"));
+  }
+  const CliRun f = run_tadah({"tadah", "train", "-c", "predict"});
+  const std::string rf = reported(f);
+  INFO("tadah train -c predict: status " << f.status << "\n" << rf);
+  CHECK(f.status == 1);
+  CHECK_FALSE(contains(rf, head));
+  CHECK(contains(rf, "predict"));
+}
+
+/* ---- [stream_state]: tadah predict -A and the format of std::cout ----- */
+
+/* Pins: tadah predict -A leaves the format of standard output as it found
+ * it: on the three Ta dimers, `tadah predict -d db.tadah -p pot.tadah -A`
+ * (exit 0) and then, in the same process, `tadah train -c config.a -v 1`
+ * with M_KRR Kern_RBF (MPARAMS 1.0) print the kernel's settings line
+ * "Kern_RBF | sigma: 1 | gamma: 1" (the kernel copies the format of
+ * std::cout).
+ * Before the fix: predict -A left std::cout std::scientific at precision 6,
+ * and the line read "Kern_RBF | sigma: 1.000000e+00 | gamma:
+ * 1.000000e+00". */
+TEST_CASE("Subcommand: tadah predict -A leaves the format of standard output "
+          "as it found it",
+          "[TadahCLI][kernel_line][stream_state]") {
+  ScratchCwd cwd("predict_stream_state");
+  write_ta_dimer_training();
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config.train"});
+  INFO("train: status " << t.status << "\n" << reported(t));
+  REQUIRE(t.status == 0);
+  const CliRun p = run_tadah(
+      {"tadah", "predict", "-d", "db.tadah", "-p", "pot.tadah", "-A"});
+  INFO("predict -A: status " << p.status << "\n" << reported(p));
+  REQUIRE(p.status == 0);
+  REQUIRE(contains(p.out, "Energy RMSE"));
+  std::string base = slurp("config.train");
+  const std::string linear = "MODEL M_BLR BF_Linear\n";
+  const auto at = base.find(linear);
+  REQUIRE(at != std::string::npos);
+  base.replace(at, linear.size(), "MODEL M_KRR Kern_RBF 1\nSBASIS 3\n");
+  std::ofstream("config.a") << base << "MPARAMS 1.0\nOUTFILE pot_a.tadah\n";
+  const CliRun k = run_tadah({"tadah", "train", "-c", "config.a", "-v", "1"});
+  INFO("Kern_RBF train: status " << k.status << "\n" << reported(k));
+  CHECK(k.status == 0);
+  CHECK(lines_with(k.out, "Kern_RBF | sigma: 1 | gamma: 1") == 1u);
+}
+
+/* ---- [audit]: AUDIT error and the reach of a density ------------------ */
+
+namespace {
+
+/* Writes bcc.tadah, three bcc Ta cells (a = 3.2, 3.3 and 3.4 A, two atoms
+ * each), and @p name, a DM_mBlipEnv fit of them (the many-body part of the
+ * Ta seed of the HPO tests: CGRIDMB @p cgridmb, SGRIDMB 0.2, RCUTMB 5.6)
+ * with AUDIT error, to @p outfile. */
+void write_bcc_mblipenv(const std::string& name, const std::string& cgridmb,
+                        const std::string& outfile) {
+  {
+    std::ofstream os("bcc.tadah");
+    int n = 0;
+    for (const char* a : {"3.2", "3.3", "3.4"}) {
+      const double h = std::stod(a) / 2.0;
+      os << "bcc_ta_" << ++n << "\n1 1 1\n" << -11.8 + 0.1 * n << "\n"
+         << a << " 0 0\n0 " << a << " 0\n0 0 " << a << "\n"
+         << "0 0 0\n0 0 0\n0 0 0\n"
+         << "Ta 0 0 0 0 0 0\nTa " << h << " " << h << " " << h
+         << " 0 0 0\n\n";
+    }
+  }
+  std::ofstream(name)
+      << "DBFILE bcc.tadah\nATOM Ta\nWATOM 1\nINIT2B false\nINITMB true\n"
+         "TYPEMB DM_mBlipEnv 0 1 1 7 7 Ta Ta\nRCUTENV 5.0\nRCTYPEMB Cut_Poly\n"
+         "RCUTMB 5.6\nSGRIDMB 0.2\nCGRIDMB " << cgridmb << "\n"
+         "SEMBFUNC 1 1 1 1 1 1 1\nCEMBFUNC 1 2 3 4 5 6 7\n"
+         "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
+         "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\nAUDIT error\n"
+         "OUTFILE " << outfile << "\n";
+}
+
+}  // namespace
+
+/* Pins: tadah train with AUDIT error trains the Ta seed of the HPO tests,
+ * whose radial GTO is centred at the origin (CGRIDMB 0, SGRIDMB 0.2:
+ * exp(-0.2 * 2.77^2) = 0.22 at the nearest neighbour of bcc Ta at a = 3.2
+ * A): exit 0 and the potential written.
+ * Before the fix: the audit failed the seed ("CGRIDMB=0.000000 is outside
+ * the dataset's r_ij range ... ρ will be ~0 for every atom"), and the
+ * refusal ended the process with std::exit(EXIT_FAILURE), this test
+ * program with it (exit status 1, no test case after it run). */
+TEST_CASE("Subcommand: train with AUDIT error trains a Gaussian density "
+          "centred at the origin whose width reaches the neighbours",
+          "[TadahCLI][exit-status][audit]") {
+  ScratchCwd cwd("audit_reach");
+  write_bcc_mblipenv("seed.train", "0.0", "seed.tadah");
+  const CliRun r = run_tadah({"tadah", "train", "-c", "seed.train"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(std::filesystem::exists("seed.tadah"));
+}
+
+/* Pins: tadah train with AUDIT error refuses a configuration with a FAIL
+ * finding with exit status 1 returned to its caller, the program going
+ * on: a radial GTO centred 30 A away (CGRIDMB 30) is refused naming the
+ * finding ("AUDIT=error", "CGRIDMB"), and no potential is written; this
+ * test case runs to its end in the process that ran tadah.
+ * Before the fix: TrainEngine called std::exit(EXIT_FAILURE) inside the
+ * library, which ended this test program (exit status 1) before any check
+ * ran. */
+TEST_CASE("Subcommand: train with AUDIT error refuses a FAIL finding with "
+          "exit status 1, in the process",
+          "[TadahCLI][exit-status][audit]") {
+  ScratchCwd cwd("audit_refusal");
+  write_bcc_mblipenv("far.train", "30.0", "far.tadah");
+  const CliRun r = run_tadah({"tadah", "train", "-c", "far.train"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "AUDIT=error"));
+  CHECK(contains(rep, "CGRIDMB"));
+  CHECK_FALSE(std::filesystem::exists("far.tadah"));
+}
+
+/* ---- [command_keys]: a key of another command in a -c file ------------ */
+
+/* Pins: tadah train -c with a line of a key that only another command
+ * reads -- ANALYTICS (tadah predict), REFIT_MODE (tadah refit), INDEX
+ * (tadah data print and others) -- exits 1 naming the key, its line and
+ * file, the command that reads it and tadah train ("Key ANALYTICS on line
+ * 18 of extra.train is not accepted here: ... tadah predict ... a
+ * configuration file of tadah train"), and writes no potential; a
+ * potential written before with an ANALYTICS true line (as tadah train of
+ * an earlier version wrote it) is read by tadah predict without the line,
+ * with one notice on standard error ("Key ANALYTICS is ignored: ..."), and
+ * predicts (exit 0).
+ * Before the fix: each training exited 0 and wrote the key into the
+ * potential as a key line, where it changed nothing; the prediction gave
+ * no notice. */
+TEST_CASE("Subcommand: a configuration file with a key of another command "
+          "is refused, and a potential's line of one is not read",
+          "[TadahCLI][exit-status][command_keys]") {
+  ScratchCwd cwd("command_keys");
+  write_ta_dimer_training();
+  const std::string base = slurp("config.train");
+  const std::size_t line =
+      static_cast<std::size_t>(std::count(base.begin(), base.end(), '\n')) + 1;
+  struct Case {
+    const char* text;
+    const char* key;
+    const char* owner;
+  };
+  for (const Case& c : {Case{"ANALYTICS true", "ANALYTICS", "tadah predict"},
+                        Case{"REFIT_MODE dense", "REFIT_MODE", "tadah refit"},
+                        Case{"INDEX 1,3", "INDEX", "tadah data print"}}) {
+    std::filesystem::remove("pot.tadah");
+    std::ofstream("extra.train") << base << c.text << "\n";
+    const CliRun r = run_tadah({"tadah", "train", "-c", "extra.train"});
+    const std::string rep = reported(r);
+    INFO(c.text << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key " + std::string(c.key) + " on line " +
+                            std::to_string(line) +
+                            " of extra.train is not accepted here"));
+    CHECK(contains(rep, c.owner));
+    CHECK(contains(rep, "a configuration file of tadah train"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+
+  std::filesystem::remove("pot.tadah");
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config.train"});
+  INFO("train: status " << t.status << "\n" << reported(t));
+  REQUIRE(t.status == 0);
+  std::ofstream("old_pot.tadah") << slurp("pot.tadah") << "ANALYTICS true\n";
+  const CliRun p = run_tadah(
+      {"tadah", "predict", "-d", "db.tadah", "-p", "old_pot.tadah"});
+  const std::string rp = reported(p);
+  INFO("predict: status " << p.status << "\n" << rp);
+  CHECK(p.status == 0);
+  CHECK(lines_with(p.err, "Key ANALYTICS is ignored") == 1u);
+  CHECK(contains(p.err, "old_pot.tadah"));
+  CHECK(contains(p.err, "tadah predict"));
+}
+
+/* Pins: tadah data print leaves the format of standard output as it found
+ * it: `tadah data print -s nacl_p1.cif` (exit 0) and then, in the same
+ * process, `tadah train -c config.a -v 1` on the three Ta dimers with
+ * M_KRR Kern_RBF (MPARAMS 1.0) print the kernel's settings line "Kern_RBF |
+ * sigma: 1 | gamma: 1" (the kernel copies the format of std::cout).
+ * Before the fix: printing the structure left std::cout std::fixed at the
+ * printer's precision, and the line read "Kern_RBF | sigma: 1.000000 |
+ * gamma: 1.000000". */
+TEST_CASE("Subcommand: tadah data print leaves the format of standard "
+          "output as it found it",
+          "[TadahCLI][kernel_line][stream_state]") {
+  ScratchCwd cwd("print_stream_state");
+  { std::ofstream os("nacl_p1.cif"); os << kNaClP1Cif; }
+  const CliRun p = run_tadah({"tadah", "data", "print", "-s", "nacl_p1.cif"});
+  INFO("data print: status " << p.status << "\n" << reported(p));
+  REQUIRE(p.status == 0);
+  REQUIRE(contains(p.out, "Volume"));
+  write_ta_dimer_training();
+  std::string base = slurp("config.train");
+  const std::string linear = "MODEL M_BLR BF_Linear\n";
+  const auto at = base.find(linear);
+  REQUIRE(at != std::string::npos);
+  base.replace(at, linear.size(), "MODEL M_KRR Kern_RBF 1\nSBASIS 3\n");
+  std::ofstream("config.a") << base << "MPARAMS 1.0\nOUTFILE pot_a.tadah\n";
+  const CliRun k = run_tadah({"tadah", "train", "-c", "config.a", "-v", "1"});
+  INFO("Kern_RBF train: status " << k.status << "\n" << reported(k));
+  CHECK(k.status == 0);
+  CHECK(lines_with(k.out, "Kern_RBF | sigma: 1 | gamma: 1") == 1u);
+}
+
+namespace {
+
+/* Writes @p name, a fit of bcc.tadah (written by write_bcc_mblipenv) with
+ * AUDIT error by TYPEMB DM_mJoin of DM_EAD 0 1 1 (a Gaussian channel,
+ * CGRIDMB(1)) and DM_Blip 0 2 2 (two blips, CGRIDMB(2) and (3)), CGRIDMB
+ * @p cgridmb, every SGRIDMB 1, RCUTMB 5.6 5.6, to @p outfile. */
+void write_bcc_joined_density(const std::string& name,
+                              const std::string& cgridmb,
+                              const std::string& outfile) {
+  std::ofstream(name)
+      << "DBFILE bcc.tadah\nATOM Ta\nWATOM 1\nINIT2B false\nINITMB true\n"
+         "TYPEMB DM_mJoin\nTYPEMB DM_EAD 0 1 1 Ta Ta\n"
+         "TYPEMB DM_Blip 0 2 2 Ta Ta\nRCTYPEMB Cut_Cos Cut_Cos\n"
+         "RCUTMB 5.6 5.6\nCGRIDMB " << cgridmb << "\nSGRIDMB 1 1 1\n"
+         "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
+         "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\nAUDIT error\n"
+         "OUTFILE " << outfile << "\n";
+}
+
+}  // namespace
+
+/* Pins: tadah train with AUDIT error judges each descriptor of a DM_mJoin
+ * line by its own channels: DM_EAD's Gaussian at the origin (CGRIDMB(1) =
+ * 0, SGRIDMB 1: 5e-4 at the nearest neighbour of bcc Ta, 2.77 A) joined
+ * with DM_Blip's blips at 3 and 3.5 trains (exit 0, the potential
+ * written); with the second blip at 30 A the run exits 1 naming
+ * "DM_Blip.CGRIDMB" and "CGRIDMB(3) = 30", and nothing of CGRIDMB(1).
+ * Before the fix: the first exited 1, DM_Blip judging the Gaussian at the
+ * origin as a blip ("[FAIL] DM_Blip.CGRIDMB -- CGRIDMB(1) = 0 with
+ * SGRIDMB(1) = 1: the support of the blip ... holds no neighbour
+ * distance"), while a lone DM_EAD with that channel trains; the second
+ * named CGRIDMB(1) as well. */
+TEST_CASE("Subcommand: train with AUDIT error judges each descriptor of a "
+          "DM_mJoin line by its own channels",
+          "[TadahCLI][exit-status][audit]") {
+  ScratchCwd cwd("audit_join");
+  write_bcc_mblipenv("unused.train", "0.0", "unused.tadah");
+  write_bcc_joined_density("join.train", "0.0 3.0 3.5", "join.tadah");
+  const CliRun r = run_tadah({"tadah", "train", "-c", "join.train"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(std::filesystem::exists("join.tadah"));
+  write_bcc_joined_density("far.train", "0.0 3.0 30", "far.tadah");
+  const CliRun f = run_tadah({"tadah", "train", "-c", "far.train"});
+  const std::string rep = reported(f);
+  INFO("far: status " << f.status << "\n" << rep);
+  CHECK(f.status == 1);
+  CHECK(contains(rep, "DM_Blip.CGRIDMB"));
+  CHECK(contains(rep, "CGRIDMB(3) = 30"));
+  CHECK_FALSE(contains(rep, "CGRIDMB(1)"));
+  CHECK_FALSE(std::filesystem::exists("far.tadah"));
+}
+
+#ifdef TADAH_ENABLE_NFP
+
+/* ---- [preflight_audit]: tadah hpo and the critical-parameter audit ---- */
+
+namespace {
+
+/* Writes, in the working directory, val.db (one rattled bcc Ta cell),
+ * config.val, fw.train (D2_BP of 5 functions, every weight pinned, no
+ * training DBFILE, AUDIT off: the default) and fw.hpo (OPTIM FIXWEIGHT
+ * (1) alone), and wide.train (the same model with DBFILE val.db, no
+ * FIXINDEX, AUDIT warn) and wide.hpo (OPTIM SGRID2B (1) alone). */
+void write_audit_fixture() {
+  std::ofstream("val.db")
+      << "rattled_bcc_ta_1\n1.0 1.0 1.0\n-0.30 0.0\n"
+         "3.301 0.0 0.0\n0.0 3.301 0.0\n0.0 0.0 6.602\n"
+         "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+         "Ta 0.05 -0.03 0.02  0.31 -0.12 0.05\n"
+         "Ta 1.70 1.62 1.68  -0.22 0.17 -0.09\n"
+         "Ta -0.04 0.06 3.33  0.04 0.21 -0.15\n"
+         "Ta 1.61 1.69 4.92  -0.13 -0.26 0.19\n\n";
+  std::ofstream("config.val") << "DBFILE val.db\n";
+  const std::string model =
+      "ATOM Ta\nWATOM 1\nINIT2B true\nINITMB false\n"
+      "TYPE2B D2_BP 5 5 Ta Ta\n"
+      "CGRID2B 0.3 0.6 1.0 1.4 1.8\nSGRID2B 2.0 2.7 3.4 4.2 5.0\n"
+      "RCTYPE2B Cut_Cos\nRCUT2B 5.0\nBIAS false\nNORM false\n"
+      "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 4\n";
+  std::ofstream("fw.train")
+      << model << "FIXINDEX 1-5\nFIXWEIGHT -15.0 22.5 -32.5 17.5 -10.0\n";
+  std::ofstream("wide.train") << model << "DBFILE val.db\nAUDIT warn\n";
+  const std::string head =
+      "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
+      "LOSS L2\nPC_ERMSE 0 1\n";
+  std::ofstream("fw.hpo") << head << "OPTIM FIXWEIGHT (1) -30.0 0.0\n";
+  std::ofstream("wide.hpo") << head << "OPTIM SGRID2B (1) 1.0 3.0\n";
+}
+
+}  // namespace
+
+/* Pins: tadah hpo --check of a search of FIXWEIGHT alone (D2_BP, every
+ * weight pinned, AUDIT off: the default) prints no critical-parameter
+ * warning (exit 0); with AUDIT warn and a search of SGRID2B alone, the
+ * fixed RCUT2B of the searched descriptor is flagged once ("D2_BP.RCUT2B
+ * -- Critical hyperparameter is fixed ...", one line).
+ * Before the fix: a preview of the audit ran before every run and check,
+ * whatever AUDIT said and whatever the search space held: the first check
+ * printed the RCUT2B warning once, and the second twice (the preview, then
+ * the audit of AUDIT warn). */
+TEST_CASE("Subcommand: hpo --check gives the critical-parameter warnings of "
+          "AUDIT warn once, and none for a search of FIXWEIGHT alone",
+          "[TadahCLI][exit-status][hpo][preflight_audit]") {
+  ScratchCwd cwd("hpo_preflight");
+  write_audit_fixture();
+  const std::string warning = "Critical hyperparameter is fixed";
+  const CliRun fw = run_tadah({"tadah", "hpo", "--check", "-c", "fw.train",
+                               "--hpotarget", "fw.hpo", "--validation",
+                               "config.val"});
+  INFO("FIXWEIGHT alone: status " << fw.status << "\n" << reported(fw));
+  CHECK(fw.status == 0);
+  CHECK(lines_with(reported(fw), warning) == 0u);
+  const CliRun wide = run_tadah({"tadah", "hpo", "--check", "-c",
+                                 "wide.train", "--hpotarget", "wide.hpo",
+                                 "--validation", "config.val"});
+  INFO("AUDIT warn: status " << wide.status << "\n" << reported(wide));
+  CHECK(wide.status == 0);
+  CHECK(lines_with(reported(wide), "D2_BP.RCUT2B") == 1u);
+  CHECK(lines_with(reported(wide), warning) == 1u);
+}
+
+/* Pins: tadah hpo --check -c of a training configuration with an
+ * ANALYTICS true line (an option of tadah predict) exits 1 naming the key,
+ * its line, the file, tadah predict and tadah hpo.
+ * Before the fix: the check passed (exit 0) and a run would have written
+ * the line into every potential. */
+TEST_CASE("Subcommand: hpo -c refuses a key of another command",
+          "[TadahCLI][exit-status][hpo][command_keys]") {
+  ScratchCwd cwd("hpo_command_keys");
+  write_audit_fixture();
+  std::ofstream("extra.train") << slurp("fw.train") << "ANALYTICS true\n";
+  const std::string base = slurp("fw.train");
+  const std::size_t line =
+      static_cast<std::size_t>(std::count(base.begin(), base.end(), '\n')) + 1;
+  const CliRun r = run_tadah({"tadah", "hpo", "--check", "-c", "extra.train",
+                              "--hpotarget", "fw.hpo", "--validation",
+                              "config.val"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "Key ANALYTICS on line " + std::to_string(line) +
+                          " of extra.train is not accepted here"));
+  CHECK(contains(rep, "tadah predict"));
+  CHECK(contains(rep, "a configuration file of tadah hpo"));
+}
+
+/* Pins: the OPTIM block tadah analysis suggest_bounds writes for a seed is
+ * accepted by tadah hpo --check with that seed: for D2_Blip (four blips,
+ * RCUT2B 5.6) and DM_EAD with Gaussian channels at 2.9, 3.3 and 4.7 A
+ * (SGRIDMB 4, RCUTMB 5.6) on three bcc Ta cells, suggest_bounds exits 0,
+ * and a target file of an optimiser, PC_ERMSE and the block passes tadah
+ * hpo --check (exit 0): every box holds the seed's value.
+ * Before the fix: the RCUT2B and RCUTMB boxes ended at the 99th percentile
+ * of the distances within the seed's cutoff, below 5.6, and every CGRIDMB
+ * box was the first shell's, which 4.7 lies outside: tadah hpo --check
+ * exited 1 ("INIT[OUTER] starting point 1: ... lies outside its OPTIM
+ * bounds"). */
+TEST_CASE("Subcommand: the block of analysis suggest_bounds passes hpo "
+          "--check with its seed",
+          "[TadahCLI][exit-status][hpo][suggest_bounds]") {
+  ScratchCwd cwd("suggest_bounds_hpo");
+  write_bcc_mblipenv("unused.train", "0.0", "unused.tadah");
+  std::ofstream("seed.train")
+      << "DBFILE bcc.tadah\nATOM Ta\nWATOM 1\nINIT2B true\nINITMB true\n"
+         "TYPE2B D2_Blip 4 4 Ta Ta\nRCTYPE2B Cut_Cos\nRCUT2B 5.6\n"
+         "CGRID2B 2.5 3.0 3.5 4.0\nSGRID2B 1 1 1 1\n"
+         "TYPEMB DM_EAD 0 3 3 Ta Ta\nRCTYPEMB Cut_Cos\nRCUTMB 5.6\n"
+         "CGRIDMB 2.9 3.3 4.7\nSGRIDMB 4 4 4\n"
+         "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
+         "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+  std::ofstream("config.val") << "DBFILE bcc.tadah\n";
+  const CliRun s = run_tadah({"tadah", "analysis", "suggest_bounds", "-c",
+                              "seed.train", "-o", "block.hpo"});
+  INFO("suggest_bounds: status " << s.status << "\n" << reported(s));
+  REQUIRE(s.status == 0);
+  std::ofstream("target.hpo")
+      << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
+         "LOSS L2\nPC_ERMSE 0 1\n" << slurp("block.hpo");
+  const CliRun c = run_tadah({"tadah", "hpo", "--check", "-c", "seed.train",
+                              "--hpotarget", "target.hpo", "--validation",
+                              "config.val"});
+  INFO("hpo --check: status " << c.status << "\n" << reported(c) << "\n"
+                              << slurp("target.hpo"));
+  CHECK(c.status == 0);
+}
+
+#endif  // TADAH_ENABLE_NFP

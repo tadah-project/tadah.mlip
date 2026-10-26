@@ -59,11 +59,11 @@ Tadah! offers an ``explain`` subcommand that explains the purpose of each subcom
 - It prints an extended description, including usage, purpose, and any additional helpful information.
 - The subcommand or option to explain is given in a *dot-separated* format. Each dot separates the subcommand(s), and the specific option of interest.
 
-For example, the ``train`` command’s ``--config`` option:
+For example, the ``train`` command’s ``--verbose`` option:
 
 .. code-block:: bash
 
-   tadah explain train.config
+   tadah explain train.verbose
 
 For a second-level subcommand, such as ``tadah data split``:
 

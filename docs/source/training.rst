@@ -268,7 +268,7 @@ predicted as it is. A filter applies only when predict is given it:
 * ``WDBFILE``, ``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` of the potential are
   never applied: they gave the training data their priorities or derived
   its shift, and the data predicted keep their own priorities.
-  ``tadah predict`` has no option of them, and fits nothing. A potential of
+  ``tadah predict`` has no option for them and fits nothing. A potential of
   Tadah! 1.5.0 has a line of the
   retired ``WDBFILE_AUTO``, and one trained with ``EWEIGHT_TEMP`` a line
   of it: ``tadah predict`` reads them with one notice
@@ -611,13 +611,18 @@ retrain does not take them from the potential, whatever version wrote it: a
 retrain works with any number of datasets, and with none of the first fit's
 filters or dataset priorities. The
 retrain's own are given as in any training run, and are recorded in the new
-potential's record: on the command line, or on a line of a configuration
-file that includes the potential with ``CONFIG``, before or after the
-``CONFIG`` line::
+potential's record. They go on the command line:
+
+.. code-block:: bash
 
    tadah train -c retrain.train -o pot2.tadah --wdbfile 1 0.5 --efilter -9 -2
 
-   # outer.train: tadah train -c outer.train
+A line of a configuration file that includes the potential with
+``CONFIG`` gives them too, before or after the ``CONFIG`` line, as in
+``outer.train``, which ``tadah train -c outer.train`` reads:
+
+.. code-block:: ini
+
    CONFIG pot.tadah
    DBFILE db1.train db2.train db3.train
    WDBFILE 1 0.5 1

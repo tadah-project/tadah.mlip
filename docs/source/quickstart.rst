@@ -44,7 +44,8 @@ The following command trains a model:
 
 The example ``config.train`` below fits energies and stresses (its ``STRESS true`` key). The ``-F`` flag, or the ``FORCE true`` key, also fits forces; for stresses, ``-S`` does what ``STRESS true`` does. Each changes the fitted potential (the effect of the stresses is shown below).
 
-Command line flags take precedence over those defined in the config file.
+An option on the command line overrides the same key of the configuration
+file (:ref:`config_file`).
 
 The ``config.train`` is type of a :ref:`config_file`. Training datasets, descriptors, cutoffs, model, and all parameters are specified in the config file. The output of this command is a trained model as a ``pot.tadah`` file.
 
@@ -87,7 +88,7 @@ The ``-F`` flag also predicts forces, and the ``-S`` flag stresses.
 
 The output of the ``predict`` subcommand includes three files:
 
-- ``energy.pred``: Three columns where the first column is an index, second is dataset energy/atom and the third column lists predicted energy/atom. The ordering follows the dataset order in the config file or with the ``-d`` flag.
+- ``energy.pred``: Three columns where the first column is an index, second is dataset energy/atom and the third column lists predicted energy/atom. The ordering follows the order of the datasets given with ``-d``.
 - ``forces.pred``: Similar idea as above, but now forces are listed. The first row is the force on the first atom in the x-direction from the first dataset, the second row is the force on the first atom in the y-direction, and so on.
 - ``stress.pred``: The first six rows list components of the stress tensor from the first configuration, followed by six components from the second configuration, and so on. The ordering is xx, xy, xz, yy, yz, zz.
 
@@ -151,10 +152,10 @@ The Tadah! configuration file manages the training process by specifying dataset
 
 :ref:`ConfigSection` lists and explains the supported KEY-VALUE pairs.
 
-A configuration file holds the keys of one command, which takes it with
-``-c`` (``--config``): ``tadah train``, ``tadah hpo``, ``tadah refit`` and
-the ``tadah analysis`` commands ``bfunc``, ``check_bounds``,
-``dataset_stats`` and ``suggest_bounds``. Its lines follow these rules:
+A configuration file holds keys for the command that reads it with ``-c``
+(``--config``): ``tadah train``, ``tadah hpo``, ``tadah refit`` and the
+``tadah analysis`` commands ``bfunc``, ``check_bounds``, ``dataset_stats``
+and ``suggest_bounds``. Its lines follow these rules:
 
 - Comments start with ``#`` and run to the end of the line.
 - Boolean values are written in lowercase: ``true``, ``false``.
@@ -179,14 +180,24 @@ the ``tadah analysis`` commands ``bfunc``, ``check_bounds``,
      * - ``-o``, ``--outfile``
        - ``OUTFILE``
 
-- An error names its line and the file: a key that is no configuration key
-  (``Invalid key FOOBAR on line 3 of config.train (closest key: FORMAT)``)
-  as well as a value that the key does not take (``Invalid value for key
-  EMBF0 on line 6 of config.train: 'frei' (allowed: ZERO, FREE)``).
+- An error of a line names the line and the file (for a line of a file
+  included with ``CONFIG``, that file): a key that is no configuration key,
+  a value that the key does not take (with the values the key takes, the
+  line to write, or the key's schema, format and examples), more values
+  than the key takes, a block such as ``DESCRIPTOR`` ... ``ENDDESCRIPTOR``
+  that is not closed, and a ``CONFIG`` line whose file does not open:
+
+  .. code-block:: text
+
+     Invalid key FOOBAR on line 3 of config.train (closest key: FORMAT)
+     Invalid value for key RCUT2B on line 6 of config.train: 'abc'
 
 .. versionchanged:: 1.6.0
-   A configuration file has no ``TASK`` lines: task files and ``tadah
-   --task`` are removed, and each command runs on its own.
+   A ``TASK`` line is refused as an unknown key at its line: task files and
+   ``tadah --task`` are removed. Each ``TASK`` section becomes a command of
+   its own: its lines go into the configuration file of a command that
+   takes ``-c``, the options ``-c`` needs stay on the command line, and the
+   lines of another command become its options.
 
 .. _dataset:
 

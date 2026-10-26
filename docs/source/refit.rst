@@ -1211,8 +1211,8 @@ which no mode reads; ``--retarget`` also refuses ``HPOFILEOUT``
 defaults ``tadah`` stores for the keys the configuration does not set are
 not refused. Before 1.6.0 these keys were ignored. ``NUMERIC``, the
 precision of the potential a refit and ``--edit`` write, is refused under
-``--retarget`` too, which writes only an hpotarget, whose bounds it does not
-govern (below). ``--edit`` takes it from its own run only: a ``NUMERIC`` line of the edited potential (every
+``--retarget`` (:ref:`refit_retarget`). ``--edit`` takes it from its own
+run only: a ``NUMERIC`` line of the edited potential (every
 ``best_pot.tadah`` of ``tadah hpo`` 1.5.0 has ``NUMERIC 12``) is not read,
 so without a ``NUMERIC`` of the run the edit is exact.
 
@@ -1345,9 +1345,10 @@ or, with ``--in-place``, the input (``tadah refit --retarget: HPOFILEOUT
 has no effect under --retarget: only a refit of an EAM file and --edit read
 it; remove HPOFILEOUT (the file --retarget writes is -o, OUTFILE)``).
 Before 1.6.0 ``--hpofileout`` was ignored, and the file was written to
-``<input>_edited.hpotarget``. ``NUMERIC`` is accepted and does not change
-the file: its bounds are printed ``%.8e`` (9 significant digits), as in
-every hpotarget ``tadah refit`` writes.
+``<input>_edited.hpotarget``. ``NUMERIC`` is refused the same way (``NUMERIC
+has no effect under --retarget``): the bounds of the file are printed
+``%.8e`` (9 significant digits) whatever ``NUMERIC`` is, as in every
+hpotarget ``tadah refit`` writes.
 
 Retargeting a freshly-emitted file at the same percentage reproduces it
 byte-for-byte, and any retargeted file is a fixed point of further

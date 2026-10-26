@@ -24,11 +24,11 @@ Basic invocation
 One command per run
 -------------------
 
-Each ``tadah`` invocation runs one command: a command line that gives two,
-such as ``tadah train -c config.train predict -d db.tadah -p pot.tadah``, is
-refused before either runs, and a series of commands is a shell script of
-``tadah`` invocations. The options of a command go on its command line, and
-the commands that take ``-c`` read their keys from a configuration file too
+Each ``tadah`` invocation runs one command. A command line that gives two,
+such as ``tadah train -c config.train predict ...``, is refused before
+either runs. A series of commands runs as a shell script of ``tadah``
+invocations. The options of a command go on its command line, and the
+commands that take ``-c`` read their keys from a configuration file too
 (:ref:`config_file`).
 
 Short-hand rules

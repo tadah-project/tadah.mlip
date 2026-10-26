@@ -105,7 +105,8 @@ to ``ANALYTICAL`` when typed observables are present. Explicit
 ``ANALYTICAL`` and ``HYBRID`` are accepted; ``NUMERICAL`` is refused.
 Derivative-free phases use loss values alone.
 
-``ANALYTICAL`` requires a supported linear fit with training data,
+``ANALYTICAL`` requires a supported linear fit with training data
+(``MODEL M_BLR BF_Linear`` or ``MODEL M_KRR Kern_Linear 1``),
 ``OALGO 4``, fixed ``LAMBDA >= 0``, ``NORM false``, ``STRESS false``
 and no ``FIXINDEX`` pins or ``PC_SRMSE_GPA`` target. Startup also checks
 the selected descriptor parameters. For typed observables, ``MAPE``,

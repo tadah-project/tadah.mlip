@@ -43,7 +43,9 @@ optimiser. Setup validates derivative support for the selected combination. ``HY
 fallback is acceptable.
 
 The current analytical fit path requires a training ``DBFILE``,
-``OALGO 4``, fixed ``LAMBDA >= 0``, and ``BF_Linear`` or ``Kern_Linear``.
+``OALGO 4``, fixed ``LAMBDA >= 0``, and ``MODEL M_BLR BF_Linear`` or
+``MODEL M_KRR Kern_Linear 1``: it differentiates the least-squares fit of
+the training rows, which ``M_KRR`` implementation 2 does not make.
 It rejects ``FIXINDEX``, ``STRESS true``, ``NORM true``, ``PC_SRMSE_GPA``
 and a search of an :term:`error scale` (``ESIGMA``, ``FSIGMA``, ``SSIGMA``)
 or of a dataset :term:`priority` (``WDBFILE``).

@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-"""The shipped Quick Start potential is what its config and task file train.
+"""The shipped Quick Start potential is what its configuration trains.
 
     check_quickstart_pot.py --tadah <tadah> --quickstart <docs/source/quickstart>
                             --workdir <scratch>
 
-docs/source/quickstart ships config.train, taskfile.txt, the datasets and
-the potential they train, pot.tadah, which the LAMMPS example (in.ml) runs.
-This guard retrains it as the Quick Start page says, in two scratch copies
-of the directory (the source tree is never written):
+docs/source/quickstart ships config.train, the datasets and the potential
+they train, pot.tadah, which the LAMMPS example (in.ml) runs. This guard
+retrains it as the Quick Start page says, ``tadah train -c config.train``,
+in a scratch copy of the directory (the source tree is never written).
 
-  * ``tadah train -c config.train``;
-  * ``tadah --task taskfile.txt`` (its train task, then its predict task).
-
-Each command must exit 0 and write pot.tadah. Each retrained potential must
+The command must exit 0 and write pot.tadah. The retrained potential must
 equal the shipped one:
 
   * every key other than WEIGHTS, with the same values, token by token, and
@@ -166,12 +163,6 @@ def main():
         run(args.tadah, ['train', '-c', 'config.train'], train_dir)
         retrained['tadah train -c config.train'] = train_dir
 
-        task_dir = os.path.join(work, 'task')
-        shutil.copytree(src, task_dir)
-        os.remove(os.path.join(task_dir, 'pot.tadah'))
-        run(args.tadah, ['--task', 'taskfile.txt'], task_dir)
-        retrained['tadah --task taskfile.txt'] = task_dir
-
         problems = []
         for i, (name, d) in enumerate(retrained.items()):
             pot = os.path.join(d, 'pot.tadah')
@@ -189,8 +180,8 @@ def main():
         print('FAIL: the shipped pot.tadah is not what the Quick Start '
               'commands train:\n  ' + '\n  '.join(problems))
         return 1
-    print('PASS: tadah train -c config.train and tadah --task taskfile.txt '
-          'reproduce the shipped pot.tadah')
+    print('PASS: tadah train -c config.train reproduces the shipped '
+          'pot.tadah')
     return 0
 
 

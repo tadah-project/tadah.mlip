@@ -19,6 +19,7 @@
 #define TADAH_MLIP_CLI_TADAH_CLI_H
 
 #include <CLI/CLI11.hpp>
+#include <map>
 #include <ostream>
 #include <string>
 #include <unordered_map>
@@ -124,8 +125,36 @@ private:
    */
   void addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bpTask);
 
-  // task name train or data.split as in blueprint
-void handleCmdCallback(const std::string &blueprintTaskName);
+  /**
+   * @brief The callback of the command @p cmd, the blueprint task
+   *        @p blueprintTaskName (TRAIN, DATA.split): stores its options as
+   *        a CLITask and records it among the commands given. A command
+   *        that groups others (DATA) records nothing when one of its
+   *        commands was given, and itself when none was
+   *        (commandLineRefusal() refuses it).
+   */
+  void handleCmdCallback(const std::string &blueprintTaskName, CLI::App *cmd);
+
+  /**
+   * @brief The commands of the command line read so far, as blueprint
+   *        tasks: those CLI11 read, in the order it read them (a command
+   *        that groups others given alone among them, and last one whose
+   *        parse an error ended), then those the arguments no command took
+   *        name (a command typed again where CLI11 does not read it: "tadah
+   *        data print -d db.tadah data split ...", "tadah predict ...
+   *        analysis cutoff ... predict ...").
+   */
+  std::vector<std::string> commandsOfLine() const;
+
+  /**
+   * @brief Why the command line is refused before any command runs (""
+   *        when it is not): more than one command ("tadah runs one command
+   *        per run: the command line gives 2, tadah train and tadah
+   *        predict (each runs as a tadah command of its own)"), or a
+   *        command that groups others given alone ("tadah data takes one of its commands:
+   *        balance, convert, ...").
+   */
+  std::string commandLineRefusal() const;
 std::string handleFooterCallback(const core::BlueprintTask &bpTask);
 
 private:
@@ -138,6 +167,18 @@ private:
    */
   // std::unordered_map<CLI::App*, std::vector<CLITask>> cliTasks_;
   std::vector<CLITask> cliTasks_;
+
+  /// The blueprint tasks of the commands given whose parse ended, in
+  /// order: one per run (TadahCLI::run refuses a second).
+  std::vector<std::string> commandsGiven_;
+
+  /// The CLI11 app of each command by its blueprint task (TRAIN, DATA,
+  /// DATA.split).
+  std::map<std::string, CLI::App *> commandApps_;
+
+  /// The blueprint task of each command by its words on the command line
+  /// ("train", "data", "data split").
+  std::map<std::string, std::string> commandNames_;
 
   /**
    * @brief Stores references to first-level commands by lowercase name.

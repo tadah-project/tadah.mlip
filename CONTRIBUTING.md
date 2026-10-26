@@ -164,8 +164,8 @@ its run writes: the same words, counts and error scales, each other number
 within two units of its last printed digit. An example included in the
 docs is tested with no further registration. The same label has `tadah_quickstart_reproduces_pot`, which
 retrains the *Quick Start* potential (`docs/source/quickstart`) with the
-page's `tadah train` and `tadah --task` commands and checks that the shipped
-`pot.tadah` is what they write (its keys, and its predictions on
+page's `tadah train` command and checks that the shipped
+`pot.tadah` is what it writes (its keys, and its predictions on
 `db.predict`): after a change to `config.train`, or to the code, that changes
 the potential, regenerate `pot.tadah` with `tadah train -c config.train` in
 that directory and check the numbers the page quotes. Those numbers are
@@ -379,7 +379,7 @@ test through the `SKIP_REGULAR_EXPRESSION` test property, which it has from
 3.16 and ignores before (reporting the test Passed), so cmake-tools'
 `include(Catch)` stops an older CMake at the configure step, saying so; the
 build without tests accepts 3.15, and one with NFP needs 3.24 (HPO). A build
-without NFP refuses `tadah hpo` and `TASK hpo` before any task runs, naming
+without NFP refuses `tadah hpo` before it runs, naming
 `TADAH_ENABLE_NFP`, and its `tadah -h` says so on the `hpo` line; the
 `[not-built]` cases of test_tadah check it there.
 Without Ceres, the test cases that need it are not compiled (they are not registered, as `test_hpo` is not built without

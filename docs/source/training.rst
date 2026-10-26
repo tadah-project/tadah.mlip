@@ -155,7 +155,7 @@ LAMMPS needs positions already at the trained scale.
 
 .. versionchanged:: 1.6.0
    ``tadah predict`` applies the potential's ``LSCALE``. Earlier versions
-   (1.5.x included) replaced it with 1.0, the predict task's default, unless
+   (1.5.x included) replaced it with 1.0, the default of ``tadah predict``, unless
    ``--lscale`` was given: the data predicted was not rescaled, as with
    ``--no-lscale``.
 
@@ -267,12 +267,9 @@ predicted as it is. A filter applies only when predict is given it:
   structure's mean force from the forces it reads (the ``True`` columns).
 * ``WDBFILE``, ``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` of the potential are
   never applied: they gave the training data their priorities or derived
-  its shift, and the data predicted keep their own priorities. A ``TASK
-  predict`` of a task file does not apply its ``ESHIFT_ATOM`` and
-  ``ESHIFT_DBATOM`` either, and refuses ``WDBFILE`` and the other keys
-  that set a fit (``ESIGMA``, ``FSIGMA``, ``SSIGMA``, ``ENORM``,
-  ``ENERGY``: :ref:`fit_objective`), naming the line, as ``tadah predict``
-  fits nothing. A potential of Tadah! 1.5.0 has a line of the
+  its shift, and the data predicted keep their own priorities.
+  ``tadah predict`` has no option for them and fits nothing. A potential of
+  Tadah! 1.5.0 has a line of the
   retired ``WDBFILE_AUTO``, and one trained with ``EWEIGHT_TEMP`` a line
   of it: ``tadah predict`` reads them with one notice
   (:ref:`fit_objective_conversion`).
@@ -292,7 +289,7 @@ that are not at their default::
    the data it predicted (a structure outside the training window was left
    out of ``energy.pred`` and of the ``-A`` metrics) and its
    ``ESHIFT_ATOM``/``ESHIFT_DBATOM`` with ``--no-eshift``; its
-   ``ZERO_COM_FORCE true`` was not applied (the predict task's default,
+   ``ZERO_COM_FORCE true`` was not applied (the default of ``tadah predict``,
    ``false``, replaced it).
 
 A retrain from the potential (:ref:`retrain_from_potential`) does not take
@@ -429,7 +426,7 @@ It has one line for each of these keys the run was given, in the order
 ``VALIDATION``, ``HPOTARGET``, ``CHECK``, ``VERBOSE``,
 ``NUMERIC``, ``OUTFILE``, ``AUDIT``, ``AUDIT_SAMPLE``, ``HEALTH_LOG``,
 with the values
-as the configuration file, the task file or the command line wrote them
+as the configuration file or the command line wrote them
 (``NUMERIC`` does not change them). ``CHECK`` is listed by ``tadah train``
 and ``tadah refit``, which do not read it; a ``tadah hpo`` potential lists
 none. A key nobody set is not
@@ -487,8 +484,8 @@ verbosity of the model built from
 the file: that is the program's own, the default ``VERBOSE 1`` or its
 ``-v`` (a kernel such as ``Kern_RBF`` prints its parameters, ``Kern_RBF |
 sigma: 1 | gamma: 1``, when it is built at ``VERBOSE`` 1 or more: for every
-model that ``tadah train``, ``tadah predict``, ``pair_style tadah`` or a
-task of a task file builds; a ``tadah hpo`` run prints it once, for its
+model that ``tadah train``, ``tadah predict`` or ``pair_style tadah``
+builds; a ``tadah hpo`` run prints it once, for its
 ``-c`` model, though it builds a model for every evaluation).
 ``pair_style tadah`` ignores these lines without a message: LAMMPS's screen
 and ``log.lammps`` are the input script's output, and none of the lines
@@ -614,24 +611,27 @@ retrain does not take them from the potential, whatever version wrote it: a
 retrain works with any number of datasets, and with none of the first fit's
 filters or dataset priorities. The
 retrain's own are given as in any training run, and are recorded in the new
-potential's record: on the command line, or on a line of a task file or of
-a configuration file that includes the potential with ``CONFIG``, before or
-after the ``CONFIG`` line::
+potential's record. They go on the command line:
+
+.. code-block:: bash
 
    tadah train -c retrain.train -o pot2.tadah --wdbfile 1 0.5 --efilter -9 -2
 
-   # retrain.task: tadah --task retrain.task
-   TASK train
-     CONFIG pot.tadah
-     DBFILE db1.train db2.train db3.train
-     WDBFILE 1 0.5 1
-     EFILTER -9 -2
-     OUTFILE pot2.tadah
+A line of a configuration file that includes the potential with
+``CONFIG`` gives them too, before or after the ``CONFIG`` line, as in
+``outer.train``, which ``tadah train -c outer.train`` reads:
+
+.. code-block:: ini
+
+   CONFIG pot.tadah
+   DBFILE db1.train db2.train db3.train
+   WDBFILE 1 0.5 1
+   EFILTER -9 -2
+   OUTFILE pot2.tadah
 
 A file that has ``WEIGHTS`` (a potential or a copy of one) is a potential,
 wherever the run reads it: given with ``-c``, or included with ``CONFIG`` by
-a configuration file or by a ``TASK train`` or ``TASK hpo`` section (a
-``tadah hpo`` seed too). Its lines of the keys of the training record but
+a configuration file (a ``tadah hpo`` seed too). Its lines of the keys of the training record but
 ``DBFILE`` are not read: those of the six, with or without an ``ESHIFT``
 line, and its run settings, ``VALIDATION``,
 ``HPOTARGET``, ``CHECK``, ``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
@@ -640,10 +640,10 @@ line, and its run settings, ``VALIDATION``,
 had a validation file); every other line
 of the run, its ``DBFILE`` included, and the command line, applies as it
 would without them. A ``WARNING`` names the potential's lines that are not
-at their default (the task's default of the key when it has one, such as
+at their default (the command's default of the key when it has one, such as
 tadah train's ``OUTFILE pot.tadah``, else the key's: ``VERBOSE 1``,
 ``NUMERIC 18``), that the run does not give
-itself and that its task reads (``tadah hpo`` reads no ``OUTFILE``,
+itself and that its command reads (``tadah hpo`` reads no ``OUTFILE``,
 ``tadah train`` no ``VALIDATION``, ``HPOTARGET``, ``CHECK`` or
 ``HEALTH_LOG``): a potential of an earlier version has them as key lines,
 and so has a copy with one added::
@@ -658,7 +658,7 @@ and so has a copy with one added::
    a potential).
 
 The run settings get a sentence of their own, and the advice names the
-options the task has of them (``tadah train`` has no ``--numeric``)::
+options the command has of them (``tadah train`` has no ``--numeric``)::
 
    WARNING: tadah train: the configuration file retrain.train is a potential
    (it has WEIGHTS): its VERBOSE 2 and NUMERIC 12 were settings of the run
@@ -669,28 +669,22 @@ options the task has of them (``tadah train`` has no ``--numeric``)::
    Training page of the documentation, Retraining from a potential).
 
 For a potential that a file includes, the warning names both (``old.tadah,
-which the task file retrain.task includes with CONFIG, is a potential ...``)
-and says where the run's own go: a line of the including configuration
-file, or of the task file (``Write EFILTER or WDBFILE in the task file
-retrain.task to apply one to this run``: a run of a task file takes no
-command-line option, and ``--task`` refuses any other option, ``tadah hpo
---task run.task --hpotarget config.hpo`` too). A run that needs a setting
-the potential's line gave, and has none of its own, is refused saying where
-it goes and naming the line that was not read: a ``TASK hpo`` section
-without an ``HPOTARGET`` line (``tadah hpo: no HPOTARGET: name the
-hpotarget file with an HPOTARGET line in the TASK hpo section of the task
-file run.task, or above its first TASK line. old.tadah is a potential (it
-has WEIGHTS): its HPOTARGET config.hpo line was a setting of the run that
-wrote it and is not read.``), and ``tadah analysis check_bounds -c`` of a
-seed potential without ``--hpotarget`` (``... name the hpotarget file with
+which the configuration file outer.train includes with CONFIG, is a
+potential ...``) and says where the run's own go: an option of the command
+line, or a line of the including configuration file. A run that needs a
+setting the potential's line gave, and has none of its own, is refused
+saying where it goes and naming the line that was not read: ``tadah
+analysis check_bounds -c`` of a seed potential without ``--hpotarget``
+(``tadah analysis check_bounds: no HPOTARGET: name the hpotarget file with
 --hpotarget, or with an HPOTARGET line in a configuration file without
-WEIGHTS. ...``).
+WEIGHTS. old_best.tadah is a potential (it has WEIGHTS): its HPOTARGET
+config.hpo line was a setting of the run that wrote it and is not
+read.``).
 
 A retrain derives ``ESHIFT`` from its own data, instead of using the
 potential's, when the ``ESHIFT`` line is deleted from the copy and the run
 is given ``ESHIFT_ATOM`` or ``ESHIFT_DBATOM``: on the command line, or on a
-line of the task file or of a configuration file that includes the copy
-with ``CONFIG``::
+line of a configuration file that includes the copy with ``CONFIG``::
 
    grep -v '^ESHIFT ' pot.tadah > retrain.train
    echo "DBFILE db.train" >> retrain.train

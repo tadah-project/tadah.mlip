@@ -19,6 +19,7 @@
 
 #include <boost/algorithm/string.hpp> // for boost::split
 #include <algorithm>
+#include <map>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -26,6 +27,30 @@
 namespace tadah {
 namespace mlip {
 namespace cli {
+
+namespace {
+
+/* "tadah data balance": the command line of the blueprint task @p name
+ * ("DATA.balance"). */
+std::string command_words(const std::string &name) {
+  std::string words = "tadah " + core::to_lower(name);
+  std::replace(words.begin(), words.end(), '.', ' ');
+  return words;
+}
+
+/* The commands of the blueprint task @p name that groups others (DATA:
+ * balance, convert, ...), sorted; none for a task that groups none. */
+std::vector<std::string> members_of(const std::string &name) {
+  const std::string prefix = name + ".";
+  std::vector<std::string> members;
+  for (const auto &kv : core::BlueprintParser::getTasksMapRef())
+    if (kv.first.compare(0, prefix.size(), prefix) == 0)
+      members.push_back(kv.first.substr(prefix.size()));
+  std::sort(members.begin(), members.end());
+  return members;
+}
+
+}  // namespace
 
 TadahCLI::TadahCLI()
 : app_("", "Tadah!")
@@ -37,7 +62,10 @@ TadahCLI::TadahCLI()
   myFormatter->footer_paragraph_width(footer_paragraph_width); // description width of footer, used for examples
   app_.formatter(myFormatter);
 
-  app_.require_subcommand(0,0); // 0 or more subcommands are required, no max limit
+  // tadah alone prints a hint, -h or --version; a run is one command,
+  // which TadahCLI::run checks once the command line is parsed (CLI11
+  // would take any number: require_subcommand(0, 0)).
+  app_.require_subcommand(0,0);
 
   // The engines first: a subcommand whose engine this tadah was built
   // without says so in its description (registerModules).
@@ -46,8 +74,8 @@ TadahCLI::TadahCLI()
   hpo::engines::registerAllHPOEngines();
 #else
   // HPO's engines are in the HPO library, which only a build with
-  // TADAH_ENABLE_NFP has: tadah hpo (and TASK hpo) is refused before any
-  // task runs, with what to do (Scheduler::execute).
+  // TADAH_ENABLE_NFP has: tadah hpo is refused before it runs, with what
+  // to do (Scheduler::execute).
   mlip::engines::EngineFactory::registerNotBuilt("HPO",
       "tadah hpo needs the Nested Fitting Procedure, which this tadah was "
       "built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see "
@@ -65,23 +93,11 @@ TadahCLI::TadahCLI()
   app_.allow_extras(false);
   app_.validate_positionals(true);
   app_.usage(blueprintTadah.logo);
+  // tadah alone takes no option but -h and --version: every other option
+  // belongs to a command (the blueprint's [TADAH] has no keys).
   app_.set_version_flag("-v,--version", blueprintTadah.version, "Print version and exit");
-  for (const auto &bpKey : blueprintTadah.blueprintKeys) {
-    auto &dest = optionsStorage_["tadah"][bpKey.keyName];
-    std::string spec = bpKey.cli_long_flag;
-    if (!bpKey.cli_short_flag.empty()) {
-      spec = spec + "," + bpKey.cli_short_flag;
-    }
-    auto *opt = app_.add_option(spec, dest, "");
-    std::string valueFormat = bpKey.value_format.size() ? bpKey.value_format[0] : "";
-    for (size_t i=1; i < bpKey.value_format.size(); ++i) {
-      valueFormat += " | " + bpKey.value_format[i];
-    }
-    opt->option_text(valueFormat);
-  }
 
   app_.immediate_callback(true);
-  app_.callback(std::bind(&TadahCLI::handleCmdCallback, this, "tadah"));
   app_.footer(std::bind(&TadahCLI::handleFooterCallback, this, blueprintTadah));
 
   /* `tadah explain ALGO`, `tadah explain <LIB>:<ALGO>`: the optimisers of
@@ -118,6 +134,12 @@ int TadahCLI::run(int argc, char** argv) {
   try {
     app_.parse(argc, argv);
 
+    // One command per run, and a command that groups others with one of
+    // its commands: refused before any command runs (the commands run
+    // after the parse).
+    const std::string refusal = commandLineRefusal();
+    if (!refusal.empty()) throw CLI::ValidationError(refusal);
+
     if (app_.count_all() == 1) {
       std::cout << "Type: `tadah -h` for help" << std::endl;
       exit_early = true;
@@ -141,7 +163,22 @@ int TadahCLI::run(int argc, char** argv) {
 
   } catch (const CLI::ParseError &e) {
     exit_early = true;
-    exit_code = app_.exit(e);
+    // A second command is refused first, in every form CLI11 reports it
+    // (an argument no command takes, what the second command lacks), and
+    // a command that groups others given alone; then an argument no
+    // command takes (`tadah train --task f`: --task is an option of no
+    // command) is named before what a command lacks, needs or excludes,
+    // which CLI11 checks first.
+    const std::string refusal = commandLineRefusal();
+    const std::vector<std::string> extras = app_.remaining(true);
+    const bool requirement =
+        dynamic_cast<const CLI::RequiredError *>(&e) != nullptr ||
+        dynamic_cast<const CLI::RequiresError *>(&e) != nullptr ||
+        dynamic_cast<const CLI::ExcludesError *>(&e) != nullptr;
+    exit_code = !refusal.empty() ? app_.exit(CLI::ValidationError(refusal))
+                : requirement && !extras.empty()
+                    ? app_.exit(CLI::ExtrasError(extras))
+                    : app_.exit(e);
   }
 
   if (!exit_early) {
@@ -181,12 +218,16 @@ void TadahCLI::registerModules() {
     // If only one token => first-level command
     if (tokens.size() == 1) {
       CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]), description);
+      commandApps_[blueprintName] = parent;
+      commandNames_[core::to_lower(tokens[0])] = blueprintName;
       addCmdOptions(parent, bpTask);  // question is how to store??
       std::string ldesc = core::wrapText(bpTask.longDescription, description_paragraph_width,true, "");
       ldesc.pop_back(); // remove last \n
       parent->usage(ldesc);
       parent->immediate_callback(true);
-      parent->callback(std::bind(&TadahCLI::handleCmdCallback, this, blueprintName));
+      parent->callback([this, blueprintName, parent]() {
+        handleCmdCallback(blueprintName, parent);
+      });
       parent->footer(std::bind(&TadahCLI::handleFooterCallback, this, bpTask));
 
     }
@@ -194,12 +235,17 @@ void TadahCLI::registerModules() {
     else if (tokens.size() == 2) {
       CLI::App *parent = createCmdSafe(core::to_lower(tokens[0]));
       CLI::App *child  = parent->add_subcommand(core::to_lower(tokens[1]), description);
+      commandApps_[blueprintName] = child;
+      commandNames_[core::to_lower(tokens[0]) + " " +
+                    core::to_lower(tokens[1])] = blueprintName;
       addCmdOptions(child, bpTask);
       std::string ldesc = core::wrapText(bpTask.longDescription, description_paragraph_width,true, "");
       ldesc.pop_back(); // remove last \n
       child->usage(ldesc);
       child->immediate_callback(true);
-      child->callback(std::bind(&TadahCLI::handleCmdCallback, this, blueprintName));
+      child->callback([this, blueprintName, child]() {
+        handleCmdCallback(blueprintName, child);
+      });
       child->footer(std::bind(&TadahCLI::handleFooterCallback, this, bpTask));
     }
   }
@@ -217,7 +263,18 @@ std::string TadahCLI::handleFooterCallback(const core::BlueprintTask &bpTask) {
   return footerText;
 }
 
-void TadahCLI::handleCmdCallback(const std::string &blueprintName) { 
+void TadahCLI::handleCmdCallback(const std::string &blueprintName,
+                                 CLI::App *cmd) {
+  // A command that groups others (tadah data) runs nothing itself: it is
+  // given with one of its commands, whose callback has recorded it. Given
+  // alone, it is recorded, and refused once the command line is read
+  // (commandLineRefusal), after a second command.
+  if (!members_of(blueprintName).empty()) {
+    if (cmd->get_subcommands().empty()) commandsGiven_.push_back(blueprintName);
+    return;
+  }
+  commandsGiven_.push_back(blueprintName);
+
   CLITask cliTask;
   cliTask.blueprintTaskName = blueprintName;
   cliTask.storage = this->optionsStorage_[blueprintName];
@@ -332,68 +389,20 @@ void TadahCLI::addCmdOptions(CLI::App *cmd, const tadah::core::BlueprintTask &bp
   } // end for each group
 }
 
-namespace {
-
-/* Every option of the subcommand @p cmd: its own and those of its option
- * groups (CLI::App::get_options lists the options of a '+' group only, not
- * those of a named one such as tadah hpo's "input": --config,
- * --validation, --hpotarget and --task). */
-std::vector<CLI::Option*> every_option_of(CLI::App* cmd) {
-  std::vector<CLI::Option*> all = cmd->get_options();
-  const auto groups =
-      cmd->get_subcommands([](CLI::App* sub) { return sub->get_name().empty(); });
-  for (CLI::App* group : groups)
-    for (CLI::Option* opt : group->get_options())
-      if (std::find(all.begin(), all.end(), opt) == all.end())
-        all.push_back(opt);
-  return all;
-}
-
-}  // namespace
-
 void TadahCLI::registerExclusions() {
-  // cli_excludes = ["ALL"] (--task): the option excludes every other option
-  // of the subcommand, those of its option groups too (a run of a task file
-  // takes no command-line option: TaskFactory reads none beside --task).
+  // Each name of cli_excludes is another option of the command (its long
+  // flag without "--"; the blueprint refuses one that names none when it
+  // loads: BlueprintParser::checkCommandOptions).
   auto topLevelAction = [](CLI::App* cmd, CLI::Option* opt,
       const tadah::core::BlueprintKey& bpKey) {
-      if (bpKey.cli_excludes.size()==1 && bpKey.cli_excludes[0] == "ALL") {
-        // Exclude from *all* other options in that subcommand
-        for (auto *otherOpt : every_option_of(cmd)) {
-          if (otherOpt != opt && otherOpt->get_name() != "--help") {
-            opt->excludes(otherOpt);
-          }
-        }
-      } else {
-        // Exclude from the listed options
-        for (auto &exclName : bpKey.cli_excludes) {
-          CLI::Option *otherOpt = cmd->get_option("--" + exclName);
-          if (otherOpt) {
-            opt->excludes(otherOpt);
-          }
-        }
-      }
+    for (auto &exclName : bpKey.cli_excludes)
+      opt->excludes(cmd->get_option("--" + exclName));
   };
 
   auto groupAction = [](CLI::App* cmd, CLI::App*, CLI::Option* grpOpt,
       const tadah::core::BlueprintKey& bpKey) {
-    if (bpKey.cli_excludes.size()==1 && bpKey.cli_excludes[0] == "ALL") {
-      // Exclude from *all* other options in that subcommand, those of its
-      // option groups (this one's too) included, apart from --help
-      for (auto *otherOpt : every_option_of(cmd)) {
-        if (otherOpt != grpOpt && otherOpt->get_name() != "--help") {
-          grpOpt->excludes(otherOpt);
-        }
-      }
-    } else {
-      // Exclude from the listed options
-      for (auto &exclName : bpKey.cli_excludes) {
-        CLI::Option *otherOpt = cmd->get_option("--" + exclName);
-        if (otherOpt) {
-          grpOpt->excludes(otherOpt);
-        }
-      }
-    }
+    for (auto &exclName : bpKey.cli_excludes)
+      grpOpt->excludes(cmd->get_option("--" + exclName));
   };
 
   processBlueprintTasks(topLevelAction, groupAction);
@@ -564,6 +573,90 @@ void TadahCLI::setDefaultsLabels() {
     topLevelAction(cmd, grpOpt, bpKey);
   };
   processBlueprintTasks(topLevelAction, groupAction);
+}
+
+std::vector<std::string> TadahCLI::commandsOfLine() const {
+  // The commands CLI11 read, in the order it read them: those whose parse
+  // ended (commandsGiven_, a command that groups others given alone among
+  // them), then one whose parse an error ended (an option it lacks, needs
+  // or excludes), the last CLI11 read: each read of a command counts
+  // (CLI::App::count()).
+  std::vector<std::string> commands = commandsGiven_;
+  for (const auto &kv : commandApps_) {
+    if (!members_of(kv.first).empty()) continue;
+    const std::size_t ended = static_cast<std::size_t>(
+        std::count(commandsGiven_.begin(), commandsGiven_.end(), kv.first));
+    for (std::size_t n = ended; n < kv.second->count(); ++n)
+      commands.push_back(kv.first);
+  }
+
+  // Then the commands the arguments no command took name. CLI11 reads a
+  // command again only where the command before it ends, and not the
+  // command that holds the one it reads, so a command typed again can be
+  // such an argument ("tadah predict ... analysis cutoff ... predict ...":
+  // predict; "tadah data print ... data split ...": data). A group's name
+  // followed by one of its commands names that command; without one, it is
+  // the name of a command of the group that CLI11 read without it (split
+  // above), or the group given alone.
+  std::map<std::string, long> unnamed;  // per group: its commands read
+                                        // without the group's name
+  for (const auto &kv : commandApps_) {
+    const std::vector<std::string> members = members_of(kv.first);
+    if (members.empty()) continue;
+    long reads = -static_cast<long>(kv.second->count());
+    for (const std::string &m : members)
+      reads += static_cast<long>(commandApps_.at(kv.first + "." + m)->count());
+    unnamed[kv.first] = reads;
+  }
+  const std::vector<std::string> extras = app_.remaining(true);
+  for (std::size_t i = 0; i < extras.size(); ++i) {
+    const auto top = commandNames_.find(extras[i]);
+    if (top == commandNames_.end() ||
+        top->first.find(' ') != std::string::npos)
+      continue;  // not the name of a command (a first-level one)
+    const std::string &name = top->second;
+    if (!members_of(name).empty()) {
+      if (i + 1 < extras.size()) {
+        const auto member = commandNames_.find(extras[i] + " " + extras[i + 1]);
+        if (member != commandNames_.end()) {
+          commands.push_back(member->second);
+          ++i;
+          continue;
+        }
+      }
+      if (unnamed[name] > 0) {
+        --unnamed[name];
+        continue;
+      }
+    }
+    commands.push_back(name);
+  }
+  return commands;
+}
+
+std::string TadahCLI::commandLineRefusal() const {
+  const std::vector<std::string> commands = commandsOfLine();
+  if (commands.size() > 1) {
+    std::string list;
+    for (std::size_t i = 0; i < commands.size(); ++i)
+      list += (i == 0 ? "" : i + 1 == commands.size() ? " and " : ", ") +
+              command_words(commands[i]);
+    return "tadah runs one command per run: the command line gives " +
+           std::to_string(commands.size()) + ", " + list +
+           " (each runs as a tadah command of its own)";
+  }
+  if (commands.size() == 1) {
+    const std::vector<std::string> members = members_of(commands[0]);
+    if (!members.empty()) {
+      std::string list;
+      for (std::size_t i = 0; i < members.size(); ++i)
+        list += (i == 0 ? "" : i + 1 == members.size() ? " or " : ", ") +
+                core::to_lower(members[i]);
+      return command_words(commands[0]) + " takes one of its commands: " +
+             list;
+    }
+  }
+  return "";
 }
 
 template <typename TopLevelHandler, typename GroupHandler>

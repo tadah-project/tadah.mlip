@@ -54,11 +54,7 @@ legacy descriptors. With ``TYPEMB``, each declared ID must appear exactly once;
 any other count is an error. Legacy cutoff and grid lists continue
 to describe the legacy terms only. ``CONFIG`` includes preserve block order,
 boundaries and source locations: an included file's blocks follow those of the
-including file. Elsewhere blocks take the precedence of a key: in a task file a
-``TASK`` section's ``DESCRIPTOR`` blocks replace the GLOBAL section's, as a
-section's key replaces a GLOBAL key, and in ``TASK predict`` (and ``tadah
-predict``) a task's blocks replace its potential's, so a GLOBAL model serves
-both ``TASK train`` and the ``TASK predict`` of the potential it writes.
+including file.
 
 ``FORM`` is required in each density: ``SIGNED`` permits signed amplitudes;
 ``NONNEG`` requires nonnegative amplitudes and positive pair weights;

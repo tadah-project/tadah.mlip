@@ -286,7 +286,7 @@ set_tests_properties(tadah_docs_site_layout PROPERTIES
 # tiny problem (no LAMMPS, no network): tadah train prints the table of its
 # fit once, with the legend of its columns, and its potential's training
 # record ends with the same lines (-v 0: printed nothing, recorded all the
-# same; a task file of two TASK train sections: two tables, one legend);
+# same);
 # tadah hpo prints the table of best_pot.tadah once, at the end of the run,
 # the table of its training record and of a retrain of it, and its BDUMP
 # archives have none; a run killed by SIGKILL after its first best has the
@@ -498,9 +498,9 @@ endforeach()
 # ------------------------------------------------------------------
 # A guard against a stale shipped potential: quickstart/check_quickstart_pot.py
 # retrains docs/source/quickstart/pot.tadah, in scratch copies of the
-# directory, with `tadah train -c config.train` and with `tadah --task
-# taskfile.txt`, and checks that both potentials have the keys of the shipped
-# one and predict the same energies, forces and stresses on db.predict. (The
+# directory, with `tadah train -c config.train`, and checks that the
+# potential has the keys of the shipped one and predicts the same energies,
+# forces and stresses on db.predict. (The
 # LAMMPS run of the page, in.ml, is the test_tadah case "quickstart: ...".)
 add_test(NAME tadah_quickstart_reproduces_pot
   COMMAND ${Python3_EXECUTABLE}

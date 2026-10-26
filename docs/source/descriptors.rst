@@ -599,9 +599,10 @@ The key is new in tadah 1.6.0: a potential written before 1.6.0 is used
 unchanged with ``RHOFORM SIGNED`` added (bit for bit in a Tadah.MODELS
 compiled without fused multiply-adds, as described above). ``tadah predict``, ``tadah analysis
 descriptor``, ``tadah analysis bfunc`` and ``tadah properties pairwise`` refuse a key-less DM_REAM
-potential even when the task configuration sets ``RHOFORM`` (the form
-belongs to the potential, whose amplitudes were fitted in it), and a task
-value that differs from the potential's is refused as well. The LAMMPS pair
+potential (the form belongs to the potential, whose amplitudes were fitted
+in it), and ``tadah refit --edit`` refuses a ``RHOFORM`` of its
+configuration file that differs from the potential's, or that a key-less
+potential would take. The LAMMPS pair
 style refuses a key-less potential with ``pair_coeff: failed to load Tadah
 potential from '<file>': DM_REAM: RHOFORM is required: ...``, and on a
 successful load its banner states the form (``Tadah! DM_REAM density form
@@ -633,8 +634,8 @@ and it is reported on standard error once per key and process, like a
    written to a potential).
 
 The notice comes from wherever such a potential or configuration is used
-(``tadah train``, ``predict``, ``analysis`` and ``hpo``), also when only the
-task configuration sets the key. Neither the log level nor ``VERBOSE 0``
+(``tadah train``, ``predict``, ``analysis`` and ``hpo``), also when only a
+configuration file given with ``-c`` sets the key. Neither the log level nor ``VERBOSE 0``
 hides it. ``pair_style tadah`` writes it as a LAMMPS warning on rank 0
 instead, in ``log.lammps`` and on the screen, each time ``pair_coeff``
 loads such a potential (every LAMMPS instance of a process, such as the
@@ -661,8 +662,8 @@ is treated:
 tadah writes carries an explicit ``EMBF0`` line (binaries older than the key
 refuse such files with ``Invalid key: EMBF0``), and a potential without the
 line is read as ``ZERO``. It takes ``ZERO`` or ``FREE`` only, in any case;
-any other value is an error at its line when the configuration, task file
-or potential is read (``Invalid value for key EMBF0 on line N of
+any other value is an error at its line when the configuration file or
+potential is read (``Invalid value for key EMBF0 on line N of
 pot.tadah: 'ZEROO' (allowed: ZERO, FREE)``). It is not an ``OPTIM`` target (:ref:`hpo_embf0`). ``EMBF0`` has no
 effect on a potential without a DM_REAM block (:ref:`RHOFORM and EMBF0 without a DM_REAM block <dm_ream_only_keys>`).
 

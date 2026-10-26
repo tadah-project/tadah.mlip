@@ -1210,27 +1210,25 @@ which no mode reads; ``--retarget`` also refuses ``HPOFILEOUT``
 (``--hpofileout``), which ``--edit`` reads (:ref:`refit_retarget`). The
 defaults ``tadah`` stores for the keys the configuration does not set are
 not refused. Before 1.6.0 these keys were ignored. ``NUMERIC``, the
-precision of the files a command writes, is no key of the refit and is not
-refused: ``--edit`` writes the potential with it, and ``--retarget`` writes
-only an hpotarget, which it does not govern (below); a task file may set it
-above its first ``TASK`` line, for every task. ``--edit`` takes it from its
-own run only: a ``NUMERIC`` line of the edited potential (every
+precision of the potential a refit and ``--edit`` write, is refused under
+``--retarget`` (:ref:`refit_retarget`). ``--edit`` takes it from its own
+run only: a ``NUMERIC`` line of the edited potential (every
 ``best_pot.tadah`` of ``tadah hpo`` 1.5.0 has ``NUMERIC 12``) is not read,
 so without a ``NUMERIC`` of the run the edit is exact.
 
 Conversely a refit of an EAM file reads none of the options of ``--edit``
 and ``--retarget``: ``tadah refit -c refit.cfg --rcut2b 4.5`` (or
-``--rcutmb``, ``--pct``, ``--set``, ``--rhoform``) is refused before any task
-runs (``--rcut2b requires --retarget``), and a refit configuration that sets
+``--rcutmb``, ``--pct``, ``--set``, ``--rhoform``) is refused before the
+refit runs (``--rcut2b requires --retarget``), and a refit configuration that sets
 one of their keys is an error naming it (``tadah refit: the RETARGET_RCUT2B
 key requires --retarget <file.hpotarget>.``). Before 1.6.0 ``--rcut2b`` and
 ``--rcutmb`` were accepted by a refit and had no effect.
 
 ``EMBF0`` and ``RHOFORM`` are properties of the potential. A configuration
 passed with ``-c`` may set them only to the potential's own values: a
-different value is refused before anything is written, as in ``tadah
-predict`` (``RHOFORM conflict: pot.tadah declares RHOFORM NONNEG but the
-task configuration sets RHOFORM MONOTONE. ...``; ``EMBF0 conflict: ...``),
+different value is refused before anything is written (``RHOFORM
+conflict: pot.tadah declares RHOFORM NONNEG and the configuration file sets
+RHOFORM MONOTONE. ...``; ``EMBF0 conflict: ...``),
 and a ``RHOFORM`` set for a DM_REAM potential without one does not supply
 it.
 
@@ -1257,14 +1255,13 @@ outer edge.
 
 Outputs default to ``pot_edited.tadah`` and ``refit_edited.hpotarget`` — the
 input file is never overwritten silently (an explicit ``-o`` /
-``--hpofileout`` wins, on the command line or in a configuration or task
-file, whatever its name: ``-o pot.tadah`` writes ``pot.tadah``; writing onto
+``--hpofileout`` wins, on the command line or in a configuration file,
+whatever its name: ``-o pot.tadah`` writes ``pot.tadah``; writing onto
 the input is refused). In 1.5.0 a name equal to the default of a
 refit (``pot.tadah``, ``refit.hpotarget``) counted as unset, and the edited
 names were written instead, without a word. ``--retarget``
 writes ``<input>_retargeted.hpotarget`` by default (below), so an
-``--edit`` and a ``--retarget refit.hpotarget``, two tasks of one task file
-or two commands, write different files. An output that
+``--edit`` and a ``--retarget refit.hpotarget`` write different files. An output that
 cannot be written (a missing directory, a directory in its place) stops the
 command with an error naming the file, here as in every ``refit`` mode and
 in ``tadah train``. All bookkeeping
@@ -1322,7 +1319,7 @@ overrides; ``--set 'KEY(i)=lo,hi'`` (repeatable) is applied last. Output goes
 to ``<input>_retargeted.hpotarget`` by default (``refit_retargeted.hpotarget``
 for ``refit.hpotarget``; the extension and directory are the input's),
 ``-o <name>`` (any name, ``pot.tadah`` included), or back into the input
-with ``--in-place``, which an ``OUTFILE`` set in a configuration or task file
+with ``--in-place``, which an ``OUTFILE`` set in a configuration file
 contradicts as ``-o`` does (refused). Before 1.6.0 the
 default was ``<input>_edited.hpotarget``: for ``refit.hpotarget`` that is
 ``refit_edited.hpotarget``, the hpotarget ``--edit`` writes, and of the two
@@ -1348,9 +1345,10 @@ or, with ``--in-place``, the input (``tadah refit --retarget: HPOFILEOUT
 has no effect under --retarget: only a refit of an EAM file and --edit read
 it; remove HPOFILEOUT (the file --retarget writes is -o, OUTFILE)``).
 Before 1.6.0 ``--hpofileout`` was ignored, and the file was written to
-``<input>_edited.hpotarget``. ``NUMERIC`` is accepted and does not change
-the file: its bounds are printed ``%.8e`` (9 significant digits), as in
-every hpotarget ``tadah refit`` writes.
+``<input>_edited.hpotarget``. ``NUMERIC`` is refused the same way (``NUMERIC
+has no effect under --retarget``): the bounds of the file are printed
+``%.8e`` (9 significant digits) whatever ``NUMERIC`` is, as in every
+hpotarget ``tadah refit`` writes.
 
 Retargeting a freshly-emitted file at the same percentage reproduces it
 byte-for-byte, and any retargeted file is a fixed point of further

@@ -44,7 +44,8 @@ The following command trains a model:
 
 The example ``config.train`` below fits energies and stresses (its ``STRESS true`` key). The ``-F`` flag, or the ``FORCE true`` key, also fits forces; for stresses, ``-S`` does what ``STRESS true`` does. Each changes the fitted potential (the effect of the stresses is shown below).
 
-Command line flags take precedence over those defined in the config file.
+An option on the command line overrides the same key of the configuration
+file (:ref:`config_file`).
 
 The ``config.train`` is type of a :ref:`config_file`. Training datasets, descriptors, cutoffs, model, and all parameters are specified in the config file. The output of this command is a trained model as a ``pot.tadah`` file.
 
@@ -87,7 +88,7 @@ The ``-F`` flag also predicts forces, and the ``-S`` flag stresses.
 
 The output of the ``predict`` subcommand includes three files:
 
-- ``energy.pred``: Three columns where the first column is an index, second is dataset energy/atom and the third column lists predicted energy/atom. The ordering follows the dataset order in the config file or with the ``-d`` flag.
+- ``energy.pred``: Three columns where the first column is an index, second is dataset energy/atom and the third column lists predicted energy/atom. The ordering follows the order of the datasets given with ``-d``.
 - ``forces.pred``: Similar idea as above, but now forces are listed. The first row is the force on the first atom in the x-direction from the first dataset, the second row is the force on the first atom in the y-direction, and so on.
 - ``stress.pred``: The first six rows list components of the stress tensor from the first configuration, followed by six components from the second configuration, and so on. The ordering is xx, xy, xz, yy, yz, zz.
 
@@ -97,101 +98,6 @@ The output of the ``predict`` subcommand includes three files:
    (negative ones among them), and with any ``EWEIGHT``, ``FWEIGHT``,
    ``SWEIGHT`` or :term:`priority` of a structure other than 1 it scaled the
    predicted values too.
-
-.. _task_file:
-
-Task File
----------
-
-A **task file** is a plain-text wrapper around Tadah!MLIP’s config syntax.  
-It serves for a **single** command (as an alternative to a CLI invocation)
-*or* chains several ``TASK`` blocks in the same file, which run
-sequentially.  All key–value pairs inside the file follow the normal config
-rules. The `CONFIG` key can be used to nest config files, allowing for reuse of settings or
-to keep a full training or prediction setup in a dedicated config file.
-
-Basic rules
-^^^^^^^^^^^
-
-#. Each command starts with a line beginning with the keyword ``TASK`` followed
-   by the sub-command name exactly as it is typed on the CLI.
-
-#. The lines that follow are ordinary KEY/VALUE pairs.  
-
-   * Keys written **above** all ``TASK`` blocks act as defaults for every task.
-
-   * Keys appearing **inside** a task block override global keys written **above** the first ``TASK`` line.  
-
-#. A task file needs at least one ``TASK`` block: ``tadah --task`` refuses a
-   file without one (``the task file 'run.task' has no TASK section``).
-
-#. A ``TASK`` line needs no keys of its own: a ``TASK predict`` with no lines
-   after it runs on the keys above the first ``TASK`` line (for example
-   ``DBFILE`` and ``POTENTIAL``). Every task name is checked, with or without
-   keys, and an unknown one stops the file before any task runs
-   (``Unknown task section "BOGUS"``). So does a command that needs a
-   subcommand: ``TASK data`` is refused, ``TASK data convert`` is a task
-   (``TASK section "DATA" is a group of tasks, not a task``).
-
-#. An error in a line names the line of the file and the file, whichever
-   block it is in (``Invalid value for key EMBF0 on line 6 of run.task:
-   'frei' (allowed: ZERO, FREE)``).
-
-#. Boolean values are written in lowercase ``true`` / ``false``.
-
-#. There is a one-to-one mapping between CLI flags/options and configuration
-   keys:
-
-  +-------------------------+--------------------+
-  | CLI (short/long)        |  Config-file key   |
-  +=========================+====================+
-  | ``-c``, ``--config``    | ``CONFIG``         |
-  +-------------------------+--------------------+
-  | ``-d``, ``--dbfile``    | ``DBFILE``         |
-  +-------------------------+--------------------+
-  | ``-p``, ``--potential`` | ``POTENTIAL``      |
-  +-------------------------+--------------------+
-  | ``-v``, ``--verbose``   | ``VERBOSE``        |
-  +-------------------------+--------------------+
-  | ``-A``, ``--analytics`` | ``ANALYTICS``      |
-  +-------------------------+--------------------+
-  | ``-F``, ``--force``     | ``FORCE``          |
-  +-------------------------+--------------------+
-  | …                       | …                  |
-  +-------------------------+--------------------+
-
-In other words, *anything set on the command line can also be set with an upper-case key in the task file*.
-
-Example
-^^^^^^^
-
-The small task file below trains a model and then immediately uses it for a
-prediction run:
-
-.. literalinclude:: quickstart/taskfile.txt
-
-The command below runs it:
-
-.. code-block:: bash
-
-    tadah --task taskfile.txt
-
-Tadah!MLIP first runs the training step, produces ``pot.tadah``, and then
-feeds that potential into the subsequent prediction step, all in one go.
-
-Hints
-^^^^^
-
-* ``CONFIG other_file.txt`` inside a task block keeps a full training or
-  prediction setup in a dedicated config file, as the ``train`` task of the
-  example does with ``config.train``.
-
-* Indexing of positional items (e.g. ``--index 1`` -> ``INDEX 1``) starts
-  from **1**.
-
-* Comments start with ``#`` and run to the end of the line, as in
-  ordinary config files, on a ``TASK`` line too
-  (``TASK train   # first task``).
 
 .. _units:
 
@@ -245,6 +151,53 @@ Config File
 The Tadah! configuration file manages the training process by specifying datasets, cutoff functions, radii, regression models, and descriptor choices. It supports two- and many-body descriptors. The file's structure consists of KEY/VALUE pairs, with each pair on a separate line. The KEY is a string followed by its VALUE, and the format of the VALUE depends on the KEY.
 
 :ref:`ConfigSection` lists and explains the supported KEY-VALUE pairs.
+
+A configuration file holds keys for the command that reads it with ``-c``
+(``--config``): ``tadah train``, ``tadah hpo``, ``tadah refit`` and the
+``tadah analysis`` commands ``bfunc``, ``check_bounds``, ``dataset_stats``
+and ``suggest_bounds``. Its lines follow these rules:
+
+- Comments start with ``#`` and run to the end of the line.
+- Boolean values are written in lowercase: ``true``, ``false``.
+- ``CONFIG other.cfg`` includes another configuration file, so several
+  configuration files can share settings.
+- An option of the command and the configuration key of the same name set
+  the same thing, and the option on the command line overrides the line of
+  the file:
+
+  .. list-table::
+     :header-rows: 1
+     :widths: 50 50
+
+     * - Command-line option
+       - Configuration key
+     * - ``-v``, ``--verbose``
+       - ``VERBOSE``
+     * - ``-F``, ``--force``
+       - ``FORCE``
+     * - ``-S``, ``--stress``
+       - ``STRESS``
+     * - ``-o``, ``--outfile``
+       - ``OUTFILE``
+
+- An error of a line names the line and the file (for a line of a file
+  included with ``CONFIG``, that file): a key that is no configuration key,
+  a value that the key does not take (with the values the key takes, the
+  line to write, or the key's schema, format and examples), more values
+  than the key takes, a block such as ``DESCRIPTOR`` ... ``ENDDESCRIPTOR``
+  that is not closed, and a ``CONFIG`` line whose file does not open:
+
+  .. code-block:: text
+
+     Invalid key FOOBAR on line 3 of config.train (closest key: FORMAT)
+     Invalid value for key RCUT2B on line 6 of config.train: 'abc'
+
+.. versionchanged:: 1.6.0
+   A ``TASK`` line is refused as an unknown key at its line: task files and
+   ``tadah --task`` are removed. Each ``TASK`` section becomes a command of
+   its own: its lines go into the configuration file of a command that
+   takes ``-c``, the options ``-c`` needs stay on the command line, and the
+   lines of another command become its options.
 
 .. _dataset:
 

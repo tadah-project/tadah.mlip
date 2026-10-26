@@ -47,15 +47,16 @@
 // structure of priority 0; a dimer's y and z force rows and an isolated
 // atom's energy, of priority 1); they run in every build.
 //
-// The [task-file] cases run `tadah --task` on a task file whose TASK lines
-// carry an inline comment, and on task files with a TASK line that has no
-// key line (an unknown name, GLOBAL included, is refused; a known one runs
-// on the GLOBAL keys), and on task files with a TASK line naming a group of
-// tasks (refused before any task runs), and on one whose TASK train and
-// predict blocks each print the settings line of their kernel; they run in
-// every build.
+// The [kernel_line] case runs `tadah train` twice and `tadah predict` in one
+// process: each prints the settings line of its kernel; it runs in every
+// build.
 //
-// The [not-built] cases run `tadah hpo`, a task file with `TASK hpo`,
+// The [one_command] cases run `tadah` with --task (no option of tadah or of
+// a command), with two commands on one command line (refused before either
+// runs) and with a command that groups others alone (refused, naming its
+// commands); they run in every build.
+//
+// The [not-built] cases run `tadah hpo`,
 // `tadah -h`, `tadah hpo -h` and `tadah explain hpo`: a tadah built without
 // TADAH_ENABLE_NFP refuses hpo before any task runs, naming the build
 // option, and its help says so; a tadah with NFP does not.
@@ -78,8 +79,9 @@
 // and `tadah predict` with a KRR potential whose basis does not fit. The hpo
 // case needs NFP.
 //
-// The [hpo-check] cases run `tadah hpo --check` and a task file whose TASK
-// hpo section has CHECK true: a valid setup prints its summary and exits 0
+// The [hpo-check] cases run `tadah hpo --check` and `tadah hpo -c` of a
+// configuration file with CHECK true: a valid setup prints its summary and
+// exits 0
 // without an evaluation or a file; a target file with an unknown key, a
 // missing dataset and a DUMP or BDUMP directory in a directory that does
 // not exist exit non-zero with the message of `tadah hpo`; a run with CHECK
@@ -648,8 +650,9 @@ TEST_CASE("Subcommand: hpo: a best-potential persistence failure yields a non-ze
  * parameters, so run together in one process (for example `test_tadah
  * "[validation-metric]"`) a case that followed another `tadah hpo` run with
  * a different training FORCE failed its best_pot.tadah FORCE check. Every
- * evaluation now trains a model of its own configuration ("Task file: a
- * second TASK hpo evaluates its own configuration" pins it).
+ * evaluation now trains a model of its own configuration ("Subcommand: a
+ * second hpo run in the process evaluates its own configuration" pins
+ * it).
  */
 
 /* Pins: PC_FRMSE works with FORCE false written in the -c file. Validation
@@ -1281,11 +1284,15 @@ TEST_CASE("Subcommand: data sample -i takes 1-based indices up to the last struc
 
 /* Pins: `tadah data sample` needs exactly one selection: without --uniform,
  * --random or --index (the help's former example) it exits 1 naming the
- * three options and writes nothing; a task file with two selections
- * (UNIFORM 2 and RANDOM 2) exits 1 naming both.
+ * three options, "tadah data sample needs one selection: --uniform N
+ * (every N-th structure), --random N (N structures at random) or --index
+ * <indices>", and writes nothing (two selections, which the command line
+ * refuses as excluding each other: test_command_inputs.cpp of MLIP).
  * Before the fix: no selection wrote an empty dataset with exit 0; with two,
  * the first (UNIFORM, then RANDOM, then INDEX) ran and the other was ignored
- * silently. */
+ * silently. Then the message of no selection ended with a note on the keys
+ * of a file, which the check of its end fails on, and began "tadah data
+ * sample: say what to sample: ...". */
 TEST_CASE("Subcommand: data sample needs exactly one selection",
           "[TadahCLI][exit-status][data][sample]") {
   ScratchCwd cwd("sample_selection");
@@ -1295,20 +1302,9 @@ TEST_CASE("Subcommand: data sample needs exactly one selection",
     const std::string rep = reported(r);
     INFO("status " << r.status << "\n" << rep);
     CHECK(r.status == 1);
-    CHECK(contains(rep, "--uniform"));
-    CHECK(contains(rep, "--random"));
-    CHECK(contains(rep, "--index"));
-    CHECK_FALSE(std::filesystem::exists("out.tadah"));
-  }
-  {
-    std::ofstream("two.task") << "TASK data sample\nDBFILE db.tadah\nOUTFILE out.tadah\n"
-                                 "UNIFORM 2\nRANDOM 2\n";
-    const CliRun r = run_tadah({"tadah", "data", "sample", "-t", "two.task"});
-    const std::string rep = reported(r);
-    INFO("status " << r.status << "\n" << rep);
-    CHECK(r.status == 1);
-    CHECK(contains(rep, "UNIFORM"));
-    CHECK(contains(rep, "RANDOM"));
+    CHECK(contains(rep, "tadah data sample needs one selection: --uniform N "
+                        "(every N-th structure), --random N (N structures at "
+                        "random) or --index <indices>\n"));
     CHECK_FALSE(std::filesystem::exists("out.tadah"));
   }
 }
@@ -1376,11 +1372,10 @@ TEST_CASE("Subcommand: data sample to an unwritable file exits 1",
   CHECK_FALSE(std::filesystem::exists("nodir"));
 }
 
-/* Pins: the index list of `tadah data sample -i` (and INDEX in a task
- * file) is one list however it is spaced, as the command-line schema
- * accepts it: on S1 ... S5, '-i "1, 3"' and '-i 1, 3' give S1, S3,
- * '-i "1 - 3"' S1, S2, S3, '-i "1-5 : 2"' S1, S3, S5, and a task file
- * 'INDEX 1, 3, 5' S1, S3, S5.
+/* Pins: the index list of `tadah data sample -i` is one list however it
+ * is spaced, as the command-line schema accepts it: on S1 ... S5, '-i "1, 3"' and '-i 1, 3' give S1, S3,
+ * '-i "1 - 3"' S1, S2, S3, '-i "1-5 : 2"' S1, S3, S5, and '-i "1, 3, 5"'
+ * S1, S3, S5.
  * Before the fix: each command-line value was parsed on its own, so '1,'
  * left an empty segment and '-' or ':' a segment of its own, all refused
  * ("index '' is not an index"). */
@@ -1392,7 +1387,8 @@ TEST_CASE("Subcommand: data sample -i accepts the spacing the schema allows",
       {{"1, 3"}, numbered_labels({1, 3})},
       {{"1,", "3"}, numbered_labels({1, 3})},
       {{"1 - 3"}, numbered_labels({1, 2, 3})},
-      {{"1-5 : 2"}, numbered_labels({1, 3, 5})}};
+      {{"1-5 : 2"}, numbered_labels({1, 3, 5})},
+      {{"1, 3, 5"}, numbered_labels({1, 3, 5})}};
   for (const auto& c : cases) {
     std::string shown;
     for (const auto& v : c.first) shown += " '" + v + "'";
@@ -1406,12 +1402,6 @@ TEST_CASE("Subcommand: data sample -i accepts the spacing the schema allows",
     REQUIRE(r.status == 0);
     CHECK(dataset_labels("out.tadah") == c.second);
   }
-  std::filesystem::remove("out.tadah");
-  std::ofstream("idx.task") << "TASK data sample\nDBFILE db.tadah\nOUTFILE out.tadah\nINDEX 1, 3, 5\n";
-  const CliRun r = run_tadah({"tadah", "data", "sample", "-t", "idx.task"});
-  INFO("status " << r.status << "\n" << reported(r));
-  REQUIRE(r.status == 0);
-  CHECK(dataset_labels("out.tadah") == numbered_labels({1, 3, 5}));
 }
 
 /* Pins: `tadah data balance -i` takes the same strict 1-based list as data
@@ -1939,15 +1929,12 @@ TEST_CASE("Subcommand: data dedup keeps the first of three equal structures",
  * with 1 1 1 and B2 at -1.4 eV with 1 0 0. The options of the retired
  * rescaling, --rescale, --threshold, --force (-F) and --stress (-S), are
  * refused: each exits non-zero, naming the option and why ("tadah data
- * balance shifts energies only"), without writing the output; so is a
- * task file whose TASK data balance section has RESCALE true, naming
- * RESCALE and its line, and one whose GLOBAL section has RESCALE true,
- * which reaches its TASK data balance section, naming the GLOBAL line.
+ * balance shifts energies only"), without writing the output.
  * Before the fix: --rescale replaced the priorities by inverse magnitudes
  * (B1's fweight 1/0.2 and sweight 1/sqrt(3 * 0.01^2), B2's 0 kept), so the
  * runs with the four options exited 0 and wrote the output; then the
  * command line refused them as unknown options ("The following argument
- * was not expected"), and the task files ran with RESCALE ignored. */
+ * was not expected"). */
 TEST_CASE("Subcommand: data balance shifts energies, keeps the priorities and "
           "refuses the options of the removed rescaling",
           "[TadahCLI][exit-status][data]") {
@@ -1994,27 +1981,6 @@ TEST_CASE("Subcommand: data balance shifts energies, keeps the priorities and "
     CHECK(contains(rep, "tadah data balance shifts energies only"));
     CHECK_FALSE(std::filesystem::exists("out2.tadah"));
   }
-  std::ofstream("b4.task") << "TASK data balance\n  DBFILE db.tadah\n"
-                              "  ESHIFT -8.0\n  RESCALE true\n"
-                              "  OUTFILE balX.tadah\n";
-  const CliRun t = run_tadah({"tadah", "--task", "b4.task"});
-  const std::string rep = reported(t);
-  INFO("task file: status " << t.status << "\n" << rep);
-  CHECK(t.status != 0);
-  CHECK(contains(rep, "RESCALE (line 4 of b4.task) in TASK data balance"));
-  CHECK(contains(rep, "tadah data balance shifts energies only"));
-  CHECK_FALSE(std::filesystem::exists("balX.tadah"));
-  std::ofstream("b5.task") << "RESCALE true\nTASK data balance\n"
-                              "  DBFILE db.tadah\n  ESHIFT -8.0\n"
-                              "  OUTFILE balY.tadah\n";
-  const CliRun g = run_tadah({"tadah", "--task", "b5.task"});
-  const std::string grep = reported(g);
-  INFO("GLOBAL RESCALE: status " << g.status << "\n" << grep);
-  CHECK(g.status != 0);
-  CHECK(contains(grep, "RESCALE (line 1 of b5.task) in the GLOBAL section "
-                       "reaches TASK data balance"));
-  CHECK(contains(grep, "tadah data balance shifts energies only"));
-  CHECK_FALSE(std::filesystem::exists("balY.tadah"));
 }
 
 /* Pins: `tadah data dedup` on two copies of a structure whose cell block
@@ -2318,19 +2284,8 @@ TEST_CASE("Subcommand: analysis dataset_stats --close-contact lists the "
   CHECK(*r_min == 0.0);
 }
 
-/* ---- [task-file]: `tadah --task` ------------------------------------- */
+/* ---- [kernel_line]: the settings line of a kernel --------------------- */
 
-/* Pins: `tadah --task` runs a task file whose TASK lines carry an inline
- * comment, as the Quick Start's task file may ("Comments start with # and
- * run to the end of the line"): "TASK       train          # First task:
- * training" (after blanks) and "TASK       predict\t# Second task:
- * prediction" (after a tab) train a D2_BP pair potential on three Ta dimers
- * and predict with it: exit 0, pot.tadah written with its WEIGHTS, and
- * energy.pred with one prediction per structure.
- * Before the fix: exit 1 with 'Unknown task section
- * "TRAIN.#.first.task:.training"' (the words of the comment joined to the
- * task name) before any task ran, so the status and message CHECKs failed
- * and the REQUIRE on pot.tadah stopped the case. */
 namespace {
 
 /* Writes db.tadah, three Ta dimers, and config.train, a D2_BP pair
@@ -2350,105 +2305,6 @@ void write_ta_dimer_training() {
 
 }  // namespace
 
-TEST_CASE("Task file: tadah --task runs TASK lines that carry an inline comment",
-          "[TadahCLI][exit-status][task-file]") {
-  ScratchCwd cwd("task_comment");
-  write_ta_dimer_training();
-  std::ofstream("run.task")
-      << "VERBOSE    0                  # global default\n"
-         "TASK       train          # First task: training\n"
-         "  CONFIG     config.train       # the training setup\n"
-         "TASK       predict\t# Second task: prediction\n"
-         "  DBFILE     db.tadah           # prediction dataset\n"
-         "  POTENTIAL  pot.tadah          # same as CLI -p/--potential\n";
-  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-  const std::string rep = reported(r);
-  INFO("status " << r.status << "\n" << rep);
-  CHECK(r.status == 0);
-  CHECK_FALSE(contains(rep, "Unknown task section"));
-  REQUIRE(std::filesystem::exists("pot.tadah"));
-  CHECK(line_tokens(slurp("pot.tadah"), "WEIGHTS").size() == 5u);  // key + 4
-  REQUIRE(std::filesystem::exists("energy.pred"));
-  CHECK(predicted_values("energy.pred").size() == 3u);
-}
-
-namespace {
-
-/* The DM_Embed model of the [task-file] block cases: one component on the
- * Ta dimers of write_ta_dimer_training(), its density centres `centres`. */
-std::size_t lines_with_text(const std::string& text, const std::string& needle) {
-  std::istringstream in(text);
-  std::size_t n = 0;
-  for (std::string line; std::getline(in, line);)
-    if (line.find(needle) != std::string::npos) ++n;
-  return n;
-}
-
-std::string ta_embed_model(const std::string& centres = "2.5 3.5") {
-  return "ATOM Ta\nWATOM 73\nINIT2B false\nINITMB true\n"
-         "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
-         "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n"
-         "DESCRIPTOR ta DM_Embed\nPAIRS Ta Ta\nDENSITY\nBASIS Blip5\n"
-         "FORM SIGNED\nCENTRES " + centres + "\nETA 1 1\nAMPLITUDES 1 0.5\n"
-         "CUTOFF\nTYPE Cut_Poly\nRADIUS 4.5\nENDCUTOFF\nENDDENSITY\n"
-         "EMBEDDING\nBASIS Gaussian\nCENTRES 0 0.5 1\nETA 2 2 2\n"
-         "REFERENCE ZERO\nENDEMBEDDING\nENDDESCRIPTOR\n";
-}
-
-}  // namespace
-
-/* Pins: a task file whose GLOBAL section declares a DM_Embed model (a
- * DESCRIPTOR block) and the training data, with TASK train writing
- * pot_new.tadah and TASK predict predicting with it, runs: exit 0 and one
- * prediction per structure. The predict task's model is its potential's
- * block, which the GLOBAL block it also receives replaces, as a key of
- * the task replaces the potential's (Context::merge). Before the fix the
- * blocks were appended: 'DM_Embed: duplicate descriptor ID 'ta'', exit 1,
- * after the training had run. */
-TEST_CASE("Task file: a GLOBAL DESCRIPTOR block is the model of TASK train "
-          "and TASK predict",
-          "[TadahCLI][exit-status][task-file]") {
-  ScratchCwd cwd("task_global_block");
-  write_ta_dimer_training();
-  std::ofstream("run.task")
-      << "VERBOSE 0\nDBFILE db.tadah\n" << ta_embed_model()
-      << "TASK train\n  OUTFILE pot_new.tadah\n"
-         "TASK predict\n  POTENTIAL pot_new.tadah\n";
-  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-  const std::string rep = reported(r);
-  INFO("status " << r.status << "\n" << rep);
-  CHECK(r.status == 0);
-  CHECK_FALSE(contains(rep, "duplicate descriptor ID"));
-  REQUIRE(std::filesystem::exists("pot_new.tadah"));
-  REQUIRE(std::filesystem::exists("energy.pred"));
-  CHECK(predicted_values("energy.pred").size() == 3u);
-}
-
-/* Pins: a TASK section's DESCRIPTOR block replaces the GLOBAL section's
- * block of the same kind, as a key of the section replaces the GLOBAL one:
- * the potential TASK train writes has the section's density centres
- * (1.5 3), and one block. Before the fix the blocks were appended and the
- * training stopped with 'DM_Embed: duplicate descriptor ID'. */
-TEST_CASE("Task file: a TASK section's DESCRIPTOR replaces the GLOBAL one",
-          "[TadahCLI][exit-status][task-file]") {
-  ScratchCwd cwd("task_block_override");
-  write_ta_dimer_training();
-  const std::string model = ta_embed_model();
-  const std::string section = ta_embed_model("1.5 3");
-  std::ofstream("run.task")
-      << "VERBOSE 0\nDBFILE db.tadah\n" << model << "TASK train\n"
-      << section.substr(section.find("DESCRIPTOR"));
-  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-  const std::string rep = reported(r);
-  INFO("status " << r.status << "\n" << rep);
-  CHECK(r.status == 0);
-  CHECK_FALSE(contains(rep, "duplicate descriptor ID"));
-  REQUIRE(std::filesystem::exists("pot.tadah"));
-  const std::string pot = slurp("pot.tadah");
-  CHECK(lines_with_text(pot, "DESCRIPTOR ta DM_Embed") == 1u);
-  CHECK(contains(pot, "CENTRES 1.5 3"));
-}
-
 namespace {
 
 /* The number of lines of @p text that contain @p needle. */
@@ -2462,20 +2318,22 @@ std::size_t lines_with(const std::string& text, const std::string& needle) {
 
 }  // namespace
 
-/* Pins: each TASK of a task file prints the settings line of the kernel it
- * builds at VERBOSE 1 (the task file's GLOBAL VERBOSE): on the three Ta
- * dimers with M_KRR Kern_RBF 1 (SBASIS 3), TASK train from MPARAMS 1.0
- * (pot_a.tadah), TASK train from MPARAMS 2.0 (pot_b.tadah) and TASK
- * predict with pot_a.tadah exit 0, and stdout has "Kern_RBF | sigma: 1 |
- * gamma: 1" on two lines (the first training and the prediction),
- * "Kern_RBF | sigma: 2 | gamma: 0.25" on one (the second training) and no
- * other "Kern_RBF |" line, as the released code printed them.
+/* Pins: each run prints the settings line of the kernel it builds at
+ * VERBOSE 1, also when one process runs several (run_tadah runs tadah in
+ * this process): on the three Ta dimers with M_KRR Kern_RBF 1 (SBASIS 3),
+ * `tadah train -c config.a -v 1` (MPARAMS 1.0, pot_a.tadah), `tadah train
+ * -c config.b -v 1` (MPARAMS 2.0, pot_b.tadah) and `tadah predict -d
+ * db.tadah -p pot_a.tadah -v 1` exit 0, and their standard output has
+ * "Kern_RBF | sigma: 1 | gamma: 1" once, "Kern_RBF | sigma: 2 | gamma:
+ * 0.25" once and "Kern_RBF | sigma: 1 | gamma: 1" once, and no other
+ * "Kern_RBF |" line.
  * Before the fix: one line in all, the first training's: the line was
  * printed by the first kernel of its kind in the process and by no later
- * one, so the second training's settings were never printed. */
-TEST_CASE("Task file: each TASK prints the settings line of the kernel it "
+ * one, so the second training's settings were never printed. (The three
+ * runs were the three sections of one input, run by one tadah command.) */
+TEST_CASE("Subcommand: each run prints the settings line of the kernel it "
           "builds",
-          "[TadahCLI][task-file][kernel_line]") {
+          "[TadahCLI][kernel_line]") {
   ScratchCwd cwd("task_kernel_line");
   write_ta_dimer_training();
   std::string base = slurp("config.train");
@@ -2485,19 +2343,23 @@ TEST_CASE("Task file: each TASK prints the settings line of the kernel it "
   base.replace(at, linear.size(), "MODEL M_KRR Kern_RBF 1\nSBASIS 3\n");
   std::ofstream("config.a") << base << "MPARAMS 1.0\nOUTFILE pot_a.tadah\n";
   std::ofstream("config.b") << base << "MPARAMS 2.0\nOUTFILE pot_b.tadah\n";
-  std::ofstream("run.task")
-      << "VERBOSE 1\n"
-         "TASK train\n  CONFIG config.a\n"
-         "TASK train\n  CONFIG config.b\n"
-         "TASK predict\n  DBFILE db.tadah\n  POTENTIAL pot_a.tadah\n";
-  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-  INFO("status " << r.status << "\n" << reported(r));
-  CHECK(r.status == 0);
+  const std::vector<std::pair<std::vector<std::string>, std::string>> runs = {
+      {{"tadah", "train", "-c", "config.a", "-v", "1"},
+       "Kern_RBF | sigma: 1 | gamma: 1"},
+      {{"tadah", "train", "-c", "config.b", "-v", "1"},
+       "Kern_RBF | sigma: 2 | gamma: 0.25"},
+      {{"tadah", "predict", "-d", "db.tadah", "-p", "pot_a.tadah", "-v", "1"},
+       "Kern_RBF | sigma: 1 | gamma: 1"}};
+  for (const auto& run : runs) {
+    const CliRun r = run_tadah(run.first);
+    INFO(run.first[1] << " " << run.first[3] << ": status " << r.status
+                      << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(lines_with(r.out, run.second) == 1u);
+    CHECK(lines_with(r.out, "Kern_RBF |") == 1u);
+  }
   CHECK(std::filesystem::exists("pot_a.tadah"));
   CHECK(std::filesystem::exists("pot_b.tadah"));
-  CHECK(lines_with(r.out, "Kern_RBF | sigma: 1 | gamma: 1") == 2u);
-  CHECK(lines_with(r.out, "Kern_RBF | sigma: 2 | gamma: 0.25") == 1u);
-  CHECK(lines_with(r.out, "Kern_RBF |") == 3u);
 }
 
 /* Pins: `tadah train` on the three Ta dimers (D2_BP, 4 weights) reads
@@ -3127,107 +2989,6 @@ TEST_CASE("Subcommand: analysis bfunc plots the basis of a BIAS true "
   CHECK(slurp("bias.out") == slurp("nobias.out"));
 }
 
-/* Pins: `tadah --task` checks the name of a TASK line that has no key line
- * of its own: "TASK bogus" followed by "TASK train" exits 1 with 'Unknown
- * task section "BOGUS"' before any task runs, so no pot.tadah is written.
- * Before the fix: the keyless BOGUS section was dropped unchecked, the
- * train task ran and the command exited 0 with pot.tadah written. */
-TEST_CASE("Task file: tadah --task refuses an unknown task name on a TASK "
-          "line without keys",
-          "[TadahCLI][exit-status][task-file]") {
-  ScratchCwd cwd("task_keyless_unknown");
-  write_ta_dimer_training();
-  std::ofstream("run.task") << "VERBOSE 0\n"
-                               "TASK bogus\n"
-                               "TASK train\n"
-                               "  CONFIG config.train\n";
-  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-  const std::string rep = reported(r);
-  INFO("status " << r.status << "\n" << rep);
-  CHECK(r.status == 1);
-  CHECK(contains(rep, "Unknown task section \"BOGUS\""));
-  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
-}
-
-/* Pins: `tadah --task` refuses a TASK line that names a group of tasks
- * before any task runs: "TASK train" (CONFIG config.train) followed by "TASK
- * data", "TASK analysis" or "TASK properties" exits 1 with 'TASK section
- * "<NAME>" is a group of tasks, not a task', and no pot.tadah is written.
- * Before the fix: the group names are blueprint tasks, so the check passed;
- * the training ran (pot.tadah written) and the command then exited 1 with
- * 'EngineFactory::create: No engine found for DATA' (ANALYSIS,
- * PROPERTIES). */
-TEST_CASE("Task file: tadah --task refuses a TASK line naming a group of tasks "
-          "before any task runs",
-          "[TadahCLI][exit-status][task-file]") {
-  for (const std::string group : {"data", "analysis", "properties"}) {
-    INFO("TASK " << group);
-    ScratchCwd cwd("task_group_" + group);
-    write_ta_dimer_training();
-    std::ofstream("run.task") << "VERBOSE 0\n"
-                                 "TASK train\n"
-                                 "  CONFIG config.train\n"
-                                 "TASK " << group << "\n";
-    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-    const std::string rep = reported(r);
-    INFO("status " << r.status << "\n" << rep);
-    CHECK(r.status == 1);
-    std::string upper = group;
-    for (char &ch : upper) ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
-    CHECK(contains(rep, "TASK section \"" + upper + "\" is a group of tasks, not a task"));
-    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
-  }
-}
-
-/* Pins: `tadah --task` refuses "TASK global", a task the blueprint does not
- * define, after a predict task: exit 1 with 'Unknown task section
- * "GLOBAL"'.
- * Before the fix: a section named GLOBAL was never checked, so the GLOBAL
- * task reached TaskFactory, which looked it up among the blueprint tasks
- * and dereferenced the end iterator: a segmentation fault that ends the
- * test process. */
-TEST_CASE("Task file: tadah --task refuses 'TASK global'",
-          "[TadahCLI][exit-status][task-file]") {
-  ScratchCwd cwd("task_global");
-  write_ta_dimer_training();
-  std::ofstream("run.task") << "TASK train\n"
-                               "  CONFIG config.train\n"
-                               "TASK global\n"
-                               "  VERBOSE 0\n";
-  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-  const std::string rep = reported(r);
-  INFO("status " << r.status << "\n" << rep);
-  CHECK(r.status == 1);
-  CHECK(contains(rep, "Unknown task section \"GLOBAL\""));
-  CHECK_FALSE(std::filesystem::exists("pot.tadah"));
-}
-
-/* Pins: a TASK line without key lines runs on the GLOBAL keys: a task file
- * with DBFILE and POTENTIAL above "TASK train" (CONFIG config.train) and a
- * last line "TASK predict" exits 0, writes pot.tadah and predicts with it
- * from the GLOBAL DBFILE and POTENTIAL: energy.pred with one prediction per
- * structure.
- * Before the fix: the keyless PREDICT section was dropped, so only the
- * training ran; the command exited 0 without energy.pred and the REQUIRE on
- * it stopped the case. */
-TEST_CASE("Task file: a TASK line without key lines runs on the GLOBAL keys",
-          "[TadahCLI][exit-status][task-file]") {
-  ScratchCwd cwd("task_keyless_global");
-  write_ta_dimer_training();
-  std::ofstream("run.task") << "VERBOSE    0\n"
-                               "DBFILE     db.tadah\n"
-                               "POTENTIAL  pot.tadah\n"
-                               "TASK train\n"
-                               "  CONFIG config.train\n"
-                               "TASK predict\n";
-  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-  INFO("status " << r.status << "\n" << reported(r));
-  CHECK(r.status == 0);
-  REQUIRE(std::filesystem::exists("pot.tadah"));
-  REQUIRE(std::filesystem::exists("energy.pred"));
-  CHECK(predicted_values("energy.pred").size() == 3u);
-}
-
 /* ---- [not-built]: tadah hpo in a tadah built without NFP -------------- */
 
 namespace {
@@ -3267,12 +3028,9 @@ void write_hpo_target() {
  * config.train --hpotarget config.hpo` exits 1 with "tadah hpo needs the
  * Nested Fitting Procedure, which this tadah was built without; reconfigure
  * with -DTADAH_ENABLE_NFP=ON (see Installation)" and writes no
- * best_pot.tadah; a task file with "TASK train" (CONFIG config.train) and
- * then "TASK hpo" (CONFIG config.train, HPOTARGET config.hpo) exits 1 with
- * the same message before the training runs: no pot.tadah.
- * Before the fix: both exited 1 with "EngineFactory::create: No engine
- * found for HPO", and the task file's training ran first and wrote
- * pot.tadah. */
+ * best_pot.tadah.
+ * Before the fix: it exited 1 with "EngineFactory::create: No engine found
+ * for HPO". */
 TEST_CASE("Subcommand: hpo in a tadah built without NFP is refused, naming "
           "TADAH_ENABLE_NFP",
           "[TadahCLI][exit-status][not-built]") {
@@ -3288,20 +3046,6 @@ TEST_CASE("Subcommand: hpo in a tadah built without NFP is refused, naming "
     CHECK(contains(rep, kHpoNotBuilt));
     CHECK_FALSE(contains(rep, "No engine found"));
     CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
-  }
-  {
-    std::ofstream("run.task") << "VERBOSE 0\n"
-                                 "TASK train\n"
-                                 "  CONFIG config.train\n"
-                                 "TASK hpo\n"
-                                 "  CONFIG config.train\n"
-                                 "  HPOTARGET config.hpo\n";
-    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-    const std::string rep = reported(r);
-    INFO("tadah --task: status " << r.status << "\n" << rep);
-    CHECK(r.status == 1);
-    CHECK(contains(rep, kHpoNotBuilt));
-    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
   }
 }
 
@@ -4578,87 +4322,23 @@ TEST_CASE("Subcommand: refit --edit and --retarget refuse a key of a refit "
   CHECK(std::filesystem::exists("pot_edited.tadah"));
 }
 
-/* Pins: a task file's global NUMERIC, which applies to every task
- * (ALLOWED_KEYS.task's example sets "NUMERIC 14 # output precision" above
- * the first TASK line), does not stop a --retarget task. On the outputs of
- * a dense refit of the small Ta setfl, `tadah --task run.task` with
- * NUMERIC 14 above an --edit TASK refit (EDIT pot.tadah, FUNC phi, ADD 2.5)
- * and a --retarget TASK refit (RETARGET refit.hpotarget, OUTFILE
- * rt.hpotarget) exits 0 and writes pot_edited.tadah and rt.hpotarget, the
- * latter byte-identical to the file `tadah refit --retarget
- * refit.hpotarget -o rt.hpotarget` writes without NUMERIC (its bounds are
- * printed %.8e whatever NUMERIC is); a task file with NUMERIC 14 and the
- * --retarget task alone exits 0 and writes the same rt.hpotarget, and no
- * pot_edited.tadah.
- * Before the fix: --retarget refused NUMERIC ("tadah refit --retarget:
- * NUMERIC has no effect under --retarget: only a refit of an EAM file and
- * --edit read it; remove NUMERIC"): both task files exited 1, the first
- * after its --edit task had written pot_edited.tadah (and
- * refit_edited.hpotarget), and neither wrote rt.hpotarget. */
-TEST_CASE("Task file: a global NUMERIC does not stop a refit --retarget "
-          "task",
-          "[TadahCLI][exit-status][task-file][refit]") {
-  ScratchCwd cwd("refit_retarget_global_numeric");
-  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
-  std::ofstream("config.refit")
-      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
-         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
-  {
-    const CliRun fit = run_tadah({"tadah", "refit", "-c", "config.refit"});
-    INFO("refit: status " << fit.status << "\n" << reported(fit));
-    REQUIRE(fit.status == 0);
-    REQUIRE(std::filesystem::exists("pot.tadah"));
-    REQUIRE(std::filesystem::exists("refit.hpotarget"));
-  }
-  std::string without;  // --retarget's file without NUMERIC
-  {
-    const CliRun r = run_tadah({"tadah", "refit", "--retarget",
-                                "refit.hpotarget", "-o", "rt.hpotarget"});
-    INFO("--retarget: status " << r.status << "\n" << reported(r));
-    REQUIRE(r.status == 0);
-    without = slurp("rt.hpotarget");
-    REQUIRE_FALSE(without.empty());
-  }
-  const std::string retarget =
-      "TASK refit\nRETARGET refit.hpotarget\nOUTFILE rt.hpotarget\n";
-  for (const std::string& file :
-       {std::string("NUMERIC 14\n\n"
-                    "TASK refit\nEDIT pot.tadah\nFUNC phi\nADD 2.5\n\n") +
-            retarget,
-        std::string("NUMERIC 14\n\n") + retarget}) {
-    const bool edit = contains(file, "EDIT");
-    std::filesystem::remove("pot_edited.tadah");
-    std::filesystem::remove("rt.hpotarget");
-    std::ofstream("run.task") << file;
-    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-    const std::string rep = reported(r);
-    INFO("task file:\n" << file << "status " << r.status << "\n" << rep);
-    CHECK(r.status == 0);
-    CHECK_FALSE(contains(rep, "NUMERIC has no effect"));
-    CHECK(std::filesystem::exists("pot_edited.tadah") == edit);
-    CHECK(std::filesystem::exists("rt.hpotarget"));
-    CHECK(slurp("rt.hpotarget") == without);
-  }
-}
-
-/* Pins: the --edit and --retarget TASK refit of one task file write
- * different default hpotargets, so neither overwrites the other's. On the
- * outputs of a dense refit of the small Ta setfl (pot.tadah,
- * refit.hpotarget), `tadah --task run.task` with an --edit TASK refit
- * (EDIT pot.tadah, FUNC phi, ADD 2.5) and a --retarget TASK refit
- * (RETARGET refit.hpotarget, PCT 10), in either order, exits 0 and leaves
- * refit_edited.hpotarget byte-identical to the file `tadah refit --edit
- * pot.tadah --func phi --add 2.5` writes alone, and
+/* Pins: refit --edit and --retarget write different default hpotargets,
+ * so neither overwrites the other's. On the outputs of a dense refit of the
+ * small Ta setfl (pot.tadah, refit.hpotarget), `tadah refit -c edit.cfg`
+ * (EDIT pot.tadah, FUNC phi, ADD 2.5) and `tadah refit -c retarget.cfg`
+ * (RETARGET refit.hpotarget, PCT 10), run in either order, exit 0 and
+ * leave refit_edited.hpotarget byte-identical to the file `tadah refit
+ * --edit pot.tadah --func phi --add 2.5` writes alone, and
  * refit_retargeted.hpotarget byte-identical to the file `tadah refit
  * --retarget refit.hpotarget --pct 10 -o alone.hpotarget` writes.
  * Before the fix: --retarget's default was <input>_edited<ext>, the --edit
- * default refit_edited.hpotarget for this input, so the second task
- * overwrote the first task's file (exit 0): refit_edited.hpotarget was the
- * --retarget file with the --edit task first and the --edit file with it
+ * default refit_edited.hpotarget for this input, so the second run
+ * overwrote the first run's file (exit 0): refit_edited.hpotarget was the
+ * --retarget file with the --edit run first and the --edit file with it
  * second, and refit_retargeted.hpotarget was never written. */
-TEST_CASE("Task file: refit --edit and --retarget tasks write different "
-          "default hpotargets",
-          "[TadahCLI][exit-status][task-file][refit]") {
+TEST_CASE("Subcommand: refit --edit and --retarget write different default "
+          "hpotargets",
+          "[TadahCLI][exit-status][refit]") {
   ScratchCwd cwd("refit_edit_retarget_outputs");
   { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
   std::ofstream("config.refit")
@@ -4690,19 +4370,22 @@ TEST_CASE("Task file: refit --edit and --retarget tasks write different "
     REQUIRE_FALSE(retarget_alone.empty());
   }
   REQUIRE(edit_alone != retarget_alone);
-  const std::string edit =
-      "TASK refit\nEDIT pot.tadah\nFUNC phi\nADD 2.5\n\n";
-  const std::string retarget =
-      "TASK refit\nRETARGET refit.hpotarget\nPCT 10\n\n";
-  for (const std::string& file : {edit + retarget, retarget + edit}) {
+  std::ofstream("edit.cfg") << "EDIT pot.tadah\nFUNC phi\nADD 2.5\n";
+  std::ofstream("retarget.cfg") << "RETARGET refit.hpotarget\nPCT 10\n";
+  for (const bool edit_first : {true, false}) {
     for (const char* f : {"pot_edited.tadah", "refit_edited.hpotarget",
                           "refit_retargeted.hpotarget"})
       std::filesystem::remove(f);
-    std::ofstream("run.task") << file;
-    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-    INFO("task file:\n" << file << "status " << r.status << "\n"
-                        << reported(r));
-    CHECK(r.status == 0);
+    for (const char* cfg : edit_first
+                               ? std::vector<const char*>{"edit.cfg",
+                                                          "retarget.cfg"}
+                               : std::vector<const char*>{"retarget.cfg",
+                                                          "edit.cfg"}) {
+      const CliRun r = run_tadah({"tadah", "refit", "-c", cfg});
+      INFO(cfg << (edit_first ? " (edit first)" : " (retarget first)")
+               << ": status " << r.status << "\n" << reported(r));
+      CHECK(r.status == 0);
+    }
     CHECK(std::filesystem::exists("pot_edited.tadah"));
     CHECK(slurp("refit_edited.hpotarget") == edit_alone);
     CHECK(slurp("refit_retargeted.hpotarget") == retarget_alone);
@@ -4741,9 +4424,9 @@ TEST_CASE("Subcommand: refit: REFIT_COMPACT_MERGE under REFIT_BASIS Blip is "
  * copied to in.tadah and in.hpotarget: `tadah refit --edit in.tadah --func
  * phi --add 2.5 -o pot.tadah --hpofileout refit.hpotarget` writes
  * pot.tadah and refit.hpotarget (no pot_edited.tadah or
- * refit_edited.hpotarget), so does a task file with those keys, and `tadah
- * refit --retarget in.hpotarget -o pot.tadah` writes pot.tadah (no
- * in_retargeted.hpotarget).
+ * refit_edited.hpotarget), so does `tadah refit -c edit.cfg` with those keys
+ * in edit.cfg, and `tadah refit --retarget in.hpotarget -o pot.tadah`
+ * writes pot.tadah (no in_retargeted.hpotarget).
  * Before the fix: an -o / --hpofileout equal to the default name counted as
  * unset, and all three wrote the edited or retargeted default names, without
  * a word. */
@@ -4781,11 +4464,11 @@ TEST_CASE("Subcommand: refit --edit and --retarget write an explicit output "
   }
   clean();
   {
-    std::ofstream("edit.task")
-        << "TASK refit\nEDIT in.tadah\nFUNC phi\nADD 2.5\n"
+    std::ofstream("edit.cfg")
+        << "EDIT in.tadah\nFUNC phi\nADD 2.5\n"
            "OUTFILE pot.tadah\nHPOFILEOUT refit.hpotarget\n";
-    const CliRun r = run_tadah({"tadah", "--task", "edit.task"});
-    INFO("task file: status " << r.status << "\n" << reported(r));
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "edit.cfg"});
+    INFO("configuration file: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
     CHECK(std::filesystem::exists("pot.tadah"));
     CHECK(std::filesystem::exists("refit.hpotarget"));
@@ -6247,7 +5930,7 @@ std::string retrain_dataset() {
          weighted_entry("R3", "1 1 1", "3.70 0.10 0.20", "0.03", "0");
 }
 
-/* The D2_BP pair configuration of the [task-file] case with FORCE true,
+/* The D2_BP pair configuration of the [retrain] cases with FORCE true,
  * the model `model` and the fit lines `fit`, training on db.tadah. */
 std::string retrain_config(const std::string& model, const std::string& fit) {
   return "DBFILE db.tadah\nATOM Ta\nWATOM 73\nINIT2B true\nINITMB false\n"
@@ -6685,17 +6368,20 @@ TEST_CASE("Subcommand: train refuses the SBASIS of M_KRR Kern_Linear 2 "
 }
 
 #ifdef TADAH_ENABLE_NFP
-/* Pins: a task file with two `TASK hpo` blocks (one evaluation each, at
- * the CONFIG seed of OPTIM CGRID2B (1); PC_ERMSE and PC_FRMSE), A with
- * LAMBDA 1e-4 and FSIGMA 1, then B with LAMBDA 0.1 and FSIGMA 0.1: exit
- * 0, and the best_pot.tadah the second run writes is B's: LAMBDA 0.1,
- * FSIGMA 0.1, and the weights of `tadah train -c` with B's configuration
- * (1e-10 relative: the same fit at the seed).
+/* Pins: two runs of `tadah hpo` in one process (run_tadah runs tadah in
+ * this process; one evaluation each, at the CONFIG seed of OPTIM CGRID2B
+ * (1); PC_ERMSE and PC_FRMSE), A with LAMBDA 1e-4 and FSIGMA 1, then B with
+ * LAMBDA 0.1 and FSIGMA 0.1: both exit 0, and the best_pot.tadah the second
+ * run writes is B's: LAMBDA 0.1, FSIGMA 0.1, and the weights of `tadah
+ * train -c` with B's configuration (1e-10 relative: the same fit at the
+ * seed).
  * Before the fix: the second run evaluated the first run's model (the
  * thread's trainer of A, with only CGRID2B rewritten): best_pot.tadah had
- * LAMBDA 1e-4, A's error scale (FSIGMA 1) and A's weights. */
-TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
-          "[TadahCLI][hpo][task-file][retrain]") {
+ * LAMBDA 1e-4, A's error scale (FSIGMA 1) and A's weights. (The two runs
+ * were two sections of one input of one tadah command.) */
+TEST_CASE("Subcommand: a second hpo run in the process evaluates its own "
+          "configuration",
+          "[TadahCLI][hpo][retrain]") {
   ScratchCwd cwd("two_hpo_tasks");
   std::ofstream("db.tadah") << retrain_dataset();
   { std::ofstream os("config.val"); os << "DBFILE db.tadah\n"; }
@@ -6709,14 +6395,12 @@ TEST_CASE("Task file: a second TASK hpo evaluates its own configuration",
           "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
           "OPTIM CGRID2B (1) 2.3 2.7\n";
   }
-  std::ofstream("run.task")
-      << "TASK hpo\n  CONFIG configA.tadah\n  HPOTARGET config.hpo\n"
-         "  VALIDATION config.val\n"
-         "TASK hpo\n  CONFIG configB.tadah\n  HPOTARGET config.hpo\n"
-         "  VALIDATION config.val\n";
-  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-  INFO("status " << r.status << "\n" << reported(r));
-  REQUIRE(r.status == 0);
+  for (const char* config : {"configA.tadah", "configB.tadah"}) {
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", config, "--hpotarget",
+                                "config.hpo", "--validation", "config.val"});
+    INFO(config << ": status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
   REQUIRE(std::filesystem::exists("best_pot.tadah"));
   const std::string best = slurp("best_pot.tadah");
   INFO("best_pot.tadah:\n" << best);
@@ -6871,16 +6555,16 @@ TEST_CASE("Subcommand: train --uncertainty is refused with the reason",
  * the line)") and the reason, and no potential is written; the potential
  * of the configuration without it, with an ERROR line added, predicts what
  * it predicts without it, with one notice ("Retired key ERROR (line N of
- * err.tadah) is ignored"); a task file whose TASK train section has an
- * UNCERTAINTY line, or whose GLOBAL section an ERROR line, is refused
- * alike, with the reason, naming the line of the task file.
+ * err.tadah) is ignored"); a configuration file that includes the
+ * configuration with CONFIG and has an UNCERTAINTY line, or an ERROR line
+ * above its CONFIG line, is refused alike, with the reason, naming its
+ * line.
  * Before the fix: the configuration trained and its potential had the line
  * "ERROR true", which nothing read; the potential's line gave no notice;
- * the task file's UNCERTAINTY line was refused without the mark and the
- * reason. */
+ * an UNCERTAINTY line was refused without the mark and the reason. */
 TEST_CASE("Subcommand: train refuses an ERROR or UNCERTAINTY line of its "
           "configuration with the reason",
-          "[TadahCLI][train][task-file][uncertainty]") {
+          "[TadahCLI][train][uncertainty]") {
   ScratchCwd cwd("error_key_retired");
   std::ofstream("db.tadah") << retrain_dataset();
   const std::string config =
@@ -6918,26 +6602,26 @@ TEST_CASE("Subcommand: train refuses an ERROR or UNCERTAINTY line of its "
   CHECK(contains(rp, " of err.tadah) is ignored"));
   CHECK(slurp("err.pred") == slurp("plain.pred"));
 
-  std::ofstream("run.task") << "TASK train\n  CONFIG plain.train\n"
-                               "  OUTFILE t.tadah\n  UNCERTAINTY true\n";
-  const CliRun tf = run_tadah({"tadah", "--task", "run.task"});
+  std::ofstream("u.train") << "CONFIG plain.train\n"
+                              "OUTFILE t.tadah\nUNCERTAINTY true\n";
+  const CliRun tf = run_tadah({"tadah", "train", "-c", "u.train"});
   const std::string rtf = reported(tf);
-  INFO("task file: status " << tf.status << "\n" << rtf);
+  INFO("UNCERTAINTY: status " << tf.status << "\n" << rtf);
   CHECK(tf.status == 1);
-  CHECK(contains(rtf, "UNCERTAINTY true (line 4 of run.task; converted by "
+  CHECK(contains(rtf, "UNCERTAINTY true (line 3 of u.train; converted by "
                       "deleting the line)"));
   CHECK(contains(rtf, "UNCERTAINTY: tadah train --uncertainty wrote "
                       "weights.tadah"));
   CHECK(contains(rtf, kRemoved));
   CHECK_FALSE(std::filesystem::exists("t.tadah"));
 
-  std::ofstream("g.task") << "ERROR true\nTASK train\n  CONFIG plain.train\n"
-                             "  OUTFILE g.tadah\n";
-  const CliRun g = run_tadah({"tadah", "--task", "g.task"});
+  std::ofstream("g.train") << "ERROR true\nCONFIG plain.train\n"
+                              "OUTFILE g.tadah\n";
+  const CliRun g = run_tadah({"tadah", "train", "-c", "g.train"});
   const std::string rg = reported(g);
-  INFO("GLOBAL ERROR: status " << g.status << "\n" << rg);
+  INFO("ERROR above CONFIG: status " << g.status << "\n" << rg);
   CHECK(g.status == 1);
-  CHECK(contains(rg, "ERROR true (line 1 of g.task; converted by deleting "
+  CHECK(contains(rg, "ERROR true (line 1 of g.train; converted by deleting "
                      "the line)"));
   CHECK(contains(rg, kRemoved));
   CHECK_FALSE(std::filesystem::exists("g.tadah"));
@@ -8461,24 +8145,24 @@ TEST_CASE("Subcommand: train -c retrains a potential on any number of "
   }
 }
 
-/* Pins: a retrain that includes a potential with CONFIG -- from a task file
- * or a configuration file -- applies the keys that prepare the training
- * data its own lines give, and records them; only the potential's lines of
- * them are not read. pot.tadah is `tadah train -c config` (a.tadah b.tadah,
- * WDBFILE 1 0.5); the retrains fit a.tadah b.tadah c.tadah:
- *   - `tadah --task run.task` (TASK train, "CONFIG pot.tadah", the three
- *     datasets, "WDBFILE 1 0.001 1", "OUTFILE pot2.tadah") exits 0 with no
- *     WARNING about a potential, and pot2.tadah has the record "DBFILE
- *     a.tadah b.tadah c.tadah", "WDBFILE 1 0.001 1", "OUTFILE pot2.tadah"
- *     and the WEIGHTS of `tadah train -c retrain.train --wdbfile 1 0.001 1`
+/* Pins: a retrain that includes a potential with CONFIG in a configuration
+ * file applies the keys that prepare the training data its own lines give,
+ * and records them; only the potential's lines of them are not read.
+ * pot.tadah is `tadah train -c config` (a.tadah b.tadah, WDBFILE 1 0.5);
+ * the retrains fit a.tadah b.tadah c.tadah:
+ *   - `tadah train -c run.train` ("CONFIG pot.tadah", the three datasets,
+ *     "WDBFILE 1 0.001 1", "OUTFILE pot2.tadah") exits 0 with no WARNING
+ *     about a potential, and pot2.tadah has the record "DBFILE a.tadah
+ *     b.tadah c.tadah", "WDBFILE 1 0.001 1", "OUTFILE pot2.tadah" and the
+ *     WEIGHTS of `tadah train -c retrain.train --wdbfile 1 0.001 1`
  *     (pot3.tadah; retrain.train: pot.tadah with the three datasets), which
- *     differ from those of the same task file without its WDBFILE line
- *     (pot4.tadah);
+ *     differ from those of the same file without its WDBFILE line
+ *     (none.train, pot4.tadah);
  *   - `tadah train -c outer.train -o pot6.tadah`, outer.train being "CONFIG
  *     pot.tadah", the three datasets and "WDBFILE 1 0.001 1", gives the
  *     WEIGHTS of pot2.tadah and the record "DBFILE a.tadah b.tadah
  *     c.tadah", "WDBFILE 1 0.001 1", "OUTFILE pot6.tadah";
- *   - `tadah --task old.task`, its TASK train section "ZERO_COM_FORCE
+ *   - `tadah train -c old.train`, old.train being "ZERO_COM_FORCE
  *     true", "CONFIG old.tadah", the three datasets, "WDBFILE 1 0.001 1",
  *     "EFILTER -0.7 -0.3", "OUTFILE pot5.tadah", old.tadah being pot.tadah
  *     with the key lines "WDBFILE 1 0.5", "EFILTER 5 6", "FFILTER 0.001"
@@ -8487,26 +8171,25 @@ TEST_CASE("Subcommand: train -c retrains a potential on any number of "
  *     b.tadah c.tadah", "EFILTER -0.7 -0.3", "ZERO_COM_FORCE true", "WDBFILE
  *     1 0.001 1", "OUTFILE pot5.tadah" (the line before CONFIG too), and the
  *     WARNING names the one line of the potential the run does not give:
- *     "tadah train: old.tadah, which the task file old.task includes with
- *     CONFIG, is a potential (it has WEIGHTS): its FFILTER 0.001 prepared
- *     the training data of the fit that wrote it, not of this run, and is
- *     ignored (tadah keeps such keys in a potential's training record, not
- *     as key lines). Write FFILTER in the task file old.task to apply it to
- *     this run (the Training page of the documentation, Retraining from a
- *     potential).".
+ *     "tadah train: old.tadah, which the configuration file old.train
+ *     includes with CONFIG, is a potential (it has WEIGHTS): its FFILTER
+ *     0.001 prepared the training data of the fit that wrote it, not of
+ *     this run, and is ignored (tadah keeps such keys in a potential's
+ *     training record, not as key lines). Give --ffilter on the command
+ *     line, or an FFILTER line in old.train, to apply it to this run (the
+ *     Training page of the documentation, Retraining from a potential).".
  * Before the fix: a key of a configuration with WEIGHTS was applied only
  * when it was a command-line option, and the include mixed the potential's
- * lines with the run's: run.task's WDBFILE was ignored with the WARNING
- * "tadah train: the task file run.task is a potential (it has WEIGHTS): its
- * WDBFILE 1 0.001 1 prepared the training data of the fit that wrote it
- * ... Give --wdbfile on the command line ..." (which `tadah --task`
- * refuses), so pot2.tadah had the record "DBFILE ...", "OUTFILE pot2.tadah"
- * and the WEIGHTS of pot4.tadah; outer.train's WDBFILE likewise; old.task
- * stopped with "Exceeded capacity for key: EFILTER" (exit 1: the
- * potential's two values were there). */
+ * lines with the run's: the WDBFILE of the including file was ignored with
+ * the WARNING "... is a potential (it has WEIGHTS): its WDBFILE 1 0.001 1
+ * prepared the training data of the fit that wrote it ... Give --wdbfile
+ * on the command line ...", so pot2.tadah had the record "DBFILE ...",
+ * "OUTFILE pot2.tadah" and the WEIGHTS of pot4.tadah; outer.train's
+ * WDBFILE likewise; old.train stopped with "Exceeded capacity for key:
+ * EFILTER" (exit 1: the potential's two values were there). */
 TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
           "applies the keys of its own lines that prepare the training data",
-          "[TadahCLI][train][retrain][dataset-keys][task-file]") {
+          "[TadahCLI][train][retrain][dataset-keys]") {
   ScratchCwd cwd("dataset_keys_task_retrain");
   std::ofstream("a.tadah") << retrain_dataset();
   std::ofstream("b.tadah") << dimers_with_energy("-1.1");
@@ -8521,17 +8204,18 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
   const std::string pot = slurp("pot.tadah");
   INFO("pot.tadah:\n" << pot);
   const std::string datasets = "DBFILE a.tadah b.tadah c.tadah";
-  const auto run_task = [](const std::string& file, const std::string& body) {
+  const auto run_config = [](const std::string& file,
+                              const std::string& body) {
     std::ofstream(file) << body;
-    return run_tadah({"tadah", "--task", file});
+    return run_tadah({"tadah", "train", "-c", file});
   };
   {
-    const CliRun r = run_task("run.task", "TASK train\n  CONFIG pot.tadah\n  " +
-                                              datasets +
-                                              "\n  WDBFILE 1 0.001 1\n"
-                                              "  OUTFILE pot2.tadah\n");
+    const CliRun r = run_config("run.train", "CONFIG pot.tadah\n" +
+                                                 datasets +
+                                                 "\nWDBFILE 1 0.001 1\n"
+                                                 "OUTFILE pot2.tadah\n");
     const std::string rep = reported(r);
-    INFO("--task run.task: status " << r.status << "\n" << rep);
+    INFO("-c run.train: status " << r.status << "\n" << rep);
     REQUIRE(r.status == 0);
     CHECK_FALSE(contains(rep, "is a potential"));
     const std::string pot2 = slurp("pot2.tadah");
@@ -8541,10 +8225,10 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
                                                       "OUTFILE pot2.tadah"});
   }
   {
-    const CliRun r = run_task("none.task", "TASK train\n  CONFIG pot.tadah\n  " +
-                                               datasets +
-                                               "\n  OUTFILE pot4.tadah\n");
-    INFO("--task none.task: status " << r.status << "\n" << reported(r));
+    const CliRun r = run_config("none.train", "CONFIG pot.tadah\n" +
+                                                  datasets +
+                                                  "\nOUTFILE pot4.tadah\n");
+    INFO("-c none.train: status " << r.status << "\n" << reported(r));
     REQUIRE(r.status == 0);
   }
   std::ofstream("retrain.train") << pot << datasets << "\n";
@@ -8580,23 +8264,23 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
                              << "WDBFILE 1 0.5\nEFILTER 5 6\nFFILTER 0.001\n"
                                 "ZERO_COM_FORCE false\n";
   {
-    const CliRun r = run_task(
-        "old.task", "TASK train\n  ZERO_COM_FORCE true\n  CONFIG old.tadah\n  " +
-                        datasets +
-                        "\n  WDBFILE 1 0.001 1\n  EFILTER -0.7 -0.3\n"
-                        "  OUTFILE pot5.tadah\n");
+    const CliRun r = run_config(
+        "old.train", "ZERO_COM_FORCE true\nCONFIG old.tadah\n" + datasets +
+                         "\nWDBFILE 1 0.001 1\nEFILTER -0.7 -0.3\n"
+                         "OUTFILE pot5.tadah\n");
     const std::string rep = reported(r);
-    INFO("--task old.task: status " << r.status << "\n" << rep);
+    INFO("-c old.train: status " << r.status << "\n" << rep);
     REQUIRE(r.status == 0);
     CHECK(contains(rep,
-                   "tadah train: old.tadah, which the task file old.task "
-                   "includes with CONFIG, is a potential (it has WEIGHTS): its "
-                   "FFILTER 0.001 prepared the training data of the fit that "
-                   "wrote it, not of this run, and is ignored (tadah keeps "
-                   "such keys in a potential's training record, not as key "
-                   "lines). Write FFILTER in the task file old.task to apply "
-                   "it to this run (the Training page of the documentation, "
-                   "Retraining from a potential)."));
+                   "tadah train: old.tadah, which the configuration file "
+                   "old.train includes with CONFIG, is a potential (it has "
+                   "WEIGHTS): its FFILTER 0.001 prepared the training data of "
+                   "the fit that wrote it, not of this run, and is ignored "
+                   "(tadah keeps such keys in a potential's training record, "
+                   "not as key lines). Give --ffilter on the command line, or "
+                   "an FFILTER line in old.train, to apply it to this run (the "
+                   "Training page of the documentation, Retraining from a "
+                   "potential)."));
     const std::string pot5 = slurp("pot5.tadah");
     INFO("pot5.tadah:\n" << pot5);
     CHECK(record_of(pot5) ==
@@ -8606,69 +8290,6 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
   }
 }
 
-/* Pins: a TASK predict prepares the data predicted with the keys tadah
- * predict has an option for alone: `tadah --task run.task`, its TASK predict
- * section "POTENTIAL pot.tadah" (trained on db.tadah, the three dimers at
- * E/N -0.5 eV, with ESHIFT_DBATOM true: its ESHIFT line -0.5), "DBFILE
- * db.tadah", "NO_ESHIFT true", "ESHIFT_DBATOM true", and the retired
- * "WDBFILE_AUTO 1" and "EWEIGHT_TEMP 300", exits 0 with no "Multiple ESHIFT
- * sources" WARNING, one notice naming the two retired keys (a prediction
- * fits nothing: it does not refuse them), and the True column of
- * energy.pred is the reference energies as they are, -0.5 each (no shift
- * is derived from the data predicted). The same section with "WDBFILE 1 1"
- * (two values, one dataset) exits 1: WDBFILE sets a fit, and a TASK
- * predict refuses it, naming the line.
- * Before the fix: the TASK predict's ESHIFT_DBATOM applied to the data
- * predicted (tadah 1.5.x and v1-dev before the dataset keys record removed
- * only WDBFILE, WDBFILE_AUTO and EWEIGHT_TEMP from it): with the ESHIFT
- * removed by NO_ESHIFT the toggle fitted -0.5 to the data predicted and
- * subtracted it, and the True column was 0 for each structure; the
- * WDBFILE line was accepted and had no effect. */
-TEST_CASE("Subcommand: a TASK predict prepares the data predicted only with "
-          "the keys predict has an option for",
-          "[TadahCLI][predict][dataset-keys][task-file]") {
-  ScratchCwd cwd("dataset_keys_task_predict");
-  std::ofstream("db.tadah") << retrain_dataset();
-  std::ofstream("config") << dataset_keys_config("db.tadah",
-                                                 "ESHIFT_DBATOM true\n");
-  {
-    const CliRun t = run_tadah({"tadah", "train", "-c", "config"});
-    INFO("train: status " << t.status << "\n" << reported(t));
-    REQUIRE(t.status == 0);
-  }
-  {
-    std::ofstream("w.task") << "TASK predict\n"
-                               "  POTENTIAL pot.tadah\n"
-                               "  DBFILE db.tadah\n"
-                               "  WDBFILE 1 1\n";
-    const CliRun w = run_tadah({"tadah", "--task", "w.task"});
-    const std::string wrep = reported(w);
-    INFO("--task w.task: status " << w.status << "\n" << wrep);
-    CHECK(w.status == 1);
-    CHECK(contains(wrep, "WDBFILE (line 4 of w.task) in TASK predict: "
-                         "WDBFILE sets the fit of tadah train and tadah hpo, "
-                         "and tadah predict fits nothing"));
-  }
-  std::ofstream("run.task") << "TASK predict\n"
-                               "  POTENTIAL pot.tadah\n"
-                               "  DBFILE db.tadah\n"
-                               "  NO_ESHIFT true\n"
-                               "  ESHIFT_DBATOM true\n"
-                               "  WDBFILE_AUTO 1\n"
-                               "  EWEIGHT_TEMP 300\n";
-  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-  const std::string rep = reported(r);
-  INFO("--task run.task: status " << r.status << "\n" << rep);
-  REQUIRE(r.status == 0);
-  CHECK_FALSE(contains(rep, "Multiple ESHIFT sources"));
-  CHECK(count_lines_with(rep, "Retired keys") == 1u);
-  CHECK(contains(rep, "Retired keys WDBFILE_AUTO (line 6 of run.task) and "
-                      "EWEIGHT_TEMP (line 7 of run.task) are ignored"));
-  const std::vector<double> truth = column_values("energy.pred", 1);
-  REQUIRE(truth.size() == 3u);
-  for (double t : truth) CHECK(t == Approx(-0.5).margin(1e-12));
-}
-
 /* Pins: `tadah predict -F --zero-com-force` zeroes the net reference force
  * of each structure predicted: pot.tadah trained on db.tadah (the three
  * dimers, both atoms of each with the force f f f, so the net force is 2f
@@ -8676,10 +8297,9 @@ TEST_CASE("Subcommand: a TASK predict prepares the data predicted only with "
  * --zero-com-force and not without it, and the predicted column is the
  * same in both runs (the option changes the reference forces, not the
  * model).
- * Before the fix: passes as well (a pin: ZERO_COM_FORCE is among the keys
- * the predict task has an option for, so the removal of a TASK predict's
- * other dataset keys leaves it; a removal of every key that prepared the
- * training data from predict's merged context makes it fail). */
+ * Before the fix: passes as well (a pin: ZERO_COM_FORCE is an option of
+ * tadah predict; a removal of every key that prepared the training data
+ * from predict's merged context makes it fail). */
 TEST_CASE("Subcommand: predict --zero-com-force zeroes the net reference "
           "force of the data predicted",
           "[TadahCLI][predict][dataset-keys]") {
@@ -9011,24 +8631,23 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
   CHECK(std::find(rec.begin(), rec.end(), "ESHIFT_DBATOM true") != rec.end());
 }
 
-/* Pins: `tadah --task run.task`, its TASK hpo section "CONFIG trained.tadah"
- * (the potential `tadah train -c config.tadah` writes,
- * write_hpo_potential_fixture), "DBFILE db.tadah", "WDBFILE 2", "EFILTER
- * -0.6 -0.4" (which keeps the three dimers), "HPOTARGET config.hpo" and
- * "VALIDATION config.val", exits 0; best_pot.tadah's training record is
- * "DBFILE db.tadah", "EFILTER -0.6 -0.4", "WDBFILE 2", "VALIDATION
- * config.val", "HPOTARGET config.hpo" (the task file's keys applied to the
- * run and recorded), and neither the run's output nor the journal says the
- * task file is a potential.
+/* Pins: `tadah hpo -c run.train --hpotarget config.hpo --validation
+ * config.val`, run.train being "CONFIG trained.tadah" (the potential
+ * `tadah train -c config.tadah` writes, write_hpo_potential_fixture),
+ * "DBFILE db.tadah", "WDBFILE 2" and "EFILTER -0.6 -0.4" (which keeps the
+ * three dimers), exits 0; best_pot.tadah's training record is "DBFILE
+ * db.tadah", "EFILTER -0.6 -0.4", "WDBFILE 2", "VALIDATION config.val",
+ * "HPOTARGET config.hpo" (the configuration file's keys applied to the run
+ * and recorded), and neither the run's output nor the journal says the
+ * configuration file is a potential.
  * Before the fix: hpo_run removed every key of a configuration
  * with WEIGHTS that was not a command-line option: the journal had the
- * WARNING "tadah hpo: the task file run.task is a potential (it has
- * WEIGHTS): its EFILTER -0.6 -0.4 and WDBFILE 2 prepared the training data
- * of the fit that wrote it ...", and the record had no EFILTER and no
- * WDBFILE. */
-TEST_CASE("Subcommand: a TASK hpo seeded from a potential with CONFIG applies "
-          "the task file's keys that prepare the training data",
-          "[TadahCLI][hpo][dataset-keys][task-file][training-record]") {
+ * WARNING "tadah hpo: ... is a potential (it has WEIGHTS): its EFILTER -0.6
+ * -0.4 and WDBFILE 2 prepared the training data of the fit that wrote it
+ * ...", and the record had no EFILTER and no WDBFILE. */
+TEST_CASE("Subcommand: hpo seeded from a potential with CONFIG applies the "
+          "configuration file's keys that prepare the training data",
+          "[TadahCLI][hpo][dataset-keys][training-record]") {
   ScratchCwd cwd("dataset_keys_hpo_task");
   write_hpo_potential_fixture();
   {
@@ -9037,16 +8656,15 @@ TEST_CASE("Subcommand: a TASK hpo seeded from a potential with CONFIG applies "
     INFO("train: status " << t.status << "\n" << reported(t));
     REQUIRE(t.status == 0);
   }
-  std::ofstream("run.task") << "TASK hpo\n"
-                               "  CONFIG trained.tadah\n"
-                               "  DBFILE db.tadah\n"
-                               "  WDBFILE 2\n"
-                               "  EFILTER -0.6 -0.4\n"
-                               "  HPOTARGET config.hpo\n"
-                               "  VALIDATION config.val\n";
-  const CliRun r = run_tadah({"tadah", "--task", "run.task"});
+  std::ofstream("run.train") << "CONFIG trained.tadah\n"
+                                "DBFILE db.tadah\n"
+                                "WDBFILE 2\n"
+                                "EFILTER -0.6 -0.4\n";
+  const CliRun r = run_tadah({"tadah", "hpo", "-c", "run.train",
+                              "--hpotarget", "config.hpo", "--validation",
+                              "config.val"});
   const std::string rep = reported(r);
-  INFO("--task run.task: status " << r.status << "\n" << rep);
+  INFO("-c run.train: status " << r.status << "\n" << rep);
   REQUIRE(r.status == 0);
   const std::string journal = slurp("hpo_run.log");
   INFO("hpo_run.log:\n" << journal);
@@ -9344,130 +8962,9 @@ TEST_CASE("Subcommand: hpo -c of an older best_pot.tadah does not validate "
                                  "HPOTARGET config.hpo"});
 }
 
-/* Pins: `tadah --task run.task`, its TASK hpo section "CONFIG old.tadah"
- * (the older best_pot.tadah of the case above, whose HPOTARGET config.hpo
- * line is not read) and "VALIDATION config.val", exits 1 refused "tadah
- * hpo: no HPOTARGET: name the hpotarget file with an HPOTARGET line in the
- * TASK hpo section of the task file run.task, or above its first TASK line.
- * old.tadah is a potential (it has WEIGHTS): its HPOTARGET config.hpo line
- * was a setting of the run that wrote it and is not read." (no
- * --hpotarget: a run of a task file takes no command-line option), after
- * the WARNING "tadah hpo: old.tadah, which the task file run.task includes
- * with CONFIG, is a potential (it has WEIGHTS): its HPOTARGET config.hpo,
- * VERBOSE 2 and NUMERIC 12 were settings of the run that wrote it, not of
- * this run, and are ignored (...). Write HPOTARGET, VERBOSE or NUMERIC in
- * the task file run.task to apply one to this run (...)."; plain.task, its
- * section "CONFIG config.tadah" (no WEIGHTS) and "VALIDATION config.val",
- * exits 1 refused "tadah hpo: no HPOTARGET: name the hpotarget file with an
- * HPOTARGET line in the TASK hpo section of the task file plain.task, or
- * above its first TASK line." (no potential, no sentence on one); with
- * "HPOTARGET config.hpo" in the section (run2.task) it exits 0.
- * Before the fix: the potential's HPOTARGET applied: run.task exited 0 (the
- * status CHECK fails), and a TASK hpo section without any HPOTARGET was
- * refused "Key not found in the Context object: HPOTARGET".
- * Before the fix was corrected: both refusals were "tadah hpo: no
- * HPOTARGET: name the hpotarget file with --hpotarget, or with an HPOTARGET
- * line in the task file (a potential's own HPOTARGET line names the target
- * of the run that wrote it and is not read).": the refusal CHECKs fail. */
-TEST_CASE("Task file: TASK hpo does not take its HPOTARGET from the potential "
-          "it includes",
-          "[TadahCLI][hpo][task-file][run-settings]") {
-  ScratchCwd cwd("old_run_settings_task_hpo");
-  write_hpo_potential_fixture();
-  {
-    const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
-                                "trained.tadah"});
-    INFO("train: status " << t.status << "\n" << reported(t));
-    REQUIRE(t.status == 0);
-  }
-  std::ofstream("old.tadah")
-      << without_record(slurp("trained.tadah"))
-      << "DBFILE db.tadah\nVALIDATION config.val\nHPOTARGET config.hpo\n"
-         "VERBOSE 2\nNUMERIC 12\n";
-  std::ofstream("run.task") << "TASK hpo\nCONFIG old.tadah\n"
-                               "VALIDATION config.val\n";
-  std::ofstream("run2.task") << "TASK hpo\nCONFIG old.tadah\n"
-                                "VALIDATION config.val\nHPOTARGET config.hpo\n";
-  std::ofstream("plain.task") << "TASK hpo\nCONFIG config.tadah\n"
-                                 "VALIDATION config.val\n";
-  {
-    const CliRun r = run_tadah({"tadah", "--task", "run.task"});
-    const std::string rep = reported(r);
-    INFO("run.task: status " << r.status << "\n" << rep);
-    CHECK(r.status == 1);
-    CHECK(contains(rep, "tadah hpo: no HPOTARGET: name the hpotarget file "
-                        "with an HPOTARGET line in the TASK hpo section of "
-                        "the task file run.task, or above its first TASK "
-                        "line. old.tadah is a potential (it has WEIGHTS): "
-                        "its HPOTARGET config.hpo line was a setting of the "
-                        "run that wrote it and is not read."));
-    CHECK_FALSE(contains(rep, "--hpotarget"));
-    CHECK(contains(rep, "tadah hpo: old.tadah, which the task file run.task "
-                        "includes with CONFIG, is a potential (it has "
-                        "WEIGHTS): its HPOTARGET config.hpo, VERBOSE 2 and "
-                        "NUMERIC 12 were settings of the run that wrote it, "
-                        "not of this run, and are ignored"));
-    CHECK(contains(rep, "Write HPOTARGET, VERBOSE or NUMERIC in the task file "
-                        "run.task to apply one to this run"));
-  }
-  {
-    const CliRun r = run_tadah({"tadah", "--task", "plain.task"});
-    const std::string rep = reported(r);
-    INFO("plain.task: status " << r.status << "\n" << rep);
-    CHECK(r.status == 1);
-    CHECK(contains(rep, "tadah hpo: no HPOTARGET: name the hpotarget file "
-                        "with an HPOTARGET line in the TASK hpo section of "
-                        "the task file plain.task, or above its first TASK "
-                        "line."));
-    CHECK_FALSE(contains(rep, "is a potential"));
-  }
-  const CliRun r = run_tadah({"tadah", "--task", "run2.task"});
-  INFO("run2.task: status " << r.status << "\n" << reported(r));
-  CHECK(r.status == 0);
-}
-
-/* Pins: `tadah hpo --task run.task` refuses --hpotarget and --validation, the
- * options of its input group beside --task, as it refuses every other
- * option (a run of a task file takes no command-line option): `tadah hpo
- * --task run.task --hpotarget config.hpo` and `... --validation config.val`
- * exit 108 (CLI11's ExcludesError) with "--hpotarget excludes --task" and
- * "--validation excludes --task", and start no run (no hpo_run.log), as
- * `... -F` does ("--force excludes --task", a pin).
- * Before the fix: --task excluded the options of the subcommand alone, not
- * those of its option groups: both were accepted, the run started without
- * them (TaskFactory reads no command line of a --task input) and was refused
- * for want of an HPOTARGET (status 1, hpo_run.log written): the status, the
- * message and the journal CHECKs fail. */
-TEST_CASE("Subcommand: hpo --task refuses --hpotarget and --validation",
-          "[TadahCLI][hpo][task-file]") {
-  ScratchCwd cwd("hpo_task_options");
-  write_hpo_potential_fixture();
-  std::ofstream("run.task") << "TASK hpo\nCONFIG config.tadah\n"
-                               "VALIDATION config.val\n";
-  for (const auto& [option, value] :
-       {std::pair<std::string, std::string>{"--hpotarget", "config.hpo"},
-        {"--validation", "config.val"}}) {
-    std::filesystem::remove("hpo_run.log");
-    const CliRun r = run_tadah({"tadah", "hpo", "--task", "run.task", option,
-                                value});
-    const std::string rep = reported(r);
-    INFO(option << ": status " << r.status << "\n" << rep);
-    CHECK(r.status == 108);
-    CHECK(contains(rep, option + " excludes --task"));
-    CHECK_FALSE(std::filesystem::exists("hpo_run.log"));
-  }
-  std::filesystem::remove("hpo_run.log");
-  const CliRun r = run_tadah({"tadah", "hpo", "--task", "run.task", "-F"});
-  const std::string rep = reported(r);
-  INFO("-F: status " << r.status << "\n" << rep);
-  CHECK(r.status == 108);
-  CHECK(contains(rep, "--force excludes --task"));
-  CHECK_FALSE(std::filesystem::exists("hpo_run.log"));
-}
-
 /* ---- [hpo-check]: tadah hpo --check -----------------------------------
  *
- * `tadah hpo --check` (or CHECK true in a TASK hpo section) makes every
+ * `tadah hpo --check` (or CHECK true in a configuration file) makes every
  * startup check of `tadah hpo` and prints a summary, without an evaluation
  * and without a file. Before the feature: `--check` is an unknown option
  * (CLI11 exits 109, "The following argument was not expected: --check")
@@ -9561,41 +9058,32 @@ TEST_CASE("Subcommand: hpo --check passes a valid setup with a summary, "
   check_hpo_check_passed(r, before);
 }
 
-/* Pins: in a task file, CHECK true in a TASK hpo section is --check: `tadah
- * --task check.task` exits 0 with the summary and writes no file. A run of a
- * task file takes no command-line option: `tadah hpo --task check.task
- * --check` exits 108 with "--check excludes --task". CHECK false in the
- * section, and a `tadah hpo` without --check (CHECK false by default), run:
- * each writes best_pot.tadah and its DUMP and BDUMP archives, and no
- * potential has a CHECK line (CHECK is an instruction to tadah hpo, not a
- * key of the model). */
-TEST_CASE("Task file: CHECK true in a TASK hpo section checks the setup, and "
-          "a run writes no CHECK line into its potentials",
-          "[TadahCLI][hpo][hpo-check][task-file]") {
+/* Pins: in a configuration file without WEIGHTS, CHECK true is --check:
+ * `tadah hpo -c check.cfg --hpotarget config.hpo --validation config.val`,
+ * check.cfg holding "CONFIG config.tadah" and "CHECK true", exits 0 with
+ * the summary and writes no file. CHECK false in such a file (run.cfg),
+ * and a `tadah hpo` without --check (CHECK false by default), run: each
+ * writes best_pot.tadah and its DUMP and BDUMP archives, and no potential
+ * has a CHECK line (CHECK is an instruction to tadah hpo, not a key of the
+ * model).
+ * Before the fix: passes as well (a pin). */
+TEST_CASE("Subcommand: CHECK true in a configuration file checks the setup, "
+          "and a run writes no CHECK line into its potentials",
+          "[TadahCLI][hpo][hpo-check]") {
   ScratchCwd cwd("hpo_check_task");
   write_hpo_check_fixture();
-  std::ofstream("check.task")
-      << "TASK hpo\nCONFIG config.tadah\nHPOTARGET config.hpo\n"
-         "VALIDATION config.val\nCHECK true\n";
-  std::ofstream("run.task")
-      << "TASK hpo\nCONFIG config.tadah\nHPOTARGET config.hpo\n"
-         "VALIDATION config.val\nCHECK false\n";
+  std::ofstream("check.cfg") << "CONFIG config.tadah\nCHECK true\n";
+  std::ofstream("run.cfg") << "CONFIG config.tadah\nCHECK false\n";
   {
     const auto before = run_directory_entries();
-    const CliRun r = run_tadah({"tadah", "--task", "check.task"});
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "check.cfg",
+                                "--hpotarget", "config.hpo", "--validation",
+                                "config.val"});
     check_hpo_check_passed(r, before);
   }
-  {
-    const CliRun r = run_tadah({"tadah", "hpo", "--task", "check.task",
-                                "--check"});
-    const std::string rep = reported(r);
-    INFO("--task with --check: status " << r.status << "\n" << rep);
-    CHECK(r.status == 108);
-    CHECK(contains(rep, "--check excludes --task"));
-    CHECK_FALSE(std::filesystem::exists("hpo_run.log"));
-  }
   const std::vector<std::vector<std::string>> runs = {
-      {"tadah", "--task", "run.task"},
+      {"tadah", "hpo", "-c", "run.cfg", "--hpotarget", "config.hpo",
+       "--validation", "config.val"},
       {"tadah", "hpo", "-c", "config.tadah", "--hpotarget", "config.hpo",
        "--validation", "config.val"}};
   for (const auto& args : runs) {
@@ -9688,8 +9176,8 @@ TEST_CASE("Subcommand: hpo --check refuses a setup with the message of "
  *     config.tadah with "CHECK true", exits 0, and pot.tadah has no CHECK
  *     key line; its training record lists "# CHECK true" (tadah train reads
  *     no CHECK);
- *   - so do `tadah --task g.task`, CHECK true above its TASK train line,
- *     and `tadah --task t.task`, CHECK true inside its TASK train section;
+ *   - so do `tadah train -c g.train`, CHECK true above its line CONFIG
+ *     config.tadah, and `tadah train -c t.train`, CHECK true below it;
  *   - `tadah hpo -c seed.tadah --hpotarget config.hpo --validation
  *     config.val`, seed.tadah pot.tadah with "CHECK true" and "DBFILE
  *     db.tadah" added, runs: status 0, no check summary, best_pot.tadah
@@ -9709,14 +9197,14 @@ TEST_CASE("Subcommand: CHECK is a setting of the run: tadah train writes no "
     const std::string config = slurp("config.tadah");
     std::ofstream("chk.tadah") << config << "CHECK true\n";
   }
-  std::ofstream("g.task") << "CHECK true\nTASK train\nCONFIG config.tadah\n"
-                             "OUTFILE potg.tadah\n";
-  std::ofstream("t.task") << "TASK train\nCONFIG config.tadah\n"
-                             "OUTFILE pott.tadah\nCHECK true\n";
+  std::ofstream("g.train") << "CHECK true\nCONFIG config.tadah\n"
+                              "OUTFILE potg.tadah\n";
+  std::ofstream("t.train") << "CONFIG config.tadah\nOUTFILE pott.tadah\n"
+                              "CHECK true\n";
   const std::vector<std::pair<std::vector<std::string>, std::string>> trains =
       {{{"tadah", "train", "-c", "chk.tadah", "-o", "pot.tadah"}, "pot.tadah"},
-       {{"tadah", "--task", "g.task"}, "potg.tadah"},
-       {{"tadah", "--task", "t.task"}, "pott.tadah"}};
+       {{"tadah", "train", "-c", "g.train"}, "potg.tadah"},
+       {{"tadah", "train", "-c", "t.train"}, "pott.tadah"}};
   for (const auto& [args, potential] : trains) {
     const CliRun t = run_tadah(args);
     INFO(args[1] << " " << args[2] << ": status " << t.status << "\n"
@@ -9760,57 +9248,6 @@ TEST_CASE("Subcommand: CHECK is a setting of the run: tadah train writes no "
     CHECK(contains(r.out, "tadah hpo --check: config.hpo passed the startup "
                           "checks"));
     CHECK(run_directory_entries() == before);
-  }
-}
-
-/* Pins: a TASK hpo section whose own key lines have WEIGHTS is a potential:
- * its CHECK true line, a run setting, is not read, as its HPOTARGET line
- * would not be, so `tadah --task inline.task` (HPOTARGET and VALIDATION
- * above the TASK hpo line; the section: the key lines of pot.tadah, which
- * tadah train wrote from config.tadah, then "DBFILE db.tadah" and "CHECK
- * true") runs: status 0, best_pot.tadah, no check summary, and a WARNING
- * that names the line and says where CHECK goes ("Write CHECK in ..."). A
- * CHECK true line above the first TASK line (above.task, the same section
- * without its CHECK line) is the run's: the check's summary, and no file.
- * This pins the rule the CHECK help states. */
-TEST_CASE("Task file: a TASK hpo section with WEIGHTS is a potential, whose "
-          "CHECK line is not read; CHECK above the first TASK line is",
-          "[TadahCLI][hpo][hpo-check][task-file]") {
-  ScratchCwd cwd("hpo_check_section_potential");
-  write_hpo_check_fixture();
-  {
-    const CliRun t = run_tadah({"tadah", "train", "-c", "config.tadah", "-o",
-                                "pot.tadah"});
-    INFO("train: status " << t.status << "\n" << reported(t));
-    REQUIRE(t.status == 0);
-  }
-  const std::string pot = slurp("pot.tadah");
-  std::ofstream("inline.task")
-      << "HPOTARGET config.hpo\nVALIDATION config.val\nTASK hpo\n" << pot
-      << "DBFILE db.tadah\nCHECK true\n";
-  std::ofstream("above.task")
-      << "HPOTARGET config.hpo\nVALIDATION config.val\nCHECK true\n"
-         "TASK hpo\n"
-      << pot << "DBFILE db.tadah\n";
-  {
-    const auto before = run_directory_entries();
-    const CliRun r = run_tadah({"tadah", "--task", "above.task"});
-    INFO("above.task: status " << r.status << "\n" << reported(r));
-    CHECK(r.status == 0);
-    CHECK(contains(r.out, "tadah hpo --check: config.hpo passed the startup "
-                          "checks"));
-    CHECK(run_directory_entries() == before);
-  }
-  {
-    const CliRun r = run_tadah({"tadah", "--task", "inline.task"});
-    const std::string rep = reported(r);
-    INFO("inline.task: status " << r.status << "\n" << rep);
-    CHECK(r.status == 0);
-    CHECK_FALSE(contains(r.out, "passed the startup checks"));
-    CHECK(contains(rep, "its CHECK true was a setting of the run that wrote "
-                        "it, not of this run, and is ignored"));
-    CHECK(contains(rep, "Write CHECK in "));
-    CHECK(std::filesystem::exists("best_pot.tadah"));
   }
 }
 
@@ -10093,4 +9530,354 @@ TEST_CASE("Subcommand: the published potentials load with one notice of "
     CHECK(c.status == 0);
     CHECK(std::filesystem::exists("pot.tadah"));
   }
+}
+
+namespace {
+
+/* The words of a command line of the help (a blueprint example), as a
+ * shell splits it: at blanks, a word in double quotes kept whole without
+ * the quotes. */
+std::vector<std::string> shell_words(const std::string& line) {
+  std::vector<std::string> words;
+  std::string word;
+  bool quoted = false, any = false;
+  for (const char ch : line) {
+    if (ch == '"') {
+      quoted = !quoted;
+      any = true;
+    } else if ((ch == ' ' || ch == '\t') && !quoted) {
+      if (any) words.push_back(word);
+      word.clear();
+      any = false;
+    } else {
+      word += ch;
+      any = true;
+    }
+  }
+  if (any) words.push_back(word);
+  return words;
+}
+
+}  // namespace
+
+/* Pins: tadah has no option --task (-t), neither alone nor on a command:
+ * `tadah --task run.task`, `tadah -t run.task` and `tadah train --task
+ * run.task`, run.task a file of the form task files had (TASK train,
+ * CONFIG config.train, OUTFILE pot.tadah), exit non-zero naming the
+ * option, and nothing runs (no pot.tadah).
+ * Before the fix: each ran the TASK train section of run.task (exit 0,
+ * pot.tadah written), the command in front of --task ignored. */
+TEST_CASE("Subcommand: tadah and its commands have no option --task",
+          "[TadahCLI][exit-status][one_command]") {
+  ScratchCwd cwd("no_task_option");
+  write_ta_dimer_training();
+  std::ofstream("run.task") << "TASK train\nCONFIG config.train\n"
+                               "OUTFILE pot.tadah\n";
+  for (const std::vector<std::string>& args :
+       {std::vector<std::string>{"tadah", "--task", "run.task"},
+        std::vector<std::string>{"tadah", "-t", "run.task"},
+        std::vector<std::string>{"tadah", "train", "--task", "run.task"}}) {
+    std::filesystem::remove("pot.tadah");
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO(args[1] << " " << args[2] << ": status " << r.status << "\n" << rep);
+    CHECK(r.status != 0);
+    CHECK(contains(rep, args[1] == "train" ? args[2] : args[1]));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+}
+
+/* Pins: an argument that no command takes is named first, with CLI11's
+ * exit status 109, also when the command line lacks an option, gives one
+ * without an option it needs or with one it excludes: `tadah train --foo`
+ * (no -c), `tadah predict -d db.tadah --foo` (-d needs -p) and `tadah data
+ * sample -d db.tadah -o out.tadah --uniform 2 --random 2 --foo` (--random
+ * excludes --uniform) each exit 109 with "The following argument was not
+ * expected: --foo", and none says "Exactly 1 option", "requires" or
+ * "excludes".
+ * Before the fix: CLI11 reported what the command lacked, needed or
+ * excluded first: "Exactly 1 option from [-c,--config] is required" (exit
+ * 106; "[-t,--task,-c,--config]" while --task was an option), "--dbfile
+ * requires --potential" (107) and "--random excludes --uniform" (108),
+ * without --foo. */
+TEST_CASE("Subcommand: an argument no command takes is named before what "
+          "the command lacks, needs or excludes",
+          "[TadahCLI][exit-status][one_command]") {
+  ScratchCwd cwd("extras_first");
+  struct Leg {
+    std::vector<std::string> args;
+    const char* other;  // what CLI11 reported first before the fix
+  };
+  const std::vector<Leg> legs = {
+      {{"tadah", "train", "--foo"}, "Exactly 1 option"},
+      {{"tadah", "predict", "-d", "db.tadah", "--foo"}, "requires"},
+      {{"tadah", "data", "sample", "-d", "db.tadah", "-o", "out.tadah",
+        "--uniform", "2", "--random", "2", "--foo"},
+       "excludes"},
+  };
+  for (const Leg& leg : legs) {
+    std::string line;
+    for (const std::string& a : leg.args) line += (line.empty() ? "" : " ") + a;
+    const CliRun r = run_tadah(leg.args);
+    const std::string rep = reported(r);
+    INFO(line << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 109);
+    CHECK(contains(rep, "The following argument was not expected: --foo"));
+    CHECK_FALSE(contains(rep, leg.other));
+  }
+}
+
+/* Pins: tadah runs one command per run: a command line with two commands,
+ * `tadah train -c config.train -o a.tadah predict -d db.tadah -p
+ * a.tadah` and `tadah train -c config.train -o a.tadah train -c
+ * config.train -o b.tadah`, exits 105 before either runs (no a.tadah, no
+ * b.tadah, no energy.pred), naming the commands it gives: "tadah runs
+ * one command per run: the command line gives 2, tadah train and tadah
+ * predict" (and "..., tadah train and tadah train"). Each command alone
+ * runs.
+ * Before the fix: both commands ran, one after the other (exit 0, a.tadah,
+ * b.tadah and energy.pred written), the last command's VERBOSE applying to
+ * both. */
+TEST_CASE("Subcommand: a command line with two commands is refused before "
+          "either runs",
+          "[TadahCLI][exit-status][one_command]") {
+  ScratchCwd cwd("two_commands");
+  write_ta_dimer_training();
+  const std::vector<std::string> outputs = {"a.tadah", "b.tadah",
+                                            "energy.pred"};
+  const std::vector<std::pair<std::vector<std::string>, std::string>> cases =
+      {{{"tadah", "train", "-c", "config.train", "-o", "a.tadah", "predict",
+         "-d", "db.tadah", "-p", "a.tadah"},
+        "tadah runs one command per run: the command line gives 2, tadah "
+        "train and tadah predict"},
+       {{"tadah", "train", "-c", "config.train", "-o", "a.tadah", "train",
+         "-c", "config.train", "-o", "b.tadah"},
+        "tadah runs one command per run: the command line gives 2, tadah "
+        "train and tadah train"}};
+  for (const auto& c : cases) {
+    for (const auto& f : outputs) std::filesystem::remove(f);
+    const CliRun r = run_tadah(c.first);
+    const std::string rep = reported(r);
+    INFO(c.second << "\nstatus " << r.status << "\n" << rep);
+    CHECK(r.status == 105);
+    CHECK(contains(rep, c.second));
+    for (const auto& f : outputs) {
+      INFO("written: " << f);
+      CHECK_FALSE(std::filesystem::exists(f));
+    }
+  }
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                              "a.tadah"});
+  INFO("train: status " << t.status << "\n" << reported(t));
+  CHECK(t.status == 0);
+  const CliRun p = run_tadah({"tadah", "predict", "-d", "db.tadah", "-p",
+                              "a.tadah"});
+  INFO("predict: status " << p.status << "\n" << reported(p));
+  CHECK(p.status == 0);
+  CHECK(std::filesystem::exists("energy.pred"));
+}
+
+/* Pins: a command line that gives a second command is refused before any
+ * command runs, with the message of one command per run and exit status
+ * 105, in every form CLI11 reads it:
+ *  - the command that holds the one CLI11 reads, typed again (`tadah data
+ *    print -d db.tadah data split -d db.tadah -o part1.tadah part2.tadah
+ *    --even`: "the command line gives 2, tadah data print and tadah data
+ *    split");
+ *  - a command given before, typed again after another (`tadah predict ...
+ *    analysis cutoff ... predict ...`: "gives 3, tadah predict, tadah
+ *    analysis cutoff and tadah predict");
+ *  - a second command that lacks an option (`tadah predict -d db.tadah -p
+ *    a.tadah predict -p a.tadah`, `tadah explain train.verbose train`);
+ *  - the same command and its group typed again (`tadah analysis cutoff
+ *    ... analysis cutoff ...`);
+ *  - a command that groups others, given alone after a command (`tadah data
+ *    print -d db.tadah data`, `tadah predict ... analysis predict ...`);
+ * and nothing is written (part1.tadah, part2.tadah, energy.pred,
+ * cutoff.txt). An argument
+ * that names no command keeps CLI11's exit status 109 ("The following
+ * argument was not expected: predictx", "... --foo").
+ * Before the fix: exit 109 naming the second command's words as arguments
+ * no command takes ("The following argument was not expected: data", "...
+ * analysis", "The following arguments were not expected: db.tadah -d
+ * a.tadah -p predict"), exit 106 for what the second command lacked
+ * ("At least 1 option from [-s,--structure,-d,--dbfile] is required",
+ * "Exactly 1 option from [-c,--config] is required"), and exit 105 with
+ * "tadah analysis takes one of its commands: ..." for the group given
+ * alone after predict. */
+TEST_CASE("Subcommand: a second command is refused in every form, also "
+          "where CLI11 takes its name for an argument",
+          "[TadahCLI][exit-status][one_command]") {
+  ScratchCwd cwd("second_command_forms");
+  write_ta_dimer_training();
+  const std::vector<std::string> outputs = {"part1.tadah", "part2.tadah",
+                                            "energy.pred", "cutoff.txt"};
+  const std::string head =
+      "tadah runs one command per run: the command line gives ";
+  const std::vector<std::string> cutoff = {
+      "analysis", "cutoff", "-o", "cutoff.txt", "-r", "0", "3.14", "100",
+      "--type", "Cut_Cos"};
+  auto line = [](std::initializer_list<std::vector<std::string>> parts) {
+    std::vector<std::string> out = {"tadah"};
+    for (const auto &p : parts) out.insert(out.end(), p.begin(), p.end());
+    return out;
+  };
+  const std::vector<std::string> predict = {"predict", "-d", "db.tadah",
+                                            "-p", "a.tadah"};
+  const std::vector<std::pair<std::vector<std::string>, std::string>> cases =
+      {{line({{"data", "print", "-d", "db.tadah", "data", "split", "-d",
+               "db.tadah", "-o", "part1.tadah", "part2.tadah", "--even"}}),
+        "2, tadah data print and tadah data split"},
+       {line({predict, cutoff, predict}),
+        "3, tadah predict, tadah analysis cutoff and tadah predict"},
+       {line({predict, {"predict", "-p", "a.tadah"}}),
+        "2, tadah predict and tadah predict"},
+       {line({{"explain", "train.verbose", "train"}}),
+        "2, tadah explain and tadah train"},
+       {line({cutoff, cutoff}),
+        "2, tadah analysis cutoff and tadah analysis cutoff"},
+       {line({{"data", "print", "-d", "db.tadah", "data"}}),
+        "2, tadah data print and tadah data"},
+       {line({predict, {"analysis"}, predict}),
+        "3, tadah predict, tadah analysis and tadah predict"}};
+  for (const auto& c : cases) {
+    for (const auto& f : outputs) std::filesystem::remove(f);
+    std::string words;
+    for (const std::string& a : c.first) words += (words.empty() ? "" : " ") + a;
+    const CliRun r = run_tadah(c.first);
+    const std::string rep = reported(r);
+    INFO(words << "\nstatus " << r.status << "\n" << rep);
+    CHECK(r.status == 105);
+    CHECK(contains(rep, head + c.second +
+                            " (each runs as a tadah command of its own)"));
+    for (const auto& f : outputs) {
+      INFO("written: " << f);
+      CHECK_FALSE(std::filesystem::exists(f));
+    }
+  }
+  const std::vector<std::pair<std::vector<std::string>, std::string>> extras =
+      {{line({predict, {"-A", "predictx"}}), "predictx"},
+       {line({{"data", "print", "-d", "db.tadah", "--foo"}}), "--foo"}};
+  for (const auto& c : extras) {
+    const CliRun r = run_tadah(c.first);
+    const std::string rep = reported(r);
+    INFO(c.second << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 109);
+    CHECK(contains(rep, "The following argument was not expected: " +
+                            c.second));
+    CHECK_FALSE(contains(rep, head));
+  }
+}
+
+/* Pins: a command that groups others runs nothing itself: `tadah data`,
+ * `tadah data -v 2`, `tadah properties` and `tadah analysis` exit 105
+ * naming the commands of the group: "tadah data takes one of its commands:
+ * balance, convert, dedup, merge, print, sample, split or write",
+ * "tadah properties takes one of its commands: pairwise", "tadah analysis
+ * takes one of its commands: bfunc, check_bounds, cutoff, dataset_stats,
+ * descriptor or suggest_bounds".
+ * Before the fix: `tadah data`, `tadah properties` and `tadah analysis`
+ * exited 0 and printed nothing, and `tadah data -v 2` exited 1 with
+ * "TaskFactory::createTasksFromInput - taskInput.getTaskName() is not a
+ * valid task: DATA". */
+TEST_CASE("Subcommand: a command that groups others is refused without one "
+          "of its commands",
+          "[TadahCLI][exit-status][one_command]") {
+  ScratchCwd cwd("group_alone");
+  const std::string data =
+      "tadah data takes one of its commands: balance, convert, dedup, merge, "
+      "print, sample, split or write";
+  const std::vector<std::pair<std::vector<std::string>, std::string>> cases =
+      {{{"tadah", "data"}, data},
+       {{"tadah", "data", "-v", "2"}, data},
+       {{"tadah", "properties"},
+        "tadah properties takes one of its commands: pairwise"},
+       {{"tadah", "analysis"},
+        "tadah analysis takes one of its commands: bfunc, check_bounds, "
+        "cutoff, dataset_stats, descriptor or suggest_bounds"}};
+  for (const auto& c : cases) {
+    const CliRun r = run_tadah(c.first);
+    const std::string rep = reported(r);
+    INFO(c.first.size() << " words: status " << r.status << "\n" << rep);
+    CHECK(r.status == 105);
+    CHECK(contains(rep, c.second));
+  }
+}
+
+/* Pins: each example of the help of `tadah analysis cutoff` runs as the
+ * help prints it: exit 0, its output file written (`-o cutoff.txt -r 0
+ * 3.14 100 --type Cut_Cos --derivative`).
+ * Before the fix: the example was `... -t "CutCos" --derivative`: -t was
+ * --task, so it exited non-zero ("--range excludes --task"), and CutCos is
+ * no cutoff (the name is Cut_Cos). */
+TEST_CASE("Subcommand: the examples of analysis cutoff run",
+          "[TadahCLI][exit-status][analysis]") {
+  ScratchCwd cwd("cutoff_examples");
+  const auto& examples = tadah::core::BlueprintParser::getTasksMapRef()
+                             .at("ANALYSIS.cutoff")
+                             .examples;
+  REQUIRE_FALSE(examples.empty());
+  for (const std::string& example : examples) {
+    std::filesystem::remove("cutoff.txt");
+    const CliRun r = run_tadah(shell_words(example));
+    INFO(example << "\nstatus " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("cutoff.txt"));
+  }
+}
+
+/* Pins: refit --retarget refuses NUMERIC in its configuration (-c), which
+ * has no effect there: on the outputs of a dense refit of the small Ta
+ * setfl, `tadah refit -c rt.cfg` with RETARGET refit.hpotarget, OUTFILE
+ * rt.hpotarget and NUMERIC 14 exits 1, "tadah refit --retarget: NUMERIC
+ * has no effect under --retarget: only a refit of an EAM file and --edit
+ * read it; remove NUMERIC (the hpotarget --retarget writes prints its
+ * bounds %.8e whatever NUMERIC is)", and writes no rt.hpotarget; without
+ * NUMERIC it runs; `tadah refit -c edit.cfg` (EDIT pot.tadah, FUNC phi, ADD
+ * 2.5, NUMERIC 14) runs, as --edit writes a potential.
+ * Before the fix: --retarget accepted NUMERIC (exit 0, rt.hpotarget
+ * written). */
+TEST_CASE("Subcommand: refit --retarget refuses NUMERIC in its "
+          "configuration",
+          "[TadahCLI][exit-status][refit]") {
+  ScratchCwd cwd("refit_retarget_numeric");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("config.refit")
+      << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+         "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n";
+  {
+    const CliRun fit = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    INFO("refit: status " << fit.status << "\n" << reported(fit));
+    REQUIRE(fit.status == 0);
+    REQUIRE(std::filesystem::exists("pot.tadah"));
+    REQUIRE(std::filesystem::exists("refit.hpotarget"));
+  }
+  const std::string retarget =
+      "RETARGET refit.hpotarget\nOUTFILE rt.hpotarget\n";
+  {
+    std::ofstream("rt.cfg") << retarget << "NUMERIC 14\n";
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "rt.cfg"});
+    const std::string rep = reported(r);
+    INFO("--retarget with NUMERIC: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah refit --retarget: NUMERIC has no effect "
+                        "under --retarget: only a refit of an EAM file and "
+                        "--edit read it; remove NUMERIC (the hpotarget "
+                        "--retarget writes prints its bounds %.8e whatever "
+                        "NUMERIC is)"));
+    CHECK_FALSE(std::filesystem::exists("rt.hpotarget"));
+  }
+  {
+    std::ofstream("rt.cfg") << retarget;
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "rt.cfg"});
+    INFO("--retarget: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("rt.hpotarget"));
+  }
+  std::ofstream("edit.cfg") << "EDIT pot.tadah\nFUNC phi\nADD 2.5\n"
+                               "NUMERIC 14\n";
+  const CliRun e = run_tadah({"tadah", "refit", "-c", "edit.cfg"});
+  INFO("--edit with NUMERIC: status " << e.status << "\n" << reported(e));
+  CHECK(e.status == 0);
+  CHECK(std::filesystem::exists("pot_edited.tadah"));
 }

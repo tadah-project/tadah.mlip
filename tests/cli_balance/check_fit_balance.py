@@ -15,8 +15,7 @@ temporary directory and checks:
               one on what sums; the training record of pot.tadah ends with
               the same lines (its last lines, before the end of the
               record). At -v 0 nothing is printed and the record holds the
-              table all the same. A task file of two TASK train sections
-              prints two tables and the legend once.
+              table all the same.
   hpo         `tadah hpo` prints the table once, at the end of the run, after
               "[HPO] best_pot.tadah:"; it is the table of the training record
               of best_pot.tadah, and that of a retrain of best_pot.tadah on
@@ -307,15 +306,6 @@ def case_train(tadah, work):
     if record_table(work / "quiet.tadah") != rec:
         failures.append("tadah train -v 0 wrote another table into the "
                         "record")
-
-    (work / "two.task").write_text(
-        "TASK train\nCONFIG config.train\nOUTFILE a.tadah\n"
-        "TASK train\nCONFIG config.train\nOUTFILE b.tadah\n")
-    two = run(tadah, work, "train", "--task", "two.task")
-    if len(printed_tables(two)) != 2 or legend_count(two) != 1:
-        failures.append(f"two TASK train sections printed "
-                        f"{len(printed_tables(two))} tables and "
-                        f"{legend_count(two)} legends:\n{two}")
     return failures
 
 

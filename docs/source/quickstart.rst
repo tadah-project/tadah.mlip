@@ -98,101 +98,6 @@ The output of the ``predict`` subcommand includes three files:
    ``SWEIGHT`` or :term:`priority` of a structure other than 1 it scaled the
    predicted values too.
 
-.. _task_file:
-
-Task File
----------
-
-A **task file** is a plain-text wrapper around Tadah!MLIP’s config syntax.  
-It serves for a **single** command (as an alternative to a CLI invocation)
-*or* chains several ``TASK`` blocks in the same file, which run
-sequentially.  All key–value pairs inside the file follow the normal config
-rules. The `CONFIG` key can be used to nest config files, allowing for reuse of settings or
-to keep a full training or prediction setup in a dedicated config file.
-
-Basic rules
-^^^^^^^^^^^
-
-#. Each command starts with a line beginning with the keyword ``TASK`` followed
-   by the sub-command name exactly as it is typed on the CLI.
-
-#. The lines that follow are ordinary KEY/VALUE pairs.  
-
-   * Keys written **above** all ``TASK`` blocks act as defaults for every task.
-
-   * Keys appearing **inside** a task block override global keys written **above** the first ``TASK`` line.  
-
-#. A task file needs at least one ``TASK`` block: ``tadah --task`` refuses a
-   file without one (``the task file 'run.task' has no TASK section``).
-
-#. A ``TASK`` line needs no keys of its own: a ``TASK predict`` with no lines
-   after it runs on the keys above the first ``TASK`` line (for example
-   ``DBFILE`` and ``POTENTIAL``). Every task name is checked, with or without
-   keys, and an unknown one stops the file before any task runs
-   (``Unknown task section "BOGUS"``). So does a command that needs a
-   subcommand: ``TASK data`` is refused, ``TASK data convert`` is a task
-   (``TASK section "DATA" is a group of tasks, not a task``).
-
-#. An error in a line names the line of the file and the file, whichever
-   block it is in (``Invalid value for key EMBF0 on line 6 of run.task:
-   'frei' (allowed: ZERO, FREE)``).
-
-#. Boolean values are written in lowercase ``true`` / ``false``.
-
-#. There is a one-to-one mapping between CLI flags/options and configuration
-   keys:
-
-  +-------------------------+--------------------+
-  | CLI (short/long)        |  Config-file key   |
-  +=========================+====================+
-  | ``-c``, ``--config``    | ``CONFIG``         |
-  +-------------------------+--------------------+
-  | ``-d``, ``--dbfile``    | ``DBFILE``         |
-  +-------------------------+--------------------+
-  | ``-p``, ``--potential`` | ``POTENTIAL``      |
-  +-------------------------+--------------------+
-  | ``-v``, ``--verbose``   | ``VERBOSE``        |
-  +-------------------------+--------------------+
-  | ``-A``, ``--analytics`` | ``ANALYTICS``      |
-  +-------------------------+--------------------+
-  | ``-F``, ``--force``     | ``FORCE``          |
-  +-------------------------+--------------------+
-  | …                       | …                  |
-  +-------------------------+--------------------+
-
-In other words, *anything set on the command line can also be set with an upper-case key in the task file*.
-
-Example
-^^^^^^^
-
-The small task file below trains a model and then immediately uses it for a
-prediction run:
-
-.. literalinclude:: quickstart/taskfile.txt
-
-The command below runs it:
-
-.. code-block:: bash
-
-    tadah --task taskfile.txt
-
-Tadah!MLIP first runs the training step, produces ``pot.tadah``, and then
-feeds that potential into the subsequent prediction step, all in one go.
-
-Hints
-^^^^^
-
-* ``CONFIG other_file.txt`` inside a task block keeps a full training or
-  prediction setup in a dedicated config file, as the ``train`` task of the
-  example does with ``config.train``.
-
-* Indexing of positional items (e.g. ``--index 1`` -> ``INDEX 1``) starts
-  from **1**.
-
-* Comments start with ``#`` and run to the end of the line, as in
-  ordinary config files, on a ``TASK`` line too
-  (``TASK train   # first task``).
-
 .. _units:
 
 Units and Tadah!
@@ -245,6 +150,43 @@ Config File
 The Tadah! configuration file manages the training process by specifying datasets, cutoff functions, radii, regression models, and descriptor choices. It supports two- and many-body descriptors. The file's structure consists of KEY/VALUE pairs, with each pair on a separate line. The KEY is a string followed by its VALUE, and the format of the VALUE depends on the KEY.
 
 :ref:`ConfigSection` lists and explains the supported KEY-VALUE pairs.
+
+A configuration file holds the keys of one command, which takes it with
+``-c`` (``--config``): ``tadah train``, ``tadah hpo``, ``tadah refit`` and
+the ``tadah analysis`` commands ``bfunc``, ``check_bounds``,
+``dataset_stats`` and ``suggest_bounds``. Its lines follow these rules:
+
+- Comments start with ``#`` and run to the end of the line.
+- Boolean values are written in lowercase: ``true``, ``false``.
+- ``CONFIG other.cfg`` includes another configuration file, so several
+  configuration files can share settings.
+- An option of the command and the configuration key of the same name set
+  the same thing, and the option on the command line overrides the line of
+  the file:
+
+  .. list-table::
+     :header-rows: 1
+     :widths: 50 50
+
+     * - Command-line option
+       - Configuration key
+     * - ``-v``, ``--verbose``
+       - ``VERBOSE``
+     * - ``-F``, ``--force``
+       - ``FORCE``
+     * - ``-S``, ``--stress``
+       - ``STRESS``
+     * - ``-o``, ``--outfile``
+       - ``OUTFILE``
+
+- An error names its line and the file: a key that is no configuration key
+  (``Invalid key FOOBAR on line 3 of config.train (closest key: FORMAT)``)
+  as well as a value that the key does not take (``Invalid value for key
+  EMBF0 on line 6 of config.train: 'frei' (allowed: ZERO, FREE)``).
+
+.. versionchanged:: 1.6.0
+   A configuration file has no ``TASK`` lines: task files and ``tadah
+   --task`` are removed, and each command runs on its own.
 
 .. _dataset:
 

@@ -21,27 +21,15 @@ Basic invocation
   with ``-``.  Boolean switches are always written in **CAPS** for
   their short form (``-F``, ``-S``, ``-A`` …).
 
-Tasks vs. direct CLI
---------------------
+One command per run
+-------------------
 
-Anything that can be written on the command line can be placed inside a
-task file and executed with ``--task tasks.tadah``.  
-``--task`` takes no other option (``tadah hpo --task tasks.tadah
---hpotarget t.hpo`` is refused, ``--hpotarget excludes --task``): the task
-file gives every key of its tasks.
-A task file is the CLI translated into an INI-style block:
-
-.. code-block:: ini
-
-   # global options
-   NUMERIC 14
-   VERBOSE 2
-
-   TASK predict
-   DBFILE   data.tadah
-   FORCE    true
-   ANALYTICS true
-   ...
+Each ``tadah`` invocation runs one command: a command line that gives two,
+such as ``tadah train -c config.train predict -d db.tadah -p pot.tadah``, is
+refused before either runs, and a series of commands is a shell script of
+``tadah`` invocations. The options of a command go on its command line, and
+the commands that take ``-c`` read their keys from a configuration file too
+(:ref:`config_file`).
 
 Short-hand rules
 ----------------

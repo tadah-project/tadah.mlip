@@ -7,7 +7,7 @@ Overview
 --------
 
 The models listed in this section map to C++ classes **and** the exact
-keywords of a configuration or task file.  The match is
+keywords of a configuration file.  The match is
 literal but case-insensitive:
 
 .. code-block:: ini

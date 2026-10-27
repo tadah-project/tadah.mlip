@@ -263,13 +263,13 @@ node value below :math:`-\mathrm{tol}` is an error (a positive-form density
 cannot be negative), and under ``MONOTONE`` so is a rise between
 neighbouring nodes above :math:`\mathrm{tol}`, with
 :math:`\mathrm{tol} = 8\,\varepsilon \max|\rho_{tab}|` over the window. The
-message names the node, e.g. ``EAMRefit: RHOFORM MONOTONE cannot fit this
-table: the tabulated density rises from rho = ... at r = ... A to ... at r
-= ... A, inside the fit window [..., ...] A, and a MONOTONE density is
-non-increasing. Use RHOFORM NONNEG or SIGNED.``; for a component the
-message names its ``FORM`` and the remedy in its block (``EAMRefit: the
-density component CU's FORM NONNEG cannot fit this table: ... Use FORM
-SIGNED in its DENSITY block.``), also in compact mode, where the
+message names the node, such as ``tadah refit: RHOFORM MONOTONE cannot fit
+this table: the tabulated density rises from rho = ... at r = ... A to ...
+at r = ... A, inside the fit window [..., ...] A, and a MONOTONE density is
+non-increasing. RHOFORM NONNEG or SIGNED fits it.``; for a component the
+message names its ``FORM`` and the form that fits in its block (``tadah
+refit: the density component CU's FORM NONNEG cannot fit this table: ...
+FORM SIGNED in its DENSITY block fits it.``), also in compact mode, where the
 configured grids are checked before the solve.
 
 **Dense mode.** ``SIGNED`` solves each window block by the rank-revealing

@@ -687,22 +687,24 @@ and so has a copy with one added::
    WARNING: tadah train: the configuration file retrain.train is a potential
    (it has WEIGHTS): its EFILTER 5 6 and WDBFILE 1 1 prepared the training
    data of the fit that wrote it, not of this run, and are ignored (tadah
-   keeps such keys in a potential's training record, not as key lines). Give
-   --efilter or --wdbfile on the command line, or an EFILTER or WDBFILE line
-   in a configuration file that includes the potential with CONFIG, to apply
-   one to this run (the Training page of the documentation, Retraining from
-   a potential).
+   keeps such keys in a potential's training record, not as key lines). This
+   run takes its own EFILTER or WDBFILE from --efilter or --wdbfile on the
+   command line, or from an EFILTER or WDBFILE line in a configuration file
+   that includes the potential with CONFIG (the Training page of the
+   documentation, Retraining from a potential).
 
-The run settings get a sentence of their own, and the advice names the
-options the command has of them (``tadah train`` has no ``--numeric``)::
+The run settings get a sentence of their own, and the last sentence names
+the options the command has of them (``tadah train`` has no
+``--numeric``)::
 
    WARNING: tadah train: the configuration file retrain.train is a potential
    (it has WEIGHTS): its VERBOSE 2 and NUMERIC 12 were settings of the run
    that wrote it, not of this run, and are ignored (tadah keeps such keys in
-   a potential's training record, not as key lines). Give --verbose on the
-   command line, or a VERBOSE or NUMERIC line in a configuration file that
-   includes the potential with CONFIG, to apply one to this run (the
-   Training page of the documentation, Retraining from a potential).
+   a potential's training record, not as key lines). This run takes its own
+   VERBOSE or NUMERIC from --verbose on the command line, or from a VERBOSE
+   or NUMERIC line in a configuration file that includes the potential with
+   CONFIG (the Training page of the documentation, Retraining from a
+   potential).
 
 For a potential that a file includes, the warning names both (``old.tadah,
 which the configuration file outer.train includes with CONFIG, is a
@@ -711,7 +713,7 @@ line, or a line of the including configuration file. A run that needs a
 setting the potential's line gave, and has none of its own, is refused
 saying where it goes and naming the line that was not read: ``tadah
 analysis check_bounds -c`` of a seed potential without ``--hpotarget``
-(``tadah analysis check_bounds: no HPOTARGET: name the hpotarget file with
+(``tadah analysis check_bounds: no HPOTARGET: the target file is given with
 --hpotarget, or with an HPOTARGET line in a configuration file without
 WEIGHTS. old_best.tadah is a potential (it has WEIGHTS): its HPOTARGET
 config.hpo line was a setting of the run that wrote it and is not
@@ -733,16 +735,17 @@ one ``true``: the two choose one thing, the source of the shift, and exclude
 each other, so the run's own toggle is its choice (``--eshift-dbatom``
 beside a copy's ``ESHIFT_ATOM true`` derives the shift by the least-squares
 fit, and no warning names the copy's line). When the run has an ``ESHIFT``,
-a warning that names a toggle ends by saying how to drop it, since a toggle
-the run gives is overruled by the ``ESHIFT`` values as in any configuration
-(``Multiple ESHIFT sources set; precedence: explicit > ATOM > DBATOM.``):
-beside an ``ESHIFT`` line, ``The ESHIFT of the configuration, the energy
-reference of the model, overrules ESHIFT_ATOM and ESHIFT_DBATOM: to derive
-ESHIFT from the data of this run, delete the ESHIFT line and give the run
-one of them``; with ``--eshift``, ``The ESHIFT given with --eshift, ...:
-to derive ESHIFT from the data of this run, leave out --eshift and give the
-run one of them`` (``leave out --eshift, delete the ESHIFT line and give
-the run one of them`` when ``--eshift`` replaced an ``ESHIFT`` line of the
+a warning that names a toggle ends by saying when the run derives the
+shift, since a toggle the run gives is overruled by the ``ESHIFT`` values
+as in any configuration (``Multiple ESHIFT sources set; precedence:
+explicit > ATOM > DBATOM.``): beside an ``ESHIFT`` line, ``The ESHIFT of
+the configuration, the energy reference of the model, overrules ESHIFT_ATOM
+and ESHIFT_DBATOM: ESHIFT is derived from the data of this run when the
+ESHIFT line is deleted and the run is given one of them``; with
+``--eshift``, ``The ESHIFT given with --eshift, ...: ESHIFT is derived from
+the data of this run when --eshift is left out and the run is given one of
+them`` (``when --eshift is left out, the ESHIFT line is deleted and the run
+is given one of them`` when ``--eshift`` replaced an ``ESHIFT`` line of the
 configuration). A retrain reproduces the first fit when it is given the
 keys its record lists, on the command line or in the file that includes
 the copy.

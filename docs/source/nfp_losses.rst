@@ -99,11 +99,14 @@ failures instead receive a score in the failure band below it. Choose
 a ceiling above the losses of useful candidates: HPO treats scores at
 or above ``0.999 * FAILSCORE`` as failures when selecting usable results.
 
-``DLIB:GFS`` and the NLopt optimisers are given a finite stand-in for a
-failed evaluation: the worst usable loss of the search so far plus a
-margin, or, before any usable loss, ``FAILSCORE`` capped at ``1e100``.
-A ceiling as large as the default therefore does not break their models
-of the loss. ``loss.tadah`` and the journal record ``FAILSCORE``.
+``DLIB:GFS``, ``DLIB:BFGS`` and the NLopt optimisers are given a finite
+stand-in for a failed evaluation: the worst usable loss of the search so
+far plus a margin, or, before any usable loss, ``FAILSCORE`` capped at
+``1e100``. A gradient-based NLopt search is given it only for a graded
+failure with a usable gradient; it rejects a failed point whose gradient
+fails (see :doc:`nfp_gradients`). A ceiling as large as the default
+therefore does not break their models of the loss. ``loss.tadah`` and
+the journal record ``FAILSCORE``.
 
 The top-level :hpo:key:`FAILSCORE` differs from
 :hpo:key:`PC_LAMMPS --failscore <PC_LAMMPS.--failscore>`, which supplies

@@ -93,16 +93,24 @@ journal.
 
 ``LN_BOBYQA`` and ``LN_COBYLA`` keep the first step of each dimension as
 its scale for the whole search; without ``STEP`` they take 0.25 of each
-width. ``LN_BOBYQA`` moves a start that lies within one step of a bound
-by at most half a step: onto the bound, or to one step from it. The
-journal names each moved start, with a warning for a ``CONFIG`` or
-``WARM`` start. ``LN_SBPLX`` and ``LN_NELDERMEAD`` turn a step inward
-when the start lies within one step of the upper bound.
+width, also as the local search of an MLSL or AUGLAG. ``LN_BOBYQA``
+moves a start that lies within one step of a bound by at most half a
+step: onto the bound, or to one step from it. AUGLAG's local search
+starts at the start of the search, which moves the same way. MLSL picks
+the starts of its local searches, and ``LN_BOBYQA`` moves such a start
+within one step of a bound to one step from it. The journal names each
+moved start, with a warning for a ``CONFIG`` or ``WARM`` start.
+
+With ``STEP`` set, ``LN_SBPLX`` and ``LN_NELDERMEAD`` turn a step inward
+when the start lies within one step of the upper bound. With ``STEP``
+unset, NLopt's own default sets the steps of ``LN_SBPLX``,
+``LN_NELDERMEAD`` and ``LN_PRAXIS``: 0.25 of each width, or 0.75 of the
+distance to a bound closer than that.
 
 .. versionchanged:: 1.6.0
    In 1.5.0 a start closer to a bound than one step shrank the step of
    that dimension for ``LN_BOBYQA``, and for ``LN_COBYLA`` without
-   ``STEP``, for the whole search.
+   ``STEP``, for the whole search, also as a local search.
 
 For annealing, use its ``PARAM STEP_FRAC``. For ``TADAH:GRID``, use
 ``PARAM GRID_POINTS``. Finite-difference steps use ``PARAM fd_step``;

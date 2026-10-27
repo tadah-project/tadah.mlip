@@ -87,8 +87,9 @@ Other keys
 
 .. versionchanged:: 1.6.0
    In 1.5.0 ``K_TOTAL`` replaced the ``K`` of a single ``RANDOM``,
-   ``LHS`` or ``SOBOL`` line, and a ``SOBOL`` seed skipped that many
-   points, so no block of ``K`` points was evenly spread.
+   ``LHS`` or ``SOBOL`` line, and a ``SOBOL`` seed ``s`` skipped ``s``
+   points, so a block was evenly spread only when ``s + 1`` was a
+   multiple of ``K``.
 
 ``STRATEGY`` remains an accepted alias for ``METHOD`` inside ``INIT``;
 use ``METHOD`` in new files to distinguish a method line from the

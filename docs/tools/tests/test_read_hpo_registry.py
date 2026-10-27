@@ -766,11 +766,15 @@ class PagesTest(unittest.TestCase):
 
     def test_seed_of_an_optimiser_that_draws_no_random_numbers(self):
         # Pins: an optimiser that draws no random numbers does not list SEED
-        # among what it reads, and its entry says SEED has no effect; the
-        # SEED entry says which optimisers refuse SEED, without the claim
-        # that such an optimiser refuses it.
-        # Before the fix: DIRECT, StoGO and AGS showed "Reads: SEED" and
-        # "Random draws: never", and SEED said they refuse it.
+        # among what it reads, and its entry says that it refuses a SEED
+        # line (tadah hpo refuses SEED for every optimiser that draws no
+        # random numbers, the NLopt ones included); the SEED entry says
+        # which optimisers refuse SEED, without the claim that such an
+        # optimiser refuses it.
+        # Before the fix: the entries of DIRECT, StoGO and AGS said
+        # "Random draws: never: a SEED line is accepted and has no effect",
+        # which tadah hpo no longer accepts; before that, they showed
+        # "Reads: SEED" and "Random draws: never".
         entries = self.page_entries()
         never = [f"{o['lib']}:{o['algo']}"
                  for o in self.optimizers['optimizer']
@@ -783,7 +787,7 @@ class PagesTest(unittest.TestCase):
                 self.assertNotIn('OPTIMIZER.SEED', field_of(body, 'Reads')
                                  or '')
                 self.assertIn('SEED', field_of(body, 'Random draws'))
-                self.assertIn('no effect', field_of(body, 'Random draws'))
+                self.assertIn('refused', field_of(body, 'Random draws'))
         seed = ' '.join(paragraphs_of(entries['OPTIMIZER.SEED'][2]))
         self.assertNotIn('draws no random numbers is refused', seed)
 

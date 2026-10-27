@@ -45,17 +45,17 @@ The primary structure in a configuration file is the KEY/VALUE pair. Each KEY/VA
 Common Usage
 ------------
 
-A model needs only some of the keys: many keys have a default value. A key that a command needs and that has no default must be set. A :file:`config.train` without a :ref:`DBFILE` line is such a case. The command below:
+A model needs only some of the keys: many keys have a default value. A key that a command needs and that has no default must be set. A :file:`config.train` without a :ref:`DBFILE` line is such a case. The command below stops with exit status 1:
 
 .. code-block:: bash
 
    tadah train -c config.train
 
-stops with exit status 1 and an error that begins:
+Its error begins:
 
 .. code-block:: text
 
-   ERROR: The training configuration has no DBFILE: tadah train fits the datasets it lists. ...
+   ERROR: The training configuration has no DBFILE: ...
 
 A :ref:`DBFILE` line, which names the datasets to fit, added to :file:`config.train` resolves it.
 
@@ -117,25 +117,26 @@ Supported KEYS
 --------------
 
 This section contains all KEYS used by Tadah!MLIP. A key marked
-**Deprecated** has no effect. A potential that has it still loads, so that
-older files load: Tadah!MLIP checks its value, ignores it and writes one
-warning per key and process to standard error
-(``WARNING: Deprecated key MBLOCK is ignored: ...``), however many lines,
-files included with CONFIG or reads of the file contain it -- the rule of
-every key without effect, :ref:`EMBF0 and RHOFORM without a DM_REAM block
-<dm_ream_only_keys>` and a :ref:`WATOM` that no descriptor reads included.
-VERBOSE does not silence the warning. ``pair_style tadah`` writes it as a
-LAMMPS warning on rank 0 instead, in ``log.lammps`` and on the screen, each
-time ``pair_coeff`` loads such a potential (``WARNING: pair tadah:
-potential 'pot.tadah': Deprecated key MBLOCK is ignored: ...``). Every fit
-(``tadah train``, the fits of nested fitting, ``tadah refit``, a program's
-own training) refuses a configuration that has a line of such a key, naming the key, its
-line and its file (``tadah train: the configuration has a line that changes
-nothing a fit gives, and a fit refuses it: MBLOCK 64 (line 18 of
-config.train): ...``); with retired keys as well, one refusal names every
-line. ``tadah refit`` of an EAM file reads ``EMBF0`` and ``RHOFORM`` itself
-and takes them, and refuses a ``WATOM`` other than 1 whatever the
-descriptors: the potential it writes has ``WATOM 1``.
+**Deprecated** has no effect, and a potential that has it loads: Tadah!MLIP
+checks its value and ignores it. One warning per key and process goes to
+standard error (``WARNING: Deprecated key MBLOCK is ignored: ...``), whatever
+VERBOSE is and however many lines, files included with CONFIG or reads of
+the file contain it. The same holds for every key without effect,
+:ref:`EMBF0 and RHOFORM without a DM_REAM block <dm_ream_only_keys>` and a
+:ref:`WATOM` that no descriptor reads included.
+
+``pair_style tadah`` writes the warning as a LAMMPS warning on rank 0
+instead, in ``log.lammps`` and on the screen, each time ``pair_coeff`` loads
+such a potential (``WARNING: pair tadah: potential 'pot.tadah': Deprecated
+key MBLOCK is ignored: ...``).
+
+Every fit (``tadah train``, the fits of nested fitting, ``tadah refit``, a
+program's own training) refuses a configuration that has a line of such a
+key, naming the key, its line and its file (``tadah train: the
+configuration has a line that changes nothing a fit gives, and a fit
+refuses it: MBLOCK 64 (line 18 of config.train): ...``). With retired keys
+as well, one refusal names every line. ``tadah refit`` has its own rules
+for :ref:`EMBF0 and RHOFORM <dm_ream_only_keys>` and for :ref:`WATOM`.
 
 A key marked **Retired** has no effect: its entry gives the reason, what
 replaces it and its conversion (:ref:`fit_objective_conversion` lists those

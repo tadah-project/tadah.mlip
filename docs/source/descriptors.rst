@@ -626,7 +626,8 @@ potential, but a valid ``RHOFORM`` or ``EMBF0`` in a potential or
 configuration without a DM_REAM block has no effect. A fit (``tadah
 train``, ``tadah hpo``) refuses a configuration that has one, naming the
 key, its line and its file, as it refuses a :ref:`deprecated key <MBLOCK>`
-(``tadah refit``, which reads both keys itself, takes them). A potential
+(``tadah refit`` of a configuration without ``DESCRIPTOR`` blocks, which
+reads both keys itself, takes them). A potential
 that has one still loads; the key is never written into a potential, and
 it is reported on standard error once per key and process, like a
 deprecated key::

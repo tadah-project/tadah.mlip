@@ -123,6 +123,12 @@ Practical rules
 • Training on a dataset expressed in *any* units still works, provided *all*
   quantities in *all* structures use the same unit system.
 
+• A CASTEP ``.castep`` file is read in CASTEP's default output units, Å,
+  eV, eV/Å and GPa. A run whose header names another unit
+  (``output energy unit : Ha``, set by ``energy_unit``, ``length_unit``,
+  ``force_unit`` or ``pressure_unit`` in its ``.param`` file) is refused,
+  naming the file, the line and the unit.
+
 • The error scales of a fit are given for data in eV and Å: ``ESIGMA`` in
   meV/atom, ``FSIGMA`` in eV/Å and ``SSIGMA`` in GPa (:ref:`fit_objective`).
   With data in other units a fit reads ``ESIGMA``/1000 and ``FSIGMA`` in the
@@ -290,11 +296,6 @@ The dataset has the following structure:
   that VASP prints (``in kB``) and that LAMMPS reports, and it holds no
   kinetic (ideal-gas) part. ``tadah data convert`` converts every reader
   to it.
-- A CASTEP ``.castep`` file is read in CASTEP's default output units, Å,
-  eV, eV/Å and GPa. A run whose header names another
-  (``output energy unit : Ha``, set by ``energy_unit``, ``length_unit``,
-  ``force_unit`` or ``pressure_unit`` in its ``.param`` file) is refused,
-  naming the file, the line and the unit.
 - The number of lines beginning with Element is equal to the number of atoms in a structure.
 - Every value must be a finite number: a dataset with ``nan``, ``inf``, an
   out-of-range number such as ``1e309``, or an atom line with fewer than

@@ -67,11 +67,13 @@ for an earlier evaluation to finish or for an active writer.
 
 The first column of these histories, ``#ITERATION``, is the evaluation
 number. Each has a corresponding ``best_`` history, such as
-``best_params.tadah``, with a row for each improvement of the best loss.
-Its first column, ``#IMPROVEMENT``, numbers the improvements from one,
-and its second, ``EVAL``, gives the evaluation of each, the
-``#ITERATION`` of the same row in the other history. These files
-accumulate history rows; each file's header lists the enabled columns.
+``best_params.tadah``, with a row for each improvement of the best loss
+that ``BOUTPUT`` writes. Its first column, ``#IMPROVEMENT``, numbers the
+improvements from one. Its second, ``EVAL``, gives the evaluation number
+of each improvement, the ``#ITERATION`` of that evaluation. The other
+history has a row for it when ``OUTPUT`` writes that evaluation, as
+under ``OUTPUT 1``. These files accumulate history rows; each file's
+header lists the enabled columns.
 
 The run writes these files, ``hpo_run.log`` and ``best_pot.tadah`` into
 the working directory. A working directory without write permission, or

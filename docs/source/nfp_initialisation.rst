@@ -115,7 +115,9 @@ warning. The run reads it at startup, then removes it before the first
 evaluation and writes its best potential there: only a copy under
 another name keeps the seed for a later run. Inside ``RESTART``, whose
 ``WARM`` points are read at each round, such a file gives each round the
-best potential written so far.
+best potential written so far. There a ``best_pot.tadah`` that is a
+symbolic link to another file gives the warning too, as the run replaces
+the link.
 
 The number of points an optimiser uses depends on its capabilities and
 :doc:`nfp_strategies`. For example, ``DLIB:GFS`` accepts several seeds in
@@ -123,4 +125,7 @@ one search; ``MULTISTART`` runs eligible optimisers from separate points.
 Refinement normally starts from the exploration's selected candidates.
 Points that a search, a ``MULTISTART`` or a ``PRESTAGE`` exploration does
 not evaluate give a startup warning that names the ``INIT`` block and the
-setting that would evaluate them.
+setting that would evaluate them. An ``OPTIMIZER``-level ``INIT`` block
+beside an ``INIT`` block of the ``EXPLORE`` block gives its points to the
+refinement only when no evaluation of the exploration has a usable loss,
+and a startup warning says so.

@@ -632,18 +632,21 @@ configuration.
 DM_REAM many-body block (bare or inside a ``DM_mJoin``). A value that is not
 allowed (``RHOFORM SQUARE``) is an error at its line whatever the
 potential, but a valid ``RHOFORM`` or ``EMBF0`` in a potential or
-configuration without a DM_REAM block has no effect. It is accepted, so
-that one configuration can serve several descriptor choices; it is never
-written into a potential (``tadah train``, ``refit`` and ``hpo`` drop it);
-and it is reported on standard error once per key and process, like a
-:ref:`deprecated key <MBLOCK>`::
+configuration without a DM_REAM block has no effect. A fit (``tadah
+train``, ``tadah hpo``) refuses a configuration that has one, naming the
+key, its line and its file, as it refuses a :ref:`deprecated key <MBLOCK>`
+(``tadah refit`` of a configuration without ``DESCRIPTOR`` blocks, which
+reads both keys itself, takes them). A potential
+that has one still loads; the key is never written into a potential, and
+it is reported on standard error once per key and process, like a
+deprecated key::
 
    WARNING: Key RHOFORM is ignored: it applies only to a DM_REAM many-body
    block, and the potential has none (the key has no effect and is not
    written to a potential).
 
-The notice comes from wherever such a potential or configuration is used
-(``tadah train``, ``predict``, ``analysis`` and ``hpo``), also when only a
+The notice comes from wherever such a potential is used (``tadah predict``,
+``analysis``, a program that builds a model from it), also when only a
 configuration file given with ``-c`` sets the key. Neither the log level nor ``VERBOSE 0``
 hides it. ``pair_style tadah`` writes it as a LAMMPS warning on rank 0
 instead, in ``log.lammps`` and on the screen, each time ``pair_coeff``

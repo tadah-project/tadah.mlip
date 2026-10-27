@@ -250,6 +250,24 @@ bool contains(const std::string& s, const std::string& what) {
   return s.find(what) != std::string::npos;
 }
 
+/* The values after `key` on the first non-comment line of a potential
+ * file whose first token is `key`; empty when there is none.
+ * (Outside the TADAH_ENABLE_NFP block: cases of every build use it.) */
+std::vector<std::string> pot_key(const std::filesystem::path& p,
+                                 const std::string& key) {
+  std::ifstream in(p);
+  std::string line;
+  while (std::getline(in, line)) {
+    std::istringstream ss(line);
+    std::string k;
+    if (!(ss >> k) || k[0] == '#' || k != key) continue;
+    std::vector<std::string> v;
+    for (std::string t; ss >> t;) v.push_back(t);
+    return v;
+  }
+  return {};
+}
+
 #ifdef TADAH_ENABLE_NFP
 
 /* Two rattled 4-atom bcc Ta cells (a = 3.301 A) with nonzero reference
@@ -306,23 +324,6 @@ void write_frmse_fixture(const std::string& cfg_name,
           "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
           "OPTIM FIXWEIGHT (1) -30.0 0.0\n";
   }
-}
-
-/* The values after `key` on the first non-comment line of a potential
- * file whose first token is `key`; empty when there is none. */
-std::vector<std::string> pot_key(const std::filesystem::path& p,
-                                 const std::string& key) {
-  std::ifstream in(p);
-  std::string line;
-  while (std::getline(in, line)) {
-    std::istringstream ss(line);
-    std::string k;
-    if (!(ss >> k) || k[0] == '#' || k != key) continue;
-    std::vector<std::string> v;
-    for (std::string t; ss >> t;) v.push_back(t);
-    return v;
-  }
-  return {};
 }
 
 /* The cells of column `col` in an HPO table (stats.tadah, loss.tadah):
@@ -5514,14 +5515,18 @@ TEST_CASE("Subcommand: train -c retrains a kernel potential with another "
  * on the Nb-Ta cells, LAMBDA 0) writes 5 WEIGHTS and no WCOV, WNOISE or
  * SIGMA; `tadah train -c` with that potential, the DBFILE added, a SIGMA
  * line of 1 + 5 x 5 values appended (as an OALGO 3 potential of Tadah!
- * 1.5.0 has one) and OALGO 1 or 3, exits 0 and writes no WCOV, WNOISE or
- * SIGMA, and with OALGO 3 the WEIGHTS of the first fit (1e-12 relative:
- * the same fit of the same data).
+ * 1.5.0 has one) and OALGO 1 or 3, is refused (status 1, no re.tadah),
+ * naming the SIGMA line, a deprecated key that changes nothing a fit
+ * gives ("SIGMA 5 1e-6 0 and 23 more values (line N of re_cfg.tadah)");
+ * without the SIGMA line it exits 0 and writes no WCOV, WNOISE or SIGMA,
+ * and with OALGO 3 the WEIGHTS of the first fit (1e-12 relative: the same
+ * fit of the same data).
  * Before the fix: the potentials had the WCOV and WNOISE of their fit (this
  * case, then named "Subcommand: train -c replaces the covariance of an
  * OALGO 3 potential", compared them). Before fix/hpo-trainer-reuse: the
  * OALGO 1 potential kept the old SIGMA, and with OALGO 3 the new SIGMA was
- * appended to it. */
+ * appended to it. Until a fit refused the deprecated keys: the retrain
+ * with the SIGMA line exited 0, the line ignored with a notice. */
 TEST_CASE("Subcommand: train -c of an OALGO 3 potential writes the weights "
           "of its own fit and no covariance",
           "[TadahCLI][train][retrain]") {
@@ -5547,10 +5552,23 @@ TEST_CASE("Subcommand: train -c of an OALGO 3 potential writes the weights "
     for (int j = 0; j < 5; ++j) sigma += i == j ? " 1e-6" : " 0";
   for (int oalgo : {1, 3}) {
     CAPTURE(oalgo);
+    std::filesystem::remove("re.tadah");
     std::ofstream("re_cfg.tadah") << as_training_config(
         with_line(pot, "OALGO", "OALGO " + std::to_string(oalgo)) + sigma +
             "\n",
         "db.tadah");
+    {
+      const CliRun s = run_tadah({"tadah", "train", "-c", "re_cfg.tadah",
+                                  "-o", "re.tadah"});
+      const std::string rep = reported(s);
+      INFO("with SIGMA: status " << s.status << "\n" << rep);
+      CHECK(s.status == 1);
+      CHECK(contains(rep, "SIGMA 5 1e-6 0 and 23 more values (line "));
+      CHECK(contains(rep, " of re_cfg.tadah): "));
+      CHECK_FALSE(std::filesystem::exists("re.tadah"));
+    }
+    std::ofstream("re_cfg.tadah") << as_training_config(
+        with_line(pot, "OALGO", "OALGO " + std::to_string(oalgo)), "db.tadah");
     const CliRun r = run_tadah({"tadah", "train", "-c", "re_cfg.tadah", "-o",
                                 "re.tadah"});
     INFO("status " << r.status << "\n" << reported(r));
@@ -10194,15 +10212,17 @@ TEST_CASE("Subcommand: hpo: a line of RCUT2B in a file that includes the "
 }
 #endif  // TADAH_ENABLE_NFP
 
-/* ---- [retired]: the published potentials of Tadah! 1.x -----------------
+/* ---- [published]: the potentials published with the documentation ------
  *
- * The potentials published with the documentation for this Tadah!
- * (docs/source/mlips: Tadah.Kr1, Tadah.Kr2 and tadah.n2; ta-dah.kr1 and
- * ta-dah.kr2 are in the file format of the discontinued Ta-dah!, which no
- * Tadah! reads) were written by Tadah! before 1.6.0: each has EWEIGHT,
- * FWEIGHT and SWEIGHT lines, which 1.6.0 retired. They stay as published:
- * every program that loads them works, with one notice per load that lists
- * those lines, and a fit refuses them with the conversion. */
+ * The potentials published with the documentation (docs/source/mlips:
+ * Tadah.Kr1, Tadah.Kr2 and tadah.n2; ta-dah.kr1 and ta-dah.kr2 are in the
+ * file format of the discontinued Ta-dah!, which no Tadah! reads) were fitted
+ * by Tadah! before 1.6.0. Their key lines are those of the model: the lines
+ * of the keys that weighted their fit (EWEIGHT, FWEIGHT, SWEIGHT, retired in
+ * 1.6.0) and of the run that wrote them (VERBOSE, NUMERIC) are in their
+ * training record, the comment block above the key lines that no loader
+ * reads. A potential with retired keys as key lines (a potential of an
+ * earlier version) keeps its tests on the fixtures of Tadah! 1.5.0. */
 
 namespace {
 
@@ -10221,32 +10241,48 @@ std::vector<std::size_t> key_line_numbers(const std::string& file,
   return out;
 }
 
+/* The key lines of the training record of the potential file @p file
+ * ("KEY v1 v2 ...", without the leading "# "), in order. */
+std::vector<std::string> training_record_lines(const std::string& file) {
+  std::ifstream in(file);
+  std::vector<std::string> out;
+  bool inside = false;
+  for (std::string line; std::getline(in, line);) {
+    if (line.rfind("# --- training record", 0) == 0) {
+      inside = true;
+    } else if (line.rfind("# --- end of training record", 0) == 0) {
+      inside = false;
+    } else if (inside && line.rfind("# ", 0) == 0) {
+      out.push_back(line.substr(2));
+    }
+  }
+  return out;
+}
+
 }  // namespace
 
-/* Pins: for each published potential P (copied into the scratch directory,
- * as a user downloads it), `tadah predict -p P -d D` (D a Kr dimer 4 A
- * apart for the Kr potentials, two N2 molecules for Tadah!N2) exits 0 with
- * energy.pred and gives one notice, "Retired keys EWEIGHT (line a of P),
- * FWEIGHT (line b of P) and SWEIGHT (line c of P) are ignored: ...", a, b
- * and c being the lines of the file that start with these keys; and `tadah
- * train -c T`, T being P with a DBFILE line of D added (the retrain route
- * of the Training page), exits 1 without writing pot.tadah, naming each
- * line and its conversion ("ESIGMA = 1000/(N sqrt(EWEIGHT))", "FSIGMA =
- * 1/sqrt(FWEIGHT)", "SSIGMA = 160.2/sqrt(SWEIGHT)"), the FWEIGHT and
- * SWEIGHT lines, of the forces and stresses each leaves out, as converted
- * by deleting the line. The Kr potentials converted as the refusal says
- * (those two lines deleted, EWEIGHT 1 as ESIGMA 500 for the 2-atom dimer)
- * train: exit 0 and pot.tadah. (The converted Tadah!N2 is refused by the
- * DIMER rule of a fit, which another case checks.)
- * Before the fix: the three were keys of the potential, which predict read
- * without a notice and a retrain applied (EWEIGHT 1: the squared residual
- * of the total energy); then the refusal gave FSIGMA = 1/sqrt(FWEIGHT) and
- * SSIGMA = 160.2/sqrt(SWEIGHT) for those lines too, and the configuration
- * converted so (FSIGMA 1, SSIGMA 160.2) was refused again. */
-TEST_CASE("Subcommand: the published potentials load with one notice of "
-          "their retired keys, and a fit refuses them with the conversion",
-          "[TadahCLI][predict][train][retired]") {
-  ScratchCwd cwd("published_retired");
+/* Pins: for each published potential P (Tadah.Kr1, Tadah.Kr2, tadah.n2,
+ * copied into the scratch directory as a user downloads it):
+ *  - its training record lists the retired keys of its fit, EWEIGHT,
+ *    FWEIGHT and SWEIGHT, and the run settings of the run that wrote it
+ *    (VERBOSE 0 for the Kr potentials, NUMERIC 15 for Tadah!N2), and none
+ *    of these is a key line;
+ *  - `tadah predict -p P -d D` (D a Kr dimer 4 A apart for the Kr
+ *    potentials, two N2 molecules for Tadah!N2) exits 0, gives no notice of
+ *    a retired key and writes the energies of P' -- P with the lines of its
+ *    training record as key lines, the file as published before -- digit
+ *    for digit; P' gives one notice of its retired keys;
+ *  - the Kr potentials retrain as the Training page says (P with a DBFILE
+ *    line added: exit 0 and pot.tadah). (Tadah!N2 is refused by the DIMER
+ *    rule of a fit, which another case checks.)
+ * Before the fix: P had the EWEIGHT, FWEIGHT, SWEIGHT and VERBOSE or
+ * NUMERIC lines as key lines (no training record): predict gave the notice
+ * of its retired keys ("Retired keys EWEIGHT (line 7 of Tadah.Kr1), ...")
+ * and a retrain was refused with their conversion. */
+TEST_CASE("Subcommand: the published potentials load without a notice of "
+          "retired keys, their fit's keys in the training record",
+          "[TadahCLI][predict][train][published]") {
+  ScratchCwd cwd("published_record");
   const std::string dir = TADAH_PUBLISHED_MLIPS_DIR;
   std::ofstream("kr.tadah")
       << "Kr dimer\n1 1 1\n-0.01\n40 0 0\n0 40 0\n0 0 40\n0 0 0\n0 0 0\n"
@@ -10257,69 +10293,55 @@ TEST_CASE("Subcommand: the published potentials load with one notice of "
          "N 14 10 9.45 0 0 0\nN 14 10 10.55 0 0 0\n\n";
   for (const char* name : {"Tadah.Kr1", "Tadah.Kr2", "tadah.n2"}) {
     INFO(name);
+    const bool n2 = std::string(name) == "tadah.n2";
     std::filesystem::copy_file(dir + "/" + name, name);
-    const std::string data =
-        std::string(name) == "tadah.n2" ? "n2.tadah" : "kr.tadah";
-    std::string listed;
-    for (const char* key : {"EWEIGHT", "FWEIGHT", "SWEIGHT"}) {
-      const std::vector<std::size_t> at = key_line_numbers(name, key);
-      REQUIRE(at.size() == 1u);
-      listed += std::string(key == std::string("EWEIGHT") ? ""
-                            : key == std::string("FWEIGHT") ? ", "
-                                                           : " and ") +
-                key + " (line " + std::to_string(at[0]) + " of " + name + ")";
+    const std::string data = n2 ? "n2.tadah" : "kr.tadah";
+    const std::vector<std::string> record = training_record_lines(name);
+    INFO("training record: " << record.size() << " lines");
+    for (const std::string key :
+         {std::string("EWEIGHT"), std::string("FWEIGHT"),
+          std::string("SWEIGHT"), std::string(n2 ? "NUMERIC" : "VERBOSE")}) {
+      INFO(key);
+      CHECK(key_line_numbers(name, key).empty());
+      CHECK(std::count_if(record.begin(), record.end(),
+                          [&](const std::string& l) {
+                            return l.rfind(key + " ", 0) == 0;
+                          }) == 1);
     }
+    // P': the record's lines as key lines.
     {
-      std::filesystem::remove("energy.pred");
-      const CliRun p = run_tadah({"tadah", "predict", "-p", name, "-d", data});
-      const std::string rep = reported(p);
-      INFO("predict: status " << p.status << "\n" << rep);
-      CHECK(p.status == 0);
-      CHECK(std::filesystem::exists("energy.pred"));
-      CHECK(count_lines_with(rep, "Retired keys") == 1u);
-      CHECK(contains(rep, "Retired keys " + listed + " are ignored"));
-    }
-    {
-      std::filesystem::remove("pot.tadah");
-      std::ofstream(std::string(name) + ".train")
-          << slurp(name) << "\nDBFILE " << data << "\n";
-      const CliRun t = run_tadah({"tadah", "train", "-c",
-                                  std::string(name) + ".train"});
-      const std::string rep = reported(t);
-      INFO("train: status " << t.status << "\n" << rep);
-      CHECK(t.status == 1);
-      CHECK(contains(rep, "ESIGMA = 1000/(N sqrt(EWEIGHT))"));
-      CHECK(contains(rep, "FSIGMA = 1/sqrt(FWEIGHT)"));
-      CHECK(contains(rep, "SSIGMA = 160.2/sqrt(SWEIGHT)"));
-      CHECK_FALSE(std::filesystem::exists("pot.tadah"));
-      for (const char* key : {"FWEIGHT", "SWEIGHT"}) {
-        const std::string sw = key == std::string("FWEIGHT") ? "FORCE"
-                                                             : "STRESS";
-        CHECK(contains(rep, "line " +
-                                std::to_string(key_line_numbers(name, key)[0]) +
-                                " of " + name + ".train; " + sw +
-                                " false here: converted by deleting the "
-                                "line)"));
-      }
-    }
-    if (std::string(name) == "tadah.n2") continue;
-    {
-      std::filesystem::remove("pot.tadah");
+      std::ofstream old(std::string(name) + ".keys");
+      for (const std::string& l : record) old << l << "\n";
       std::istringstream in(slurp(name));
-      std::ofstream out(std::string(name) + ".converted");
-      for (std::string line; std::getline(in, line);) {
-        std::istringstream ls(line);
-        std::string key;
-        ls >> key;
-        if (key == "FWEIGHT" || key == "SWEIGHT") continue;
-        out << (key == "EWEIGHT" ? std::string("ESIGMA 500") : line) << "\n";
-      }
-      out << "DBFILE " << data << "\n";
+      for (std::string line; std::getline(in, line);)
+        if (line.rfind("#", 0) != 0) old << line << "\n";
     }
-    const CliRun c = run_tadah({"tadah", "train", "-c",
-                                std::string(name) + ".converted"});
-    INFO("converted: status " << c.status << "\n" << reported(c));
-    CHECK(c.status == 0);
+    std::filesystem::remove("energy.pred");
+    const CliRun p = run_tadah({"tadah", "predict", "-p", name, "-d", data,
+                                "-o", "new.pred"});
+    const std::string rep = reported(p);
+    INFO("predict: status " << p.status << "\n" << rep);
+    CHECK(p.status == 0);
+    CHECK(count_lines_with(rep, "Retired key") == 0u);
+    const CliRun q = run_tadah({"tadah", "predict", "-p",
+                                std::string(name) + ".keys", "-d", data, "-o",
+                                "old.pred"});
+    INFO("predict of the record as key lines: status " << q.status << "\n"
+                                                       << reported(q));
+    CHECK(q.status == 0);
+    CHECK(count_lines_with(reported(q), "Retired keys") == 1u);
+    REQUIRE(std::filesystem::exists("new.pred"));
+    CHECK(slurp("new.pred") == slurp("old.pred"));
+    std::filesystem::remove("new.pred");
+    std::filesystem::remove("old.pred");
+    if (n2) continue;
+    std::filesystem::remove("pot.tadah");
+    std::ofstream(std::string(name) + ".train")
+        << slurp(name) << "DBFILE " << data << "\n";
+    const CliRun t = run_tadah({"tadah", "train", "-c",
+                                std::string(name) + ".train"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    CHECK(t.status == 0);
     CHECK(std::filesystem::exists("pot.tadah"));
   }
 }
@@ -11373,6 +11395,272 @@ TEST_CASE("Subcommand: the block of analysis suggest_bounds for knot "
         0u);
 }
 
+#endif  // TADAH_ENABLE_NFP
+
+/* ---- [inert]: keys that change nothing a fit gives -------------------- */
+
+namespace {
+
+/* A D2_EAM + DM_EAM training configuration on the small Ta setfl, with
+ * WATOM @p watom on line 3 ("config"), and its dataset (three bcc cells). */
+void write_eam_training(const std::string& watom) {
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("db.tadah") << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+                            << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+                            << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1);
+  std::ofstream("config")
+      << "DBFILE db.tadah\nATOM Ta\nWATOM " << watom << "\n"
+      << "INIT2B true\nTYPE2B D2_EAM 0 Ta Ta\nRCTYPE2B Cut_Dummy\n"
+         "RCUT2B 4.5\nINITMB true\nTYPEMB DM_EAM 0 Ta Ta\n"
+         "RCTYPEMB Cut_Dummy\nRCUTMB 4.5\nSETFL eam_small.alloy\n"
+         "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+         "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+}
+
+}  // namespace
+
+/* Pins: `tadah train -c` refuses, with status 1 and without writing a
+ * potential, a configuration with a line that changes nothing a fit gives,
+ * naming the key, its values, the line and the file:
+ *  - MBLOCK 64, NBLOCK 64, MPIWPCKG 50 (deprecated), EMBF0 FREE and RHOFORM
+ *    SIGNED (no DM_REAM block) on line 18 of config.train (a D2_BP fit):
+ *    "tadah train: the configuration has a line that changes nothing a fit
+ *    gives, and a fit refuses it: MBLOCK 64 (line 18 of config.train): ...";
+ *  - WATOM 2.5 (line 3 of config) with D2_EAM and DM_EAM, which take their
+ *    functions from the SETFL file unweighted: "WATOM 2.5 (line 3 of
+ *    config): no descriptor of the configuration reads it (D2_EAM and
+ *    DM_EAM ...)".
+ * The same configurations without those lines, and with WATOM 1, train.
+ * Before the fix: each trained (exit 0, pot.tadah): MBLOCK, NBLOCK,
+ * MPIWPCKG, EMBF0 and RHOFORM with a WARNING, WATOM without one. */
+TEST_CASE("Subcommand: train refuses a line that changes nothing a fit "
+          "gives, naming the key, the line and the file",
+          "[TadahCLI][exit-status][train][inert]") {
+  ScratchCwd cwd("train_inert");
+  for (const std::string line : {"MBLOCK 64", "NBLOCK 64", "MPIWPCKG 50",
+                                 "EMBF0 FREE", "RHOFORM SIGNED"}) {
+    INFO(line);
+    write_ta_dimer_training();
+    std::ofstream("config.train", std::ios::app) << line << "\n";
+    std::filesystem::remove("pot.tadah");
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config.train"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah train: the configuration has a line that "
+                        "changes nothing a fit gives, and a fit refuses it: " +
+                            line + " (line 18 of config.train): "));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  {
+    write_eam_training("2.5");
+    std::filesystem::remove("pot.tadah");
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config"});
+    const std::string rep = reported(r);
+    INFO("WATOM 2.5: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "WATOM 2.5 (line 3 of config): no descriptor of the "
+                        "configuration reads it (D2_EAM and DM_EAM"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  {
+    write_ta_dimer_training();
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config.train"});
+    INFO("no inert line: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    write_eam_training("1");
+    const CliRun e = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("WATOM 1: status " << e.status << "\n" << reported(e));
+    CHECK(e.status == 0);
+  }
+}
+
+/* Pins: `tadah train` of a D2_EAM + DM_EAM configuration without a WATOM
+ * line exits 0, writes a potential without a WATOM line, and says nothing
+ * of WATOM; `tadah predict` of that potential says nothing of WATOM either.
+ * (WATOM = Z is given only to a configuration a descriptor of which reads
+ * WATOM.)
+ * Before the fix: the potential had a WATOM 73 line, the WATOM train gives
+ * a configuration without one; with the refusal of a WATOM no descriptor
+ * reads, train then gave the notice of WATOM 73 and refused it (exit 1). */
+TEST_CASE("Subcommand: train of a D2_EAM and DM_EAM configuration without "
+          "WATOM gives it no WATOM",
+          "[TadahCLI][exit-status][train][inert]") {
+  ScratchCwd cwd("train_eam_no_watom");
+  write_eam_training("1");
+  {
+    std::istringstream in(slurp("config"));
+    std::ofstream out("config_nowatom");
+    for (std::string l; std::getline(in, l);)
+      if (l.rfind("WATOM", 0) != 0) out << l << "\n";
+  }
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config_nowatom", "-o",
+                              "pot.tadah"});
+  INFO("train: status " << t.status << "\n" << reported(t));
+  CHECK(t.status == 0);
+  CHECK(count_lines_with(reported(t), "WATOM") == 0u);
+  REQUIRE(std::filesystem::exists("pot.tadah"));
+  CHECK(pot_key("pot.tadah", "WATOM").empty());
+  const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                              "db.tadah"});
+  INFO("predict: status " << p.status << "\n" << reported(p));
+  CHECK(p.status == 0);
+  CHECK(count_lines_with(reported(p), "WATOM") == 0u);
+}
+
+/* Pins: `tadah predict` of a D2_EAM + DM_EAM potential whose WATOM is 2.5
+ * (a potential trained with WATOM 1, its WATOM line edited) exits 0 with
+ * one notice, "WARNING: Key WATOM (2.5) is ignored: no descriptor of the
+ * potential reads it (D2_EAM and DM_EAM ...); the potential works unchanged
+ * without it", and predicts the energies of the WATOM 1 potential, digit
+ * for digit; the WATOM 1 potential gives no notice of WATOM.
+ * Before the fix: no notice (the same energies). */
+TEST_CASE("Subcommand: predict of a D2_EAM and DM_EAM potential with a "
+          "WATOM other than 1 gives one notice",
+          "[TadahCLI][exit-status][predict][inert]") {
+  ScratchCwd cwd("predict_inert_watom");
+  write_eam_training("1");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot1.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  {
+    std::istringstream in(slurp("pot1.tadah"));
+    std::ofstream out("pot25.tadah");
+    for (std::string l; std::getline(in, l);) {
+      std::istringstream ls(l);
+      std::string key;
+      ls >> key;
+      out << (key == "WATOM" ? std::string("WATOM 2.5") : l) << "\n";
+    }
+  }
+  const CliRun one = run_tadah({"tadah", "predict", "-p", "pot1.tadah", "-d",
+                                "db.tadah", "-o", "e1.pred"});
+  INFO("WATOM 1: status " << one.status << "\n" << reported(one));
+  CHECK(one.status == 0);
+  CHECK(count_lines_with(reported(one), "WATOM") == 0u);
+  const CliRun two = run_tadah({"tadah", "predict", "-p", "pot25.tadah",
+                                "-d", "db.tadah", "-o", "e25.pred"});
+  const std::string rep = reported(two);
+  INFO("WATOM 2.5: status " << two.status << "\n" << rep);
+  CHECK(two.status == 0);
+  CHECK(count_lines_with(rep, "Key WATOM (2.5) is ignored") == 1u);
+  CHECK(contains(rep, "WARNING: Key WATOM (2.5) is ignored: no descriptor of "
+                      "the potential reads it (D2_EAM and DM_EAM"));
+  CHECK(contains(rep, "the potential works unchanged without it"));
+  REQUIRE(std::filesystem::exists("e1.pred"));
+  CHECK(slurp("e25.pred") == slurp("e1.pred"));
+}
+
+/* Pins: `tadah refit -c` of the small Ta setfl (dense Blip, coarse) refuses
+ * with status 1, writing no pot.tadah, a configuration with a retired key
+ * (EWEIGHT 1), a deprecated key (MBLOCK 64) or a WATOM other than 1 (WATOM
+ * 2; the potential a refit writes has WATOM 1), each on line 7 of
+ * config.refit, naming the line ("EWEIGHT 1 (line 7 of config.refit)");
+ * with WATOM 1 it refits (exit 0).
+ * Before the fix: each refitted (exit 0, pot.tadah): EWEIGHT and MBLOCK
+ * with a WARNING, WATOM 2 without one (pot.tadah had WATOM 1). */
+TEST_CASE("Subcommand: refit refuses a retired key, a deprecated key and a "
+          "WATOM it never reads, naming the line",
+          "[TadahCLI][exit-status][refit][inert]") {
+  ScratchCwd cwd("refit_inert");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  auto config = [](const std::string& extra) {
+    std::ofstream("config.refit")
+        << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+           "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n"
+        << extra << "\n";
+  };
+  for (const std::string line : {"EWEIGHT 1", "MBLOCK 64", "WATOM 2"}) {
+    INFO(line);
+    config(line);
+    std::filesystem::remove("pot.tadah");
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah refit: "));
+    CHECK(contains(rep, line + " (line 7 of config.refit"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  config("WATOM 1");
+  const CliRun ok = run_tadah({"tadah", "refit", "-c", "config.refit"});
+  INFO("WATOM 1: status " << ok.status << "\n" << reported(ok));
+  CHECK(ok.status == 0);
+  CHECK(std::filesystem::exists("pot.tadah"));
+}
+
+#ifdef TADAH_ENABLE_NFP
+/* Pins: `tadah hpo --check` and the run refuse, with status 1, a training
+ * configuration with a line that changes nothing a fit gives: MBLOCK 64 on
+ * line 18 of config.train ("tadah hpo: the configuration has a line that
+ * changes nothing a fit gives, and a fit refuses it: MBLOCK 64 (line 18 of
+ * config.train)"); the run writes no best_pot.tadah.
+ * Before the fix: --check exited 0 and the run trained every evaluation,
+ * MBLOCK giving a WARNING. */
+TEST_CASE("Subcommand: hpo refuses a line that changes nothing a fit gives, "
+          "by --check and the run",
+          "[TadahCLI][exit-status][hpo][inert]") {
+  ScratchCwd cwd("hpo_inert");
+  write_ta_dimer_training();
+  std::ofstream("config.train", std::ios::app) << "MBLOCK 64\n";
+  std::ofstream("config.hpo") << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\n"
+                                 "MAXEVAL 2\nENDOPTIMIZER\nLOSS L2\n"
+                                 "PC_ERMSE 0 1\nOPTIM CGRID2B (1) 2.3 2.7\n";
+  for (const bool check : {true, false}) {
+    INFO((check ? "--check" : "the run"));
+    std::vector<std::string> args = {"tadah", "hpo", "-c", "config.train",
+                                     "--hpotarget", "config.hpo"};
+    if (check) args.push_back("--check");
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah hpo: the configuration has a line that "
+                        "changes nothing a fit gives, and a fit refuses it: "
+                        "MBLOCK 64 (line 18 of config.train)"));
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  }
+}
+
+/* Pins: `tadah hpo --check` and the run refuse, with status 1, the target
+ * file line `OPTIM WATOM (1) 0.5 2.0` (line 8 of config.hpo) for a D2_EAM +
+ * DM_EAM training configuration with WATOM 1, whose descriptors read no
+ * WATOM: "OPTIM WATOM (line 8 of the target file) is not a valid search
+ * target: no descriptor of the training configuration reads WATOM ..."; the
+ * run evaluates nothing and writes no best_pot.tadah.
+ * Before the fix: --check exited 0 ("passed the startup checks") and the run
+ * exited 0 with best_pot.tadah, every evaluation but the start scoring
+ * FAILSCORE (its fit refused the candidate's WATOM, which no descriptor
+ * reads). */
+TEST_CASE("Subcommand: hpo refuses OPTIM WATOM when no descriptor reads "
+          "WATOM, by --check and the run",
+          "[TadahCLI][exit-status][hpo][inert]") {
+  ScratchCwd cwd("hpo_optim_watom");
+  write_eam_training("1");
+  std::ofstream("config.val") << "DBFILE db.tadah\n";
+  std::ofstream("config.hpo") << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\n"
+                                 "MAXEVAL 3\nENDOPTIMIZER\nLOSS L2\n"
+                                 "PC_ERMSE 0 1\nOPTIM WATOM (1) 0.5 2.0\n";
+  for (const bool check : {true, false}) {
+    INFO((check ? "--check" : "the run"));
+    std::vector<std::string> args = {"tadah", "hpo", "-c", "config",
+                                     "--hpotarget", "config.hpo",
+                                     "--validation", "config.val"};
+    if (check) args.push_back("--check");
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "OPTIM WATOM (line 8 of the target file) is not a "
+                        "valid search target: no descriptor of the training "
+                        "configuration reads WATOM"));
+    CHECK_FALSE(contains(rep, "passed the startup checks"));
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  }
+}
 #endif  // TADAH_ENABLE_NFP
 
 /* Pins: the INFO lines (-v 2) of tadah data merge, split, sample, dedup,

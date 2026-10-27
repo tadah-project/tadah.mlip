@@ -1,12 +1,16 @@
+# --- training record (no key is read from it) ---
+# VERBOSE 0
+# EWEIGHT 1
+# FWEIGHT 1
+# SWEIGHT 1
+# --- end of training record ---
 ALPHA     1
 ATOM     Kr
 BETA     1
 BIAS     false
 CGRID2B     1.311080324     3.566095152     0.8582889186     1.509923123     4.550144215     2.044657139     2.860702847
 DIMER     false     0     false
-EWEIGHT     1
 FORCE     false
-FWEIGHT     1
 INIT2B     true
 INITMB     false
 LAMBDA     0
@@ -17,10 +21,8 @@ RCTYPE2B     Cut_Poly     Cut_Cos
 RCUT2B     6.386277712     11.99991485
 SGRID2B     4.456951337     0.7155128114     3.151612299     2.463989323     0.0646386106     2.126887729     0.4352893391
 STRESS     false
-SWEIGHT     1
 TYPE2B     D2_mJoin
 TYPE2B     D2_ZBL     -1     -1     -1     -1     Kr     Kr
 TYPE2B     D2_BP     7     7     Kr     Kr
-VERBOSE     0
 WATOM     36
 WEIGHTS     0.4007550893     0.08420627315     0.001231443914     0.1866396402     0.09475803683     -9.902054256e-05     0.01191644847     -0.003756247505

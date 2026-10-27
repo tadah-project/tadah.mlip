@@ -45,16 +45,19 @@ The primary structure in a configuration file is the KEY/VALUE pair. Each KEY/VA
 Common Usage
 ------------
 
-Typically, only a subset of KEYS is needed to train a model. Tadah!MLIP will use default values for some keys. An error will occur if a required KEY with no default value is missing:
+A model needs only some of the keys: many keys have a default value. A key that a command needs and that has no default must be set. A :file:`config.train` without a :ref:`DBFILE` line is such a case. The command below stops with exit status 1:
 
 .. code-block:: bash
 
-   [user@host:~] $ tadah train -c config.train
-   terminate called after throwing an instance of 'std::runtime_error'
-     what():  Key not found: DBFILE
-   Aborted (core dumped)
+   tadah train -c config.train
 
-This message indicates that the :ref:`DBFILE` KEY was not specified in the :file:`config.train` file. The :ref:`DBFILE` key with its value, added to :file:`config.train`, resolves it.
+Its error begins:
+
+.. code-block:: text
+
+   ERROR: The training configuration has no DBFILE: ...
+
+A :ref:`DBFILE` line, which names the datasets to fit, added to :file:`config.train` resolves it.
 
 Key Specifics
 -------------
@@ -114,17 +117,26 @@ Supported KEYS
 --------------
 
 This section contains all KEYS used by Tadah!MLIP. A key marked
-**Deprecated** is still accepted in configuration and potential files so that
-older files load: Tadah!MLIP checks its value, ignores it and writes one
-warning per key and process to standard error
-(``WARNING: Deprecated key MBLOCK is ignored: ...``), however many lines,
-files included with CONFIG or reads of the file contain it -- the rule of
-every ignored key, :ref:`EMBF0 and RHOFORM without a DM_REAM block
-<dm_ream_only_keys>` included. VERBOSE does not silence the warning.
-``pair_style tadah`` writes it as a LAMMPS warning on rank 0 instead, in
-``log.lammps`` and on the screen, each time ``pair_coeff`` loads such a
-potential (``WARNING: pair tadah: potential 'pot.tadah': Deprecated key
-MBLOCK is ignored: ...``).
+**Deprecated** has no effect, and a potential that has it loads: Tadah!MLIP
+checks its value and ignores it. One warning per key and process goes to
+standard error (``WARNING: Deprecated key MBLOCK is ignored: ...``), whatever
+VERBOSE is and however many lines, files included with CONFIG or reads of
+the file contain it. The same holds for every key without effect,
+:ref:`EMBF0 and RHOFORM without a DM_REAM block <dm_ream_only_keys>` and a
+:ref:`WATOM` that no descriptor reads included.
+
+``pair_style tadah`` writes the warning as a LAMMPS warning on rank 0
+instead, in ``log.lammps`` and on the screen, each time ``pair_coeff`` loads
+such a potential (``WARNING: pair tadah: potential 'pot.tadah': Deprecated
+key MBLOCK is ignored: ...``).
+
+Every fit (``tadah train``, the fits of nested fitting, ``tadah refit``, a
+program's own training) refuses a configuration that has a line of such a
+key, naming the key, its line and its file (``tadah train: the
+configuration has a line that changes nothing a fit gives, and a fit
+refuses it: MBLOCK 64 (line 18 of config.train): ...``). With retired keys
+as well, one refusal names every line. ``tadah refit`` has its own rules
+for :ref:`EMBF0 and RHOFORM <dm_ream_only_keys>` and for :ref:`WATOM`.
 
 A key marked **Retired** has no effect: its entry gives the reason, what
 replaces it and its conversion (:ref:`fit_objective_conversion` lists those
@@ -134,9 +146,9 @@ A potential that has it still loads
 properties``, ``tadah refit --edit``): Tadah!MLIP checks its value, ignores
 it and writes one notice per load that lists the retired keys of the file
 (``WARNING: Retired keys EWEIGHT (line 8 of old.tadah) and ... are ignored:
-...``). Every fit (``tadah train``, the fits of nested fitting, a
-program's own training) refuses a configuration that has one, with its
-conversion; ``tadah explain <KEY>`` gives the conversion too.
+...``). Every fit (``tadah train``, the fits of nested fitting, ``tadah
+refit``, a program's own training) refuses a configuration that has one,
+with its conversion; ``tadah explain <KEY>`` gives the conversion too.
 
 A key marked **Command key** is one that only some commands read: an option
 of their command line, such as ``ANALYTICS`` (``-A`` of ``tadah predict``),
@@ -254,8 +266,9 @@ def render_key(key_name: str, entry: dict, readers=None,
     out.append(f"{'^' * len(key_name)}\n")
 
     # ---------------------------------------------------------------------
-    # Deprecated key (blueprint field `deprecated`): still accepted in
-    # files, warned about once per parse and ignored. It has no default.
+    # Deprecated key (blueprint field `deprecated`): a potential that has
+    # it loads, warned about once per process and the key ignored; a fit
+    # refuses it. It has no default.
     # ---------------------------------------------------------------------
     if entry.get('deprecated', ""):
         reason = entry['deprecated'].strip().replace('\n', '\n   ')

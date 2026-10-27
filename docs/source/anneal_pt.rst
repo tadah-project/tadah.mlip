@@ -53,7 +53,7 @@ controls local concurrency and defaults to ``1``. If ``REPLICAS`` is
 ``AUTO``, the count is ``max(THREADS,2)``; set it explicitly when changing
 worker count should preserve the ladder size. MPI builds can distribute
 replicas over ranks; their HPO driver accepts this backend with
-``TYPE PLAIN`` and no active ``RESTART``.
+``TYPE PLAIN`` and no ``RESTART`` block.
 
 Stopping
 --------

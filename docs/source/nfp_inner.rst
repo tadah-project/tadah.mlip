@@ -31,30 +31,31 @@ Set both ``LIB NLOPT`` and a local ``ALGO``. Global algorithms are
 rejected. An ``INNER`` algorithm must run with a single level of local
 search; algorithms requiring a further explicit ``INNER`` are rejected.
 
-The following common optimiser keys are accepted at the grammar level;
-algorithm-specific validation still applies:
+The following common optimiser keys are accepted; algorithm-specific
+validation still applies:
 
 * ``LIB``, ``ALGO``;
 * ``MAXEVAL``, ``MAXTIME``, ``FTOL_REL``, ``FTOL_ABS``, ``XTOL_REL``,
   ``XTOL_ABS``;
-* ``POPULATION``, ``STEP``, ``VECTOR_ARR``, ``THREADS``, ``PARAM``.
+* ``POPULATION``, ``STEP``, ``VECTOR_ARR``, ``PARAM``.
 
 See :doc:`nfp_optimizer_settings` and :doc:`nfp_stopping_settings` for
-values. Three keys must be set on the enclosing optimiser instead:
+values. Four keys belong to the enclosing optimiser instead:
 
 * ``SEED``: the local search shares its random stream.
 * ``GRAD_STRATEGY``: the enclosing optimiser obtains the gradient that
   the local search requests.
 * ``STOPVAL``: NLopt replaces the local search's target with the
   enclosing target.
+* ``THREADS``: the ``STRATEGY``-level optimiser's value sets the workers
+  of the run, and ``INNER`` refuses it.
 
 Finite-difference ``PARAM fd_step``, ``fd_kernel`` and ``diff_method``
 also belong to the enclosing optimiser and are rejected in ``INNER``.
 
 The local budget limits each local search; the enclosing budget limits
 the whole run. An explicit ``INNER`` has independently configured
-tolerances. A parent ``STEP`` overrides the local search's step. The main
-optimiser's ``THREADS`` sizes the shared worker pool.
+tolerances. A parent ``STEP`` overrides the local search's step.
 
 .. _when-inner-is-required:
 

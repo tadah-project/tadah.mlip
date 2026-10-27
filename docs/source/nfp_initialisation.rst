@@ -21,7 +21,7 @@ initialisation settings. ``EXPLORE`` has its own settings.
    INIT
      METHOD CONFIG
      METHOD LHS 4
-     K_TOTAL 5
+     K_TOTAL 3
      SEED 123
    ENDINIT
 
@@ -41,7 +41,7 @@ Repeat ``METHOD`` to concatenate methods into one chain.
        configuration. No arguments.
    * - ``METHOD RANDOM K``
      - ``K`` independent uniform samples in transformed search
-       coordinates. ``K`` is an integer at least zero.
+       coordinates; integer ``K >= 1``.
    * - ``METHOD LHS K``
      - ``K`` Latin-hypercube samples in transformed coordinates;
        integer ``K >= 1``.
@@ -53,7 +53,8 @@ Repeat ``METHOD`` to concatenate methods into one chain.
        values are taken. See the mismatch policy below.
 
 An absent ``INIT`` block, or an empty method chain, supplies one ``CONFIG``
-point. An explicit chain supplies only its declared methods. Near-duplicate
+point; inside ``EXPLORE`` it leaves the exploration the main starting
+points. An explicit chain supplies only its declared methods. Near-duplicate
 points in a chain are removed in transformed coordinates, retaining the
 first occurrence. ``METHOD NOISE_AUTO`` is reserved and rejected.
 
@@ -67,11 +68,13 @@ Other keys
    * - Key
      - Values and effect
    * - ``K_TOTAL K``
-     - Nonnegative integer. With several methods, caps the retained
-       points (``0`` means no cap). With a single ``RANDOM``, ``LHS`` or
-       ``SOBOL`` method, a positive value replaces that method's ``K``.
-       ``CONFIG`` and ``WARM`` still supply at most one point. Omission
-       uses the method counts.
+     - Integer >= 1. The ``INIT`` blocks inside ``OPTIMIZER``,
+       ``STRATEGY`` and ``REFINE`` make one chain, and those inside
+       ``EXPLORE`` another; ``K_TOTAL`` keeps the first ``K`` points of
+       its chain, a single method included. A value at or above the
+       points the methods give (``CONFIG`` and ``WARM`` give one each)
+       caps nothing and is refused. An ``INIT`` block inside ``EXPLORE``
+       without a method refuses it. Omission keeps every point.
    * - ``SEED n``
      - Unsigned 64-bit seed for the sampling methods. Omission draws a
        seed from ``std::random_device``. This is separate from the
@@ -79,6 +82,10 @@ Other keys
    * - ``WARM_ON_MISMATCH policy``
      - ``warn`` (default), ``error`` or ``skip``, lower case. Applies to
        missing selected parameters and values outside the current bounds.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 ``K_TOTAL`` replaced the ``K`` of a single ``RANDOM``,
+   ``LHS`` or ``SOBOL`` line.
 
 ``STRATEGY`` remains an accepted alias for ``METHOD`` inside ``INIT``;
 use ``METHOD`` in new files to distinguish a method line from the
@@ -104,6 +111,4 @@ seed independently of the mismatch policy.
 The number of points an optimiser uses depends on its capabilities and
 :doc:`nfp_strategies`. For example, ``DLIB:GFS`` accepts several seeds in
 one search; ``MULTISTART`` runs eligible optimisers from separate points.
-An exploration phase with no ``INIT`` chain of its own shares the main
-starting points. Refinement normally starts from the exploration's
-selected candidates.
+Refinement normally starts from the exploration's selected candidates.

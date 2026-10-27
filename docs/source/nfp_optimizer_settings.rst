@@ -58,10 +58,9 @@ Common keys
        of ``REPLICAS`` (``ANNEAL_PT``) and of ``POPULATION``
        (``ANNEAL_PA``). An ``EXPLORE`` block of another optimiser and
        ``CERES`` refuse it, and so does ``INNER`` (see :doc:`nfp_inner`).
-       With ``REPLICAS`` and ``POPULATION`` given, as their defaults
-       follow ``THREADS``, a seeded run writes the same result files at
-       any ``THREADS``, except under :hpo:opt:`DLIB:GFS`
-       (:ref:`nfp_evaluation_numbers`).
+       A seeded run writes the same files at any
+       :hpo:key:`THREADS <OPTIMIZER.THREADS>` under the conditions of
+       :ref:`nfp_evaluation_numbers`, except under :hpo:opt:`DLIB:GFS`.
    * - ``SEED n``
      - Unsigned 64-bit optimiser seed. See the seed rules below.
    * - ``STEP fraction``
@@ -126,32 +125,46 @@ see :doc:`nfp_gradients`.
 Seeds
 -----
 
-An optimiser's ``SEED`` controls its search stream. ``INIT SEED`` and
-``RESTART SEED`` control their starting-point methods separately. An
-optimiser that draws random numbers takes the ``SEED`` of its block; an
-NLopt algorithm next takes the ``SEED`` of its ``INIT`` block. Without
-either, it draws its numbers with a seed drawn once for the run, which
-standard output and the journal give with the ``SEED`` line that draws
-the same numbers again. ``MULTISTART``, ``PRESTAGE`` and ``RESTART``
-derive the seeds of their starts and rounds from that seed as from a
-``SEED`` line. ``INNER`` has no seed of its own.
+An optimiser's :hpo:key:`SEED <OPTIMIZER.SEED>` controls its search
+stream. ``INIT SEED`` and ``RESTART SEED`` control their starting-point
+methods separately. An optimiser that draws random numbers takes the
+:hpo:key:`!SEED <OPTIMIZER.SEED>` of its block; an NLopt algorithm next
+takes the :hpo:key:`SEED <INIT.SEED>` of its
+:hpo:block:`INIT <BLOCK.INIT>` block. :hpo:block:`INNER <BLOCK.INNER>`
+has no seed of its own.
+
+Without either seed, the optimiser draws its numbers with a seed drawn
+once for the run. Standard output and the journal give that seed with the
+:hpo:key:`!SEED <OPTIMIZER.SEED>` line that draws the same numbers again.
+:hpo:key:`MULTISTART <STRATEGY.TYPE.MULTISTART>` starts, the
+:hpo:key:`PRESTAGE <STRATEGY.TYPE.PRESTAGE>` refinement and
+:hpo:block:`RESTART <BLOCK.RESTART>` rounds derive their seeds from that
+seed as from a :hpo:key:`!SEED <OPTIMIZER.SEED>` line.
 
 .. versionchanged:: 1.6.0
    In 1.5.0 :hpo:opt:`TADAH:RANDOM`, the annealers and :hpo:opt:`ASA:ASA`
    without :hpo:key:`SEED <OPTIMIZER.SEED>` drew a new seed each time they
    started, so a run of several starts or rounds could not be repeated.
 
-A ``PRESTAGE`` exploration whose optimiser reads ``SEED`` and that has no
-seed of its own takes the ``STRATEGY``-level ``SEED``. Its own seeds come
-first: the ``EXPLORE`` block's ``SEED`` and, for NLopt, its ``INIT``
-seed. The refinement draws other random numbers from the same ``SEED``,
-so the optimisers of both phases repeat. Starting points that an ``INIT``
-or ``RESTART`` block draws repeat only with that block's ``SEED`` (see
-:doc:`nfp_initialisation`). The journal names the seed of the
+A :hpo:key:`!PRESTAGE <STRATEGY.TYPE.PRESTAGE>` exploration whose
+optimiser reads :hpo:key:`!SEED <OPTIMIZER.SEED>` and that has no seed of
+its own takes the :hpo:key:`!SEED <OPTIMIZER.SEED>` line of the
+:hpo:block:`STRATEGY <BLOCK.STRATEGY>`-level optimiser. The refinement
+draws other random numbers from that :hpo:key:`!SEED <OPTIMIZER.SEED>`,
+so the optimisers of both phases repeat. Without such a line, the
+exploration draws a seed of its own, which standard output and the
+journal give. Its own seeds come first: the
+:hpo:block:`EXPLORE <BLOCK.EXPLORE>` block's
+:hpo:key:`!SEED <OPTIMIZER.SEED>` and, for NLopt, its
+:hpo:block:`!INIT <BLOCK.INIT>` seed. The journal names the seed of the
 exploration.
 
 .. versionchanged:: 1.6.0
    In 1.5.0 such an exploration was not seeded, so a run did not repeat.
+
+Starting points that an :hpo:block:`!INIT <BLOCK.INIT>` or
+:hpo:block:`!RESTART <BLOCK.RESTART>` block draws repeat only with that
+block's :hpo:key:`!SEED <INIT.SEED>` (see :doc:`nfp_initialisation`).
 
 ``TADAH:GRID``, ``DLIB:GFS``, ``DLIB:BFGS`` and ``CERES`` refuse ``SEED``
 because they draw no random numbers, except as a ``PRESTAGE`` refinement

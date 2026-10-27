@@ -13,6 +13,11 @@ then runs ``SWEEPS`` temperature rungs at the new temperature.
 ``NT * NS * dimensions`` proposals with ``CORANA ON``. Budget limits can
 truncate this work. See :doc:`nfp_annealing_terms` for these units.
 
+.. contents::
+   :local:
+   :depth: 1
+   :backlinks: none
+
 Cooling and population size
 ---------------------------
 
@@ -56,18 +61,24 @@ to define the search space and loss:
      ENDSTRATEGY
    ENDOPTIMIZER
 
+Stopping
+--------
+
 ``MAXEVAL`` includes the seed, temperature-calibration probes,
 population initialisation and production proposals. The run can also
-stop on its temperature floor or configured stopping criteria. A walker
-that reaches :hpo:key:`STOPVAL <OPTIMIZER.STOPVAL>` ends its own sweeps,
-and the search ends after the temperature step: the other walkers
-complete theirs, so where the search ends does not depend on the timing
-of the workers. The evaluations that the walker did not make have no row
+stop on its temperature floor or configured stopping criteria.
+
+A walker that reaches :hpo:key:`STOPVAL <OPTIMIZER.STOPVAL>` ends its own
+sweeps, and the search ends after the starting points or the temperature
+step in which it is reached. The other walkers complete their evaluations
+of it, so where the search ends does not depend on the timing of the
+workers. The evaluations that the walker did not make have no row
 (:ref:`nfp_evaluation_numbers`).
 
 .. versionchanged:: 1.6.0
    In 1.5.0 the other walkers stopped at their next proposal, at a point
-   that depended on the timing of the workers.
+   that depended on the order of the walkers and the timing of the
+   workers.
 
 Parameter reference
 -------------------

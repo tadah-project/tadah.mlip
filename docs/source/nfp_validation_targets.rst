@@ -148,7 +148,9 @@ Early-rejection options
    * - ``--skip-rel <ratio>``
      - Reject when the metric exceeds this finite positive multiple
        of its best previously accepted value. No relative comparison
-       is made before such a value exists.
+       is made before such a value exists. Evaluations run at once
+       compare with the best value recorded before all of them
+       (:ref:`nfp_evaluation_numbers`).
 
 These checks happen after validation and before the physical-property
 targets. In the indexed form they apply separately to the selected

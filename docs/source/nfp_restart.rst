@@ -56,8 +56,8 @@ uses ``INIT``; the restart chain is used only after stagnation.
 Restart scope
 -------------
 
-A restart relaunches the whole policy: a ``PLAIN`` search, the
-``MULTISTART`` batch, or both ``PRESTAGE`` phases. Separate starts and
+A restart relaunches the whole policy: a ``PLAIN`` search, all the
+``MULTISTART`` starts, or both ``PRESTAGE`` phases. Separate starts and
 refinement seeds have separate stagnation windows. A stagnating
 exploration hands its candidates to refinement before the enclosing
 policy can restart.
@@ -66,14 +66,16 @@ Each relaunch gets fresh search budgets. Reaching an optimiser's own
 stop normally ends the policy. Restarts are triggered by stagnation.
 After ``MAX`` restarts, the next stagnation ends the run.
 
-An optimiser that evaluates several points at once
-(:hpo:opt:`TADAH:ANNEAL_PT`, :hpo:opt:`TADAH:ANNEAL_PA`, :hpo:opt:`ASA:ASA`
-with a block of states) counts the window in the order of the evaluation
-numbers, once the batch has ended (see :ref:`nfp_evaluation_numbers`).
-The window closes at the same evaluation whatever the timing of the
-workers, and so at any :hpo:key:`THREADS <OPTIMIZER.THREADS>` under the
-conditions of that section; the later evaluations of that batch have run
-and are recorded, and the restart follows the batch.
+:hpo:opt:`TADAH:ANNEAL_PT`, :hpo:opt:`TADAH:ANNEAL_PA` and
+:hpo:opt:`ASA:ASA` with
+:hpo:param:`Gener_Block_Max <PARAM.ASA:ASA.Gener_Block_Max>` above 1
+evaluate several points at once. They count the window in the order of
+the evaluation numbers, after each batch of evaluations run at once (see
+:ref:`nfp_evaluation_numbers`). The window closes at the same evaluation
+whatever the timing of the workers. It does so at any
+:hpo:key:`THREADS <OPTIMIZER.THREADS>` under the conditions of that
+section. The later evaluations of that batch run and are recorded, and
+the restart follows the batch.
 
 .. versionchanged:: 1.6.0
    In 1.5.0 the window closed at the evaluation that ended first past it,

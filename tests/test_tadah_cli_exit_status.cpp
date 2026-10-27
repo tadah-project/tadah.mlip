@@ -10391,19 +10391,21 @@ std::string comment_before(const std::string& block,
  * seeds, on three bcc Ta cells, is accepted by tadah hpo --check with that
  * seed (an optimiser, PC_ERMSE and the block; exit 0):
  *  - "ta": the Ta seed of the HPO tests (D2_Blip with LIN grids, RCUT2B
- *    5.6, and DM_mBlipEnv with CGRIDMB 0), whose RCUT2B box ends past 5.6,
- *    its comment naming the 99th percentile of the distances and their
- *    reach, 1.25 times the largest cutoff of the seed;
+ *    5.6, and DM_mBlipEnv with CGRIDMB 0), whose RCUT2B box ends past 6 A
+ *    (at the 99th percentile of the distances up to 7 A, which no distance
+ *    within 5.6 A gives), its comment naming the 99th percentile of the
+ *    distances and their reach, 1.25 times the largest cutoff of the seed;
  *  - "zbl": D2_ZBL (its TYPE2B values have no OPTIM line);
  *  - "join": DM_mJoin of two DM_mBlipEnv, which share RCUTENV;
  *  - "blip": DM_Blip with a centre at the origin and one at 4.7 A;
  *  - "short": D2_Blip and DM_mBlipEnv with cutoffs of 2 A, which hold no
  *    neighbour distance (the block keeps the fixed ranges of RCUTENV,
  *    CEMBFUNC and SEMBFUNC).
- * Before the fix: "ta" passed, its RCUT2B box 5.54 to 5.64 (the 99th
- * percentile of the distances within 5.6 to 1.05 times the second peak of
- * the distances, a reversed range the block swapped), its comment the scale
- * and the role of RCUT2B; "join" was refused ("the index is already selected by the OPTIM
+ * Before the fix: "ta" passed tadah hpo --check, but its RCUT2B box was
+ * 5.54 to 5.64, below 6 (the 99th percentile of the distances within 5.6
+ * to 1.05 times the second peak of the distances, a reversed range the
+ * block swapped), its comment the scale and the role of RCUT2B; "join" was
+ * refused ("the index is already selected by the OPTIM
  * RCUTENV line"), and "short" too ("the low bound 0 is not > 0", an
  * SGRID2B box widened from (0, 0)). */
 TEST_CASE("Subcommand: the block of analysis suggest_bounds passes hpo "
@@ -10461,7 +10463,7 @@ TEST_CASE("Subcommand: the block of analysis suggest_bounds passes hpo "
     CHECK(c.status == 0);
     if (name != "ta") continue;
     const std::string text = slurp(block);
-    CHECK(high_bound(text, "OPTIM RCUT2B (1) ") > 5.6);
+    CHECK(high_bound(text, "OPTIM RCUT2B (1) ") > 6.0);
     const std::string why = comment_before(text, "OPTIM RCUT2B (1) ");
     CHECK(contains(why, "99th percentile"));
     CHECK(contains(why, "1.25 times"));

@@ -3334,7 +3334,9 @@ const char *const kZeroDataRows =
  * data rows than weights), ...".
  * Before the fix that states the remedies: the refusal read "... are not
  * unique. Use OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm
- * weights, LAMBDA > 0 ...", an instruction: the check fails. */
+ * weights, LAMBDA > 0 ...", an instruction: the check fails. Before the fix
+ * of the remedies' wording: "... The fit is made with OALGO 1 (DGELSD) ...",
+ * which reads as a fit that was made. */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
           "weights",
           "[TadahCLI][exit-status][train][oalgo]") {
@@ -3363,8 +3365,8 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
   const std::string few =
       " cannot fit these 3 weights: the design matrix has 2 data rows for 3 "
       "weights, LAMBDA 0: fewer data rows than weights, so it does not have "
-      "full column rank and the least-squares weights are not unique. The fit "
-      "is made with OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the "
+      "full column rank and the least-squares weights are not unique. A fit "
+      "is possible with OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the "
       "minimum-norm weights, with LAMBDA > 0";
   for (const auto& [oalgo, name] :
        {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
@@ -3412,7 +3414,9 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
  * fitted without an error).
  * Before the fix that states the remedies: the refusal read "... are not
  * unique. Use OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm
- * weights, LAMBDA > 0 ...", an instruction: the check fails. */
+ * weights, LAMBDA > 0 ...", an instruction: the check fails. Before the fix
+ * of the remedies' wording: "... The fit is made with OALGO 1 (DGELSD) ...",
+ * which reads as a fit that was made. */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
           "rows than weights, a structure of priority 0 included",
           "[TadahCLI][exit-status][train][oalgo]") {
@@ -3449,7 +3453,7 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
       " cannot fit these 3 weights: the design matrix has 2 non-zero data "
       "rows of 3" + std::string(kZeroDataRows) + " for 3 weights, LAMBDA 0: "
       "fewer non-zero data rows than weights, so it does not have full column "
-      "rank and the least-squares weights are not unique. The fit is made "
+      "rank and the least-squares weights are not unique. A fit is possible "
       "with OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm "
       "weights, with LAMBDA > 0";
   for (const auto& [oalgo, name] :
@@ -3495,7 +3499,9 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
  * look for a weight 0 that none of these rows has.
  * Before the fix that states the remedies: the refusal read "... are not
  * unique. Use OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm
- * weights, LAMBDA > 0 ...", an instruction: the check fails. */
+ * weights, LAMBDA > 0 ...", an instruction: the check fails. Before the fix
+ * of the remedies' wording: "... The fit is made with OALGO 1 (DGELSD) ...",
+ * which reads as a fit that was made. */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 counts zero data rows of "
           "priority 1, a dimer's y and z forces and an isolated atom's energy",
           "[TadahCLI][exit-status][train][oalgo]") {
@@ -3539,8 +3545,8 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 counts zero data rows of "
       "FORCE false\n";
   const std::string tail =
       " LAMBDA 0: fewer non-zero data rows than weights, so it does not have "
-      "full column rank and the least-squares weights are not unique. The fit "
-      "is made with OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the "
+      "full column rank and the least-squares weights are not unique. A fit "
+      "is possible with OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the "
       "minimum-norm weights, with LAMBDA > 0";
   for (const auto& [oalgo, name] :
        {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
@@ -4401,7 +4407,8 @@ TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
   CHECK(contains(rep, "tadah refit: REFIT_MODE compact (the default) needs "
                       "the compact fitter, which this tadah was built "
                       "without (it needs TADAH_ENABLE_NFP and "
-                      "TADAH_ENABLE_CERES); set REFIT_MODE dense"));
+                      "TADAH_ENABLE_CERES); REFIT_MODE dense fits without "
+                      "it"));
   CHECK_FALSE(std::filesystem::exists("pot.tadah"));
 #endif
 }
@@ -6988,11 +6995,12 @@ const char* const kNoDatasetsAdvice =
     "training record, the comment block above its key lines, lists the "
     "datasets its weights were fitted to in a '# DBFILE' line when there "
     "were any: a refit has none, and a potential of an earlier version has "
-    "no record): to train from one, add a DBFILE line to a copy of it; a "
-    "potential of tadah refit or refit --edit also pins every weight with "
-    "its FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo coefficient "
-    "search, so delete them from the copy for the fit to change the weights "
-    "(the Training page of the documentation, Retraining from a potential).";
+    "no record): a retrain from one takes a copy of it with a DBFILE line "
+    "added; a potential of tadah refit or refit --edit also pins every "
+    "weight with its FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo "
+    "coefficient search, and the fit changes the weights when both are "
+    "deleted from the copy (the Training page of the documentation, "
+    "Retraining from a potential).";
 
 }  // namespace
 
@@ -7000,10 +7008,14 @@ const char* const kNoDatasetsAdvice =
  * from the three Ta dimers (M_BLR BF_Linear and M_KRR Kern_Linear; it has
  * no DBFILE line), exits 1 without writing re.tadah, saying "The training
  * configuration has no DBFILE: tadah train fits the datasets it lists." and
- * the advice (kNoDatasetsAdvice: "A potential has no DBFILE line ... add a
- * DBFILE line to a copy of it; a potential of tadah refit or refit --edit
- * also pins every weight ..."), and no "Key not found"; with the DBFILE
- * line added it trains (exit 0; a pin of the documented route).
+ * the advice (kNoDatasetsAdvice: "A potential has no DBFILE line ... a
+ * retrain from one takes a copy of it with a DBFILE line added; a potential
+ * of tadah refit or refit --edit also pins every weight ..."), and no "Key
+ * not found"; with the DBFILE line added it trains (exit 0; a pin of the
+ * documented route).
+ * Before the fix of the advice's wording: "... to train from one, add a
+ * DBFILE line to a copy of it; ..., so delete them from the copy for the
+ * fit to change the weights ...", instructions to the reader.
  * Before the fix: exit 1 with "Key not found in the Context object:
  * DBFILE" (and the Logger's "Context::operator() -> Key not found:
  * DBFILE"), naming neither potentials nor the retrain.
@@ -7137,10 +7149,13 @@ TEST_CASE("Subcommand: refit --edit keeps the UNCERTAINTY line of a "
  * weight (all 84 of them), so the fit changes none: the WEIGHTS of the
  * potential written are the FIXWEIGHT values. tadah refit and refit --edit
  * write FIXINDEX and FIXWEIGHT for every weight of their potentials, ...:
- * to fit the weights to the DBFILE data, delete both lines from the
- * training configuration (the Training page of the documentation,
+ * the weights are fitted to the DBFILE data when both lines are deleted
+ * from the training configuration (the Training page of the documentation,
  * Retraining from a potential).", once, and pot2.tadah has the WEIGHTS of
  * pot.tadah.
+ * Before the fix of its wording the WARNING ended "...: to fit the weights
+ * to the DBFILE data, delete both lines from the training configuration
+ * ...", an instruction.
  * Before the fix: exit 0 and no WARNING about the pins: the potential
  * written had the input weights and nothing said that none was fitted
  * (171 weights, the same result). */
@@ -7177,9 +7192,10 @@ TEST_CASE("Subcommand: train of a refit potential with a DBFILE line warns "
       "are the FIXWEIGHT values. tadah refit and refit --edit write FIXINDEX "
       "and FIXWEIGHT for every weight of their potentials, the seed of a "
       "tadah hpo coefficient search, and so does a tadah hpo run that pins "
-      "every weight in its best_pot.tadah: to fit the weights to the DBFILE "
-      "data, delete both lines from the training configuration (the "
-      "Training page of the documentation, Retraining from a potential).";
+      "every weight in its best_pot.tadah: the weights are fitted to the "
+      "DBFILE data when both lines are deleted from the training "
+      "configuration (the Training page of the documentation, Retraining "
+      "from a potential).";
   CHECK(contains(rep, warning));
   CHECK(rep.find("pin every weight") == rep.rfind("pin every weight"));
   REQUIRE(std::filesystem::exists("pot2.tadah"));
@@ -7626,13 +7642,17 @@ TEST_CASE("Subcommand: refit records its run, and refit --edit copies the "
  * refit_pot.tadah` (the case above) without the end line of its training
  * record, exits 1 without writing e1.tadah, saying "noend.tadah: line 1
  * opens a training record (...) that no end line (...) closes before line
- * 3, the first line after it that is not a comment: restore the end line
- * after the record, before line 3, or delete the record." -- line 1 is the
- * opening line and line 3 the first key line, AMPGRIDMB, which every
- * writer puts right after the record -- and not the refusal of a key line
- * inside the record ("is not a comment: every reader ...", whose advice to
- * begin the line with '#' would comment out a key of the potential); the
- * unchanged refit_pot.tadah edits (exit 0).
+ * 3, the first line after it that is not a comment: a file with the end
+ * line after the record, before line 3, or without the record, is
+ * accepted." -- line 1 is the opening line and line 3 the first key line,
+ * AMPGRIDMB, which every writer puts right after the record -- and not the
+ * refusal of a key line inside the record ("is not a comment: every reader
+ * ...", whose rule that a line of the record begins with '#' would comment
+ * out a key of the potential); the unchanged refit_pot.tadah edits (exit
+ * 0).
+ * Before the fix of its wording the refusal ended "...: restore the end
+ * line after the record, before line 3, or delete the record.", an
+ * instruction.
  * Before the fix: exit 1 with "noend.tadah: line 3, inside the training
  * record that line 1 opens, is not a comment: every reader of the potential
  * reads it as a key. Begin each line of the record with '#', or end the
@@ -7684,9 +7704,9 @@ TEST_CASE("Subcommand: refit --edit of a potential whose training record "
                             kRecordOpen + "') that no end line ('" +
                             kRecordEnd +
                             "') closes before line 3, the first line after "
-                            "it that is not a comment: restore the end line "
-                            "after the record, before line 3, or delete the "
-                            "record."));
+                            "it that is not a comment: a file with the end "
+                            "line after the record, before line 3, or "
+                            "without the record, is accepted."));
     CHECK_FALSE(contains(rep, "is not a comment: every reader"));
     CHECK_FALSE(std::filesystem::exists("e1.tadah"));
   }
@@ -9250,17 +9270,22 @@ TEST_CASE("Subcommand: hpo seeded from a potential with CONFIG applies the "
  * NUMERIC 12, OUTFILE old_out.tadah, AUDIT warn and AUDIT_SAMPLE 2 ("were
  * settings of the run that wrote it, not of this run, and are ignored") with
  * the advice "This run takes its own VERBOSE, NUMERIC, OUTFILE, AUDIT or
- * AUDIT_SAMPLE from --verbose or --outfile on the command line, or from a
- * VERBOSE, NUMERIC, OUTFILE, AUDIT or AUDIT_SAMPLE line in a configuration
- * file that includes the potential with CONFIG" -- not VALIDATION, HPOTARGET
- * or HEALTH_LOG, which tadah train does not read.
+ * AUDIT_SAMPLE from a VERBOSE, NUMERIC, OUTFILE, AUDIT or AUDIT_SAMPLE line
+ * in a configuration file that includes the potential with CONFIG, or
+ * VERBOSE or OUTFILE from --verbose or --outfile on the command line" --
+ * not VALIDATION, HPOTARGET or HEALTH_LOG, which tadah train does not read;
+ * the options are paired with the keys they set.
  * Before the fix: the eight lines were read as the run's: the retrain wrote
  * old_out.tadah at VERBOSE 2 (INFO lines) and NUMERIC 12 (the WARNING
  * "NUMERIC 12 limits ..."), so the REQUIRE on pot.tadah stops the case.
  * Before the fix that states the advice in the impersonal voice: it read
  * "Give --verbose or --outfile on the command line, or a VERBOSE, NUMERIC,
  * OUTFILE, AUDIT or AUDIT_SAMPLE line in a configuration file that includes
- * the potential with CONFIG, to apply one to this run": the check fails. */
+ * the potential with CONFIG, to apply one to this run": the check fails.
+ * Before the fix that pairs the options with their keys: "... from
+ * --verbose or --outfile on the command line, or from a VERBOSE, ...
+ * line ...", which offered an option for NUMERIC, AUDIT and AUDIT_SAMPLE:
+ * the check fails. */
 TEST_CASE("Subcommand: train -c of an older potential reads none of its run "
           "settings",
           "[TadahCLI][train][retrain][training-record][run-settings]") {
@@ -9307,10 +9332,11 @@ TEST_CASE("Subcommand: train -c of an older potential reads none of its run "
                       "AUDIT_SAMPLE 2 were settings of the run that wrote "
                       "it, not of this run, and are ignored"));
   CHECK(contains(rep, "This run takes its own VERBOSE, NUMERIC, OUTFILE, "
-                      "AUDIT or AUDIT_SAMPLE from --verbose or --outfile on "
-                      "the command line, or from a VERBOSE, NUMERIC, OUTFILE, "
-                      "AUDIT or AUDIT_SAMPLE line in a configuration file "
-                      "that includes the potential with CONFIG"));
+                      "AUDIT or AUDIT_SAMPLE from a VERBOSE, NUMERIC, "
+                      "OUTFILE, AUDIT or AUDIT_SAMPLE line in a "
+                      "configuration file that includes the potential with "
+                      "CONFIG, or VERBOSE or OUTFILE from --verbose or "
+                      "--outfile on the command line"));
   CHECK_FALSE(contains(rep, "VALIDATION"));
   CHECK_FALSE(contains(rep, "HPOTARGET"));
   CHECK_FALSE(contains(rep, "HEALTH_LOG"));
@@ -9458,10 +9484,11 @@ TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
  *     old.tadah is a potential (it has WEIGHTS): its VALIDATION config.val,
  *     VERBOSE 2 and NUMERIC 12 were settings of the run that wrote it, not of
  *     this run, and are ignored (...). This run takes its own VALIDATION,
- *     VERBOSE or NUMERIC from --validation or --verbose on the command line,
- *     or from a VALIDATION, VERBOSE or NUMERIC line in a configuration file
- *     that includes the potential with CONFIG (...)." (HPOTARGET, given on
- *     the command line, is not named);
+ *     VERBOSE or NUMERIC from a VALIDATION, VERBOSE or NUMERIC line in a
+ *     configuration file that includes the potential with CONFIG, or
+ *     VALIDATION or VERBOSE from --validation or --verbose on the command
+ *     line (...)." (HPOTARGET, given on the command line, is not named; tadah
+ *     hpo has no --numeric);
  *   - with --validation other.val it validates on other.val ("Validation
  *     set        : other.val" in hpo_run.log), exits 0, prints no INFO line
  *     and no NUMERIC WARNING ("NUMERIC 12 limits"), and best_pot.tadah's
@@ -9475,7 +9502,11 @@ TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
  * Before the fix that states the advice in the impersonal voice: it read
  * "Give --validation or --verbose on the command line, or a VALIDATION,
  * VERBOSE or NUMERIC line in a configuration file that includes the potential
- * with CONFIG, to apply one to this run": the check fails. */
+ * with CONFIG, to apply one to this run": the check fails.
+ * Before the fix that pairs the options with their keys: "... from
+ * --validation or --verbose on the command line, or from a VALIDATION,
+ * VERBOSE or NUMERIC line ...", which offered an option for NUMERIC: the
+ * check fails. */
 TEST_CASE("Subcommand: hpo -c of an older best_pot.tadah does not validate "
           "on its VALIDATION file unless --validation is given",
           "[TadahCLI][hpo][training-record][run-settings]") {
@@ -9506,10 +9537,10 @@ TEST_CASE("Subcommand: hpo -c of an older best_pot.tadah does not validate "
                         "of the run that wrote it, not of this run, and are "
                         "ignored"));
     CHECK(contains(rep, "This run takes its own VALIDATION, VERBOSE or "
-                        "NUMERIC from --validation or --verbose on the "
-                        "command line, or from a VALIDATION, VERBOSE or "
-                        "NUMERIC line in a configuration file that includes "
-                        "the potential with CONFIG"));
+                        "NUMERIC from a VALIDATION, VERBOSE or NUMERIC line "
+                        "in a configuration file that includes the potential "
+                        "with CONFIG, or VALIDATION or VERBOSE from "
+                        "--validation or --verbose on the command line"));
   }
   const CliRun r = run_tadah({"tadah", "hpo", "-c", "old.tadah",
                               "--hpotarget", "config.hpo", "--validation",
@@ -11420,13 +11451,15 @@ TEST_CASE("Subcommand: the log lines and errors of a command name the "
 
 /* Pins: tadah data write refuses a format it does not write before reading
  * anything, naming the formats it writes: -f cell (the CASTEP cell file's
- * extension) exits 1 with "tadah data write: FORMAT cell is not a format it
- * writes: castep, lammps or vasp", and no file is written; -f castep writes
+ * extension) exits 1 with "tadah data write: --format cell is not a format
+ * it writes: castep, lammps or vasp", naming the option (FORMAT is given
+ * with -f or --format only), and no file is written; -f castep writes
  * w.cell.
  * Before the fix: StructureWriterSelector::get_writer printed "Unknown
  * type! Returning nullptr." and the run dereferenced the null writer: a
  * segmentation fault (also in Tadah! 1.5.0, whose help gave "-f cell" as
- * the example). */
+ * the example). Before the fix that names the option: "tadah data write:
+ * FORMAT cell is not a format it writes: ...". */
 TEST_CASE("Subcommand: data write refuses a format it does not write",
           "[TadahCLI][data][write]") {
   ScratchCwd cwd("write_format");
@@ -11435,8 +11468,8 @@ TEST_CASE("Subcommand: data write refuses a format it does not write",
                               "-o", "w.cell", "-f", "cell", "-i", "1"});
   INFO("cell: status " << r.status << "\n" << reported(r));
   CHECK(r.status == 1);
-  CHECK(r.what == "tadah data write: FORMAT cell is not a format it writes: "
-                  "castep, lammps or vasp");
+  CHECK(r.what == "tadah data write: --format cell is not a format it "
+                  "writes: castep, lammps or vasp");
   CHECK_FALSE(std::filesystem::exists("w.cell"));
   const CliRun c = run_tadah({"tadah", "data", "write", "-d", "db.tadah",
                               "-o", "w.cell", "-f", "castep", "-i", "1"});

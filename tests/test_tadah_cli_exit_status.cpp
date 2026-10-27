@@ -8353,6 +8353,113 @@ TEST_CASE("Subcommand: train -c reads a CONFIG include in place of its line: "
                                                    "OUTFILE two.tadah"});
 }
 
+/* Pins: a retrain that includes a potential with CONFIG reads a line of the
+ * including file of a key the potential's own lines set as a second line
+ * of that key. pot.tadah is `tadah train` of the pair configuration of the
+ * [retrain] cases on a.tadah (D2_BP, one descriptor; RCUT2B 4.5, BIAS
+ * false, MODEL M_BLR BF_Linear):
+ *   - bias.train "BIAS true", "CONFIG pot.tadah", "DBFILE a.tadah" exits 1
+ *     with "Key BIAS is set on line 1 of bias.train and on line <n> of
+ *     pot.tadah (CONFIG on line 2 of bias.train): a key of one value is set
+ *     once ...", <n> the line of BIAS in pot.tadah, and writes no potential;
+ *   - model.train "CONFIG pot.tadah", "DBFILE a.tadah", "MODEL M_BLR
+ *     BF_Linear" exits 1 with "Too many values for key MODEL on line 3 of
+ *     model.train: MODEL takes at most 3, and its lines read so far give 4";
+ *   - larger.train "RCUT2B 5.0", "CONFIG pot.tadah", "DBFILE a.tadah",
+ *     "OUTFILE larger.tadah" exits 0 with "WARNING: Part of RCUT2B (<r>) is
+ *     ignored: TYPE2B D2_BP takes one RCUT2B value, and its cutoff is the
+ *     largest, 5.0", <r> the potential's RCUT2B (the notice is given once
+ *     per key and process: checked when no case before it in the process
+ *     gave it), and larger.tadah has "RCUT2B 5";
+ *   - smaller.train "CONFIG pot.tadah", "DBFILE a.tadah", "RCUT2B 4.0",
+ *     "OUTFILE smaller.tadah" exits 0, and smaller.tadah has the potential's
+ *     RCUT2B, the largest.
+ * Before the fix: passes as well (a pin: the Training page said that a line
+ * of the including file does not change RCUT2B). */
+TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG reads "
+          "a line of the potential's keys as a second line: BIAS and MODEL "
+          "refused, RCUT2B adds a cutoff",
+          "[TadahCLI][train][retrain][config-include]") {
+  ScratchCwd cwd("config_include_retrain_keys");
+  std::ofstream("a.tadah") << retrain_dataset();
+  std::ofstream("config") << dataset_keys_config("a.tadah", "");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string pot = slurp("pot.tadah");
+  INFO("pot.tadah:\n" << pot);
+  const std::vector<std::string> rcut = line_tokens(pot, "RCUT2B");
+  REQUIRE(rcut.size() == 2u);
+  std::size_t bias_line = 0;
+  {
+    std::istringstream in(pot);
+    std::size_t n = 0;
+    for (std::string l; std::getline(in, l);) {
+      ++n;
+      std::istringstream ls(l);
+      std::string k;
+      if (ls >> k && k == "BIAS") bias_line = n;
+    }
+  }
+  REQUIRE(bias_line > 0u);
+  const auto run_config = [](const std::string& file,
+                             const std::string& body) {
+    std::ofstream(file) << body;
+    return run_tadah({"tadah", "train", "-c", file});
+  };
+  {
+    const CliRun r =
+        run_config("bias.train", "BIAS true\nCONFIG pot.tadah\nDBFILE a.tadah\n"
+                                 "OUTFILE bias.tadah\n");
+    const std::string rep = reported(r);
+    INFO("-c bias.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key BIAS is set on line 1 of bias.train and on line " +
+                            std::to_string(bias_line) +
+                            " of pot.tadah (CONFIG on line 2 of bias.train): "
+                            "a key of one value is set once"));
+    CHECK_FALSE(std::filesystem::exists("bias.tadah"));
+  }
+  {
+    const CliRun r = run_config("model.train",
+                                "CONFIG pot.tadah\nDBFILE a.tadah\n"
+                                "MODEL M_BLR BF_Linear\nOUTFILE model.tadah\n");
+    const std::string rep = reported(r);
+    INFO("-c model.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Too many values for key MODEL on line 3 of "
+                        "model.train: MODEL takes at most 3, and its lines "
+                        "read so far give 4"));
+    CHECK_FALSE(std::filesystem::exists("model.tadah"));
+  }
+  const bool rcut_notice = !tadah::core::ignored_key_reported("RCUT2B");
+  {
+    const CliRun r = run_config("larger.train",
+                                "RCUT2B 5.0\nCONFIG pot.tadah\nDBFILE a.tadah\n"
+                                "OUTFILE larger.tadah\n");
+    const std::string rep = reported(r);
+    INFO("-c larger.train: status " << r.status << "\n" << rep);
+    REQUIRE(r.status == 0);
+    if (rcut_notice)
+      CHECK(contains(rep, "WARNING: Part of RCUT2B (" + rcut[1] +
+                              ") is ignored: TYPE2B D2_BP takes one RCUT2B "
+                              "value, and its cutoff is the largest, 5.0"));
+    CHECK(line_tokens(slurp("larger.tadah"), "RCUT2B") ==
+          std::vector<std::string>{"RCUT2B", "5"});
+  }
+  {
+    const CliRun r = run_config("smaller.train",
+                                "CONFIG pot.tadah\nDBFILE a.tadah\nRCUT2B 4.0\n"
+                                "OUTFILE smaller.tadah\n");
+    const std::string rep = reported(r);
+    INFO("-c smaller.train: status " << r.status << "\n" << rep);
+    REQUIRE(r.status == 0);
+    CHECK(line_tokens(slurp("smaller.tadah"), "RCUT2B") == rcut);
+  }
+}
+
 /* Pins: `tadah predict -F --zero-com-force` zeroes the net reference force
  * of each structure predicted: pot.tadah trained on db.tadah (the three
  * dimers, both atoms of each with the force f f f, so the net force is 2f

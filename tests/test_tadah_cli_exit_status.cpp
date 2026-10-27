@@ -10530,7 +10530,8 @@ TEST_CASE("Subcommand: the block of analysis suggest_bounds passes hpo "
 /* Pins: the block tadah analysis suggest_bounds writes for a seed of
  * D2_Knot5 (knots 3 4 5, RCUT2B 5) and a knot DM_REAM density (knots 3 4
  * 5, RCUTMB 5), each alone on its TYPE line, on three bcc Ta cells, has no
- * OPTIM RCUT2B or RCUTMB line, and tadah hpo --check with that seed passes
+ * OPTIM RCUT2B or RCUTMB line (and one OPTIM CGRID2B line, the knots), and
+ * tadah hpo --check with that seed passes
  * it (exit 0) without the warning that an OPTIM line of a knot cutoff has
  * no effect ("has no effect for the knot basis family").
  * Before the fix: the block had "OPTIM RCUTMB (1) ...", and tadah hpo
@@ -10556,8 +10557,18 @@ TEST_CASE("Subcommand: the block of analysis suggest_bounds for knot "
   REQUIRE(s.status == 0);
   const std::string block = slurp("knot.block");
   INFO(block);
-  CHECK_FALSE(contains(block, "OPTIM RCUT2B"));
-  CHECK_FALSE(contains(block, "OPTIM RCUTMB"));
+  // A line of the block, not its comments, which name the OPTIM lines that
+  // tadah hpo warns about.
+  auto lines_starting = [&block](const std::string& prefix) {
+    std::size_t n = 0;
+    std::istringstream in(block);
+    for (std::string line; std::getline(in, line);)
+      if (line.compare(0, prefix.size(), prefix) == 0) ++n;
+    return n;
+  };
+  CHECK(lines_starting("OPTIM RCUT2B") == 0u);
+  CHECK(lines_starting("OPTIM RCUTMB") == 0u);
+  CHECK(lines_starting("OPTIM CGRID2B") == 1u);
   std::ofstream("knot.hpo")
       << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
          "LOSS L2\nPC_ERMSE 0 1\n" << block;

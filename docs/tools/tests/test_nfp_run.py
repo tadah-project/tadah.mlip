@@ -50,7 +50,7 @@ if args[:1] == ['hpo']:
     if not os.path.isfile('no_best'):
         open('best_pot.tadah', 'w').write('# HPO_BEST_FORMAT 2\\n# HPO_BEST_LOSS '
                                           + loss + '\\nMODEL M_BLR BF_Linear\\n')
-    open('best_loss.tadah', 'w').write('#ITERATION TOTAL\\n1 ' + loss + '\\n')
+    open('best_loss.tadah', 'w').write('#IMPROVEMENT EVAL TOTAL\\n1 1 ' + loss + '\\n')
     open('hpo_run.log', 'w').write('log\\n')
 elif args[:1] == ['train']:
     out = args[args.index('-o') + 1] if '-o' in args else 'pot.tadah'

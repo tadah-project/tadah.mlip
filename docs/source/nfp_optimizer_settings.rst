@@ -123,10 +123,11 @@ Seeds
 -----
 
 An optimiser's ``SEED`` controls its search stream. ``INIT SEED`` and
-``RESTART SEED`` control their starting-point methods separately.
-NLopt uses the enclosing optimiser's seed, falling back to its
-``INIT`` seed when no optimiser seed is present. ``INNER`` has no seed
-of its own.
+``RESTART SEED`` control their starting-point methods separately. An
+NLopt algorithm that draws random numbers takes the ``SEED`` of its block,
+else the ``SEED`` of its ``INIT`` block, else a seed drawn once for the
+run, which standard output and the journal give. ``INNER`` has no seed of
+its own.
 
 A ``PRESTAGE`` exploration whose optimiser reads ``SEED`` and that has no
 seed of its own takes the ``STRATEGY``-level ``SEED``. Its own seeds come
@@ -142,10 +143,15 @@ exploration.
 
 ``TADAH:GRID``, ``DLIB:GFS``, ``DLIB:BFGS`` and ``CERES`` refuse ``SEED``
 because they draw no random numbers, except as a ``PRESTAGE`` refinement
-whose ``SEED`` the exploration takes. Every NLopt algorithm accepts it,
-including deterministic ones. A stochastic search and its starting points
+whose ``SEED`` the exploration takes. An NLopt algorithm that draws no
+random numbers, such as ``LN_SBPLX`` or ``GN_DIRECT_L``, refuses ``SEED``
+too. The :ref:`optimiser reference <nfp_ref_optimisers>` says how each
+optimiser reads ``SEED``. A stochastic search and its starting points
 repeat only with ``SEED`` set; see :doc:`nfp_initialisation` and
 :doc:`nfp_restart`.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 every NLopt algorithm accepted ``SEED``.
 
 Algorithm parameters: ``PARAM``
 -------------------------------

@@ -45,16 +45,19 @@ The primary structure in a configuration file is the KEY/VALUE pair. Each KEY/VA
 Common Usage
 ------------
 
-Typically, only a subset of KEYS is needed to train a model. Tadah!MLIP will use default values for some keys. An error will occur if a required KEY with no default value is missing:
+A model needs only some of the keys: many keys have a default value. A key that a command needs and that has no default must be set. A :file:`config.train` without a :ref:`DBFILE` line is such a case. The command below:
 
 .. code-block:: bash
 
-   [user@host:~] $ tadah train -c config.train
-   terminate called after throwing an instance of 'std::runtime_error'
-     what():  Key not found: DBFILE
-   Aborted (core dumped)
+   tadah train -c config.train
 
-This message indicates that the :ref:`DBFILE` KEY was not specified in the :file:`config.train` file. The :ref:`DBFILE` key with its value, added to :file:`config.train`, resolves it.
+stops with exit status 1 and an error that begins:
+
+.. code-block:: text
+
+   ERROR: The training configuration has no DBFILE: tadah train fits the datasets it lists. ...
+
+A :ref:`DBFILE` line, which names the datasets to fit, added to :file:`config.train` resolves it.
 
 Key Specifics
 -------------

@@ -1316,9 +1316,13 @@ class Writer:
         entry.line('Starts at', 'the point the search is given' if
                    o['starts_at_x0'] else entry.rst(o['start_note']))
         draws = RANDOM.get(o.get('random_draws'), '')
-        if never and 'SEED' in o['reads']:
-            draws += ': a ' + role('key', '!OPTIMIZER.SEED') + \
-                ' line is accepted and has no effect'
+        if never:
+            # tadah hpo refuses SEED for an optimiser that draws no random
+            # numbers (the registry lists it among what the optimiser reads
+            # only where it draws them)
+            draws += ': a ' + role('key', '!OPTIMIZER.SEED') + (
+                ' line is accepted and has no effect' if 'SEED' in o['reads']
+                else ' line is refused')
         entry.line('Random draws', sentence(draws) if draws else '')
         entry.line('Bounds', entry.rst(o['bounds_note']) if
                    o['ignores_bounds'] else entry.rst('inside the OPTIM box',

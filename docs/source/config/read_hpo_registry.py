@@ -672,6 +672,17 @@ BLOCK_REPEAT = {
 }
 CHECKED = {'parse': 'when the file is read',
            'startup': 'when tadah hpo starts'}
+# How a run of an optimiser reads SEED (the field seed of the optimiser
+# list), as tadah hpo decides it and the ALGO help says it; registry text,
+# whose names the entry cites.
+SEED_USE = {
+    'read': 'read: the seed of the random numbers it draws',
+    'two_dimensions': 'read in two OPTIM dimensions or more; refused in one, '
+                      'where it draws no random numbers',
+    'local_search': 'read only when its local search draws random numbers '
+                    '(an INNER LN_PRAXIS); refused otherwise',
+    'refused': 'refused: it draws no random numbers'}
+
 RANDOM = {'never': 'never',
           'between_sides': 'only to choose between sides of equal length',
           'trial_points': 'for its trial points'}
@@ -1298,10 +1309,15 @@ class Writer:
             need += ' Only ' + role('key', 'OPTIMIZER.MAXEVAL') + \
                 ' stops the search.'
         entry.line('Needs a stop', need)
-        never = o.get('random_draws') == 'never'
-        reads = [r for r in o['reads'] if not (never and r == 'SEED')]
+        # SEED has a field of its own, which says when a run reads it.
+        reads = [r for r in o['reads'] if r != 'SEED']
         text = ', '.join(role('key', 'OPTIMIZER.' + r) for r in reads)
         entry.line('Reads', text)
+        if o.get('seed') not in SEED_USE:
+            raise GenerationError(f'the optimiser {name} has no known seed '
+                                  f'field ({o.get("seed")!r}) in the '
+                                  'optimiser list')
+        entry.line('SEED', entry.rst(SEED_USE[o['seed']]))
         # How the optimiser uses STEP, as the ALGO help says it; when it
         # refuses STEP, the reason its message gives (the message reads
         # "<LIB>:<ALGO> does not use STEP; <reason>").
@@ -1316,13 +1332,6 @@ class Writer:
         entry.line('Starts at', 'the point the search is given' if
                    o['starts_at_x0'] else entry.rst(o['start_note']))
         draws = RANDOM.get(o.get('random_draws'), '')
-        if never:
-            # tadah hpo refuses SEED for an optimiser that draws no random
-            # numbers (the registry lists it among what the optimiser reads
-            # only where it draws them)
-            draws += ': a ' + role('key', '!OPTIMIZER.SEED') + (
-                ' line is accepted and has no effect' if 'SEED' in o['reads']
-                else ' line is refused')
         entry.line('Random draws', sentence(draws) if draws else '')
         entry.line('Bounds', entry.rst(o['bounds_note']) if
                    o['ignores_bounds'] else entry.rst('inside the OPTIM box',

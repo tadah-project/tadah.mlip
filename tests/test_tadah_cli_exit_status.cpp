@@ -3224,7 +3224,10 @@ const char *const kZeroDataRows =
  * leading minor of order 3 is not), ..."; OALGO 2 said "the design matrix
  * (2 data rows for 3 weights, LAMBDA 0) does not have full column rank: its
  * column 3 is zero or a linear combination of the columns before it (fewer
- * data rows than weights), ...". */
+ * data rows than weights), ...".
+ * Before the fix that states the remedies: the refusal read "... are not
+ * unique. Use OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm
+ * weights, LAMBDA > 0 ...", an instruction: the check fails. */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
           "weights",
           "[TadahCLI][exit-status][train][oalgo]") {
@@ -3253,9 +3256,9 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
   const std::string few =
       " cannot fit these 3 weights: the design matrix has 2 data rows for 3 "
       "weights, LAMBDA 0: fewer data rows than weights, so it does not have "
-      "full column rank and the least-squares weights are not unique. Use "
-      "OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm "
-      "weights, LAMBDA > 0";
+      "full column rank and the least-squares weights are not unique. The fit "
+      "is made with OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the "
+      "minimum-norm weights, with LAMBDA > 0";
   for (const auto& [oalgo, name] :
        {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
         {"2", "DGELS, QR"}}) {
@@ -3299,7 +3302,10 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
  * combination of the columns before it, ..." (whether DPOTRF stops depends
  * on the rounding of Phi^T Phi: on 2 other rows, of sine values, and a
  * zero row for 3 weights, test_linear_regressor_messages.cpp's OALGO 4
- * fitted without an error). */
+ * fitted without an error).
+ * Before the fix that states the remedies: the refusal read "... are not
+ * unique. Use OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm
+ * weights, LAMBDA > 0 ...", an instruction: the check fails. */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
           "rows than weights, a structure of priority 0 included",
           "[TadahCLI][exit-status][train][oalgo]") {
@@ -3336,9 +3342,9 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
       " cannot fit these 3 weights: the design matrix has 2 non-zero data "
       "rows of 3" + std::string(kZeroDataRows) + " for 3 weights, LAMBDA 0: "
       "fewer non-zero data rows than weights, so it does not have full column "
-      "rank and the least-squares weights are not unique. Use OALGO 1 "
-      "(DGELSD) or OALGO 3 (SVD), which give the minimum-norm weights, LAMBDA "
-      "> 0";
+      "rank and the least-squares weights are not unique. The fit is made "
+      "with OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm "
+      "weights, with LAMBDA > 0";
   for (const auto& [oalgo, name] :
        {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
         {"2", "DGELS, QR"}}) {
@@ -3379,7 +3385,10 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
  *    zero ...) for 3 weights, ...".
  * Before the fix: the counts and the refusals were the same, but the
  * parenthesis was "(a row of weight 0 is zero)", which sent the user to
- * look for a weight 0 that none of these rows has. */
+ * look for a weight 0 that none of these rows has.
+ * Before the fix that states the remedies: the refusal read "... are not
+ * unique. Use OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm
+ * weights, LAMBDA > 0 ...", an instruction: the check fails. */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 counts zero data rows of "
           "priority 1, a dimer's y and z forces and an isolated atom's energy",
           "[TadahCLI][exit-status][train][oalgo]") {
@@ -3423,9 +3432,9 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 counts zero data rows of "
       "FORCE false\n";
   const std::string tail =
       " LAMBDA 0: fewer non-zero data rows than weights, so it does not have "
-      "full column rank and the least-squares weights are not unique. Use "
-      "OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm "
-      "weights, LAMBDA > 0";
+      "full column rank and the least-squares weights are not unique. The fit "
+      "is made with OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the "
+      "minimum-norm weights, with LAMBDA > 0";
   for (const auto& [oalgo, name] :
        {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
         {"2", "DGELS, QR"}}) {
@@ -3562,12 +3571,15 @@ TEST_CASE("Subcommand: train builds a DM_EAM model from the SETFL file",
  * (4.5 A): a DM_EAM model with RCUTMB 3.5, and a D2_EAM model with RCUT2B
  * 3.5, exit 1 naming the descriptor, the key, both values and the file,
  *   DM_EAM: RCUTMB 3.5 differs from the cutoff 4.5 of the setfl file
- *   'eam_small.alloy' (SETFL); set RCUTMB to the file's cutoff, 4.5.
+ *   'eam_small.alloy' (SETFL); the RCUTMB of DM_EAM is the file's cutoff,
+ *   4.5.
  * and write no potential.
  * Before the fix: both exited 0 and wrote a potential that records the
  * file's cutoff (RCUTMB 4.5, RCUT2B 4.5), while the weights had been fitted
  * with the descriptor evaluated at 3.5, so `tadah predict` on that file
- * evaluated a model that was never fitted. */
+ * evaluated a model that was never fitted.
+ * Before the fix that states the rule: the refusal ended "(SETFL); set RCUTMB
+ * to the file's cutoff, 4.5.", an instruction: the check fails. */
 TEST_CASE("Subcommand: train refuses an EAM cutoff other than the setfl "
           "file's",
           "[TadahCLI][train][eam]") {
@@ -3608,8 +3620,8 @@ TEST_CASE("Subcommand: train refuses an EAM cutoff other than the setfl "
     CHECK(t.status == 1);
     CHECK(contains(rep, label + ": " + key +
                             " 3.5 differs from the cutoff 4.5 of the setfl "
-                            "file 'eam_small.alloy' (SETFL); set " + key +
-                            " to the file's cutoff, 4.5."));
+                            "file 'eam_small.alloy' (SETFL); the " + key +
+                            " of " + label + " is the file's cutoff, 4.5."));
     CHECK_FALSE(std::filesystem::exists("pot.tadah"));
   }
 }

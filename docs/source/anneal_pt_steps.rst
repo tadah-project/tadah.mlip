@@ -17,10 +17,12 @@ CLASSIC step modes
   during the search.
 
 Calibration uses coordinate probes followed by a whole-vector pilot.
-It consumes ``MAXEVAL``. When the hot temperature is also automatic,
-a second temperature-calibration pass uses the calibrated production
-kernel. An explicit ``T_HOT`` or ``STEP_MODE FIXED`` skips that second
-pass.
+It consumes ``MAXEVAL``: the warm-up and the pilot spend at most a
+quarter of it. A warm-up that stops at that budget is a warning in the
+journal, which gives the evaluations a complete warm-up takes. When the
+hot temperature is also automatic, a second temperature calibration
+probes with the proposal scales of the hottest slot after the warm-up.
+An explicit ``T_HOT`` or ``STEP_MODE FIXED`` skips that second pass.
 
 An explicit ``STEP_WARMUP_SWEEPS`` requires a mode with calibration,
 so ``FIXED`` rejects it. ``STEP_TRUST_FACTOR`` is accepted only

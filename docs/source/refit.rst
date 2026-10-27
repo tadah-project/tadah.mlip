@@ -928,7 +928,8 @@ out still runs the stage with its defaults:
 
 .. code-block:: none
 
-   EXPLORE INNER: ALGO is not set; set ALGO in the INNER block (NONE for no local search)
+   EXPLORE INNER: ALGO is not set; the INNER block of a tadah refit stage
+   names its ALGO (NONE for no local search)
 
 As in ``tadah hpo``, where every block, ``INNER`` included, sets both
 ``LIB`` and ``ALGO``, a block that runs an optimiser names the library of

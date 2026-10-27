@@ -690,7 +690,7 @@ A potential written by tadah 1.5.0 or earlier reproduces its energies with
 prints a warning: ``tadah`` logs it once per process, and the LAMMPS pair
 style prints a LAMMPS ``WARNING`` (screen and ``log.lammps``) on every
 ``pair_coeff`` that loads one, with a banner that reads ``EMBF0 ZERO (key
-absent: default ZERO, ...)``. Training on absolute reference energies (e.g. DFT totals) under
+absent: default ZERO, ...)``. Training on absolute reference energies, such as DFT totals, under
 ``ZERO`` needs a per-atom reference energy from ``ESHIFT``, ``ESHIFT_ATOM`` or
 ``ESHIFT_DBATOM`` (compatible with the LAMMPS ``EAMFAST`` kernel) or
 ``BIAS true`` (disables ``EAMFAST``; its intercept columns, one per ``ATOM``

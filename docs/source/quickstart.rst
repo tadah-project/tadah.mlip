@@ -159,8 +159,27 @@ and ``suggest_bounds``. Its lines follow these rules:
 
 - Comments start with ``#`` and run to the end of the line.
 - Boolean values are written in lowercase: ``true``, ``false``.
-- ``CONFIG other.cfg`` includes another configuration file, so several
-  configuration files can share settings.
+- ``CONFIG other.cfg`` reads the lines of ``other.cfg`` in place of its
+  line, so several configuration files can share settings
+  (:ref:`CONFIG <CONFIG>` gives the rules). The file ``run.train`` below
+  includes ``common.train``, whose first two lines are
+  ``DBFILE eos.tadahdb`` and ``BIAS false``:
+
+  .. code-block:: ini
+
+     CONFIG common.train
+     DBFILE elastic.tadahdb
+
+  ``tadah train -c run.train`` fits both datasets, ``eos.tadahdb`` first.
+  A third line, ``BIAS true``, is refused, and so is the same line above
+  the ``CONFIG`` line:
+
+  .. code-block:: text
+
+     Key BIAS is set on line 2 of common.train (CONFIG on line 1 of
+     run.train) and on line 3 of run.train: a key of one value is set once
+     in a configuration file and the files it includes with CONFIG
+
 - An option of the command and the configuration key of the same name set
   the same thing, and the option on the command line overrides the line of
   the file:
@@ -188,12 +207,13 @@ and ``suggest_bounds``. Its lines follow these rules:
   ``HPOTARGET``, ``VALIDATION``, ``CHECK`` and ``HEALTH_LOG``, are
   accepted in every training configuration and listed in the potential's
   :ref:`training record <training_record>`.
-- An error of a line names the line and the file (for a line of a file
-  included with ``CONFIG``, that file): a key that is no configuration key,
-  a value that the key does not take (with the values the key takes, the
-  line to write, or the key's schema, format and examples), more values
-  than the key takes, a block such as ``DESCRIPTOR`` ... ``ENDDESCRIPTOR``
-  that is not closed, and a ``CONFIG`` line whose file does not open:
+- An error of a line names the line and the file (for a line of an
+  included file, that file and the ``CONFIG`` lines that include it): a key
+  that is no configuration key, a value that the key does not take (with
+  the values the key takes, the line to write, or the key's schema, format
+  and examples), more values than the key takes, a block such as
+  ``DESCRIPTOR`` ... ``ENDDESCRIPTOR`` that is not closed, and a ``CONFIG``
+  line whose file does not open:
 
   .. code-block:: text
 
@@ -206,6 +226,11 @@ and ``suggest_bounds``. Its lines follow these rules:
    its own: its lines go into the configuration file of a command that
    takes ``-c``, the options ``-c`` needs stay on the command line, and the
    lines of another command become its options.
+
+.. versionchanged:: 1.6.0
+   Tadah! 1.5.0 let the included file's lines replace the lines of their
+   keys above the ``CONFIG`` line without a message (a ``DBFILE`` above it
+   was dropped), and a second line of a key of one value replace the first.
 
 .. versionchanged:: 1.6.0
    Tadah! 1.5.0 accepted a line of a *Command key* in every configuration

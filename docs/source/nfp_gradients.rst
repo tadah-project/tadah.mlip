@@ -35,8 +35,7 @@ Gradient strategies
 With ``PC_OBSERVABLE``, an omitted strategy resolves to ``ANALYTICAL``
 in phases that obtain gradients; explicit ``NUMERICAL`` is rejected
 with that loss term. Supplying ``GRAD_STRATEGY`` to an
-optimiser that never requests gradients is an error. The old value
-``AUTODIFF`` is rejected.
+optimiser that never requests gradients is an error.
 
 Analytical availability depends on the model, fit, loss terms and chosen
 optimiser. Setup validates derivative support for the selected combination. ``HYBRID`` is the explicit choice when numerical

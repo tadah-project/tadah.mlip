@@ -562,7 +562,8 @@ std::vector<std::string> line_tokens(const std::string& text,
 TEST_CASE("Subcommand: hpo: a fatal error inside the engine yields a non-zero status",
           "[TadahCLI][exit-status]") {
   /* Passes HPOEngine::validate (INIT2B set) and fails in HPOEngine::run:
-   * no DBFILE and no ATOM key -> "the ATOM key is required". */
+   * no DBFILE and no ATOM key -> "the training configuration declares
+   * the element set with the ATOM key". */
   TempFile cfg("config", "INIT2B true\nINITMB false\n");
   TempFile tgt("target", "OPTIM WATOM (1) 0.1 5.0\n");
 
@@ -7095,8 +7096,10 @@ void write_hpo_potential_fixture() {
  * best_pot.tadah, refusing "No training DBFILE and no FIXINDEX/FIXWEIGHT:
  * the model weights cannot be determined" and ending with the advice ("A
  * potential has no DBFILE line ... Retraining from a potential)."); the
- * potential without its ATOM line is refused "the ATOM key is required",
- * with the same advice.
+ * potential without its ATOM line is refused "the training configuration
+ * declares the element set with the ATOM key, such as ATOM Ta." (it was
+ * "the ATOM key is required in the training configuration to declare the
+ * element set (e.g. 'ATOM Ta')."), with the same advice.
  * Before the fix: both refusals ended with their own remedy ("... or pin
  * every weight with FIXINDEX/FIXWEIGHT.", "(e.g. 'ATOM Ta')."), without the
  * advice.
@@ -7127,7 +7130,8 @@ TEST_CASE("Subcommand: hpo -c of a potential without a DBFILE line says "
        "No training DBFILE and no FIXINDEX/FIXWEIGHT: the model weights "
        "cannot be determined"},
       {"the potential without ATOM", with_line(slurp("pot.tadah"), "ATOM", ""),
-       "the ATOM key is required"},
+       "No training DBFILE: the training configuration declares the "
+       "element set with the ATOM key, such as ATOM Ta. "},
   };
   for (const Case& c : cases) DYNAMIC_SECTION(c.name) {
     std::ofstream("seed.tadah") << c.pot;
@@ -8330,6 +8334,318 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
   }
 }
 
+/* Pins: `tadah train -c` reads a configuration as the concatenation of its
+ * lines, a CONFIG include in place of its line. inc.train is the pair
+ * configuration of the [retrain] cases on b.tadah (its line 13 is "BIAS
+ * false"):
+ *   - run.train "BIAS true", "CONFIG inc.train" exits 1 with "Key BIAS is
+ *     set on line 1 of run.train and on line 13 of inc.train (CONFIG on line
+ *     2 of run.train): a key of one value is set once in a configuration
+ *     file and the files it includes with CONFIG", and writes no pot.tadah;
+ *   - below.train "CONFIG inc.train", "BIAS true" exits 1 with "Key BIAS is
+ *     set on line 13 of inc.train (CONFIG on line 1 of below.train) and on
+ *     line 2 of below.train: ...";
+ *   - two.train "DBFILE a.tadah", "CONFIG inc.train", "OUTFILE two.tadah"
+ *     exits 0, and the training record of two.tadah lists "DBFILE a.tadah
+ *     b.tadah" (both datasets, in line order), "VERBOSE 0" (inc.train's)
+ *     and "OUTFILE two.tadah".
+ * Before the fix: run.train trained with the include's BIAS false and
+ * below.train with BIAS true (exit 0, a potential written), and two.tadah
+ * recorded "DBFILE b.tadah": the include's DBFILE replaced a.tadah without
+ * a message. */
+TEST_CASE("Subcommand: train -c reads a CONFIG include in place of its line: "
+          "a key of one value set twice is refused, DBFILE lines add up",
+          "[TadahCLI][train][config-include]") {
+  ScratchCwd cwd("config_includes");
+  std::ofstream("a.tadah") << retrain_dataset();
+  std::ofstream("b.tadah") << dimers_with_energy("-1.1");
+  std::ofstream("inc.train") << dataset_keys_config("b.tadah", "");
+  const std::string once =
+      ": a key of one value is set once in a configuration file and the "
+      "files it includes with CONFIG";
+  {
+    std::ofstream("run.train") << "BIAS true\nCONFIG inc.train\n";
+    const CliRun r = run_tadah({"tadah", "train", "-c", "run.train"});
+    const std::string rep = reported(r);
+    INFO("-c run.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key BIAS is set on line 1 of run.train and on line "
+                        "13 of inc.train (CONFIG on line 2 of run.train)" +
+                            once));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  {
+    std::ofstream("below.train") << "CONFIG inc.train\nBIAS true\n";
+    const CliRun r = run_tadah({"tadah", "train", "-c", "below.train"});
+    const std::string rep = reported(r);
+    INFO("-c below.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key BIAS is set on line 13 of inc.train (CONFIG on "
+                        "line 1 of below.train) and on line 2 of below.train" +
+                            once));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  std::ofstream("two.train") << "DBFILE a.tadah\nCONFIG inc.train\n"
+                                "OUTFILE two.tadah\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "two.train"});
+  INFO("-c two.train: status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  const std::string two = slurp("two.tadah");
+  INFO("two.tadah:\n" << two);
+  CHECK(record_of(two) == std::vector<std::string>{"DBFILE a.tadah b.tadah",
+                                                   "VERBOSE 0",
+                                                   "OUTFILE two.tadah"});
+}
+
+/* A retrain that includes a potential with CONFIG reads a line of the
+ * including file of a key the potential's own lines set as a second line
+ * of that key. pot.tadah is `tadah train` of the pair configuration of the
+ * [retrain] cases on a.tadah (D2_BP, one descriptor; RCUT2B 4.5 on line
+ * <r>, BIAS false, MODEL M_BLR BF_Linear):
+ *   - bias.train "BIAS true", "CONFIG pot.tadah", "DBFILE a.tadah" exits 1
+ *     with "Key BIAS is set on line 1 of bias.train and on line <n> of
+ *     pot.tadah (CONFIG on line 2 of bias.train): a key of one value is set
+ *     once in a configuration file and the files it includes with CONFIG; a
+ *     potential's value is changed by editing its line in a copy of the
+ *     potential (the Training page of the documentation, Retraining from a
+ *     potential)", <n> the line of BIAS in pot.tadah, and writes no
+ *     potential;
+ *   - model.train "CONFIG pot.tadah", "DBFILE a.tadah", "MODEL M_BLR
+ *     BF_Linear" exits 1 with "Too many values for key MODEL on line 3 of
+ *     model.train: MODEL takes at most 3, and its lines read so far give 4,
+ *     with line <m> of pot.tadah (CONFIG on line 1 of model.train) before
+ *     it; a potential's value is changed ...", <m> the line of MODEL in
+ *     pot.tadah;
+ *   - larger.train "RCUT2B 5.0", "CONFIG pot.tadah", "DBFILE a.tadah",
+ *     "OUTFILE larger.tadah" exits 1 with "TYPE2B names 1 descriptor (D2_BP)
+ *     but RCUT2B has 2 values, set on line 1 of larger.train and on line <r>
+ *     of pot.tadah (CONFIG on line 2 of larger.train): each descriptor takes
+ *     one RCUT2B value, in the order of the TYPE2B lines" and writes no
+ *     potential: the line is read as one of a training configuration;
+ *   - smaller.train "CONFIG pot.tadah", "DBFILE a.tadah", "RCUT2B 4.0",
+ *     "OUTFILE smaller.tadah" exits 1 with "... set on line <r> of pot.tadah
+ *     (CONFIG on line 1 of smaller.train) and on line 3 of smaller.train:
+ *     ..." and writes no potential.
+ * Before the fix: larger.train exited 0 with "WARNING: Part of RCUT2B (4.5)
+ * is ignored: TYPE2B D2_BP takes one RCUT2B value, and its cutoff is the
+ * largest, 5.0; the potential works unchanged with RCUT2B 5.0 alone" and
+ * wrote RCUT2B 5 (the largest cutoff was the model's), and smaller.train
+ * exited 0 with the potential's RCUT2B 4.5, the line ignored with a
+ * WARNING. Until the refusals of the parser named the lines of the key
+ * before a line and the way to change a potential's value, the BIAS
+ * refusal ended at the rule and the MODEL one at "... read so far give 4".
+ */
+TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG reads "
+          "a line of the potential's keys as a second line: BIAS, MODEL and "
+          "RCUT2B refused",
+          "[TadahCLI][train][retrain][config-include]") {
+  ScratchCwd cwd("config_include_retrain_keys");
+  std::ofstream("a.tadah") << retrain_dataset();
+  std::ofstream("config") << dataset_keys_config("a.tadah", "");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  const std::string pot = slurp("pot.tadah");
+  INFO("pot.tadah:\n" << pot);
+  const std::vector<std::string> rcut = line_tokens(pot, "RCUT2B");
+  REQUIRE(rcut.size() == 2u);
+  // the number of the line of @p key in pot.tadah
+  const auto line_of = [&pot](const std::string& key) {
+    std::istringstream in(pot);
+    std::size_t n = 0, at = 0;
+    for (std::string l; std::getline(in, l);) {
+      ++n;
+      std::istringstream ls(l);
+      std::string k;
+      if (ls >> k && k == key) at = n;
+    }
+    return at;
+  };
+  const std::size_t bias_line = line_of("BIAS");
+  REQUIRE(bias_line > 0u);
+  const std::size_t model_line = line_of("MODEL");
+  REQUIRE(model_line > 0u);
+  const std::string copy_advice =
+      "; a potential's value is changed by editing its line in a copy of the "
+      "potential (the Training page of the documentation, Retraining from a "
+      "potential)";
+  const auto run_config = [](const std::string& file,
+                             const std::string& body) {
+    std::ofstream(file) << body;
+    return run_tadah({"tadah", "train", "-c", file});
+  };
+  {
+    const CliRun r =
+        run_config("bias.train", "BIAS true\nCONFIG pot.tadah\nDBFILE a.tadah\n"
+                                 "OUTFILE bias.tadah\n");
+    const std::string rep = reported(r);
+    INFO("-c bias.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key BIAS is set on line 1 of bias.train and on line " +
+                            std::to_string(bias_line) +
+                            " of pot.tadah (CONFIG on line 2 of bias.train): "
+                            "a key of one value is set once in a "
+                            "configuration file and the files it includes "
+                            "with CONFIG" + copy_advice));
+    CHECK_FALSE(std::filesystem::exists("bias.tadah"));
+  }
+  {
+    const CliRun r = run_config("model.train",
+                                "CONFIG pot.tadah\nDBFILE a.tadah\n"
+                                "MODEL M_BLR BF_Linear\nOUTFILE model.tadah\n");
+    const std::string rep = reported(r);
+    INFO("-c model.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Too many values for key MODEL on line 3 of "
+                        "model.train: MODEL takes at most 3, and its lines "
+                        "read so far give 4, with line " +
+                            std::to_string(model_line) +
+                            " of pot.tadah (CONFIG on line 1 of model.train) "
+                            "before it" + copy_advice));
+    CHECK_FALSE(std::filesystem::exists("model.tadah"));
+  }
+  const std::size_t rcut_line = line_of("RCUT2B");
+  REQUIRE(rcut_line > 0u);
+  const std::string pot_rcut =
+      "line " + std::to_string(rcut_line) + " of pot.tadah";
+  const std::string counts =
+      "TYPE2B names 1 descriptor (D2_BP) but RCUT2B has 2 values, set on ";
+  const std::string one =
+      ": each descriptor takes one RCUT2B value, in the order of the TYPE2B "
+      "lines";
+  {
+    const CliRun r = run_config("larger.train",
+                                "RCUT2B 5.0\nCONFIG pot.tadah\nDBFILE a.tadah\n"
+                                "OUTFILE larger.tadah\n");
+    const std::string rep = reported(r);
+    INFO("-c larger.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, counts + "line 1 of larger.train and on " + pot_rcut +
+                            " (CONFIG on line 2 of larger.train)" + one));
+    CHECK_FALSE(std::filesystem::exists("larger.tadah"));
+  }
+  {
+    const CliRun r = run_config("smaller.train",
+                                "CONFIG pot.tadah\nDBFILE a.tadah\nRCUT2B 4.0\n"
+                                "OUTFILE smaller.tadah\n");
+    const std::string rep = reported(r);
+    INFO("-c smaller.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, counts + pot_rcut +
+                            " (CONFIG on line 1 of smaller.train) and on line "
+                            "3 of smaller.train" + one));
+    CHECK_FALSE(std::filesystem::exists("smaller.tadah"));
+  }
+}
+
+/* A configuration file of a command that writes one file takes one
+ * OUTFILE value, as the option -o does, over its lines and the files they
+ * include with CONFIG. inc.train is the pair configuration of the
+ * [retrain] cases on b.tadah with "OUTFILE b_out.tadah" on its last line,
+ * <o>; plain.train is that configuration without it:
+ *   - out.train "OUTFILE a_out.tadah", "CONFIG inc.train": `tadah train -c`
+ *     exits 1 with "Key OUTFILE is set on line 1 of out.train and on line
+ *     <o> of inc.train (CONFIG on line 2 of out.train): a key of one value
+ *     is set once in a configuration file and the files it includes with
+ *     CONFIG" and writes neither file;
+ *   - one.train "OUTFILE a_out.tadah b_out.tadah", "CONFIG plain.train":
+ *     `tadah train -c` exits 1 with "Too many values for key OUTFILE on line
+ *     1 of one.train: OUTFILE of tadah train takes at most 1, and its lines
+ *     read so far give 2" and writes neither file, and `tadah analysis
+ *     suggest_bounds -c` with "... OUTFILE of tadah analysis suggest_bounds
+ *     takes at most 1, ...".
+ * Before the fix: each run exited 0 and wrote a_out.tadah, b_out.tadah
+ * ignored without a message (Tadah! 1.5.0 wrote b_out.tadah for out.train:
+ * the include replaced the line above it). */
+TEST_CASE("Subcommand: a configuration file takes one OUTFILE value over "
+          "its CONFIG includes",
+          "[TadahCLI][train][config-include]") {
+  ScratchCwd cwd("config_include_outfile");
+  std::ofstream("b.tadah") << dimers_with_energy("-1.1");
+  const std::string plain = dataset_keys_config("b.tadah", "");
+  std::ofstream("plain.train") << plain;
+  std::ofstream("inc.train") << plain << "OUTFILE b_out.tadah\n";
+  const std::size_t o = lines_in(plain) + 1;
+  {
+    std::ofstream("out.train") << "OUTFILE a_out.tadah\nCONFIG inc.train\n";
+    const CliRun r = run_tadah({"tadah", "train", "-c", "out.train"});
+    const std::string rep = reported(r);
+    INFO("-c out.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key OUTFILE is set on line 1 of out.train and on "
+                        "line " + std::to_string(o) +
+                            " of inc.train (CONFIG on line 2 of out.train): a "
+                            "key of one value is set once in a configuration "
+                            "file and the files it includes with CONFIG"));
+    CHECK_FALSE(std::filesystem::exists("a_out.tadah"));
+    CHECK_FALSE(std::filesystem::exists("b_out.tadah"));
+  }
+  std::ofstream("one.train")
+      << "OUTFILE a_out.tadah b_out.tadah\nCONFIG plain.train\n";
+  for (const std::vector<std::string> command :
+       {std::vector<std::string>{"train"},
+        std::vector<std::string>{"analysis", "suggest_bounds"}}) {
+    std::vector<std::string> args{"tadah"};
+    std::string words = "tadah";
+    for (const std::string& w : command) {
+      args.push_back(w);
+      words += " " + w;
+    }
+    args.insert(args.end(), {"-c", "one.train"});
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO(words << " -c one.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Too many values for key OUTFILE on line 1 of "
+                        "one.train: OUTFILE of " + words +
+                            " takes at most 1, and its lines read so far "
+                            "give 2"));
+    CHECK_FALSE(std::filesystem::exists("a_out.tadah"));
+    CHECK_FALSE(std::filesystem::exists("b_out.tadah"));
+  }
+}
+
+/* Pins: the example of the Quick Start (Config File). common.train has
+ * "DBFILE eos.tadahdb", "BIAS false"; run.train "CONFIG common.train",
+ * "DBFILE elastic.tadahdb", "BIAS true": `tadah train -c run.train` exits 1
+ * with the message the page quotes, "Key BIAS is set on line 2 of
+ * common.train (CONFIG on line 1 of run.train) and on line 3 of run.train:
+ * a key of one value is set once in a configuration file and the files it
+ * includes with CONFIG". An unknown key of an included file is named with
+ * the CONFIG line that includes it: wrong.train "BIAS false", "CONFIG
+ * bad.train", bad.train "FOOBAR 1", "Invalid key FOOBAR on line 1 of
+ * bad.train (CONFIG on line 2 of wrong.train) (closest key: ".
+ * Before the fix: the first passes as well; the second named bad.train
+ * alone ("Invalid key FOOBAR on line 1 of bad.train (closest key: "). */
+TEST_CASE("Subcommand: train -c names the lines of a key set twice and the "
+          "CONFIG line of an included line, as the Quick Start shows",
+          "[TadahCLI][train][config-include]") {
+  ScratchCwd cwd("config_include_quickstart");
+  std::ofstream("common.train") << "DBFILE eos.tadahdb\nBIAS false\n";
+  std::ofstream("run.train")
+      << "CONFIG common.train\nDBFILE elastic.tadahdb\nBIAS true\n";
+  {
+    const CliRun r = run_tadah({"tadah", "train", "-c", "run.train"});
+    const std::string rep = reported(r);
+    INFO("-c run.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key BIAS is set on line 2 of common.train (CONFIG on "
+                        "line 1 of run.train) and on line 3 of run.train: a "
+                        "key of one value is set once in a configuration "
+                        "file and the files it includes with CONFIG"));
+  }
+  std::ofstream("bad.train") << "FOOBAR 1\n";
+  std::ofstream("wrong.train") << "BIAS false\nCONFIG bad.train\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "wrong.train"});
+  const std::string rep = reported(r);
+  INFO("-c wrong.train: status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "Invalid key FOOBAR on line 1 of bad.train (CONFIG on "
+                      "line 2 of wrong.train) (closest key: "));
+}
+
 /* Pins: `tadah predict -F --zero-com-force` zeroes the net reference force
  * of each structure predicted: pot.tadah trained on db.tadah (the three
  * dimers, both atoms of each with the force f f f, so the net force is 2f
@@ -8571,11 +8887,14 @@ TEST_CASE("Subcommand: hpo -c refuses the UNCERTAINTY line of a seed "
  *     --eshift-dbatom: a potential's own line of them is not read), all
  *     compatible with EAMFAST, or BIAS true ...";
  *   - `tadah hpo -c config.train --hpotarget t.hpotarget --validation
- *     config.val` exits 0 with the journal HINT "EMBF0 ZERO fixes ... If
+ *     config.val` exits 0 with the journal HINT "EMBF0 ZERO fixes ... For
+ *     absolute reference energies, such as DFT totals, ESHIFT, or
+ *     ESHIFT_ATOM or ESHIFT_DBATOM for the run (--eshift-atom,
+ *     --eshift-dbatom: a potential's own line of them is not read), gives
+ *     that constant, all compatible with EAMFAST. ..." (it was "If
  *     reference energies are absolute (e.g. DFT totals), set ESHIFT or give
- *     the run ESHIFT_ATOM or ESHIFT_DBATOM (--eshift-atom, --eshift-dbatom:
- *     a potential's own line of them is not read), all compatible with
- *     EAMFAST. ...";
+ *     the run ESHIFT_ATOM or ESHIFT_DBATOM (...), all compatible with
+ *     EAMFAST.");
  *   - with --eshift-dbatom both exit 0 with no EMBF0 HINT, and p3.tadah and
  *     best_pot.tadah have an ESHIFT line and "ESHIFT_DBATOM true" in their
  *     training record (a pin: the run's own toggle applied before the fix
@@ -8653,8 +8972,12 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
     const std::string journal = slurp("hpo_run.log");
     INFO("hpo_run.log:\n" << journal);
     CHECK(contains(journal, hint));
-    CHECK(contains(journal, "If reference energies are absolute (e.g. DFT "
-                            "totals), " + toggles + ". BIAS true"));
+    CHECK(contains(journal, "For absolute reference energies, such as DFT "
+                            "totals, ESHIFT, or ESHIFT_ATOM or ESHIFT_DBATOM "
+                            "for the run (--eshift-atom, --eshift-dbatom: a "
+                            "potential's own line of them is not read), "
+                            "gives that constant, all compatible with "
+                            "EAMFAST. BIAS true"));
   }
   const CliRun h = run_tadah({"tadah", "hpo", "-c", "config.train",
                               "--hpotarget", "t.hpotarget", "--validation",
@@ -9440,6 +9763,198 @@ TEST_CASE("Subcommand: hpo: a -c potential with values its descriptors do not "
   CHECK(pot_key("best_pot.tadah", "RCUT2B") ==
         std::vector<std::string>{"5", "4.5"});
   CHECK(pot_key("best_pot.tadah", "KDEG2B").empty());
+}
+#endif  // TADAH_ENABLE_NFP
+
+/* ---------------------------------------------------------------------------
+ * A configuration file that includes a potential with CONFIG is the
+ * concatenation of its lines: a line of a descriptor key outside the
+ * potential's own lines adds its values to the potential's and is read as
+ * a line of a training configuration, by every command that reads the
+ * file. The potential's own values that its descriptors do not take are
+ * reported and ignored, read alone or included.
+ * ------------------------------------------------------------------------- */
+namespace {
+
+/* The number of the line of `key` in the file `file` (0: none). */
+std::size_t line_of_key(const std::string& file, const std::string& key) {
+  std::ifstream in(file);
+  std::size_t n = 0, at = 0;
+  for (std::string l; std::getline(in, l);) {
+    ++n;
+    std::istringstream ls(l);
+    std::string k;
+    if (ls >> k && k == key) at = n;
+  }
+  return at;
+}
+
+/* After write_old_potential(): above.train has "RCUT2B 6.0" above "CONFIG
+ * pot.tadah", below.train below it; the refusal each gives. */
+struct JoinedIncludes {
+  std::string above, below;
+};
+
+JoinedIncludes write_joined_includes() {
+  std::ofstream("above.train")
+      << "RCUT2B 6.0\nCONFIG pot.tadah\nDBFILE train.db\n";
+  std::ofstream("below.train")
+      << "CONFIG pot.tadah\nDBFILE train.db\nRCUT2B 6.0\n";
+  const std::size_t r = line_of_key("pot.tadah", "RCUT2B");
+  REQUIRE(r > 0u);
+  const std::string pot = "line " + std::to_string(r) + " of pot.tadah";
+  const std::string counts =
+      "TYPE2B names 2 descriptors (D2_Blip, D2_BP) but RCUT2B has 3 values, "
+      "set on ";
+  const std::string one =
+      ": each descriptor takes one RCUT2B value, in the order of the TYPE2B "
+      "lines";
+  return {counts + "line 1 of above.train and on " + pot +
+              " (CONFIG on line 2 of above.train)" + one,
+          counts + pot +
+              " (CONFIG on line 1 of below.train) and on line 3 of "
+              "below.train" + one};
+}
+
+}  // namespace
+
+/* `tadah train -c` of a file that includes the D2_mJoin potential pot.tadah
+ * (D2_Blip RCUT2B 5, D2_BP 4.5: write_old_potential) with CONFIG and has
+ * "RCUT2B 6.0" above the CONFIG line exits 1 with "TYPE2B names 2
+ * descriptors (D2_Blip, D2_BP) but RCUT2B has 3 values, set on line 1 of
+ * above.train and on line <r> of pot.tadah (CONFIG on line 2 of
+ * above.train): each descriptor takes one RCUT2B value, in the order of the
+ * TYPE2B lines" and writes no potential; below the CONFIG line likewise
+ * ("set on line <r> of pot.tadah (CONFIG on line 1 of below.train) and on
+ * line 3 of below.train"). Pins: old_pot.tadah (1.5.0 values) included by
+ * a file of no other line retrains with its values reported and left out,
+ * as given with -c.
+ * Before the fix: above.train exited 0 and wrote RCUT2B 6 5 (D2_BP's
+ * cutoff 5), with "WARNING: Part of RCUT2B (4.5) is ignored: ... the
+ * potential works unchanged without it"; below.train exited 0, 6.0
+ * ignored with a WARNING. */
+TEST_CASE("Subcommand: train: a line of RCUT2B in a file that includes a "
+          "D2_mJoin potential is refused naming both lines",
+          "[TadahCLI][train][retrain][config-include][potential]") {
+  ScratchCwd cwd("joined_include_rcut");
+  write_old_potential();
+  const JoinedIncludes refusals = write_joined_includes();
+  {
+    const CliRun r = run_tadah(
+        {"tadah", "train", "-c", "above.train", "-o", "above.tadah"});
+    const std::string rep = reported(r);
+    INFO("-c above.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, refusals.above));
+    CHECK_FALSE(std::filesystem::exists("above.tadah"));
+  }
+  {
+    const CliRun r = run_tadah(
+        {"tadah", "train", "-c", "below.train", "-o", "below.tadah"});
+    const std::string rep = reported(r);
+    INFO("-c below.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, refusals.below));
+    CHECK_FALSE(std::filesystem::exists("below.tadah"));
+  }
+  {
+    std::ofstream("old.train") << "CONFIG old_pot.tadah\n";
+    const auto before = reported_before();
+    const CliRun r = run_tadah(
+        {"tadah", "train", "-c", "old.train", "-o", "old_retrained.tadah"});
+    INFO("-c old.train: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+    check_reported(r.err, before);
+    CHECK(pot_key("old_retrained.tadah", "RCUT2B") ==
+          std::vector<std::string>{"5", "4.5"});
+  }
+}
+
+/* Pins: `tadah predict -p` of a potential with values its descriptors do
+ * not take (old_pot.tadah without its DBFILE line) exits 0 with the
+ * WARNINGs, given once per key and process. Before the fix: passes as
+ * well. */
+TEST_CASE("Subcommand: predict -p of a potential with values its "
+          "descriptors do not take loads with the WARNINGs",
+          "[TadahCLI][predict][potential]") {
+  ScratchCwd cwd("predict_old_pot");
+  write_old_potential();
+  std::ofstream("old.tadah") << with_line(slurp("old_pot.tadah"), "DBFILE", "");
+  const auto before = reported_before();
+  const CliRun r =
+      run_tadah({"tadah", "predict", "-p", "old.tadah", "-d", "train.db"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  check_reported(r.err, before);
+}
+
+/* `tadah analysis check_bounds -c`, `tadah analysis suggest_bounds -c` and
+ * `tadah analysis bfunc -c` of above.train (an RCUT2B line above the CONFIG
+ * line of the D2_mJoin potential) exit 1 with the refusal of the retrain.
+ * Before the fix: each read RCUT2B 6 5 (the line moved D2_BP's cutoff) and
+ * went on: check_bounds and suggest_bounds without the refusal,
+ * suggest_bounds and bfunc with exit 0. */
+TEST_CASE("Subcommand: analysis: a line of RCUT2B in a file that includes a "
+          "D2_mJoin potential is refused naming both lines",
+          "[TadahCLI][analysis][config-include][potential]") {
+  ScratchCwd cwd("joined_include_analysis");
+  write_old_potential();
+  const JoinedIncludes refusals = write_joined_includes();
+  std::ofstream("config.hpo")
+      << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
+         "LOSS L2\nPC_ERMSE 0 1\nOPTIM CGRID2B (1) 1.5 2.5\n";
+  const std::vector<std::vector<std::string>> runs = {
+      {"tadah", "analysis", "check_bounds", "-c", "above.train",
+       "--hpotarget", "config.hpo"},
+      {"tadah", "analysis", "suggest_bounds", "-c", "above.train", "-o",
+       "block.hpo"},
+      {"tadah", "analysis", "bfunc", "-c", "above.train", "--type", "2b",
+       "-r", "1", "5", "5", "-o", "b.out"}};
+  for (const auto& args : runs) {
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO(args[2] << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, refusals.above));
+  }
+}
+
+#ifdef TADAH_ENABLE_NFP
+/* `tadah hpo -c above.train` and `tadah hpo --check -c below.train` (an
+ * RCUT2B line above or below the CONFIG line of the D2_mJoin potential, the
+ * seed of the search) exit 1 with the refusal of the retrain and write no
+ * best_pot.tadah.
+ * Before the fix: the search ran from RCUT2B 6 5 (exit 0, best_pot.tadah
+ * with RCUT2B 6 5), and the check passed with 6.0 ignored. */
+TEST_CASE("Subcommand: hpo: a line of RCUT2B in a file that includes the "
+          "seed potential is refused naming both lines",
+          "[TadahCLI][hpo][config-include][potential]") {
+  ScratchCwd cwd("joined_include_hpo");
+  write_old_potential();
+  const JoinedIncludes refusals = write_joined_includes();
+  std::ofstream("config.val") << "DBFILE train.db\n";
+  std::ofstream("config.hpo")
+      << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 2\nENDOPTIMIZER\n"
+         "LOSS L2\nPC_ERMSE 0 1\nOPTIM CGRID2B (1) 1.5 2.5\n";
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "above.train",
+                                "--hpotarget", "config.hpo", "--validation",
+                                "config.val"});
+    const std::string rep = reported(r);
+    INFO("hpo -c above.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, refusals.above));
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "--check", "-c",
+                                "below.train", "--hpotarget", "config.hpo",
+                                "--validation", "config.val"});
+    const std::string rep = reported(r);
+    INFO("hpo --check -c below.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, refusals.below));
+  }
 }
 #endif  // TADAH_ENABLE_NFP
 
@@ -10229,6 +10744,90 @@ TEST_CASE("Subcommand: train with AUDIT error judges each descriptor of a "
   CHECK_FALSE(std::filesystem::exists("far.tadah"));
 }
 
+namespace {
+
+/* The model lines of a fit of bcc.tadah. */
+const char* const kBlockModel =
+    "DBFILE bcc.tadah\nATOM Ta\nWATOM 1\n"
+    "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
+    "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+
+}  // namespace
+
+/* Pins: tadah train with AUDIT error refuses a D2_Knot5 seed whose cutoff
+ * holds no neighbour distance (RCUT2B 2, knots 1.5 and 2, on bcc Ta cells
+ * whose nearest neighbours are 2.77 A apart or more): exit 1, the FAIL
+ * finding naming D2_Knot5.RCUT2B, and no potential written.
+ * Before the fix: D2_Knot5's cutoff had no check: the audit passed, and a
+ * potential whose descriptor is 0 for every structure was trained (exit
+ * 0). */
+TEST_CASE("Subcommand: train with AUDIT error refuses a cutoff that holds "
+          "no neighbour distance",
+          "[TadahCLI][exit-status][audit]") {
+  ScratchCwd cwd("audit_short_cutoff");
+  write_bcc_mblipenv("unused.train", "0.0", "unused.tadah");
+  std::ofstream("knot.train")
+      << kBlockModel
+      << "INIT2B true\nINITMB false\nTYPE2B D2_Knot5 2 2 Ta Ta\n"
+         "RCTYPE2B Cut_Dummy\nRCUT2B 2.0\nCGRID2B 1.5 2.0\nKDEG2B 5 5\n"
+         "AUDIT error\nOUTFILE knot.tadah\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "knot.train"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 1);
+  CHECK(contains(reported(r), "D2_Knot5.RCUT2B"));
+  CHECK_FALSE(std::filesystem::exists("knot.tadah"));
+}
+
+namespace {
+
+/* The lines of a DESCRIPTOR block of a DM_Embed component, ta, whose
+ * density cutoff has RADIUS @p radius (blips at 0.5, 1 and 1.5 A). */
+std::string embed_component_lines(const std::string& radius) {
+  return "DESCRIPTOR ta DM_Embed\nPAIRS Ta Ta\nDENSITY\nBASIS Blip5\n"
+         "FORM NONNEG\nCENTRES 0.5 1.0 1.5\nETA 1.5 1.5 1.5\n"
+         "AMPLITUDES 0.4 0.2 0.1\nCUTOFF\nTYPE Cut_Poly\nRADIUS " +
+         radius +
+         "\nENDCUTOFF\nENDDENSITY\nEMBEDDING\nBASIS Gaussian\n"
+         "CENTRES 0.0 0.5 1.0 1.5\nWIDTHS 0.5 0.5 0.5 0.5\n"
+         "REFERENCE ZERO\nENVELOPE\nTYPE Smoothstep2\nCUTOFF 2.0\n"
+         "ENDENVELOPE\nENDEMBEDDING\nENDDESCRIPTOR\n";
+}
+
+}  // namespace
+
+/* Pins: tadah train with AUDIT error refuses a DM_Embed component whose
+ * density cutoff holds no neighbour distance (RADIUS 2 on bcc Ta cells
+ * whose nearest neighbours are 2.77 A apart or more): exit 1, the FAIL
+ * finding naming TA.DENSITY.CUTOFF.RADIUS, and no potential written; with
+ * RADIUS 5.6 the same configuration trains (exit 0, the potential
+ * written).
+ * Before the fix: DM_Embed's metadata had no cutoff check: the audit
+ * passed, and a potential whose density is 0 for every atom was trained
+ * (exit 0). */
+TEST_CASE("Subcommand: train with AUDIT error refuses a DESCRIPTOR block "
+          "whose density cutoff holds no neighbour distance",
+          "[TadahCLI][exit-status][audit]") {
+  ScratchCwd cwd("audit_embed_cutoff");
+  write_bcc_mblipenv("unused.train", "0.0", "unused.tadah");
+  std::ofstream("short.train")
+      << kBlockModel << "INIT2B false\nINITMB true\n"
+      << embed_component_lines("2.0")
+      << "AUDIT error\nOUTFILE short.tadah\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "short.train"});
+  INFO("RADIUS 2: status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 1);
+  CHECK(contains(reported(r), "TA.DENSITY.CUTOFF.RADIUS"));
+  CHECK_FALSE(std::filesystem::exists("short.tadah"));
+  std::ofstream("wide.train")
+      << kBlockModel << "INIT2B false\nINITMB true\n"
+      << embed_component_lines("5.6")
+      << "AUDIT error\nOUTFILE wide.tadah\n";
+  const CliRun w = run_tadah({"tadah", "train", "-c", "wide.train"});
+  INFO("RADIUS 5.6: status " << w.status << "\n" << reported(w));
+  CHECK(w.status == 0);
+  CHECK(std::filesystem::exists("wide.tadah"));
+}
+
 #ifdef TADAH_ENABLE_NFP
 
 /* ---- [preflight_audit]: tadah hpo and the critical-parameter audit ---- */
@@ -10272,17 +10871,22 @@ void write_audit_fixture() {
  * weight pinned, AUDIT off: the default) prints no critical-parameter
  * warning (exit 0); with AUDIT warn and a search of SGRID2B alone, the
  * fixed RCUT2B of the searched descriptor is flagged once ("D2_BP.RCUT2B
- * -- Critical hyperparameter is fixed ...", one line).
+ * -- RCUT2B(1) is a critical parameter that the seed fixes and no OPTIM
+ * line searches ...", one line, naming `OPTIM RCUT2B (1)`).
  * Before the fix: a preview of the audit ran before every run and check,
  * whatever AUDIT said and whatever the search space held: the first check
  * printed the RCUT2B warning once, and the second twice (the preview, then
- * the audit of AUDIT warn). */
+ * the audit of AUDIT warn); the warning read "Critical hyperparameter is
+ * fixed in the seed config and is not in any OPTIM block ...", naming no
+ * entry. */
 TEST_CASE("Subcommand: hpo --check gives the critical-parameter warnings of "
           "AUDIT warn once, and none for a search of FIXWEIGHT alone",
           "[TadahCLI][exit-status][hpo][preflight_audit]") {
   ScratchCwd cwd("hpo_preflight");
   write_audit_fixture();
-  const std::string warning = "Critical hyperparameter is fixed";
+  const std::string warning =
+      "is a critical parameter that the seed fixes and no OPTIM line "
+      "searches";
   const CliRun fw = run_tadah({"tadah", "hpo", "--check", "-c", "fw.train",
                                "--hpotarget", "fw.hpo", "--validation",
                                "config.val"});
@@ -10296,6 +10900,8 @@ TEST_CASE("Subcommand: hpo --check gives the critical-parameter warnings of "
   CHECK(wide.status == 0);
   CHECK(lines_with(reported(wide), "D2_BP.RCUT2B") == 1u);
   CHECK(lines_with(reported(wide), warning) == 1u);
+  CHECK(lines_with(reported(wide), "RCUT2B(1) " + warning) == 1u);
+  CHECK(lines_with(reported(wide), "`OPTIM RCUT2B (1)`") == 1u);
 }
 
 /* Pins: tadah hpo --check -c of a training configuration with an
@@ -10361,6 +10967,174 @@ TEST_CASE("Subcommand: the block of analysis suggest_bounds passes hpo "
   INFO("hpo --check: status " << c.status << "\n" << reported(c) << "\n"
                               << slurp("target.hpo"));
   CHECK(c.status == 0);
+}
+
+namespace {
+
+/* The second value of the line of @p block that starts with @p prefix
+ * ("OPTIM RCUT2B (1) "): its high bound; -1 when there is no such line. */
+double high_bound(const std::string& block, const std::string& prefix) {
+  std::istringstream in(block);
+  for (std::string line; std::getline(in, line);) {
+    if (line.compare(0, prefix.size(), prefix) != 0) continue;
+    std::istringstream values(line.substr(prefix.size()));
+    double lo = 0.0, hi = -1.0;
+    values >> lo >> hi;
+    return hi;
+  }
+  return -1.0;
+}
+
+/* The comment line before the line of @p block that starts with @p prefix
+ * ("" when there is none). */
+std::string comment_before(const std::string& block,
+                           const std::string& prefix) {
+  std::istringstream in(block);
+  std::string last;
+  for (std::string line; std::getline(in, line);) {
+    if (line.compare(0, prefix.size(), prefix) == 0) return last;
+    if (!line.empty()) last = line;
+  }
+  return "";
+}
+
+}  // namespace
+
+/* Pins: the block tadah analysis suggest_bounds writes for each of these
+ * seeds, on three bcc Ta cells, is accepted by tadah hpo --check with that
+ * seed (an optimiser, PC_ERMSE and the block; exit 0):
+ *  - "ta": the Ta seed of the HPO tests (D2_Blip with LIN grids, RCUT2B
+ *    5.6, and DM_mBlipEnv with CGRIDMB 0), whose RCUT2B box ends past 6 A
+ *    (at the 99th percentile of the distances up to 7 A, which no distance
+ *    within 5.6 A gives), its comment naming the 99th percentile of the
+ *    distances and their reach, 1.25 times the largest cutoff of the seed;
+ *  - "zbl": D2_ZBL (its TYPE2B values have no OPTIM line);
+ *  - "join": DM_mJoin of two DM_mBlipEnv, which share RCUTENV;
+ *  - "blip": DM_Blip with a centre at the origin and one at 4.7 A;
+ *  - "short": D2_Blip and DM_mBlipEnv with cutoffs of 2 A, which hold no
+ *    neighbour distance (the block keeps the fixed ranges of RCUTENV,
+ *    CEMBFUNC and SEMBFUNC).
+ * Before the fix: "ta" passed tadah hpo --check, but its RCUT2B box was
+ * 5.54 to 5.64, below 6 (the 99th percentile of the distances within 5.6
+ * to 1.05 times the second peak of the distances, a reversed range the
+ * block swapped), its comment the scale and the role of RCUT2B; "join" was
+ * refused ("the index is already selected by the OPTIM
+ * RCUTENV line"), and "short" too ("the low bound 0 is not > 0", an
+ * SGRID2B box widened from (0, 0)). */
+TEST_CASE("Subcommand: the block of analysis suggest_bounds passes hpo "
+          "--check for the Ta seed, D2_ZBL, a DM_mJoin line, a blip at the "
+          "origin and cutoffs that hold no neighbour",
+          "[TadahCLI][exit-status][hpo][suggest_bounds]") {
+  ScratchCwd cwd("suggest_bounds_seeds");
+  write_bcc_mblipenv("unused.train", "0.0", "unused.tadah");
+  std::ofstream("config.val") << "DBFILE bcc.tadah\n";
+  const std::string mblipenv =
+      "TYPEMB DM_mBlipEnv 0 1 1 7 7 Ta Ta\nRCUTENV 5.0\nRCTYPEMB Cut_Poly\n"
+      "SGRIDMB 0.2\nCGRIDMB 0.0\nSEMBFUNC 1 1 1 1 1 1 1\n"
+      "CEMBFUNC 1 2 3 4 5 6 7\n";
+  const std::vector<std::pair<std::string, std::string>> seeds = {
+      {"ta",
+       "INIT2B true\nINITMB true\nTYPE2B D2_Blip 7 7 Ta Ta\n"
+       "RCTYPE2B Cut_Poly\nSGRID2B LIN 7 1 1.2\nCGRID2B LIN 7 0.1 3.0\n"
+       "RCUT2B 5.6\nRCUTMB 5.6\n" + mblipenv},
+      {"zbl",
+       "INIT2B true\nINITMB false\n"
+       "TYPE2B D2_ZBL 0.5292 0.88534 0.23 0.23 Ta Ta\nRCTYPE2B Cut_Cos\n"
+       "RCUT2B 5.0\n"},
+      {"join",
+       "INIT2B false\nINITMB true\nTYPEMB DM_mJoin\n"
+       "TYPEMB DM_mBlipEnv 0 1 1 3 3 Ta Ta\n"
+       "TYPEMB DM_mBlipEnv 0 1 1 3 3 Ta Ta\nRCUTENV 5.0\n"
+       "RCTYPEMB Cut_Cos Cut_Cos\nRCUTMB 5.6 5.0\nSGRIDMB 0.2 0.3\n"
+       "CGRIDMB 0.0 2.9\nSEMBFUNC 1 1 1 1 1 1\nCEMBFUNC 1 2 3 1 2 3\n"},
+      {"blip",
+       "INIT2B false\nINITMB true\nTYPEMB DM_Blip 0 2 2 Ta Ta\n"
+       "RCTYPEMB Cut_Cos\nRCUTMB 5.6\nCGRIDMB 0 4.7\nSGRIDMB 0.8 1\n"},
+      {"short",
+       "INIT2B true\nINITMB true\nTYPE2B D2_Blip 2 2 Ta Ta\n"
+       "RCTYPE2B Cut_Cos\nRCUT2B 2.0\nCGRID2B 1.0 1.5\nSGRID2B 1 1\n"
+       "RCUTMB 2.0\n" + mblipenv},
+  };
+  for (const auto& [name, lines] : seeds) {
+    CAPTURE(name);
+    const std::string train = name + ".train";
+    const std::string block = name + ".block";
+    const std::string target = name + ".hpo";
+    std::ofstream(train) << kBlockModel << lines;
+    const CliRun s = run_tadah({"tadah", "analysis", "suggest_bounds", "-c",
+                                train, "-o", block});
+    INFO("suggest_bounds: status " << s.status << "\n" << reported(s));
+    REQUIRE(s.status == 0);
+    std::ofstream(target)
+        << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
+           "LOSS L2\nPC_ERMSE 0 1\n" << slurp(block);
+    const CliRun c = run_tadah({"tadah", "hpo", "--check", "-c", train,
+                                "--hpotarget", target, "--validation",
+                                "config.val"});
+    INFO("hpo --check: status " << c.status << "\n" << reported(c) << "\n"
+                                << slurp(target));
+    CHECK(c.status == 0);
+    if (name != "ta") continue;
+    const std::string text = slurp(block);
+    CHECK(high_bound(text, "OPTIM RCUT2B (1) ") > 6.0);
+    const std::string why = comment_before(text, "OPTIM RCUT2B (1) ");
+    CHECK(contains(why, "99th percentile"));
+    CHECK(contains(why, "1.25 times"));
+  }
+}
+
+/* Pins: the block tadah analysis suggest_bounds writes for a seed of
+ * D2_Knot5 (knots 3 4 5, RCUT2B 5) and a knot DM_REAM density (knots 3 4
+ * 5, RCUTMB 5), each alone on its TYPE line, on three bcc Ta cells, has no
+ * OPTIM RCUT2B or RCUTMB line (and one OPTIM CGRID2B line, the knots), and
+ * tadah hpo --check with that seed passes
+ * it (exit 0) without the warning that an OPTIM line of a knot cutoff has
+ * no effect ("has no effect for the knot basis family").
+ * Before the fix: the block had "OPTIM RCUTMB (1) ...", and tadah hpo
+ * --check warned "OPTIM RCUTMB has no effect for the knot basis family:
+ * ... (a wasted search dimension)". */
+TEST_CASE("Subcommand: the block of analysis suggest_bounds for knot "
+          "channels passes hpo --check without an OPTIM line of a knot "
+          "cutoff",
+          "[TadahCLI][exit-status][hpo][suggest_bounds][knot]") {
+  ScratchCwd cwd("suggest_bounds_knots");
+  write_bcc_mblipenv("unused.train", "0.0", "unused.tadah");
+  std::ofstream("config.val") << "DBFILE bcc.tadah\n";
+  std::ofstream("knot.train")
+      << kBlockModel
+      << "INIT2B true\nINITMB true\nTYPE2B D2_Knot5 3 0 Ta Ta\n"
+         "RCTYPE2B Cut_Dummy\nRCUT2B 5.0\nCGRID2B 3 4 5\n"
+         "TYPEMB DM_REAM 2 3 0 3 3 0 0 0 Ta Ta\nRCTYPEMB Cut_Dummy\n"
+         "RCUTMB 5.0\nCGRIDMB 3 4 5\nAMPGRIDMB 0.3 0.2 0.1\n"
+         "CEMBFUNC 0 1 2\nRHOFORM SIGNED\nEMBF0 FREE\n";
+  const CliRun s = run_tadah({"tadah", "analysis", "suggest_bounds", "-c",
+                              "knot.train", "-o", "knot.block"});
+  INFO("suggest_bounds: status " << s.status << "\n" << reported(s));
+  REQUIRE(s.status == 0);
+  const std::string block = slurp("knot.block");
+  INFO(block);
+  // A line of the block, not its comments, which name the OPTIM lines that
+  // tadah hpo warns about.
+  auto lines_starting = [&block](const std::string& prefix) {
+    std::size_t n = 0;
+    std::istringstream in(block);
+    for (std::string line; std::getline(in, line);)
+      if (line.compare(0, prefix.size(), prefix) == 0) ++n;
+    return n;
+  };
+  CHECK(lines_starting("OPTIM RCUT2B") == 0u);
+  CHECK(lines_starting("OPTIM RCUTMB") == 0u);
+  CHECK(lines_starting("OPTIM CGRID2B") == 1u);
+  std::ofstream("knot.hpo")
+      << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
+         "LOSS L2\nPC_ERMSE 0 1\n" << block;
+  const CliRun c = run_tadah({"tadah", "hpo", "--check", "-c", "knot.train",
+                              "--hpotarget", "knot.hpo", "--validation",
+                              "config.val"});
+  INFO("hpo --check: status " << c.status << "\n" << reported(c));
+  CHECK(c.status == 0);
+  CHECK(lines_with(reported(c), "has no effect for the knot basis family") ==
+        0u);
 }
 
 #endif  // TADAH_ENABLE_NFP

@@ -11388,4 +11388,41 @@ TEST_CASE("Subcommand: hpo refuses a line that changes nothing a fit gives, "
     CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
   }
 }
+
+/* Pins: `tadah hpo --check` and the run refuse, with status 1, the target
+ * file line `OPTIM WATOM (1) 0.5 2.0` (line 8 of config.hpo) for a D2_EAM +
+ * DM_EAM training configuration with WATOM 1, whose descriptors read no
+ * WATOM: "OPTIM WATOM (line 8 of the target file) is not a valid search
+ * target: no descriptor of the training configuration reads WATOM ..."; the
+ * run evaluates nothing and writes no best_pot.tadah.
+ * Before the fix: --check exited 0 ("passed the startup checks") and the run
+ * exited 0 with best_pot.tadah, every evaluation but the start scoring
+ * FAILSCORE (its fit refused the candidate's WATOM, which no descriptor
+ * reads). */
+TEST_CASE("Subcommand: hpo refuses OPTIM WATOM when no descriptor reads "
+          "WATOM, by --check and the run",
+          "[TadahCLI][exit-status][hpo][inert]") {
+  ScratchCwd cwd("hpo_optim_watom");
+  write_eam_training("1");
+  std::ofstream("config.val") << "DBFILE db.tadah\n";
+  std::ofstream("config.hpo") << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\n"
+                                 "MAXEVAL 3\nENDOPTIMIZER\nLOSS L2\n"
+                                 "PC_ERMSE 0 1\nOPTIM WATOM (1) 0.5 2.0\n";
+  for (const bool check : {true, false}) {
+    INFO((check ? "--check" : "the run"));
+    std::vector<std::string> args = {"tadah", "hpo", "-c", "config",
+                                     "--hpotarget", "config.hpo",
+                                     "--validation", "config.val"};
+    if (check) args.push_back("--check");
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "OPTIM WATOM (line 8 of the target file) is not a "
+                        "valid search target: no descriptor of the training "
+                        "configuration reads WATOM"));
+    CHECK_FALSE(contains(rep, "passed the startup checks"));
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  }
+}
 #endif  // TADAH_ENABLE_NFP

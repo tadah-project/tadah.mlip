@@ -299,7 +299,12 @@ class DoxygenXmlTest(unittest.TestCase):
 @unittest.skipIf(shutil.which('sphinx-build') is None,
                  'sphinx-build is not installed')
 class ConfPyTest(unittest.TestCase):
-    '''conf.py stops the build with the locator's message (no traceback).'''
+    '''A bad override stops the build: conf.py raises Sphinx's
+    configuration error (sphinx.errors.ConfigError) with the locator's
+    message, which names the variable and its value on one line. How
+    sphinx-build shows it is Sphinx's: 7.4 prints "Configuration error:"
+    and the message; 9 prints "Configuration error!" and a report whose
+    traceback section ends with the exception and the message.'''
 
     def setUp(self):
         # conf.py resolves CORE, then HPO, then the XML, and stops at the
@@ -317,22 +322,64 @@ class ConfPyTest(unittest.TestCase):
              os.path.join(self.tmp, 'html')],
             env=env, capture_output=True, text=True, timeout=300)
 
-    def test_bad_hpo_override_stops_the_build(self):
-        proc = self.sphinx(TADAH_CORE_SOURCE_DIR=self.core,
-                           TADAH_HPO_SOURCE_DIR='/nonexistent/hpo')
+    def conf_error(self, **overrides):
+        '''The error conf.py raises when Sphinx reads it (Config.read, which
+        passes conf.py's ConfigError on as it is), as "<type>: <message>".
+        overrides and tags by keyword: Sphinx 9 requires both, as keywords;
+        Sphinx 7.4 takes either form.'''
+        code = ('import sys\n'
+                'from sphinx.config import Config\n'
+                'from sphinx.util.tags import Tags\n'
+                'try:\n'
+                '    Config.read(sys.argv[1], overrides={}, tags=Tags())\n'
+                'except Exception as e:\n'
+                '    t = type(e)\n'
+                '    print(f"ERROR={t.__module__}.{t.__qualname__}: {e}")\n')
+        proc = subprocess.run(
+            [sys.executable, '-c', code, os.path.join(DOCS, 'source')],
+            env=dict(os.environ, **overrides), capture_output=True, text=True,
+            timeout=120)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        lines = [l for l in proc.stdout.splitlines() if l.startswith('ERROR=')]
+        self.assertEqual(len(lines), 1, proc.stdout)
+        return lines[0][len('ERROR='):]
+
+    def assert_stops(self, message, **overrides):
+        # Pins: conf.py raises sphinx.errors.ConfigError whose text is the
+        # locator's message alone (no other exception, nothing wrapped
+        # around it), and sphinx-build fails with that message on one line
+        # of its standard error, whatever Sphinx formats around it.
+        # Before the fix: passes as well with Sphinx 7.4 (a pin; the case
+        # asserted that standard error has no 'Traceback', which held with
+        # Sphinx 7.4 alone: Sphinx 9.0.4 reports a ConfigError raised by
+        # conf.py with a traceback section, and the case failed there).
+        self.assertEqual(self.conf_error(**overrides),
+                         'sphinx.errors.ConfigError: ' + message)
+        proc = self.sphinx(**overrides)
         self.assertNotEqual(proc.returncode, 0)
+        self.assertTrue(any(l.rstrip().endswith(message)
+                            for l in proc.stderr.splitlines()), proc.stderr)
+
+    def test_bad_hpo_override_stops_the_build(self):
+        overrides = dict(TADAH_CORE_SOURCE_DIR=self.core,
+                         TADAH_HPO_SOURCE_DIR='/nonexistent/hpo')
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            loc.locate('HPO', environ=overrides)
+        message = str(cm.exception)
         self.assertIn('TADAH_HPO_SOURCE_DIR=/nonexistent/hpo does not contain',
-                      proc.stderr)
-        self.assertNotIn('Traceback', proc.stderr)
+                      message)
+        self.assert_stops(message, **overrides)
 
     def test_bad_doxygen_override_stops_the_build(self):
-        proc = self.sphinx(TADAH_CORE_SOURCE_DIR=self.core,
-                           TADAH_HPO_SOURCE_DIR=self.hpo,
-                           TADAH_DOXYGEN_XML_DIR='/nonexistent/xml')
-        self.assertNotEqual(proc.returncode, 0)
+        overrides = dict(TADAH_CORE_SOURCE_DIR=self.core,
+                         TADAH_HPO_SOURCE_DIR=self.hpo,
+                         TADAH_DOXYGEN_XML_DIR='/nonexistent/xml')
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            loc.doxygen_xml_dir(overrides)
+        message = str(cm.exception)
         self.assertIn('TADAH_DOXYGEN_XML_DIR=/nonexistent/xml does not contain '
-                      'index.xml', proc.stderr)
-        self.assertNotIn('Traceback', proc.stderr)
+                      'index.xml', message)
+        self.assert_stops(message, **overrides)
 
 
 if __name__ == '__main__':

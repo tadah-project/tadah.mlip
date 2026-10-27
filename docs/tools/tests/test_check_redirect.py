@@ -339,10 +339,14 @@ class ConfLoadsTheExtensionTest(unittest.TestCase):
             with open(path, 'w') as fh:
                 fh.write(text)
         # Config.read executes conf.py but not its setup(), so the page
-        # generators do not run.
+        # generators do not run. overrides and tags are passed by keyword:
+        # Sphinx 9 requires both, as keywords; Sphinx 7.4 takes either form.
+        # Before the fix: Config.read(confdir) alone, which Sphinx 9.0.4
+        # refuses ('missing 2 required keyword-only arguments').
         code = ('import json, sys\n'
                 'from sphinx.config import Config\n'
-                'config = Config.read(sys.argv[1])\n'
+                'from sphinx.util.tags import Tags\n'
+                'config = Config.read(sys.argv[1], overrides={}, tags=Tags())\n'
                 'print("EXTENSIONS=" + json.dumps(config.extensions))\n')
         proc = subprocess.run(
             [sys.executable, '-c', code, DOCS_SOURCE],

@@ -104,12 +104,19 @@ def site_config():
         env = dict(os.environ, TADAH_CORE_SOURCE_DIR=os.path.join(tmp, 'CORE'),
                    TADAH_HPO_SOURCE_DIR=os.path.join(tmp, 'HPO'),
                    TADAH_DOXYGEN_XML_DIR=os.path.join(tmp, 'xml'))
+        # overrides and tags by keyword: Sphinx 9 requires both, as
+        # keywords; Sphinx 7.4 takes either form. A value reads from conf.py
+        # once its option is known (html_theme_options is the html
+        # builder's, so it is added here). Before the fix: Config.read(confdir)
+        # alone, which Sphinx 9.0.4 refuses ('missing 2 required keyword-only
+        # arguments'), and Config.init_values(), which Sphinx 7.4 keeps only
+        # for compatibility and needs no call here.
         proc = subprocess.run(
             [sys.executable, '-c',
              'import json, sys; from sphinx.config import Config; '
-             'c = Config.read(sys.argv[1]); '
+             'from sphinx.util.tags import Tags; '
+             'c = Config.read(sys.argv[1], overrides={}, tags=Tags()); '
              'c.add("html_theme_options", {}, "html", (dict,)); '
-             'c.init_values(); '
              'print("CONFIG=" + json.dumps({k: getattr(c, k) for k in '
              '("extensions", "html_theme_options", "exclude_patterns")}))',
              SOURCE], env=env, text=True, capture_output=True, timeout=60)

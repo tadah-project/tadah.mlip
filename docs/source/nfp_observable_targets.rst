@@ -17,7 +17,8 @@ or ``PC_FAILPROBE``.
 
 The value is :math:`E_\mathrm{isolated}-E_\mathrm{bulk}/N` in eV/atom,
 positive for a bound crystal. The bulk cell undergoes isotropic
-relaxation at zero pressure, to the pressure tolerance ``--ptol``.
+relaxation at zero pressure, to the pressure tolerance
+:hpo:key:`--ptol <PC_OBSERVABLE.cohesive_energy.--ptol>`.
 ``--validation`` is optional unless
 :doc:`validation metrics <nfp_validation_targets>` are also requested.
 
@@ -64,8 +65,10 @@ Relaxation options
 
 ``--etol <value>``
    Default ``0``. Relative energy-change convergence tolerance; a
-   positive value enables it. Zero leaves ``--fmax-converged`` and
-   ``--ptol`` alone to decide convergence.
+   positive value enables it. Zero leaves :hpo:key:`--fmax-converged
+   <PC_OBSERVABLE.cohesive_energy.--fmax-converged>` and
+   :hpo:key:`--ptol <PC_OBSERVABLE.cohesive_energy.--ptol>` alone to
+   decide convergence.
 
 ``--max-wall-time <seconds>``
    Default ``0``. A positive value caps the wall-clock time of each
@@ -74,28 +77,17 @@ Relaxation options
 ``--fmax-converged <force>``
    Default ``0.1``. Force tolerance of the atoms, in eV/Å, above 0: the
    atoms have relaxed when the largest atomic force falls below it. In
-   the bcc cell the atomic forces vanish by symmetry.
+   the bcc cell the atomic forces vanish by symmetry, so the atoms stay
+   in place and :hpo:key:`!--ptol <PC_OBSERVABLE.cohesive_energy.--ptol>`
+   decides when the relaxation has converged.
 
 ``--ptol <pressure>``
    Default ``1e-4``. Pressure tolerance of the cell, in GPa, above 0: the
-   cell has relaxed when the magnitude of its pressure,
-   :math:`|\partial E/\partial\varepsilon|/(3V)` for the isotropic
-   strain :math:`\varepsilon` and the cell volume :math:`V`, falls below
-   it. A residual pressure :math:`P` leaves the cohesive energy below its
-   value at zero pressure by about :math:`P^2 (V/N)/(2B)`, for :math:`N`
-   atoms and the bulk modulus :math:`B`. The pressure is a central
-   difference of the energy over a strain of :math:`\pm 10^{-5}`; a
-   tolerance below the rounding error of that difference is not met.
-
-The cell moves by a search for the zero of its pressure, which uses the
-pressure alone, so a tight ``--ptol`` is reached also where the energy is
-too flat or too noisy to show the change; the atoms move by a line search
-on the energy. A relaxation is converged when the cell it ends at meets
-both tolerances, also when it stops there at ``--maxiter``, ``--maxeval``
-or ``--max-wall-time``. One that stops before then, or whose steps can no
-longer change the energy of the atoms or the cell, is unconverged; one
-that ``--etol`` stops is converged when its largest atomic force is below
-``--fmax-converged``, whatever its pressure.
+   cell has relaxed when the magnitude of its pressure falls below it.
+   The reference entry of
+   :hpo:key:`--ptol <PC_OBSERVABLE.cohesive_energy.--ptol>` gives how the
+   pressure is measured, the error a residual pressure leaves and the
+   smallest tolerance that can be met.
 
 ``--unconverged const <value>``
    Default ``const 100``. The finite value an unconverged relaxation
@@ -103,12 +95,32 @@ that ``--etol`` stops is converged when its largest atomic force is below
 
 ``--unconverged force-scaled <slope>``
    An unconverged relaxation reports instead the cohesive energy of the
-   cell it ends at, moved away from the target by ``slope * fmax``,
-   ``fmax`` being the larger of the largest atomic force, in eV/Å, and the
+   cell it ends at, moved away from the target by ``slope * fmax``.
+   ``fmax`` is the larger of the largest atomic force, in eV/Å, and the
    magnitude of the cell's pressure, in eV/Å³, at the end. The loss of the
    term is then at least that of the cell's cohesive energy, and tends to
    it as the relaxation nears convergence. The slope is a finite number of
    at least 0.
+
+The cell moves by a search for the zero of its pressure. The search uses
+the pressure alone, so a tight
+:hpo:key:`!--ptol <PC_OBSERVABLE.cohesive_energy.--ptol>` is reached also
+where the energy is too flat or too noisy to show a step. The atoms move
+by a line search on the energy.
+
+A relaxation is converged when the cell it ends at meets both
+tolerances, also when it stops there at
+:hpo:key:`--maxiter <PC_OBSERVABLE.cohesive_energy.--maxiter>`,
+:hpo:key:`--maxeval <PC_OBSERVABLE.cohesive_energy.--maxeval>` or
+:hpo:key:`--max-wall-time <PC_OBSERVABLE.cohesive_energy.--max-wall-time>`.
+It is unconverged when it reaches one of these limits first, or when
+the line search of the atoms finds no lower energy. So is one whose step
+of the cell falls below 1e-12 of the lattice constant before the
+pressure meets :hpo:key:`!--ptol <PC_OBSERVABLE.cohesive_energy.--ptol>`.
+One that :hpo:key:`--etol <PC_OBSERVABLE.cohesive_energy.--etol>` stops
+is converged when its largest atomic force is below
+:hpo:key:`!--fmax-converged
+<PC_OBSERVABLE.cohesive_energy.--fmax-converged>`, whatever its pressure.
 
 The two ``--unconverged`` forms select alternative behaviours.
 An unconverged relaxation returning a finite substitute still supplies
@@ -124,11 +136,14 @@ where the optimiser has them (see
 :hpo:key:`cohesive_energy <PC_OBSERVABLE.cohesive_energy>`).
 
 .. versionchanged:: 1.6.0
-   A term takes the top-level ``LOSS`` above its line; 1.5.0 took ``L2``
-   unless ``--loss`` named another. The cell relaxes to ``--ptol`` and the
-   atoms to ``--fmax-converged``; 1.5.0 relaxed both to a fixed 0.1 (16 GPa
-   for the cell), and ``force-scaled`` reported the target plus the slope
-   times the largest atomic force.
+   A term takes the top-level :hpo:key:`LOSS` above its line; 1.5.0 took
+   ``L2`` unless :hpo:key:`--loss <PC_OBSERVABLE.cohesive_energy.--loss>`
+   named another. The cell relaxes to
+   :hpo:key:`!--ptol <PC_OBSERVABLE.cohesive_energy.--ptol>` and the atoms
+   to :hpo:key:`!--fmax-converged
+   <PC_OBSERVABLE.cohesive_energy.--fmax-converged>`; 1.5.0 relaxed both
+   to a fixed 0.1 (16 GPa for the cell), and ``force-scaled`` reported the
+   target plus the slope times the largest atomic force.
 
 Gradient compatibility
 ----------------------

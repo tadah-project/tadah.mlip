@@ -11222,6 +11222,39 @@ TEST_CASE("Subcommand: train refuses a line that changes nothing a fit "
   }
 }
 
+/* Pins: `tadah train` of a D2_EAM + DM_EAM configuration without a WATOM
+ * line exits 0, writes a potential without a WATOM line, and says nothing
+ * of WATOM; `tadah predict` of that potential says nothing of WATOM either.
+ * (WATOM = Z is given only to a configuration a descriptor of which reads
+ * WATOM.)
+ * Before the fix: the potential had a WATOM 73 line, the WATOM train gives
+ * a configuration without one; with the refusal of a WATOM no descriptor
+ * reads, train then gave the notice of WATOM 73 and refused it (exit 1). */
+TEST_CASE("Subcommand: train of a D2_EAM and DM_EAM configuration without "
+          "WATOM gives it no WATOM",
+          "[TadahCLI][exit-status][train][inert]") {
+  ScratchCwd cwd("train_eam_no_watom");
+  write_eam_training("1");
+  {
+    std::istringstream in(slurp("config"));
+    std::ofstream out("config_nowatom");
+    for (std::string l; std::getline(in, l);)
+      if (l.rfind("WATOM", 0) != 0) out << l << "\n";
+  }
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config_nowatom", "-o",
+                              "pot.tadah"});
+  INFO("train: status " << t.status << "\n" << reported(t));
+  CHECK(t.status == 0);
+  CHECK(count_lines_with(reported(t), "WATOM") == 0u);
+  REQUIRE(std::filesystem::exists("pot.tadah"));
+  CHECK(pot_key("pot.tadah", "WATOM").empty());
+  const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                              "db.tadah"});
+  INFO("predict: status " << p.status << "\n" << reported(p));
+  CHECK(p.status == 0);
+  CHECK(count_lines_with(reported(p), "WATOM") == 0u);
+}
+
 /* Pins: `tadah predict` of a D2_EAM + DM_EAM potential whose WATOM is 2.5
  * (a potential trained with WATOM 1, its WATOM line edited) exits 0 with
  * one notice, "WARNING: Key WATOM (2.5) is ignored: no descriptor of the

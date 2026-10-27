@@ -11139,3 +11139,199 @@ TEST_CASE("Subcommand: the block of analysis suggest_bounds for knot "
 }
 
 #endif  // TADAH_ENABLE_NFP
+
+/* ---- [inert]: keys that change nothing a fit gives -------------------- */
+
+namespace {
+
+/* A D2_EAM + DM_EAM training configuration on the small Ta setfl, with
+ * WATOM @p watom on line 3 ("config"), and its dataset (three bcc cells). */
+void write_eam_training(const std::string& watom) {
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  std::ofstream("db.tadah") << bcc_ta_entry("bcc-Ta-3.25", 3.25, -16.2)
+                            << bcc_ta_entry("bcc-Ta-3.30", 3.30, -16.3)
+                            << bcc_ta_entry("bcc-Ta-3.35", 3.35, -16.1);
+  std::ofstream("config")
+      << "DBFILE db.tadah\nATOM Ta\nWATOM " << watom << "\n"
+      << "INIT2B true\nTYPE2B D2_EAM 0 Ta Ta\nRCTYPE2B Cut_Dummy\n"
+         "RCUT2B 4.5\nINITMB true\nTYPEMB DM_EAM 0 Ta Ta\n"
+         "RCTYPEMB Cut_Dummy\nRCUTMB 4.5\nSETFL eam_small.alloy\n"
+         "FORCE false\nSTRESS false\nBIAS false\nNORM false\nVERBOSE 0\n"
+         "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+}
+
+}  // namespace
+
+/* Pins: `tadah train -c` refuses, with status 1 and without writing a
+ * potential, a configuration with a line that changes nothing a fit gives,
+ * naming the key, its values, the line and the file:
+ *  - MBLOCK 64, NBLOCK 64, MPIWPCKG 50 (deprecated), EMBF0 FREE and RHOFORM
+ *    SIGNED (no DM_REAM block) on line 18 of config.train (a D2_BP fit):
+ *    "tadah train: the configuration has a line that changes nothing a fit
+ *    gives, and a fit refuses it: MBLOCK 64 (line 18 of config.train): ...";
+ *  - WATOM 2.5 (line 3 of config) with D2_EAM and DM_EAM, which take their
+ *    functions from the SETFL file unweighted: "WATOM 2.5 (line 3 of
+ *    config): no descriptor of the configuration reads it (D2_EAM and
+ *    DM_EAM ...)".
+ * The same configurations without those lines, and with WATOM 1, train.
+ * Before the fix: each trained (exit 0, pot.tadah): MBLOCK, NBLOCK,
+ * MPIWPCKG and EMBF0 with a WARNING, RHOFORM and WATOM without one. */
+TEST_CASE("Subcommand: train refuses a line that changes nothing a fit "
+          "gives, naming the key, the line and the file",
+          "[TadahCLI][exit-status][train][inert]") {
+  ScratchCwd cwd("train_inert");
+  for (const std::string line : {"MBLOCK 64", "NBLOCK 64", "MPIWPCKG 50",
+                                 "EMBF0 FREE", "RHOFORM SIGNED"}) {
+    INFO(line);
+    write_ta_dimer_training();
+    std::ofstream("config.train", std::ios::app) << line << "\n";
+    std::filesystem::remove("pot.tadah");
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config.train"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah train: the configuration has a line that "
+                        "changes nothing a fit gives, and a fit refuses it: " +
+                            line + " (line 18 of config.train): "));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  {
+    write_eam_training("2.5");
+    std::filesystem::remove("pot.tadah");
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config"});
+    const std::string rep = reported(r);
+    INFO("WATOM 2.5: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "WATOM 2.5 (line 3 of config): no descriptor of the "
+                        "configuration reads it (D2_EAM and DM_EAM"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  {
+    write_ta_dimer_training();
+    const CliRun r = run_tadah({"tadah", "train", "-c", "config.train"});
+    INFO("no inert line: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    write_eam_training("1");
+    const CliRun e = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("WATOM 1: status " << e.status << "\n" << reported(e));
+    CHECK(e.status == 0);
+  }
+}
+
+/* Pins: `tadah predict` of a D2_EAM + DM_EAM potential whose WATOM is 2.5
+ * (a potential trained with WATOM 1, its WATOM line edited) exits 0 with
+ * one notice, "WARNING: Key WATOM (2.5) is ignored: no descriptor of the
+ * potential reads it (D2_EAM and DM_EAM ...); the potential works unchanged
+ * without it", and predicts the energies of the WATOM 1 potential, digit
+ * for digit; the WATOM 1 potential gives no notice of WATOM.
+ * Before the fix: no notice (the same energies). */
+TEST_CASE("Subcommand: predict of a D2_EAM and DM_EAM potential with a "
+          "WATOM other than 1 gives one notice",
+          "[TadahCLI][exit-status][predict][inert]") {
+  ScratchCwd cwd("predict_inert_watom");
+  write_eam_training("1");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config", "-o",
+                                "pot1.tadah"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  {
+    std::istringstream in(slurp("pot1.tadah"));
+    std::ofstream out("pot25.tadah");
+    for (std::string l; std::getline(in, l);) {
+      std::istringstream ls(l);
+      std::string key;
+      ls >> key;
+      out << (key == "WATOM" ? std::string("WATOM 2.5") : l) << "\n";
+    }
+  }
+  const CliRun one = run_tadah({"tadah", "predict", "-p", "pot1.tadah", "-d",
+                                "db.tadah", "-o", "e1.pred"});
+  INFO("WATOM 1: status " << one.status << "\n" << reported(one));
+  CHECK(one.status == 0);
+  CHECK(count_lines_with(reported(one), "WATOM") == 0u);
+  const CliRun two = run_tadah({"tadah", "predict", "-p", "pot25.tadah",
+                                "-d", "db.tadah", "-o", "e25.pred"});
+  const std::string rep = reported(two);
+  INFO("WATOM 2.5: status " << two.status << "\n" << rep);
+  CHECK(two.status == 0);
+  CHECK(count_lines_with(rep, "Key WATOM (2.5) is ignored") == 1u);
+  CHECK(contains(rep, "WARNING: Key WATOM (2.5) is ignored: no descriptor of "
+                      "the potential reads it (D2_EAM and DM_EAM"));
+  CHECK(contains(rep, "the potential works unchanged without it"));
+  REQUIRE(std::filesystem::exists("e1.pred"));
+  CHECK(slurp("e25.pred") == slurp("e1.pred"));
+}
+
+/* Pins: `tadah refit -c` of the small Ta setfl (dense Blip, coarse) refuses
+ * with status 1, writing no pot.tadah, a configuration with a retired key
+ * (EWEIGHT 1), a deprecated key (MBLOCK 64) or a WATOM other than 1 (WATOM
+ * 2; the potential a refit writes has WATOM 1), each on line 7 of
+ * config.refit, naming the line ("EWEIGHT 1 (line 7 of config.refit)");
+ * with WATOM 1 it refits (exit 0).
+ * Before the fix: each refitted (exit 0, pot.tadah): EWEIGHT and MBLOCK
+ * with a WARNING, WATOM 2 without one (pot.tadah had WATOM 1). */
+TEST_CASE("Subcommand: refit refuses a retired key, a deprecated key and a "
+          "WATOM it never reads, naming the line",
+          "[TadahCLI][exit-status][refit][inert]") {
+  ScratchCwd cwd("refit_inert");
+  { std::ofstream os("eam_small.alloy"); os << small_ta_setfl(); }
+  auto config = [](const std::string& extra) {
+    std::ofstream("config.refit")
+        << "EAM eam_small.alloy\nRHOFORM SIGNED\nREFIT_MODE dense\n"
+           "REFIT_BASIS Blip\nREFIT_LEVEL coarse\nREFIT_MAX_ESCALATIONS 0\n"
+        << extra << "\n";
+  };
+  for (const std::string line : {"EWEIGHT 1", "MBLOCK 64", "WATOM 2"}) {
+    INFO(line);
+    config(line);
+    std::filesystem::remove("pot.tadah");
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "config.refit"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah refit: "));
+    CHECK(contains(rep, line + " (line 7 of config.refit"));
+    CHECK_FALSE(std::filesystem::exists("pot.tadah"));
+  }
+  config("WATOM 1");
+  const CliRun ok = run_tadah({"tadah", "refit", "-c", "config.refit"});
+  INFO("WATOM 1: status " << ok.status << "\n" << reported(ok));
+  CHECK(ok.status == 0);
+  CHECK(std::filesystem::exists("pot.tadah"));
+}
+
+#ifdef TADAH_ENABLE_NFP
+/* Pins: `tadah hpo --check` and the run refuse, with status 1, a training
+ * configuration with a line that changes nothing a fit gives: MBLOCK 64 on
+ * line 18 of config.train ("tadah hpo: the configuration has a line that
+ * changes nothing a fit gives, and a fit refuses it: MBLOCK 64 (line 18 of
+ * config.train)"); the run writes no best_pot.tadah.
+ * Before the fix: --check exited 0 and the run trained every evaluation,
+ * MBLOCK giving a WARNING. */
+TEST_CASE("Subcommand: hpo refuses a line that changes nothing a fit gives, "
+          "by --check and the run",
+          "[TadahCLI][exit-status][hpo][inert]") {
+  ScratchCwd cwd("hpo_inert");
+  write_ta_dimer_training();
+  std::ofstream("config.train", std::ios::app) << "MBLOCK 64\n";
+  std::ofstream("config.hpo") << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\n"
+                                 "MAXEVAL 2\nENDOPTIMIZER\nLOSS L2\n"
+                                 "PC_ERMSE 0 1\nOPTIM CGRID2B (1) 2.3 2.7\n";
+  for (const bool check : {true, false}) {
+    INFO((check ? "--check" : "the run"));
+    std::vector<std::string> args = {"tadah", "hpo", "-c", "config.train",
+                                     "--hpotarget", "config.hpo"};
+    if (check) args.push_back("--check");
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "tadah hpo: the configuration has a line that "
+                        "changes nothing a fit gives, and a fit refuses it: "
+                        "MBLOCK 64 (line 18 of config.train)"));
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  }
+}
+#endif  // TADAH_ENABLE_NFP

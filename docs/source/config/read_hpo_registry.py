@@ -1335,10 +1335,15 @@ class Writer:
         if o['lib'] == 'NLOPT':
             # The PARAM keys NLopt reads for the algorithm (its
             # algorithm_params in the optimiser list); any other is refused.
-            own = o.get('algorithm_params', [])
-            param += ('; NLopt reads ' + ', '.join(literal(p) for p in own)
-                      if own else
-                      '; NLopt reads no parameter of this algorithm')
+            own = [literal(p) for p in o.get('algorithm_params', [])]
+            key = role('key', '!OPTIMIZER.PARAM')
+            if not own:
+                param += f'; NLopt reads no {key} key of this algorithm'
+            elif len(own) == 1:
+                param += f'; NLopt reads the {key} key ' + own[0]
+            else:
+                param += (f'; NLopt reads the {key} keys ' +
+                          ', '.join(own[:-1]) + ' and ' + own[-1])
         entry.line('PARAM', param)
         return entry
 

@@ -628,10 +628,13 @@ A line of a configuration file that includes the potential with
    OUTFILE pot2.tadah
 
 A key that the potential's own lines set, such as ``BIAS``, ``MODEL`` or
-``RCUT2B``, is changed in the copy, not by a line of the including file:
-the lines of an included file are read in place of its ``CONFIG`` line
-(:ref:`config_file`), so such a line is a second line of the key, and a
-second line of a key of one value is refused.
+``RCUT2B``, is changed in the copy. A line of the including file is a
+second line of the key: the included lines are read in place of the
+``CONFIG`` line (:ref:`config_file`). A second line of ``BIAS``, a key of
+one value, is refused, and so is a ``MODEL`` line, which gives ``MODEL``
+more than three values. An ``RCUT2B`` line adds its values to the
+potential's: a single descriptor takes the largest cutoff, with a
+``WARNING`` that names the values it ignores.
 
 A file that has ``WEIGHTS`` (a potential or a copy of one) is a potential,
 wherever the run reads it: given with ``-c``, or included with ``CONFIG`` by

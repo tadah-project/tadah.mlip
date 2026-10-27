@@ -54,13 +54,9 @@ in order:
    (:doc:`API/nn_finder`).
 #. **Running the pre-flight audit** when enabled (:ref:`AUDIT`, ``off`` by
    default): it checks the parameters of each descriptor against the
-   neighbour distances of the element pairs it sums over (those its
-   ``TYPE2B`` or ``TYPEMB`` line names, or the ``PAIRS`` of its
-   ``DESCRIPTOR`` block; a pair written with ``*`` stands for each element
-   pair it matches), each pair on its own: a cutoff that holds no distance
-   of one pair fails, as that pair adds nothing to the descriptor, and so
-   does a density none of whose channels reaches the distances of one
-   pair.
+   neighbour distances of each element pair it sums over. These are the
+   pairs its :ref:`TYPE2B <TYPE2B>` or :ref:`TYPEMB <TYPEMB>` line names,
+   or the ``PAIRS`` of its ``DESCRIPTOR`` block.
 #. **Fitting the regression model** declared by ``MODEL``: it minimises
    the sum of :ref:`fit_objective`, with the :term:`error scales
    <error scale>` of the configuration and the :term:`priorities

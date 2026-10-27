@@ -10229,6 +10229,90 @@ TEST_CASE("Subcommand: train with AUDIT error judges each descriptor of a "
   CHECK_FALSE(std::filesystem::exists("far.tadah"));
 }
 
+namespace {
+
+/* The model lines of a fit of bcc.tadah. */
+const char* const kBlockModel =
+    "DBFILE bcc.tadah\nATOM Ta\nWATOM 1\n"
+    "FORCE false\nSTRESS false\nBIAS false\nNORM false\n"
+    "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nOALGO 1\n";
+
+}  // namespace
+
+/* Pins: tadah train with AUDIT error refuses a D2_Knot5 seed whose cutoff
+ * holds no neighbour distance (RCUT2B 2, knots 1.5 and 2, on bcc Ta cells
+ * whose nearest neighbours are 2.77 A apart or more): exit 1, the FAIL
+ * finding naming D2_Knot5.RCUT2B, and no potential written.
+ * Before the fix: D2_Knot5's cutoff had no check: the audit passed, and a
+ * potential whose descriptor is 0 for every structure was trained (exit
+ * 0). */
+TEST_CASE("Subcommand: train with AUDIT error refuses a cutoff that holds "
+          "no neighbour distance",
+          "[TadahCLI][exit-status][audit]") {
+  ScratchCwd cwd("audit_short_cutoff");
+  write_bcc_mblipenv("unused.train", "0.0", "unused.tadah");
+  std::ofstream("knot.train")
+      << kBlockModel
+      << "INIT2B true\nINITMB false\nTYPE2B D2_Knot5 2 2 Ta Ta\n"
+         "RCTYPE2B Cut_Dummy\nRCUT2B 2.0\nCGRID2B 1.5 2.0\nKDEG2B 5 5\n"
+         "AUDIT error\nOUTFILE knot.tadah\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "knot.train"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 1);
+  CHECK(contains(reported(r), "D2_Knot5.RCUT2B"));
+  CHECK_FALSE(std::filesystem::exists("knot.tadah"));
+}
+
+namespace {
+
+/* The lines of a DESCRIPTOR block of a DM_Embed component, ta, whose
+ * density cutoff has RADIUS @p radius (blips at 0.5, 1 and 1.5 A). */
+std::string embed_component_lines(const std::string& radius) {
+  return "DESCRIPTOR ta DM_Embed\nPAIRS Ta Ta\nDENSITY\nBASIS Blip5\n"
+         "FORM NONNEG\nCENTRES 0.5 1.0 1.5\nETA 1.5 1.5 1.5\n"
+         "AMPLITUDES 0.4 0.2 0.1\nCUTOFF\nTYPE Cut_Poly\nRADIUS " +
+         radius +
+         "\nENDCUTOFF\nENDDENSITY\nEMBEDDING\nBASIS Gaussian\n"
+         "CENTRES 0.0 0.5 1.0 1.5\nWIDTHS 0.5 0.5 0.5 0.5\n"
+         "REFERENCE ZERO\nENVELOPE\nTYPE Smoothstep2\nCUTOFF 2.0\n"
+         "ENDENVELOPE\nENDEMBEDDING\nENDDESCRIPTOR\n";
+}
+
+}  // namespace
+
+/* Pins: tadah train with AUDIT error refuses a DM_Embed component whose
+ * density cutoff holds no neighbour distance (RADIUS 2 on bcc Ta cells
+ * whose nearest neighbours are 2.77 A apart or more): exit 1, the FAIL
+ * finding naming TA.DENSITY.CUTOFF.RADIUS, and no potential written; with
+ * RADIUS 5.6 the same configuration trains (exit 0, the potential
+ * written).
+ * Before the fix: DM_Embed's metadata had no cutoff check: the audit
+ * passed, and a potential whose density is 0 for every atom was trained
+ * (exit 0). */
+TEST_CASE("Subcommand: train with AUDIT error refuses a DESCRIPTOR block "
+          "whose density cutoff holds no neighbour distance",
+          "[TadahCLI][exit-status][audit]") {
+  ScratchCwd cwd("audit_embed_cutoff");
+  write_bcc_mblipenv("unused.train", "0.0", "unused.tadah");
+  std::ofstream("short.train")
+      << kBlockModel << "INIT2B false\nINITMB true\n"
+      << embed_component_lines("2.0")
+      << "AUDIT error\nOUTFILE short.tadah\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "short.train"});
+  INFO("RADIUS 2: status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 1);
+  CHECK(contains(reported(r), "TA.DENSITY.CUTOFF.RADIUS"));
+  CHECK_FALSE(std::filesystem::exists("short.tadah"));
+  std::ofstream("wide.train")
+      << kBlockModel << "INIT2B false\nINITMB true\n"
+      << embed_component_lines("5.6")
+      << "AUDIT error\nOUTFILE wide.tadah\n";
+  const CliRun w = run_tadah({"tadah", "train", "-c", "wide.train"});
+  INFO("RADIUS 5.6: status " << w.status << "\n" << reported(w));
+  CHECK(w.status == 0);
+  CHECK(std::filesystem::exists("wide.tadah"));
+}
+
 #ifdef TADAH_ENABLE_NFP
 
 /* ---- [preflight_audit]: tadah hpo and the critical-parameter audit ---- */
@@ -10272,17 +10356,22 @@ void write_audit_fixture() {
  * weight pinned, AUDIT off: the default) prints no critical-parameter
  * warning (exit 0); with AUDIT warn and a search of SGRID2B alone, the
  * fixed RCUT2B of the searched descriptor is flagged once ("D2_BP.RCUT2B
- * -- Critical hyperparameter is fixed ...", one line).
+ * -- RCUT2B(1) is a critical parameter that the seed fixes and no OPTIM
+ * line searches ...", one line, naming `OPTIM RCUT2B (1)`).
  * Before the fix: a preview of the audit ran before every run and check,
  * whatever AUDIT said and whatever the search space held: the first check
  * printed the RCUT2B warning once, and the second twice (the preview, then
- * the audit of AUDIT warn). */
+ * the audit of AUDIT warn); the warning read "Critical hyperparameter is
+ * fixed in the seed config and is not in any OPTIM block ...", naming no
+ * entry. */
 TEST_CASE("Subcommand: hpo --check gives the critical-parameter warnings of "
           "AUDIT warn once, and none for a search of FIXWEIGHT alone",
           "[TadahCLI][exit-status][hpo][preflight_audit]") {
   ScratchCwd cwd("hpo_preflight");
   write_audit_fixture();
-  const std::string warning = "Critical hyperparameter is fixed";
+  const std::string warning =
+      "is a critical parameter that the seed fixes and no OPTIM line "
+      "searches";
   const CliRun fw = run_tadah({"tadah", "hpo", "--check", "-c", "fw.train",
                                "--hpotarget", "fw.hpo", "--validation",
                                "config.val"});
@@ -10296,6 +10385,8 @@ TEST_CASE("Subcommand: hpo --check gives the critical-parameter warnings of "
   CHECK(wide.status == 0);
   CHECK(lines_with(reported(wide), "D2_BP.RCUT2B") == 1u);
   CHECK(lines_with(reported(wide), warning) == 1u);
+  CHECK(lines_with(reported(wide), "RCUT2B(1) " + warning) == 1u);
+  CHECK(lines_with(reported(wide), "`OPTIM RCUT2B (1)`") == 1u);
 }
 
 /* Pins: tadah hpo --check -c of a training configuration with an
@@ -10361,6 +10452,174 @@ TEST_CASE("Subcommand: the block of analysis suggest_bounds passes hpo "
   INFO("hpo --check: status " << c.status << "\n" << reported(c) << "\n"
                               << slurp("target.hpo"));
   CHECK(c.status == 0);
+}
+
+namespace {
+
+/* The second value of the line of @p block that starts with @p prefix
+ * ("OPTIM RCUT2B (1) "): its high bound; -1 when there is no such line. */
+double high_bound(const std::string& block, const std::string& prefix) {
+  std::istringstream in(block);
+  for (std::string line; std::getline(in, line);) {
+    if (line.compare(0, prefix.size(), prefix) != 0) continue;
+    std::istringstream values(line.substr(prefix.size()));
+    double lo = 0.0, hi = -1.0;
+    values >> lo >> hi;
+    return hi;
+  }
+  return -1.0;
+}
+
+/* The comment line before the line of @p block that starts with @p prefix
+ * ("" when there is none). */
+std::string comment_before(const std::string& block,
+                           const std::string& prefix) {
+  std::istringstream in(block);
+  std::string last;
+  for (std::string line; std::getline(in, line);) {
+    if (line.compare(0, prefix.size(), prefix) == 0) return last;
+    if (!line.empty()) last = line;
+  }
+  return "";
+}
+
+}  // namespace
+
+/* Pins: the block tadah analysis suggest_bounds writes for each of these
+ * seeds, on three bcc Ta cells, is accepted by tadah hpo --check with that
+ * seed (an optimiser, PC_ERMSE and the block; exit 0):
+ *  - "ta": the Ta seed of the HPO tests (D2_Blip with LIN grids, RCUT2B
+ *    5.6, and DM_mBlipEnv with CGRIDMB 0), whose RCUT2B box ends past 6 A
+ *    (at the 99th percentile of the distances up to 7 A, which no distance
+ *    within 5.6 A gives), its comment naming the 99th percentile of the
+ *    distances and their reach, 1.25 times the largest cutoff of the seed;
+ *  - "zbl": D2_ZBL (its TYPE2B values have no OPTIM line);
+ *  - "join": DM_mJoin of two DM_mBlipEnv, which share RCUTENV;
+ *  - "blip": DM_Blip with a centre at the origin and one at 4.7 A;
+ *  - "short": D2_Blip and DM_mBlipEnv with cutoffs of 2 A, which hold no
+ *    neighbour distance (the block keeps the fixed ranges of RCUTENV,
+ *    CEMBFUNC and SEMBFUNC).
+ * Before the fix: "ta" passed tadah hpo --check, but its RCUT2B box was
+ * 5.54 to 5.64, below 6 (the 99th percentile of the distances within 5.6
+ * to 1.05 times the second peak of the distances, a reversed range the
+ * block swapped), its comment the scale and the role of RCUT2B; "join" was
+ * refused ("the index is already selected by the OPTIM
+ * RCUTENV line"), and "short" too ("the low bound 0 is not > 0", an
+ * SGRID2B box widened from (0, 0)). */
+TEST_CASE("Subcommand: the block of analysis suggest_bounds passes hpo "
+          "--check for the Ta seed, D2_ZBL, a DM_mJoin line, a blip at the "
+          "origin and cutoffs that hold no neighbour",
+          "[TadahCLI][exit-status][hpo][suggest_bounds]") {
+  ScratchCwd cwd("suggest_bounds_seeds");
+  write_bcc_mblipenv("unused.train", "0.0", "unused.tadah");
+  std::ofstream("config.val") << "DBFILE bcc.tadah\n";
+  const std::string mblipenv =
+      "TYPEMB DM_mBlipEnv 0 1 1 7 7 Ta Ta\nRCUTENV 5.0\nRCTYPEMB Cut_Poly\n"
+      "SGRIDMB 0.2\nCGRIDMB 0.0\nSEMBFUNC 1 1 1 1 1 1 1\n"
+      "CEMBFUNC 1 2 3 4 5 6 7\n";
+  const std::vector<std::pair<std::string, std::string>> seeds = {
+      {"ta",
+       "INIT2B true\nINITMB true\nTYPE2B D2_Blip 7 7 Ta Ta\n"
+       "RCTYPE2B Cut_Poly\nSGRID2B LIN 7 1 1.2\nCGRID2B LIN 7 0.1 3.0\n"
+       "RCUT2B 5.6\nRCUTMB 5.6\n" + mblipenv},
+      {"zbl",
+       "INIT2B true\nINITMB false\n"
+       "TYPE2B D2_ZBL 0.5292 0.88534 0.23 0.23 Ta Ta\nRCTYPE2B Cut_Cos\n"
+       "RCUT2B 5.0\n"},
+      {"join",
+       "INIT2B false\nINITMB true\nTYPEMB DM_mJoin\n"
+       "TYPEMB DM_mBlipEnv 0 1 1 3 3 Ta Ta\n"
+       "TYPEMB DM_mBlipEnv 0 1 1 3 3 Ta Ta\nRCUTENV 5.0\n"
+       "RCTYPEMB Cut_Cos Cut_Cos\nRCUTMB 5.6 5.0\nSGRIDMB 0.2 0.3\n"
+       "CGRIDMB 0.0 2.9\nSEMBFUNC 1 1 1 1 1 1\nCEMBFUNC 1 2 3 1 2 3\n"},
+      {"blip",
+       "INIT2B false\nINITMB true\nTYPEMB DM_Blip 0 2 2 Ta Ta\n"
+       "RCTYPEMB Cut_Cos\nRCUTMB 5.6\nCGRIDMB 0 4.7\nSGRIDMB 0.8 1\n"},
+      {"short",
+       "INIT2B true\nINITMB true\nTYPE2B D2_Blip 2 2 Ta Ta\n"
+       "RCTYPE2B Cut_Cos\nRCUT2B 2.0\nCGRID2B 1.0 1.5\nSGRID2B 1 1\n"
+       "RCUTMB 2.0\n" + mblipenv},
+  };
+  for (const auto& [name, lines] : seeds) {
+    CAPTURE(name);
+    const std::string train = name + ".train";
+    const std::string block = name + ".block";
+    const std::string target = name + ".hpo";
+    std::ofstream(train) << kBlockModel << lines;
+    const CliRun s = run_tadah({"tadah", "analysis", "suggest_bounds", "-c",
+                                train, "-o", block});
+    INFO("suggest_bounds: status " << s.status << "\n" << reported(s));
+    REQUIRE(s.status == 0);
+    std::ofstream(target)
+        << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
+           "LOSS L2\nPC_ERMSE 0 1\n" << slurp(block);
+    const CliRun c = run_tadah({"tadah", "hpo", "--check", "-c", train,
+                                "--hpotarget", target, "--validation",
+                                "config.val"});
+    INFO("hpo --check: status " << c.status << "\n" << reported(c) << "\n"
+                                << slurp(target));
+    CHECK(c.status == 0);
+    if (name != "ta") continue;
+    const std::string text = slurp(block);
+    CHECK(high_bound(text, "OPTIM RCUT2B (1) ") > 6.0);
+    const std::string why = comment_before(text, "OPTIM RCUT2B (1) ");
+    CHECK(contains(why, "99th percentile"));
+    CHECK(contains(why, "1.25 times"));
+  }
+}
+
+/* Pins: the block tadah analysis suggest_bounds writes for a seed of
+ * D2_Knot5 (knots 3 4 5, RCUT2B 5) and a knot DM_REAM density (knots 3 4
+ * 5, RCUTMB 5), each alone on its TYPE line, on three bcc Ta cells, has no
+ * OPTIM RCUT2B or RCUTMB line (and one OPTIM CGRID2B line, the knots), and
+ * tadah hpo --check with that seed passes
+ * it (exit 0) without the warning that an OPTIM line of a knot cutoff has
+ * no effect ("has no effect for the knot basis family").
+ * Before the fix: the block had "OPTIM RCUTMB (1) ...", and tadah hpo
+ * --check warned "OPTIM RCUTMB has no effect for the knot basis family:
+ * ... (a wasted search dimension)". */
+TEST_CASE("Subcommand: the block of analysis suggest_bounds for knot "
+          "channels passes hpo --check without an OPTIM line of a knot "
+          "cutoff",
+          "[TadahCLI][exit-status][hpo][suggest_bounds][knot]") {
+  ScratchCwd cwd("suggest_bounds_knots");
+  write_bcc_mblipenv("unused.train", "0.0", "unused.tadah");
+  std::ofstream("config.val") << "DBFILE bcc.tadah\n";
+  std::ofstream("knot.train")
+      << kBlockModel
+      << "INIT2B true\nINITMB true\nTYPE2B D2_Knot5 3 0 Ta Ta\n"
+         "RCTYPE2B Cut_Dummy\nRCUT2B 5.0\nCGRID2B 3 4 5\n"
+         "TYPEMB DM_REAM 2 3 0 3 3 0 0 0 Ta Ta\nRCTYPEMB Cut_Dummy\n"
+         "RCUTMB 5.0\nCGRIDMB 3 4 5\nAMPGRIDMB 0.3 0.2 0.1\n"
+         "CEMBFUNC 0 1 2\nRHOFORM SIGNED\nEMBF0 FREE\n";
+  const CliRun s = run_tadah({"tadah", "analysis", "suggest_bounds", "-c",
+                              "knot.train", "-o", "knot.block"});
+  INFO("suggest_bounds: status " << s.status << "\n" << reported(s));
+  REQUIRE(s.status == 0);
+  const std::string block = slurp("knot.block");
+  INFO(block);
+  // A line of the block, not its comments, which name the OPTIM lines that
+  // tadah hpo warns about.
+  auto lines_starting = [&block](const std::string& prefix) {
+    std::size_t n = 0;
+    std::istringstream in(block);
+    for (std::string line; std::getline(in, line);)
+      if (line.compare(0, prefix.size(), prefix) == 0) ++n;
+    return n;
+  };
+  CHECK(lines_starting("OPTIM RCUT2B") == 0u);
+  CHECK(lines_starting("OPTIM RCUTMB") == 0u);
+  CHECK(lines_starting("OPTIM CGRID2B") == 1u);
+  std::ofstream("knot.hpo")
+      << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
+         "LOSS L2\nPC_ERMSE 0 1\n" << block;
+  const CliRun c = run_tadah({"tadah", "hpo", "--check", "-c", "knot.train",
+                              "--hpotarget", "knot.hpo", "--validation",
+                              "config.val"});
+  INFO("hpo --check: status " << c.status << "\n" << reported(c));
+  CHECK(c.status == 0);
+  CHECK(lines_with(reported(c), "has no effect for the knot basis family") ==
+        0u);
 }
 
 #endif  // TADAH_ENABLE_NFP

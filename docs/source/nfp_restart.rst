@@ -64,19 +64,15 @@ policy can restart.
 
 Under :hpo:key:`TYPE MULTISTART <STRATEGY.TYPE.MULTISTART>`, each
 restart runs :hpo:key:`N_STARTS <STRATEGY.N_STARTS>` starts from the
-points of the restart chain, counted as those of an ``INIT`` chain. A
-restart chain that gives fewer points is refused at startup, at the
-``RESTART`` line.
-
-A ``RESTART`` block is refused when a phase it restarts runs
-:hpo:opt:`TADAH:GRID`. A grid search evaluates its starting point and
-then the nodes of its grid in one fixed order, so a restart would
-evaluate the first nodes again and never reach the rest of the grid.
-:hpo:key:`MAXEVAL <OPTIMIZER.MAXEVAL>` bounds a grid search.
+restart chain. A :hpo:block:`RESTART <BLOCK.RESTART>` block is refused
+on a :hpo:opt:`TADAH:GRID` search, whose restarts would evaluate the
+first nodes of the grid again (:hpo:topic:`rule <RULE.restart_grid>`).
 
 .. versionchanged:: 1.6.0
-   1.5.0 accepted a ``RESTART`` block on ``TADAH:GRID``, and ran fewer
-   starts than ``N_STARTS`` from a restart chain of fewer points.
+   1.5.0 accepted a :hpo:block:`!RESTART <BLOCK.RESTART>` block on
+   :hpo:opt:`!TADAH:GRID`, and ran fewer starts than
+   :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` from a restart chain of fewer
+   points.
 
 Each relaunch gets fresh search budgets. Reaching an optimiser's own
 stop normally ends the policy. Restarts are triggered by stagnation.

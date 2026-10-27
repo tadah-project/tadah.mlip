@@ -74,14 +74,14 @@ point.
 
 An :hpo:block:`!INIT <BLOCK.INIT>` chain that gives fewer points than
 :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` is refused at startup
-(``tadah hpo --check`` too), and so is a ``RESTART`` chain of fewer
-points (:ref:`what-restarts`). The entry of
+(``tadah hpo --check`` too), and so is a
+:hpo:block:`RESTART <BLOCK.RESTART>` chain of fewer points
+(:ref:`what-restarts`). The entry of
 :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` says how the points are
 counted, and when a chain drawn with fewer points runs fewer starts. The
 points of an :hpo:block:`!INIT <BLOCK.INIT>` chain after the first
 :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` are not evaluated, and a
-startup warning says so. A restart runs from the first
-:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` points of its chain.
+startup warning says so.
 
 .. versionchanged:: 1.6.0
    1.5.0 accepted :hpo:opt:`!DLIB:GFS` under ``MULTISTART`` and ran it

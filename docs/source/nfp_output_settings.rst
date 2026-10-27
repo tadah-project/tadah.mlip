@@ -207,8 +207,14 @@ lower-numbered evaluation of the batch has ended
 (:ref:`nfp_evaluation_numbers`).
 Its header names the evaluation and the
 improvement (``Evaluation 7, improvement 4``), as does the header of a
-``BDUMP`` archive (``improvement 4 (eval 7)``). ``DIGITS`` controls report formatting; potential
-parameters retain their full saved precision.
+``BDUMP`` archive (``improvement 4 (eval 7)``).
+
+The header's LOSS FUNCTION section lists every loss term with its target
+and weight, and its RESULT table gives the value and the loss of each
+term. The k-th ``PC_OBSERVABLE`` line appears as ``cohesive_energy[k]``
+in LOSS FUNCTION and as ``Ecoh (eV/atom)[k]`` in RESULT. A ``BDUMP``
+archive has the RESULT table too. ``DIGITS`` controls report formatting;
+potential parameters retain their full saved precision.
 
 For an MPI PT/PA run, rank-local histories and archives receive rank
 suffixes. The unsuffixed ``best_pot.tadah`` is the shared winning

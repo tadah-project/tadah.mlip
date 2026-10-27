@@ -58,8 +58,10 @@ Common keys
        of ``REPLICAS`` (``ANNEAL_PT``) and of ``POPULATION``
        (``ANNEAL_PA``). An ``EXPLORE`` block of another optimiser and
        ``CERES`` refuse it, and so does ``INNER`` (see :doc:`nfp_inner`).
-       A seeded run writes the same result files at any ``THREADS``,
-       except under :hpo:opt:`DLIB:GFS` (:ref:`nfp_evaluation_numbers`).
+       With ``REPLICAS`` and ``POPULATION`` given, as their defaults
+       follow ``THREADS``, a seeded run writes the same result files at
+       any ``THREADS``, except under :hpo:opt:`DLIB:GFS`
+       (:ref:`nfp_evaluation_numbers`).
    * - ``SEED n``
      - Unsigned 64-bit optimiser seed. See the seed rules below.
    * - ``STEP fraction``

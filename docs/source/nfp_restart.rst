@@ -70,9 +70,10 @@ An optimiser that evaluates several points at once
 (:hpo:opt:`TADAH:ANNEAL_PT`, :hpo:opt:`TADAH:ANNEAL_PA`, :hpo:opt:`ASA:ASA`
 with a block of states) counts the window in the order of the evaluation
 numbers, once the batch has ended (see :ref:`nfp_evaluation_numbers`).
-The window closes at the same evaluation at any
-:hpo:key:`THREADS <OPTIMIZER.THREADS>`; the later evaluations of that
-batch have run and are recorded, and the restart follows the batch.
+The window closes at the same evaluation whatever the timing of the
+workers, and so at any :hpo:key:`THREADS <OPTIMIZER.THREADS>` under the
+conditions of that section; the later evaluations of that batch have run
+and are recorded, and the restart follows the batch.
 
 .. versionchanged:: 1.6.0
    In 1.5.0 the window closed at the evaluation that ended first past it,

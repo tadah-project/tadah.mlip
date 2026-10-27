@@ -64,9 +64,12 @@ It accepts ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` and positive
 in a single-rank run.
 
 A replica that reaches :hpo:key:`STOPVAL <OPTIMIZER.STOPVAL>` ends its
-own sweep, and the search ends after the epoch: the other replicas
-complete their sweeps of the epoch, so the evaluations of a seeded run do
-not depend on :hpo:key:`THREADS <OPTIMIZER.THREADS>`
+own sweep, and the search ends after the epoch in which it is reached:
+the other replicas complete their sweeps of the epoch. In the step
+calibration (:doc:`anneal_pt_steps`), which runs in rounds of one
+evaluation for each replica, the search ends after the round. Where the
+search ends therefore does not depend on the timing of the workers; the
+evaluations that the replica did not make have no row
 (:ref:`nfp_evaluation_numbers`).
 
 .. versionchanged:: 1.6.0

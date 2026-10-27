@@ -61,8 +61,9 @@ population initialisation and production proposals. The run can also
 stop on its temperature floor or configured stopping criteria. A walker
 that reaches :hpo:key:`STOPVAL <OPTIMIZER.STOPVAL>` ends its own sweeps,
 and the search ends after the temperature step: the other walkers
-complete theirs, so the evaluations of a seeded run do not depend on
-:hpo:key:`THREADS <OPTIMIZER.THREADS>` (:ref:`nfp_evaluation_numbers`).
+complete theirs, so where the search ends does not depend on the timing
+of the workers. The evaluations that the walker did not make have no row
+(:ref:`nfp_evaluation_numbers`).
 
 .. versionchanged:: 1.6.0
    In 1.5.0 the other walkers stopped at their next proposal, at a point

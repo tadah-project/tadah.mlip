@@ -50,6 +50,8 @@ History cadence and precision
      - Queue threshold for draining completed results to the history
        writer. Requires integer ``N >= 0``; ``0`` and ``1`` attempt a
        drain after every result. The run drains remaining results at exit.
+       The results of a batch of evaluations join the queue when the
+       batch ends (:ref:`nfp_evaluation_numbers`).
 
 ``OUTPUT`` and ``BOUTPUT`` are cadences, so zero is invalid. Use a larger
 positive value to reduce history volume. A queue drain can still wait
@@ -108,27 +110,56 @@ batch numbers its evaluations in the order of their slots, the ``SLOT``
 column. The run records the batch once its last evaluation has ended, in
 that order: the history rows, each improvement of the best loss,
 ``best_pot.tadah`` and the stagnation window of the
-:hpo:block:`RESTART <BLOCK.RESTART>` block. A seeded run therefore writes
-the same files at any :hpo:key:`!THREADS <OPTIMIZER.THREADS>`, apart from
-the times they record, when each loss depends on its point and on the
-earlier evaluations of its slot alone. A :hpo:key:`PC_LAMMPS` script that
-reads what an earlier script left in its LAMMPS instance, which a worker
-keeps from one evaluation to the next, breaks that condition.
+:hpo:block:`RESTART <BLOCK.RESTART>` block.
+
+A seeded run therefore writes the same files at any
+:hpo:key:`!THREADS <OPTIMIZER.THREADS>`, apart from the times they record,
+under two conditions. The first is that
+:hpo:param:`REPLICAS <PARAM.TADAH:ANNEAL.REPLICAS>` of
+:hpo:opt:`!TADAH:ANNEAL_PT` and
+:hpo:key:`POPULATION <OPTIMIZER.POPULATION>` of
+:hpo:opt:`!TADAH:ANNEAL_PA` are given, as their defaults follow
+:hpo:key:`!THREADS <OPTIMIZER.THREADS>`. The second is that each loss
+depends on its point and on the earlier evaluations of its slot alone: a
+:hpo:key:`PC_LAMMPS` script that reads what an earlier script left in its
+LAMMPS instance, which a worker keeps from one evaluation to the next,
+breaks it.
 
 :hpo:opt:`DLIB:GFS` with :hpo:key:`!THREADS <OPTIMIZER.THREADS>` above 1 is
 different: it proposes each point from the evaluations that have
 ended, so its points and their numbers depend on the timing of the
 evaluations.
 
+Until a batch ends, its results are held in memory, whatever
+:hpo:key:`QFLUSH` is: the history files gain the rows of the batch, and
+``best_pot.tadah`` an improvement in it, when the batch ends. A process
+killed during a batch, by ``SIGKILL`` or by the system for lack of
+memory, loses the results of that batch. A temperature step of
+:hpo:opt:`!TADAH:ANNEAL_PA` makes
+:hpo:key:`!POPULATION <OPTIMIZER.POPULATION>` times
+:hpo:param:`CHAIN_LENGTH <PARAM.TADAH:ANNEAL.CHAIN_LENGTH>` times
+:hpo:param:`SWEEPS <PARAM.TADAH:ANNEAL.SWEEPS>` evaluations; under
+:hpo:param:`CORANA <PARAM.TADAH:ANNEAL.CORANA>`,
+:hpo:param:`NT <PARAM.TADAH:ANNEAL.NT>` times
+:hpo:param:`NS <PARAM.TADAH:ANNEAL.NS>` times the number of search
+parameters take the place of
+:hpo:param:`!CHAIN_LENGTH <PARAM.TADAH:ANNEAL.CHAIN_LENGTH>`. The
+journal's ``ANNEAL_PA layout`` line gives the number.
+
 A stop during a batch, by a signal or by
 :hpo:key:`MAXTIME <OPTIMIZER.MAXTIME>`, keeps the evaluations that ended,
-at their numbers. The journal says how many evaluations of the batch did
+at their numbers. So does a replica or walker that reaches
+:hpo:key:`STOPVAL <OPTIMIZER.STOPVAL>`, whose other evaluations of the
+batch do not run. The numbers of the evaluations that did not run have
+no row, except those at the end of the batch, which the next evaluation
+of the run takes. The journal says how many evaluations of the batch did
 not run and which numbers have no row.
 
 .. versionchanged:: 1.6.0
-   In 1.5.0 an evaluation took its number when it started and a new best
-   was recorded when it ended, so with more than one worker the numbers
-   and the best histories followed the timing of the evaluations.
+   In 1.5.0 an evaluation took its number when it started, and its rows
+   and a new best were recorded when it ended, so with more than one
+   worker the numbers and the best histories followed the timing of the
+   evaluations.
 
 Potential archives
 ------------------
@@ -164,7 +195,8 @@ to points inside the search box.
 
 The current best is saved to ``best_pot.tadah`` independently of
 ``OUTPUT``, ``BOUTPUT``, ``DUMP``, ``BDUMP`` and ``QFLUSH``. It is updated
-at every improvement. Its header names the evaluation and the
+at every improvement, for an evaluation of a batch when the batch ends
+(:ref:`nfp_evaluation_numbers`). Its header names the evaluation and the
 improvement (``Evaluation 7, improvement 4``), as does the header of a
 ``BDUMP`` archive (``improvement 4 (eval 7)``). ``DIGITS`` controls report formatting; potential
 parameters retain their full saved precision.

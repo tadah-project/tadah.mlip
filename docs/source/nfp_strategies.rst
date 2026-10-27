@@ -78,8 +78,10 @@ An :hpo:block:`!INIT <BLOCK.INIT>` chain that gives fewer points than
 points (:ref:`what-restarts`). The entry of
 :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` says how the points are
 counted, and when a chain drawn with fewer points runs fewer starts. The
-points after the first :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` are not
-evaluated, and a startup warning says so.
+points of an :hpo:block:`!INIT <BLOCK.INIT>` chain after the first
+:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` are not evaluated, and a
+startup warning says so. A restart runs from the first
+:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` points of its chain.
 
 .. versionchanged:: 1.6.0
    1.5.0 accepted :hpo:opt:`!DLIB:GFS` under ``MULTISTART`` and ran it

@@ -539,11 +539,12 @@ before it reads anything::
    its training record, the comment block above its key lines, lists the
    datasets its weights were fitted to in a '# DBFILE' line when there were
    any: a refit has none, and a potential of an earlier version has no
-   record): to train from one, add a DBFILE line to a copy of it; a
-   potential of tadah refit or refit --edit also pins every weight with its
-   FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo coefficient search,
-   so delete them from the copy for the fit to change the weights (the
-   Training page of the documentation, Retraining from a potential).
+   record): a retrain from one takes a copy of it with a DBFILE line added;
+   a potential of tadah refit or refit --edit also pins every weight with
+   its FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo coefficient
+   search, and the fit changes the weights when both are deleted from the
+   copy (the Training page of the documentation, Retraining from a
+   potential).
 
 A potential that ``tadah refit`` or ``tadah refit --edit`` writes, and the
 ``best_pot.tadah`` of a ``tadah hpo`` run that pins every weight, has
@@ -564,9 +565,9 @@ are the ``FIXWEIGHT`` values and says so before it reads a dataset::
    the FIXWEIGHT values. tadah refit and refit --edit write FIXINDEX and
    FIXWEIGHT for every weight of their potentials, the seed of a tadah hpo
    coefficient search, and so does a tadah hpo run that pins every weight in
-   its best_pot.tadah: to fit the weights to the DBFILE data, delete both
-   lines from the training configuration (the Training page of the
-   documentation, Retraining from a potential).
+   its best_pot.tadah: the weights are fitted to the DBFILE data when both
+   lines are deleted from the training configuration (the Training page of
+   the documentation, Retraining from a potential).
 
 It is a warning, not a refusal: such a fit can be deliberate. 1.5.0 said
 nothing, and a refit potential retrained this way kept its weights.
@@ -640,9 +641,10 @@ An ``RCUT2B`` line, above or below the ``CONFIG`` line, adds its values to
 the potential's. The key is then read as in a training configuration. Each
 descriptor takes one value, so one value more than descriptors is refused,
 for a single descriptor and a ``D2_mJoin`` line alike. The refusal names the
-lines, here for ``cutoff.train`` and a potential whose ``D2_mJoin`` line
-joins ``D2_Blip`` and ``D2_BP``, ``<n>`` being the ``RCUT2B`` line of
-``pot.tadah``:
+lines of the key and ends with the lines of :ref:`TYPE2B <TYPE2B>`. Below,
+``cutoff.train`` includes a potential whose ``D2_mJoin`` line joins
+``D2_Blip`` and ``D2_BP``. In the refusal, ``<n>`` is the ``RCUT2B`` line of
+``pot.tadah`` and ``<t>`` the first of its three ``TYPE2B`` lines:
 
 .. code-block:: ini
 
@@ -655,7 +657,8 @@ joins ``D2_Blip`` and ``D2_BP``, ``<n>`` being the ``RCUT2B`` line of
    TYPE2B names 2 descriptors (D2_Blip, D2_BP) but RCUT2B has 3 values, set
    on line 1 of cutoff.train and on line <n> of pot.tadah (CONFIG on line 2
    of cutoff.train): each descriptor takes one RCUT2B value, in the order of
-   the TYPE2B lines
+   the TYPE2B lines (TYPE2B on line <t> of pot.tadah (CONFIG on line 2 of
+   cutoff.train), ...)
 
 A line of another key of the descriptors (:ref:`RCTYPE2B <RCTYPE2B>`,
 :ref:`CGRID2B <CGRID2B>`, :ref:`RCUTMB <RCUTMB>` and the rest) is read the
@@ -687,22 +690,25 @@ and so has a copy with one added::
    WARNING: tadah train: the configuration file retrain.train is a potential
    (it has WEIGHTS): its EFILTER 5 6 and WDBFILE 1 1 prepared the training
    data of the fit that wrote it, not of this run, and are ignored (tadah
-   keeps such keys in a potential's training record, not as key lines). Give
-   --efilter or --wdbfile on the command line, or an EFILTER or WDBFILE line
-   in a configuration file that includes the potential with CONFIG, to apply
-   one to this run (the Training page of the documentation, Retraining from
-   a potential).
+   keeps such keys in a potential's training record, not as key lines). This
+   run takes its own EFILTER or WDBFILE from --efilter or --wdbfile on the
+   command line, or from an EFILTER or WDBFILE line in a configuration file
+   that includes the potential with CONFIG (the Training page of the
+   documentation, Retraining from a potential).
 
-The run settings get a sentence of their own, and the advice names the
-options the command has of them (``tadah train`` has no ``--numeric``)::
+The run settings get a sentence of their own. When the command has an
+option for only some of the keys, the last sentence names the line for every
+key first. The keys that have an option follow, with their options
+(``tadah train`` has no ``--numeric``)::
 
    WARNING: tadah train: the configuration file retrain.train is a potential
    (it has WEIGHTS): its VERBOSE 2 and NUMERIC 12 were settings of the run
    that wrote it, not of this run, and are ignored (tadah keeps such keys in
-   a potential's training record, not as key lines). Give --verbose on the
-   command line, or a VERBOSE or NUMERIC line in a configuration file that
-   includes the potential with CONFIG, to apply one to this run (the
-   Training page of the documentation, Retraining from a potential).
+   a potential's training record, not as key lines). This run takes its own
+   VERBOSE or NUMERIC from a VERBOSE or NUMERIC line in a configuration file
+   that includes the potential with CONFIG, or VERBOSE from --verbose on the
+   command line (the Training page of the documentation, Retraining from a
+   potential).
 
 For a potential that a file includes, the warning names both (``old.tadah,
 which the configuration file outer.train includes with CONFIG, is a
@@ -711,7 +717,7 @@ line, or a line of the including configuration file. A run that needs a
 setting the potential's line gave, and has none of its own, is refused
 saying where it goes and naming the line that was not read: ``tadah
 analysis check_bounds -c`` of a seed potential without ``--hpotarget``
-(``tadah analysis check_bounds: no HPOTARGET: name the hpotarget file with
+(``tadah analysis check_bounds: no HPOTARGET: the target file is given with
 --hpotarget, or with an HPOTARGET line in a configuration file without
 WEIGHTS. old_best.tadah is a potential (it has WEIGHTS): its HPOTARGET
 config.hpo line was a setting of the run that wrote it and is not
@@ -732,20 +738,23 @@ the run can give, unless the run gives that toggle itself or sets the other
 one ``true``: the two choose one thing, the source of the shift, and exclude
 each other, so the run's own toggle is its choice (``--eshift-dbatom``
 beside a copy's ``ESHIFT_ATOM true`` derives the shift by the least-squares
-fit, and no warning names the copy's line). When the run has an ``ESHIFT``,
-a warning that names a toggle ends by saying how to drop it, since a toggle
-the run gives is overruled by the ``ESHIFT`` values as in any configuration
-(``Multiple ESHIFT sources set; precedence: explicit > ATOM > DBATOM.``):
-beside an ``ESHIFT`` line, ``The ESHIFT of the configuration, the energy
-reference of the model, overrules ESHIFT_ATOM and ESHIFT_DBATOM: to derive
-ESHIFT from the data of this run, delete the ESHIFT line and give the run
-one of them``; with ``--eshift``, ``The ESHIFT given with --eshift, ...:
-to derive ESHIFT from the data of this run, leave out --eshift and give the
-run one of them`` (``leave out --eshift, delete the ESHIFT line and give
-the run one of them`` when ``--eshift`` replaced an ``ESHIFT`` line of the
-configuration). A retrain reproduces the first fit when it is given the
-keys its record lists, on the command line or in the file that includes
-the copy.
+fit, and no warning names the copy's line).
+
+An ``ESHIFT`` of the run overrules a toggle the run gives, as in any
+configuration (``Multiple ESHIFT sources set; precedence: explicit > ATOM >
+DBATOM.``). A warning that names a toggle then ends by saying when the run
+derives the shift. Beside an ``ESHIFT`` line it ends ``The ESHIFT of the
+configuration, the energy reference of the model, overrules ESHIFT_ATOM and
+ESHIFT_DBATOM: ESHIFT is derived from the data of this run when the ESHIFT
+line is deleted and the run is given one of them``. With ``--eshift`` it
+ends ``The ESHIFT given with --eshift, ...: ESHIFT is derived from the data
+of this run when --eshift is left out and the run is given one of them``.
+With ``--eshift`` over an ``ESHIFT`` line of the configuration it ends
+``... when --eshift is left out, the ESHIFT line is deleted and the run is
+given one of them``.
+
+A retrain reproduces the first fit when it is given the keys its record
+lists, on the command line or in the file that includes the copy.
 
 .. versionchanged:: 1.6.0
    A potential had the keys that prepared its training data as key lines,

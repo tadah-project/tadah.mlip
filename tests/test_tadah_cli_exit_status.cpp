@@ -1071,6 +1071,39 @@ TEST_CASE("Subcommand: data convert: a missing file is refused, naming it "
     CHECK(contains(rep, fmt));
 }
 
+/* Pins: `tadah data print -s missing.cif`, a path of a CIF name that does
+ * not exist, exits 1 with "the structure file missing.cif does not exist"
+ * and not with the refusal of a format tadah does not read ("is neither a
+ * structure file tadah reads"); `tadah data write -s sub/POSCAR -o x.vasp
+ * -f vasp` alike, writing nothing.
+ * Before the fix: "missing.cif is neither a structure file tadah reads (CIF,
+ * POSCAR or CASTEP .cell) nor an online id (mp-..., cod-..., aflow:... or a
+ * NOMAD entry id)": a missing file read as an unknown format. */
+TEST_CASE("Subcommand: data print -s of a structure file that does not "
+          "exist names it as missing",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("print_missing");
+  REQUIRE_FALSE(std::filesystem::exists("missing.cif"));
+  {
+    const CliRun r = run_tadah({"tadah", "data", "print", "-s",
+                                "missing.cif"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "the structure file missing.cif does not exist"));
+    CHECK_FALSE(contains(rep, "is neither a structure file"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "data", "write", "-s", "sub/POSCAR",
+                                "-o", "x.vasp", "-f", "vasp"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "the structure file sub/POSCAR does not exist"));
+    CHECK_FALSE(std::filesystem::exists("x.vasp"));
+  }
+}
+
 /* Pins: `tadah data print -s <cif>` (the help's own example) prints the
  * structure and exits 0: the summary has 2 atoms, the elements Na and Cl,
  * and the volume 4 * 5 * 6 = 120 A^3 (printed with 6 decimals, so checked
@@ -1938,6 +1971,69 @@ TEST_CASE("Subcommand: data dedup without --threshold says it needs "
   CHECK_FALSE(std::filesystem::exists("out.tadah"));
   CHECK(contains(rep, "--threshold"));
   CHECK_FALSE(contains(rep, "Key not found"));
+  CHECK(contains(rep, "at which two atom positions count as equal, such as "
+                      "--threshold 1e-6\n"));
+  CHECK_FALSE(contains(rep, "e.g."));
+}
+
+/* Pins: tadah analysis dataset_stats says what it lacks, naming only what
+ * the command line accepts with its input (-c excludes --dbfile and
+ * --structure): with -d alone (no configuration, so no cutoff) "analysis
+ * dataset_stats: no cutoff: the statistics take the largest RCUT2B or
+ * RCUTMB value of a configuration given with -c as their cutoff, and no
+ * line gives one (--dbfile and --structure give none)"; with a -c
+ * configuration of "RCUT2B 0" "analysis dataset_stats: the cutoff of the
+ * statistics is the largest RCUT2B or RCUTMB value, 0, which is not above
+ * 0"; with a -c configuration without DBFILE or STRUCTURE "analysis
+ * dataset_stats: no structures loaded: the configuration has no DBFILE or
+ * STRUCTURE line"; with -d of a file of no structure "analysis
+ * dataset_stats: no structures loaded: the datasets of DBFILE (empty.tadah)
+ * hold no structure". Each exits 1 and writes no report.
+ * Before the fix: "... RCUTMAX is not set or <= 0. Set at least one of
+ * RCUT2B / RCUTMB in your config so the audit cutoff is well-defined." and
+ * "... no structures loaded — provide at least one DBFILE or STRUCTURE.".
+ * Before the fix that names only what the input accepts: "... RCUTMAX is
+ * not set or <= 0; an RCUT2B or RCUTMB line in the configuration (-c) sets
+ * it" with -d, which -c cannot join, and "... no structures loaded; a
+ * DBFILE or STRUCTURE line in the configuration, --dbfile or --structure
+ * gives them" with -c, which --dbfile and --structure cannot join: the four
+ * checks of the messages fail. */
+TEST_CASE("Subcommand: analysis dataset_stats names what it lacks and "
+          "what its input accepts",
+          "[TadahCLI][exit-status][analysis]") {
+  ScratchCwd cwd("dataset_stats_lacks");
+  std::ofstream("db.tadah") << dataset_entry("T1", {"Na 0 0 0",
+                                                    "Cl 2.5 2.5 2.5"});
+  std::ofstream("stats.config") << "RCUT2B 4.0\n";
+  std::ofstream("zero.config") << "RCUT2B 0\nDBFILE db.tadah\n";
+  std::ofstream("empty.tadah") << "";
+  for (const auto& [args, message] :
+       std::vector<std::pair<std::vector<std::string>, std::string>>{
+           {{"tadah", "analysis", "dataset_stats", "-d", "db.tadah", "-o",
+             "st.tadah"},
+            "analysis dataset_stats: no cutoff: the statistics take the "
+            "largest RCUT2B or RCUTMB value of a configuration given with -c "
+            "as their cutoff, and no line gives one (--dbfile and --structure "
+            "give none)"},
+           {{"tadah", "analysis", "dataset_stats", "-c", "zero.config", "-o",
+             "st.tadah"},
+            "analysis dataset_stats: the cutoff of the statistics is the "
+            "largest RCUT2B or RCUTMB value, 0, which is not above 0"},
+           {{"tadah", "analysis", "dataset_stats", "-c", "stats.config", "-o",
+             "st.tadah"},
+            "analysis dataset_stats: no structures loaded: the configuration "
+            "has no DBFILE or STRUCTURE line"},
+           {{"tadah", "analysis", "dataset_stats", "-d", "empty.tadah", "-o",
+             "st.tadah"},
+            "analysis dataset_stats: no structures loaded: the datasets of "
+            "DBFILE (empty.tadah) hold no structure"}}) {
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO(args[3] << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, message));
+    CHECK_FALSE(std::filesystem::exists("st.tadah"));
+  }
 }
 
 /* Pins: `tadah data dedup --threshold 1e-6` on T1 = T2 = T3 and a different
@@ -2686,7 +2782,11 @@ TEST_CASE("Subcommand: predict refuses a two-species BIAS potential with one "
  * true with M_KRR Kern_Linear and BIAS false (exit 1, as for BF_Linear).
  * Before the fix: both trained (exit 0): the fixed composition with one
  * shared intercept, and the Kern_Linear NORM potential with its mean
- * correction folded into its first descriptor weight. */
+ * correction folded into its first descriptor weight.
+ * Before the fix that states the rule: the refusal of NORM true under
+ * Kern_Linear without BIAS read "Configuration: NORM=true with
+ * MODEL=Kern_Linear requires BIAS=true. ... Set BIAS=true or NORM=false.":
+ * the checks of it fail. */
 TEST_CASE("Subcommand: train refuses intercepts the data cannot determine "
           "and NORM with Kern_Linear without BIAS",
           "[TadahCLI][train][bias]") {
@@ -2716,7 +2816,9 @@ TEST_CASE("Subcommand: train refuses intercepts the data cannot determine "
   INFO("NORM Kern_Linear: status " << n.status << "\n" << nrep);
   CHECK(n.status == 1);
   CHECK_FALSE(std::filesystem::exists("pot_norm.tadah"));
-  CHECK(contains(nrep, "NORM=true with MODEL=Kern_Linear requires BIAS=true"));
+  CHECK(contains(nrep,
+                 "NORM true with MODEL Kern_Linear requires BIAS true: "));
+  CHECK(contains(nrep, "; BIAS true or NORM false is accepted."));
 }
 
 /* Pins: `tadah train` refuses FIXINDEX/FIXWEIGHT with NORM true (exit 1,
@@ -2760,7 +2862,10 @@ TEST_CASE("Subcommand: train refuses FIXINDEX/FIXWEIGHT with NORM true",
  * WARNING "normal-equations matrix is singular".
  * Before the fix: both refusals said "Use BIAS false (ESHIFT_ATOM,
  * ESHIFT_DBATOM or ESHIFT remove a per-species reference energy), ... or
- * pin intercepts with FIXINDEX/FIXWEIGHT". */
+ * pin intercepts with FIXINDEX/FIXWEIGHT".
+ * Before the fix that states the remedies: "Use BIAS false with explicit
+ * ESHIFT values ... or pin intercepts with FIXINDEX/FIXWEIGHT": the checks
+ * fail. */
 TEST_CASE("Subcommand: train's composition refusal names the remedies the "
           "configuration can take",
           "[TadahCLI][train][bias]") {
@@ -2772,9 +2877,10 @@ TEST_CASE("Subcommand: train's composition refusal names the remedies the "
   const std::string rep = reported(r);
   INFO("NORM false: status " << r.status << "\n" << rep);
   CHECK(r.status == 1);
-  CHECK(contains(rep, "Use BIAS false with explicit ESHIFT values"));
+  CHECK(contains(rep, " BIAS false with explicit ESHIFT values"));
+  CHECK_FALSE(contains(rep, "Use BIAS false"));
   CHECK(contains(rep, "ESHIFT_ATOM"));
-  CHECK(contains(rep, "pin intercepts with FIXINDEX/FIXWEIGHT"));
+  CHECK(contains(rep, "intercepts pinned with FIXINDEX/FIXWEIGHT"));
   CHECK_FALSE(contains(rep, "ESHIFT_DBATOM"));
 
   std::string keys = kNbTaKeys;
@@ -3225,7 +3331,12 @@ const char *const kZeroDataRows =
  * leading minor of order 3 is not), ..."; OALGO 2 said "the design matrix
  * (2 data rows for 3 weights, LAMBDA 0) does not have full column rank: its
  * column 3 is zero or a linear combination of the columns before it (fewer
- * data rows than weights), ...". */
+ * data rows than weights), ...".
+ * Before the fix that states the remedies: the refusal read "... are not
+ * unique. Use OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm
+ * weights, LAMBDA > 0 ...", an instruction: the check fails. Before the fix
+ * of the remedies' wording: "... The fit is made with OALGO 1 (DGELSD) ...",
+ * which reads as a fit that was made. */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
           "weights",
           "[TadahCLI][exit-status][train][oalgo]") {
@@ -3254,9 +3365,9 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
   const std::string few =
       " cannot fit these 3 weights: the design matrix has 2 data rows for 3 "
       "weights, LAMBDA 0: fewer data rows than weights, so it does not have "
-      "full column rank and the least-squares weights are not unique. Use "
-      "OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm "
-      "weights, LAMBDA > 0";
+      "full column rank and the least-squares weights are not unique. A fit "
+      "is possible with OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the "
+      "minimum-norm weights, with LAMBDA > 0";
   for (const auto& [oalgo, name] :
        {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
         {"2", "DGELS, QR"}}) {
@@ -3300,7 +3411,12 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer data rows than "
  * combination of the columns before it, ..." (whether DPOTRF stops depends
  * on the rounding of Phi^T Phi: on 2 other rows, of sine values, and a
  * zero row for 3 weights, test_linear_regressor_messages.cpp's OALGO 4
- * fitted without an error). */
+ * fitted without an error).
+ * Before the fix that states the remedies: the refusal read "... are not
+ * unique. Use OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm
+ * weights, LAMBDA > 0 ...", an instruction: the check fails. Before the fix
+ * of the remedies' wording: "... The fit is made with OALGO 1 (DGELSD) ...",
+ * which reads as a fit that was made. */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
           "rows than weights, a structure of priority 0 included",
           "[TadahCLI][exit-status][train][oalgo]") {
@@ -3337,9 +3453,9 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
       " cannot fit these 3 weights: the design matrix has 2 non-zero data "
       "rows of 3" + std::string(kZeroDataRows) + " for 3 weights, LAMBDA 0: "
       "fewer non-zero data rows than weights, so it does not have full column "
-      "rank and the least-squares weights are not unique. Use OALGO 1 "
-      "(DGELSD) or OALGO 3 (SVD), which give the minimum-norm weights, LAMBDA "
-      "> 0";
+      "rank and the least-squares weights are not unique. A fit is possible "
+      "with OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm "
+      "weights, with LAMBDA > 0";
   for (const auto& [oalgo, name] :
        {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
         {"2", "DGELS, QR"}}) {
@@ -3380,7 +3496,12 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 refuses fewer non-zero data "
  *    zero ...) for 3 weights, ...".
  * Before the fix: the counts and the refusals were the same, but the
  * parenthesis was "(a row of weight 0 is zero)", which sent the user to
- * look for a weight 0 that none of these rows has. */
+ * look for a weight 0 that none of these rows has.
+ * Before the fix that states the remedies: the refusal read "... are not
+ * unique. Use OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm
+ * weights, LAMBDA > 0 ...", an instruction: the check fails. Before the fix
+ * of the remedies' wording: "... The fit is made with OALGO 1 (DGELSD) ...",
+ * which reads as a fit that was made. */
 TEST_CASE("Subcommand: train with OALGO 4 or 2 counts zero data rows of "
           "priority 1, a dimer's y and z forces and an isolated atom's energy",
           "[TadahCLI][exit-status][train][oalgo]") {
@@ -3424,9 +3545,9 @@ TEST_CASE("Subcommand: train with OALGO 4 or 2 counts zero data rows of "
       "FORCE false\n";
   const std::string tail =
       " LAMBDA 0: fewer non-zero data rows than weights, so it does not have "
-      "full column rank and the least-squares weights are not unique. Use "
-      "OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the minimum-norm "
-      "weights, LAMBDA > 0";
+      "full column rank and the least-squares weights are not unique. A fit "
+      "is possible with OALGO 1 (DGELSD) or OALGO 3 (SVD), which give the "
+      "minimum-norm weights, with LAMBDA > 0";
   for (const auto& [oalgo, name] :
        {std::pair<std::string, std::string>{"4", "normal equations, Cholesky"},
         {"2", "DGELS, QR"}}) {
@@ -3563,12 +3684,15 @@ TEST_CASE("Subcommand: train builds a DM_EAM model from the SETFL file",
  * (4.5 A): a DM_EAM model with RCUTMB 3.5, and a D2_EAM model with RCUT2B
  * 3.5, exit 1 naming the descriptor, the key, both values and the file,
  *   DM_EAM: RCUTMB 3.5 differs from the cutoff 4.5 of the setfl file
- *   'eam_small.alloy' (SETFL); set RCUTMB to the file's cutoff, 4.5.
+ *   'eam_small.alloy' (SETFL); the RCUTMB of DM_EAM is the file's cutoff,
+ *   4.5.
  * and write no potential.
  * Before the fix: both exited 0 and wrote a potential that records the
  * file's cutoff (RCUTMB 4.5, RCUT2B 4.5), while the weights had been fitted
  * with the descriptor evaluated at 3.5, so `tadah predict` on that file
- * evaluated a model that was never fitted. */
+ * evaluated a model that was never fitted.
+ * Before the fix that states the rule: the refusal ended "(SETFL); set RCUTMB
+ * to the file's cutoff, 4.5.", an instruction: the check fails. */
 TEST_CASE("Subcommand: train refuses an EAM cutoff other than the setfl "
           "file's",
           "[TadahCLI][train][eam]") {
@@ -3609,8 +3733,8 @@ TEST_CASE("Subcommand: train refuses an EAM cutoff other than the setfl "
     CHECK(t.status == 1);
     CHECK(contains(rep, label + ": " + key +
                             " 3.5 differs from the cutoff 4.5 of the setfl "
-                            "file 'eam_small.alloy' (SETFL); set " + key +
-                            " to the file's cutoff, 4.5."));
+                            "file 'eam_small.alloy' (SETFL); the " + key +
+                            " of " + label + " is the file's cutoff, 4.5."));
     CHECK_FALSE(std::filesystem::exists("pot.tadah"));
   }
 }
@@ -4283,7 +4407,8 @@ TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
   CHECK(contains(rep, "tadah refit: REFIT_MODE compact (the default) needs "
                       "the compact fitter, which this tadah was built "
                       "without (it needs TADAH_ENABLE_NFP and "
-                      "TADAH_ENABLE_CERES); set REFIT_MODE dense"));
+                      "TADAH_ENABLE_CERES); REFIT_MODE dense fits without "
+                      "it"));
   CHECK_FALSE(std::filesystem::exists("pot.tadah"));
 #endif
 }
@@ -6870,11 +6995,12 @@ const char* const kNoDatasetsAdvice =
     "training record, the comment block above its key lines, lists the "
     "datasets its weights were fitted to in a '# DBFILE' line when there "
     "were any: a refit has none, and a potential of an earlier version has "
-    "no record): to train from one, add a DBFILE line to a copy of it; a "
-    "potential of tadah refit or refit --edit also pins every weight with "
-    "its FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo coefficient "
-    "search, so delete them from the copy for the fit to change the weights "
-    "(the Training page of the documentation, Retraining from a potential).";
+    "no record): a retrain from one takes a copy of it with a DBFILE line "
+    "added; a potential of tadah refit or refit --edit also pins every "
+    "weight with its FIXINDEX and FIXWEIGHT lines, the seed of a tadah hpo "
+    "coefficient search, and the fit changes the weights when both are "
+    "deleted from the copy (the Training page of the documentation, "
+    "Retraining from a potential).";
 
 }  // namespace
 
@@ -6882,10 +7008,14 @@ const char* const kNoDatasetsAdvice =
  * from the three Ta dimers (M_BLR BF_Linear and M_KRR Kern_Linear; it has
  * no DBFILE line), exits 1 without writing re.tadah, saying "The training
  * configuration has no DBFILE: tadah train fits the datasets it lists." and
- * the advice (kNoDatasetsAdvice: "A potential has no DBFILE line ... add a
- * DBFILE line to a copy of it; a potential of tadah refit or refit --edit
- * also pins every weight ..."), and no "Key not found"; with the DBFILE
- * line added it trains (exit 0; a pin of the documented route).
+ * the advice (kNoDatasetsAdvice: "A potential has no DBFILE line ... a
+ * retrain from one takes a copy of it with a DBFILE line added; a potential
+ * of tadah refit or refit --edit also pins every weight ..."), and no "Key
+ * not found"; with the DBFILE line added it trains (exit 0; a pin of the
+ * documented route).
+ * Before the fix of the advice's wording: "... to train from one, add a
+ * DBFILE line to a copy of it; ..., so delete them from the copy for the
+ * fit to change the weights ...", instructions to the reader.
  * Before the fix: exit 1 with "Key not found in the Context object:
  * DBFILE" (and the Logger's "Context::operator() -> Key not found:
  * DBFILE"), naming neither potentials nor the retrain.
@@ -7019,10 +7149,13 @@ TEST_CASE("Subcommand: refit --edit keeps the UNCERTAINTY line of a "
  * weight (all 84 of them), so the fit changes none: the WEIGHTS of the
  * potential written are the FIXWEIGHT values. tadah refit and refit --edit
  * write FIXINDEX and FIXWEIGHT for every weight of their potentials, ...:
- * to fit the weights to the DBFILE data, delete both lines from the
- * training configuration (the Training page of the documentation,
+ * the weights are fitted to the DBFILE data when both lines are deleted
+ * from the training configuration (the Training page of the documentation,
  * Retraining from a potential).", once, and pot2.tadah has the WEIGHTS of
  * pot.tadah.
+ * Before the fix of its wording the WARNING ended "...: to fit the weights
+ * to the DBFILE data, delete both lines from the training configuration
+ * ...", an instruction.
  * Before the fix: exit 0 and no WARNING about the pins: the potential
  * written had the input weights and nothing said that none was fitted
  * (171 weights, the same result). */
@@ -7059,9 +7192,10 @@ TEST_CASE("Subcommand: train of a refit potential with a DBFILE line warns "
       "are the FIXWEIGHT values. tadah refit and refit --edit write FIXINDEX "
       "and FIXWEIGHT for every weight of their potentials, the seed of a "
       "tadah hpo coefficient search, and so does a tadah hpo run that pins "
-      "every weight in its best_pot.tadah: to fit the weights to the DBFILE "
-      "data, delete both lines from the training configuration (the "
-      "Training page of the documentation, Retraining from a potential).";
+      "every weight in its best_pot.tadah: the weights are fitted to the "
+      "DBFILE data when both lines are deleted from the training "
+      "configuration (the Training page of the documentation, Retraining "
+      "from a potential).";
   CHECK(contains(rep, warning));
   CHECK(rep.find("pin every weight") == rep.rfind("pin every weight"));
   REQUIRE(std::filesystem::exists("pot2.tadah"));
@@ -7508,13 +7642,17 @@ TEST_CASE("Subcommand: refit records its run, and refit --edit copies the "
  * refit_pot.tadah` (the case above) without the end line of its training
  * record, exits 1 without writing e1.tadah, saying "noend.tadah: line 1
  * opens a training record (...) that no end line (...) closes before line
- * 3, the first line after it that is not a comment: restore the end line
- * after the record, before line 3, or delete the record." -- line 1 is the
- * opening line and line 3 the first key line, AMPGRIDMB, which every
- * writer puts right after the record -- and not the refusal of a key line
- * inside the record ("is not a comment: every reader ...", whose advice to
- * begin the line with '#' would comment out a key of the potential); the
- * unchanged refit_pot.tadah edits (exit 0).
+ * 3, the first line after it that is not a comment: a file with the end
+ * line after the record, before line 3, or without the record, is
+ * accepted." -- line 1 is the opening line and line 3 the first key line,
+ * AMPGRIDMB, which every writer puts right after the record -- and not the
+ * refusal of a key line inside the record ("is not a comment: every reader
+ * ...", whose rule that a line of the record begins with '#' would comment
+ * out a key of the potential); the unchanged refit_pot.tadah edits (exit
+ * 0).
+ * Before the fix of its wording the refusal ended "...: restore the end
+ * line after the record, before line 3, or delete the record.", an
+ * instruction.
  * Before the fix: exit 1 with "noend.tadah: line 3, inside the training
  * record that line 1 opens, is not a comment: every reader of the potential
  * reads it as a key. Begin each line of the record with '#', or end the
@@ -7566,9 +7704,9 @@ TEST_CASE("Subcommand: refit --edit of a potential whose training record "
                             kRecordOpen + "') that no end line ('" +
                             kRecordEnd +
                             "') closes before line 3, the first line after "
-                            "it that is not a comment: restore the end line "
-                            "after the record, before line 3, or delete the "
-                            "record."));
+                            "it that is not a comment: a file with the end "
+                            "line after the record, before line 3, or "
+                            "without the record, is accepted."));
     CHECK_FALSE(contains(rep, "is not a comment: every reader"));
     CHECK_FALSE(std::filesystem::exists("e1.tadah"));
   }
@@ -8008,6 +8146,51 @@ TEST_CASE("Subcommand: predict --no-eshift compares the model with the "
   }
 }
 
+/* Pins: `tadah predict -F -o e.dat` (one file for two outputs) exits 1
+ * before it predicts, with one message, "tadah predict writes the energies
+ * and the forces (--force): --outfile names 1 file, e.dat, and takes 2, the
+ * energy file and the force file, or 3, the energy, force and stress
+ * files", no ERROR line before it, and writes no e.dat; `-F -o e.dat f.dat`
+ * exits 0 and writes both.
+ * Before the fix: an ERROR line "Provide 2 output files: one for energy
+ * and one for forces." came first, and the refusal that stopped the run
+ * read "Invalid OUTFILE size 1. Expected either 2 for the requested outputs
+ * or 3 for the default [energy, force, stress] layout.". */
+TEST_CASE("Subcommand: predict -F with one --outfile file is refused in one "
+          "message",
+          "[TadahCLI][exit-status][predict]") {
+  ScratchCwd cwd("predict_outfile_count");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config") << dataset_keys_config("db.tadah", "");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah", "-F", "-o", "e.dat"});
+    const std::string rep = reported(p);
+    INFO("-o e.dat: status " << p.status << "\n" << rep);
+    CHECK(p.status == 1);
+    CHECK(contains(rep, "tadah predict writes the energies and the forces "
+                        "(--force): --outfile names 1 file, e.dat, and takes "
+                        "2, the energy file and the force file, or 3, the "
+                        "energy, force and stress files"));
+    CHECK_FALSE(contains(rep, "Provide"));
+    CHECK_FALSE(contains(rep, "Invalid OUTFILE size"));
+    CHECK_FALSE(std::filesystem::exists("e.dat"));
+  }
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah", "-F", "-o", "e.dat", "f.dat"});
+    INFO("-o e.dat f.dat: status " << p.status << "\n" << reported(p));
+    CHECK(p.status == 0);
+    CHECK(std::filesystem::exists("e.dat"));
+    CHECK(std::filesystem::exists("f.dat"));
+  }
+}
+
 /* Pins: `tadah predict -F` of pot.tadah, trained on db.tadah with LSCALE
  * 1.1 (its LSCALE line), rescales the data predicted by the potential's
  * LSCALE: energy.pred and forces.pred are byte for byte those of the same
@@ -8061,17 +8244,17 @@ TEST_CASE("Subcommand: predict applies the LSCALE of the potential",
  *     c.tadah", "OUTFILE pot2.tadah";
  *   - rederive.train, retrain.train without its ESHIFT line, with
  *     --eshift-dbatom (the documented way to derive ESHIFT from the data of
- *     the retrain: delete the ESHIFT line and give the run the toggle),
- *     gives pot3.tadah the ESHIFT of a training configuration of the three
- *     datasets with ESHIFT_DBATOM true (pot4.tadah), not e0; the same copy
- *     with its own line "ESHIFT_DBATOM true" and no option (pot7.tadah):
- *     the line is not read (the copy is a potential), so pot7.tadah has no
- *     ESHIFT line, with the WARNING "tadah train: the configuration file
- *     rederive_line.train is a potential (it has WEIGHTS): its
- *     ESHIFT_DBATOM true prepared the training data of the fit that wrote
- *     it, not of this run, and is ignored ... Give --eshift-dbatom on the
- *     command line, or an ESHIFT_DBATOM line in a configuration file that
- *     includes the potential with CONFIG, to apply it to this run ...";
+ *     the retrain: delete the ESHIFT line and give the run the toggle), gives
+ *     pot3.tadah the ESHIFT of a training configuration of the three datasets
+ *     with ESHIFT_DBATOM true (pot4.tadah), not e0; the same copy with its
+ *     own line "ESHIFT_DBATOM true" and no option (pot7.tadah): the line is
+ *     not read (the copy is a potential), so pot7.tadah has no ESHIFT line,
+ *     with the WARNING "tadah train: the configuration file
+ *     rederive_line.train is a potential (it has WEIGHTS): its ESHIFT_DBATOM
+ *     true prepared the training data of the fit that wrote it, not of this
+ *     run, and is ignored ... This run takes its own ESHIFT_DBATOM from
+ *     --eshift-dbatom on the command line, or from an ESHIFT_DBATOM line in a
+ *     configuration file that includes the potential with CONFIG ...";
  *   - old.train, pot.tadah without its record and with the key lines
  *     "WDBFILE 1 0.5", "EFILTER 5 6" and "ESHIFT_DBATOM true" of an earlier
  *     version, and the three datasets, exits 0 (pot5.tadah, ESHIFT e0),
@@ -8090,7 +8273,11 @@ TEST_CASE("Subcommand: predict applies the LSCALE of the potential",
  * line of a potential: the copy's own ESHIFT_DBATOM true, beside no ESHIFT
  * line, was read and derived the shift (the documented way then), so
  * pot7.tadah had an ESHIFT line and no WARNING named the line: those two
- * checks fail. */
+ * checks fail.
+ * Before the fix that states the advice in the impersonal voice: it read
+ * "Give --eshift-dbatom on the command line, or an ESHIFT_DBATOM line in a
+ * configuration file that includes the potential with CONFIG, to apply it to
+ * this run": the check of that WARNING fails. */
 TEST_CASE("Subcommand: train -c retrains a potential on any number of "
           "datasets, with the potential's ESHIFT",
           "[TadahCLI][train][retrain][dataset-keys][training-record]") {
@@ -8158,10 +8345,10 @@ TEST_CASE("Subcommand: train -c retrains a potential on any number of "
                         "WEIGHTS): its ESHIFT_DBATOM true prepared the "
                         "training data of the fit that wrote it, not of "
                         "this run, and is ignored"));
-    CHECK(contains(rep, "Give --eshift-dbatom on the command line, or an "
+    CHECK(contains(rep, "This run takes its own ESHIFT_DBATOM from "
+                        "--eshift-dbatom on the command line, or from an "
                         "ESHIFT_DBATOM line in a configuration file that "
-                        "includes the potential with CONFIG, to apply it "
-                        "to this run"));
+                        "includes the potential with CONFIG"));
   }
   std::ofstream("old.train")
       << with_line(without_record(pot), "DBFILE", "")
@@ -8206,22 +8393,22 @@ TEST_CASE("Subcommand: train -c retrains a potential on any number of "
  *     pot.tadah", the three datasets and "WDBFILE 1 0.001 1", gives the
  *     WEIGHTS of pot2.tadah and the record "DBFILE a.tadah b.tadah
  *     c.tadah", "WDBFILE 1 0.001 1", "OUTFILE pot6.tadah";
- *   - `tadah train -c old.train`, old.train being "ZERO_COM_FORCE
- *     true", "CONFIG old.tadah", the three datasets, "WDBFILE 1 0.001 1",
- *     "EFILTER -0.7 -0.3", "OUTFILE pot5.tadah", old.tadah being pot.tadah
- *     with the key lines "WDBFILE 1 0.5", "EFILTER 5 6", "FFILTER 0.001"
- *     (it would drop every structure) and "ZERO_COM_FORCE false" of an
- *     earlier version, exits 0; pot5.tadah's record is "DBFILE a.tadah
- *     b.tadah c.tadah", "EFILTER -0.7 -0.3", "ZERO_COM_FORCE true", "WDBFILE
- *     1 0.001 1", "OUTFILE pot5.tadah" (the line before CONFIG too), and the
- *     WARNING names the one line of the potential the run does not give:
- *     "tadah train: old.tadah, which the configuration file old.train
- *     includes with CONFIG, is a potential (it has WEIGHTS): its FFILTER
- *     0.001 prepared the training data of the fit that wrote it, not of
- *     this run, and is ignored (tadah keeps such keys in a potential's
- *     training record, not as key lines). Give --ffilter on the command
- *     line, or an FFILTER line in old.train, to apply it to this run (the
- *     Training page of the documentation, Retraining from a potential).".
+ *   - `tadah train -c old.train`, old.train being "ZERO_COM_FORCE true",
+ *     "CONFIG old.tadah", the three datasets, "WDBFILE 1 0.001 1", "EFILTER
+ *     -0.7 -0.3", "OUTFILE pot5.tadah", old.tadah being pot.tadah with the
+ *     key lines "WDBFILE 1 0.5", "EFILTER 5 6", "FFILTER 0.001" (it would
+ *     drop every structure) and "ZERO_COM_FORCE false" of an earlier version,
+ *     exits 0; pot5.tadah's record is "DBFILE a.tadah b.tadah c.tadah",
+ *     "EFILTER -0.7 -0.3", "ZERO_COM_FORCE true", "WDBFILE 1 0.001 1",
+ *     "OUTFILE pot5.tadah" (the line before CONFIG too), and the WARNING
+ *     names the one line of the potential the run does not give: "tadah
+ *     train: old.tadah, which the configuration file old.train includes with
+ *     CONFIG, is a potential (it has WEIGHTS): its FFILTER 0.001 prepared the
+ *     training data of the fit that wrote it, not of this run, and is ignored
+ *     (tadah keeps such keys in a potential's training record, not as key
+ *     lines). This run takes its own FFILTER from --ffilter on the command
+ *     line, or from an FFILTER line in old.train (the Training page of the
+ *     documentation, Retraining from a potential).".
  * Before the fix: a key of a configuration with WEIGHTS was applied only
  * when it was a command-line option, and the include mixed the potential's
  * lines with the run's: the WDBFILE of the including file was ignored with
@@ -8230,7 +8417,11 @@ TEST_CASE("Subcommand: train -c retrains a potential on any number of "
  * on the command line ...", so pot2.tadah had the record "DBFILE ...",
  * "OUTFILE pot2.tadah" and the WEIGHTS of pot4.tadah; outer.train's
  * WDBFILE likewise; old.train stopped with "Exceeded capacity for key:
- * EFILTER" (exit 1: the potential's two values were there). */
+ * EFILTER" (exit 1: the potential's two values were there).
+ * Before the fix that states the advice in the impersonal voice: the
+ * WARNING of old.train read "Give --ffilter on the command line, or an
+ * FFILTER line in old.train, to apply it to this run": the check of that
+ * WARNING fails. */
 TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
           "applies the keys of its own lines that prepare the training data",
           "[TadahCLI][train][retrain][dataset-keys]") {
@@ -8321,10 +8512,10 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
                    "WEIGHTS): its FFILTER 0.001 prepared the training data of "
                    "the fit that wrote it, not of this run, and is ignored "
                    "(tadah keeps such keys in a potential's training record, "
-                   "not as key lines). Give --ffilter on the command line, or "
-                   "an FFILTER line in old.train, to apply it to this run (the "
-                   "Training page of the documentation, Retraining from a "
-                   "potential)."));
+                   "not as key lines). This run takes its own FFILTER from "
+                   "--ffilter on the command line, or from an FFILTER line in "
+                   "old.train (the Training page of the documentation, "
+                   "Retraining from a potential)."));
     const std::string pot5 = slurp("pot5.tadah");
     INFO("pot5.tadah:\n" << pot5);
     CHECK(record_of(pot5) ==
@@ -8776,25 +8967,28 @@ TEST_CASE("Subcommand: hpo keeps the keys that prepared the training data in "
 }
 
 /* Pins: `tadah hpo -c seed.tadah --hpotarget config.hpo --validation
- * config.val` (write_hpo_potential_fixture), seed.tadah being the
- * potential `tadah train -c config.tadah` writes (no ESHIFT line) without
- * its record, with the key lines "ESHIFT_ATOM false" and "ESHIFT_DBATOM
- * true" of an earlier version and "DBFILE db.tadah", exits 0; neither
- * toggle is read: best_pot.tadah has no ESHIFT line (no shift is derived
- * from the run's data), its training record is "DBFILE db.tadah",
- * "VALIDATION config.val", "HPOTARGET config.hpo", and the journal
- * (hpo_run.log) has the WARNING "tadah hpo: the configuration file
- * seed.tadah is a potential (it has WEIGHTS): its ESHIFT_DBATOM true
- * prepared the training data of the fit that wrote it, not of this run,
- * and is ignored ... Give --eshift-dbatom on the command line, or an
- * ESHIFT_DBATOM line in a configuration file that includes the potential
- * with CONFIG, to apply it to this run ..." (ESHIFT_ATOM false is at its
- * default).
+ * config.val` (write_hpo_potential_fixture), seed.tadah being the potential
+ * `tadah train -c config.tadah` writes (no ESHIFT line) without its record,
+ * with the key lines "ESHIFT_ATOM false" and "ESHIFT_DBATOM true" of an
+ * earlier version and "DBFILE db.tadah", exits 0; neither toggle is read:
+ * best_pot.tadah has no ESHIFT line (no shift is derived from the run's
+ * data), its training record is "DBFILE db.tadah", "VALIDATION config.val",
+ * "HPOTARGET config.hpo", and the journal (hpo_run.log) has the WARNING
+ * "tadah hpo: the configuration file seed.tadah is a potential (it has
+ * WEIGHTS): its ESHIFT_DBATOM true prepared the training data of the fit that
+ * wrote it, not of this run, and is ignored ... This run takes its own
+ * ESHIFT_DBATOM from --eshift-dbatom on the command line, or from an
+ * ESHIFT_DBATOM line in a configuration file that includes the potential with
+ * CONFIG ..." (ESHIFT_ATOM false is at its default).
  * Before the fix: the toggles of a potential without an ESHIFT line were
  * read: ESHIFT_DBATOM derived a shift (best_pot.tadah had an ESHIFT line),
  * the record listed "ESHIFT_ATOM false" and "ESHIFT_DBATOM true" as the
  * run's, and no WARNING named the toggle: the ESHIFT, record and WARNING
- * checks fail. */
+ * checks fail.
+ * Before the fix that states the advice in the impersonal voice: the journal
+ * read "Give --eshift-dbatom on the command line, or an ESHIFT_DBATOM line in
+ * a configuration file that includes the potential with CONFIG, to apply it
+ * to this run": the journal check fails. */
 TEST_CASE("Subcommand: hpo -c reads no ESHIFT_ATOM or ESHIFT_DBATOM line of "
           "a seed potential",
           "[TadahCLI][hpo][dataset-keys][training-record]") {
@@ -8823,10 +9017,10 @@ TEST_CASE("Subcommand: hpo -c reads no ESHIFT_ATOM or ESHIFT_DBATOM line of "
                           "a potential (it has WEIGHTS): its ESHIFT_DBATOM "
                           "true prepared the training data of the fit that "
                           "wrote it, not of this run, and is ignored"));
-  CHECK(contains(journal, "Give --eshift-dbatom on the command line, or an "
+  CHECK(contains(journal, "This run takes its own ESHIFT_DBATOM from "
+                          "--eshift-dbatom on the command line, or from an "
                           "ESHIFT_DBATOM line in a configuration file that "
-                          "includes the potential with CONFIG, to apply it "
-                          "to this run"));
+                          "includes the potential with CONFIG"));
   const std::string best = slurp("best_pot.tadah");
   INFO("best_pot.tadah:\n" << best);
   CHECK(line_tokens(best, "ESHIFT").empty());
@@ -8878,14 +9072,19 @@ TEST_CASE("Subcommand: hpo -c refuses the UNCERTAINTY line of a seed "
  * pinned), with config.train being pot.tadah plus "DBFILE db.tadah" (three
  * Ta dimers, retrain_dataset) and t.hpotarget refit.hpotarget with MAXEVAL
  * 1:
- *   - refit.hpotarget has the line "# DFT totals) give tadah hpo
- *     --eshift-atom or --eshift-dbatom (an" and no "add ESHIFT_ATOM";
+ *   - refit.hpotarget begins "# Starter target file of tadah hpo, written
+ *     by tadah refit. It runs with:" and has the line "# DFT totals, tadah
+ *     hpo takes --eshift-atom or --eshift-dbatom (an" and no "add
+ *     ESHIFT_ATOM" (it began "# HPO starter target written by `tadah
+ *     refit`. Run:" and the line read "# DFT totals) give tadah hpo ...");
  *   - `tadah train -c config.train -o p2.tadah` exits 0 with the HINT
  *     "WARNING: HINT: EMBF0 ZERO fixes the DM_REAM isolated-atom energy at
- *     0 ... If the reference energies are absolute (e.g. DFT totals), set
- *     ESHIFT or give the run ESHIFT_ATOM or ESHIFT_DBATOM (--eshift-atom,
- *     --eshift-dbatom: a potential's own line of them is not read), all
- *     compatible with EAMFAST, or BIAS true ...";
+ *     0 ... For absolute reference energies, such as DFT totals, ESHIFT, or
+ *     ESHIFT_ATOM or ESHIFT_DBATOM for the run (--eshift-atom,
+ *     --eshift-dbatom: a potential's own line of them is not read), gives
+ *     that constant, all compatible with EAMFAST. BIAS true also adds ..."
+ *     (it read "If the reference energies are absolute (e.g. DFT totals),
+ *     set ESHIFT or give the run ..., or BIAS true ...");
  *   - `tadah hpo -c config.train --hpotarget t.hpotarget --validation
  *     config.val` exits 0 with the journal HINT "EMBF0 ZERO fixes ... For
  *     absolute reference energies, such as DFT totals, ESHIFT, or
@@ -8919,8 +9118,11 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
   }
   const std::string target = slurp("refit.hpotarget");
   INFO("refit.hpotarget:\n" << target);
-  CHECK(contains(target, "# DFT totals) give tadah hpo --eshift-atom or "
+  CHECK(contains(target, "# DFT totals, tadah hpo takes --eshift-atom or "
                          "--eshift-dbatom (an\n"));
+  CHECK(target.rfind("# Starter target file of tadah hpo, written by tadah "
+                     "refit. It runs with:\n", 0) == 0);
+  CHECK_FALSE(contains(target, "e.g."));
   CHECK_FALSE(contains(target, "add ESHIFT_ATOM"));
   REQUIRE(contains(target, "MAXEVAL 200\n"));
   std::ofstream("t.hpotarget")
@@ -8936,9 +9138,9 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
   const std::string hint = "REFERENCE ZERO fixes the DM_Embed isolated-atom "
                            "energy at 0";
   const std::string toggles =
-      "set ESHIFT or give the run ESHIFT_ATOM or ESHIFT_DBATOM "
-      "(--eshift-atom, --eshift-dbatom: a potential's own line of them is "
-      "not read), all compatible with EAMFAST";
+      "ESHIFT, or ESHIFT_ATOM or ESHIFT_DBATOM for the run (--eshift-atom, "
+      "--eshift-dbatom: a potential's own line of them is not read), gives "
+      "that constant, all compatible with EAMFAST";
   {
     const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
                                 "p2.tadah"});
@@ -8946,8 +9148,13 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
     INFO("train: status " << t.status << "\n" << rep);
     REQUIRE(t.status == 0);
     CHECK(contains(rep, "HINT: " + hint));
-    CHECK(contains(rep, "If the reference energies are absolute (e.g. DFT "
-                        "totals), " + toggles + ", or BIAS true"));
+    CHECK(contains(rep, "For absolute reference energies, such as DFT "
+                        "totals, " + toggles +
+                        ". BIAS true also adds a per-atom constant, but its "
+                        "intercept columns, one per ATOM species, precede "
+                        "the descriptor weights (FIXINDEX/FIXWEIGHT indices "
+                        "shift) and it disables EAMFAST.\n"));
+    CHECK_FALSE(contains(rep, "e.g."));
   }
   {
     const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
@@ -9051,25 +9258,34 @@ TEST_CASE("Subcommand: hpo seeded from a potential with CONFIG applies the "
  * program that loads it, takes them. */
 
 /* Pins: `tadah train -c old.train`, old.train being the potential `tadah
- * train -c config.tadah -o trained.tadah` writes (retrain_config) without
- * its record, with "DBFILE db.tadah" and the key lines VALIDATION
- * config.val, HPOTARGET config.hpo, VERBOSE 2, NUMERIC 12, OUTFILE
- * old_out.tadah, AUDIT warn, AUDIT_SAMPLE 2 and HEALTH_LOG full of an
- * earlier version's run, exits 0 and writes pot.tadah (the default -o), not
- * old_out.tadah; prints no INFO line (its own default verbosity) and no
- * NUMERIC WARNING ("NUMERIC 12 limits"); pot.tadah's WEIGHTS are those of
- * the same retrain without the eight lines (bare.train -o bare.tadah),
- * token for token (18 digits); its training record is "DBFILE db.tadah";
- * and the WARNING names VERBOSE 2, NUMERIC 12, OUTFILE old_out.tadah,
- * AUDIT warn and AUDIT_SAMPLE 2 ("were settings of the run that wrote it,
- * not of this run, and are ignored") with the advice "Give --verbose or
- * --outfile on the command line, or a VERBOSE, NUMERIC, OUTFILE, AUDIT or
- * AUDIT_SAMPLE line in a configuration file that includes the potential
- * with CONFIG, to apply one to this run" -- not VALIDATION, HPOTARGET or
- * HEALTH_LOG, which tadah train does not read.
+ * train -c config.tadah -o trained.tadah` writes (retrain_config) without its
+ * record, with "DBFILE db.tadah" and the key lines VALIDATION config.val,
+ * HPOTARGET config.hpo, VERBOSE 2, NUMERIC 12, OUTFILE old_out.tadah, AUDIT
+ * warn, AUDIT_SAMPLE 2 and HEALTH_LOG full of an earlier version's run, exits
+ * 0 and writes pot.tadah (the default -o), not old_out.tadah; prints no INFO
+ * line (its own default verbosity) and no NUMERIC WARNING ("NUMERIC 12
+ * limits"); pot.tadah's WEIGHTS are those of the same retrain without the
+ * eight lines (bare.train -o bare.tadah), token for token (18 digits); its
+ * training record is "DBFILE db.tadah"; and the WARNING names VERBOSE 2,
+ * NUMERIC 12, OUTFILE old_out.tadah, AUDIT warn and AUDIT_SAMPLE 2 ("were
+ * settings of the run that wrote it, not of this run, and are ignored") with
+ * the advice "This run takes its own VERBOSE, NUMERIC, OUTFILE, AUDIT or
+ * AUDIT_SAMPLE from a VERBOSE, NUMERIC, OUTFILE, AUDIT or AUDIT_SAMPLE line
+ * in a configuration file that includes the potential with CONFIG, or
+ * VERBOSE or OUTFILE from --verbose or --outfile on the command line" --
+ * not VALIDATION, HPOTARGET or HEALTH_LOG, which tadah train does not read;
+ * the options are paired with the keys they set.
  * Before the fix: the eight lines were read as the run's: the retrain wrote
  * old_out.tadah at VERBOSE 2 (INFO lines) and NUMERIC 12 (the WARNING
- * "NUMERIC 12 limits ..."), so the REQUIRE on pot.tadah stops the case. */
+ * "NUMERIC 12 limits ..."), so the REQUIRE on pot.tadah stops the case.
+ * Before the fix that states the advice in the impersonal voice: it read
+ * "Give --verbose or --outfile on the command line, or a VERBOSE, NUMERIC,
+ * OUTFILE, AUDIT or AUDIT_SAMPLE line in a configuration file that includes
+ * the potential with CONFIG, to apply one to this run": the check fails.
+ * Before the fix that pairs the options with their keys: "... from
+ * --verbose or --outfile on the command line, or from a VERBOSE, ...
+ * line ...", which offered an option for NUMERIC, AUDIT and AUDIT_SAMPLE:
+ * the check fails. */
 TEST_CASE("Subcommand: train -c of an older potential reads none of its run "
           "settings",
           "[TadahCLI][train][retrain][training-record][run-settings]") {
@@ -9115,10 +9331,12 @@ TEST_CASE("Subcommand: train -c of an older potential reads none of its run "
                       "12, OUTFILE old_out.tadah, AUDIT warn and "
                       "AUDIT_SAMPLE 2 were settings of the run that wrote "
                       "it, not of this run, and are ignored"));
-  CHECK(contains(rep, "Give --verbose or --outfile on the command line, or a "
-                      "VERBOSE, NUMERIC, OUTFILE, AUDIT or AUDIT_SAMPLE line "
-                      "in a configuration file that includes the potential "
-                      "with CONFIG, to apply one to this run"));
+  CHECK(contains(rep, "This run takes its own VERBOSE, NUMERIC, OUTFILE, "
+                      "AUDIT or AUDIT_SAMPLE from a VERBOSE, NUMERIC, "
+                      "OUTFILE, AUDIT or AUDIT_SAMPLE line in a "
+                      "configuration file that includes the potential with "
+                      "CONFIG, or VERBOSE or OUTFILE from --verbose or "
+                      "--outfile on the command line"));
   CHECK_FALSE(contains(rep, "VALIDATION"));
   CHECK_FALSE(contains(rep, "HPOTARGET"));
   CHECK_FALSE(contains(rep, "HEALTH_LOG"));
@@ -9176,23 +9394,31 @@ TEST_CASE("Subcommand: predict takes no verbosity from a potential's VERBOSE "
  * config.hpo, VALIDATION config.val, VERBOSE 2 and NUMERIC 12 of a 1.5.x
  * tadah hpo seed, does not read the seed's run settings:
  *   - without --hpotarget it exits 1, refused "tadah analysis check_bounds:
- *     no HPOTARGET: name the hpotarget file with --hpotarget, or with an
+ *     no HPOTARGET: the target file is given with --hpotarget, or with an
  *     HPOTARGET line in a configuration file without WEIGHTS. old_best.tadah
  *     is a potential (it has WEIGHTS): its HPOTARGET config.hpo line was a
  *     setting of the run that wrote it and is not read.", after the WARNING
- *     "tadah analysis check_bounds: the configuration file old_best.tadah
- *     is a potential (it has WEIGHTS): its HPOTARGET config.hpo and VERBOSE
- *     2 were settings of the run that wrote it, not of this run, and are
- *     ignored (...). Give --hpotarget or --verbose on the command line, or
- *     an HPOTARGET or VERBOSE line in a configuration file that includes the
- *     potential with CONFIG, to apply one to this run (...).";
+ *     "tadah analysis check_bounds: the configuration file old_best.tadah is
+ *     a potential (it has WEIGHTS): its HPOTARGET config.hpo and VERBOSE 2
+ *     were settings of the run that wrote it, not of this run, and are
+ *     ignored (...). This run takes its own HPOTARGET or VERBOSE from
+ *     --hpotarget or --verbose on the command line, or from an HPOTARGET or
+ *     VERBOSE line in a configuration file that includes the potential with
+ *     CONFIG (...).";
  *   - with --hpotarget config.hpo (OPTIM CGRID2B (1) 2.3 2.7) it exits 0,
  *     and the WARNING names VERBOSE 2 alone.
  * Before the fix: no WARNING named a line of old_best.tadah, and without
  * --hpotarget it was refused "analysis check_bounds: HPOTARGET is required
  * (set HPOTARGET in config or pass via the CLI).": the refusal and WARNING
  * CHECKs fail. (On v1-dev the parse stored the seed's HPOTARGET line and
- * the run used it.) */
+ * the run used it.)
+ * Before the fix that states the refusal and the advice in the impersonal
+ * voice: the refusal read "tadah analysis check_bounds: no HPOTARGET: name
+ * the hpotarget file with --hpotarget, or with an HPOTARGET line in a
+ * configuration file without WEIGHTS. ..." and the advice "Give --hpotarget
+ * or --verbose on the command line, or an HPOTARGET or VERBOSE line in a
+ * configuration file that includes the potential with CONFIG, to apply one to
+ * this run": the checks fail. */
 TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
           "names its HPOTARGET line, not read, and asks for --hpotarget",
           "[TadahCLI][analysis][check_bounds][run-settings]") {
@@ -9217,8 +9443,8 @@ TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
     const std::string rep = reported(r);
     INFO("no --hpotarget: status " << r.status << "\n" << rep);
     CHECK(r.status == 1);
-    CHECK(contains(rep, "tadah analysis check_bounds: no HPOTARGET: name the "
-                        "hpotarget file with --hpotarget, or with an "
+    CHECK(contains(rep, "tadah analysis check_bounds: no HPOTARGET: the "
+                        "target file is given with --hpotarget, or with an "
                         "HPOTARGET line in a configuration file without "
                         "WEIGHTS. old_best.tadah is a potential (it has "
                         "WEIGHTS): its HPOTARGET config.hpo line was a "
@@ -9228,10 +9454,10 @@ TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
                         "HPOTARGET config.hpo and VERBOSE 2 were settings of "
                         "the run that wrote it, not of this run, and are "
                         "ignored"));
-    CHECK(contains(rep, "Give --hpotarget or --verbose on the command line, "
-                        "or an HPOTARGET or VERBOSE line in a configuration "
-                        "file that includes the potential with CONFIG, to "
-                        "apply one to this run"));
+    CHECK(contains(rep, "This run takes its own HPOTARGET or VERBOSE from "
+                        "--hpotarget or --verbose on the command line, or "
+                        "from an HPOTARGET or VERBOSE line in a configuration "
+                        "file that includes the potential with CONFIG"));
   }
   const CliRun r =
       run_tadah({"tadah", "analysis", "check_bounds", "-c", "old_best.tadah",
@@ -9252,16 +9478,17 @@ TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
  * record, with "DBFILE db.tadah" and the key lines VALIDATION config.val,
  * HPOTARGET config.hpo, VERBOSE 2 and NUMERIC 12 of an earlier version's
  * best_pot.tadah:
- *   - without --validation the run does not validate on config.val: it
- *     exits 1, refused "... no --validation file was given", with no
+ *   - without --validation the run does not validate on config.val: it exits
+ *     1, refused "... no --validation file was given", with no
  *     best_pot.tadah, after the WARNING "tadah hpo: the configuration file
  *     old.tadah is a potential (it has WEIGHTS): its VALIDATION config.val,
- *     VERBOSE 2 and NUMERIC 12 were settings of the run that wrote it, not
- *     of this run, and are ignored (...). Give --validation or --verbose on
- *     the command line, or a VALIDATION, VERBOSE or NUMERIC line in a
- *     configuration file that includes the potential with CONFIG, to apply
- *     one to this run (...)." (HPOTARGET, given on the command line, is not
- *     named);
+ *     VERBOSE 2 and NUMERIC 12 were settings of the run that wrote it, not of
+ *     this run, and are ignored (...). This run takes its own VALIDATION,
+ *     VERBOSE or NUMERIC from a VALIDATION, VERBOSE or NUMERIC line in a
+ *     configuration file that includes the potential with CONFIG, or
+ *     VALIDATION or VERBOSE from --validation or --verbose on the command
+ *     line (...)." (HPOTARGET, given on the command line, is not named; tadah
+ *     hpo has no --numeric);
  *   - with --validation other.val it validates on other.val ("Validation
  *     set        : other.val" in hpo_run.log), exits 0, prints no INFO line
  *     and no NUMERIC WARNING ("NUMERIC 12 limits"), and best_pot.tadah's
@@ -9271,7 +9498,15 @@ TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
  * run validated on config.val and exited 0 (the status CHECK fails); with
  * --validation other.val it ran at VERBOSE 2 and NUMERIC 12 and its record
  * listed "VERBOSE 2" and "NUMERIC 12": the INFO, NUMERIC and record checks
- * fail. */
+ * fail.
+ * Before the fix that states the advice in the impersonal voice: it read
+ * "Give --validation or --verbose on the command line, or a VALIDATION,
+ * VERBOSE or NUMERIC line in a configuration file that includes the potential
+ * with CONFIG, to apply one to this run": the check fails.
+ * Before the fix that pairs the options with their keys: "... from
+ * --validation or --verbose on the command line, or from a VALIDATION,
+ * VERBOSE or NUMERIC line ...", which offered an option for NUMERIC: the
+ * check fails. */
 TEST_CASE("Subcommand: hpo -c of an older best_pot.tadah does not validate "
           "on its VALIDATION file unless --validation is given",
           "[TadahCLI][hpo][training-record][run-settings]") {
@@ -9301,10 +9536,11 @@ TEST_CASE("Subcommand: hpo -c of an older best_pot.tadah does not validate "
                         "config.val, VERBOSE 2 and NUMERIC 12 were settings "
                         "of the run that wrote it, not of this run, and are "
                         "ignored"));
-    CHECK(contains(rep, "Give --validation or --verbose on the command line, "
-                        "or a VALIDATION, VERBOSE or NUMERIC line in a "
-                        "configuration file that includes the potential with "
-                        "CONFIG, to apply one to this run"));
+    CHECK(contains(rep, "This run takes its own VALIDATION, VERBOSE or "
+                        "NUMERIC from a VALIDATION, VERBOSE or NUMERIC line "
+                        "in a configuration file that includes the potential "
+                        "with CONFIG, or VALIDATION or VERBOSE from "
+                        "--validation or --verbose on the command line"));
   }
   const CliRun r = run_tadah({"tadah", "hpo", "-c", "old.tadah",
                               "--hpotarget", "config.hpo", "--validation",
@@ -11138,3 +11374,106 @@ TEST_CASE("Subcommand: the block of analysis suggest_bounds for knot "
 }
 
 #endif  // TADAH_ENABLE_NFP
+
+/* Pins: the INFO lines (-v 2) of tadah data merge, split, sample, dedup,
+ * balance and write, of tadah train, tadah predict, tadah refit and tadah
+ * analysis cutoff name no class of the code that runs them (no line has
+ * "Engine"); tadah data sample says where it writes ("tadah data sample:
+ * the sampled structures are written to s.tadah"), tadah data dedup what it
+ * keeps ("tadah data dedup: 3 structures in 1 file"), tadah data balance
+ * what it does ("tadah data balance: shifting the energies, E -= sum_Z N_Z
+ * eshift[Z]"); an error of tadah data merge and of tadah data convert
+ * reaches the program (exit 1, "DBFILE does not exist: nosuch.tadah", the
+ * DFT file that does not open) as every other command's does.
+ * Before the fix: "Validating DataMergeEngine...", "DataMergeEngine
+ * started...", "DataSampleEngine finished. Sampled data written to:
+ * s.tadah", "DataDedupEngine finished. 3 structures in 1 files.",
+ * "DataBalanceEngine: Applying ESHIFT (E -= sum_Z N_Z * eshift[Z])...",
+ * "AnalysisCutoffEngine finished.", and the two errors printed by the
+ * command itself as "DataMergeEngine error: ..." and "DataConvertEngine
+ * error: ...". */
+TEST_CASE("Subcommand: the log lines and errors of a command name the "
+          "command, not the code that runs it",
+          "[TadahCLI][data][messages]") {
+  ScratchCwd cwd("engine_lines");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("train.cfg") << retrain_config("M_BLR BF_Linear",
+                                               "LAMBDA 0.1\nOALGO 4\n");
+  std::ofstream("norefit.cfg") << "REFIT_MODE dense\n";
+  const std::vector<std::vector<std::string>> runs = {
+      {"tadah", "data", "merge", "-d", "db.tadah", "-o", "m.tadah", "-v", "2"},
+      {"tadah", "data", "split", "-d", "db.tadah", "-o", "p1.tadah",
+       "p2.tadah", "--even", "-v", "2"},
+      {"tadah", "data", "sample", "-d", "db.tadah", "-o", "s.tadah",
+       "--uniform", "2", "-v", "2"},
+      {"tadah", "data", "dedup", "-d", "db.tadah", "-o", "d.tadah",
+       "--threshold", "1e-6", "-v", "2"},
+      {"tadah", "data", "balance", "-d", "db.tadah", "--eshift", "-1", "-o",
+       "b.tadah", "-v", "2"},
+      {"tadah", "data", "write", "-d", "db.tadah", "-o", "w.cell", "-f",
+       "castep", "-i", "1", "-v", "2"},
+      {"tadah", "train", "-c", "train.cfg", "-o", "pot.tadah", "-v", "2"},
+      {"tadah", "predict", "-p", "pot.tadah", "-d", "db.tadah", "-v", "2"},
+      {"tadah", "analysis", "cutoff", "-o", "c.txt", "-r", "0", "3.14", "10",
+       "--type", "Cut_Cos", "-v", "2"}};
+  std::string all;
+  for (const auto& args : runs) {
+    const CliRun r = run_tadah(args);
+    INFO(args[1] << " " << args[2] << ": status " << r.status << "\n"
+                 << reported(r));
+    CHECK(r.status == 0);
+    CHECK_FALSE(contains(reported(r), "Engine"));
+    all += reported(r);
+  }
+  CHECK(contains(all, "INFO: tadah data sample: the sampled structures are "
+                      "written to s.tadah\n"));
+  CHECK(contains(all, "INFO: tadah data dedup: 3 structures in 1 file\n"));
+  CHECK(contains(all, "INFO: tadah data balance: shifting the energies, E "
+                      "-= sum_Z N_Z eshift[Z]\n"));
+  const CliRun refit = run_tadah({"tadah", "refit", "-c", "norefit.cfg",
+                                  "-v", "2"});
+  INFO("refit: status " << refit.status << "\n" << reported(refit));
+  CHECK(refit.status == 1);
+  CHECK_FALSE(contains(reported(refit), "Engine"));
+  const CliRun merge = run_tadah({"tadah", "data", "merge", "-d",
+                                  "nosuch.tadah", "-o", "y.tadah"});
+  INFO("merge: status " << merge.status << "\n" << reported(merge));
+  CHECK(merge.status == 1);
+  CHECK(contains(merge.what, "DBFILE does not exist: nosuch.tadah"));
+  CHECK_FALSE(contains(reported(merge), "Engine"));
+  const CliRun convert = run_tadah({"tadah", "data", "convert", "--dft-file",
+                                    "nosuch.OUTCAR", "-o", "x.tadah"});
+  INFO("convert: status " << convert.status << "\n" << reported(convert));
+  CHECK(convert.status == 1);
+  CHECK(contains(convert.what, "cannot open 'nosuch.OUTCAR'"));
+  CHECK_FALSE(contains(reported(convert), "Engine"));
+}
+
+/* Pins: tadah data write refuses a format it does not write before reading
+ * anything, naming the formats it writes: -f cell (the CASTEP cell file's
+ * extension) exits 1 with "tadah data write: --format cell is not a format
+ * it writes: castep, lammps or vasp", naming the option (FORMAT is given
+ * with -f or --format only), and no file is written; -f castep writes
+ * w.cell.
+ * Before the fix: StructureWriterSelector::get_writer printed "Unknown
+ * type! Returning nullptr." and the run dereferenced the null writer: a
+ * segmentation fault (also in Tadah! 1.5.0, whose help gave "-f cell" as
+ * the example). Before the fix that names the option: "tadah data write:
+ * FORMAT cell is not a format it writes: ...". */
+TEST_CASE("Subcommand: data write refuses a format it does not write",
+          "[TadahCLI][data][write]") {
+  ScratchCwd cwd("write_format");
+  std::ofstream("db.tadah") << retrain_dataset();
+  const CliRun r = run_tadah({"tadah", "data", "write", "-d", "db.tadah",
+                              "-o", "w.cell", "-f", "cell", "-i", "1"});
+  INFO("cell: status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 1);
+  CHECK(r.what == "tadah data write: --format cell is not a format it "
+                  "writes: castep, lammps or vasp");
+  CHECK_FALSE(std::filesystem::exists("w.cell"));
+  const CliRun c = run_tadah({"tadah", "data", "write", "-d", "db.tadah",
+                              "-o", "w.cell", "-f", "castep", "-i", "1"});
+  INFO("castep: status " << c.status << "\n" << reported(c));
+  CHECK(c.status == 0);
+  CHECK(std::filesystem::exists("w.cell"));
+}

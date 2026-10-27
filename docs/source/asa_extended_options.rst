@@ -98,11 +98,17 @@ workers. Generated-state block size is set by the block parameters.
 Interface scope
 ---------------
 
-The tables on this page and :doc:`asa_options` cover all 32 accepted
-``PARAM`` names exposed through HPO. ``Coarse_Resolution``,
-``User_Cost_Temperature``, recursive ASA, local-fit options, importance
-sampling and ASA checkpointing options are excluded. Their named
-parameters produce a startup error. So do two options ``tadah hpo`` sets
-itself: ``User_Initial_Parameters`` (see :doc:`asa` for where ASA starts)
-and ``Include_Integer_Parameters`` (every search parameter takes real
+The tables on this page and :doc:`asa_options` cover all 32 ``PARAM``
+keys that ``tadah hpo`` takes for ASA. ``tadah hpo`` leaves out these
+features of ASA: the coarse resolution of generated values
+(``Coarse_Resolution``), a given initial cost temperature
+(``User_Cost_Temperature``), ASA's recursive optimisation of its own
+options and the asymptotic form of the acceptance test. It also leaves
+out the local fit and the fuzzy tuning of ASA's user module, importance
+sampling and the saving of ASA's state.
+
+A ``PARAM`` key of one of these features is refused at startup with its
+reason. So are two options ``tadah hpo`` sets itself:
+``User_Initial_Parameters`` (see :doc:`asa` for where ASA starts) and
+``Include_Integer_Parameters`` (every search parameter takes real
 values).

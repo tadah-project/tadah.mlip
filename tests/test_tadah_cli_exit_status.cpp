@@ -11196,7 +11196,7 @@ void write_eam_training(const std::string& watom) {
  *    DM_EAM ...)".
  * The same configurations without those lines, and with WATOM 1, train.
  * Before the fix: each trained (exit 0, pot.tadah): MBLOCK, NBLOCK,
- * MPIWPCKG and EMBF0 with a WARNING, RHOFORM and WATOM without one. */
+ * MPIWPCKG, EMBF0 and RHOFORM with a WARNING, WATOM without one. */
 TEST_CASE("Subcommand: train refuses a line that changes nothing a fit "
           "gives, naming the key, the line and the file",
           "[TadahCLI][exit-status][train][inert]") {

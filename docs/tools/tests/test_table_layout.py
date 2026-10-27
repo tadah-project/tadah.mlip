@@ -61,12 +61,16 @@ class TableLayoutTest(unittest.TestCase):
             env = dict(os.environ, TADAH_CORE_SOURCE_DIR=str(root / 'CORE'),
                        TADAH_HPO_SOURCE_DIR=str(root / 'HPO'),
                        TADAH_DOXYGEN_XML_DIR=str(root / 'xml'))
+            # overrides and tags by keyword: Sphinx 9 requires both, as
+            # keywords; Sphinx 7.4 takes either form. Before the fix:
+            # Config.read(confdir) alone, which Sphinx 9.0.4 refuses
+            # ('missing 2 required keyword-only arguments').
             config = subprocess.run(
                 [sys.executable, '-c',
                  'import json, sys; from sphinx.config import Config; '
-                 'c = Config.read(sys.argv[1]); '
+                 'from sphinx.util.tags import Tags; '
+                 'c = Config.read(sys.argv[1], overrides={}, tags=Tags()); '
                  'c.add("html_css_files", [], "html", (list, tuple)); '
-                 'c.init_values(); '
                  'print("CSS=" + json.dumps(c.html_css_files))',
                  str(SOURCE)], env=env, text=True, capture_output=True,
                 timeout=30)

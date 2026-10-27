@@ -1,6 +1,7 @@
 breathe
 sphinxcontrib.spelling
-sphinx
+# Sphinx 7.4 is the oldest version the documentation is built and tested with.
+sphinx>=7.4
 sphinx-exec-code
 sphinx_rtd_theme>=3.0
 pytomlpp

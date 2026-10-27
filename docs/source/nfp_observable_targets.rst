@@ -83,23 +83,32 @@ Relaxation options
    strain :math:`\varepsilon` and the cell volume :math:`V`, falls below
    it. A residual pressure :math:`P` leaves the cohesive energy below its
    value at zero pressure by about :math:`P^2 (V/N)/(2B)`, for :math:`N`
-   atoms and the bulk modulus :math:`B`.
+   atoms and the bulk modulus :math:`B`. The pressure is a central
+   difference of the energy over a strain of :math:`\pm 10^{-5}`; a
+   tolerance below the rounding error of that difference is not met.
 
-A relaxation that ends at ``--maxiter``, ``--maxeval`` or
-``--max-wall-time`` before both tolerances are met, or when no step
-lowers its energy, is unconverged; one that ``--etol`` stops is converged
-when its largest atomic force is below ``--fmax-converged``, whatever its
-pressure.
+The cell moves by a search for the zero of its pressure, which uses the
+pressure alone, so a tight ``--ptol`` is reached also where the energy is
+too flat or too noisy to show the change; the atoms move by a line search
+on the energy. A relaxation is converged when the cell it ends at meets
+both tolerances, also when it stops there at ``--maxiter``, ``--maxeval``
+or ``--max-wall-time``. One that stops before then, or whose steps can no
+longer change the energy of the atoms or the cell, is unconverged; one
+that ``--etol`` stops is converged when its largest atomic force is below
+``--fmax-converged``, whatever its pressure.
 
 ``--unconverged const <value>``
    Default ``const 100``. The finite value an unconverged relaxation
    reports.
 
 ``--unconverged force-scaled <slope>``
-   An unconverged relaxation reports ``target + slope * fmax`` instead,
+   An unconverged relaxation reports instead the cohesive energy of the
+   cell it ends at, moved away from the target by ``slope * fmax``,
    ``fmax`` being the larger of the largest atomic force, in eV/Å, and the
-   magnitude of the cell's pressure, in eV/Å³, at the end. The slope must
-   be finite.
+   magnitude of the cell's pressure, in eV/Å³, at the end. The loss of the
+   term is then at least that of the cell's cohesive energy, and tends to
+   it as the relaxation nears convergence. The slope is a finite number of
+   at least 0.
 
 The two ``--unconverged`` forms select alternative behaviours.
 An unconverged relaxation returning a finite substitute still supplies
@@ -116,10 +125,10 @@ where the optimiser has them (see
 
 .. versionchanged:: 1.6.0
    A term takes the top-level ``LOSS`` above its line; 1.5.0 took ``L2``
-   unless ``--loss`` named another. The cell relaxes to ``--ptol``;
-   1.5.0 relaxed the atoms and the cell to a fixed 0.1 (16 GPa for the
-   cell), and compared ``--fmax-converged`` and scaled ``force-scaled``
-   with the atomic forces alone.
+   unless ``--loss`` named another. The cell relaxes to ``--ptol`` and the
+   atoms to ``--fmax-converged``; 1.5.0 relaxed both to a fixed 0.1 (16 GPa
+   for the cell), and ``force-scaled`` reported the target plus the slope
+   times the largest atomic force.
 
 Gradient compatibility
 ----------------------

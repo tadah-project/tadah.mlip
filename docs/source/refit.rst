@@ -124,7 +124,7 @@ for example,
 
 .. code-block:: none
 
-   tadah refit: the lattice constant of the EAM header, a0 = 361 A, puts the nearest neighbours of the fcc crystal 255.26554800834364 A apart, at or beyond the table's cutoff, rcut = 5 A, and LAMMPS (pair_style eam/alloy) counts a pair only below rcut: the crystal has no interaction in LAMMPS. Edit the element line of the setfl file (`<Z> <mass> <a0> <lattice>`): set the equilibrium lattice constant, in Angstrom (a value in picometres is 100 times the value in Angstrom).
+   tadah refit: the lattice constant of the EAM header, a0 = 361 A, puts the nearest neighbours of the fcc crystal 255.26554800834364 A apart, at or beyond the table's cutoff, rcut = 5 A, and LAMMPS (pair_style eam/alloy) counts a pair only below rcut: the crystal has no interaction in LAMMPS. The a0 of the element line of the setfl file (`<Z> <mass> <a0> <lattice>`) is the equilibrium lattice constant in Angstrom (a value in picometres is 100 times the value in Angstrom).
 
 and when it puts them less than the table's radial step ``dr`` apart at the
 strongest compression the refit tests (a/a0 = ``REFIT_REACH_SMIN``), where the
@@ -133,7 +133,7 @@ table describes no pair distance: a constant written in metres rather than
 
 .. code-block:: none
 
-   tadah refit: the lattice constant of the EAM header, a0 = 1e-323 A, puts the nearest neighbours of the fcc crystal 0 A apart at the strongest compression the refit tests (a/a0 = REFIT_REACH_SMIN 0.1), less than the step of the table's radial grid, dr = 0.0125313 A: the table describes no pair distance of that crystal. Edit the element line of the setfl file (`<Z> <mass> <a0> <lattice>`): set the equilibrium lattice constant, in Angstrom.
+   tadah refit: the lattice constant of the EAM header, a0 = 1e-323 A, puts the nearest neighbours of the fcc crystal 0 A apart at the strongest compression the refit tests (a/a0 = REFIT_REACH_SMIN 0.1), less than the step of the table's radial grid, dr = 0.0125313 A: the table describes no pair distance of that crystal. The a0 of the element line of the setfl file (`<Z> <mass> <a0> <lattice>`) is the equilibrium lattice constant in Angstrom.
 
 The setfl file itself is read as ``pair_style eam/alloy`` reads it
 (``tadah explain SETFL``): its r tables hold r = 0, ``dr``, ...,
@@ -238,10 +238,10 @@ and ``REFIT_MODE compact`` defaults to ``Knot5``, so a ``MONOTONE`` refit
 must set ``REFIT_BASIS Blip`` or ``Blip5`` (compact) or ``Blip``, ``Blip5``
 or ``Gaussian`` (dense); otherwise it stops with ``tadah refit: RHOFORM
 MONOTONE is not defined for REFIT_BASIS Knot5 (the REFIT_MODE compact
-default, a one-sided knot family): use a bump basis (Blip, Blip5) or RHOFORM
-NONNEG ...``. ``MONOTONE`` also needs a non-negative, non-increasing
-many-body cutoff; ``refit`` writes ``Cut_Dummy`` (the density's ``CUTOFF
-TYPE NONE``), which is one.
+default, a one-sided knot family): RHOFORM MONOTONE fits with a bump basis
+(Blip, Blip5), and a knot basis with RHOFORM NONNEG ...``. ``MONOTONE``
+also needs a non-negative, non-increasing many-body cutoff; ``refit``
+writes ``Cut_Dummy`` (the density's ``CUTOFF TYPE NONE``), which is one.
 ``NONNEG`` with a knot family is allowed, but a knot density with every
 amplitude :math:`\ge 0` is non-increasing and convex (knots :math:`\le`
 ``RCUTMB``, non-increasing cutoff), so the fit is locked to such shapes and
@@ -249,8 +249,9 @@ a table whose density is concave anywhere in the fit window (near the core,
 say) is fitted poorly: the default compact ``Knot5`` fit of the Ravelo 2013
 Ta setfl under ``NONNEG`` fails its self-test with errors above 100
 meV/atom. A knot family set with ``REFIT_BASIS`` logs a HINT; the defaulted
-compact ``Knot5`` logs a WARNING that recommends ``REFIT_BASIS Blip5`` (a
-non-negative bump density without the convex lock) or ``RHOFORM SIGNED``.
+compact ``Knot5`` logs a WARNING that names ``REFIT_BASIS Blip5`` (a
+non-negative bump density without the convex lock) or ``RHOFORM SIGNED`` as
+what lifts the lock.
 
 **Table pre-checks.** Under ``NONNEG`` and ``MONOTONE`` the tabulated
 density is checked on the radial fit window (the table nodes from the
@@ -347,7 +348,7 @@ the table:
 
 .. code-block:: none
 
-   tadah refit: REFIT_MODE compact (the default) needs the compact fitter, which this tadah was built without (it needs TADAH_ENABLE_NFP and TADAH_ENABLE_CERES); set REFIT_MODE dense
+   tadah refit: REFIT_MODE compact (the default) needs the compact fitter, which this tadah was built without (it needs TADAH_ENABLE_NFP and TADAH_ENABLE_CERES); REFIT_MODE dense fits without it
 
 Before 1.6.0 it fitted the table in dense mode after a WARNING (a defaulted
 ``Knot5`` basis became ``Blip``).
@@ -1348,7 +1349,7 @@ line on ``KEY`` in the file (active or commented; the error lists the keys
 it has). A ``--set`` needs finite bounds with ``lo < hi``, and its ``lo``
 must satisfy the rule the file's density form sets (below; ``tadah hpo``
 refuses such a box at startup). The file takes no ``RHOFORM`` or ``EMBF0``
-from a configuration (``-c``): an hpotarget carries no potential, so they
+from a configuration (``-c``): a target file carries no potential, so they
 would have no effect, and either is an error (``RHOFORM has no effect on
 --retarget ...``); the density form is ``--rhoform``, below. Nor does it
 take the keys of a refit of an EAM file (:ref:`as --edit does not

@@ -97,5 +97,12 @@ changes ASA's sampled sequence. ``Gener_Mov_Avr 0`` keeps the block
 size fixed; otherwise it can shrink below its initial value.
 
 ``MAXEVAL`` remains an exact evaluation cap. With multi-state blocks,
-``MAXTIME`` and ``STOPVAL`` act at block boundaries. See
-:doc:`asa_extended_options` for these parameters and their defaults.
+``MAXTIME`` and ``STOPVAL`` act at block boundaries, and a periodic test
+follows each block in which the count of accepted or generated states
+reaches a multiple of ``Acceptance_Frequency_Modulus`` or
+``Generated_Frequency_Modulus``. See :doc:`asa_extended_options` for
+these parameters and their defaults.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 a block ran a periodic test only when its last state reached
+   such a multiple, so block runs made few of their periodic tests.

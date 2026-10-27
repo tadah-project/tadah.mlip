@@ -87,9 +87,22 @@ Use a block-wide value, optionally with overrides::
 Overrides can select all optimised indices of a key (omit the index
 list), or a list such as ``(1-4,7)``. Each selected index must belong to
 the search. Without a block-wide ``STEP``, overrides must cover every
-optimised dimension. The effective steps can be adjusted near bounds
-and are reported in the run journal. An outer MLSL/AUGLAG ``STEP``
-overrides the step of its ``INNER`` search.
+optimised dimension. An outer MLSL/AUGLAG ``STEP`` overrides the step
+of its ``INNER`` search. The effective steps are reported in the run
+journal.
+
+``LN_BOBYQA`` and ``LN_COBYLA`` keep the first step of each dimension as
+its scale for the whole search; without ``STEP`` they take 0.25 of each
+width. ``LN_BOBYQA`` moves a start that lies within one step of a bound
+by at most half a step: onto the bound, or to one step from it. The
+journal names each moved start, with a warning for a ``CONFIG`` or
+``WARM`` start. ``LN_SBPLX`` and ``LN_NELDERMEAD`` turn a step inward
+when the start lies within one step of the upper bound.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 a start closer to a bound than one step shrank the step of
+   that dimension for ``LN_BOBYQA``, and for ``LN_COBYLA`` without
+   ``STEP``, for the whole search.
 
 For annealing, use its ``PARAM STEP_FRAC``. For ``TADAH:GRID``, use
 ``PARAM GRID_POINTS``. Finite-difference steps use ``PARAM fd_step``;

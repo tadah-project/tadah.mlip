@@ -87,9 +87,33 @@ Use a block-wide value, optionally with overrides::
 Overrides can select all optimised indices of a key (omit the index
 list), or a list such as ``(1-4,7)``. Each selected index must belong to
 the search. Without a block-wide ``STEP``, overrides must cover every
-optimised dimension. The effective steps can be adjusted near bounds
-and are reported in the run journal. An outer MLSL/AUGLAG ``STEP``
-overrides the step of its ``INNER`` search.
+optimised dimension. An outer MLSL/AUGLAG ``STEP`` overrides the step
+of its ``INNER`` search. The effective steps are reported in the run
+journal.
+
+Without :hpo:key:`STEP <OPTIMIZER.STEP>`, :hpo:opt:`NLOPT:LN_BOBYQA` and
+:hpo:opt:`NLOPT:LN_COBYLA` take 0.25 of the width of the box of each
+search parameter as their first step, a scale they keep for the whole
+search. The :hpo:key:`!STEP <OPTIMIZER.STEP>` entry gives their steps as
+the local search of an MLSL or AUGLAG, and the starts that
+:hpo:opt:`!LN_BOBYQA <NLOPT:LN_BOBYQA>` moves next to a bound.
+
+With :hpo:key:`!STEP <OPTIMIZER.STEP>` set, :hpo:opt:`NLOPT:LN_SBPLX` and
+:hpo:opt:`NLOPT:LN_NELDERMEAD` turn a step inward when the start lies
+within one step of the upper bound. With :hpo:key:`!STEP <OPTIMIZER.STEP>`
+unset, NLopt's own default sets the steps of
+:hpo:opt:`!LN_SBPLX <NLOPT:LN_SBPLX>`,
+:hpo:opt:`!LN_NELDERMEAD <NLOPT:LN_NELDERMEAD>` and
+:hpo:opt:`NLOPT:LN_PRAXIS`: 0.25 of the width of the box of each search
+parameter, or 0.75 of the distance to a bound closer than that.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 a start closer to a bound than one step shrank the step of
+   that search parameter for the whole search: for
+   :hpo:opt:`!LN_BOBYQA <NLOPT:LN_BOBYQA>`, and with
+   :hpo:key:`!STEP <OPTIMIZER.STEP>` unset for
+   :hpo:opt:`!LN_COBYLA <NLOPT:LN_COBYLA>` and for either as the local
+   search of an MLSL or AUGLAG.
 
 For annealing, use its ``PARAM STEP_FRAC``. For ``TADAH:GRID``, use
 ``PARAM GRID_POINTS``. Finite-difference steps use ``PARAM fd_step``;

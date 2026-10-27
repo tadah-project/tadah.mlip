@@ -21,7 +21,7 @@ Its default is ``max(4 * THREADS, 16)``. Set it explicitly when comparing
 different thread counts, so that the number of walkers stays fixed.
 
 ``PARAM ESS_TARGET`` selects an adaptive temperature step using the
-population's effective sample size. Its default is ``0.5``; ``0`` uses
+population's effective sample size. Its default is ``0.5``; ``OFF`` uses
 geometric cooling. ``PARAM RT`` limits cooling to a factor of ``0.90``
 per step by default. A population with insufficient variation for the
 adaptive calculation also uses the geometric step.
@@ -70,12 +70,7 @@ from the parser's registry. Optimiser attributes such as ``POPULATION``,
 
 .. note::
 
-   Population annealing uses proposal scales as uniform initial-jitter
-   bounds for ``INIT_MODE JITTER AUTO``, which takes no tolerance here; it
-   refuses the ``INIT_JITTER_*`` calibration keys. Supported
-   initialisation choices are ``INIT_MODE JITTER``, ``INIT_MODE JITTER
-   <fraction>``, ``INIT_MODE JITTER AUTO`` and ``INIT_MODE UNIFORM``.
-   Measured ``JITTER AUTO <p>`` calibration is available in parallel
-   tempering.
+   ``TADAH:ANNEAL_PA`` refuses the ``INIT_JITTER_*`` keys of the
+   ``JITTER AUTO`` calibration of :doc:`anneal_pt`.
 
 .. include:: config/anneal_keys_pa.rst

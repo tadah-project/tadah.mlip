@@ -103,7 +103,6 @@ The tables on this page and :doc:`asa_options` cover all 32 accepted
 ``User_Cost_Temperature``, recursive ASA, local-fit options, importance
 sampling and ASA checkpointing options are excluded. Their named
 parameters produce a startup error. So do two options ``tadah hpo`` sets
-itself: ``User_Initial_Parameters`` (ASA starts at the first starting
-point of the ``INIT`` block; ``METHOD RANDOM 1`` there draws a random
-start) and ``Include_Integer_Parameters`` (every search parameter takes
-real values).
+itself: ``User_Initial_Parameters`` (see :doc:`asa` for where ASA starts)
+and ``Include_Integer_Parameters`` (every search parameter takes real
+values).

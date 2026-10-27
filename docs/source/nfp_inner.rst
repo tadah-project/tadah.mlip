@@ -31,8 +31,8 @@ Set both ``LIB NLOPT`` and a local ``ALGO``. Global algorithms are
 rejected. An ``INNER`` algorithm must run with a single level of local
 search; algorithms requiring a further explicit ``INNER`` are rejected.
 
-The following common optimiser keys are accepted at the grammar level;
-algorithm-specific validation still applies:
+The following common optimiser keys are accepted; algorithm-specific
+validation still applies:
 
 * ``LIB``, ``ALGO``;
 * ``MAXEVAL``, ``MAXTIME``, ``FTOL_REL``, ``FTOL_ABS``, ``XTOL_REL``,
@@ -55,8 +55,7 @@ also belong to the enclosing optimiser and are rejected in ``INNER``.
 
 The local budget limits each local search; the enclosing budget limits
 the whole run. An explicit ``INNER`` has independently configured
-tolerances. A parent ``STEP`` overrides the local search's step. The main
-optimiser's ``THREADS`` sizes the shared worker pool.
+tolerances. A parent ``STEP`` overrides the local search's step.
 
 .. _when-inner-is-required:
 

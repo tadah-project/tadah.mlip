@@ -118,9 +118,9 @@ INNER subblock
 composite driver. Its parent is ``STRATEGY``, ``EXPLORE`` or ``REFINE``.
 It accepts ``LIB``, ``ALGO``, ``MAXEVAL``, ``MAXTIME``, ``FTOL_REL``,
 ``FTOL_ABS``, ``XTOL_REL``, ``XTOL_ABS``, ``POPULATION``, ``STEP``,
-``VECTOR_ARR`` and ``PARAM``. It contains keys only. The enclosing
-search supplies the random stream, gradient strategy, loss threshold and
-workers: ``THREADS`` is refused there. See :doc:`nfp_inner`.
+``VECTOR_ARR`` and ``PARAM``. It contains keys only; the enclosing
+search supplies its random stream, gradient strategy, loss threshold and
+workers (see :doc:`nfp_inner`).
 
 RESTART subblock
 ~~~~~~~~~~~~~~~~

@@ -79,6 +79,10 @@ Some adapters impose stricter ranges or use a setting differently:
 * With explicit ``INNER``, put local convergence tolerances in that
   block; these settings are independent of the parent tolerances.
 
+.. versionchanged:: 1.6.0
+   In 1.5.0 ``DLIB:BFGS`` compared the L2 norm of the gradient with
+   ``tol_gradinf``.
+
 Additional Ceres limits
 -----------------------
 

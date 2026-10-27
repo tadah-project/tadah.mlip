@@ -52,10 +52,12 @@ Common keys
      - Positive integer, default ``1``. The main optimiser's value sizes
        the shared worker pool for training, prediction and LAMMPS scripts.
        The pool retains this size during ``EXPLORE`` and ``INNER`` searches.
-       ``DLIB:GFS``, ``ASA:ASA``, ``TADAH:ANNEAL_PT`` and
-       ``TADAH:ANNEAL_PA`` also read the value of their ``EXPLORE`` block;
-       ``INNER``, an ``EXPLORE`` block of another optimiser and ``CERES``
-       refuse it.
+       In an ``EXPLORE`` block that names ``DLIB:GFS``, ``ASA:ASA``,
+       ``TADAH:ANNEAL_PT`` or ``TADAH:ANNEAL_PA``, ``THREADS`` sets how
+       many evaluations that exploration asks for at once, and the default
+       of ``REPLICAS`` (``ANNEAL_PT``) and of ``POPULATION``
+       (``ANNEAL_PA``). An ``EXPLORE`` block of another optimiser and
+       ``CERES`` refuse it, and so does ``INNER`` (see :doc:`nfp_inner`).
    * - ``SEED n``
      - Unsigned 64-bit optimiser seed. See the seed rules below.
    * - ``STEP fraction``
@@ -117,9 +119,9 @@ exploration.
 ``TADAH:GRID``, ``DLIB:GFS``, ``DLIB:BFGS`` and ``CERES`` refuse ``SEED``
 because they draw no random numbers, except as a ``PRESTAGE`` refinement
 whose ``SEED`` the exploration takes. Every NLopt algorithm accepts it,
-including deterministic ones. Set seeds
-explicitly for stochastic search and sampling; see
-:doc:`nfp_initialisation` and :doc:`nfp_restart`.
+including deterministic ones. A stochastic search and its starting points
+repeat only with ``SEED`` set; see :doc:`nfp_initialisation` and
+:doc:`nfp_restart`.
 
 Algorithm parameters: ``PARAM``
 -------------------------------
@@ -147,11 +149,12 @@ of the annealing keys; a word given to another key is refused.
        ``max_ls_iter``; see :doc:`nfp_gradients` and
        :doc:`nfp_stopping_settings`.
    * - ``NLOPT``
-     - Shared finite-difference settings plus the numeric NLopt
-       parameters the chosen algorithm reads (``tolg`` of ``LD_LBFGS``,
-       ``magic_eps`` of the ``GN_DIRECT`` algorithms); the optimiser
-       reference names them for each algorithm, and any other name is
-       refused.
+     - The numeric ``PARAM`` keys NLopt reads for the chosen algorithm
+       (``tolg`` of ``LD_LBFGS``, ``magic_eps`` of the ``GN_DIRECT``
+       algorithms) and, when it takes finite-difference gradients, the
+       finite-difference settings of :doc:`nfp_gradients`;
+       :ref:`the optimiser reference <nfp_ref_optimisers>` names them for
+       each algorithm, and any other name is refused.
    * - ``TADAH:ANNEAL``, ``ANNEAL_PA``
      - :doc:`anneal` and :doc:`anneal_pa`.
    * - ``TADAH:ANNEAL_PT``

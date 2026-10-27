@@ -127,6 +127,9 @@ least one. It converts only untagged dimensions: a dimension tagged
 ``LIN``, ``LOG`` or ``ASINH`` keeps the shape its tag gives, and
 ``hpo_optim_resolved.hpo`` keeps the tag.
 
+.. versionchanged:: 1.6.0
+   In 1.5.0 ``LOG_HP`` also log-scaled a dimension tagged ``LIN``.
+
 The bounds and values written in ``params.tadah`` use the selected
 physical coordinates. Scaling applies to the optimiser's coordinates;
 reported parameter columns retain their physical units.

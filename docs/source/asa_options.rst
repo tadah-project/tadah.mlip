@@ -86,8 +86,8 @@ Temperature schedule
      - ``0`` or ``1``. Enables parameter-temperature rescaling from
        finite-difference sensitivities.
 
-Starting point and probes
--------------------------
+State generation and probes
+---------------------------
 
 .. list-table:: State generation and sensitivity settings
    :header-rows: 1

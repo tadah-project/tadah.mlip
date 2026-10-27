@@ -68,13 +68,13 @@ Other keys
    * - Key
      - Values and effect
    * - ``K_TOTAL K``
-     - Integer >= 1. The block keeps the first ``K`` points of its
-       chain, a single method included. A value at or above the points
-       the methods give (``CONFIG`` and ``WARM`` give one each) caps
-       nothing and is refused. Inside ``EXPLORE``, a block without a
-       method gives the exploration the main starting points, which its
-       ``K_TOTAL`` does not cap, so ``K_TOTAL`` is refused there too.
-       Omission keeps every point.
+     - Integer >= 1. The ``INIT`` blocks inside ``OPTIMIZER``,
+       ``STRATEGY`` and ``REFINE`` make one chain, and those inside
+       ``EXPLORE`` another; ``K_TOTAL`` keeps the first ``K`` points of
+       its chain, a single method included. A value at or above the
+       points the methods give (``CONFIG`` and ``WARM`` give one each)
+       caps nothing and is refused. An ``INIT`` block inside ``EXPLORE``
+       without a method refuses it. Omission keeps every point.
    * - ``SEED n``
      - Unsigned 64-bit seed for the sampling methods. Omission draws a
        seed from ``std::random_device``. This is separate from the
@@ -82,6 +82,10 @@ Other keys
    * - ``WARM_ON_MISMATCH policy``
      - ``warn`` (default), ``error`` or ``skip``, lower case. Applies to
        missing selected parameters and values outside the current bounds.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 ``K_TOTAL`` replaced the ``K`` of a single ``RANDOM``,
+   ``LHS`` or ``SOBOL`` line.
 
 ``STRATEGY`` remains an accepted alias for ``METHOD`` inside ``INIT``;
 use ``METHOD`` in new files to distinguish a method line from the
@@ -107,6 +111,4 @@ seed independently of the mismatch policy.
 The number of points an optimiser uses depends on its capabilities and
 :doc:`nfp_strategies`. For example, ``DLIB:GFS`` accepts several seeds in
 one search; ``MULTISTART`` runs eligible optimisers from separate points.
-An exploration phase with no ``INIT`` chain of its own shares the main
-starting points. Refinement normally starts from the exploration's
-selected candidates.
+Refinement normally starts from the exploration's selected candidates.

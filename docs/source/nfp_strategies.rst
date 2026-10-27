@@ -19,26 +19,21 @@ Policy keys
 
 .. list-table::
    :header-rows: 1
-   :widths: 25 18 57
+   :widths: 25 75
 
    * - Key
-     - Default
      - Values and use
    * - ``TYPE``
-     - ``PLAIN``
-     - ``PLAIN``, ``MULTISTART`` or ``PRESTAGE``.
+     - ``PLAIN`` (default), ``MULTISTART`` or ``PRESTAGE``.
    * - ``N_STARTS``
-     - Unset
-     - Integer >= 2; ``MULTISTART`` only, which requires it (one start is
-       ``PLAIN``).
+     - Integer >= 2, no default; ``MULTISTART`` only, which requires it
+       (one start is ``PLAIN``).
    * - ``BUDGET_PER_START``
-     - Unset
-     - Integer in ``[1, 2147483647]``; per-start ``MAXEVAL`` override for
-       ``MULTISTART``.
+     - Integer in ``[1, 2147483647]``, no default; per-start ``MAXEVAL``
+       override for ``MULTISTART``.
    * - ``TOPK``
-     - ``1``
-     - Positive integer; number of exploration candidates requested for
-       ``PRESTAGE`` refinement.
+     - Positive integer, default ``1``; number of exploration candidates
+       requested for ``PRESTAGE`` refinement.
 
 Keys for another policy are rejected, even when their value equals its
 default. ``RESTART`` is an optional child of any policy; see
@@ -74,9 +69,9 @@ If ``BUDGET_PER_START`` is absent, a main ``MAXEVAL M`` is divided among
 larger than ``M``. A supplied ``BUDGET_PER_START`` replaces this division.
 ``MAXTIME`` applies separately to each search.
 
-A backend that accepts all seeds in one run, ``DLIB:GFS``, runs once
-with those seeds and rejects ``BUDGET_PER_START``. Separate starts run
-one after another. ``THREADS`` sets the workers that run the evaluation
+An optimiser that takes several starting points in one run,
+``DLIB:GFS``, runs once from all of them and rejects
+``BUDGET_PER_START``. Separate starts run one after another. ``THREADS`` sets the workers that run the evaluation
 work within each search.
 
 .. _explore-then-refine-prestage:

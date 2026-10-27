@@ -562,7 +562,8 @@ std::vector<std::string> line_tokens(const std::string& text,
 TEST_CASE("Subcommand: hpo: a fatal error inside the engine yields a non-zero status",
           "[TadahCLI][exit-status]") {
   /* Passes HPOEngine::validate (INIT2B set) and fails in HPOEngine::run:
-   * no DBFILE and no ATOM key -> "the ATOM key is required". */
+   * no DBFILE and no ATOM key -> "the training configuration declares
+   * the element set with the ATOM key". */
   TempFile cfg("config", "INIT2B true\nINITMB false\n");
   TempFile tgt("target", "OPTIM WATOM (1) 0.1 5.0\n");
 
@@ -7095,8 +7096,10 @@ void write_hpo_potential_fixture() {
  * best_pot.tadah, refusing "No training DBFILE and no FIXINDEX/FIXWEIGHT:
  * the model weights cannot be determined" and ending with the advice ("A
  * potential has no DBFILE line ... Retraining from a potential)."); the
- * potential without its ATOM line is refused "the ATOM key is required",
- * with the same advice.
+ * potential without its ATOM line is refused "the training configuration
+ * declares the element set with the ATOM key, such as ATOM Ta." (it was
+ * "the ATOM key is required in the training configuration to declare the
+ * element set (e.g. 'ATOM Ta')."), with the same advice.
  * Before the fix: both refusals ended with their own remedy ("... or pin
  * every weight with FIXINDEX/FIXWEIGHT.", "(e.g. 'ATOM Ta')."), without the
  * advice.
@@ -7127,7 +7130,8 @@ TEST_CASE("Subcommand: hpo -c of a potential without a DBFILE line says "
        "No training DBFILE and no FIXINDEX/FIXWEIGHT: the model weights "
        "cannot be determined"},
       {"the potential without ATOM", with_line(slurp("pot.tadah"), "ATOM", ""),
-       "the ATOM key is required"},
+       "No training DBFILE: the training configuration declares the "
+       "element set with the ATOM key, such as ATOM Ta. "},
   };
   for (const Case& c : cases) DYNAMIC_SECTION(c.name) {
     std::ofstream("seed.tadah") << c.pot;
@@ -8883,11 +8887,14 @@ TEST_CASE("Subcommand: hpo -c refuses the UNCERTAINTY line of a seed "
  *     --eshift-dbatom: a potential's own line of them is not read), all
  *     compatible with EAMFAST, or BIAS true ...";
  *   - `tadah hpo -c config.train --hpotarget t.hpotarget --validation
- *     config.val` exits 0 with the journal HINT "EMBF0 ZERO fixes ... If
+ *     config.val` exits 0 with the journal HINT "EMBF0 ZERO fixes ... For
+ *     absolute reference energies, such as DFT totals, ESHIFT, or
+ *     ESHIFT_ATOM or ESHIFT_DBATOM for the run (--eshift-atom,
+ *     --eshift-dbatom: a potential's own line of them is not read), gives
+ *     that constant, all compatible with EAMFAST. ..." (it was "If
  *     reference energies are absolute (e.g. DFT totals), set ESHIFT or give
- *     the run ESHIFT_ATOM or ESHIFT_DBATOM (--eshift-atom, --eshift-dbatom:
- *     a potential's own line of them is not read), all compatible with
- *     EAMFAST. ...";
+ *     the run ESHIFT_ATOM or ESHIFT_DBATOM (...), all compatible with
+ *     EAMFAST.");
  *   - with --eshift-dbatom both exit 0 with no EMBF0 HINT, and p3.tadah and
  *     best_pot.tadah have an ESHIFT line and "ESHIFT_DBATOM true" in their
  *     training record (a pin: the run's own toggle applied before the fix
@@ -8965,8 +8972,12 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
     const std::string journal = slurp("hpo_run.log");
     INFO("hpo_run.log:\n" << journal);
     CHECK(contains(journal, hint));
-    CHECK(contains(journal, "If reference energies are absolute (e.g. DFT "
-                            "totals), " + toggles + ". BIAS true"));
+    CHECK(contains(journal, "For absolute reference energies, such as DFT "
+                            "totals, ESHIFT, or ESHIFT_ATOM or ESHIFT_DBATOM "
+                            "for the run (--eshift-atom, --eshift-dbatom: a "
+                            "potential's own line of them is not read), "
+                            "gives that constant, all compatible with "
+                            "EAMFAST. BIAS true"));
   }
   const CliRun h = run_tadah({"tadah", "hpo", "-c", "config.train",
                               "--hpotarget", "t.hpotarget", "--validation",

@@ -16,11 +16,14 @@ CLASSIC step modes
 * ``STEP_MODE ADAPTIVE`` calibrates scales and continues adapting them
   during the search.
 
-Calibration uses coordinate probes followed by a whole-vector pilot.
-It consumes ``MAXEVAL``. When the hot temperature is also automatic,
-a second temperature-calibration pass uses the calibrated production
-kernel. An explicit ``T_HOT`` or ``STEP_MODE FIXED`` skips that second
-pass.
+Calibration starts with a warm-up of coordinate probes, followed by a
+whole-vector pilot; together they use at most part of ``MAXEVAL``, as
+the ``STEP_MODE`` entry below states. A warm-up that stops at this limit
+writes a WARNING to ``hpo_run.log``, with the number of evaluations a
+complete warm-up takes. When the hot temperature is also automatic, a
+second temperature calibration probes with the proposal scales of the
+hottest slot after the warm-up. An explicit ``T_HOT`` or ``STEP_MODE
+FIXED`` skips that second pass.
 
 An explicit ``STEP_WARMUP_SWEEPS`` requires a mode with calibration,
 so ``FIXED`` rejects it. ``STEP_TRUST_FACTOR`` is accepted only

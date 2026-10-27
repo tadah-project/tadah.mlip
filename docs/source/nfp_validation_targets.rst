@@ -128,6 +128,11 @@ refuses a metric with no measured dataset and a weight above 0 of an
 indexed metric on an unmeasured dataset. A validation dataset that the
 filters leave empty is refused too.
 
+The :math:`R^2` of ``PC_ERSQ`` has no value for a dataset whose
+energies per atom are all equal, such as a dataset of one structure.
+Startup refuses ``PC_ERSQ`` when a measured validation dataset is such
+a dataset.
+
 Early-rejection options
 -----------------------
 

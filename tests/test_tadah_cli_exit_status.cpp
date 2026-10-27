@@ -1716,6 +1716,46 @@ TEST_CASE("Subcommand: predict -A leaves out a dataset without the data, and "
   }
 }
 
+/* Pins: `tadah predict -F -A` gives no R^2 for a dataset whose reference
+ * values are all equal (no spread for the residual to be measured
+ * against): on V.tadah (forces 0.1 and -0.1) and Z.tadah (every force 0),
+ * the Force R^2 line has nan for Z.tadah and a mean equal to V.tadah's
+ * value, and a note says why: "Note: dataset 2 (Z.tadah): every reference
+ * force component has the same value, so its Force R^2 has no value (nan)
+ * and is left out of the mean.". The energies per atom of each file are
+ * all equal (-0.5 eV), so its Energy R^2 has none either, with its note.
+ * Before the fix: Z.tadah's Force R^2 was -inf (1 - SS_res / 0) and so was
+ * the mean; the Energy R^2 were -inf. */
+TEST_CASE("Subcommand: predict -A gives no R^2 for a dataset whose reference "
+          "values are all equal",
+          "[TadahCLI][predict][r_sq]") {
+  ScratchCwd cwd("predict_r_sq_equal");
+  std::ofstream("pot.tadah") << kPairPotential;
+  std::ofstream("V.tadah") << weighted_entry("V1", "1 1 1", "1.40 1.30 1.20", "0.1", "0.001")
+                           << weighted_entry("V2", "1 1 1", "1.60 1.25 1.30", "-0.1", "0.002");
+  std::ofstream("Z.tadah") << weighted_entry("Z1", "1 1 1", "1.40 1.30 1.20", "0", "0.001")
+                           << weighted_entry("Z2", "1 1 1", "1.60 1.25 1.30", "0", "0.002");
+  const CliRun r = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d", "V.tadah",
+                              "Z.tadah", "-F", "-A"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  REQUIRE(r.status == 0);
+  const std::vector<std::string> f = metric_fields(r.out, "Force R^2");
+  REQUIRE(f.size() == 3u);  // mean, Val1, Val2
+  CHECK((f[1] != "nan" && f[1] != "-nan" && f[1] != "-inf" && f[1] != "inf"));
+  CHECK(f[0] == f[1]);
+  CHECK((f[2] == "nan" || f[2] == "-nan"));  // as printed (no isnan: fast-math)
+  CHECK(contains(r.out, "Note: dataset 2 (Z.tadah): every reference force "
+                        "component has the same value, so its Force R^2 has no "
+                        "value (nan) and is left out of the mean."));
+  CHECK(contains(r.out, "Note: dataset 1 (V.tadah): every reference energy "
+                        "per atom has the same value, so its Energy R^2 has no "
+                        "value (nan) and is left out of the mean."));
+  const std::vector<std::string> e = metric_fields(r.out, "Energy R^2");
+  REQUIRE(e.size() == 3u);
+  for (const auto& v : e) CHECK((v == "nan" || v == "-nan"));
+}
+
 /* The entry of weighted_entry() with the reference energy `energy`. */
 std::string entry_with_energy_weight(const std::string& label, const std::string& weights,
                                      const std::string& energy,
@@ -9009,8 +9049,9 @@ void check_hpo_check_passed(const CliRun& r,
   CHECK(contains(r.out, "CGRID2B[1]  [2.3, 2.7]  LIN"));
   CHECK(contains(r.out, "Optimiser: STRATEGY TYPE PLAIN"));
   CHECK(contains(r.out, "STRATEGY  NLOPT:LN_SBPLX; stops: MAXEVAL 1"));
-  CHECK(contains(r.out, "Loss terms: LOSS L2"));
-  CHECK(contains(r.out, "PC_ERMSE  target 0, weight 1"));
+  /* Each term with its loss function (the heading named the last LOSS
+   * line, "Loss terms: LOSS L2", and the rows had none). */
+  CHECK(contains(r.out, "Loss terms:\n  PC_ERMSE  target 0, weight 1, loss L2\n"));
   CHECK(contains(r.out, "Data: 3 training structures, 3 validation "
                         "structures"));
   CHECK(contains(r.out, "No candidate was evaluated and no file was "

@@ -666,15 +666,18 @@ A line of another key of the descriptors (:ref:`RCTYPE2B <RCTYPE2B>`,
 same way, and so is every such key of a :ref:`TYPE2B <TYPE2B>` or
 :ref:`TYPEMB <TYPEMB>` line to which the including file adds a descriptor.
 
-A potential has one line for each key of its descriptors: its ``TYPE2B``
-and ``TYPEMB`` lines, their ``RCTYPE`` and ``RCUT`` keys and the grid keys.
-A ``D2_mJoin`` or ``DM_mJoin`` line has one line per descriptor, each
-starting with the descriptor's name. A second line of such a key in the
-copy, such as ``RCUT2B 6.0`` appended to ``retrain.train``, is refused,
-naming both lines. Every command that trains from the copy refuses it:
-``tadah train``, ``tadah hpo``, ``tadah refit`` and the analysis commands
-that take ``-c``. In the refusal, ``<a>`` and ``<b>`` are the two
-``RCUT2B`` lines:
+A potential has one line for each key of its descriptors: their
+``RCTYPE`` and ``RCUT`` keys and the grid keys. It has its ``TYPE2B`` and
+``TYPEMB`` keys as tadah writes them: on lines one after another, a new
+line at each descriptor's name. A ``D2_mJoin`` or ``DM_mJoin`` line has one
+line per descriptor. A second line of such a key in the copy, such as
+``RCUT2B 6.0`` appended to ``retrain.train``, is refused, naming both
+lines. So is a ``TYPE2B`` or ``TYPEMB`` line elsewhere in the copy, such as
+a descriptor's line appended to a ``D2_mJoin`` potential. Every command
+that trains from the copy refuses it: ``tadah train``, ``tadah hpo``, the
+analysis commands that take ``-c`` and ``tadah refit``, with ``-c`` or
+``--edit``. In the refusal, ``<a>`` and ``<b>`` are the two ``RCUT2B``
+lines:
 
 .. code-block:: text
 

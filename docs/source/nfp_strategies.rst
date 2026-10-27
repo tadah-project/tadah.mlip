@@ -60,19 +60,24 @@ Multiple searches: MULTISTART
 -----------------------------
 
 ``MULTISTART`` uses up to ``min(N_STARTS, available INIT points)``
-separate starts. Supply enough points with :doc:`nfp_initialisation`.
-It accepts local optimisers and backends that support multiple seeds.
-A global backend that consumes only one seed is rejected for this policy.
+separate starts. :doc:`nfp_initialisation` supplies the points. The
+points after the first ``N_STARTS`` are not evaluated, and a startup
+warning says so. ``MULTISTART`` runs a local optimiser from each start.
+It refuses a global optimiser that takes one starting point, and an
+optimiser that takes every ``INIT`` point in one run, ``DLIB:GFS``,
+which it would run once whatever ``N_STARTS``. ``TYPE PLAIN`` runs either
+once; ``DLIB:GFS`` then takes every ``INIT`` point.
 
 If ``BUDGET_PER_START`` is absent, a main ``MAXEVAL M`` is divided among
 ``k`` actual starts as ``ceil(M/k)`` per start. Rounding can make the sum
 larger than ``M``. A supplied ``BUDGET_PER_START`` replaces this division.
 ``MAXTIME`` applies separately to each search.
 
-An optimiser that takes several starting points in one run,
-``DLIB:GFS``, runs once from all of them and rejects
-``BUDGET_PER_START``. Separate starts run one after another. ``THREADS`` sets the workers that run the evaluation
-work within each search.
+.. versionchanged:: 1.6.0
+   In 1.5.0 ``MULTISTART`` accepted ``DLIB:GFS`` and ran it once.
+
+Separate starts run one after another. ``THREADS`` sets the workers that
+run the evaluation work within each search.
 
 .. _explore-then-refine-prestage:
 

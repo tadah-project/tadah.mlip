@@ -118,10 +118,17 @@ exploration.
 
 ``TADAH:GRID``, ``DLIB:GFS``, ``DLIB:BFGS`` and ``CERES`` refuse ``SEED``
 because they draw no random numbers, except as a ``PRESTAGE`` refinement
-whose ``SEED`` the exploration takes. Every NLopt algorithm accepts it,
-including deterministic ones. A stochastic search and its starting points
-repeat only with ``SEED`` set; see :doc:`nfp_initialisation` and
-:doc:`nfp_restart`.
+whose ``SEED`` the exploration takes. So does an NLopt algorithm that
+draws none, such as ``LN_SBPLX`` or ``GN_DIRECT_L``; the
+:ref:`optimiser reference <nfp_ref_optimisers>` names those that read
+``SEED``. An NLopt algorithm that draws random numbers and has no
+``SEED`` takes the ``SEED`` of its ``INIT`` block, else a seed drawn once
+for the run, which standard output and the journal give. A stochastic
+search and its starting points repeat only with ``SEED`` set; see
+:doc:`nfp_initialisation` and :doc:`nfp_restart`.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 every NLopt algorithm accepted ``SEED``.
 
 Algorithm parameters: ``PARAM``
 -------------------------------

@@ -1937,6 +1937,46 @@ TEST_CASE("Subcommand: data dedup without --threshold says it needs "
   CHECK_FALSE(std::filesystem::exists("out.tadah"));
   CHECK(contains(rep, "--threshold"));
   CHECK_FALSE(contains(rep, "Key not found"));
+  CHECK(contains(rep, "at which two atom positions count as equal, such as "
+                      "--threshold 1e-6\n"));
+  CHECK_FALSE(contains(rep, "e.g."));
+}
+
+/* Pins: tadah analysis dataset_stats names the line that sets what it
+ * lacks: with -d alone (no configuration, so no cutoff) "analysis
+ * dataset_stats: RCUTMAX is not set or <= 0; an RCUT2B or RCUTMB line in
+ * the configuration (-c) sets it", and with a -c configuration without
+ * DBFILE or STRUCTURE "analysis dataset_stats: no structures loaded; a
+ * DBFILE or STRUCTURE line in the configuration, --dbfile or --structure
+ * gives them"; both exit 1 and write no report.
+ * Before the fix: "... RCUTMAX is not set or <= 0. Set at least one of
+ * RCUT2B / RCUTMB in your config so the audit cutoff is well-defined." and
+ * "... no structures loaded — provide at least one DBFILE or STRUCTURE.". */
+TEST_CASE("Subcommand: analysis dataset_stats names the line that sets "
+          "what it lacks",
+          "[TadahCLI][exit-status][analysis]") {
+  ScratchCwd cwd("dataset_stats_lacks");
+  std::ofstream("db.tadah") << dataset_entry("T1", {"Na 0 0 0",
+                                                    "Cl 2.5 2.5 2.5"});
+  std::ofstream("stats.config") << "RCUT2B 4.0\n";
+  for (const auto& [args, message] :
+       std::vector<std::pair<std::vector<std::string>, std::string>>{
+           {{"tadah", "analysis", "dataset_stats", "-d", "db.tadah", "-o",
+             "st.tadah"},
+            "analysis dataset_stats: RCUTMAX is not set or <= 0; an RCUT2B "
+            "or RCUTMB line in the configuration (-c) sets it"},
+           {{"tadah", "analysis", "dataset_stats", "-c", "stats.config", "-o",
+             "st.tadah"},
+            "analysis dataset_stats: no structures loaded; a DBFILE or "
+            "STRUCTURE line in the configuration, --dbfile or --structure "
+            "gives them"}}) {
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO(args[3] << ": status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, message));
+    CHECK_FALSE(std::filesystem::exists("st.tadah"));
+  }
 }
 
 /* Pins: `tadah data dedup --threshold 1e-6` on T1 = T2 = T3 and a different
@@ -2685,7 +2725,11 @@ TEST_CASE("Subcommand: predict refuses a two-species BIAS potential with one "
  * true with M_KRR Kern_Linear and BIAS false (exit 1, as for BF_Linear).
  * Before the fix: both trained (exit 0): the fixed composition with one
  * shared intercept, and the Kern_Linear NORM potential with its mean
- * correction folded into its first descriptor weight. */
+ * correction folded into its first descriptor weight.
+ * Before the fix that states the rule: the refusal of NORM true under
+ * Kern_Linear without BIAS read "Configuration: NORM=true with
+ * MODEL=Kern_Linear requires BIAS=true. ... Set BIAS=true or NORM=false.":
+ * the checks of it fail. */
 TEST_CASE("Subcommand: train refuses intercepts the data cannot determine "
           "and NORM with Kern_Linear without BIAS",
           "[TadahCLI][train][bias]") {
@@ -2715,7 +2759,9 @@ TEST_CASE("Subcommand: train refuses intercepts the data cannot determine "
   INFO("NORM Kern_Linear: status " << n.status << "\n" << nrep);
   CHECK(n.status == 1);
   CHECK_FALSE(std::filesystem::exists("pot_norm.tadah"));
-  CHECK(contains(nrep, "NORM=true with MODEL=Kern_Linear requires BIAS=true"));
+  CHECK(contains(nrep,
+                 "NORM true with MODEL Kern_Linear requires BIAS true: "));
+  CHECK(contains(nrep, "; BIAS true or NORM false is accepted."));
 }
 
 /* Pins: `tadah train` refuses FIXINDEX/FIXWEIGHT with NORM true (exit 1,
@@ -2759,7 +2805,10 @@ TEST_CASE("Subcommand: train refuses FIXINDEX/FIXWEIGHT with NORM true",
  * WARNING "normal-equations matrix is singular".
  * Before the fix: both refusals said "Use BIAS false (ESHIFT_ATOM,
  * ESHIFT_DBATOM or ESHIFT remove a per-species reference energy), ... or
- * pin intercepts with FIXINDEX/FIXWEIGHT". */
+ * pin intercepts with FIXINDEX/FIXWEIGHT".
+ * Before the fix that states the remedies: "Use BIAS false with explicit
+ * ESHIFT values ... or pin intercepts with FIXINDEX/FIXWEIGHT": the checks
+ * fail. */
 TEST_CASE("Subcommand: train's composition refusal names the remedies the "
           "configuration can take",
           "[TadahCLI][train][bias]") {
@@ -2771,9 +2820,10 @@ TEST_CASE("Subcommand: train's composition refusal names the remedies the "
   const std::string rep = reported(r);
   INFO("NORM false: status " << r.status << "\n" << rep);
   CHECK(r.status == 1);
-  CHECK(contains(rep, "Use BIAS false with explicit ESHIFT values"));
+  CHECK(contains(rep, " BIAS false with explicit ESHIFT values"));
+  CHECK_FALSE(contains(rep, "Use BIAS false"));
   CHECK(contains(rep, "ESHIFT_ATOM"));
-  CHECK(contains(rep, "pin intercepts with FIXINDEX/FIXWEIGHT"));
+  CHECK(contains(rep, "intercepts pinned with FIXINDEX/FIXWEIGHT"));
   CHECK_FALSE(contains(rep, "ESHIFT_DBATOM"));
 
   std::string keys = kNbTaKeys;
@@ -8894,14 +8944,19 @@ TEST_CASE("Subcommand: hpo -c refuses the UNCERTAINTY line of a seed "
  * pinned), with config.train being pot.tadah plus "DBFILE db.tadah" (three
  * Ta dimers, retrain_dataset) and t.hpotarget refit.hpotarget with MAXEVAL
  * 1:
- *   - refit.hpotarget has the line "# DFT totals) give tadah hpo
- *     --eshift-atom or --eshift-dbatom (an" and no "add ESHIFT_ATOM";
+ *   - refit.hpotarget begins "# Starter target file of tadah hpo, written
+ *     by tadah refit. It runs with:" and has the line "# DFT totals, tadah
+ *     hpo takes --eshift-atom or --eshift-dbatom (an" and no "add
+ *     ESHIFT_ATOM" (it began "# HPO starter target written by `tadah
+ *     refit`. Run:" and the line read "# DFT totals) give tadah hpo ...");
  *   - `tadah train -c config.train -o p2.tadah` exits 0 with the HINT
  *     "WARNING: HINT: EMBF0 ZERO fixes the DM_REAM isolated-atom energy at
- *     0 ... If the reference energies are absolute (e.g. DFT totals), set
- *     ESHIFT or give the run ESHIFT_ATOM or ESHIFT_DBATOM (--eshift-atom,
- *     --eshift-dbatom: a potential's own line of them is not read), all
- *     compatible with EAMFAST, or BIAS true ...";
+ *     0 ... For absolute reference energies, such as DFT totals, ESHIFT, or
+ *     ESHIFT_ATOM or ESHIFT_DBATOM for the run (--eshift-atom,
+ *     --eshift-dbatom: a potential's own line of them is not read), gives
+ *     that constant, all compatible with EAMFAST. BIAS true also adds ..."
+ *     (it read "If the reference energies are absolute (e.g. DFT totals),
+ *     set ESHIFT or give the run ..., or BIAS true ...");
  *   - `tadah hpo -c config.train --hpotarget t.hpotarget --validation
  *     config.val` exits 0 with the journal HINT "EMBF0 ZERO fixes ... If
  *     reference energies are absolute (e.g. DFT totals), set ESHIFT or give
@@ -8932,8 +8987,11 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
   }
   const std::string target = slurp("refit.hpotarget");
   INFO("refit.hpotarget:\n" << target);
-  CHECK(contains(target, "# DFT totals) give tadah hpo --eshift-atom or "
+  CHECK(contains(target, "# DFT totals, tadah hpo takes --eshift-atom or "
                          "--eshift-dbatom (an\n"));
+  CHECK(target.rfind("# Starter target file of tadah hpo, written by tadah "
+                     "refit. It runs with:\n", 0) == 0);
+  CHECK_FALSE(contains(target, "e.g."));
   CHECK_FALSE(contains(target, "add ESHIFT_ATOM"));
   REQUIRE(contains(target, "MAXEVAL 200\n"));
   std::ofstream("t.hpotarget")
@@ -8952,6 +9010,10 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
       "set ESHIFT or give the run ESHIFT_ATOM or ESHIFT_DBATOM "
       "(--eshift-atom, --eshift-dbatom: a potential's own line of them is "
       "not read), all compatible with EAMFAST";
+  const std::string train_toggles =
+      "ESHIFT, or ESHIFT_ATOM or ESHIFT_DBATOM for the run (--eshift-atom, "
+      "--eshift-dbatom: a potential's own line of them is not read), gives "
+      "that constant, all compatible with EAMFAST";
   {
     const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
                                 "p2.tadah"});
@@ -8959,8 +9021,13 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
     INFO("train: status " << t.status << "\n" << rep);
     REQUIRE(t.status == 0);
     CHECK(contains(rep, "HINT: " + hint));
-    CHECK(contains(rep, "If the reference energies are absolute (e.g. DFT "
-                        "totals), " + toggles + ", or BIAS true"));
+    CHECK(contains(rep, "For absolute reference energies, such as DFT "
+                        "totals, " + train_toggles +
+                        ". BIAS true also adds a per-atom constant, but its "
+                        "intercept columns, one per ATOM species, precede "
+                        "the descriptor weights (FIXINDEX/FIXWEIGHT indices "
+                        "shift) and it disables EAMFAST.\n"));
+    CHECK_FALSE(contains(rep, "e.g."));
   }
   {
     const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",

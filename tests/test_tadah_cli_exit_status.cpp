@@ -11165,3 +11165,104 @@ TEST_CASE("Subcommand: the block of analysis suggest_bounds for knot "
 }
 
 #endif  // TADAH_ENABLE_NFP
+
+/* Pins: the INFO lines (-v 2) of tadah data merge, split, sample, dedup,
+ * balance and write, of tadah train, tadah predict, tadah refit and tadah
+ * analysis cutoff name no class of the code that runs them (no line has
+ * "Engine"); tadah data sample says where it writes ("tadah data sample:
+ * the sampled structures are written to s.tadah"), tadah data dedup what it
+ * keeps ("tadah data dedup: 3 structures in 1 file"), tadah data balance
+ * what it does ("tadah data balance: shifting the energies, E -= sum_Z N_Z
+ * eshift[Z]"); an error of tadah data merge and of tadah data convert
+ * reaches the program (exit 1, "DBFILE does not exist: nosuch.tadah", the
+ * DFT file that does not open) as every other command's does.
+ * Before the fix: "Validating DataMergeEngine...", "DataMergeEngine
+ * started...", "DataSampleEngine finished. Sampled data written to:
+ * s.tadah", "DataDedupEngine finished. 3 structures in 1 files.",
+ * "DataBalanceEngine: Applying ESHIFT (E -= sum_Z N_Z * eshift[Z])...",
+ * "AnalysisCutoffEngine finished.", and the two errors printed by the
+ * command itself as "DataMergeEngine error: ..." and "DataConvertEngine
+ * error: ...". */
+TEST_CASE("Subcommand: the log lines and errors of a command name the "
+          "command, not the code that runs it",
+          "[TadahCLI][data][messages]") {
+  ScratchCwd cwd("engine_lines");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("train.cfg") << retrain_config("M_BLR BF_Linear",
+                                               "LAMBDA 0.1\nOALGO 4\n");
+  std::ofstream("norefit.cfg") << "REFIT_MODE dense\n";
+  const std::vector<std::vector<std::string>> runs = {
+      {"tadah", "data", "merge", "-d", "db.tadah", "-o", "m.tadah", "-v", "2"},
+      {"tadah", "data", "split", "-d", "db.tadah", "-o", "p1.tadah",
+       "p2.tadah", "--even", "-v", "2"},
+      {"tadah", "data", "sample", "-d", "db.tadah", "-o", "s.tadah",
+       "--uniform", "2", "-v", "2"},
+      {"tadah", "data", "dedup", "-d", "db.tadah", "-o", "d.tadah",
+       "--threshold", "1e-6", "-v", "2"},
+      {"tadah", "data", "balance", "-d", "db.tadah", "--eshift", "-1", "-o",
+       "b.tadah", "-v", "2"},
+      {"tadah", "data", "write", "-d", "db.tadah", "-o", "w.cell", "-f",
+       "castep", "-i", "1", "-v", "2"},
+      {"tadah", "train", "-c", "train.cfg", "-o", "pot.tadah", "-v", "2"},
+      {"tadah", "predict", "-p", "pot.tadah", "-d", "db.tadah", "-v", "2"},
+      {"tadah", "analysis", "cutoff", "-o", "c.txt", "-r", "0", "3.14", "10",
+       "--type", "Cut_Cos", "-v", "2"}};
+  std::string all;
+  for (const auto& args : runs) {
+    const CliRun r = run_tadah(args);
+    INFO(args[1] << " " << args[2] << ": status " << r.status << "\n"
+                 << reported(r));
+    CHECK(r.status == 0);
+    CHECK_FALSE(contains(reported(r), "Engine"));
+    all += reported(r);
+  }
+  CHECK(contains(all, "INFO: tadah data sample: the sampled structures are "
+                      "written to s.tadah\n"));
+  CHECK(contains(all, "INFO: tadah data dedup: 3 structures in 1 file\n"));
+  CHECK(contains(all, "INFO: tadah data balance: shifting the energies, E "
+                      "-= sum_Z N_Z eshift[Z]\n"));
+  const CliRun refit = run_tadah({"tadah", "refit", "-c", "norefit.cfg",
+                                  "-v", "2"});
+  INFO("refit: status " << refit.status << "\n" << reported(refit));
+  CHECK(refit.status == 1);
+  CHECK_FALSE(contains(reported(refit), "Engine"));
+  const CliRun merge = run_tadah({"tadah", "data", "merge", "-d",
+                                  "nosuch.tadah", "-o", "y.tadah"});
+  INFO("merge: status " << merge.status << "\n" << reported(merge));
+  CHECK(merge.status == 1);
+  CHECK(contains(merge.what, "DBFILE does not exist: nosuch.tadah"));
+  CHECK_FALSE(contains(reported(merge), "Engine"));
+  const CliRun convert = run_tadah({"tadah", "data", "convert", "--dft-file",
+                                    "nosuch.OUTCAR", "-o", "x.tadah"});
+  INFO("convert: status " << convert.status << "\n" << reported(convert));
+  CHECK(convert.status == 1);
+  CHECK(contains(convert.what, "cannot open 'nosuch.OUTCAR'"));
+  CHECK_FALSE(contains(reported(convert), "Engine"));
+}
+
+/* Pins: tadah data write refuses a format it does not write before reading
+ * anything, naming the formats it writes: -f cell (the CASTEP cell file's
+ * extension) exits 1 with "tadah data write: FORMAT cell is not a format it
+ * writes: castep, lammps or vasp", and no file is written; -f castep writes
+ * w.cell.
+ * Before the fix: StructureWriterSelector::get_writer printed "Unknown
+ * type! Returning nullptr." and the run dereferenced the null writer: a
+ * segmentation fault (also in Tadah! 1.5.0, whose help gave "-f cell" as
+ * the example). */
+TEST_CASE("Subcommand: data write refuses a format it does not write",
+          "[TadahCLI][data][write]") {
+  ScratchCwd cwd("write_format");
+  std::ofstream("db.tadah") << retrain_dataset();
+  const CliRun r = run_tadah({"tadah", "data", "write", "-d", "db.tadah",
+                              "-o", "w.cell", "-f", "cell", "-i", "1"});
+  INFO("cell: status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 1);
+  CHECK(r.what == "tadah data write: FORMAT cell is not a format it writes: "
+                  "castep, lammps or vasp");
+  CHECK_FALSE(std::filesystem::exists("w.cell"));
+  const CliRun c = run_tadah({"tadah", "data", "write", "-d", "db.tadah",
+                              "-o", "w.cell", "-f", "castep", "-i", "1"});
+  INFO("castep: status " << c.status << "\n" << reported(c));
+  CHECK(c.status == 0);
+  CHECK(std::filesystem::exists("w.cell"));
+}

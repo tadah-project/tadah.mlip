@@ -10196,12 +10196,14 @@ TEST_CASE("Subcommand: hpo: a line of RCUT2B in a file that includes the "
 
 /* ---------------------------------------------------------------------------
  * A line appended to a copy of a potential. A key of the potential's
- * descriptors (its TYPE2B, RCTYPE2B, RCUT2B and grid lines) is set by the
- * line the potential has for it: a command that trains from the copy (its
- * -c file) refuses a second line of the key in the copy, naming both, and
- * the copy keeps its values only when its line is edited. Values of one
- * line that the descriptors do not take (a potential of tadah 1.5.0) keep
- * their WARNING, and so does a copy read for prediction.
+ * descriptors (its RCTYPE2B, RCUT2B and list lines) is set by the line the
+ * potential has for it, and its TYPE2B and TYPEMB keys by the lines tadah
+ * writes for them: a command that reads the copy with -c refuses a second
+ * line of the key in the copy, naming both, and a TYPE line outside those
+ * tadah writes, and the copy changes a value only when its line is edited.
+ * Values of one line that the descriptors do not take (a potential of
+ * Tadah! 1.5.0) get the WARNING, and a copy read for prediction is read
+ * with the values of all its lines.
  * ------------------------------------------------------------------------- */
 namespace {
 
@@ -10239,13 +10241,11 @@ void write_appended_copy() {
 }
 
 /* The refusal of @p key set on the lines @p at of @p file, a potential,
- * by the command @p words ("tadah train"); for a TYPE key (@p type true) it
- * says how a potential has its lines: one after another, a new line at
- * each descriptor's name, as tadah writes them. */
+ * by the command @p words ("tadah train"). */
 std::string appended_refusal(const std::string& key,
                              const std::vector<std::size_t>& at,
                              const std::string& file,
-                             const std::string& words, bool type = false) {
+                             const std::string& words) {
   std::string on;
   for (std::size_t i = 0; i < at.size(); ++i)
     on += std::string(i == 0 ? "" : i + 1 == at.size() ? " and on " : ", on ") +
@@ -10253,13 +10253,34 @@ std::string appended_refusal(const std::string& key,
   return "Key " + key + " is set on " + on +
          ", lines of one potential (a file with WEIGHTS): " + words +
          " reads a key of a potential's descriptors from the line the "
-         "potential has for it" +
-         (type ? " (the " + key + " lines of a potential follow one another, "
-                 "a new line at each descriptor's name, as tadah writes them)"
-               : std::string()) +
-         ", and a potential's value is changed by editing its line in a copy "
-         "of the potential (the Training page of the documentation, "
-         "Retraining from a potential)";
+         "potential has for it, and a potential's value is changed by "
+         "editing its line in a copy of the potential (the Training page of "
+         "the documentation, Retraining from a potential)";
+}
+
+/* The refusal, by the command @p words, of the TYPE line @p outside of
+ * @p file, a potential whose lines of the TYPE key @p key are @p written
+ * (as tadah writes them) and @p outside: it names the line and those lines,
+ * and says how a potential has them. */
+std::string type_outside_refusal(const std::string& key, std::size_t outside,
+                                 const std::vector<std::size_t>& written,
+                                 const std::string& file,
+                                 const std::string& words) {
+  const std::string lines =
+      written.size() == 1
+          ? "line " + std::to_string(written.front())
+          : "lines " + std::to_string(written.front()) +
+                (written.size() == 2 ? " and " : " to ") +
+                std::to_string(written.back());
+  return "Line " + std::to_string(outside) + " of " + file + " is a " + key +
+         " line of a potential (a file with WEIGHTS) outside its " + key +
+         (written.size() == 1 ? " line (" : " lines (") + lines + "): " +
+         words + " reads the " + key +
+         " key of a potential from the lines tadah writes for it, which "
+         "follow one another, a new line at each descriptor's name, and a "
+         "potential's value is changed by editing its line in a copy of the "
+         "potential (the Training page of the documentation, Retraining from "
+         "a potential)";
 }
 
 }  // namespace
@@ -10275,20 +10296,31 @@ std::string appended_refusal(const std::string& key,
  *    its line in a copy of the potential (the Training page of the
  *    documentation, Retraining from a potential)";
  *  - type.tadah, the same potential with "TYPE2B D2_Blip 2 2 Ta W"
- *    appended: the refusal of its two TYPE2B lines, which says that the
- *    TYPE2B lines of a potential follow one another, a new line at each
- *    descriptor's name, as tadah writes them;
+ *    appended: "Line <b> of type.tadah is a TYPE2B line of a potential (a
+ *    file with WEIGHTS) outside its TYPE2B line (line <a>): tadah train
+ *    reads the TYPE2B key of a potential from the lines tadah writes for
+ *    it, which follow one another, a new line at each descriptor's name,
+ *    and a potential's value is changed by editing its line in a copy of
+ *    the potential (...)";
  *  - jcopy.tadah, the D2_mJoin potential of write_old_potential() (its three
  *    TYPE2B lines are its line) with "RCUT2B 6" appended;
  *  - jadd.tadah, old_pot.tadah of write_old_potential() (the D2_mJoin
  *    potential with the values 1.5.0 kept, RCTYPE2B Cut_Cos Cut_Cos
  *    Cut_Tanh and RCUT2B 5 4.5 6) with "TYPE2B D2_LJ Ta Ta" appended: the
- *    refusal of its four TYPE2B lines.
+ *    refusal of its fourth TYPE2B line, outside its first three ("lines <a>
+ *    to <c>").
  * Before the fix of the TYPE lines: jadd.tadah trained (exit 0) without a
  * message, D2_LJ taking the values Cut_Tanh and 6 that the WARNINGs of
  * old_pot.tadah report as ignored, and the refusal of type.tadah said "(a
  * D2_mJoin line has one line per descriptor, each starting with the
  * descriptor's name)".
+ * Before the fix of the refusal of a TYPE line: it named every TYPE2B line
+ * ("Key TYPE2B is set on line <a> of jadd.tadah, on line ... and on line
+ * <d> of jadd.tadah, lines of one potential (a file with WEIGHTS): tadah
+ * train reads a key of a potential's descriptors from the line the
+ * potential has for it (the TYPE2B lines of a potential follow one
+ * another, a new line at each descriptor's name, as tadah writes them),
+ * ...").
  * Before the fix: copy.tadah trained (exit 0) with RCUT2B 6.0, after
  * "WARNING: Part of RCUT2B (5.59999999999999964) is ignored: TYPE2B D2_Blip
  * takes one RCUT2B value, and its cutoff is the largest, 6.0; ...", which
@@ -10325,8 +10357,8 @@ TEST_CASE("Subcommand: train -c of a copy of a potential with a line of a "
     const std::string rep = reported(r);
     INFO("type.tadah: status " << r.status << "\n" << rep);
     CHECK(r.status == 1);
-    CHECK(contains(rep, appended_refusal("TYPE2B", at, "type.tadah",
-                                         "tadah train", true)));
+    CHECK(contains(rep, type_outside_refusal("TYPE2B", at[1], {at[0]},
+                                             "type.tadah", "tadah train")));
     CHECK_FALSE(std::filesystem::exists("re_type.tadah"));
   }
   {
@@ -10349,19 +10381,21 @@ TEST_CASE("Subcommand: train -c of a copy of a potential with a line of a "
                                 << "TYPE2B D2_LJ Ta Ta\n";
     const auto at = lines_of_key("jadd.tadah", "TYPE2B");
     REQUIRE(at.size() == 4u);
+    REQUIRE(at[2] == at[0] + 2);
     const CliRun r = run_tadah(
         {"tadah", "train", "-c", "jadd.tadah", "-o", "re_jadd.tadah"});
     const std::string rep = reported(r);
     INFO("jadd.tadah: status " << r.status << "\n" << rep);
     CHECK(r.status == 1);
-    CHECK(contains(rep, appended_refusal("TYPE2B", at, "jadd.tadah",
-                                         "tadah train", true)));
+    CHECK(contains(rep, type_outside_refusal("TYPE2B", at[3],
+                                             {at[0], at[1], at[2]},
+                                             "jadd.tadah", "tadah train")));
     CHECK_FALSE(std::filesystem::exists("re_jadd.tadah"));
   }
 }
 
 /* Pins: the values of one line of a potential that its descriptor does not
- * take keep their WARNING: old.tadah, the single D2_Blip potential with
+ * take get the WARNING: old.tadah, the single D2_Blip potential with
  * its RCUT2B line "RCUT2B 5.6 6.0" (as tadah 1.5.0 wrote such lines) and a
  * DBFILE line, retrains (exit 0) with "WARNING: Part of RCUT2B (5.6) is
  * ignored: TYPE2B D2_Blip takes one RCUT2B value, and its cutoff is the
@@ -10396,7 +10430,7 @@ TEST_CASE("Subcommand: train -c of a potential whose one RCUT2B line has a "
  * (5.6) is ignored: TYPE2B D2_Blip takes one RCUT2B value, and its cutoff
  * is the largest, 6.0; the potential works unchanged with RCUT2B 6.0
  * alone" (given once per process): a potential read for prediction is read
- * as it was written.
+ * with the values of all its lines, as if they were on its one line.
  * Before the fix: passes as well (a pin). */
 TEST_CASE("Subcommand: predict -p of a copy of a potential with an RCUT2B "
           "line appended loads with the WARNING",
@@ -10538,6 +10572,142 @@ TEST_CASE("Subcommand: train -c of a potential whose TYPEMB lines place a "
                                                  << reported(r));
     CHECK(r.status == 0);
   }
+}
+
+namespace {
+
+/* The DM_Embed block "tb", kTaEmbedBlock with the ID tb and RADIUS 4.8. */
+std::string tb_embed_block() {
+  std::string b = kTaEmbedBlock;
+  b.replace(b.find("DESCRIPTOR ta"), 13, "DESCRIPTOR tb");
+  b.replace(b.find("RADIUS 5.0"), 10, "RADIUS 4.8");
+  return b;
+}
+
+/* The values of each line of @p file whose first word is @p key, joined by
+ * single blanks ("DM_EAD 0 1 1 Ta Ta"). */
+std::vector<std::string> key_line_values(const std::string& file,
+                                         const std::string& key) {
+  std::ifstream in(file);
+  std::vector<std::string> out;
+  for (std::string l; std::getline(in, l);) {
+    std::istringstream ls(l);
+    std::string k, v, text;
+    if (!(ls >> k) || k != key) continue;
+    while (ls >> v) text += (text.empty() ? "" : " ") + v;
+    out.push_back(text);
+  }
+  return out;
+}
+
+}  // namespace
+
+/* A potential whose TYPEMB key places a DESCRIPTOR block after a
+ * descriptor, or names two blocks, is written on lines that tadah reads,
+ * a new TYPEMB line at each block's ID as at each descriptor's name:
+ *  - "TYPEMB DM_EAD 0 1 1 Ta Ta" then "TYPEMB @ta" (embed_config()): tadah
+ *    train writes "TYPEMB DM_EAD 0 1 1 Ta Ta" and "TYPEMB @ta", one after
+ *    the other;
+ *  - "TYPEMB @ta" then "TYPEMB @tb", two DM_Embed blocks: "TYPEMB @ta" and
+ *    "TYPEMB @tb";
+ *  - the two blocks without a TYPEMB line: the same two lines;
+ * and for each, tadah predict -p of the potential exits 0 (energy.pred
+ * written), and train -c of its copy with "DBFILE train.db" appended exits
+ * 0, writing a potential.
+ * Before the fix: each potential was written on one TYPEMB line, "TYPEMB
+ * DM_EAD 0 1 1 Ta Ta @ta" or "TYPEMB @ta @tb", which predict -p and train
+ * -c refused, exit 1: "Invalid value for key TYPEMB on line <n> of
+ * after.tadah: 'DM_EAD 0 1 1 Ta Ta @ta'". */
+TEST_CASE("Subcommand: a potential whose TYPEMB key places a DESCRIPTOR "
+          "block after a descriptor, or names two blocks, predicts and "
+          "retrains",
+          "[TadahCLI][train][predict][retrain][potential][embed]") {
+  ScratchCwd cwd("block_ids_written");
+  { std::ofstream os("train.db"); os << kRetrainTaDb; }
+  const std::string base =
+      "DBFILE train.db\nATOM Ta\nWATOM 1\nINIT2B true\n"
+      "TYPE2B D2_Blip 2 2 Ta Ta\nRCTYPE2B Cut_Cos\nRCUT2B 5.0\n"
+      "CGRID2B 2 3\nSGRID2B 1 1\nBIAS true\nVERBOSE 0\n"
+      "MODEL M_BLR BF_Linear\nLAMBDA 1e-3\nINITMB true\n";
+  const std::vector<
+      std::tuple<std::string, std::string, std::vector<std::string>>>
+      cases = {{"after",
+                embed_config("TYPEMB DM_EAD 0 1 1 Ta Ta\nTYPEMB @ta\n"),
+                {"DM_EAD 0 1 1 Ta Ta", "@ta"}},
+               {"two",
+                base + "TYPEMB @ta\nTYPEMB @tb\n" + kTaEmbedBlock +
+                    tb_embed_block(),
+                {"@ta", "@tb"}},
+               {"notype", base + kTaEmbedBlock + tb_embed_block(),
+                {"@ta", "@tb"}}};
+  for (const auto& [name, config, typemb] : cases) {
+    CAPTURE(name);
+    std::ofstream(name + ".train") << config;
+    const std::string pot = name + ".tadah";
+    {
+      const CliRun t =
+          run_tadah({"tadah", "train", "-c", name + ".train", "-o", pot});
+      INFO("train: status " << t.status << "\n" << reported(t));
+      REQUIRE(t.status == 0);
+    }
+    CHECK(key_line_values(pot, "TYPEMB") == typemb);
+    const auto at = lines_of_key(pot, "TYPEMB");
+    CHECK(at.size() == 2u);
+    if (at.size() == 2u) CHECK(at[1] == at[0] + 1);
+    {
+      std::filesystem::remove("energy.pred");
+      const CliRun r =
+          run_tadah({"tadah", "predict", "-p", pot, "-d", "train.db"});
+      INFO("predict -p: status " << r.status << "\n" << reported(r));
+      CHECK(r.status == 0);
+      CHECK(std::filesystem::exists("energy.pred"));
+    }
+    {
+      const std::string copy = name + "_copy.tadah";
+      std::ofstream(copy) << slurp(pot) << "DBFILE train.db\n";
+      const std::string re = name + "_re.tadah";
+      const CliRun r = run_tadah({"tadah", "train", "-c", copy, "-o", re});
+      INFO("train -c: status " << r.status << "\n" << reported(r));
+      CHECK(r.status == 0);
+      CHECK(std::filesystem::exists(re));
+    }
+  }
+}
+
+/* Pins: a copy of a D2_mJoin potential (pot.tadah of write_old_potential(),
+ * its TYPE2B lines "D2_mJoin", "D2_Blip 2 2 Ta Ta" and "D2_BP 2 2 Ta Ta")
+ * with a comment line between its first two TYPE2B lines, a blank line
+ * between the last two and "DBFILE train.db" appended retrains with train
+ * -c (exit 0, re.tadah written): the TYPE2B lines follow one another with
+ * only a comment and a blank line between them.
+ * Before the fix: refused as three lines of TYPE2B, exit 1 ("Key TYPE2B is
+ * set on line <a> of commented.tadah, on line <a+2> ... and on line <a+4>
+ * ..., lines of one potential (a file with WEIGHTS): ..."). */
+TEST_CASE("Subcommand: train -c of a copy of a potential with a comment and "
+          "a blank line between its TYPE2B lines retrains",
+          "[TadahCLI][train][retrain][potential]") {
+  ScratchCwd cwd("type_lines_comment");
+  write_old_potential();
+  int n = 0;
+  {
+    std::ifstream in("pot.tadah");
+    std::ofstream os("commented.tadah");
+    for (std::string line; std::getline(in, line);) {
+      std::istringstream ls(line);
+      std::string k;
+      ls >> k;
+      if (k == "TYPE2B" && ++n == 2) os << "# the D2_Blip line\n";
+      if (k == "TYPE2B" && n == 3) os << "\n";
+      os << line << "\n";
+    }
+    os << "DBFILE train.db\n";
+  }
+  REQUIRE(n == 3);
+  const CliRun r = run_tadah(
+      {"tadah", "train", "-c", "commented.tadah", "-o", "re.tadah"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(std::filesystem::exists("re.tadah"));
 }
 
 /* Pins: tadah train with AUDIT warn and with AUDIT error, and analysis

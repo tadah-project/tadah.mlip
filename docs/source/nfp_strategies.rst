@@ -74,7 +74,8 @@ point.
 
 An :hpo:block:`!INIT <BLOCK.INIT>` chain that gives fewer points than
 :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` is refused at startup
-(``tadah hpo --check`` too). The entry of
+(``tadah hpo --check`` too), and so is a ``RESTART`` chain of fewer
+points (:ref:`what-restarts`). The entry of
 :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` says how the points are
 counted, and when a chain drawn with fewer points runs fewer starts. The
 points after the first :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` are not

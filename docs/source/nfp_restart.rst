@@ -62,6 +62,22 @@ refinement seeds have separate stagnation windows. A stagnating
 exploration hands its candidates to refinement before the enclosing
 policy can restart.
 
+Under :hpo:key:`TYPE MULTISTART <STRATEGY.TYPE.MULTISTART>`, each
+restart runs :hpo:key:`N_STARTS <STRATEGY.N_STARTS>` starts from the
+points of the restart chain, counted as those of an ``INIT`` chain. A
+restart chain that gives fewer points is refused at startup, at the
+``RESTART`` line.
+
+A ``RESTART`` block is refused when a phase it restarts runs
+:hpo:opt:`TADAH:GRID`. A grid search evaluates its starting point and
+then the nodes of its grid in one fixed order, so a restart would
+evaluate the first nodes again and never reach the rest of the grid.
+:hpo:key:`MAXEVAL <OPTIMIZER.MAXEVAL>` bounds a grid search.
+
+.. versionchanged:: 1.6.0
+   1.5.0 accepted a ``RESTART`` block on ``TADAH:GRID``, and ran fewer
+   starts than ``N_STARTS`` from a restart chain of fewer points.
+
 Each relaunch gets fresh search budgets. Reaching an optimiser's own
 stop normally ends the policy. Restarts are triggered by stagnation.
 After ``MAX`` restarts, the next stagnation ends the run.

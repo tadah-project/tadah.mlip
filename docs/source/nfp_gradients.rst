@@ -12,6 +12,11 @@ derivative of the complete loss. It belongs to the optimiser requesting
 that gradient: for NLopt MLSL/AUGLAG, the enclosing optimiser owns this
 setting.
 
+.. contents::
+   :local:
+   :depth: 1
+   :backlinks: none
+
 Gradient strategies
 -------------------
 
@@ -37,15 +42,65 @@ in phases that obtain gradients; explicit ``NUMERICAL`` is rejected
 with that loss term. Supplying ``GRAD_STRATEGY`` to an
 optimiser that never requests gradients is an error.
 
-Analytical availability depends on the model, fit, loss terms and chosen
-optimiser. Setup validates derivative support for the selected combination. ``HYBRID`` is the explicit choice when numerical
-fallback is acceptable.
+Analytical availability depends on the model, fit, loss terms, search
+parameters and chosen optimiser. Setup validates derivative support for
+the selected combination. ``HYBRID`` is the explicit choice when
+numerical fallback is acceptable.
 
 The analytical fit path needs the settings listed under
 :hpo:key:`GRAD_STRATEGY <OPTIMIZER.GRAD_STRATEGY>`: startup refuses a
-setup without them, naming the first setting it lacks.
-Each selected descriptor parameter and observable must also supply a
-supported derivative.
+setup without them, naming the first setting it lacks. Each observable
+must also supply a supported derivative.
+
+Each search parameter needs an analytical derivative in the rows the run
+has: the energy rows, the force rows of the fit with :ref:`FORCE` true,
+and the forces that :hpo:key:`PC_FRMSE <ROOT.PC_FRMSE>` measures. Once
+the data are read, ``ANALYTICAL`` refuses a search parameter without
+one, before any evaluation and in ``tadah hpo --check`` too. The message
+names each such :hpo:key:`OPTIM <ROOT.OPTIM>` line and why.
+:ref:`hpo_analytical_coverage` lists the search parameters each
+descriptor differentiates.
+
+.. _hpo_analytical_coverage:
+
+Analytical coverage
+-------------------
+
+The analytical derivatives cover the parameters of the descriptors below
+(:doc:`descriptors`), in the energy and the force rows unless the table
+says otherwise. A key of the fit, such as :ref:`LAMBDA`, has none.
+:ref:`RCUT2B` and :ref:`RCUTMB` need a cutoff function that depends on
+the cutoff: ``Cut_Dummy`` does not.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 32 68
+
+   * - Descriptor
+     - Search parameters with an analytical derivative
+   * - ``D2_Blip``, ``D2_Blip5``, ``D2_BP``
+     - :ref:`CGRID2B`, :ref:`SGRID2B`, :ref:`RCUT2B`, :ref:`WATOM`
+   * - ``D2_Knot5``
+     - :ref:`CGRID2B`, :ref:`RCUT2B`, :ref:`WATOM`
+   * - ``D2_LJ``, ``D2_MIE``, ``D2_ZBL``
+     - :ref:`RCUT2B`, :ref:`WATOM`
+   * - ``DM_mBlip``
+     - :ref:`CGRIDMB`, :ref:`SGRIDMB`, :ref:`RCUTMB`, :ref:`WATOM`,
+       :ref:`CEMBFUNC`, :ref:`SEMBFUNC`
+   * - ``DM_mBlipEnv``
+     - those of ``DM_mBlip`` and :ref:`RCUTENV`
+   * - ``DM_Blip``, ``DM_EAD``, ``DM_mRLR``, ``DM_mSQRT``
+     - :ref:`CGRIDMB`, :ref:`SGRIDMB`, :ref:`RCUTMB`, :ref:`WATOM`, in
+       the energy rows only
+   * - ``D2_mJoin`` and every other descriptor but ``DM_mJoin`` and
+       ``DESCRIPTOR`` blocks
+     - none
+
+A search parameter that the descriptors differentiate in the energy rows
+only takes ``ANALYTICAL`` in a run without force rows: :ref:`FORCE`
+false and no :hpo:key:`!PC_FRMSE <ROOT.PC_FRMSE>`. The analytical
+gradient of ``DM_mJoin`` and of ``DESCRIPTOR`` blocks is described with
+the blocks (:doc:`dm_embed`).
 
 Finite-difference keys
 ----------------------

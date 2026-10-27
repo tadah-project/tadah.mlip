@@ -23,7 +23,7 @@ build_debug:
     - find . -name CMakeCache.txt -delete
     - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DBUILD_TESTING=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
     - make -j ${CPU_BUILD}
-    - make test
+    - ctest --output-on-failure
     - cd ..; gcovr -e '.*tests.*|external|.*docs.*|.*examples.*|.*scripts.*|.*/_deps/(dlib|nlopt|Eigen|ceres|boost|catch2|tadah_cmake)[a-z0-9_-]*-src|build' -r .
   coverage: /^TOTAL.*\s+(\d+\%)$/
 

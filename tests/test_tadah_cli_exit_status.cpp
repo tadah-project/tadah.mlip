@@ -1984,14 +1984,17 @@ TEST_CASE("Subcommand: data dedup without --threshold says it needs "
  * line gives one (--dbfile and --structure give none)"; with a -c
  * configuration of "RCUT2B 0" "analysis dataset_stats: the cutoff of the
  * statistics is the largest RCUT2B or RCUTMB value, 0, which is not above
- * 0"; with a -c configuration without DBFILE or STRUCTURE "analysis
- * dataset_stats: no structures loaded: the configuration has no DBFILE or
- * STRUCTURE line"; with -c and -d of a file of no structure "analysis
- * dataset_stats: no structures loaded: the datasets of DBFILE (empty.tadah)
- * hold no structure". Each exits 1 and writes no report.
+ * 0", before the data are read (its DBFILE line names absent.tadah, a file
+ * that does not exist); with a -c configuration without DBFILE or STRUCTURE
+ * "analysis dataset_stats: no structures loaded: the configuration has no
+ * DBFILE or STRUCTURE line"; with -c and -d of a file of no structure
+ * "analysis dataset_stats: no structures loaded: the datasets of DBFILE
+ * (empty.tadah) hold no structure". Each exits 1 and writes no report.
  * Before the fix: "... RCUTMAX is not set or <= 0. Set at least one of
  * RCUT2B / RCUTMB in your config so the audit cutoff is well-defined." and
- * "... no structures loaded — provide at least one DBFILE or STRUCTURE.".
+ * "... no structures loaded — provide at least one DBFILE or STRUCTURE.",
+ * and, for the configuration of "RCUT2B 0", "DBFILE does not exist:
+ * absent.tadah" (the data were read before the cutoff was checked).
  * Before the fix that names only what the input accepts: "... RCUTMAX is
  * not set or <= 0; an RCUT2B or RCUTMB line in the configuration (-c) sets
  * it" with -d, which -c could not join, and "... no structures loaded; a
@@ -2000,9 +2003,11 @@ TEST_CASE("Subcommand: data dedup without --threshold says it needs "
  * four checks of the messages fail.
  * Before the fix that lets -c join -d and -s: the first and the fourth
  * command lines (then -d alone, without the -c) are refused, "--dbfile
- * excludes --config" (status 108): their two checks fail. (-d without -c
- * is refused on the command line since that fix, "--dbfile requires
- * --config", before the data are read.) */
+ * excludes --config" (status 108): their two checks fail; the second
+ * reads the DBFILE of the configuration before its cutoff is checked,
+ * "DBFILE does not exist: absent.tadah" (status 1): its check of the
+ * message fails. (-d without -c is refused on the command line since that
+ * fix, "--dbfile requires --config", before the data are read.) */
 TEST_CASE("Subcommand: analysis dataset_stats names what it lacks and "
           "what its input accepts",
           "[TadahCLI][exit-status][analysis]") {
@@ -2011,7 +2016,7 @@ TEST_CASE("Subcommand: analysis dataset_stats names what it lacks and "
                                                     "Cl 2.5 2.5 2.5"});
   std::ofstream("stats.config") << "RCUT2B 4.0\n";
   std::ofstream("nocut.config") << "DBFILE db.tadah\n";
-  std::ofstream("zero.config") << "RCUT2B 0\nDBFILE db.tadah\n";
+  std::ofstream("zero.config") << "RCUT2B 0\nDBFILE absent.tadah\n";
   std::ofstream("empty.tadah") << "";
   for (const auto& [args, message] :
        std::vector<std::pair<std::vector<std::string>, std::string>>{

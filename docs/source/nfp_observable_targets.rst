@@ -23,81 +23,76 @@ relaxation at zero pressure. ``--validation`` is optional unless
 Property and loss options
 -------------------------
 
-.. list-table:: Required and optional property settings
-   :header-rows: 1
-   :widths: 33 19 48
+``--species <element>``
+   Required. The element of the crystal and of the isolated atom: an
+   element symbol, and an element of the potential.
 
-   * - Option
-     - Default
-     - Meaning
-   * - ``--species <element>``
-     - Required
-     - Element used to construct the crystal and isolated atom: an
-       element symbol, and an element of the potential.
-   * - ``--target <energy>``
-     - Required
-     - Finite target cohesive energy in eV/atom.
-   * - ``--weight <weight>``
-     - Required
-     - Finite, nonnegative loss weight.
-   * - ``--hotvar a0 <lo> <hi> [<initial>]``
-     - Required
-     - Lattice-constant window in Å, with finite bounds and
-       ``hi > lo``. Only ``a0`` is supported. The initial value defaults
-       to the midpoint; one outside the window is refused.
-   * - ``--lattice bcc``
-     - ``bcc``
-     - Only ``bcc`` is implemented.
-   * - ``--supercell <nx> <ny> <nz>``
-     - ``4 4 4``
-     - Positive integer repeats along each axis, up to 2147483647.
-   * - ``--loss <name> [<parameter>]``
-     - Root ``LOSS``
-     - One :doc:`loss name <nfp_losses>`, with the parameter of
-       ``HUBER`` and ``TUKEY``. Without it the term takes the root
-       ``LOSS`` read above the line (``L2`` without one).
+``--target <energy>``
+   Required. Finite target cohesive energy in eV/atom.
+
+``--weight <weight>``
+   Required. Finite, nonnegative loss weight.
+
+``--hotvar a0 <lo> <hi> [<initial>]``
+   Required. Lattice-constant window in Å, with finite bounds and
+   ``hi > lo``. Only ``a0`` is supported. The initial value defaults to
+   the midpoint; one outside the window is refused.
+
+``--lattice bcc``
+   Default ``bcc``, the only lattice implemented.
+
+``--supercell <nx> <ny> <nz>``
+   Default ``4 4 4``. Positive integer repeats along each axis, up to
+   2147483647.
+
+``--loss <name> [<parameter>]``
+   Default: the top-level :hpo:key:`LOSS` read above the line (``L2``
+   without one). One :doc:`loss name <nfp_losses>`, with the parameter
+   of ``HUBER`` and ``TUKEY``.
 
 Relaxation options
 ------------------
 
-.. list-table:: Relaxation controls
-   :header-rows: 1
-   :widths: 34 18 48
+``--maxiter <n>``
+   Default ``5000``. Relaxation iteration cap; integer from 0 to
+   2147483647.
 
-   * - Option
-     - Default
-     - Meaning
-   * - ``--maxiter <n>``
-     - ``5000``
-     - Relaxation iteration cap; integer from 0 to 2147483647.
-   * - ``--maxeval <n>``
-     - ``5000``
-     - Energy/force evaluation cap; integer from 0 to 2147483647.
-   * - ``--etol <value>``
-     - ``0``
-     - Relative energy-change convergence tolerance; a positive value
-       enables it. Zero leaves force-based convergence.
-   * - ``--max-wall-time <seconds>``
-     - ``0``
-     - Positive values impose a per-relaxation wall-clock cap.
-       Zero disables it.
-   * - ``--fmax-converged <force>``
-     - ``0.1``
-     - Force tolerance of the relaxation, above 0: the relaxation
-       stops when the largest atomic force, in eV/Å, and the strain
-       force of the cell both fall below it. The strain force is
-       :math:`|\partial E/\partial\varepsilon|/(3V)` for the
-       isotropic strain :math:`\varepsilon` and the cell volume
-       :math:`V`; in the bcc cell the atomic forces vanish by
-       symmetry, so the strain force decides. A relaxation that stops
-       before then is unconverged.
-   * - ``--unconverged const <value>``
-     - ``const 100``
-     - Report this finite value for an unconverged relaxation.
-   * - ``--unconverged force-scaled <slope>``
-     - Unset
-     - Instead report ``target + slope * fmax`` for an unconverged
-       relaxation. The slope must be finite.
+``--maxeval <n>``
+   Default ``5000``. Energy/force evaluation cap; integer from 0 to
+   2147483647.
+
+``--etol <value>``
+   Default ``0``. Relative energy-change convergence tolerance; a
+   positive value enables it. Zero leaves force-based convergence.
+
+``--max-wall-time <seconds>``
+   Default ``0``. A positive value caps the wall-clock time of each
+   relaxation; zero disables the cap.
+
+``--fmax-converged <force>``
+   Default ``0.1``. Force tolerance of the relaxation, above 0: the
+   relaxation stops when the largest atomic force, in eV/Å, and the
+   strain force of the cell,
+   :math:`|\partial E/\partial\varepsilon|/(3V)` for the isotropic
+   strain :math:`\varepsilon` and the cell volume :math:`V`, both fall
+   below it. The strain force is the magnitude of the cell's pressure,
+   in eV/Å³: the default 0.1 allows 0.1 eV/Å³, about 16 GPa. In the bcc
+   cell the atomic forces vanish by symmetry, so the strain force
+   decides.
+
+   A relaxation that ends at ``--maxiter``, ``--maxeval`` or
+   ``--max-wall-time`` before both fall below it, or when no step lowers
+   its energy, is unconverged; one that ``--etol`` stops is converged
+   when its largest atomic force is below the tolerance.
+
+``--unconverged const <value>``
+   Default ``const 100``. The finite value an unconverged relaxation
+   reports.
+
+``--unconverged force-scaled <slope>``
+   An unconverged relaxation reports ``target + slope * fmax`` instead,
+   ``fmax`` being the larger of the largest atomic force and the strain
+   force at the end. The slope must be finite.
 
 The two ``--unconverged`` forms select alternative behaviours.
 An unconverged relaxation returning a finite substitute still supplies
@@ -107,18 +102,17 @@ therefore the evaluation. Each option is given once on a line, and a
 target that the term's loss cannot measure is refused
 (:doc:`nfp_losses`).
 
-Each relaxation starts from the lattice constant that the previous
-evaluation of its sequence relaxed to. Each replica of
-``TADAH:ANNEAL_PT``, each walker of ``TADAH:ANNEAL_PA`` and each position
-in an ASA block has its own sequence. Every other optimiser evaluates on
-the first one, so the lattice constant carries over from one
-``MULTISTART`` start, and from one ``PRESTAGE`` phase, to the next.
+Each relaxation starts from the lattice constant at which the previous
+relaxation ended, within the same replica, walker or ASA trial-state slot
+where the optimiser has them (see
+:hpo:key:`cohesive_energy <PC_OBSERVABLE.cohesive_energy>`).
 
 .. versionchanged:: 1.6.0
-   A term takes the root ``LOSS`` above its line; 1.5.0 took ``L2``
+   A term takes the top-level ``LOSS`` above its line; 1.5.0 took ``L2``
    unless ``--loss`` named another. ``--fmax-converged`` sets the
-   tolerance of the relaxation; 1.5.0 relaxed to 0.1 and the option
-   changed nothing in the bcc cell.
+   tolerance of the relaxation, and ``force-scaled`` also scales with
+   the strain force; 1.5.0 relaxed to 0.1, and compared the one and
+   scaled the other with the atomic forces alone.
 
 Gradient compatibility
 ----------------------

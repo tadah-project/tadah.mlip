@@ -122,8 +122,9 @@ numerical slopes within a graded failure region. Each stencil requires
 losses from a consistent usable or failed region. This requirement also
 applies to the numerical part of ``HYBRID``.
 
-With ``PC_LAMMPS`` or ``PC_FAILPROBE``, every gradient-based search is
-refused, ``DLIB:BFGS`` included: a LAMMPS loss term has no gradient.
+With ``PC_LAMMPS`` or ``PC_FAILPROBE``, every gradient-based optimiser
+is refused, ``DLIB:BFGS`` included: the results of a LAMMPS script have
+no gradient.
 MLSL/AUGLAG with a derivative-free local search is allowed.
 ``PC_OBSERVABLE`` supplies its own analytical derivative path and has
 separate compatibility rules.

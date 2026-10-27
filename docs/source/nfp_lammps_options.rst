@@ -29,10 +29,11 @@ Required options
    Read this variable after the script and create a weighted loss term.
    Repeat for additional terms. Target and weight must be finite;
    unlike validation and typed-observable weights, a negative weight is
-   accepted here. The default loss is root ``LOSS`` as it stood when
-   this line was read. An optional :doc:`loss name <nfp_losses>` and
-   parameter override it for this variable only, which then does not
-   read ``LOSS``. A target that the loss cannot measure is refused.
+   accepted here. The default loss is the top-level :hpo:key:`LOSS` as
+   it stood when this line was read. An optional
+   :doc:`loss name <nfp_losses>` and parameter override it for this
+   variable only, which then does not read :hpo:key:`!LOSS`. A target
+   that the loss cannot measure is refused.
 
 Inputs and diagnostics
 ----------------------
@@ -52,17 +53,18 @@ Timeout and failed-script values
 --------------------------------
 
 ``--maxtime <time>``
-   Override ``PC_SCRIPT_TIMEOUT`` for this script: ``off``, ``unlimited``
-   or a positive ``[[HH:]MM:]SS`` time. The line then does not read
-   ``PC_SCRIPT_TIMEOUT``.
+   The script's own limit in place of :hpo:key:`PC_SCRIPT_TIMEOUT`:
+   ``off``, ``unlimited`` or a positive ``[[HH:]MM:]SS`` time; the line
+   then does not read :hpo:key:`!PC_SCRIPT_TIMEOUT`.
 
 ``--failscore <value>``
    Value substituted for this script's output and loss variables if it
    fails. Any finite number is accepted for ``PC_LAMMPS``; default:
-   root ``FAILSCORE`` when the line is read. The substituted variable
-   passes through its configured loss for reporting, but the whole
-   evaluation still receives a failure score. The line then does not
-   read root ``FAILSCORE``. On ``PC_FAILPROBE`` this option instead
+   the top-level :hpo:key:`FAILSCORE` when the line is read. The
+   substituted variable passes through its configured loss for
+   reporting, but the whole evaluation still receives a failure score.
+   The line then does not read the top-level
+   :hpo:key:`!FAILSCORE`. On ``PC_FAILPROBE`` this option instead
    requires a positive number.
 
 Warm variables
@@ -99,12 +101,11 @@ Violation variables
    The optional scale must be finite and positive; default ``1``.
 
 A positive violation marks the simulation as failed, and its evaluation
-fails; in both modes ``hpo_run.log`` has a warning naming the variable.
-With ``FAILSCORE_GRADING ON``, ``scale * value`` grades its severity.
-With grading ``OFF``, the evaluation scores ``FAILSCORE``, and an
-explicit scale is refused. In either mode an unreadable or non-finite fail
-variable fails the simulation. Define it before commands that might
-prevent the script from reaching its end.
+fails in both grading modes (see :ref:`nfp_failscore_grading`). With
+:hpo:key:`FAILSCORE_GRADING` ``ON``, ``scale * value`` grades its
+severity; with ``OFF``, an explicit scale is refused. In either mode an
+unreadable or non-finite fail variable fails the simulation. The script
+defines it before any command that might stop the script early.
 
 LAMMPS command-line options
 ---------------------------

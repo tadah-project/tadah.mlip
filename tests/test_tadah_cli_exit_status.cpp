@@ -1978,10 +1978,11 @@ TEST_CASE("Subcommand: data dedup without --threshold says it needs "
 }
 
 /* Pins: tadah analysis dataset_stats says what it lacks: with a -c
- * configuration without an RCUT2B or RCUTMB line, and -d, "analysis
- * dataset_stats: no cutoff: the statistics take the largest RCUT2B or
- * RCUTMB value of a configuration given with -c as their cutoff, and no
- * line gives one (--dbfile and --structure give none)"; with a -c
+ * configuration without an RCUT2B or RCUTMB line or a DESCRIPTOR block,
+ * and -d, "analysis dataset_stats: no cutoff: the statistics take the
+ * largest cutoff of a configuration given with -c (RCUT2B, RCUTMB or the
+ * cutoff RADIUS of a DESCRIPTOR block), and no line gives one (--dbfile
+ * and --structure give none)"; with a -c
  * configuration of "RCUT2B 0" "analysis dataset_stats: the cutoff of the
  * statistics is the largest RCUT2B or RCUTMB value, 0, which is not above
  * 0", before the data are read (its DBFILE line names absent.tadah, a file
@@ -2007,7 +2008,12 @@ TEST_CASE("Subcommand: data dedup without --threshold says it needs "
  * reads the DBFILE of the configuration before its cutoff is checked,
  * "DBFILE does not exist: absent.tadah" (status 1): its check of the
  * message fails. (-d without -c is refused on the command line since that
- * fix, "--dbfile requires --config", before the data are read.) */
+ * fix, "--dbfile requires --config", before the data are read.)
+ * Before the fix that takes the cutoff RADIUS of a DESCRIPTOR block as a
+ * cutoff of the configuration: the first message named RCUT2B and RCUTMB
+ * alone, "... no cutoff: the statistics take the largest RCUT2B or RCUTMB
+ * value of a configuration given with -c as their cutoff, and no line gives
+ * one ...": its check fails. */
 TEST_CASE("Subcommand: analysis dataset_stats names what it lacks and "
           "what its input accepts",
           "[TadahCLI][exit-status][analysis]") {
@@ -2023,9 +2029,9 @@ TEST_CASE("Subcommand: analysis dataset_stats names what it lacks and "
            {{"tadah", "analysis", "dataset_stats", "-c", "nocut.config",
              "-d", "db.tadah", "-o", "st.tadah"},
             "analysis dataset_stats: no cutoff: the statistics take the "
-            "largest RCUT2B or RCUTMB value of a configuration given with -c "
-            "as their cutoff, and no line gives one (--dbfile and --structure "
-            "give none)"},
+            "largest cutoff of a configuration given with -c (RCUT2B, RCUTMB "
+            "or the cutoff RADIUS of a DESCRIPTOR block), and no line gives "
+            "one (--dbfile and --structure give none)"},
            {{"tadah", "analysis", "dataset_stats", "-c", "zero.config", "-o",
              "st.tadah"},
             "analysis dataset_stats: the cutoff of the statistics is the "

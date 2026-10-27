@@ -56,8 +56,8 @@ Common keys
        ``TADAH:ANNEAL_PT`` or ``TADAH:ANNEAL_PA``, ``THREADS`` sets how
        many evaluations that exploration asks for at once, and the default
        of ``REPLICAS`` (``ANNEAL_PT``) and of ``POPULATION``
-       (``ANNEAL_PA``). An ``EXPLORE`` block of another optimiser and
-       ``CERES`` refuse it, and so does ``INNER`` (see :doc:`nfp_inner`).
+       (``ANNEAL_PA``). An ``EXPLORE`` block of another optimiser refuses
+       it, and so does ``INNER`` (see :doc:`nfp_inner`).
    * - ``SEED n``
      - Unsigned 64-bit optimiser seed. See the seed rules below.
    * - ``STEP fraction``

@@ -125,8 +125,14 @@ The current best is saved to ``best_pot.tadah`` independently of
 ``OUTPUT``, ``BOUTPUT``, ``DUMP``, ``BDUMP`` and ``QFLUSH``. It is updated
 at every improvement. Its header names the evaluation and the
 improvement (``Evaluation 7, improvement 4``), as does the header of a
-``BDUMP`` archive (``improvement 4 (eval 7)``). ``DIGITS`` controls report formatting; potential
-parameters retain their full saved precision.
+``BDUMP`` archive (``improvement 4 (eval 7)``). The header's LOSS
+FUNCTION section lists every loss term with its target and weight, and
+its RESULT table the value and the loss of each term: a ``PC_OBSERVABLE``
+term as ``cohesive_energy[k]`` and ``Ecoh (eV/atom)[k]`` for the k-th
+``PC_OBSERVABLE`` line. A ``BDUMP`` archive has the RESULT table too.
+``DIGITS`` controls report formatting, and each value and loss of the
+table is a field of its own at any ``DIGITS``; potential parameters
+retain their full saved precision.
 
 For an MPI PT/PA run, rank-local histories and archives receive rank
 suffixes. The unsuffixed ``best_pot.tadah`` is the shared winning

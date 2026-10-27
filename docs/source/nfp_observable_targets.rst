@@ -17,7 +17,8 @@ or ``PC_FAILPROBE``.
 
 The value is :math:`E_\mathrm{isolated}-E_\mathrm{bulk}/N` in eV/atom,
 positive for a bound crystal. The bulk cell undergoes isotropic
-relaxation at zero pressure. ``--validation`` is optional unless
+relaxation at zero pressure, to the pressure tolerance ``--ptol``.
+``--validation`` is optional unless
 :doc:`validation metrics <nfp_validation_targets>` are also requested.
 
 Property and loss options
@@ -63,27 +64,32 @@ Relaxation options
 
 ``--etol <value>``
    Default ``0``. Relative energy-change convergence tolerance; a
-   positive value enables it. Zero leaves force-based convergence.
+   positive value enables it. Zero leaves ``--fmax-converged`` and
+   ``--ptol`` alone to decide convergence.
 
 ``--max-wall-time <seconds>``
    Default ``0``. A positive value caps the wall-clock time of each
    relaxation; zero disables the cap.
 
 ``--fmax-converged <force>``
-   Default ``0.1``. Force tolerance of the relaxation, above 0: the
-   relaxation stops when the largest atomic force, in eV/Å, and the
-   strain force of the cell,
-   :math:`|\partial E/\partial\varepsilon|/(3V)` for the isotropic
-   strain :math:`\varepsilon` and the cell volume :math:`V`, both fall
-   below it. The strain force is the magnitude of the cell's pressure,
-   in eV/Å³: the default 0.1 allows 0.1 eV/Å³, about 16 GPa. In the bcc
-   cell the atomic forces vanish by symmetry, so the strain force
-   decides.
+   Default ``0.1``. Force tolerance of the atoms, in eV/Å, above 0: the
+   atoms have relaxed when the largest atomic force falls below it. In
+   the bcc cell the atomic forces vanish by symmetry.
 
-   A relaxation that ends at ``--maxiter``, ``--maxeval`` or
-   ``--max-wall-time`` before both fall below it, or when no step lowers
-   its energy, is unconverged; one that ``--etol`` stops is converged
-   when its largest atomic force is below the tolerance.
+``--ptol <pressure>``
+   Default ``1e-4``. Pressure tolerance of the cell, in GPa, above 0: the
+   cell has relaxed when the magnitude of its pressure,
+   :math:`|\partial E/\partial\varepsilon|/(3V)` for the isotropic
+   strain :math:`\varepsilon` and the cell volume :math:`V`, falls below
+   it. A residual pressure :math:`P` leaves the cohesive energy below its
+   value at zero pressure by about :math:`P^2 (V/N)/(2B)`, for :math:`N`
+   atoms and the bulk modulus :math:`B`.
+
+A relaxation that ends at ``--maxiter``, ``--maxeval`` or
+``--max-wall-time`` before both tolerances are met, or when no step
+lowers its energy, is unconverged; one that ``--etol`` stops is converged
+when its largest atomic force is below ``--fmax-converged``, whatever its
+pressure.
 
 ``--unconverged const <value>``
    Default ``const 100``. The finite value an unconverged relaxation
@@ -91,8 +97,9 @@ Relaxation options
 
 ``--unconverged force-scaled <slope>``
    An unconverged relaxation reports ``target + slope * fmax`` instead,
-   ``fmax`` being the larger of the largest atomic force and the strain
-   force at the end. The slope must be finite.
+   ``fmax`` being the larger of the largest atomic force, in eV/Å, and the
+   magnitude of the cell's pressure, in eV/Å³, at the end. The slope must
+   be finite.
 
 The two ``--unconverged`` forms select alternative behaviours.
 An unconverged relaxation returning a finite substitute still supplies
@@ -109,10 +116,10 @@ where the optimiser has them (see
 
 .. versionchanged:: 1.6.0
    A term takes the top-level ``LOSS`` above its line; 1.5.0 took ``L2``
-   unless ``--loss`` named another. ``--fmax-converged`` sets the
-   tolerance of the relaxation, and ``force-scaled`` also scales with
-   the strain force; 1.5.0 relaxed to 0.1, and compared the one and
-   scaled the other with the atomic forces alone.
+   unless ``--loss`` named another. The cell relaxes to ``--ptol``;
+   1.5.0 relaxed the atoms and the cell to a fixed 0.1 (16 GPa for the
+   cell), and compared ``--fmax-converged`` and scaled ``force-scaled``
+   with the atomic forces alone.
 
 Gradient compatibility
 ----------------------

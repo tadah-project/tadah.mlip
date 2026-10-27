@@ -159,18 +159,11 @@ and ``suggest_bounds``. Its lines follow these rules:
 
 - Comments start with ``#`` and run to the end of the line.
 - Boolean values are written in lowercase: ``true``, ``false``.
-- ``CONFIG other.cfg`` includes another configuration file, so several
-  configuration files can share settings. The lines of ``other.cfg`` are
-  read in place of the ``CONFIG`` line, and a file can have several
-  ``CONFIG`` lines. A key of one value (*Max number of
-  values* 1 in :ref:`ConfigSection`) is set once in all the files: a second
-  line of it, above or below the ``CONFIG`` line, is refused. The lines of a
-  key of several values, such as :ref:`DBFILE <DBFILE>`, add up in line
-  order. A relative path in any of the files is relative to the working
-  directory (:ref:`CONFIG <CONFIG>` gives the rules).
-
-  The file ``run.train`` below includes ``common.train``, whose first two
-  lines are ``DBFILE eos.tadahdb`` and ``BIAS false``:
+- ``CONFIG other.cfg`` reads the lines of ``other.cfg`` in place of its
+  line, so several configuration files can share settings
+  (:ref:`CONFIG <CONFIG>` gives the rules). The file ``run.train`` below
+  includes ``common.train``, whose first two lines are
+  ``DBFILE eos.tadahdb`` and ``BIAS false``:
 
   .. code-block:: ini
 
@@ -178,8 +171,8 @@ and ``suggest_bounds``. Its lines follow these rules:
      DBFILE elastic.tadahdb
 
   ``tadah train -c run.train`` fits both datasets, ``eos.tadahdb`` first.
-  A third line, ``BIAS true``, is refused, as it would be above the
-  ``CONFIG`` line:
+  A third line, ``BIAS true``, is refused, and so is the same line above
+  the ``CONFIG`` line:
 
   .. code-block:: text
 
@@ -214,12 +207,13 @@ and ``suggest_bounds``. Its lines follow these rules:
   ``HPOTARGET``, ``VALIDATION``, ``CHECK`` and ``HEALTH_LOG``, are
   accepted in every training configuration and listed in the potential's
   :ref:`training record <training_record>`.
-- An error of a line names the line and the file (for a line of a file
-  included with ``CONFIG``, that file): a key that is no configuration key,
-  a value that the key does not take (with the values the key takes, the
-  line to write, or the key's schema, format and examples), more values
-  than the key takes, a block such as ``DESCRIPTOR`` ... ``ENDDESCRIPTOR``
-  that is not closed, and a ``CONFIG`` line whose file does not open:
+- An error of a line names the line and the file (for a line of an
+  included file, that file and the ``CONFIG`` lines that include it): a key
+  that is no configuration key, a value that the key does not take (with
+  the values the key takes, the line to write, or the key's schema, format
+  and examples), more values than the key takes, a block such as
+  ``DESCRIPTOR`` ... ``ENDDESCRIPTOR`` that is not closed, and a ``CONFIG``
+  line whose file does not open:
 
   .. code-block:: text
 

@@ -53,8 +53,8 @@ declarations places that block at its position, ordering blocks together with
 legacy descriptors. With ``TYPEMB``, each declared ID must appear exactly once;
 any other count is an error. Legacy cutoff and grid lists continue
 to describe the legacy terms only. ``CONFIG`` includes preserve block order,
-boundaries and source locations: an included file's blocks stand at its
-``CONFIG`` line, after the blocks above that line.
+boundaries and source locations: the blocks of an included file stand at the
+``CONFIG`` line that includes it, after the blocks above that line.
 
 ``FORM`` is required in each density: ``SIGNED`` permits signed amplitudes;
 ``NONNEG`` requires nonnegative amplitudes and positive pair weights;

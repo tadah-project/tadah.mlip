@@ -627,17 +627,22 @@ A line of a configuration file that includes the potential with
    EFILTER -9 -2
    OUTFILE pot2.tadah
 
-A key that the potential's own lines set, such as ``BIAS``, ``MODEL`` or
-``RCUT2B``, is changed in the copy. A line of the including file is a
-second line of the key: the included lines are read in place of the
-``CONFIG`` line (:ref:`config_file`). A second line of ``BIAS``, a key of
-one value, is refused, and so is a ``MODEL`` line, which gives ``MODEL``
-more than three values. An ``RCUT2B`` line, above or below the ``CONFIG``
-line, adds its values to the potential's, and the key is read as in a
-training configuration: each descriptor takes one value, so one value more
-than descriptors is refused, for a single descriptor and a ``D2_mJoin``
-line alike. The refusal names the lines, here for ``cutoff.train`` and a
-potential whose ``D2_mJoin`` line joins ``D2_Blip`` and ``D2_BP``:
+A key that the potential's own lines set, such as :ref:`BIAS <BIAS>`,
+:ref:`MODEL <MODEL>` or :ref:`RCUT2B <RCUT2B>`, is changed by editing its
+line in a copy of the potential (``retrain.train`` above), not by a second
+line. A line of the including file is a second line of the key: the
+included lines are read in place of the ``CONFIG`` line
+(:ref:`CONFIG <CONFIG>`). A second line of ``BIAS``, a key of one value, is
+refused, and so is a ``MODEL`` line, which gives ``MODEL`` more than three
+values.
+
+An ``RCUT2B`` line, above or below the ``CONFIG`` line, adds its values to
+the potential's. The key is then read as in a training configuration. Each
+descriptor takes one value, so one value more than descriptors is refused,
+for a single descriptor and a ``D2_mJoin`` line alike. The refusal names the
+lines, here for ``cutoff.train`` and a potential whose ``D2_mJoin`` line
+joins ``D2_Blip`` and ``D2_BP``, ``<n>`` being the ``RCUT2B`` line of
+``pot.tadah``:
 
 .. code-block:: ini
 
@@ -648,16 +653,17 @@ potential whose ``D2_mJoin`` line joins ``D2_Blip`` and ``D2_BP``:
 .. code-block:: text
 
    TYPE2B names 2 descriptors (D2_Blip, D2_BP) but RCUT2B has 3 values, set
-   on line 1 of cutoff.train and on line 28 of pot.tadah (CONFIG on line 2
+   on line 1 of cutoff.train and on line <n> of pot.tadah (CONFIG on line 2
    of cutoff.train): each descriptor takes one RCUT2B value, in the order of
    the TYPE2B lines
 
-A line of another key of the descriptors (``RCTYPE2B``, ``CGRID2B``,
-``RCUTMB`` and the rest) is read the same way, and so is every such key of
-a ``TYPE2B`` or ``TYPEMB`` line to which the including file adds a
-descriptor. The ``WARNING`` that a potential of Tadah! 1.5.0 gets for
-values its descriptors do not take (:ref:`composite_descriptors`) covers
-the values of its own lines only.
+A line of another key of the descriptors (:ref:`RCTYPE2B <RCTYPE2B>`,
+:ref:`CGRID2B <CGRID2B>`, :ref:`RCUTMB <RCUTMB>` and the rest) is read the
+same way, and so is every such key of a :ref:`TYPE2B <TYPE2B>` or
+:ref:`TYPEMB <TYPEMB>` line to which the including file adds a descriptor.
+The ``WARNING`` for values a potential's descriptors do not take
+(:ref:`composite_descriptors`) covers the lines of the potential file only,
+a line added to a copy among them.
 
 A file that has ``WEIGHTS`` (a potential or a copy of one) is a potential,
 wherever the run reads it: given with ``-c``, or included with ``CONFIG`` by

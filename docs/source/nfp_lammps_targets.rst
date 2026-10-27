@@ -91,7 +91,7 @@ PC_FAILPROBE
 A probe supplies a scalar violation measure used by
 :doc:`failure grading <nfp_losses>` and can reject a candidate before
 all its property calculations finish. At most one probe is allowed.
-It runs at the front of the first batch of scripts; other scripts may
+It runs at the front of the first group of scripts; other scripts may
 already be running when its result becomes available.
 
 .. code-block:: none

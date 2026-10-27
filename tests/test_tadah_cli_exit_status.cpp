@@ -8057,17 +8057,17 @@ TEST_CASE("Subcommand: predict applies the LSCALE of the potential",
  *     c.tadah", "OUTFILE pot2.tadah";
  *   - rederive.train, retrain.train without its ESHIFT line, with
  *     --eshift-dbatom (the documented way to derive ESHIFT from the data of
- *     the retrain: delete the ESHIFT line and give the run the toggle),
- *     gives pot3.tadah the ESHIFT of a training configuration of the three
- *     datasets with ESHIFT_DBATOM true (pot4.tadah), not e0; the same copy
- *     with its own line "ESHIFT_DBATOM true" and no option (pot7.tadah):
- *     the line is not read (the copy is a potential), so pot7.tadah has no
- *     ESHIFT line, with the WARNING "tadah train: the configuration file
- *     rederive_line.train is a potential (it has WEIGHTS): its
- *     ESHIFT_DBATOM true prepared the training data of the fit that wrote
- *     it, not of this run, and is ignored ... Give --eshift-dbatom on the
- *     command line, or an ESHIFT_DBATOM line in a configuration file that
- *     includes the potential with CONFIG, to apply it to this run ...";
+ *     the retrain: delete the ESHIFT line and give the run the toggle), gives
+ *     pot3.tadah the ESHIFT of a training configuration of the three datasets
+ *     with ESHIFT_DBATOM true (pot4.tadah), not e0; the same copy with its
+ *     own line "ESHIFT_DBATOM true" and no option (pot7.tadah): the line is
+ *     not read (the copy is a potential), so pot7.tadah has no ESHIFT line,
+ *     with the WARNING "tadah train: the configuration file
+ *     rederive_line.train is a potential (it has WEIGHTS): its ESHIFT_DBATOM
+ *     true prepared the training data of the fit that wrote it, not of this
+ *     run, and is ignored ... This run takes its own ESHIFT_DBATOM from
+ *     --eshift-dbatom on the command line, or from an ESHIFT_DBATOM line in a
+ *     configuration file that includes the potential with CONFIG ...";
  *   - old.train, pot.tadah without its record and with the key lines
  *     "WDBFILE 1 0.5", "EFILTER 5 6" and "ESHIFT_DBATOM true" of an earlier
  *     version, and the three datasets, exits 0 (pot5.tadah, ESHIFT e0),
@@ -8086,7 +8086,12 @@ TEST_CASE("Subcommand: predict applies the LSCALE of the potential",
  * line of a potential: the copy's own ESHIFT_DBATOM true, beside no ESHIFT
  * line, was read and derived the shift (the documented way then), so
  * pot7.tadah had an ESHIFT line and no WARNING named the line: those two
- * checks fail. */
+ * checks fail.
+ * Before the fix that states the advice in the impersonal voice: it read
+ * "Give --eshift-dbatom on the command line, or an ESHIFT_DBATOM line in a
+ * configuration file that includes the potential with CONFIG, to apply it to
+ * this run" and "Give --ffilter on the command line, or an FFILTER line in
+ * old.train, to apply it to this run": the two checks fail. */
 TEST_CASE("Subcommand: train -c retrains a potential on any number of "
           "datasets, with the potential's ESHIFT",
           "[TadahCLI][train][retrain][dataset-keys][training-record]") {
@@ -8154,10 +8159,10 @@ TEST_CASE("Subcommand: train -c retrains a potential on any number of "
                         "WEIGHTS): its ESHIFT_DBATOM true prepared the "
                         "training data of the fit that wrote it, not of "
                         "this run, and is ignored"));
-    CHECK(contains(rep, "Give --eshift-dbatom on the command line, or an "
+    CHECK(contains(rep, "This run takes its own ESHIFT_DBATOM from "
+                        "--eshift-dbatom on the command line, or from an "
                         "ESHIFT_DBATOM line in a configuration file that "
-                        "includes the potential with CONFIG, to apply it "
-                        "to this run"));
+                        "includes the potential with CONFIG"));
   }
   std::ofstream("old.train")
       << with_line(without_record(pot), "DBFILE", "")
@@ -8202,22 +8207,22 @@ TEST_CASE("Subcommand: train -c retrains a potential on any number of "
  *     pot.tadah", the three datasets and "WDBFILE 1 0.001 1", gives the
  *     WEIGHTS of pot2.tadah and the record "DBFILE a.tadah b.tadah
  *     c.tadah", "WDBFILE 1 0.001 1", "OUTFILE pot6.tadah";
- *   - `tadah train -c old.train`, old.train being "ZERO_COM_FORCE
- *     true", "CONFIG old.tadah", the three datasets, "WDBFILE 1 0.001 1",
- *     "EFILTER -0.7 -0.3", "OUTFILE pot5.tadah", old.tadah being pot.tadah
- *     with the key lines "WDBFILE 1 0.5", "EFILTER 5 6", "FFILTER 0.001"
- *     (it would drop every structure) and "ZERO_COM_FORCE false" of an
- *     earlier version, exits 0; pot5.tadah's record is "DBFILE a.tadah
- *     b.tadah c.tadah", "EFILTER -0.7 -0.3", "ZERO_COM_FORCE true", "WDBFILE
- *     1 0.001 1", "OUTFILE pot5.tadah" (the line before CONFIG too), and the
- *     WARNING names the one line of the potential the run does not give:
- *     "tadah train: old.tadah, which the configuration file old.train
- *     includes with CONFIG, is a potential (it has WEIGHTS): its FFILTER
- *     0.001 prepared the training data of the fit that wrote it, not of
- *     this run, and is ignored (tadah keeps such keys in a potential's
- *     training record, not as key lines). Give --ffilter on the command
- *     line, or an FFILTER line in old.train, to apply it to this run (the
- *     Training page of the documentation, Retraining from a potential).".
+ *   - `tadah train -c old.train`, old.train being "ZERO_COM_FORCE true",
+ *     "CONFIG old.tadah", the three datasets, "WDBFILE 1 0.001 1", "EFILTER
+ *     -0.7 -0.3", "OUTFILE pot5.tadah", old.tadah being pot.tadah with the
+ *     key lines "WDBFILE 1 0.5", "EFILTER 5 6", "FFILTER 0.001" (it would
+ *     drop every structure) and "ZERO_COM_FORCE false" of an earlier version,
+ *     exits 0; pot5.tadah's record is "DBFILE a.tadah b.tadah c.tadah",
+ *     "EFILTER -0.7 -0.3", "ZERO_COM_FORCE true", "WDBFILE 1 0.001 1",
+ *     "OUTFILE pot5.tadah" (the line before CONFIG too), and the WARNING
+ *     names the one line of the potential the run does not give: "tadah
+ *     train: old.tadah, which the configuration file old.train includes with
+ *     CONFIG, is a potential (it has WEIGHTS): its FFILTER 0.001 prepared the
+ *     training data of the fit that wrote it, not of this run, and is ignored
+ *     (tadah keeps such keys in a potential's training record, not as key
+ *     lines). This run takes its own FFILTER from --ffilter on the command
+ *     line, or from an FFILTER line in old.train (the Training page of the
+ *     documentation, Retraining from a potential).".
  * Before the fix: a key of a configuration with WEIGHTS was applied only
  * when it was a command-line option, and the include mixed the potential's
  * lines with the run's: the WDBFILE of the including file was ignored with
@@ -8317,10 +8322,10 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
                    "WEIGHTS): its FFILTER 0.001 prepared the training data of "
                    "the fit that wrote it, not of this run, and is ignored "
                    "(tadah keeps such keys in a potential's training record, "
-                   "not as key lines). Give --ffilter on the command line, or "
-                   "an FFILTER line in old.train, to apply it to this run (the "
-                   "Training page of the documentation, Retraining from a "
-                   "potential)."));
+                   "not as key lines). This run takes its own FFILTER from "
+                   "--ffilter on the command line, or from an FFILTER line in "
+                   "old.train (the Training page of the documentation, "
+                   "Retraining from a potential)."));
     const std::string pot5 = slurp("pot5.tadah");
     INFO("pot5.tadah:\n" << pot5);
     CHECK(record_of(pot5) ==
@@ -8772,25 +8777,28 @@ TEST_CASE("Subcommand: hpo keeps the keys that prepared the training data in "
 }
 
 /* Pins: `tadah hpo -c seed.tadah --hpotarget config.hpo --validation
- * config.val` (write_hpo_potential_fixture), seed.tadah being the
- * potential `tadah train -c config.tadah` writes (no ESHIFT line) without
- * its record, with the key lines "ESHIFT_ATOM false" and "ESHIFT_DBATOM
- * true" of an earlier version and "DBFILE db.tadah", exits 0; neither
- * toggle is read: best_pot.tadah has no ESHIFT line (no shift is derived
- * from the run's data), its training record is "DBFILE db.tadah",
- * "VALIDATION config.val", "HPOTARGET config.hpo", and the journal
- * (hpo_run.log) has the WARNING "tadah hpo: the configuration file
- * seed.tadah is a potential (it has WEIGHTS): its ESHIFT_DBATOM true
- * prepared the training data of the fit that wrote it, not of this run,
- * and is ignored ... Give --eshift-dbatom on the command line, or an
- * ESHIFT_DBATOM line in a configuration file that includes the potential
- * with CONFIG, to apply it to this run ..." (ESHIFT_ATOM false is at its
- * default).
+ * config.val` (write_hpo_potential_fixture), seed.tadah being the potential
+ * `tadah train -c config.tadah` writes (no ESHIFT line) without its record,
+ * with the key lines "ESHIFT_ATOM false" and "ESHIFT_DBATOM true" of an
+ * earlier version and "DBFILE db.tadah", exits 0; neither toggle is read:
+ * best_pot.tadah has no ESHIFT line (no shift is derived from the run's
+ * data), its training record is "DBFILE db.tadah", "VALIDATION config.val",
+ * "HPOTARGET config.hpo", and the journal (hpo_run.log) has the WARNING
+ * "tadah hpo: the configuration file seed.tadah is a potential (it has
+ * WEIGHTS): its ESHIFT_DBATOM true prepared the training data of the fit that
+ * wrote it, not of this run, and is ignored ... This run takes its own
+ * ESHIFT_DBATOM from --eshift-dbatom on the command line, or from an
+ * ESHIFT_DBATOM line in a configuration file that includes the potential with
+ * CONFIG ..." (ESHIFT_ATOM false is at its default).
  * Before the fix: the toggles of a potential without an ESHIFT line were
  * read: ESHIFT_DBATOM derived a shift (best_pot.tadah had an ESHIFT line),
  * the record listed "ESHIFT_ATOM false" and "ESHIFT_DBATOM true" as the
  * run's, and no WARNING named the toggle: the ESHIFT, record and WARNING
- * checks fail. */
+ * checks fail.
+ * Before the fix that states the advice in the impersonal voice: the journal
+ * read "Give --eshift-dbatom on the command line, or an ESHIFT_DBATOM line in
+ * a configuration file that includes the potential with CONFIG, to apply it
+ * to this run": the journal check fails. */
 TEST_CASE("Subcommand: hpo -c reads no ESHIFT_ATOM or ESHIFT_DBATOM line of "
           "a seed potential",
           "[TadahCLI][hpo][dataset-keys][training-record]") {
@@ -8819,10 +8827,10 @@ TEST_CASE("Subcommand: hpo -c reads no ESHIFT_ATOM or ESHIFT_DBATOM line of "
                           "a potential (it has WEIGHTS): its ESHIFT_DBATOM "
                           "true prepared the training data of the fit that "
                           "wrote it, not of this run, and is ignored"));
-  CHECK(contains(journal, "Give --eshift-dbatom on the command line, or an "
+  CHECK(contains(journal, "This run takes its own ESHIFT_DBATOM from "
+                          "--eshift-dbatom on the command line, or from an "
                           "ESHIFT_DBATOM line in a configuration file that "
-                          "includes the potential with CONFIG, to apply it "
-                          "to this run"));
+                          "includes the potential with CONFIG"));
   const std::string best = slurp("best_pot.tadah");
   INFO("best_pot.tadah:\n" << best);
   CHECK(line_tokens(best, "ESHIFT").empty());
@@ -9040,25 +9048,29 @@ TEST_CASE("Subcommand: hpo seeded from a potential with CONFIG applies the "
  * program that loads it, takes them. */
 
 /* Pins: `tadah train -c old.train`, old.train being the potential `tadah
- * train -c config.tadah -o trained.tadah` writes (retrain_config) without
- * its record, with "DBFILE db.tadah" and the key lines VALIDATION
- * config.val, HPOTARGET config.hpo, VERBOSE 2, NUMERIC 12, OUTFILE
- * old_out.tadah, AUDIT warn, AUDIT_SAMPLE 2 and HEALTH_LOG full of an
- * earlier version's run, exits 0 and writes pot.tadah (the default -o), not
- * old_out.tadah; prints no INFO line (its own default verbosity) and no
- * NUMERIC WARNING ("NUMERIC 12 limits"); pot.tadah's WEIGHTS are those of
- * the same retrain without the eight lines (bare.train -o bare.tadah),
- * token for token (18 digits); its training record is "DBFILE db.tadah";
- * and the WARNING names VERBOSE 2, NUMERIC 12, OUTFILE old_out.tadah,
- * AUDIT warn and AUDIT_SAMPLE 2 ("were settings of the run that wrote it,
- * not of this run, and are ignored") with the advice "Give --verbose or
- * --outfile on the command line, or a VERBOSE, NUMERIC, OUTFILE, AUDIT or
- * AUDIT_SAMPLE line in a configuration file that includes the potential
- * with CONFIG, to apply one to this run" -- not VALIDATION, HPOTARGET or
- * HEALTH_LOG, which tadah train does not read.
+ * train -c config.tadah -o trained.tadah` writes (retrain_config) without its
+ * record, with "DBFILE db.tadah" and the key lines VALIDATION config.val,
+ * HPOTARGET config.hpo, VERBOSE 2, NUMERIC 12, OUTFILE old_out.tadah, AUDIT
+ * warn, AUDIT_SAMPLE 2 and HEALTH_LOG full of an earlier version's run, exits
+ * 0 and writes pot.tadah (the default -o), not old_out.tadah; prints no INFO
+ * line (its own default verbosity) and no NUMERIC WARNING ("NUMERIC 12
+ * limits"); pot.tadah's WEIGHTS are those of the same retrain without the
+ * eight lines (bare.train -o bare.tadah), token for token (18 digits); its
+ * training record is "DBFILE db.tadah"; and the WARNING names VERBOSE 2,
+ * NUMERIC 12, OUTFILE old_out.tadah, AUDIT warn and AUDIT_SAMPLE 2 ("were
+ * settings of the run that wrote it, not of this run, and are ignored") with
+ * the advice "This run takes its own VERBOSE, NUMERIC, OUTFILE, AUDIT or
+ * AUDIT_SAMPLE from --verbose or --outfile on the command line, or from a
+ * VERBOSE, NUMERIC, OUTFILE, AUDIT or AUDIT_SAMPLE line in a configuration
+ * file that includes the potential with CONFIG" -- not VALIDATION, HPOTARGET
+ * or HEALTH_LOG, which tadah train does not read.
  * Before the fix: the eight lines were read as the run's: the retrain wrote
  * old_out.tadah at VERBOSE 2 (INFO lines) and NUMERIC 12 (the WARNING
- * "NUMERIC 12 limits ..."), so the REQUIRE on pot.tadah stops the case. */
+ * "NUMERIC 12 limits ..."), so the REQUIRE on pot.tadah stops the case.
+ * Before the fix that states the advice in the impersonal voice: it read
+ * "Give --verbose or --outfile on the command line, or a VERBOSE, NUMERIC,
+ * OUTFILE, AUDIT or AUDIT_SAMPLE line in a configuration file that includes
+ * the potential with CONFIG, to apply one to this run": the check fails. */
 TEST_CASE("Subcommand: train -c of an older potential reads none of its run "
           "settings",
           "[TadahCLI][train][retrain][training-record][run-settings]") {
@@ -9104,10 +9116,11 @@ TEST_CASE("Subcommand: train -c of an older potential reads none of its run "
                       "12, OUTFILE old_out.tadah, AUDIT warn and "
                       "AUDIT_SAMPLE 2 were settings of the run that wrote "
                       "it, not of this run, and are ignored"));
-  CHECK(contains(rep, "Give --verbose or --outfile on the command line, or a "
-                      "VERBOSE, NUMERIC, OUTFILE, AUDIT or AUDIT_SAMPLE line "
-                      "in a configuration file that includes the potential "
-                      "with CONFIG, to apply one to this run"));
+  CHECK(contains(rep, "This run takes its own VERBOSE, NUMERIC, OUTFILE, "
+                      "AUDIT or AUDIT_SAMPLE from --verbose or --outfile on "
+                      "the command line, or from a VERBOSE, NUMERIC, OUTFILE, "
+                      "AUDIT or AUDIT_SAMPLE line in a configuration file "
+                      "that includes the potential with CONFIG"));
   CHECK_FALSE(contains(rep, "VALIDATION"));
   CHECK_FALSE(contains(rep, "HPOTARGET"));
   CHECK_FALSE(contains(rep, "HEALTH_LOG"));
@@ -9165,23 +9178,31 @@ TEST_CASE("Subcommand: predict takes no verbosity from a potential's VERBOSE "
  * config.hpo, VALIDATION config.val, VERBOSE 2 and NUMERIC 12 of a 1.5.x
  * tadah hpo seed, does not read the seed's run settings:
  *   - without --hpotarget it exits 1, refused "tadah analysis check_bounds:
- *     no HPOTARGET: name the hpotarget file with --hpotarget, or with an
+ *     no HPOTARGET: the target file is given with --hpotarget, or with an
  *     HPOTARGET line in a configuration file without WEIGHTS. old_best.tadah
  *     is a potential (it has WEIGHTS): its HPOTARGET config.hpo line was a
  *     setting of the run that wrote it and is not read.", after the WARNING
- *     "tadah analysis check_bounds: the configuration file old_best.tadah
- *     is a potential (it has WEIGHTS): its HPOTARGET config.hpo and VERBOSE
- *     2 were settings of the run that wrote it, not of this run, and are
- *     ignored (...). Give --hpotarget or --verbose on the command line, or
- *     an HPOTARGET or VERBOSE line in a configuration file that includes the
- *     potential with CONFIG, to apply one to this run (...).";
+ *     "tadah analysis check_bounds: the configuration file old_best.tadah is
+ *     a potential (it has WEIGHTS): its HPOTARGET config.hpo and VERBOSE 2
+ *     were settings of the run that wrote it, not of this run, and are
+ *     ignored (...). This run takes its own HPOTARGET or VERBOSE from
+ *     --hpotarget or --verbose on the command line, or from an HPOTARGET or
+ *     VERBOSE line in a configuration file that includes the potential with
+ *     CONFIG (...).";
  *   - with --hpotarget config.hpo (OPTIM CGRID2B (1) 2.3 2.7) it exits 0,
  *     and the WARNING names VERBOSE 2 alone.
  * Before the fix: no WARNING named a line of old_best.tadah, and without
  * --hpotarget it was refused "analysis check_bounds: HPOTARGET is required
  * (set HPOTARGET in config or pass via the CLI).": the refusal and WARNING
  * CHECKs fail. (On v1-dev the parse stored the seed's HPOTARGET line and
- * the run used it.) */
+ * the run used it.)
+ * Before the fix that states the refusal and the advice in the impersonal
+ * voice: the refusal read "tadah analysis check_bounds: no HPOTARGET: name
+ * the hpotarget file with --hpotarget, or with an HPOTARGET line in a
+ * configuration file without WEIGHTS. ..." and the advice "Give --hpotarget
+ * or --verbose on the command line, or an HPOTARGET or VERBOSE line in a
+ * configuration file that includes the potential with CONFIG, to apply one to
+ * this run": the checks fail. */
 TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
           "names its HPOTARGET line, not read, and asks for --hpotarget",
           "[TadahCLI][analysis][check_bounds][run-settings]") {
@@ -9206,8 +9227,8 @@ TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
     const std::string rep = reported(r);
     INFO("no --hpotarget: status " << r.status << "\n" << rep);
     CHECK(r.status == 1);
-    CHECK(contains(rep, "tadah analysis check_bounds: no HPOTARGET: name the "
-                        "hpotarget file with --hpotarget, or with an "
+    CHECK(contains(rep, "tadah analysis check_bounds: no HPOTARGET: the "
+                        "target file is given with --hpotarget, or with an "
                         "HPOTARGET line in a configuration file without "
                         "WEIGHTS. old_best.tadah is a potential (it has "
                         "WEIGHTS): its HPOTARGET config.hpo line was a "
@@ -9217,10 +9238,10 @@ TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
                         "HPOTARGET config.hpo and VERBOSE 2 were settings of "
                         "the run that wrote it, not of this run, and are "
                         "ignored"));
-    CHECK(contains(rep, "Give --hpotarget or --verbose on the command line, "
-                        "or an HPOTARGET or VERBOSE line in a configuration "
-                        "file that includes the potential with CONFIG, to "
-                        "apply one to this run"));
+    CHECK(contains(rep, "This run takes its own HPOTARGET or VERBOSE from "
+                        "--hpotarget or --verbose on the command line, or "
+                        "from an HPOTARGET or VERBOSE line in a configuration "
+                        "file that includes the potential with CONFIG"));
   }
   const CliRun r =
       run_tadah({"tadah", "analysis", "check_bounds", "-c", "old_best.tadah",
@@ -9241,16 +9262,16 @@ TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
  * record, with "DBFILE db.tadah" and the key lines VALIDATION config.val,
  * HPOTARGET config.hpo, VERBOSE 2 and NUMERIC 12 of an earlier version's
  * best_pot.tadah:
- *   - without --validation the run does not validate on config.val: it
- *     exits 1, refused "... no --validation file was given", with no
+ *   - without --validation the run does not validate on config.val: it exits
+ *     1, refused "... no --validation file was given", with no
  *     best_pot.tadah, after the WARNING "tadah hpo: the configuration file
  *     old.tadah is a potential (it has WEIGHTS): its VALIDATION config.val,
- *     VERBOSE 2 and NUMERIC 12 were settings of the run that wrote it, not
- *     of this run, and are ignored (...). Give --validation or --verbose on
- *     the command line, or a VALIDATION, VERBOSE or NUMERIC line in a
- *     configuration file that includes the potential with CONFIG, to apply
- *     one to this run (...)." (HPOTARGET, given on the command line, is not
- *     named);
+ *     VERBOSE 2 and NUMERIC 12 were settings of the run that wrote it, not of
+ *     this run, and are ignored (...). This run takes its own VALIDATION,
+ *     VERBOSE or NUMERIC from --validation or --verbose on the command line,
+ *     or from a VALIDATION, VERBOSE or NUMERIC line in a configuration file
+ *     that includes the potential with CONFIG (...)." (HPOTARGET, given on
+ *     the command line, is not named);
  *   - with --validation other.val it validates on other.val ("Validation
  *     set        : other.val" in hpo_run.log), exits 0, prints no INFO line
  *     and no NUMERIC WARNING ("NUMERIC 12 limits"), and best_pot.tadah's
@@ -9260,7 +9281,11 @@ TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
  * run validated on config.val and exited 0 (the status CHECK fails); with
  * --validation other.val it ran at VERBOSE 2 and NUMERIC 12 and its record
  * listed "VERBOSE 2" and "NUMERIC 12": the INFO, NUMERIC and record checks
- * fail. */
+ * fail.
+ * Before the fix that states the advice in the impersonal voice: it read
+ * "Give --validation or --verbose on the command line, or a VALIDATION,
+ * VERBOSE or NUMERIC line in a configuration file that includes the potential
+ * with CONFIG, to apply one to this run": the check fails. */
 TEST_CASE("Subcommand: hpo -c of an older best_pot.tadah does not validate "
           "on its VALIDATION file unless --validation is given",
           "[TadahCLI][hpo][training-record][run-settings]") {
@@ -9290,10 +9315,11 @@ TEST_CASE("Subcommand: hpo -c of an older best_pot.tadah does not validate "
                         "config.val, VERBOSE 2 and NUMERIC 12 were settings "
                         "of the run that wrote it, not of this run, and are "
                         "ignored"));
-    CHECK(contains(rep, "Give --validation or --verbose on the command line, "
-                        "or a VALIDATION, VERBOSE or NUMERIC line in a "
-                        "configuration file that includes the potential with "
-                        "CONFIG, to apply one to this run"));
+    CHECK(contains(rep, "This run takes its own VALIDATION, VERBOSE or "
+                        "NUMERIC from --validation or --verbose on the "
+                        "command line, or from a VALIDATION, VERBOSE or "
+                        "NUMERIC line in a configuration file that includes "
+                        "the potential with CONFIG"));
   }
   const CliRun r = run_tadah({"tadah", "hpo", "-c", "old.tadah",
                               "--hpotarget", "config.hpo", "--validation",

@@ -65,10 +65,17 @@ for an earlier evaluation to finish or for an active writer.
    * - ``stats.tadah``
      - Enabled validation metrics by dataset and their averages.
 
+The first column of these histories, ``#ITERATION``, is the evaluation
+number. These files accumulate history rows; each file's header lists the
+enabled columns.
+
 Each has a corresponding ``best_`` history, such as
-``best_params.tadah``. Its first column is the improvement ordinal,
-starting at one. These files accumulate history rows; each file's header
-lists the enabled columns.
+``best_params.tadah``, with a row for each improvement of the best loss
+that ``BOUTPUT`` writes. Its first column, ``#IMPROVEMENT``, numbers the
+improvements from one. Its second, ``EVAL``, gives the ``#ITERATION`` of
+the evaluation that made the improvement. The matching main history, such
+as ``params.tadah``, holds that row when ``OUTPUT`` writes the evaluation,
+which ``OUTPUT 1`` does for every evaluation.
 
 The run writes these files, ``hpo_run.log`` and ``best_pot.tadah`` into
 the working directory. A working directory without write permission, or
@@ -116,7 +123,9 @@ to points inside the search box.
 
 The current best is saved to ``best_pot.tadah`` independently of
 ``OUTPUT``, ``BOUTPUT``, ``DUMP``, ``BDUMP`` and ``QFLUSH``. It is updated
-at every improvement. ``DIGITS`` controls report formatting; potential
+at every improvement. Its header names the evaluation and the
+improvement (``Evaluation 7, improvement 4``), as does the header of a
+``BDUMP`` archive (``improvement 4 (eval 7)``). ``DIGITS`` controls report formatting; potential
 parameters retain their full saved precision.
 
 For an MPI PT/PA run, rank-local histories and archives receive rank

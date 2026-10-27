@@ -835,8 +835,10 @@ integers are always exact. ``#`` comment lines (such as the header
   ``NUMERIC`` is (below 17 as the shortest text that reads back as the
   same value: ``RCUT2B 5.58190742024`` at ``NUMERIC 6``). A load checks
   them exactly: ``D2_EAM`` and ``DM_EAM`` refuse a cutoff other than that
-  of their setfl file, a knot channel's cutoff is its largest knot, and
-  the knot and Blip descriptors warn of a knot or a bump past the cutoff.
+  of their setfl file, a knot channel alone on its line has its largest
+  knot as its cutoff (a ``D2_mJoin`` or ``DM_mJoin`` line keeps the stated
+  cutoffs), and the knot and Blip descriptors warn of a knot or a bump
+  past the cutoff.
   So a potential written with a low ``NUMERIC`` loads with the cutoffs and
   grids it was fitted with; only the fitted numbers (``WEIGHTS``,
   ``NMEAN``, ``NSTDEV``, ...) and the other settings are rounded. The

@@ -1461,11 +1461,16 @@ The two basis families treat ``RCUT2B`` / ``RCUTMB`` differently:
      - The **largest knot position** — each knot function
        :math:`(t - r)_+^k` vanishes :math:`C^4`-smoothly at its own knot, so
        nothing exists beyond the largest one.
-     - **Derived.** Every consumer (``refit``, ``--edit``, ``--retarget``,
-       ``train``, ``predict``, ``hpo``) recomputes them from the largest
-       knot; any differing stated value is replaced by it (a WARNING when
-       the gap exceeds ``1e-9`` relative or the cutoff is smooth, INFO
-       otherwise). Moving ``RCUT`` anywhere at or beyond the largest knot is
+     - **Derived.** On a line of one knot descriptor every consumer
+       (``refit``, ``--edit``, ``--retarget``, ``train``, ``predict``,
+       ``hpo``) recomputes them from the largest knot; any differing stated
+       value is replaced by it (a WARNING when the gap exceeds ``1e-9``
+       relative or the cutoff is smooth, INFO otherwise). On a ``D2_mJoin``
+       or ``DM_mJoin`` line of a potential, ``tadah predict`` and
+       ``tadah refit --edit`` keep the stated cutoffs, with which its
+       coefficients were fitted; a fit (``tadah train``, ``tadah hpo``)
+       derives each knot descriptor's own entry. Moving ``RCUT`` anywhere
+       at or beyond the largest knot is
        prediction-exact only under a hard cutoff (``Cut_Dummy``): a smooth
        ``RCTYPE`` evaluates :math:`f_c(r)` with the ``RCUT`` value for
        every pair. ``pair_style tadah`` in LAMMPS reads the stated ``RCUT``

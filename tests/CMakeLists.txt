@@ -278,6 +278,27 @@ set_tests_properties(tadah_docs_site_layout PROPERTIES
   SKIP_RETURN_CODE 77
   ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
 
+# The example of the Configuration File page (section "Common Usage", whose
+# source is the header of docs/source/config/read_toml.py) against tadah:
+# config_page/check_config_page_example.py runs the section's tadah command
+# on a training configuration without DBFILE and checks that it exits with
+# the status the section states and that each line the section quotes
+# starts a line of its output.
+# Before the fix: fails -- the section quoted "terminate called after
+# throwing an instance of 'std::runtime_error'", "what():  Key not found:
+# DBFILE" and "Aborted (core dumped)" and stated no exit status; tadah
+# train prints "ERROR: The training configuration has no DBFILE: ..." and
+# exits 1.
+add_test(NAME tadah_docs_config_page_example
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/config_page/check_config_page_example.py
+    --tadah $<TARGET_FILE:tadah>
+    --page ${PROJECT_SOURCE_DIR}/docs/source/config/read_toml.py)
+set_tests_properties(tadah_docs_config_page_example PROPERTIES
+  LABELS docs
+  TIMEOUT 120
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
 
 # ------------------------------------------------------------------
 # 7b. The balance table of a fit

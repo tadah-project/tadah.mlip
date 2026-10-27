@@ -59,6 +59,11 @@ Glossary and Abbreviations
       line.  The loss of an evaluation is the mean of its weighted terms,
       clipped to ``FAILSCORE`` (:ref:`nested_fitting`).
 
+   Batch
+      The evaluations that an optimiser runs at once on its workers, such
+      as an epoch of :hpo:opt:`TADAH:ANNEAL_PT`
+      (:ref:`nfp_evaluation_numbers`).
+
    Search Space Constraint
       A bound placed on a :term:`hyperparameter` via an ``OPTIM`` line.
 

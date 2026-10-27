@@ -63,6 +63,24 @@ It accepts ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` and positive
 ``FTOL_REL``/``FTOL_ABS``. An active stagnation restart can supply a stop
 in a single-rank run.
 
+A replica that reaches :hpo:key:`STOPVAL <OPTIMIZER.STOPVAL>` ends its
+own sweep. The search ends after the starting points or the epoch in
+which it is reached: the other replicas complete their evaluations of it.
+Where the search ends therefore does not depend on the timing of the
+workers. The evaluations that the replica did not make have no row
+(:ref:`nfp_evaluation_numbers`).
+
+The step calibration (:doc:`anneal_pt_steps`) runs in rounds of one
+evaluation for each replica, and the search ends after the round in which
+a replica reaches :hpo:key:`!STOPVAL <OPTIMIZER.STOPVAL>`. In a run of
+several MPI ranks only the rank of that replica ends its calibration
+there; the other ranks first complete their calibration phase.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 the other replicas stopped at their next proposal, at a point
+   that depended on the order of the replicas and the timing of the
+   workers.
+
 The tolerance test tracks the global best over ``NEPS`` consecutive
 windows. It stops when improvement stays within the configured loss
 tolerance. A window has ``SWAP_WINDOW`` epochs; with

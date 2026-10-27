@@ -212,7 +212,7 @@ are. A potential of an earlier version has its toggle as a key line beside
    **DM_REAM potentials (EMBF0 ZERO, the default).** The zero-referenced
    embedding fixes the isolated-atom energy of a DM_REAM model at 0, so the
    model has no free per-atom constant unless ``BIAS true`` is set. When the
-   reference energies are absolute (e.g. DFT totals), ``ESHIFT``,
+   reference energies are absolute, such as DFT totals, ``ESHIFT``,
    ``ESHIFT_ATOM`` or ``ESHIFT_DBATOM`` removes the per-atom reference
    (which keeps the LAMMPS ``EAMFAST`` kernel usable), or ``BIAS true``
    fits it (its intercept columns, one per ``ATOM`` species, precede the

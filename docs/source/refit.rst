@@ -691,7 +691,9 @@ warning).  ``ALGO NONE`` in a block keeps the block and skips its stage:
 
 .. code-block:: none
 
-   REFINE: ENABLED false skips the stage, so its OPTIMIZER block has no effect; remove the OPTIMIZER block, or write ALGO NONE in it instead of ENABLED false
+   REFINE: ENABLED false skips the stage, so its OPTIMIZER block has no effect;
+   ENABLED false without the block, or ALGO NONE in the block without ENABLED
+   false, switches the stage off
 
 EXPLORE
 also accepts ``MAX_ADD`` (one value or three ``phi rho F``) capping the basis
@@ -869,7 +871,9 @@ random numbers; ``FTOL_ABS`` with a Ceres ``ALGO`` points to ``FTOL_REL``:
 
 .. code-block:: none
 
-   EXPLORE: SEED is not accepted in a tadah refit OPTIMIZER block: the refit's random numbers come from REFIT_COMPACT_SEED; set REFIT_COMPACT_SEED in the configuration instead.
+   EXPLORE: SEED is not accepted in a tadah refit OPTIMIZER block:
+   REFIT_COMPACT_SEED in the refit configuration seeds the refit's random
+   numbers
 
 Within a stage, a stop criterion that the block's ``ALGO`` does not read
 (the table above) is an error, named as written with the ``ALGO`` and the
@@ -885,10 +889,13 @@ which ``FTOL_ABS`` sets now:
 
 .. code-block:: none
 
-   REFINE: GTOL has no effect with ALGO LD_LBFGS (it reads MAXEVAL, FTOL_REL); remove GTOL
-   EXPLORE INNER: XTOL_REL has no effect with ALGO LBFGS (it reads MAXEVAL, FTOL_ABS); remove XTOL_REL
-   REFINE: MAXITER counts Ceres iterations; ALGO LD_LBFGS counts objective evaluations: write MAXEVAL
-   REFINE: FTOL_REL has no effect with ALGO LBFGS: dlib's L-BFGS stops on an absolute change of the objective; write FTOL_ABS
+   REFINE: GTOL has no effect with ALGO LD_LBFGS (it reads MAXEVAL, FTOL_REL)
+   EXPLORE INNER: XTOL_REL has no effect with ALGO LBFGS (it reads MAXEVAL,
+   FTOL_ABS)
+   REFINE: MAXITER counts Ceres iterations; ALGO LD_LBFGS counts objective
+   evaluations, which MAXEVAL limits
+   REFINE: FTOL_REL has no effect with ALGO LBFGS: dlib's L-BFGS stops on an
+   absolute change of the objective, which FTOL_ABS sets
 
 The ``optimiser:`` line of ``refit_opt.log`` gives each stage's settings
 as its ``ALGO`` reads them, the MLSL seed with those of its local searches
@@ -908,8 +915,8 @@ NONE`` under the EXPLORE optimiser ``GN_MLSL_LDS``, whose local searches
 they also set, and another stop criterion there is an error that names
 those searches as what reads them (``EXPLORE INNER: FTOL_ABS has no effect
 with ALGO NONE (no local search runs; under ALGO GN_MLSL_LDS the block sets
-MLSL's local LN_SBPLX searches, which read MAXEVAL, FTOL_REL, XTOL_REL);
-remove FTOL_ABS``); before 1.6.0 REFINE's were accepted under
+MLSL's local LN_SBPLX searches, which read MAXEVAL, FTOL_REL,
+XTOL_REL)``); before 1.6.0 REFINE's were accepted under
 ``REFIT_OBJECTIVE curve`` too (the FUSE curve refine ran with them).  EXPLORE's ``INNER``
 block configures the per-rung local search whatever the EXPLORE
 optimiser, ``UNIFORM`` included.  Before 1.6.0 these keys were accepted
@@ -917,9 +924,9 @@ and ignored:
 
 .. code-block:: none
 
-   REFINE: MAXITER has no effect with ALGO NONE (the stage is skipped); remove MAXITER
-   EXPLORE: MAXEVAL has no effect with ALGO UNIFORM (no global search runs); remove MAXEVAL
-   EXPLORE INNER: FTOL_REL has no effect with ALGO NONE (no local search runs); remove FTOL_REL
+   REFINE: MAXITER has no effect with ALGO NONE (the stage is skipped)
+   EXPLORE: MAXEVAL has no effect with ALGO UNIFORM (no global search runs)
+   EXPLORE INNER: FTOL_REL has no effect with ALGO NONE (no local search runs)
 
 An ``INNER`` block without ``ALGO`` used to mean no local
 search, while an EXPLORE ``OPTIMIZER`` block without an ``INNER`` block runs
@@ -928,7 +935,8 @@ out still runs the stage with its defaults:
 
 .. code-block:: none
 
-   EXPLORE INNER: ALGO is not set; set ALGO in the INNER block (NONE for no local search)
+   EXPLORE INNER: ALGO is not set; the INNER block of a tadah refit stage
+   names its ALGO (NONE for no local search)
 
 As in ``tadah hpo``, where every block, ``INNER`` included, sets both
 ``LIB`` and ``ALGO``, a block that runs an optimiser names the library of
@@ -982,7 +990,8 @@ are other NLopt algorithms, which ``tadah hpo`` runs as named, and
 
 .. code-block:: none
 
-   EXPLORE: ALGO GN_MLSL is not run by tadah refit (NLopt's MLSL with pseudo-random starts); its MLSL is GN_MLSL_LDS: set ALGO GN_MLSL_LDS
+   EXPLORE: ALGO GN_MLSL is not run by tadah refit (NLopt's MLSL with
+   pseudo-random starts); its MLSL is GN_MLSL_LDS
 
 A missing ``LIB`` and one that does not match the ``ALGO`` are errors
 naming the right one.  The ``LIB`` given may be the one meant, so when the
@@ -992,11 +1001,14 @@ optimiser, would have no effect and is an error too:
 
 .. code-block:: none
 
-   REFINE: LIB is not set; set LIB NLOPT (ALGO LD_LBFGS is an NLopt algorithm)
-   EXPLORE: LIB CERES does not match ALGO GN_MLSL_LDS, an NLopt algorithm; set LIB NLOPT
-   REFINE: LIB NLOPT does not match ALGO LBFGS, a dlib algorithm; set LIB DLIB, or with LIB NLOPT set ALGO LD_LBFGS
-   EXPLORE INNER: LIB has no effect with ALGO NONE (no local search runs); remove LIB
-   EXPLORE: LIB has no effect with ALGO UNIFORM (no global search runs); remove LIB
+   REFINE: LIB is not set; ALGO LD_LBFGS is an NLopt algorithm, whose LIB
+   is NLOPT
+   EXPLORE: LIB CERES does not match ALGO GN_MLSL_LDS, an NLopt algorithm, whose
+   LIB is NLOPT
+   REFINE: LIB NLOPT does not match ALGO LBFGS, a dlib algorithm, whose LIB is
+   DLIB; LIB NLOPT takes ALGO LD_LBFGS
+   EXPLORE INNER: LIB has no effect with ALGO NONE (no local search runs)
+   EXPLORE: LIB has no effect with ALGO UNIFORM (no global search runs)
 
 Before 1.6.0 ``LIB`` could be left out where the ``ALGO`` named the
 optimiser (``GN_MLSL_LDS``, ``LN_SBPLX``, ``LM``, ``DLIB_GLOBAL``, and

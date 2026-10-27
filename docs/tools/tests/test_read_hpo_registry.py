@@ -1159,6 +1159,8 @@ class PagesTest(unittest.TestCase):
         ('STRUCTURE', 'unknown_root_msg'):
             r'An unknown key is refused, at the top level and in every '
             r'block',
+        ('STRUCTURE', 'root_key_in_block_msg'):
+            r'a top-level key inside an open block is refused',
     }
 
     def test_fields_left_out_are_stated_in_the_text(self):

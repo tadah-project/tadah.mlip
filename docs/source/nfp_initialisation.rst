@@ -59,7 +59,7 @@ An absent ``INIT`` block, or an empty method chain, supplies one ``CONFIG``
 point; inside ``EXPLORE`` it leaves the exploration the main starting
 points. An explicit chain supplies only its declared methods. Near-duplicate
 points in a chain are removed in transformed coordinates, retaining the
-first occurrence. ``METHOD NOISE_AUTO`` is reserved and rejected.
+first occurrence.
 
 Other keys
 ----------

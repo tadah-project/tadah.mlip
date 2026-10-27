@@ -273,7 +273,8 @@ SECTION_FIELDS = {
         'script_timeout_msg', 'script_timeout_large_msg')},
     'STRUCTURE': dict({f: _STRUCTURE_MSG for f in (
         'end_without_open_msg', 'end_mismatch_msg', 'end_takes_no_value_msg',
-        'open_takes_no_value_msg', 'unclosed_msg', 'unknown_root_msg')},
+        'open_takes_no_value_msg', 'unclosed_msg', 'unknown_root_msg',
+        'root_key_in_block_msg')},
         check_order='not shown: the order of the checks',
         removed_msg='Message of a removed key'),
     'OPTIM': {'synopsis': 'Syntax of OPTIM',

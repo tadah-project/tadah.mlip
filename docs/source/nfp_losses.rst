@@ -130,9 +130,17 @@ classified failures a score in ``[0.999 * FAILSCORE, FAILSCORE)`` using
 their failure category and violation measure. These remain failed
 evaluations, even when the score is finite and below the ceiling.
 
-Grading requires ``FAILSCORE < 1e300`` and a value large enough that all
-four grading bands are representable. The default largest-double
-ceiling is therefore unsuitable; set an explicit value such as ``1e9``.
+Grading takes any :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>`, the default
+largest double too. An :hpo:opt:`ASA:ASA` search, in any phase, refuses a
+:hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` of ``1e18`` or more under ``ON``:
+ASA takes a cost of about ``1e18`` or more for an invalid state and draws
+another, so it would not see the grading.
+
+.. versionchanged:: 1.6.0
+   1.5.0 refused a :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` of ``1e300`` or
+   more under ``ON``, and ran an :hpo:opt:`!ASA:ASA` search with one from
+   ``1e18`` to below ``1e300`` as under ``OFF``.
+
 The environment variable ``TADAH_FAILSCORE_GRADING`` accepts ``ON`` or
 ``OFF`` and overrides the file.
 

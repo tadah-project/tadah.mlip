@@ -136,7 +136,7 @@ a dataset.
 Early-rejection options
 -----------------------
 
-.. list-table:: Optional flags on any metric declaration
+.. list-table:: Optional flags on a metric declaration other than ``PC_ERSQ``
    :header-rows: 1
    :widths: 30 70
 
@@ -149,6 +149,14 @@ Early-rejection options
      - Reject when the metric exceeds this finite positive multiple
        of its best previously accepted value. No relative comparison
        is made before such a value exists.
+
+``PC_ERSQ`` takes neither flag: :math:`R^2` is better when higher, and a
+flag rejects a candidate whose metric is above its threshold, so it would
+reject the better fits.
+
+.. versionchanged:: 1.6.0
+   1.5.0 accepted both flags on ``PC_ERSQ``, where they rejected the
+   better fits.
 
 These checks happen after validation and before the physical-property
 targets. In the indexed form they apply separately to the selected

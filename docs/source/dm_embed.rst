@@ -220,10 +220,11 @@ the table's whole range, [0, rhomax] (the log's ``embedding fit window [0,
 default 60) is the iteration limit of the compact fit: a solve that stops
 there before converging is written with a WARNING naming the stop and the key.
 The compact fit evaluates the configured grids before the solve, so a table
-the declared ``FORM`` cannot follow is refused with its own message (``EAMRefit:
-the density component CU's FORM NONNEG cannot fit this table: ... Use FORM
-SIGNED in its DENSITY block.``); during the solve a trial point the component
-cannot be evaluated at is infeasible, and an internal error stops the refit.
+the declared ``FORM`` cannot follow is refused with its own message (``tadah
+refit: the density component CU's FORM NONNEG cannot fit this table: ... FORM
+SIGNED in its DENSITY block fits it.``); during the solve a trial point the
+component cannot be evaluated at is infeasible, and an internal error stops the
+refit.
 Its Ceres solve prints no progress lines whatever ``VERBOSE`` is (the INFO log
 has its summary).
 

@@ -9959,15 +9959,17 @@ TEST_CASE("Subcommand: hpo: a line of RCUT2B in a file that includes the "
 }
 #endif  // TADAH_ENABLE_NFP
 
-/* ---- [retired]: the published potentials of Tadah! 1.x -----------------
+/* ---- [published]: the potentials published with the documentation ------
  *
- * The potentials published with the documentation for this Tadah!
- * (docs/source/mlips: Tadah.Kr1, Tadah.Kr2 and tadah.n2; ta-dah.kr1 and
- * ta-dah.kr2 are in the file format of the discontinued Ta-dah!, which no
- * Tadah! reads) were written by Tadah! before 1.6.0: each has EWEIGHT,
- * FWEIGHT and SWEIGHT lines, which 1.6.0 retired. They stay as published:
- * every program that loads them works, with one notice per load that lists
- * those lines, and a fit refuses them with the conversion. */
+ * The potentials published with the documentation (docs/source/mlips:
+ * Tadah.Kr1, Tadah.Kr2 and tadah.n2; ta-dah.kr1 and ta-dah.kr2 are in the
+ * file format of the discontinued Ta-dah!, which no Tadah! reads) were fitted
+ * by Tadah! before 1.6.0. Their key lines are those of the model: the lines
+ * of the keys that weighted their fit (EWEIGHT, FWEIGHT, SWEIGHT, retired in
+ * 1.6.0) and of the run that wrote them (VERBOSE, NUMERIC) are in their
+ * training record, the comment block above the key lines that no loader
+ * reads. A potential with retired keys as key lines (a potential of an
+ * earlier version) keeps its tests on the fixtures of Tadah! 1.5.0. */
 
 namespace {
 
@@ -9986,32 +9988,48 @@ std::vector<std::size_t> key_line_numbers(const std::string& file,
   return out;
 }
 
+/* The key lines of the training record of the potential file @p file
+ * ("KEY v1 v2 ...", without the leading "# "), in order. */
+std::vector<std::string> training_record_lines(const std::string& file) {
+  std::ifstream in(file);
+  std::vector<std::string> out;
+  bool inside = false;
+  for (std::string line; std::getline(in, line);) {
+    if (line.rfind("# --- training record", 0) == 0) {
+      inside = true;
+    } else if (line.rfind("# --- end of training record", 0) == 0) {
+      inside = false;
+    } else if (inside && line.rfind("# ", 0) == 0) {
+      out.push_back(line.substr(2));
+    }
+  }
+  return out;
+}
+
 }  // namespace
 
-/* Pins: for each published potential P (copied into the scratch directory,
- * as a user downloads it), `tadah predict -p P -d D` (D a Kr dimer 4 A
- * apart for the Kr potentials, two N2 molecules for Tadah!N2) exits 0 with
- * energy.pred and gives one notice, "Retired keys EWEIGHT (line a of P),
- * FWEIGHT (line b of P) and SWEIGHT (line c of P) are ignored: ...", a, b
- * and c being the lines of the file that start with these keys; and `tadah
- * train -c T`, T being P with a DBFILE line of D added (the retrain route
- * of the Training page), exits 1 without writing pot.tadah, naming each
- * line and its conversion ("ESIGMA = 1000/(N sqrt(EWEIGHT))", "FSIGMA =
- * 1/sqrt(FWEIGHT)", "SSIGMA = 160.2/sqrt(SWEIGHT)"), the FWEIGHT and
- * SWEIGHT lines, of the forces and stresses each leaves out, as converted
- * by deleting the line. The Kr potentials converted as the refusal says
- * (those two lines deleted, EWEIGHT 1 as ESIGMA 500 for the 2-atom dimer)
- * train: exit 0 and pot.tadah. (The converted Tadah!N2 is refused by the
- * DIMER rule of a fit, which another case checks.)
- * Before the fix: the three were keys of the potential, which predict read
- * without a notice and a retrain applied (EWEIGHT 1: the squared residual
- * of the total energy); then the refusal gave FSIGMA = 1/sqrt(FWEIGHT) and
- * SSIGMA = 160.2/sqrt(SWEIGHT) for those lines too, and the configuration
- * converted so (FSIGMA 1, SSIGMA 160.2) was refused again. */
-TEST_CASE("Subcommand: the published potentials load with one notice of "
-          "their retired keys, and a fit refuses them with the conversion",
-          "[TadahCLI][predict][train][retired]") {
-  ScratchCwd cwd("published_retired");
+/* Pins: for each published potential P (Tadah.Kr1, Tadah.Kr2, tadah.n2,
+ * copied into the scratch directory as a user downloads it):
+ *  - its training record lists the retired keys of its fit, EWEIGHT,
+ *    FWEIGHT and SWEIGHT, and the run settings of the run that wrote it
+ *    (VERBOSE 0 for the Kr potentials, NUMERIC 15 for Tadah!N2), and none
+ *    of these is a key line;
+ *  - `tadah predict -p P -d D` (D a Kr dimer 4 A apart for the Kr
+ *    potentials, two N2 molecules for Tadah!N2) exits 0, gives no notice of
+ *    a retired key and writes the energies of P' -- P with the lines of its
+ *    training record as key lines, the file as published before -- digit
+ *    for digit; P' gives one notice of its retired keys;
+ *  - the Kr potentials retrain as the Training page says (P with a DBFILE
+ *    line added: exit 0 and pot.tadah). (Tadah!N2 is refused by the DIMER
+ *    rule of a fit, which another case checks.)
+ * Before the fix: P had the EWEIGHT, FWEIGHT, SWEIGHT and VERBOSE or
+ * NUMERIC lines as key lines (no training record): predict gave the notice
+ * of its retired keys ("Retired keys EWEIGHT (line 7 of Tadah.Kr1), ...")
+ * and a retrain was refused with their conversion. */
+TEST_CASE("Subcommand: the published potentials load without a notice of "
+          "retired keys, their fit's keys in the training record",
+          "[TadahCLI][predict][train][published]") {
+  ScratchCwd cwd("published_record");
   const std::string dir = TADAH_PUBLISHED_MLIPS_DIR;
   std::ofstream("kr.tadah")
       << "Kr dimer\n1 1 1\n-0.01\n40 0 0\n0 40 0\n0 0 40\n0 0 0\n0 0 0\n"
@@ -10022,69 +10040,55 @@ TEST_CASE("Subcommand: the published potentials load with one notice of "
          "N 14 10 9.45 0 0 0\nN 14 10 10.55 0 0 0\n\n";
   for (const char* name : {"Tadah.Kr1", "Tadah.Kr2", "tadah.n2"}) {
     INFO(name);
+    const bool n2 = std::string(name) == "tadah.n2";
     std::filesystem::copy_file(dir + "/" + name, name);
-    const std::string data =
-        std::string(name) == "tadah.n2" ? "n2.tadah" : "kr.tadah";
-    std::string listed;
-    for (const char* key : {"EWEIGHT", "FWEIGHT", "SWEIGHT"}) {
-      const std::vector<std::size_t> at = key_line_numbers(name, key);
-      REQUIRE(at.size() == 1u);
-      listed += std::string(key == std::string("EWEIGHT") ? ""
-                            : key == std::string("FWEIGHT") ? ", "
-                                                           : " and ") +
-                key + " (line " + std::to_string(at[0]) + " of " + name + ")";
+    const std::string data = n2 ? "n2.tadah" : "kr.tadah";
+    const std::vector<std::string> record = training_record_lines(name);
+    INFO("training record: " << record.size() << " lines");
+    for (const std::string key :
+         {std::string("EWEIGHT"), std::string("FWEIGHT"),
+          std::string("SWEIGHT"), std::string(n2 ? "NUMERIC" : "VERBOSE")}) {
+      INFO(key);
+      CHECK(key_line_numbers(name, key).empty());
+      CHECK(std::count_if(record.begin(), record.end(),
+                          [&](const std::string& l) {
+                            return l.rfind(key + " ", 0) == 0;
+                          }) == 1);
     }
+    // P': the record's lines as key lines.
     {
-      std::filesystem::remove("energy.pred");
-      const CliRun p = run_tadah({"tadah", "predict", "-p", name, "-d", data});
-      const std::string rep = reported(p);
-      INFO("predict: status " << p.status << "\n" << rep);
-      CHECK(p.status == 0);
-      CHECK(std::filesystem::exists("energy.pred"));
-      CHECK(count_lines_with(rep, "Retired keys") == 1u);
-      CHECK(contains(rep, "Retired keys " + listed + " are ignored"));
-    }
-    {
-      std::filesystem::remove("pot.tadah");
-      std::ofstream(std::string(name) + ".train")
-          << slurp(name) << "\nDBFILE " << data << "\n";
-      const CliRun t = run_tadah({"tadah", "train", "-c",
-                                  std::string(name) + ".train"});
-      const std::string rep = reported(t);
-      INFO("train: status " << t.status << "\n" << rep);
-      CHECK(t.status == 1);
-      CHECK(contains(rep, "ESIGMA = 1000/(N sqrt(EWEIGHT))"));
-      CHECK(contains(rep, "FSIGMA = 1/sqrt(FWEIGHT)"));
-      CHECK(contains(rep, "SSIGMA = 160.2/sqrt(SWEIGHT)"));
-      CHECK_FALSE(std::filesystem::exists("pot.tadah"));
-      for (const char* key : {"FWEIGHT", "SWEIGHT"}) {
-        const std::string sw = key == std::string("FWEIGHT") ? "FORCE"
-                                                             : "STRESS";
-        CHECK(contains(rep, "line " +
-                                std::to_string(key_line_numbers(name, key)[0]) +
-                                " of " + name + ".train; " + sw +
-                                " false here: converted by deleting the "
-                                "line)"));
-      }
-    }
-    if (std::string(name) == "tadah.n2") continue;
-    {
-      std::filesystem::remove("pot.tadah");
+      std::ofstream old(std::string(name) + ".keys");
+      for (const std::string& l : record) old << l << "\n";
       std::istringstream in(slurp(name));
-      std::ofstream out(std::string(name) + ".converted");
-      for (std::string line; std::getline(in, line);) {
-        std::istringstream ls(line);
-        std::string key;
-        ls >> key;
-        if (key == "FWEIGHT" || key == "SWEIGHT") continue;
-        out << (key == "EWEIGHT" ? std::string("ESIGMA 500") : line) << "\n";
-      }
-      out << "DBFILE " << data << "\n";
+      for (std::string line; std::getline(in, line);)
+        if (line.rfind("#", 0) != 0) old << line << "\n";
     }
-    const CliRun c = run_tadah({"tadah", "train", "-c",
-                                std::string(name) + ".converted"});
-    INFO("converted: status " << c.status << "\n" << reported(c));
-    CHECK(c.status == 0);
+    std::filesystem::remove("energy.pred");
+    const CliRun p = run_tadah({"tadah", "predict", "-p", name, "-d", data,
+                                "-o", "new.pred"});
+    const std::string rep = reported(p);
+    INFO("predict: status " << p.status << "\n" << rep);
+    CHECK(p.status == 0);
+    CHECK(count_lines_with(rep, "Retired key") == 0u);
+    const CliRun q = run_tadah({"tadah", "predict", "-p",
+                                std::string(name) + ".keys", "-d", data, "-o",
+                                "old.pred"});
+    INFO("predict of the record as key lines: status " << q.status << "\n"
+                                                       << reported(q));
+    CHECK(q.status == 0);
+    CHECK(count_lines_with(reported(q), "Retired keys") == 1u);
+    REQUIRE(std::filesystem::exists("new.pred"));
+    CHECK(slurp("new.pred") == slurp("old.pred"));
+    std::filesystem::remove("new.pred");
+    std::filesystem::remove("old.pred");
+    if (n2) continue;
+    std::filesystem::remove("pot.tadah");
+    std::ofstream(std::string(name) + ".train")
+        << slurp(name) << "DBFILE " << data << "\n";
+    const CliRun t = run_tadah({"tadah", "train", "-c",
+                                std::string(name) + ".train"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    CHECK(t.status == 0);
     CHECK(std::filesystem::exists("pot.tadah"));
   }
 }

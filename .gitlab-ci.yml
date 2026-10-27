@@ -21,7 +21,7 @@ build_debug:
   script:
     - cd ${DEBUG_DIR}
     - find . -name CMakeCache.txt -delete
-    - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DBUILD_TESTING=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
+    - cmake ../.. -DCMAKE_CXX_FLAGS="-g -O1 -Wall -Wpedantic -pedantic-errors -Wextra --coverage" -DTADAH_ENABLE_OPENMP=ON -DBUILD_TESTING=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - ctest --output-on-failure
     - cd ..; gcovr -e '.*tests.*|external|.*docs.*|.*examples.*|.*scripts.*|.*/_deps/(dlib|nlopt|Eigen|ceres|boost|catch2|tadah_cmake)[a-z0-9_-]*-src|build' -r .
@@ -37,7 +37,7 @@ build_release_shared:
     - export LD_LIBRARY_PATH=${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
     - export LIBRARY_PATH=${INSTALL_PATH}/lib:$LIBRARY_PATH
     - find . -name CMakeCache.txt -delete
-    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
+    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install
 # run basic cli commands    
@@ -75,7 +75,7 @@ build_release_static:
     - export LD_LIBRARY_PATH=${INSTALL_PATH}/lib:$LD_LIBRARY_PATH
     - export LIBRARY_PATH=${INSTALL_PATH}/lib:$LIBRARY_PATH
     - find . -name CMakeCache.txt -delete
-    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
+    - cmake ../.. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
     - make -j ${CPU_BUILD}
     - make install
 # run basic cli commands    
@@ -151,7 +151,7 @@ docs_sphinx:
       python -m pip install -r docs/requirements.txt
       # Doxygen XML for breathe. TADAH_BUILD_DOCS_ONLY skips heavy library
       # probes so configure is light.
-      cmake -S . -B build -DTADAH_BUILD_DOCS_ONLY=ON -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
+      cmake -S . -B build -DTADAH_BUILD_DOCS_ONLY=ON
       cmake --build build --target docs
       export TADAH_DOXYGEN_XML_DIR="$CI_PROJECT_DIR/build/docs/xml"
       # The generated pages read CORE's blueprint and HPO's key registry

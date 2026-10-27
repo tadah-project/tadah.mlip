@@ -10939,6 +10939,151 @@ TEST_CASE("Subcommand: train, hpo --check and check_bounds judge each "
   }
 }
 
+/* On the Ta-W data (kTaWDb), a pair of a descriptor's line written with *
+ * stands for each element pair of the data it matches, each judged on its
+ * own, under AUDIT error:
+ *  - TYPE2B D2_Blip 2 2 * * with RCUT2B 2.45, which holds the (Ta, W)
+ *    distances (from 2.4 A) and no (Ta, Ta) or (W, W) one: tadah train
+ *    exits 1, naming the finding "D2_Blip.RCUT2B: RCUT2B = 2.45 holds no
+ *    (Ta, Ta) or (W, W) pair of atoms of the dataset: the (Ta, Ta) and (W,
+ *    W) pairs add nothing to the descriptor, which sums over its other
+ *    element pairs alone." (the statistics of the audit reach the cutoff),
+ *    and writes no potential;
+ *  - TYPE2B D2_Blip 2 2 Ta * with RCUT2B 2.6, the (Ta, Ta) and (Ta, W)
+ *    pairs: exits 1, "D2_Blip.RCUT2B: RCUT2B = 2.6 holds no (Ta, Ta) pair of
+ *    atoms of the dataset: the (Ta, Ta) pair adds nothing to the
+ *    descriptor, ...", as Ta Ta Ta W does.
+ * Before the fix: a pair with * was judged as one pair, by the distances of
+ * every pair it matches together, from 2.4 A: both trained (exit 0). */
+TEST_CASE("Subcommand: train judges a pair of a descriptor's line with * as "
+          "each element pair of the data it matches",
+          "[TadahCLI][train][audit]") {
+  ScratchCwd cwd("audit_line_star_pairs");
+  { std::ofstream os("taw.db"); os << kTaWDb; }
+  auto config = [](const std::string& pairs, const std::string& rcut) {
+    std::string c = ta_w_pairs_config(rcut);
+    const std::string line = "TYPE2B D2_Blip 2 2 Ta Ta W W\n";
+    c.replace(c.find(line), line.size(), "TYPE2B D2_Blip 2 2 " + pairs + "\n");
+    return c;
+  };
+  std::ofstream("every.train") << config("* *", "2.45");
+  {
+    const CliRun r = run_tadah(
+        {"tadah", "train", "-c", "every.train", "-o", "every.tadah"});
+    const std::string rep = reported(r);
+    INFO("* * at 2.45: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "D2_Blip.RCUT2B: RCUT2B = 2.45 holds no (Ta, Ta) or "
+                        "(W, W) pair of atoms of the dataset: the (Ta, Ta) "
+                        "and (W, W) pairs add nothing to the descriptor, "
+                        "which sums over its other element pairs alone."));
+    CHECK_FALSE(std::filesystem::exists("every.tadah"));
+  }
+  std::ofstream("ta.train") << config("Ta *", "2.6");
+  {
+    const CliRun r =
+        run_tadah({"tadah", "train", "-c", "ta.train", "-o", "ta.tadah"});
+    const std::string rep = reported(r);
+    INFO("Ta * at 2.6: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "D2_Blip.RCUT2B: RCUT2B = 2.6 holds no (Ta, Ta) pair "
+                        "of atoms of the dataset: the (Ta, Ta) pair adds "
+                        "nothing to the descriptor"));
+    CHECK_FALSE(std::filesystem::exists("ta.tadah"));
+  }
+}
+
+/* On the Ta-W data (kTaWDb), TYPEMB DM_Blip 0 4 4 Ta Ta Ta W W W with
+ * RCUTMB 4.5, CGRIDMB 2.4 3.0 3.6 4.2 and SGRIDMB 5 5 5 5 (supports 0.4 A
+ * wide each side), whose first channel misses the (Ta, Ta) distances (2.86
+ * and 2.9 A) that the second reaches, and whose every channel reaches a
+ * pair of the line: tadah train under AUDIT error trains (exit 0, the
+ * potential written), the channels of the density judged together.
+ * Before the fix: each channel was judged by each pair on its own: tadah
+ * train exited 1, "FAIL DM_Blip.CGRIDMB: CGRIDMB(1) = 2.4 with SGRIDMB(1) =
+ * 5: the support of the blip, ... holds no (Ta, Ta) neighbour distance
+ * within RCUTMB = 4.5 (2.86 to 2.9 Å), so ρ gets nothing from the (Ta, Ta)
+ * pairs of atoms ...", although the descriptor gets the (Ta, Ta) pairs
+ * through its second channel. */
+TEST_CASE("Subcommand: train with AUDIT error takes a density whose channels "
+          "together reach each element pair of its line",
+          "[TadahCLI][train][audit]") {
+  ScratchCwd cwd("audit_line_pairs_channels");
+  { std::ofstream os("taw.db"); os << kTaWDb; }
+  std::ofstream("grid.train")
+      << "DBFILE taw.db\nATOM Ta W\nWATOM 73 74\nINIT2B false\nINITMB true\n"
+         "TYPEMB DM_Blip 0 4 4 Ta Ta Ta W W W\nRCTYPEMB Cut_Cos\n"
+         "RCUTMB 4.5\nCGRIDMB 2.4 3.0 3.6 4.2\nSGRIDMB 5 5 5 5\nBIAS false\n"
+         "VERBOSE 1\nMODEL M_BLR BF_Linear\nLAMBDA 1e-3\nAUDIT error\n";
+  const CliRun r =
+      run_tadah({"tadah", "train", "-c", "grid.train", "-o", "grid.tadah"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 0);
+  CHECK_FALSE(contains(rep, "FAIL"));
+  CHECK(std::filesystem::exists("grid.tadah"));
+}
+
+/* On the Ta-W data (kTaWDb), the OPTIM lines `tadah analysis suggest_bounds
+ * -c` writes for TYPE2B D2_Blip 2 2 Ta Ta W W with RCUT2B 5 pass `tadah
+ * analysis check_bounds` with that configuration (exit 0): the range of the
+ * cutoff starts at the largest low end of the ranges of the two pairs, the
+ * median of the (Ta, Ta) distances, "OPTIM RCUT2B (1) 2.880000e+00
+ * 5.000000e+00", so that each corner holds neighbour distances of each
+ * pair, as the audit judges each pair of the line on its own.
+ * Before the fix: the range held the range of each pair, from the median of
+ * the (W, W) distances, "OPTIM RCUT2B (1) 2.525000e+00 5.000000e+00", whose
+ * low end holds no (Ta, Ta) distance: check_bounds of the suggested lines
+ * exited 1, "16/32 corners produced FAIL findings". */
+TEST_CASE("Subcommand: the OPTIM lines analysis suggest_bounds writes for a "
+          "line of several element pairs pass analysis check_bounds",
+          "[TadahCLI][analysis][audit]") {
+  ScratchCwd cwd("suggest_check_line_pairs");
+  { std::ofstream os("taw.db"); os << kTaWDb; }
+  std::ofstream("far.train") << ta_w_pairs_config("5");
+  {
+    const CliRun r = run_tadah({"tadah", "analysis", "suggest_bounds", "-c",
+                                "far.train", "-o", "far_sb.hpo"});
+    INFO("suggest_bounds: status " << r.status << "\n" << reported(r));
+    REQUIRE(r.status == 0);
+  }
+  CHECK(contains(slurp("far_sb.hpo"),
+                 "\nOPTIM RCUT2B (1) 2.880000e+00 5.000000e+00\n"));
+  const CliRun r = run_tadah({"tadah", "analysis", "check_bounds", "-c",
+                              "far.train", "--hpotarget", "far_sb.hpo"});
+  INFO("check_bounds: status " << r.status << "\n" << reported(r) << "\n"
+                               << slurp("far_sb.hpo"));
+  CHECK(r.status == 0);
+}
+
+/* `tadah analysis suggest_bounds -c` of a configuration whose TYPE2B line
+ * names D2_Blip (line 5 of nocut.train) and which has no RCUT2B line exits
+ * 1 before the datasets are read, naming the line, the descriptor and the
+ * key: "analysis suggest_bounds: TYPE2B on line 5 of nocut.train names the
+ * descriptor D2_Blip, and the configuration has no RCUT2B line, which gives
+ * its cutoff".
+ * Before the fix: "ERROR: Key not found in the Context object: RCUT2B"
+ * (exit 1), which names neither the command nor the descriptor. */
+TEST_CASE("Subcommand: analysis suggest_bounds of a descriptor line without "
+          "its cutoff is refused naming the key",
+          "[TadahCLI][analysis]") {
+  ScratchCwd cwd("suggest_no_cutoff");
+  { std::ofstream os("taw.db"); os << kTaWDb; }
+  std::ofstream("nocut.train")
+      << "DBFILE taw.db\nATOM Ta W\nWATOM 73 74\nINIT2B true\n"
+         "TYPE2B D2_Blip 2 2 Ta Ta\nRCTYPE2B Cut_Cos\nCGRID2B 1 2\n"
+         "SGRID2B 1 1\n";
+  const CliRun r = run_tadah({"tadah", "analysis", "suggest_bounds", "-c",
+                              "nocut.train", "-o", "nocut.hpo"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "analysis suggest_bounds: TYPE2B on line 5 of "
+                      "nocut.train names the descriptor D2_Blip, and the "
+                      "configuration has no RCUT2B line, which gives its "
+                      "cutoff"));
+}
+
 /* `tadah analysis suggest_bounds -c` of a configuration whose many-body
  * term is a DESCRIPTOR block alone (the block of PAIRS Ta Ta and RADIUS 5,
  * kTaEmbedBlock; no TYPEMB, RCUT2B or RCUTMB line) on bcc Ta exits 0 and

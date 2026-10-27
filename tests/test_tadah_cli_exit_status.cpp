@@ -8361,10 +8361,17 @@ TEST_CASE("Subcommand: train -c reads a CONFIG include in place of its line: "
  *   - bias.train "BIAS true", "CONFIG pot.tadah", "DBFILE a.tadah" exits 1
  *     with "Key BIAS is set on line 1 of bias.train and on line <n> of
  *     pot.tadah (CONFIG on line 2 of bias.train): a key of one value is set
- *     once ...", <n> the line of BIAS in pot.tadah, and writes no potential;
+ *     once in a configuration file and the files it includes with CONFIG; a
+ *     potential's value is changed by editing its line in a copy of the
+ *     potential (the Training page of the documentation, Retraining from a
+ *     potential)", <n> the line of BIAS in pot.tadah, and writes no
+ *     potential;
  *   - model.train "CONFIG pot.tadah", "DBFILE a.tadah", "MODEL M_BLR
  *     BF_Linear" exits 1 with "Too many values for key MODEL on line 3 of
- *     model.train: MODEL takes at most 3, and its lines read so far give 4";
+ *     model.train: MODEL takes at most 3, and its lines read so far give 4,
+ *     with line <m> of pot.tadah (CONFIG on line 1 of model.train) before
+ *     it; a potential's value is changed ...", <m> the line of MODEL in
+ *     pot.tadah;
  *   - larger.train "RCUT2B 5.0", "CONFIG pot.tadah", "DBFILE a.tadah",
  *     "OUTFILE larger.tadah" exits 1 with "TYPE2B names 1 descriptor (D2_BP)
  *     but RCUT2B has 2 values, set on line 1 of larger.train and on line <r>
@@ -8380,7 +8387,10 @@ TEST_CASE("Subcommand: train -c reads a CONFIG include in place of its line: "
  * largest, 5.0; the potential works unchanged with RCUT2B 5.0 alone" and
  * wrote RCUT2B 5 (the largest cutoff was the model's), and smaller.train
  * exited 0 with the potential's RCUT2B 4.5, the line ignored with a
- * WARNING. */
+ * WARNING. Until the refusals of the parser named the lines of the key
+ * before a line and the way to change a potential's value, the BIAS
+ * refusal ended at the rule and the MODEL one at "... read so far give 4".
+ */
 TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG reads "
           "a line of the potential's keys as a second line: BIAS, MODEL and "
           "RCUT2B refused",
@@ -8411,6 +8421,12 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG reads "
   };
   const std::size_t bias_line = line_of("BIAS");
   REQUIRE(bias_line > 0u);
+  const std::size_t model_line = line_of("MODEL");
+  REQUIRE(model_line > 0u);
+  const std::string copy_advice =
+      "; a potential's value is changed by editing its line in a copy of the "
+      "potential (the Training page of the documentation, Retraining from a "
+      "potential)";
   const auto run_config = [](const std::string& file,
                              const std::string& body) {
     std::ofstream(file) << body;
@@ -8426,7 +8442,9 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG reads "
     CHECK(contains(rep, "Key BIAS is set on line 1 of bias.train and on line " +
                             std::to_string(bias_line) +
                             " of pot.tadah (CONFIG on line 2 of bias.train): "
-                            "a key of one value is set once"));
+                            "a key of one value is set once in a "
+                            "configuration file and the files it includes "
+                            "with CONFIG" + copy_advice));
     CHECK_FALSE(std::filesystem::exists("bias.tadah"));
   }
   {
@@ -8438,7 +8456,10 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG reads "
     CHECK(r.status == 1);
     CHECK(contains(rep, "Too many values for key MODEL on line 3 of "
                         "model.train: MODEL takes at most 3, and its lines "
-                        "read so far give 4"));
+                        "read so far give 4, with line " +
+                            std::to_string(model_line) +
+                            " of pot.tadah (CONFIG on line 1 of model.train) "
+                            "before it" + copy_advice));
     CHECK_FALSE(std::filesystem::exists("model.tadah"));
   }
   const std::size_t rcut_line = line_of("RCUT2B");
@@ -8473,6 +8494,112 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG reads "
                             "3 of smaller.train" + one));
     CHECK_FALSE(std::filesystem::exists("smaller.tadah"));
   }
+}
+
+/* A configuration file of a command that writes one file takes one
+ * OUTFILE value, as the option -o does, over its lines and the files they
+ * include with CONFIG. inc.train is the pair configuration of the
+ * [retrain] cases on b.tadah with "OUTFILE b_out.tadah" on its last line,
+ * <o>; plain.train is that configuration without it:
+ *   - out.train "OUTFILE a_out.tadah", "CONFIG inc.train": `tadah train -c`
+ *     exits 1 with "Key OUTFILE is set on line 1 of out.train and on line
+ *     <o> of inc.train (CONFIG on line 2 of out.train): a key of one value
+ *     is set once in a configuration file and the files it includes with
+ *     CONFIG" and writes neither file;
+ *   - one.train "OUTFILE a_out.tadah b_out.tadah", "CONFIG plain.train":
+ *     `tadah train -c` exits 1 with "Too many values for key OUTFILE on line
+ *     1 of one.train: OUTFILE of tadah train takes at most 1, and its lines
+ *     read so far give 2" and writes neither file, and `tadah analysis
+ *     suggest_bounds -c` with "... OUTFILE of tadah analysis suggest_bounds
+ *     takes at most 1, ...".
+ * Before the fix: each run exited 0 and wrote a_out.tadah, b_out.tadah
+ * ignored without a message (Tadah! 1.5.0 wrote b_out.tadah for out.train:
+ * the include replaced the line above it). */
+TEST_CASE("Subcommand: a configuration file takes one OUTFILE value over "
+          "its CONFIG includes",
+          "[TadahCLI][train][config-include]") {
+  ScratchCwd cwd("config_include_outfile");
+  std::ofstream("b.tadah") << dimers_with_energy("-1.1");
+  const std::string plain = dataset_keys_config("b.tadah", "");
+  std::ofstream("plain.train") << plain;
+  std::ofstream("inc.train") << plain << "OUTFILE b_out.tadah\n";
+  const std::size_t o = lines_in(plain) + 1;
+  {
+    std::ofstream("out.train") << "OUTFILE a_out.tadah\nCONFIG inc.train\n";
+    const CliRun r = run_tadah({"tadah", "train", "-c", "out.train"});
+    const std::string rep = reported(r);
+    INFO("-c out.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key OUTFILE is set on line 1 of out.train and on "
+                        "line " + std::to_string(o) +
+                            " of inc.train (CONFIG on line 2 of out.train): a "
+                            "key of one value is set once in a configuration "
+                            "file and the files it includes with CONFIG"));
+    CHECK_FALSE(std::filesystem::exists("a_out.tadah"));
+    CHECK_FALSE(std::filesystem::exists("b_out.tadah"));
+  }
+  std::ofstream("one.train")
+      << "OUTFILE a_out.tadah b_out.tadah\nCONFIG plain.train\n";
+  for (const std::vector<std::string> command :
+       {std::vector<std::string>{"train"},
+        std::vector<std::string>{"analysis", "suggest_bounds"}}) {
+    std::vector<std::string> args{"tadah"};
+    std::string words = "tadah";
+    for (const std::string& w : command) {
+      args.push_back(w);
+      words += " " + w;
+    }
+    args.insert(args.end(), {"-c", "one.train"});
+    const CliRun r = run_tadah(args);
+    const std::string rep = reported(r);
+    INFO(words << " -c one.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Too many values for key OUTFILE on line 1 of "
+                        "one.train: OUTFILE of " + words +
+                            " takes at most 1, and its lines read so far "
+                            "give 2"));
+    CHECK_FALSE(std::filesystem::exists("a_out.tadah"));
+    CHECK_FALSE(std::filesystem::exists("b_out.tadah"));
+  }
+}
+
+/* Pins: the example of the Quick Start (Config File). common.train has
+ * "DBFILE eos.tadahdb", "BIAS false"; run.train "CONFIG common.train",
+ * "DBFILE elastic.tadahdb", "BIAS true": `tadah train -c run.train` exits 1
+ * with the message the page quotes, "Key BIAS is set on line 2 of
+ * common.train (CONFIG on line 1 of run.train) and on line 3 of run.train:
+ * a key of one value is set once in a configuration file and the files it
+ * includes with CONFIG". An unknown key of an included file is named with
+ * the CONFIG line that includes it: wrong.train "BIAS false", "CONFIG
+ * bad.train", bad.train "FOOBAR 1", "Invalid key FOOBAR on line 1 of
+ * bad.train (CONFIG on line 2 of wrong.train) (closest key: ".
+ * Before the fix: the first passes as well; the second named bad.train
+ * alone ("Invalid key FOOBAR on line 1 of bad.train (closest key: "). */
+TEST_CASE("Subcommand: train -c names the lines of a key set twice and the "
+          "CONFIG line of an included line, as the Quick Start shows",
+          "[TadahCLI][train][config-include]") {
+  ScratchCwd cwd("config_include_quickstart");
+  std::ofstream("common.train") << "DBFILE eos.tadahdb\nBIAS false\n";
+  std::ofstream("run.train")
+      << "CONFIG common.train\nDBFILE elastic.tadahdb\nBIAS true\n";
+  {
+    const CliRun r = run_tadah({"tadah", "train", "-c", "run.train"});
+    const std::string rep = reported(r);
+    INFO("-c run.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key BIAS is set on line 2 of common.train (CONFIG on "
+                        "line 1 of run.train) and on line 3 of run.train: a "
+                        "key of one value is set once in a configuration "
+                        "file and the files it includes with CONFIG"));
+  }
+  std::ofstream("bad.train") << "FOOBAR 1\n";
+  std::ofstream("wrong.train") << "BIAS false\nCONFIG bad.train\n";
+  const CliRun r = run_tadah({"tadah", "train", "-c", "wrong.train"});
+  const std::string rep = reported(r);
+  INFO("-c wrong.train: status " << r.status << "\n" << rep);
+  CHECK(r.status == 1);
+  CHECK(contains(rep, "Invalid key FOOBAR on line 1 of bad.train (CONFIG on "
+                      "line 2 of wrong.train) (closest key: "));
 }
 
 /* Pins: `tadah predict -F --zero-com-force` zeroes the net reference force

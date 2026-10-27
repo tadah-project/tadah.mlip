@@ -60,8 +60,15 @@ These are root keys, independent of the ``OPTIMIZER`` block.
 
 For a finite soft limit :math:`t`, the derived hard deadline is
 :math:`\max(3t,t+120\,\mathrm{s})`. With no soft timeout, ``0`` means no
-hard deadline. ``PC_WORKER_TIMEOUT`` affects ``PROCESS`` mode only.
-Deadlines exceeding the worker's millisecond-counter range are refused.
+hard deadline. Deadlines exceeding the worker's millisecond-counter
+range are refused. Under ``THREAD`` the scripts have no worker deadline,
+so :hpo:key:`PC_WORKER_TIMEOUT` and
+:hpo:key:`TADAH_PC_WORKER_TIMEOUT <ENV.TADAH_PC_WORKER_TIMEOUT>` are
+refused there.
+
+.. versionchanged:: 1.6.0
+   1.5.0 accepted :hpo:key:`!PC_WORKER_TIMEOUT` under ``THREAD``, where it
+   had no effect.
 
 :hpo:key:`PC_SCRIPT_TIMEOUT` accepts ``90``, ``1:30`` and ``00:01:30``
 for 90 seconds; ``off`` disables the limit, while ``0`` is invalid. A
@@ -84,7 +91,7 @@ PC_FAILPROBE
 A probe supplies a scalar violation measure used by
 :doc:`failure grading <nfp_losses>` and can reject a candidate before
 all its property calculations finish. At most one probe is allowed.
-It runs at the front of the first batch of scripts; other scripts may
+It runs at the front of the first group of scripts; other scripts may
 already be running when its result becomes available.
 
 .. code-block:: none

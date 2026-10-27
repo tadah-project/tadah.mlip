@@ -429,7 +429,9 @@ with the values
 as the configuration file or the command line wrote them
 (``NUMERIC`` does not change them). ``CHECK`` is listed by ``tadah train``
 and ``tadah refit``, which do not read it; a ``tadah hpo`` potential lists
-none. A key nobody set is not
+none. The records of the native Tadah! potentials of :ref:`mlips` also
+list the retired keys that weighted their fit
+(:ref:`fit_objective_conversion`). A key nobody set is not
 listed: the defaults tadah takes (``VERBOSE 1``, ``OUTFILE pot.tadah``,
 ``ESHIFT_ATOM false``, ...) are left out, so ``tadah train -c config.train`` records the ``DBFILE`` of
 ``config.train`` alone, and ``-o pot2.tadah -v 0`` adds ``VERBOSE 0`` and
@@ -586,7 +588,7 @@ pins model weights``).
 
 The fit replaces what the potential holds of its own fit (``WEIGHTS``,
 those ``FIXINDEX`` pins excepted, the ``BASIS`` of a non-linear kernel,
-``NMEAN``, ``NSTDEV``, ``SIGMA``); none of
+``NMEAN``, ``NSTDEV``); none of
 it is read when the model is built, so the retrain may also change, for
 example, ``SBASIS`` or the descriptor. The other key lines are the model of
 the first fit, with its ``LSCALE`` and ``ESHIFT``: the energy reference of
@@ -601,7 +603,13 @@ until the copy has the converted keys in their place or, for a line the
 refusal marks (``UNCERTAINTY``, a quantity the fit leaves out,
 ``WDBFILE_AUTO 0``, or any line under M_KRR implementation 2), none
 (:ref:`fit_objective_conversion` gives the conversions of the keys that
-weighted the training data). The ``WDBFILE`` values of the
+weighted the training data). A potential of an ``OALGO 3`` fit of Tadah!
+1.0.0 to 1.5.0 also has a :ref:`SIGMA` line, a deprecated key: the same
+refusal names it, and the line is deleted from the copy. A potential of
+Tadah! 1.0.0 to 1.5.0 whose only descriptor is ``D2_EAM`` has a
+:ref:`WATOM` line of the atomic numbers, which no descriptor reads: the
+same refusal names it, and the line is deleted from the copy. The
+``WDBFILE`` values of the
 conversion of ``WDBFILE_AUTO`` are not read in the copy: they are given as
 the retrain's own, below.
 

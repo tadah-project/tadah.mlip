@@ -59,17 +59,31 @@ Run the selected optimiser once::
 Multiple searches: MULTISTART
 -----------------------------
 
-``MULTISTART`` uses up to ``min(N_STARTS, available INIT points)``
-separate starts. :doc:`nfp_initialisation` supplies the points. The
-points after the first ``N_STARTS`` are not evaluated, and a startup
-warning says so. ``MULTISTART`` runs a local optimiser from each start.
-It refuses a global optimiser that takes one starting point, and an
-optimiser that takes every ``INIT`` point in one run, ``DLIB:GFS``,
-which it would run once whatever ``N_STARTS``. ``TYPE PLAIN`` runs either
-once; ``DLIB:GFS`` then takes every ``INIT`` point.
+``MULTISTART`` runs :hpo:key:`N_STARTS <STRATEGY.N_STARTS>` separate
+starts, one from each of the first
+:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` points of the
+:hpo:block:`INIT <BLOCK.INIT>` chain; :doc:`nfp_initialisation` supplies
+the points. ``MULTISTART`` runs a local optimiser from each start. It
+refuses a global optimiser that takes one starting point, and an
+optimiser that takes every :hpo:block:`!INIT <BLOCK.INIT>` point in one
+run, :hpo:opt:`DLIB:GFS`, which it would run once whatever
+:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>`.
+:hpo:key:`TYPE PLAIN <STRATEGY.TYPE.PLAIN>` runs either once;
+:hpo:opt:`!DLIB:GFS` then takes every :hpo:block:`!INIT <BLOCK.INIT>`
+point.
+
+An :hpo:block:`!INIT <BLOCK.INIT>` chain that gives fewer points than
+:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` is refused at startup
+(``tadah hpo --check`` too). The entry of
+:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` says how the points are
+counted, and when a chain drawn with fewer points runs fewer starts. The
+points after the first :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` are not
+evaluated, and a startup warning says so.
 
 .. versionchanged:: 1.6.0
-   In 1.5.0 ``MULTISTART`` accepted ``DLIB:GFS`` and ran it once.
+   1.5.0 accepted :hpo:opt:`!DLIB:GFS` under ``MULTISTART`` and ran it
+   once, and ran fewer starts than :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>`
+   from a chain of fewer points.
 
 If ``BUDGET_PER_START`` is absent, a main ``MAXEVAL M`` is divided among
 ``k`` actual starts as ``ceil(M/k)`` per start. Rounding can make the sum

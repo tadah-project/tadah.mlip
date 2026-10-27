@@ -56,8 +56,8 @@ uses ``INIT``; the restart chain is used only after stagnation.
 Restart scope
 -------------
 
-A restart relaunches the whole policy: a ``PLAIN`` search, the
-``MULTISTART`` batch, or both ``PRESTAGE`` phases. Separate starts and
+A restart relaunches the whole policy: a ``PLAIN`` search, all the
+``MULTISTART`` starts, or both ``PRESTAGE`` phases. Separate starts and
 refinement seeds have separate stagnation windows. A stagnating
 exploration hands its candidates to refinement before the enclosing
 policy can restart.
@@ -65,6 +65,22 @@ policy can restart.
 Each relaunch gets fresh search budgets. Reaching an optimiser's own
 stop normally ends the policy. Restarts are triggered by stagnation.
 After ``MAX`` restarts, the next stagnation ends the run.
+
+:hpo:opt:`TADAH:ANNEAL_PT`, :hpo:opt:`TADAH:ANNEAL_PA` and
+:hpo:opt:`ASA:ASA` with
+:hpo:param:`Gener_Block_Max <PARAM.ASA:ASA.Gener_Block_Max>` above 1
+evaluate several points at once. They count the window in the order of
+the evaluation numbers, in which the run records the evaluations of a
+:term:`batch` (see :ref:`nfp_evaluation_numbers`). The window therefore
+closes at the same evaluation whatever the timing of the workers. It does
+so at any :hpo:key:`THREADS <OPTIMIZER.THREADS>` under the conditions of
+that section. When it closes during a batch, the later evaluations of the
+batch still run and are recorded, and the restart follows the batch.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 the window closed at the evaluation that ended first past it,
+   and the other replicas or walkers of an annealer stopped at their next
+   proposal.
 
 A chain that produces no point reuses the previous launch's starting
 points and emits a warning. An exploration with its own ``INIT`` chain

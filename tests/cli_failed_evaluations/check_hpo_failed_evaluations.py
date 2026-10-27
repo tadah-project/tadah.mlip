@@ -65,10 +65,15 @@ evaluation's row records FAILSCORE.
                WARNING and DIAGNOSTICS "Out-of-box points : 1"; it is the
                only row outside the box; the best lies in the box; the
                search ends "FAILURE (Numerical failure in line search)"
-               after 41 evaluations, status 0. Until then 0.9 was evaluated
-               there (a failure of the skip cap, FAILSCORE), with the
-               WARNING "... lies outside its OPTIM box [1, 2] and is
-               evaluated there".
+               after 22 evaluations, its line search taking each step 1e-3
+               of the one before (1.899, 1.899999, ...), status 0. Until
+               Ceres was given a failed evaluation's loss scaled to at most
+               1e100 it made 41: its polynomial through the score of 0.9,
+               near the largest double, overflowed, and each step shrank to
+               about 0.3 of the one before. Until no point outside the box
+               was evaluated, 0.9 was evaluated there (a failure of the
+               skip cap, FAILSCORE), with the WARNING "... lies outside its
+               OPTIM box [1, 2] and is evaluated there".
   fd_inside    DLIB:BFGS from CGRID2B[2] = 1.25, inside the failure region:
                the start and its stencil 1.45 and 1.05 fail. The failed
                loss at the start fails its gradient before the stencil is
@@ -220,7 +225,7 @@ OPTIM CGRID2B (2) 1.0 2.0
 """,
     },
     "ceres_box": {
-        "oalgo": 4, "bias": "false", "evals": 41, "usable": True,
+        "oalgo": 4, "bias": "false", "evals": 22, "usable": True,
         "kind": "ceres_box",
         "tadah_grids": ("CGRID2B 0.5 1.9", "SGRID2B 3.0 5.0", 2),
         "hpo": """OPTIMIZER

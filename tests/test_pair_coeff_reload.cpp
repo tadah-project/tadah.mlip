@@ -1025,10 +1025,9 @@ static std::string without_key_lines(const std::string& text,
 #endif
 
 /* Pins: a potential of Tadah! 1.5.0 (kTa150, its EWEIGHT, FWEIGHT, SWEIGHT,
- * UNCERTAINTY and WDBFILE_AUTO lines on lines 8, 10, 23, 25 and 27) and the
- * published Tadah!Kr1 (docs/source/mlips/Tadah.Kr1, a copy: its EWEIGHT,
- * FWEIGHT and SWEIGHT lines on lines 7, 9 and 20), each given to pair_coeff
- * twice in one LAMMPS instance (pair_coeff, run 0, pair_coeff, run 0),
+ * UNCERTAINTY and WDBFILE_AUTO lines on lines 8, 10, 23, 25 and 27), given
+ * to pair_coeff twice in one LAMMPS instance (pair_coeff, run 0,
+ * pair_coeff, run 0),
  * write one LAMMPS WARNING per pair_coeff that lists the retired keys with
  * their lines ("WARNING: pair tadah: potential '<file>': Retired keys
  * EWEIGHT (line 8 of <file>), FWEIGHT (line 10 of <file>), SWEIGHT (line 23
@@ -1038,7 +1037,8 @@ static std::string without_key_lines(const std::string& text,
  * instance given the same file without those lines, to 1e-12.
  * Before the fix: the keys were stored as keys of the model, with no
  * WARNING; before UNCERTAINTY was retired, the WARNING did not list its
- * line. */
+ * line. (The published Tadah!Kr1 was a second case until its retired keys
+ * moved into its training record: the case below.) */
 TEST_CASE("pair_style tadah: a potential with retired keys gives one notice "
           "per pair_coeff, and the energy of the file without them",
           "[pair_coeff][lammps][retired]") {
@@ -1050,14 +1050,10 @@ TEST_CASE("pair_style tadah: a potential with retired keys gives one notice "
     std::string tag, text, species;
     std::vector<std::pair<std::string, int>> retired;  // key, line
   };
-  const std::string kr1 =
-      read_text(std::string(TADAH_PUBLISHED_MLIPS_DIR) + "/Tadah.Kr1");
-  REQUIRE_FALSE(kr1.empty());
   const std::vector<Case> cases = {
       {"ta150", kTa150, "Ta",
        {{"EWEIGHT", 8}, {"FWEIGHT", 10}, {"SWEIGHT", 23},
-        {"UNCERTAINTY", 25}, {"WDBFILE_AUTO", 27}}},
-      {"kr1", kr1, "Kr", {{"EWEIGHT", 7}, {"FWEIGHT", 9}, {"SWEIGHT", 20}}}};
+        {"UNCERTAINTY", 25}, {"WDBFILE_AUTO", 27}}}};
   for (const Case& c : cases) {
     INFO(c.tag);
     const PotFile pot(c.tag, c.text.c_str());
@@ -1102,6 +1098,50 @@ TEST_CASE("pair_style tadah: a potential with retired keys gives one notice "
     CHECK(lines_with_all(log, {"Retired key"}) == 2u);
     CHECK(err.str().find("Retired key") == std::string::npos);
   }
+#endif
+}
+
+/* Pins: the published Tadah!Kr1 (docs/source/mlips/Tadah.Kr1, a copy),
+ * given to pair_coeff twice in one LAMMPS instance, writes no WARNING of
+ * retired keys (its EWEIGHT, FWEIGHT and SWEIGHT lines are in its training
+ * record), and both runs give the energy and force norm of a fresh
+ * instance given the same file, to 1e-12.
+ * Before the fix: each pair_coeff wrote "WARNING: pair tadah: potential
+ * '<file>': Retired keys EWEIGHT (line 7 of <file>), FWEIGHT (line 9 of
+ * <file>) and SWEIGHT (line 20 of <file>) are ignored: ...". */
+TEST_CASE("pair_style tadah: the published Tadah!Kr1 loads without a "
+          "warning of retired keys",
+          "[pair_coeff][lammps][published]") {
+#ifndef TADAH_ENABLE_NFP
+  TADAH_SKIP("pair_style tadah is not built (TADAH_ENABLE_NFP OFF)");
+#else
+  tadah::core::PeriodicTable::initialize();
+  const std::string kr1 =
+      read_text(std::string(TADAH_PUBLISHED_MLIPS_DIR) + "/Tadah.Kr1");
+  REQUIRE_FALSE(kr1.empty());
+  const PotFile pot("kr1_published", kr1.c_str());
+  const Energy want = fresh_file(pot.path, "Kr", 1);
+  const std::string log_path = "pair_coeff_reload_" +
+                               std::to_string(::getpid()) + "_kr1_published.log";
+  const RemoveOnExit remove_log{log_path};
+  std::ostringstream err;
+  std::streambuf* old = std::cerr.rdbuf(err.rdbuf());
+  Energy first, second;
+  {
+    LMPPtr lmp = make_instance(log_path);
+    make_cell(lmp, 1);
+    ok(lmp, "pair_coeff * * " + pot.path + " Kr");
+    first = run0(lmp);
+    ok(lmp, "pair_coeff * * " + pot.path + " Kr");
+    second = run0(lmp);
+  }  // LAMMPS destroyed: log.lammps flushed and closed
+  std::cerr.rdbuf(old);
+  const std::string log = read_text(log_path);
+  INFO("log.lammps:\n" << log << "\nstderr:\n" << err.str());
+  CHECK(same(first, want));
+  CHECK(same(second, want));
+  CHECK(lines_with_all(log, {"Retired key"}) == 0u);
+  CHECK(err.str().find("Retired key") == std::string::npos);
 #endif
 }
 

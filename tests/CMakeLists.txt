@@ -278,6 +278,27 @@ set_tests_properties(tadah_docs_site_layout PROPERTIES
   SKIP_RETURN_CODE 77
   ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
 
+# The example of the Configuration File page (section "Common Usage", whose
+# source is the header of docs/source/config/read_toml.py) against tadah:
+# config_page/check_config_page_example.py runs the section's tadah command
+# on a training configuration without DBFILE and checks that it exits with
+# the status the section states and that each line the section quotes
+# starts a line of its output.
+# Before the fix: fails -- the section quoted "terminate called after
+# throwing an instance of 'std::runtime_error'", "what():  Key not found:
+# DBFILE" and "Aborted (core dumped)" and stated no exit status; tadah
+# train prints "ERROR: The training configuration has no DBFILE: ..." and
+# exits 1.
+add_test(NAME tadah_docs_config_page_example
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/config_page/check_config_page_example.py
+    --tadah $<TARGET_FILE:tadah>
+    --page ${PROJECT_SOURCE_DIR}/docs/source/config/read_toml.py)
+set_tests_properties(tadah_docs_config_page_example PROPERTIES
+  LABELS docs
+  TIMEOUT 120
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
 
 # ------------------------------------------------------------------
 # 7b. The balance table of a fit
@@ -669,6 +690,28 @@ if(TADAH_ENABLE_NFP)
   set_tests_properties(tadah_without_nfp_links PROPERTIES
     LABELS cmake
     TIMEOUT 900
+    PROCESSORS ${_wn_jobs}
+    RESOURCE_LOCK tadah_header_check)
+  # tadah_without_nfp_tests: test_tadah as a build without NFP compiles it
+  # (without_nfp/CMakeLists.txt: test_tadah_without_nfp, not part of `all`)
+  # builds, and its [not-built] cases, which only such a build compiles,
+  # pass (without_nfp/check_tests_without_nfp.cmake). Pins that every test
+  # source compiles without TADAH_ENABLE_NFP: a helper defined inside an
+  # #ifdef TADAH_ENABLE_NFP block and used outside it stops the build.
+  # Before the fix: the build failed ("'pot_key' was not declared in this
+  # scope", tests/test_tadah_cli_exit_status.cpp), so a build with
+  # -DBUILD_TESTING=ON and NFP OFF had no test_tadah.
+  add_test(NAME tadah_without_nfp_tests
+    COMMAND ${CMAKE_COMMAND}
+      -DBUILD_DIR=${CMAKE_BINARY_DIR}
+      -DCONFIG=$<CONFIG>
+      -DJOBS=${_wn_jobs}
+      -DEXE=$<TARGET_FILE:test_tadah_without_nfp>
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/without_nfp/tests_work
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/without_nfp/check_tests_without_nfp.cmake)
+  set_tests_properties(tadah_without_nfp_tests PROPERTIES
+    LABELS cmake
+    TIMEOUT 1800
     PROCESSORS ${_wn_jobs}
     RESOURCE_LOCK tadah_header_check)
 endif()

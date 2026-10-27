@@ -123,6 +123,12 @@ Practical rules
 • Training on a dataset expressed in *any* units still works, provided *all*
   quantities in *all* structures use the same unit system.
 
+• A CASTEP ``.castep`` file is read in CASTEP's default output units, Å,
+  eV, eV/Å and GPa. A run whose header names another unit
+  (``output energy unit : Ha``, set by ``energy_unit``, ``length_unit``,
+  ``force_unit`` or ``pressure_unit`` in its ``.param`` file) is refused,
+  naming the file, the line and the unit.
+
 • The error scales of a fit are given for data in eV and Å: ``ESIGMA`` in
   meV/atom, ``FSIGMA`` in eV/Å and ``SSIGMA`` in GPa (:ref:`fit_objective`).
   With data in other units a fit reads ``ESIGMA``/1000 and ``FSIGMA`` in the

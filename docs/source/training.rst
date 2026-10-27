@@ -56,7 +56,9 @@ in order:
    default): it checks the parameters of each descriptor against the
    neighbour distances of the element pairs it sums over (those its
    ``TYPE2B`` or ``TYPEMB`` line names, or the ``PAIRS`` of its
-   ``DESCRIPTOR`` block).
+   ``DESCRIPTOR`` block), each pair on its own: a cutoff that holds no
+   distance of one pair fails, as that pair adds nothing to the
+   descriptor.
 #. **Fitting the regression model** declared by ``MODEL``: it minimises
    the sum of :ref:`fit_objective`, with the :term:`error scales
    <error scale>` of the configuration and the :term:`priorities
@@ -681,9 +683,10 @@ A second line of such a key in the copy, such as ``RCUT2B 6.0`` appended to
 ``TYPEMB`` line other than those tadah writes, such as a descriptor's line
 appended to a ``D2_mJoin`` potential. Every command that reads the copy
 with ``-c``, or a file that includes it with ``CONFIG``, refuses it:
-``tadah train``, ``tadah hpo``, ``tadah refit`` and the analysis commands
-that take ``-c``. So does ``tadah refit --edit`` of the copy. In the
-refusal, ``<a>`` and ``<b>`` are the two ``RCUT2B`` lines:
+``tadah train``, ``tadah hpo``, ``tadah refit`` (``--retarget``
+included) and the analysis commands that take ``-c``. So does
+``tadah refit --edit`` of the copy. In the refusal, ``<a>`` and ``<b>``
+are the two ``RCUT2B`` lines:
 
 .. code-block:: text
 

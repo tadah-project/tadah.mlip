@@ -55,18 +55,24 @@ These are root keys, independent of the ``OPTIMIZER`` block.
    * - ``PC_WORKER_TIMEOUT``
      - ``0``
      - Finite, nonnegative seconds for a hard worker-process deadline.
-       ``0`` derives the deadline from each script's soft timeout.
+       ``0`` derives the deadline from the soft limit of each script
+       line.
 
 For a finite soft limit :math:`t`, the derived hard deadline is
 :math:`\max(3t,t+120\,\mathrm{s})`. With no soft timeout, ``0`` means no
 hard deadline. ``PC_WORKER_TIMEOUT`` affects ``PROCESS`` mode only.
 Deadlines exceeding the worker's millisecond-counter range are refused.
 
-``PC_SCRIPT_TIMEOUT`` accepts ``90``, ``1:30`` and ``00:01:30`` for
-90 seconds; ``off`` disables the limit, while ``0`` is invalid. Each script line
-captures the current value when parsed; ``--maxtime`` overrides it for
-that line. Root ``MAXTIME`` is a legacy alias for this key. ``MAXTIME``
-inside an optimiser block instead limits an optimiser search.
+:hpo:key:`PC_SCRIPT_TIMEOUT` accepts ``90``, ``1:30`` and ``00:01:30``
+for 90 seconds; ``off`` disables the limit, while ``0`` is invalid. A
+:hpo:key:`PC_LAMMPS` or :hpo:key:`PC_FAILPROBE` line without
+:hpo:key:`--maxtime` reads the :hpo:key:`!PC_SCRIPT_TIMEOUT` above it
+when the line is read; ``--maxtime`` gives the line its own limit. A
+second :hpo:key:`!PC_SCRIPT_TIMEOUT` line is refused unless a line
+between reads the first, and so is one that no line after it reads. The
+top-level :hpo:key:`MAXTIME <ROOT.MAXTIME>` is another name for this
+key. :hpo:key:`MAXTIME <OPTIMIZER.MAXTIME>` inside an optimiser block
+instead limits an optimiser search.
 
 The environment variables ``TADAH_PC_ISOLATION`` and
 ``TADAH_PC_WORKER_TIMEOUT`` override the corresponding keys.
@@ -88,7 +94,7 @@ already be running when its result becomes available.
    PC_FAILPROBE --script failprobe.in --outvar S --gate 100 --s0 1
 
 ``--script`` and at least one ``--outvar`` are required. The first
-``--outvar`` is the probe scalar: it should be nonnegative, with zero
+``--outvar`` is the probe value: it should be nonnegative, with zero
 indicating no detected violation. Additional outputs are diagnostics.
 
 .. list-table:: Probe options
@@ -98,23 +104,28 @@ indicating no detected violation. Additional outputs are diagnostics.
    * - Option
      - Meaning
    * - ``--gate <threshold>``
-     - With grading ``ON``, reject if the probe scalar exceeds this
-       finite threshold. Omit it to disable probe-based rejection.
+     - An evaluation whose probe value exceeds this finite threshold
+       fails, with a graded score under ``ON`` and ``FAILSCORE`` under
+       ``OFF``. Without it only a probe failure (see ``--failscore``)
+       fails the evaluation.
    * - ``--s0 <scale>``
      - Finite positive saturation scale for the grading curve;
-       default ``1``.
+       default ``1``. Refused with grading ``OFF``.
    * - ``--failscore <value>``
      - Finite positive replacement value when the probe fails;
-       defaults to root ``FAILSCORE`` at the probe line. A scalar at
-       or above this value also counts as probe failure.
+       defaults to the top-level ``FAILSCORE`` above the probe line. A
+       probe value at or above this value also counts as a probe
+       failure, and so does a negative or non-finite one.
    * - ``--invar``, ``--outvar``, ``--maxtime``
      - Same syntax as :doc:`LAMMPS line options <nfp_lammps_options>`.
 
 A probe takes no ``--varloss``, ``--hotvar`` or ``--failvar`` and adds no
-ordinary loss term. With grading ``OFF``, its threshold and severity
-measure are inactive; a script or scalar-readback failure still fails
-the evaluation. The probe's requested output variables must follow the
-same equal-style contract as other script outputs.
+loss term: a target file with a probe and no validation metric,
+``PC_LAMMPS`` or ``PC_OBSERVABLE`` line has no loss source and is
+refused. A probe failure, and a probe value above ``--gate``, fail the
+evaluation in both grading modes (see :ref:`nfp_failscore_grading`). The
+probe's requested output variables must follow the same equal-style
+contract as other script outputs.
 
 .. toctree::
    :maxdepth: 1

@@ -65,8 +65,8 @@ Some adapters impose stricter ranges or use a setting differently:
 
 * ``DLIB:BFGS`` uses ``FTOL_ABS`` (default ``1e-7``) as its
   objective-change stop, or positive ``PARAM tol_gradinf`` as an
-  alternative. Both together are rejected. Despite its name,
-  ``tol_gradinf`` tests the gradient's **L2 norm** in this backend.
+  alternative, which tests the largest gradient component, as under
+  ``CERES``. Both together are rejected.
 * ``DLIB:GFS`` uses nonnegative ``FTOL_ABS`` as its solver accuracy
   setting (default ``1e-3``); the search uses its other configured stops.
   A negative ``FTOL_ABS`` is refused at startup.
@@ -78,6 +78,10 @@ Some adapters impose stricter ranges or use a setting differently:
   :doc:`anneal` and :doc:`anneal_pt`.
 * With explicit ``INNER``, put local convergence tolerances in that
   block; these settings are independent of the parent tolerances.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 ``DLIB:BFGS`` compared the L2 norm of the gradient with
+   ``tol_gradinf``.
 
 Additional Ceres limits
 -----------------------

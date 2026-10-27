@@ -189,5 +189,66 @@ class ReadAnnealKeysTableTest(unittest.TestCase):
                 self.assertNotIn('AUTO', rak.range_for(k, 'pa'))
 
 
+    def test_a_default_in_words_comes_from_the_registry(self):
+        # Pins: a default that is no value (a calibration, a rule of other
+        # keys) is the default_doc of the registry, for every kind of the
+        # key or for one kind (default_doc_<kind>), with its key names and
+        # tokens as literals; a key that a kind refuses (a kind_reject
+        # rule) has no row in that kind's table; a kind with neither a
+        # default nor a default_doc stops the generator. The shipped
+        # registry gives T_INIT its calibration and RESET_TO_BEST no row
+        # for TADAH:ANNEAL_PA, and every ON/OFF key a default ON or OFF.
+        # Before the fix: the texts were a table of this script, a key
+        # missing from it read "Default: auto", a token the key refuses,
+        # and the TADAH:ANNEAL_PA table listed RESET_TO_BEST, which
+        # TADAH:ANNEAL_PA refuses.
+        sys.path.insert(0, CONFIG)
+        try:
+            rak = importlib.import_module('read_anneal_keys')
+        finally:
+            sys.path.remove(CONFIG)
+        kinds = ['serial', 'pt', 'pa']
+        temp = dict(name='T_START', type='float', kinds=kinds, group='budget',
+                    rank=1, default_doc='calibrated with probes',
+                    default_doc_pt='T_HOT divided by LADDER_SPAN',
+                    doc='Starting temperature.')
+        reset = dict(name='RESET', type='bool', kinds=kinds, group='steps',
+                     rank=1, default_doc_serial='OFF; ON with CORANA ON',
+                     default_doc_pt='OFF', doc='Moves back to the best.')
+        self.assertEqual(rak.default_for(temp, 'serial'),
+                         'calibrated with probes')
+        self.assertEqual(rak.default_for(temp, 'pt'),
+                         '``T_HOT`` divided by ``LADDER_SPAN``')
+        self.assertEqual(rak.default_for(reset, 'serial'),
+                         '``OFF``; ``ON`` with ``CORANA ON``')
+        with self.assertRaises(Exception) as caught:
+            rak.default_for(reset, 'pa')
+        self.assertIn('RESET', str(caught.exception))
+        data = {'key': [temp, reset],
+                'rule': [dict(type='kind_reject', key='RESET', kind='pa',
+                              msg='refused')]}
+        self.assertNotIn('``RESET``', rak.render('pa', data))
+        self.assertIn('``RESET``', rak.render('pt', data))
+
+        shipped = rak._load(rak.locate_toml())
+        by_name = {k['name']: k for k in shipped['key']}
+        self.assertEqual(rak.default_for(by_name['T_INIT'], 'serial'),
+                         'calibrated with probes')
+        self.assertNotIn('``RESET_TO_BEST``', rak.render('pa', shipped))
+        for kind in kinds:
+            text = rak.render(kind, shipped)
+            with self.subTest(kind=kind):
+                self.assertNotIn('Default: auto', text)
+            for k in shipped['key']:
+                if k['type'] != 'bool' or kind not in k['kinds']:
+                    continue
+                if any(r['type'] == 'kind_reject' and r['key'] == k['name']
+                       and r['kind'] == kind for r in shipped['rule']):
+                    continue
+                with self.subTest(kind=kind, key=k['name']):
+                    self.assertRegex(rak.default_for(k, kind),
+                                     r'^``(ON|OFF)``')
+
+
 if __name__ == '__main__':
     unittest.main()

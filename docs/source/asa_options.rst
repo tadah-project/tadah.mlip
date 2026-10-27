@@ -86,8 +86,8 @@ Temperature schedule
      - ``0`` or ``1``. Enables parameter-temperature rescaling from
        finite-difference sensitivities.
 
-Starting point and probes
--------------------------
+State generation and probes
+---------------------------
 
 .. list-table:: State generation and sensitivity settings
    :header-rows: 1
@@ -96,19 +96,11 @@ Starting point and probes
    * - Parameter
      - Default
      - Values and meaning
-   * - ``User_Initial_Parameters``
-     - Automatic
-     - ``1`` with a resolved ``INIT`` point; ``0`` without one.
-       An explicit value contradicting the available seed is refused.
    * - ``Sequential_Parameters``
      - ``-1``
      - Integer less than the search dimension. Negative values disable
        sequential generation; a nonnegative value selects its initial
        zero-based dimension.
-   * - ``Include_Integer_Parameters``
-     - ``0``
-     - ``0`` or ``1``. Includes integer-typed dimensions in
-       derivative/reannealing calculations when enabled.
    * - ``Delta_X``
      - ``0.001``
      - Nonnegative tangent step, subject to :ref:`asa_probes_box`.

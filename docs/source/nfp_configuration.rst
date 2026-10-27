@@ -158,14 +158,9 @@ indices refines the block-wide ``STEP``.
 ``TYPE PRESTAGE`` precedes the opening of ``EXPLORE`` or ``REFINE``.
 ``REFINE`` groups the refinement settings of the surrounding ``STRATEGY``.
 
-``LOSS``, ``FAILSCORE`` and ``PC_SCRIPT_TIMEOUT`` precede the
-``PC_LAMMPS`` and ``PC_FAILPROBE`` lines they affect. Each such line
-captures those settings when it is read, and the options ``--varloss``,
-``--failscore`` and ``--maxtime`` give it values of its own. A second
-line of one of the three follows a ``PC_LAMMPS`` or ``PC_FAILPROBE`` line
-that takes the first, or is refused. The run-wide uses take the last
-line: the validation metrics' loss, the ceiling of every loss and the
-``PROCESS`` worker deadline.
+:hpo:key:`LOSS`, :hpo:key:`FAILSCORE` and :hpo:key:`PC_SCRIPT_TIMEOUT`
+precede the lines that read them (see :ref:`where-the-setting-applies`
+and :doc:`nfp_lammps_targets`).
 
 Repeated ``OPTIM`` lines select distinct dimensions.
 

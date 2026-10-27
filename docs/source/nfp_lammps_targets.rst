@@ -61,10 +61,10 @@ These are root keys, independent of the ``OPTIMIZER`` block.
 For a finite soft limit :math:`t`, the derived hard deadline is
 :math:`\max(3t,t+120\,\mathrm{s})`. With no soft timeout, ``0`` means no
 hard deadline. Deadlines exceeding the worker's millisecond-counter
-range are refused. Under ``THREAD`` the scripts run inside the tadah
-process without a worker deadline: :hpo:key:`PC_WORKER_TIMEOUT` is refused
-there, for any value, at its line when the run starts, and so is
-``TADAH_PC_WORKER_TIMEOUT``.
+range are refused. Under ``THREAD`` the scripts have no worker deadline,
+so :hpo:key:`PC_WORKER_TIMEOUT` and
+:hpo:key:`TADAH_PC_WORKER_TIMEOUT <ENV.TADAH_PC_WORKER_TIMEOUT>` are
+refused there.
 
 .. versionchanged:: 1.6.0
    1.5.0 accepted :hpo:key:`!PC_WORKER_TIMEOUT` under ``THREAD``, where it

@@ -59,28 +59,31 @@ Run the selected optimiser once::
 Multiple searches: MULTISTART
 -----------------------------
 
-``MULTISTART`` runs ``N_STARTS`` separate starts, one from each of the
-first ``N_STARTS`` ``INIT`` points; :doc:`nfp_initialisation` supplies
+``MULTISTART`` runs :hpo:key:`N_STARTS <STRATEGY.N_STARTS>` separate
+starts, one from each of the first
+:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` points of the
+:hpo:block:`INIT <BLOCK.INIT>` chain; :doc:`nfp_initialisation` supplies
 the points. ``MULTISTART`` runs a local optimiser from each start. It
 refuses a global optimiser that takes one starting point, and an
-optimiser that takes every ``INIT`` point in one run, ``DLIB:GFS``,
-which it would run once whatever ``N_STARTS``. ``TYPE PLAIN`` runs either
-once; ``DLIB:GFS`` then takes every ``INIT`` point.
+optimiser that takes every :hpo:block:`!INIT <BLOCK.INIT>` point in one
+run, :hpo:opt:`DLIB:GFS`, which it would run once whatever
+:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>`.
+:hpo:key:`TYPE PLAIN <STRATEGY.TYPE.PLAIN>` runs either once;
+:hpo:opt:`!DLIB:GFS` then takes every :hpo:block:`!INIT <BLOCK.INIT>`
+point.
 
-For a local optimiser, an ``INIT`` chain that gives fewer points than
-``N_STARTS`` is refused at startup (``tadah hpo --check`` too), at the
-``N_STARTS`` line. Each ``RANDOM``, ``LHS`` and ``SOBOL`` line gives its
-``K`` points, the ``CONFIG`` lines one point, the ``WARM`` lines of one
-file one point, a chain without a ``METHOD`` line the ``CONFIG`` point,
-and ``K_TOTAL`` caps the sum. When the points drawn are fewer still (a
-``WARM`` point dropped under ``WARM_ON_MISMATCH skip``, a ``RESTART``
-round of fewer points), one start runs from each, with a warning. The
-points after the first ``N_STARTS`` are not evaluated, and a startup
-warning says so.
+An :hpo:block:`!INIT <BLOCK.INIT>` chain that gives fewer points than
+:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` is refused at startup
+(``tadah hpo --check`` too). The entry of
+:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` says how the points are
+counted, and when a chain drawn with fewer points runs fewer starts. The
+points after the first :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` are not
+evaluated, and a startup warning says so.
 
 .. versionchanged:: 1.6.0
-   In 1.5.0 ``MULTISTART`` accepted ``DLIB:GFS`` and ran it once, and ran
-   fewer starts than ``N_STARTS`` from a chain of fewer points.
+   1.5.0 accepted :hpo:opt:`!DLIB:GFS` under ``MULTISTART`` and ran it
+   once, and ran fewer starts than :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>`
+   from a chain of fewer points.
 
 If ``BUDGET_PER_START`` is absent, a main ``MAXEVAL M`` is divided among
 ``k`` actual starts as ``ceil(M/k)`` per start. Rounding can make the sum

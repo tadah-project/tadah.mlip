@@ -111,8 +111,9 @@ journal record the loss the evaluation reported, not the value the
 optimiser was given.
 
 .. versionchanged:: 1.6.0
-   1.5.0 gave NLopt, :hpo:opt:`!DLIB:GFS`, :hpo:opt:`!DLIB:BFGS` and
-   :hpo:opt:`!CERES:STEEPEST_DESCENT` the loss of a failed evaluation as
+   1.5.0 gave NLopt, :hpo:opt:`!DLIB:GFS` and :hpo:opt:`!DLIB:BFGS`, and
+   under a :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` above ``1e100``
+   :hpo:opt:`!CERES:STEEPEST_DESCENT`, the loss of a failed evaluation as
    the evaluation reported it.
 
 The top-level :hpo:key:`!FAILSCORE` differs from
@@ -134,23 +135,12 @@ classified failures a score in ``[0.999 * FAILSCORE, FAILSCORE)`` using
 their failure category and violation measure. These remain failed
 evaluations, even when the score is finite and below the ceiling.
 
-Grading takes any :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>`, the default
-largest double too. An :hpo:opt:`ASA:ASA` search, in any phase, takes a
-cost of about ``1e18`` or more for an invalid state and draws another.
-Under ``ON`` such a search is refused for a
-:hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` whose largest graded failure, a
-little below :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>`, reaches that cost: it
-would not see the graded failures there. A
-:hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` of ``1e18`` or less keeps every
-graded failure below it.
-
-.. versionchanged:: 1.6.0
-   1.5.0 refused a :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` of ``1e300`` or
-   more under ``ON``. Its :hpo:opt:`!ASA:ASA` search took the graded
-   failures at or above about ``1e18`` for invalid states.
-
-The environment variable ``TADAH_FAILSCORE_GRADING`` accepts ``ON`` or
-``OFF`` and overrides the file.
+Grading takes any :hpo:key:`FAILSCORE <ROOT.FAILSCORE>`, the default
+largest double too, except with :hpo:opt:`ASA:ASA`: the entry of
+:hpo:key:`FAILSCORE_GRADING <ROOT.FAILSCORE_GRADING>` gives its limit,
+about ``1e18``. The environment variable
+:hpo:key:`TADAH_FAILSCORE_GRADING <ENV.TADAH_FAILSCORE_GRADING>` accepts
+``ON`` or ``OFF`` and overrides the file.
 
 LAMMPS :hpo:key:`--failvar` and :hpo:key:`PC_FAILPROBE` supply
 violation measures. In both modes a failure signal fails the evaluation:
@@ -165,6 +155,9 @@ settings that only grade a failure, :hpo:key:`--s0` and an explicit
 training.
 
 .. versionchanged:: 1.6.0
-   Under ``FAILSCORE_GRADING OFF``, 1.5.0 ignored a ``--failvar`` value
-   above 0, a probe value above ``--gate`` and a probe value that is
-   negative, not finite or at or above ``--failscore``.
+   1.5.0 refused a :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` of ``1e300`` or
+   more under ``ON``, and its :hpo:opt:`!ASA:ASA` search took graded
+   failures from about ``1e18`` for invalid points. Under ``OFF`` it
+   ignored a ``--failvar`` value above 0, a probe value above ``--gate``
+   and a probe value that is negative, not finite or at or above
+   ``--failscore``.

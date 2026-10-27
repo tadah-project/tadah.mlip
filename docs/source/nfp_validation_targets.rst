@@ -40,7 +40,8 @@ Metric keys
 -----------
 
 Syntax: ``PC_<METRIC> <target> <weight> [--skip-above <cap>] [--skip-rel <ratio>]``;
-``PC_ERSQ`` takes neither option (`Early-rejection options`_).
+:hpo:key:`PC_ERSQ <ROOT.PC_ERSQ>` takes neither option
+(`Early-rejection options`_).
 Targets must be finite; weights must be finite and nonnegative. A metric
 has one global line: a second one is refused, and the message names the
 line of the first.
@@ -137,31 +138,31 @@ a dataset.
 Early-rejection options
 -----------------------
 
-.. list-table:: Optional flags on a metric declaration other than ``PC_ERSQ``
+.. list-table:: Options of a metric line other than ``PC_ERSQ``
    :header-rows: 1
    :widths: 30 70
 
-   * - Flag
+   * - Option
      - Effect
    * - ``--skip-above <cap>``
-     - Reject when the metric exceeds this finite positive value.
-       Use the metric's units from the table above.
+     - Reject when the metric exceeds this finite positive value, in
+       the metric's units (table above).
    * - ``--skip-rel <ratio>``
      - Reject when the metric exceeds this finite positive multiple
        of its best previously accepted value. No relative comparison
        is made before such a value exists.
 
-``PC_ERSQ`` takes neither flag: :math:`R^2` is better when higher, and a
-flag rejects a candidate whose metric is above its threshold, so it would
-reject the better fits.
+:hpo:key:`PC_ERSQ <ROOT.PC_ERSQ>` takes neither option. Its
+:math:`R^2` is better when higher, and an option rejects an evaluation
+whose metric is above its threshold: it would reject the better fits.
 
 .. versionchanged:: 1.6.0
-   1.5.0 accepted both flags on ``PC_ERSQ``, where they rejected the
-   better fits.
+   1.5.0 accepted both options on :hpo:key:`!PC_ERSQ <ROOT.PC_ERSQ>`,
+   where they rejected the better fits.
 
 These checks happen after validation and before the physical-property
 targets. In the indexed form they apply separately to the selected
 datasets; in the global form they apply to the aggregate metric.
-When both flags are present, either can reject the candidate. Rejected
-candidates receive a failure score. Each flag can appear only once on
+When both options are present, either can reject the candidate. Rejected
+candidates receive a failure score. Each option can appear only once on
 a declaration.

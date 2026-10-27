@@ -499,17 +499,21 @@ earlier density with the same code, compiled with Tadah.MODELS' own flags.
 In a Tadah.MODELS compiled without fused multiply-adds (FMA), as with the
 flags of the presets on x86-64 (no ``-march=native``, no ``-ffast-math``;
 LTO and a ``tadah`` built with ``TADAH_MARCH_NATIVE`` included), a build
-gives the density of tadah before 1.6.0 bit for bit, which the tests check
-against values recorded from it, and the other evaluators of the density
-agree with the descriptor: bit for bit the density gates and reports of
+gives bit for bit the density of tadah before 1.6.0 built the same way and
+run on the same system. The other evaluators of the density then agree
+with the descriptor: bit for bit the density gates and reports of
 ``tadah hpo`` and ``tadah refit --edit``, within one unit in the last place
-the density ``tadah refit`` fits. A Tadah.MODELS
+the density ``tadah refit`` fits. A cutoff or basis that calls the C
+library's ``cos``, ``sin`` or ``exp`` (``Cut_Cos`` and the Gaussian basis,
+among others) gives a density whose last bits depend on the C library
+(glibc or musl, say) and on the code the C library selects for the
+processor, as in tadah before 1.6.0. A Tadah.MODELS
 compiled for a machine with FMA instructions (``-march=native`` in
 ``CMAKE_CXX_FLAGS`` on a recent x86-64, or an AArch64 machine, where the
 compilers fuse multiply-adds at their default flags) gives these to
-rounding errors only: the density can differ from the recorded values and
-from an earlier version built the same way (with link-time optimisation),
-and its evaluators from each other. The key is global: every DM_REAM block, including the
+rounding errors only: the density can differ from an earlier version built
+the same way (with link-time optimisation), and its evaluators from each
+other. The key is global: every DM_REAM block, including the
 children of a ``DM_mJoin``, uses the same form. Values are
 case-insensitive and written in upper case; any other value is an error at
 its line of the configuration or potential file (``Invalid value for key

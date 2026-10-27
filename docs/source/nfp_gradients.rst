@@ -12,6 +12,11 @@ derivative of the complete loss. It belongs to the optimiser requesting
 that gradient: for NLopt MLSL/AUGLAG, the enclosing optimiser owns this
 setting.
 
+.. contents::
+   :local:
+   :depth: 1
+   :backlinks: none
+
 Gradient strategies
 -------------------
 
@@ -37,15 +42,75 @@ in phases that obtain gradients; explicit ``NUMERICAL`` is rejected
 with that loss term. Supplying ``GRAD_STRATEGY`` to an
 optimiser that never requests gradients is an error.
 
-Analytical availability depends on the model, fit, loss terms and chosen
-optimiser. Setup validates derivative support for the selected combination. ``HYBRID`` is the explicit choice when numerical
-fallback is acceptable.
+Analytical availability depends on the model, fit, loss terms, search
+parameters and chosen optimiser. Setup validates derivative support for
+the selected combination. ``HYBRID`` is the explicit choice when
+numerical fallback is acceptable.
 
 The analytical fit path needs the settings listed under
 :hpo:key:`GRAD_STRATEGY <OPTIMIZER.GRAD_STRATEGY>`: startup refuses a
-setup without them, naming the first setting it lacks.
-Each selected descriptor parameter and observable must also supply a
-supported derivative.
+setup without them, naming the first setting it lacks. Each observable
+must also supply a supported derivative.
+
+Each search parameter needs an analytical derivative in the rows the run
+has, one per energy and one per force component (:ref:`fit_objective`):
+the energy rows, the force rows of the fit with :ref:`FORCE` true, and
+the forces that :hpo:key:`PC_FRMSE <ROOT.PC_FRMSE>` measures in the
+validation structures. ``ANALYTICAL`` refuses a search parameter without
+one at startup (:hpo:key:`!GRAD_STRATEGY <OPTIMIZER.GRAD_STRATEGY>`).
+:ref:`nfp_analytical_coverage` lists the search parameters each
+descriptor differentiates.
+
+.. versionchanged:: 1.6.0
+   1.5.0 stopped an ``ANALYTICAL`` run at the gradient of such a
+   parameter, or of one whose structures hold no pair of atoms that
+   depends on it. Its gradient with respect to :ref:`WATOM` beside
+   ``DM_Blip``, ``DM_EAD``, ``DM_mRLR`` or ``DM_mSQRT`` lacked the
+   many-body part of the force rows.
+
+.. _nfp_analytical_coverage:
+
+Analytical coverage
+-------------------
+
+The analytical derivatives cover the parameters of the descriptors below
+(:doc:`descriptors`), in the energy and the force rows unless the table
+says otherwise. A key of the fit, such as :ref:`LAMBDA`, has none.
+:ref:`RCUT2B` and :ref:`RCUTMB` act through the cutoff function, and
+``Cut_Dummy`` gives no derivative with respect to them.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 32 68
+
+   * - Descriptor
+     - Search parameters with an analytical derivative
+   * - ``D2_Blip``, ``D2_Blip5``, ``D2_BP``
+     - :ref:`CGRID2B`, :ref:`SGRID2B`, :ref:`RCUT2B`, :ref:`WATOM`
+   * - ``D2_Knot5``
+     - :ref:`CGRID2B`, :ref:`RCUT2B`, :ref:`WATOM`
+   * - ``D2_LJ``, ``D2_MIE``, ``D2_ZBL``
+     - :ref:`RCUT2B`, :ref:`WATOM`
+   * - ``DM_mBlip``
+     - :ref:`CGRIDMB`, :ref:`SGRIDMB`, :ref:`RCUTMB`, :ref:`WATOM`,
+       :ref:`CEMBFUNC`, :ref:`SEMBFUNC`
+   * - ``DM_mBlipEnv``
+     - those of ``DM_mBlip`` and :ref:`RCUTENV`
+   * - ``DM_Blip``, ``DM_EAD``, ``DM_mRLR``, ``DM_mSQRT``
+     - :ref:`CGRIDMB`, :ref:`SGRIDMB`, :ref:`RCUTMB`, :ref:`WATOM`, in
+       the energy rows only
+   * - ``D2_mJoin`` and every other descriptor but ``DM_mJoin`` and
+       ``DESCRIPTOR`` blocks
+     - none
+
+A search parameter that a descriptor differentiates in the energy rows
+only takes ``ANALYTICAL`` in a run without force rows: :ref:`FORCE`
+false and no :hpo:key:`PC_FRMSE <ROOT.PC_FRMSE>`. So does :ref:`WATOM`
+with a two-body descriptor and ``DM_Blip``, ``DM_EAD``, ``DM_mRLR`` or
+``DM_mSQRT``: both descriptors read it, and the many-body one gives no
+force-row derivative, whatever the two-body one gives. The analytical
+gradient of ``DM_mJoin`` and of ``DESCRIPTOR`` blocks is described with
+the blocks (:doc:`dm_embed`).
 
 Finite-difference keys
 ----------------------

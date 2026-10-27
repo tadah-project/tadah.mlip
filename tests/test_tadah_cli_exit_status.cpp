@@ -10795,6 +10795,175 @@ TEST_CASE("Subcommand: refit --edit of a copy of a potential with an RCUT2B "
   CHECK_FALSE(std::filesystem::exists("edited.tadah"));
 }
 
+/* Pins: `tadah refit --retarget` with a copy of a potential given with -c,
+ * the single D2_Blip potential with "RCUT2B 6.0" appended (copy.tadah of
+ * write_appended_copy()), exits 1 before anything is written, naming both
+ * RCUT2B lines and the command ("Key RCUT2B is set on line <a> of
+ * copy.tadah and on line <b> of copy.tadah, lines of one potential (a file
+ * with WEIGHTS): tadah refit reads a key of a potential's descriptors from
+ * the line the potential has for it, ..."), and writes no
+ * x_retargeted.hpotarget; with the potential itself, single.tadah, it
+ * rewrites x.hpotarget (exit 0, x_retargeted.hpotarget written).
+ * --retarget reads no potential besides the file given with -c: the target
+ * file it rewrites holds none.
+ * Before the fix: passes as well (a pin of the refusal of a -c file, which
+ * covers --retarget). */
+TEST_CASE("Subcommand: refit --retarget with a copy of a potential with an "
+          "RCUT2B line appended given with -c is refused naming both lines",
+          "[TadahCLI][refit][potential]") {
+  ScratchCwd cwd("appended_refit_retarget");
+  write_appended_copy();
+  std::ofstream("x.hpotarget") << "OPTIM CGRID2B (1-2) 1.0 2.0\n";
+  const auto at = lines_of_key("copy.tadah", "RCUT2B");
+  REQUIRE(at.size() == 2u);
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "copy.tadah",
+                                "--retarget", "x.hpotarget"});
+    const std::string rep = reported(r);
+    INFO("copy.tadah: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, appended_refusal("RCUT2B", at, "copy.tadah",
+                                         "tadah refit")));
+    CHECK_FALSE(std::filesystem::exists("x_retargeted.hpotarget"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "refit", "-c", "single.tadah",
+                                "--retarget", "x.hpotarget"});
+    INFO("single.tadah: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("x_retargeted.hpotarget"));
+  }
+}
+
+/* ---- [audit]: each element pair of a descriptor's line ----------------- */
+
+namespace {
+
+/* Two 20 A cells of two Ta and two W atoms: the (Ta, Ta) distances are
+ * 2.86 and 2.9 A, the (W, W) ones 2.5 and 2.55 A, and the (Ta, W) ones from
+ * 2.4 A. */
+const char* const kTaWDb =
+    "taw1\n1.0 1.0 1.0\n-40.0 0.0\n"
+    "20.0 0.0 0.0\n0.0 20.0 0.0\n0.0 0.0 20.0\n"
+    "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+    "Ta 0.0 0.0 0.0  0.0 0.0 0.0\nTa 2.86 0.0 0.0  0.0 0.0 0.0\n"
+    "W 0.0 2.4 0.0  0.0 0.0 0.0\nW 0.0 2.4 2.5  0.0 0.0 0.0\n"
+    "\n"
+    "taw2\n1.0 1.0 1.0\n-39.0 0.0\n"
+    "20.0 0.0 0.0\n0.0 20.0 0.0\n0.0 0.0 20.0\n"
+    "0.0 0.0 0.0\n0.0 0.0 0.0\n0.0 0.0 0.0\n"
+    "Ta 0.0 0.0 0.0  0.0 0.0 0.0\nTa 2.9 0.0 0.0  0.0 0.0 0.0\n"
+    "W 0.0 2.45 0.0  0.0 0.0 0.0\nW 0.0 2.45 2.55  0.0 0.0 0.0\n"
+    "\n";
+
+/* A training configuration of TYPE2B D2_Blip 2 2 Ta Ta W W on taw.db
+ * (kTaWDb) with RCUT2B @p rcut and AUDIT error, at VERBOSE 1 (the findings
+ * of check_bounds are WARNINGs). */
+std::string ta_w_pairs_config(const std::string& rcut) {
+  return "DBFILE taw.db\nATOM Ta W\nWATOM 73 74\nINIT2B true\n"
+         "INITMB false\nTYPE2B D2_Blip 2 2 Ta Ta W W\nRCTYPE2B Cut_Cos\n"
+         "RCUT2B " + rcut + "\nCGRID2B 1 2\nSGRID2B 1 1\nBIAS false\n"
+         "VERBOSE 1\nMODEL M_BLR BF_Linear\nLAMBDA 1e-3\nAUDIT error\n";
+}
+
+}  // namespace
+
+/* On the Ta-W data (kTaWDb), TYPE2B D2_Blip 2 2 Ta Ta W W with RCUT2B 2.6,
+ * which holds the (W, W) distances (from 2.5 A) and no (Ta, Ta) one (from
+ * 2.86 A), is refused under AUDIT error, each pair of the line judged on its
+ * own: tadah train exits 1, naming the finding "D2_Blip.RCUT2B: RCUT2B =
+ * 2.6 holds no (Ta, Ta) pair of atoms of the dataset: the (Ta, Ta) pair
+ * adds nothing to the descriptor, which sums over its other element pairs
+ * alone." (the statistics of the audit reach the cutoff), and writes no
+ * potential; tadah hpo --check exits 1 with that finding; tadah analysis
+ * check_bounds of a box RCUT2B 2.6 to 5 exits 1, its FAIL at the corner 2.6
+ * "RCUT2B = 2.6 is below the smallest (Ta, Ta) neighbour distance of the
+ * dataset (2.86 Å): ..." (its statistics reach 5). With RCUT2B 5, which
+ * holds every pair of the line, tadah train exits 0 (a pin).
+ * Before the fix: the pairs of the line were judged together, RCUT2B 2.6
+ * holding the (W, W) distances: train wrote a potential whose descriptor is
+ * 0 for every Ta atom (exit 0), and hpo --check and check_bounds exited 0. */
+TEST_CASE("Subcommand: train, hpo --check and check_bounds judge each "
+          "element pair of a descriptor's line on its own",
+          "[TadahCLI][train][analysis][hpo][audit]") {
+  ScratchCwd cwd("audit_line_pairs");
+  { std::ofstream os("taw.db"); os << kTaWDb; }
+  const std::string finding =
+      "D2_Blip.RCUT2B: RCUT2B = 2.6 holds no (Ta, Ta) pair of atoms of the "
+      "dataset: the (Ta, Ta) pair adds nothing to the descriptor, which sums "
+      "over its other element pairs alone.";
+  std::ofstream("near.train") << ta_w_pairs_config("2.6");
+  {
+    const CliRun r = run_tadah(
+        {"tadah", "train", "-c", "near.train", "-o", "near.tadah"});
+    const std::string rep = reported(r);
+    INFO("train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, finding));
+    CHECK_FALSE(std::filesystem::exists("near.tadah"));
+  }
+#ifdef TADAH_ENABLE_NFP
+  {
+    std::ofstream("config.val") << "DBFILE taw.db\n";
+    std::ofstream("config.hpo")
+        << "OPTIMIZER\nLIB NLOPT\nALGO LN_SBPLX\nMAXEVAL 1\nENDOPTIMIZER\n"
+           "LOSS L2\nPC_ERMSE 0 1\nOPTIM CGRID2B (1) 0.5 1.5\n";
+    const CliRun r = run_tadah({"tadah", "hpo", "--check", "-c",
+                                "near.train", "--hpotarget", "config.hpo",
+                                "--validation", "config.val"});
+    const std::string rep = reported(r);
+    INFO("hpo --check: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, finding));
+  }
+#endif  // TADAH_ENABLE_NFP
+  std::ofstream("far.train") << ta_w_pairs_config("5");
+  {
+    std::ofstream("box.hpo") << "OPTIM RCUT2B (1) 2.6 5\n";
+    const CliRun r = run_tadah({"tadah", "analysis", "check_bounds", "-c",
+                                "far.train", "--hpotarget", "box.hpo"});
+    const std::string rep = reported(r);
+    INFO("check_bounds: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "D2_Blip.RCUT2B: RCUT2B = 2.6 is below the smallest "
+                        "(Ta, Ta) neighbour distance of the dataset (2.86 "
+                        "Å): the (Ta, Ta) pair adds nothing to the "
+                        "descriptor"));
+  }
+  {
+    const CliRun r =
+        run_tadah({"tadah", "train", "-c", "far.train", "-o", "far.tadah"});
+    INFO("train RCUT2B 5: status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("far.tadah"));
+  }
+}
+
+/* `tadah analysis suggest_bounds -c` of a configuration whose many-body
+ * term is a DESCRIPTOR block alone (the block of PAIRS Ta Ta and RADIUS 5,
+ * kTaEmbedBlock; no TYPEMB, RCUT2B or RCUTMB line) on bcc Ta exits 0 and
+ * writes the row of the block's cutoff, "OPTIM TA.DENSITY.CUTOFF.RADIUS (1)
+ * 4.500000e+00 5.500000e+00".
+ * Before the fix: refused before the block was read, "ERROR: analysis
+ * suggest_bounds: RCUTMAX is not set (set RCUT2B / RCUTMB).", exit 1. */
+TEST_CASE("Subcommand: analysis suggest_bounds of a configuration of a "
+          "DESCRIPTOR block alone",
+          "[TadahCLI][analysis][embed]") {
+  ScratchCwd cwd("suggest_block_alone");
+  { std::ofstream os("train.db"); os << kRetrainTaDb; }
+  std::ofstream("block.train")
+      << "DBFILE train.db\nATOM Ta\nWATOM 1\nINIT2B false\nINITMB true\n"
+         "BIAS true\nVERBOSE 0\nMODEL M_BLR BF_Linear\nLAMBDA 1e-3\n"
+      << kTaEmbedBlock;
+  const CliRun r = run_tadah({"tadah", "analysis", "suggest_bounds", "-c",
+                              "block.train", "-o", "block.hpo"});
+  INFO("status " << r.status << "\n" << reported(r));
+  CHECK(r.status == 0);
+  CHECK(contains(slurp("block.hpo"),
+                 "\nOPTIM TA.DENSITY.CUTOFF.RADIUS (1) 4.500000e+00 "
+                 "5.500000e+00\n"));
+}
+
 /* ---- [retired]: the published potentials of Tadah! 1.x -----------------
  *
  * The potentials published with the documentation for this Tadah!

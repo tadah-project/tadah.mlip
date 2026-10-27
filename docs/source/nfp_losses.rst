@@ -46,34 +46,42 @@ by its weight; :math:`\epsilon=10^{-12}`.
    :math:`\log\cosh r`, evaluated in a numerically stable form.
 
 ``MAPE``
-   :math:`|r|/(|y|+\epsilon)`. A fractional loss using the measured
-   value in the denominator.
+   :math:`|r|/|t|`. A fractional loss relative to the target.
 
 ``RMSLE``
    :math:`[\log(y+\epsilon)-\log(t+\epsilon)]^2`.
-   Both logarithm arguments must be positive.
+   A measured value at or below :math:`-\epsilon` fails the evaluation.
 
 An explicit ``HUBER`` or ``TUKEY`` parameter must be finite and positive.
 Other losses accept the name alone. ``RMSLE`` is a squared logarithmic
-loss.
+loss. A target that its loss cannot measure is refused at its line: a
+target of 0 under ``MAPE``, and one at or below :math:`-\epsilon` under
+``RMSLE``.
+
+.. versionchanged:: 1.6.0
+   ``MAPE`` divides by the target; 1.5.0 divided by the measured value.
 
 .. _where-the-setting-applies:
 
 Loss scope
 ----------
 
-* :doc:`Validation metrics <nfp_validation_targets>` use the root loss of
-  the last ``LOSS`` line.
-* Each :doc:`PC_LAMMPS <nfp_lammps_targets>` line captures the root loss
-  in force when that line is read. Its ``--varloss`` options can override
-  the loss separately for each variable.
-* Each :doc:`PC_OBSERVABLE <nfp_observable_targets>` line has its own
-  ``--loss`` option, defaulting to ``L2`` independently of root ``LOSS``.
+* :doc:`Validation metrics <nfp_validation_targets>` use the loss
+  function of the last :hpo:key:`LOSS` line.
+* Each :doc:`PC_LAMMPS <nfp_lammps_targets>` line captures the top-level
+  :hpo:key:`!LOSS` in force when that line is read. Its ``--varloss``
+  options can override the loss separately for each variable.
+* Each :doc:`PC_OBSERVABLE <nfp_observable_targets>` line captures the
+  top-level :hpo:key:`!LOSS` in force when that line is read. Its
+  ``--loss`` option overrides it for that term.
 
-``LOSS`` precedes the ``PC_LAMMPS`` lines it affects. A second ``LOSS``
-line follows a ``PC_LAMMPS`` or ``PC_FAILPROBE`` line that takes the
-first, or is refused. For a
-successful evaluation, HPO divides the sum of enabled weighted loss
+:hpo:key:`!LOSS` precedes the terms it affects: a :hpo:key:`--varloss`
+term or a :hpo:key:`PC_OBSERVABLE` line that names no loss function
+reads it. A second :hpo:key:`!LOSS` line is refused unless such a term
+between reads the first. In a target file without validation metrics, a
+:hpo:key:`!LOSS` line that no such term follows is refused too.
+
+For a successful evaluation, HPO divides the sum of enabled weighted loss
 terms by the number of terms. Each enabled validation metric
 contributes one term, each LAMMPS ``--varloss`` one term, and each typed
 observable one term. Indexed validation targets first form their own
@@ -91,12 +99,16 @@ failures instead receive a score in the failure band below it. Choose
 a ceiling above the losses of useful candidates: HPO treats scores at
 or above ``0.999 * FAILSCORE`` as failures when selecting usable results.
 
-This root setting differs from ``PC_LAMMPS --failscore``, which supplies
+The top-level :hpo:key:`FAILSCORE` differs from
+:hpo:key:`PC_LAMMPS --failscore <PC_LAMMPS.--failscore>`, which supplies
 replacement *variable values* for a failed script. The evaluation retains
-its failed status. Each script line takes the root ``FAILSCORE`` above it
-as its default replacement value; ``--failscore`` gives it its own. A
-second ``FAILSCORE`` line follows a script line that takes the first, or
-is refused, and the ceiling of every loss is the last.
+its failed status. A :hpo:key:`PC_LAMMPS` or :hpo:key:`PC_FAILPROBE` line
+without ``--failscore`` reads the :hpo:key:`!FAILSCORE` above it as its
+replacement value; ``--failscore`` gives it its own. A second
+:hpo:key:`!FAILSCORE` line is refused unless such a line between reads
+the first, and the ceiling of every loss is the last.
+
+.. _nfp_failscore_grading:
 
 FAILSCORE_GRADING
 -----------------
@@ -112,6 +124,19 @@ ceiling is therefore unsuitable; set an explicit value such as ``1e9``.
 The environment variable ``TADAH_FAILSCORE_GRADING`` accepts ``ON`` or
 ``OFF`` and overrides the file.
 
-LAMMPS ``--failvar`` and :doc:`PC_FAILPROBE <nfp_lammps_targets>` supply
-violation measures. :doc:`Feasibility gates <nfp_feasibility>` can
-reject candidates before training.
+LAMMPS :hpo:key:`--failvar` and :hpo:key:`PC_FAILPROBE` supply
+violation measures. In both modes a failure signal fails the evaluation:
+a ``--failvar`` value above 0, a probe value above :hpo:key:`--gate`,
+and a probe failure (its script fails, or its probe value cannot be read,
+or is negative, not finite or at or above its ``--failscore``). The
+evaluation scores :hpo:key:`!FAILSCORE` under ``OFF`` and a graded score
+under ``ON``, and a warning in ``hpo_run.log`` names the signal. The
+settings that only grade a failure, :hpo:key:`--s0` and an explicit
+``--failvar`` scale, are refused under ``OFF``.
+:doc:`Feasibility gates <nfp_feasibility>` can reject candidates before
+training.
+
+.. versionchanged:: 1.6.0
+   Under ``FAILSCORE_GRADING OFF``, 1.5.0 ignored a ``--failvar`` value
+   above 0, a probe value above ``--gate`` and a probe value that is
+   negative, not finite or at or above ``--failscore``.

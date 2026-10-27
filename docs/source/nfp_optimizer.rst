@@ -97,8 +97,8 @@ in ``OPTIMIZER``; an explicit ``STRATEGY`` adds policy controls and
 supports the nested search subblocks.
 
 It accepts the shared keys and ``LOG_HP``, plus ``TYPE``, ``N_STARTS``,
-``PARALLEL``, ``BUDGET_PER_START`` and ``TOPK``. Their applicability
-depends on the policy. See :doc:`nfp_strategies`.
+``BUDGET_PER_START`` and ``TOPK``. Their applicability depends on the
+policy. See :doc:`nfp_strategies`.
 
 EXPLORE and REFINE subblocks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -118,9 +118,9 @@ INNER subblock
 composite driver. Its parent is ``STRATEGY``, ``EXPLORE`` or ``REFINE``.
 It accepts ``LIB``, ``ALGO``, ``MAXEVAL``, ``MAXTIME``, ``FTOL_REL``,
 ``FTOL_ABS``, ``XTOL_REL``, ``XTOL_ABS``, ``POPULATION``, ``STEP``,
-``VECTOR_ARR``, ``THREADS`` and ``PARAM``. It contains keys only.
-The enclosing search supplies the random stream, gradient strategy and
-loss threshold. See :doc:`nfp_inner`.
+``VECTOR_ARR`` and ``PARAM``. It contains keys only; the enclosing
+search supplies its random stream, gradient strategy, loss threshold and
+workers (see :doc:`nfp_inner`).
 
 RESTART subblock
 ~~~~~~~~~~~~~~~~

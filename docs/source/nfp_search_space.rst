@@ -123,9 +123,12 @@ scale, including any ``LOG`` or ``ASINH`` transform.
 ``LOG_HP ratio`` is an optional key inside ``OPTIMIZER`` or ``STRATEGY``.
 It converts linear dimensions to logarithmic ones when their lower bound
 is positive and ``high/low >= ratio``; ``ratio`` must be finite and at
-least one. This also affects a dimension explicitly tagged ``LIN``.
-An ``ASINH`` dimension retains its shape. To control each dimension
-directly, omit ``LOG_HP`` and write the required shape tags on ``OPTIM``.
+least one. It converts only untagged dimensions: a dimension tagged
+``LIN``, ``LOG`` or ``ASINH`` keeps the shape its tag gives, and
+``hpo_optim_resolved.hpo`` keeps the tag.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 ``LOG_HP`` also log-scaled a dimension tagged ``LIN``.
 
 The bounds and values written in ``params.tadah`` use the selected
 physical coordinates. Scaling applies to the optimiser's coordinates;
@@ -199,8 +202,9 @@ with ``FIXINDEX`` and ``FIXWEIGHT`` in ``--config``, then use
    # In the hpotarget:
    OPTIM FIXWEIGHT (5) -1.0 1.0
 
-This searches weight 5, initially ``0.3``. Weight 2 remains pinned at
-``-0.1``. Each searched weight must appear in ``FIXINDEX``.
+This searches weight 5, initially ``0.3``, labelled ``FIXWEIGHT[5]`` in
+the result files. Weight 2 remains pinned at ``-0.1``. Each searched
+weight must appear in ``FIXINDEX``.
 
 .. _inspecting-the-resolved-space:
 

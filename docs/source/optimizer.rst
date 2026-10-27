@@ -87,9 +87,8 @@ Compatibility therefore depends on the selected local driver.
      - ALGO names
    * - Global, derivative-free
      - ``GN_AGS``, ``GN_CRS2_LM``, ``GN_DIRECT``, ``GN_DIRECT_L``,
-       ``GN_DIRECT_L_NOSCAL``, ``GN_DIRECT_L_RAND``,
-       ``GN_DIRECT_L_RAND_NOSCAL``, ``GN_DIRECT_NOSCAL``,
-       ``GN_ESCH``, ``GN_ISRES``, ``GN_ORIG_DIRECT``, ``GN_ORIG_DIRECT_L``.
+       ``GN_DIRECT_L_NOSCAL``, ``GN_DIRECT_L_RAND``, ``GN_ESCH``,
+       ``GN_ISRES``, ``GN_ORIG_DIRECT``, ``GN_ORIG_DIRECT_L``.
    * - Global, gradient-based
      - ``GD_STOGO``, ``GD_STOGO_RAND``.
    * - Global with local searches
@@ -130,14 +129,16 @@ and :doc:`nfp_stopping_settings`; each driver supports its own subset.
 For example, ``RANDOM``, ``GFS`` and ``ANNEAL_PT`` need an effective stop
 condition, and StoGO requires ``MAXEVAL``.
 
-A run with ``PC_LAMMPS`` must use a derivative-free driver or
-``DLIB:BFGS`` with its internal finite differences. An MLSL/AUGLAG driver
-is compatible when its local search is derivative-free. For validation
+A run with ``PC_LAMMPS`` or ``PC_FAILPROBE`` needs a derivative-free
+optimiser; an MLSL or AUGLAG algorithm is accepted when its local search
+is derivative-free. For validation
 metrics and typed observables, check :doc:`nfp_gradients` before selecting
 a gradient-based method.
 
 These recognised names are refused: NLopt's ``LN_NEWUOA``,
-``LN_NEWUOA_BOUND`` and ``NLOPT_LD_LBFGS_NOCEDAL``; Ceres' ``LBFGS``,
+``LN_NEWUOA_BOUND``, ``NLOPT_LD_LBFGS_NOCEDAL``, ``GN_DIRECT_NOSCAL``
+and ``GN_DIRECT_L_RAND_NOSCAL`` (NLopt 2.10 runs both as
+``GN_DIRECT_L_NOSCAL``); Ceres' ``LBFGS``,
 ``WOLFE``, ``NLCG``, ``LEVENBERG_MARQUARDT``, ``DOGLEG`` and
 ``SUBSPACE_DOGLEG``. ``tadah explain <LIB>:<ALGO>`` gives the reason and
 supported alternatives.

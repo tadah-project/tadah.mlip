@@ -19,10 +19,10 @@ Cases (--case):
                refuses when a run starts), and dlib crashed (SIGSEGV) at its
                first trust-region step.
   gfs_mixed    DLIB:GFS, MAXEVAL 40, one dimension; the three starting
-               points fail, the upper half of the box is usable. dlib
+               points fail, the upper part of the box is usable. dlib
                crashed here too. GFS picks some points at random, and which
                ones depends on the timing of its evaluations: the usable
-               half is wide enough for 40 evaluations to reach it.
+               part is wide enough for 40 evaluations to reach it.
 
 For random_skip and gfs_throws, no evaluation produced a usable loss:
 
@@ -174,17 +174,22 @@ OPTIM SGRID2B (1-4) 0.1 5.0
     },
     "gfs_mixed": {
         # CGRID2B[2] in [1, 2]: the validation ERMSE falls from 10.0 to
-        # 9.75 and passes the 9.9 cap near 1.45. The starting points, the
-        # Sobol points 1.25 and 1.375 (block 1 of METHOD SOBOL 2: the chain
+        # 9.75 and passes the 9.8 cap near 1.53 (9.875 at 1.475, 9.801 at
+        # 1.525, 9.766 at 1.575). The starting points, the Sobol points
+        # 1.5078125 and 1.0078125 (block 62 of METHOD SOBOL 2: the chain
         # hands its first method the SEED itself) and the configuration's
-        # 1.4, all fail.
+        # 1.4, all fail. A block of two Sobol points has one in each half of
+        # the box, so the cap fails a little more than half of it. (The case
+        # ran with SEED 1 and the cap 9.9, where block 1 drew 1.25 and
+        # 1.375; it draws 1.375 and 1.875.)
         "oalgo": 4, "bias": "false", "evals": 40, "usable": True,
+        "cap": 9.8,
         "tadah_grids": ("CGRID2B 0.5 1.4", "SGRID2B 3.0 5.0", 2),
         "hpo": """OPTIMIZER
   INIT
     METHOD SOBOL 2
     METHOD CONFIG
-    SEED 1
+    SEED 62
   ENDINIT
   STRATEGY
     TYPE PLAIN
@@ -193,7 +198,7 @@ OPTIM SGRID2B (1-4) 0.1 5.0
     MAXEVAL 40
   ENDSTRATEGY
 ENDOPTIMIZER
-""" + OBJECTIVE + """PC_ERMSE 0 1 --skip-above 9.9
+""" + OBJECTIVE + """PC_ERMSE 0 1 --skip-above 9.8
 OPTIM CGRID2B (2) 1.0 2.0
 """,
     },
@@ -460,7 +465,8 @@ def check_files(work, case, rc, stderr, journal):
     if not usable:
         failures.append("no evaluation produced a usable loss")
         return failures
-    if any(v > 98.01 for v in usable.values()):
+    cap = case.get("cap", 9.9)
+    if any(v > cap * cap for v in usable.values()):
         failures.append("a row is neither FAILSCORE nor a usable loss: "
                         f"{sorted(usable.values())[-1]!r}")
     header = {}

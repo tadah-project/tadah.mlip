@@ -640,9 +640,10 @@ An ``RCUT2B`` line, above or below the ``CONFIG`` line, adds its values to
 the potential's. The key is then read as in a training configuration. Each
 descriptor takes one value, so one value more than descriptors is refused,
 for a single descriptor and a ``D2_mJoin`` line alike. The refusal names the
-lines, here for ``cutoff.train`` and a potential whose ``D2_mJoin`` line
-joins ``D2_Blip`` and ``D2_BP``, ``<n>`` being the ``RCUT2B`` line of
-``pot.tadah``:
+lines of the key and ends with the lines of :ref:`TYPE2B <TYPE2B>`, here for
+``cutoff.train`` and a potential whose ``D2_mJoin`` line joins ``D2_Blip``
+and ``D2_BP``, ``<n>`` being the ``RCUT2B`` line of ``pot.tadah`` and
+``<t>`` the first of its three ``TYPE2B`` lines:
 
 .. code-block:: ini
 
@@ -655,7 +656,8 @@ joins ``D2_Blip`` and ``D2_BP``, ``<n>`` being the ``RCUT2B`` line of
    TYPE2B names 2 descriptors (D2_Blip, D2_BP) but RCUT2B has 3 values, set
    on line 1 of cutoff.train and on line <n> of pot.tadah (CONFIG on line 2
    of cutoff.train): each descriptor takes one RCUT2B value, in the order of
-   the TYPE2B lines
+   the TYPE2B lines (TYPE2B on line <t> of pot.tadah (CONFIG on line 2 of
+   cutoff.train), ...)
 
 A line of another key of the descriptors (:ref:`RCTYPE2B <RCTYPE2B>`,
 :ref:`CGRID2B <CGRID2B>`, :ref:`RCUTMB <RCUTMB>` and the rest) is read the

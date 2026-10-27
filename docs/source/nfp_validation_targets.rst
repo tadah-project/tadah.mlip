@@ -39,7 +39,8 @@ and ``SSIGMA``, ``WDBFILE`` and the retired keys
 Metric keys
 -----------
 
-Syntax: ``PC_<METRIC> <target> <weight> [--skip-above <cap>] [--skip-rel <ratio>]``.
+Syntax: ``PC_<METRIC> <target> <weight> [--skip-above <cap>] [--skip-rel <ratio>]``;
+``PC_ERSQ`` takes neither option (`Early-rejection options`_).
 Targets must be finite; weights must be finite and nonnegative. A metric
 has one global line: a second one is refused, and the message names the
 line of the first.

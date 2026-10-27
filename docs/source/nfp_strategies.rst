@@ -61,19 +61,22 @@ Multiple searches: MULTISTART
 
 ``MULTISTART`` runs ``N_STARTS`` separate starts, one from each of the
 first ``N_STARTS`` ``INIT`` points; :doc:`nfp_initialisation` supplies
-the points. An ``INIT`` chain that gives fewer points than ``N_STARTS``
-is refused when the file is read, at the ``N_STARTS`` line: each
-``RANDOM``, ``LHS`` and ``SOBOL`` line gives its ``K`` points, each
-``CONFIG`` and ``WARM`` line one, a chain without a ``METHOD`` line the
-``CONFIG`` point, and ``K_TOTAL`` caps the sum. When the points drawn are
-fewer still (a ``WARM`` point dropped under ``WARM_ON_MISMATCH skip``, a
-``RESTART`` round of fewer points), one start runs from each, with a
-warning. The points after the first ``N_STARTS`` are not evaluated, and
-a startup warning says so. ``MULTISTART`` runs a local optimiser from each
-start. It refuses a global optimiser that takes one starting point, and an
+the points. ``MULTISTART`` runs a local optimiser from each start. It
+refuses a global optimiser that takes one starting point, and an
 optimiser that takes every ``INIT`` point in one run, ``DLIB:GFS``,
 which it would run once whatever ``N_STARTS``. ``TYPE PLAIN`` runs either
 once; ``DLIB:GFS`` then takes every ``INIT`` point.
+
+For a local optimiser, an ``INIT`` chain that gives fewer points than
+``N_STARTS`` is refused at startup (``tadah hpo --check`` too), at the
+``N_STARTS`` line. Each ``RANDOM``, ``LHS`` and ``SOBOL`` line gives its
+``K`` points, the ``CONFIG`` lines one point, the ``WARM`` lines of one
+file one point, a chain without a ``METHOD`` line the ``CONFIG`` point,
+and ``K_TOTAL`` caps the sum. When the points drawn are fewer still (a
+``WARM`` point dropped under ``WARM_ON_MISMATCH skip``, a ``RESTART``
+round of fewer points), one start runs from each, with a warning. The
+points after the first ``N_STARTS`` are not evaluated, and a startup
+warning says so.
 
 .. versionchanged:: 1.6.0
    In 1.5.0 ``MULTISTART`` accepted ``DLIB:GFS`` and ran it once, and ran

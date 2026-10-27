@@ -101,15 +101,19 @@ or above ``0.999 * FAILSCORE`` as failures when selecting usable results.
 
 :hpo:opt:`DLIB:GFS`, :hpo:opt:`DLIB:BFGS` and the NLopt optimisers are
 given a finite stand-in for a failed evaluation, so a ceiling as large as
-the default does not break their models of the loss. The entry of
-:hpo:key:`FAILSCORE <ROOT.FAILSCORE>` gives the stand-in. A failed point
-whose gradient fails is given none: :doc:`nfp_gradients` describes such
-a point. ``loss.tadah`` and the journal record the loss the evaluation
-reported, not the stand-in.
+the default does not break their models of the loss.
+:hpo:opt:`CERES:STEEPEST_DESCENT` is given a failed evaluation's loss
+scaled to at most ``1e100``, so such a ceiling does not overflow its line
+search. The entry of :hpo:key:`FAILSCORE <ROOT.FAILSCORE>` gives the
+stand-in and the scale. A failed point whose gradient fails is given
+none: :doc:`nfp_gradients` describes such a point. ``loss.tadah`` and the
+journal record the loss the evaluation reported, not the value the
+optimiser was given.
 
 .. versionchanged:: 1.6.0
-   1.5.0 gave NLopt, :hpo:opt:`!DLIB:GFS` and :hpo:opt:`!DLIB:BFGS`
-   :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` itself for a failed evaluation.
+   1.5.0 gave NLopt, :hpo:opt:`!DLIB:GFS`, :hpo:opt:`!DLIB:BFGS` and
+   :hpo:opt:`!CERES:STEEPEST_DESCENT` the loss of a failed evaluation as
+   the evaluation reported it.
 
 The top-level :hpo:key:`!FAILSCORE` differs from
 :hpo:key:`PC_LAMMPS --failscore <PC_LAMMPS.--failscore>`, which supplies
@@ -131,15 +135,19 @@ their failure category and violation measure. These remain failed
 evaluations, even when the score is finite and below the ceiling.
 
 Grading takes any :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>`, the default
-largest double too. An :hpo:opt:`ASA:ASA` search, in any phase, refuses a
-:hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` of ``1e18`` or more under ``ON``:
-ASA takes a cost of about ``1e18`` or more for an invalid state and draws
-another, so it would not see the grading.
+largest double too. An :hpo:opt:`ASA:ASA` search, in any phase, takes a
+cost of about ``1e18`` or more for an invalid state and draws another.
+Under ``ON`` such a search is refused for a
+:hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` whose largest graded failure, a
+little below :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>`, reaches that cost: it
+would not see the graded failures there. A
+:hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` of ``1e18`` or less keeps every
+graded failure below it.
 
 .. versionchanged:: 1.6.0
    1.5.0 refused a :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` of ``1e300`` or
-   more under ``ON``, and ran an :hpo:opt:`!ASA:ASA` search with one from
-   ``1e18`` to below ``1e300`` as under ``OFF``.
+   more under ``ON``. Its :hpo:opt:`!ASA:ASA` search took the graded
+   failures at or above about ``1e18`` for invalid states.
 
 The environment variable ``TADAH_FAILSCORE_GRADING`` accepts ``ON`` or
 ``OFF`` and overrides the file.

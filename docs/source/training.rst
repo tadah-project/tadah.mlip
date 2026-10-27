@@ -54,8 +54,9 @@ in order:
    (:doc:`API/nn_finder`).
 #. **Running the pre-flight audit** when enabled (:ref:`AUDIT`, ``off`` by
    default): it checks the parameters of each descriptor against the
-   neighbour distances of the element pairs its ``TYPE2B`` or ``TYPEMB``
-   line names.
+   neighbour distances of the element pairs it sums over (those its
+   ``TYPE2B`` or ``TYPEMB`` line names, or the ``PAIRS`` of its
+   ``DESCRIPTOR`` block).
 #. **Fitting the regression model** declared by ``MODEL``: it minimises
    the sum of :ref:`fit_objective`, with the :term:`error scales
    <error scale>` of the configuration and the :term:`priorities
@@ -666,18 +667,23 @@ A line of another key of the descriptors (:ref:`RCTYPE2B <RCTYPE2B>`,
 same way, and so is every such key of a :ref:`TYPE2B <TYPE2B>` or
 :ref:`TYPEMB <TYPEMB>` line to which the including file adds a descriptor.
 
-A potential has one line for each key of its descriptors: their
-``RCTYPE`` and ``RCUT`` keys and the grid keys. It has its ``TYPE2B`` and
-``TYPEMB`` keys as tadah writes them: on lines one after another, a new
-line at each descriptor's name. A ``D2_mJoin`` or ``DM_mJoin`` line has one
-line per descriptor. A second line of such a key in the copy, such as
-``RCUT2B 6.0`` appended to ``retrain.train``, is refused, naming both
-lines. So is a ``TYPE2B`` or ``TYPEMB`` line elsewhere in the copy, such as
-a descriptor's line appended to a ``D2_mJoin`` potential. Every command
-that trains from the copy refuses it: ``tadah train``, ``tadah hpo``, the
-analysis commands that take ``-c`` and ``tadah refit``, with ``-c`` or
-``--edit``. In the refusal, ``<a>`` and ``<b>`` are the two ``RCUT2B``
-lines:
+A potential has one line for each key of its descriptors
+(:ref:`RCTYPE2B <RCTYPE2B>`, :ref:`RCUT2B <RCUT2B>`, :ref:`CGRID2B
+<CGRID2B>` and the rest, as above). It has its :ref:`TYPE2B <TYPE2B>` and
+:ref:`TYPEMB <TYPEMB>` keys on the lines tadah writes: one after another,
+with only comments or blank lines between them, and a new line at each
+descriptor's name and at each ``DESCRIPTOR`` block's ID (``@ta``). A
+``D2_mJoin`` or ``DM_mJoin`` key has a line with the name of the join, then
+one line per descriptor it joins.
+
+A second line of such a key in the copy, such as ``RCUT2B 6.0`` appended to
+``retrain.train``, is refused, naming both lines. So is a ``TYPE2B`` or
+``TYPEMB`` line other than those tadah writes, such as a descriptor's line
+appended to a ``D2_mJoin`` potential. Every command that reads the copy
+with ``-c``, or a file that includes it with ``CONFIG``, refuses it:
+``tadah train``, ``tadah hpo``, ``tadah refit`` and the analysis commands
+that take ``-c``. So does ``tadah refit --edit`` of the copy. In the
+refusal, ``<a>`` and ``<b>`` are the two ``RCUT2B`` lines:
 
 .. code-block:: text
 
@@ -688,10 +694,16 @@ lines:
    copy of the potential (the Training page of the documentation,
    Retraining from a potential)
 
+.. versionchanged:: 1.6.0
+   A second line of a key of the descriptors in a copy of a potential was
+   read with the potential's values, without a message: a copy with
+   ``RCUT2B 5.6`` and an appended ``RCUT2B 6.0`` trained a cutoff of 6.0.
+
 The ``WARNING`` for values a potential's descriptors do not take
-(:ref:`composite_descriptors`) covers the values of one line of the
-potential file, as tadah 1.5.0 wrote them, and a potential read for
-prediction (``tadah predict``, ``pair_style tadah``).
+(:ref:`composite_descriptors`) is given for values on one line of the
+potential file. ``tadah predict`` and ``pair_style tadah`` read a second
+line of such a key as if its values were on that one line: a single
+descriptor then takes the largest ``RCUT2B`` value, with the ``WARNING``.
 
 A file that has ``WEIGHTS`` (a potential or a copy of one) is a potential,
 wherever the run reads it: given with ``-c``, or included with ``CONFIG`` by

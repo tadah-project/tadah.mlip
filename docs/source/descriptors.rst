@@ -202,9 +202,10 @@ Key points
   order of the **TYPE** lines.
 * The values of a list key (``CGRID*``, ``SGRID*``, ``C/SEMBFUNC`` and
   the other lists a descriptor takes) form one list, whatever lines they
-  are written on. Each constituent takes as many values as its **TYPE**
-  line asks for, in the order of the **TYPE** lines, as a single
-  descriptor does.
+  are written on. In a potential, each such key has its one line
+  (:ref:`retrain_from_potential`). Each constituent takes as many values
+  as its **TYPE** line asks for, in the order of the **TYPE** lines, as a
+  single descriptor does.
 * More or fewer values are refused, and so is a list key that no
   constituent reads.
 * A ``DM_Poly`` descriptor with the RLR or Blip embedding reads

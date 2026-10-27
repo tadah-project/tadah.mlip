@@ -44,12 +44,14 @@ Stopping and sampling
        ``-1`` select deviation sampling.
    * - ``Acceptance_Frequency_Modulus``
      - ``100``
-     - Integer ≥ 0. Periodic-test cadence in accepted states;
-       ``0`` disables this cadence.
+     - Integer ≥ 0. A periodic test follows each state, or each block of
+       states, that brings the count of accepted states to a multiple of
+       this number; ``0`` switches this off.
    * - ``Generated_Frequency_Modulus``
      - ``10000``
-     - Integer ≥ 0. Periodic-test cadence in generated states;
-       ``0`` disables this cadence.
+     - Integer ≥ 0. A periodic test follows each state, or each block of
+       states, that brings the count of generated states to a multiple of
+       this number; ``0`` switches this off.
 
 Temperature schedule
 --------------------

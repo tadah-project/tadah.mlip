@@ -250,6 +250,24 @@ bool contains(const std::string& s, const std::string& what) {
   return s.find(what) != std::string::npos;
 }
 
+/* The values after `key` on the first non-comment line of a potential
+ * file whose first token is `key`; empty when there is none.
+ * (Outside the TADAH_ENABLE_NFP block: cases of every build use it.) */
+std::vector<std::string> pot_key(const std::filesystem::path& p,
+                                 const std::string& key) {
+  std::ifstream in(p);
+  std::string line;
+  while (std::getline(in, line)) {
+    std::istringstream ss(line);
+    std::string k;
+    if (!(ss >> k) || k[0] == '#' || k != key) continue;
+    std::vector<std::string> v;
+    for (std::string t; ss >> t;) v.push_back(t);
+    return v;
+  }
+  return {};
+}
+
 #ifdef TADAH_ENABLE_NFP
 
 /* Two rattled 4-atom bcc Ta cells (a = 3.301 A) with nonzero reference
@@ -306,23 +324,6 @@ void write_frmse_fixture(const std::string& cfg_name,
           "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
           "OPTIM FIXWEIGHT (1) -30.0 0.0\n";
   }
-}
-
-/* The values after `key` on the first non-comment line of a potential
- * file whose first token is `key`; empty when there is none. */
-std::vector<std::string> pot_key(const std::filesystem::path& p,
-                                 const std::string& key) {
-  std::ifstream in(p);
-  std::string line;
-  while (std::getline(in, line)) {
-    std::istringstream ss(line);
-    std::string k;
-    if (!(ss >> k) || k[0] == '#' || k != key) continue;
-    std::vector<std::string> v;
-    for (std::string t; ss >> t;) v.push_back(t);
-    return v;
-  }
-  return {};
 }
 
 /* The cells of column `col` in an HPO table (stats.tadah, loss.tadah):

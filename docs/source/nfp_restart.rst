@@ -70,12 +70,12 @@ After ``MAX`` restarts, the next stagnation ends the run.
 :hpo:opt:`ASA:ASA` with
 :hpo:param:`Gener_Block_Max <PARAM.ASA:ASA.Gener_Block_Max>` above 1
 evaluate several points at once. They count the window in the order of
-the evaluation numbers, as the run records the evaluations they run at
-once (see :ref:`nfp_evaluation_numbers`). The window closes at the same
-evaluation whatever the timing of the workers. It does so at any
-:hpo:key:`THREADS <OPTIMIZER.THREADS>` under the conditions of that
-section. The later evaluations of that batch run and are recorded, and
-the restart follows the batch.
+the evaluation numbers, in which the run records the evaluations of a
+:term:`batch` (see :ref:`nfp_evaluation_numbers`). The window therefore
+closes at the same evaluation whatever the timing of the workers. It does
+so at any :hpo:key:`THREADS <OPTIMIZER.THREADS>` under the conditions of
+that section. When it closes during a batch, the later evaluations of the
+batch still run and are recorded, and the restart follows the batch.
 
 .. versionchanged:: 1.6.0
    In 1.5.0 the window closed at the evaluation that ended first past it,

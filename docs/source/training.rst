@@ -54,7 +54,8 @@ in order:
    (:doc:`API/nn_finder`).
 #. **Running the pre-flight audit** when enabled (:ref:`AUDIT`, ``off`` by
    default): it checks the parameters of each descriptor against the
-   neighbour distances of the data.
+   neighbour distances of the element pairs its ``TYPE2B`` or ``TYPEMB``
+   line names.
 #. **Fitting the regression model** declared by ``MODEL``: it minimises
    the sum of :ref:`fit_objective`, with the :term:`error scales
    <error scale>` of the configuration and the :term:`priorities
@@ -664,9 +665,30 @@ A line of another key of the descriptors (:ref:`RCTYPE2B <RCTYPE2B>`,
 :ref:`CGRID2B <CGRID2B>`, :ref:`RCUTMB <RCUTMB>` and the rest) is read the
 same way, and so is every such key of a :ref:`TYPE2B <TYPE2B>` or
 :ref:`TYPEMB <TYPEMB>` line to which the including file adds a descriptor.
+
+A potential has one line for each key of its descriptors: its ``TYPE2B``
+and ``TYPEMB`` lines, their ``RCTYPE`` and ``RCUT`` keys and the grid keys.
+A ``D2_mJoin`` or ``DM_mJoin`` line has one line per descriptor, each
+starting with the descriptor's name. A second line of such a key in the
+copy, such as ``RCUT2B 6.0`` appended to ``retrain.train``, is refused,
+naming both lines. Every command that trains from the copy refuses it:
+``tadah train``, ``tadah hpo``, ``tadah refit`` and the analysis commands
+that take ``-c``. In the refusal, ``<a>`` and ``<b>`` are the two
+``RCUT2B`` lines:
+
+.. code-block:: text
+
+   Key RCUT2B is set on line <a> of retrain.train and on line <b> of
+   retrain.train, lines of one potential (a file with WEIGHTS): tadah train
+   reads a key of a potential's descriptors from the line the potential
+   has for it, and a potential's value is changed by editing its line in a
+   copy of the potential (the Training page of the documentation,
+   Retraining from a potential)
+
 The ``WARNING`` for values a potential's descriptors do not take
-(:ref:`composite_descriptors`) covers the lines of the potential file only,
-a line added to a copy among them.
+(:ref:`composite_descriptors`) covers the values of one line of the
+potential file, as tadah 1.5.0 wrote them, and a potential read for
+prediction (``tadah predict``, ``pair_style tadah``).
 
 A file that has ``WEIGHTS`` (a potential or a copy of one) is a potential,
 wherever the run reads it: given with ``-c``, or included with ``CONFIG`` by

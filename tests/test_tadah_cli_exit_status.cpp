@@ -9014,10 +9014,6 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
   const std::string hint = "REFERENCE ZERO fixes the DM_Embed isolated-atom "
                            "energy at 0";
   const std::string toggles =
-      "set ESHIFT or give the run ESHIFT_ATOM or ESHIFT_DBATOM "
-      "(--eshift-atom, --eshift-dbatom: a potential's own line of them is "
-      "not read), all compatible with EAMFAST";
-  const std::string train_toggles =
       "ESHIFT, or ESHIFT_ATOM or ESHIFT_DBATOM for the run (--eshift-atom, "
       "--eshift-dbatom: a potential's own line of them is not read), gives "
       "that constant, all compatible with EAMFAST";
@@ -9029,7 +9025,7 @@ TEST_CASE("Subcommand: refit, then train -c and hpo -c of the refit "
     REQUIRE(t.status == 0);
     CHECK(contains(rep, "HINT: " + hint));
     CHECK(contains(rep, "For absolute reference energies, such as DFT "
-                        "totals, " + train_toggles +
+                        "totals, " + toggles +
                         ". BIAS true also adds a per-atom constant, but its "
                         "intercept columns, one per ATOM species, precede "
                         "the descriptor weights (FIXINDEX/FIXWEIGHT indices "

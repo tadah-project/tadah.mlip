@@ -49,7 +49,7 @@ Repeat ``METHOD`` to concatenate methods into one chain.
      - ``K`` Sobol sequence points mapped through the search transform;
        integer ``K >= 1``. The seed selects a block of ``K`` points that
        starts at a multiple of ``K``: a ``K`` that is a power of 2 puts
-       one point in each 1/``K`` of every range.
+       one point in each 1/``K`` of every range, in search coordinates.
    * - ``METHOD WARM file``
      - One point read from the named potential; only selected ``OPTIM``
        values are taken. See the mismatch policy below.
@@ -87,9 +87,9 @@ Other keys
 
 .. versionchanged:: 1.6.0
    In 1.5.0 ``K_TOTAL`` replaced the ``K`` of a single ``RANDOM``,
-   ``LHS`` or ``SOBOL`` line, and a ``SOBOL`` seed ``s`` skipped ``s``
-   points, so a block was evenly spread only when ``s + 1`` was a
-   multiple of ``K``.
+   ``LHS`` or ``SOBOL`` line, and a :hpo:key:`SOBOL <METHOD.SOBOL>` seed
+   ``s`` skipped ``s`` points, so a block was evenly spread only when
+   ``s + 1`` was a multiple of ``K``.
 
 ``STRATEGY`` remains an accepted alias for ``METHOD`` inside ``INIT``;
 use ``METHOD`` in new files to distinguish a method line from the

@@ -99,16 +99,19 @@ failures instead receive a score in the failure band below it. Choose
 a ceiling above the losses of useful candidates: HPO treats scores at
 or above ``0.999 * FAILSCORE`` as failures when selecting usable results.
 
-``DLIB:GFS``, ``DLIB:BFGS`` and the NLopt optimisers are given a finite
-stand-in for a failed evaluation: the worst usable loss of the search so
-far plus a margin, or, before any usable loss, ``FAILSCORE`` capped at
-``1e100``. A gradient-based NLopt search is given it only for a graded
-failure with a usable gradient; it rejects a failed point whose gradient
-fails (see :doc:`nfp_gradients`). A ceiling as large as the default
-therefore does not break their models of the loss. ``loss.tadah`` and
-the journal record ``FAILSCORE``.
+:hpo:opt:`DLIB:GFS`, :hpo:opt:`DLIB:BFGS` and the NLopt optimisers are
+given a finite stand-in for a failed evaluation, so a ceiling as large as
+the default does not break their models of the loss. The entry of
+:hpo:key:`FAILSCORE <ROOT.FAILSCORE>` gives the stand-in. A failed point
+whose gradient fails is given none: :doc:`nfp_gradients` describes such
+a point. ``loss.tadah`` and the journal record the loss the evaluation
+reported, not the stand-in.
 
-The top-level :hpo:key:`FAILSCORE` differs from
+.. versionchanged:: 1.6.0
+   1.5.0 gave NLopt, :hpo:opt:`!DLIB:GFS` and :hpo:opt:`!DLIB:BFGS`
+   :hpo:key:`!FAILSCORE <ROOT.FAILSCORE>` itself for a failed evaluation.
+
+The top-level :hpo:key:`!FAILSCORE` differs from
 :hpo:key:`PC_LAMMPS --failscore <PC_LAMMPS.--failscore>`, which supplies
 replacement *variable values* for a failed script. The evaluation retains
 its failed status. A :hpo:key:`PC_LAMMPS` or :hpo:key:`PC_FAILPROBE` line

@@ -66,11 +66,10 @@ Some adapters impose stricter ranges or use a setting differently:
 * ``DLIB:BFGS`` uses ``FTOL_ABS`` (default ``1e-7``) as its
   objective-change stop, or positive ``PARAM tol_gradinf`` as an
   alternative, which tests the largest gradient component, as under
-  ``CERES``. Both together are rejected. Both are in the unit of the loss.
-  The search itself runs on the loss divided by the length of its first
-  gradient, and a failed trial of its line search is given a finite
-  stand-in (see :doc:`nfp_losses`), so its steps do not depend on that
-  unit.
+  ``CERES``. Both together are rejected. Both apply to the loss as
+  reported. :hpo:opt:`DLIB:BFGS` runs on the loss divided by the length
+  of its first gradient, so its steps do not depend on the unit of the
+  loss.
 * ``DLIB:GFS`` uses nonnegative ``FTOL_ABS`` as its solver accuracy
   setting (default ``1e-3``); the search uses its other configured stops.
   A negative ``FTOL_ABS`` is refused at startup.

@@ -117,10 +117,15 @@ calls also count toward ``MAXEVAL``. A small budget can therefore end a
 search before its first parameter step.
 
 A failed loss at the point or unusable finite-difference stencil can
-leave the search without a usable gradient. Failure grading can supply
-numerical slopes within a graded failure region. Each stencil requires
-losses from a consistent usable or failed region. This requirement also
-applies to the numerical part of ``HYBRID``.
+leave the search without a usable gradient. NLopt and Ceres reject such
+a point and step back from it. A local search that has had no usable
+gradient yet ends there, and :hpo:opt:`DLIB:BFGS` ends there at any
+point.
+
+Failure grading can supply numerical slopes within a graded failure
+region. Each stencil requires losses from a consistent usable or failed
+region. This requirement also applies to the numerical part of
+``HYBRID``.
 
 With ``PC_LAMMPS`` or ``PC_FAILPROBE``, every gradient-based optimiser
 is refused, ``DLIB:BFGS`` included: the results of a LAMMPS script have

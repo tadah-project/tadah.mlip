@@ -77,8 +77,8 @@ Other keys
        ``STRATEGY`` and ``REFINE`` make one chain, and those inside
        ``EXPLORE`` another; ``K_TOTAL`` keeps the first ``K`` points of
        its chain, a single method included. A value at or above the
-       points the methods give (``CONFIG`` and ``WARM`` give one each)
-       caps nothing and is refused. An ``INIT`` block inside ``EXPLORE``
+       points the methods give (the ``CONFIG`` lines give one point, and
+       so do the ``WARM`` lines of one file) caps nothing and is refused. An ``INIT`` block inside ``EXPLORE``
        without a method refuses it. Omission keeps every point.
    * - ``SEED n``
      - Unsigned 64-bit seed for the sampling methods. Without it, a chain

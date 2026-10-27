@@ -378,11 +378,9 @@ mpi`` also selects the ``pair_style tadah`` entries of
    Configuring with ``-DTADAH_BUILD_MPI=ON`` stops with an error that
    points to ``TADAH_HPO_MPI``; ``OFF`` is accepted, so older presets still
    work. Its configuration keys :ref:`MPIWPCKG`, :ref:`MBLOCK` and
-   :ref:`NBLOCK` are deprecated: files that contain them still load, with a
-   warning on standard error (once per key and process; ``pair_style
-   tadah`` writes it as a LAMMPS warning, in ``log.lammps``, each time it
-   loads such a potential), and the values are ignored. The ``PC_LAMMPS --ncpu`` option of
-   ``tadah hpo`` was removed with it (:ref:`pc_lammps_options`).
+   :ref:`NBLOCK` are deprecated (:ref:`SupportedKEYS`). The ``PC_LAMMPS
+   --ncpu`` option of ``tadah hpo`` was removed with it
+   (:ref:`pc_lammps_options`).
 
 .. _installation_nfp:
 

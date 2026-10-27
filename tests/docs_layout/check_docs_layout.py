@@ -193,14 +193,20 @@ def site_settings(docs_source, workdir):
     env = dict(os.environ, TADAH_CORE_SOURCE_DIR=os.path.join(inputs, 'CORE'),
                TADAH_HPO_SOURCE_DIR=os.path.join(inputs, 'HPO'),
                TADAH_DOXYGEN_XML_DIR=os.path.join(inputs, 'xml'))
+    # overrides and tags by keyword: Sphinx 9 requires both, as keywords;
+    # Sphinx 7.4 takes either form. A value reads from conf.py once its
+    # option is known (these are the html builder's, so they are added).
+    # Before the fix: Config.read(confdir) alone, which Sphinx 9.0.4 refuses
+    # ('missing 2 required keyword-only arguments'), and
+    # Config.init_values(), which Sphinx 7.4 keeps only for compatibility.
     script = '''import json, sys
 from sphinx.config import Config
-c = Config.read(sys.argv[1])
+from sphinx.util.tags import Tags
+c = Config.read(sys.argv[1], overrides={}, tags=Tags())
 c.add("html_theme_options", {}, "html", (dict,))
 c.add("html_static_path", [], "html", (list, tuple))
 c.add("html_css_files", [], "html", (list, tuple))
 c.add("html_theme", "alabaster", "html", (str,))
-c.init_values()
 print("SETTINGS=" + json.dumps({k: getattr(c, k) for k in (
     "html_theme", "html_theme_options", "html_static_path", "html_css_files")}))
 '''

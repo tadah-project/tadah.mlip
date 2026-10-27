@@ -583,7 +583,7 @@ pins model weights``).
 
 The fit replaces what the potential holds of its own fit (``WEIGHTS``,
 those ``FIXINDEX`` pins excepted, the ``BASIS`` of a non-linear kernel,
-``NMEAN``, ``NSTDEV``, ``SIGMA``); none of
+``NMEAN``, ``NSTDEV``); none of
 it is read when the model is built, so the retrain may also change, for
 example, ``SBASIS`` or the descriptor. The other key lines are the model of
 the first fit, with its ``LSCALE`` and ``ESHIFT``: the energy reference of
@@ -598,7 +598,9 @@ until the copy has the converted keys in their place or, for a line the
 refusal marks (``UNCERTAINTY``, a quantity the fit leaves out,
 ``WDBFILE_AUTO 0``, or any line under M_KRR implementation 2), none
 (:ref:`fit_objective_conversion` gives the conversions of the keys that
-weighted the training data). The ``WDBFILE`` values of the
+weighted the training data). One of an ``OALGO 3`` fit has a
+:ref:`SIGMA` line as well, a deprecated key that the same refusal names:
+the line is deleted from the copy. The ``WDBFILE`` values of the
 conversion of ``WDBFILE_AUTO`` are not read in the copy: they are given as
 the retrain's own, below.
 

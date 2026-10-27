@@ -193,7 +193,9 @@ tadah``, ``tadah analysis``, ``tadah properties``, ``tadah refit
 --edit``), with one notice per load that lists the lines. Every fit refuses
 a configuration that has one, naming each line and its conversion, and
 marks a line that deleting it converts; ``tadah refit --edit`` keeps the
-lines, so the edited potential is refused too. The conversions:
+lines, so the edited potential is refused too. One of an ``OALGO 3`` fit
+has a ``SIGMA`` line as well, a deprecated key (:ref:`SIGMA`): the same
+refusal names it, and deleting the line converts it. The conversions:
 
 .. list-table::
    :header-rows: 1

@@ -133,7 +133,9 @@ own training) refuses a configuration that has a line of such a key, naming the 
 line and its file (``tadah train: the configuration has a line that changes
 nothing a fit gives, and a fit refuses it: MBLOCK 64 (line 18 of
 config.train): ...``); with retired keys as well, one refusal names every
-line.
+line. ``tadah refit`` of an EAM file reads ``EMBF0`` and ``RHOFORM`` itself
+and takes them, and refuses a ``WATOM`` other than 1 whatever the
+descriptors: the potential it writes has ``WATOM 1``.
 
 A key marked **Retired** has no effect: its entry gives the reason, what
 replaces it and its conversion (:ref:`fit_objective_conversion` lists those
@@ -143,9 +145,9 @@ A potential that has it still loads
 properties``, ``tadah refit --edit``): Tadah!MLIP checks its value, ignores
 it and writes one notice per load that lists the retired keys of the file
 (``WARNING: Retired keys EWEIGHT (line 8 of old.tadah) and ... are ignored:
-...``). Every fit (``tadah train``, the fits of nested fitting, a
-program's own training) refuses a configuration that has one, with its
-conversion; ``tadah explain <KEY>`` gives the conversion too.
+...``). Every fit (``tadah train``, the fits of nested fitting, ``tadah
+refit``, a program's own training) refuses a configuration that has one,
+with its conversion; ``tadah explain <KEY>`` gives the conversion too.
 
 A key marked **Command key** is one that only some commands read: an option
 of their command line, such as ``ANALYTICS`` (``-A`` of ``tadah predict``),

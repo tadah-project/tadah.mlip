@@ -1071,6 +1071,39 @@ TEST_CASE("Subcommand: data convert: a missing file is refused, naming it "
     CHECK(contains(rep, fmt));
 }
 
+/* Pins: `tadah data print -s missing.cif`, a path of a CIF name that does
+ * not exist, exits 1 with "the structure file missing.cif does not exist"
+ * and not with the refusal of a format tadah does not read ("is neither a
+ * structure file tadah reads"); `tadah data write -s sub/POSCAR -o x.vasp
+ * -f vasp` alike, writing nothing.
+ * Before the fix: "missing.cif is neither a structure file tadah reads (CIF,
+ * POSCAR or CASTEP .cell) nor an online id (mp-..., cod-..., aflow:... or a
+ * NOMAD entry id)": a missing file read as an unknown format. */
+TEST_CASE("Subcommand: data print -s of a structure file that does not "
+          "exist names it as missing",
+          "[TadahCLI][exit-status][data]") {
+  ScratchCwd cwd("print_missing");
+  REQUIRE_FALSE(std::filesystem::exists("missing.cif"));
+  {
+    const CliRun r = run_tadah({"tadah", "data", "print", "-s",
+                                "missing.cif"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "the structure file missing.cif does not exist"));
+    CHECK_FALSE(contains(rep, "is neither a structure file"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "data", "write", "-s", "sub/POSCAR",
+                                "-o", "x.vasp", "-f", "vasp"});
+    const std::string rep = reported(r);
+    INFO("status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "the structure file sub/POSCAR does not exist"));
+    CHECK_FALSE(std::filesystem::exists("x.vasp"));
+  }
+}
+
 /* Pins: `tadah data print -s <cif>` (the help's own example) prints the
  * structure and exits 0: the summary has 2 atoms, the elements Na and Cl,
  * and the volume 4 * 5 * 6 = 120 A^3 (printed with 6 decimals, so checked
@@ -1943,34 +1976,57 @@ TEST_CASE("Subcommand: data dedup without --threshold says it needs "
   CHECK_FALSE(contains(rep, "e.g."));
 }
 
-/* Pins: tadah analysis dataset_stats names the line that sets what it
- * lacks: with -d alone (no configuration, so no cutoff) "analysis
- * dataset_stats: RCUTMAX is not set or <= 0; an RCUT2B or RCUTMB line in
- * the configuration (-c) sets it", and with a -c configuration without
- * DBFILE or STRUCTURE "analysis dataset_stats: no structures loaded; a
- * DBFILE or STRUCTURE line in the configuration, --dbfile or --structure
- * gives them"; both exit 1 and write no report.
+/* Pins: tadah analysis dataset_stats says what it lacks, naming only what
+ * the command line accepts with its input (-c excludes --dbfile and
+ * --structure): with -d alone (no configuration, so no cutoff) "analysis
+ * dataset_stats: no cutoff: the statistics take the largest RCUT2B or
+ * RCUTMB value of a configuration given with -c as their cutoff, and no
+ * line gives one (--dbfile and --structure give none)"; with a -c
+ * configuration of "RCUT2B 0" "analysis dataset_stats: the cutoff of the
+ * statistics is the largest RCUT2B or RCUTMB value, 0, which is not above
+ * 0"; with a -c configuration without DBFILE or STRUCTURE "analysis
+ * dataset_stats: no structures loaded: the configuration has no DBFILE or
+ * STRUCTURE line"; with -d of a file of no structure "analysis
+ * dataset_stats: no structures loaded: the datasets of DBFILE (empty.tadah)
+ * hold no structure". Each exits 1 and writes no report.
  * Before the fix: "... RCUTMAX is not set or <= 0. Set at least one of
  * RCUT2B / RCUTMB in your config so the audit cutoff is well-defined." and
- * "... no structures loaded — provide at least one DBFILE or STRUCTURE.". */
-TEST_CASE("Subcommand: analysis dataset_stats names the line that sets "
-          "what it lacks",
+ * "... no structures loaded — provide at least one DBFILE or STRUCTURE.".
+ * Before the fix that names only what the input accepts: "... RCUTMAX is
+ * not set or <= 0; an RCUT2B or RCUTMB line in the configuration (-c) sets
+ * it" with -d, which -c cannot join, and "... no structures loaded; a
+ * DBFILE or STRUCTURE line in the configuration, --dbfile or --structure
+ * gives them" with -c, which --dbfile and --structure cannot join: the four
+ * checks of the messages fail. */
+TEST_CASE("Subcommand: analysis dataset_stats names what it lacks and "
+          "what its input accepts",
           "[TadahCLI][exit-status][analysis]") {
   ScratchCwd cwd("dataset_stats_lacks");
   std::ofstream("db.tadah") << dataset_entry("T1", {"Na 0 0 0",
                                                     "Cl 2.5 2.5 2.5"});
   std::ofstream("stats.config") << "RCUT2B 4.0\n";
+  std::ofstream("zero.config") << "RCUT2B 0\nDBFILE db.tadah\n";
+  std::ofstream("empty.tadah") << "";
   for (const auto& [args, message] :
        std::vector<std::pair<std::vector<std::string>, std::string>>{
            {{"tadah", "analysis", "dataset_stats", "-d", "db.tadah", "-o",
              "st.tadah"},
-            "analysis dataset_stats: RCUTMAX is not set or <= 0; an RCUT2B "
-            "or RCUTMB line in the configuration (-c) sets it"},
+            "analysis dataset_stats: no cutoff: the statistics take the "
+            "largest RCUT2B or RCUTMB value of a configuration given with -c "
+            "as their cutoff, and no line gives one (--dbfile and --structure "
+            "give none)"},
+           {{"tadah", "analysis", "dataset_stats", "-c", "zero.config", "-o",
+             "st.tadah"},
+            "analysis dataset_stats: the cutoff of the statistics is the "
+            "largest RCUT2B or RCUTMB value, 0, which is not above 0"},
            {{"tadah", "analysis", "dataset_stats", "-c", "stats.config", "-o",
              "st.tadah"},
-            "analysis dataset_stats: no structures loaded; a DBFILE or "
-            "STRUCTURE line in the configuration, --dbfile or --structure "
-            "gives them"}}) {
+            "analysis dataset_stats: no structures loaded: the configuration "
+            "has no DBFILE or STRUCTURE line"},
+           {{"tadah", "analysis", "dataset_stats", "-d", "empty.tadah", "-o",
+             "st.tadah"},
+            "analysis dataset_stats: no structures loaded: the datasets of "
+            "DBFILE (empty.tadah) hold no structure"}}) {
     const CliRun r = run_tadah(args);
     const std::string rep = reported(r);
     INFO(args[3] << ": status " << r.status << "\n" << rep);
@@ -8070,6 +8126,51 @@ TEST_CASE("Subcommand: predict --no-eshift compares the model with the "
   }
 }
 
+/* Pins: `tadah predict -F -o e.dat` (one file for two outputs) exits 1
+ * before it predicts, with one message, "tadah predict writes the energies
+ * and the forces (--force): --outfile names 1 file, e.dat, and takes 2, the
+ * energy file and the force file, or 3, the energy, force and stress
+ * files", no ERROR line before it, and writes no e.dat; `-F -o e.dat f.dat`
+ * exits 0 and writes both.
+ * Before the fix: an ERROR line "Provide 2 output files: one for energy
+ * and one for forces." came first, and the refusal that stopped the run
+ * read "Invalid OUTFILE size 1. Expected either 2 for the requested outputs
+ * or 3 for the default [energy, force, stress] layout.". */
+TEST_CASE("Subcommand: predict -F with one --outfile file is refused in one "
+          "message",
+          "[TadahCLI][exit-status][predict]") {
+  ScratchCwd cwd("predict_outfile_count");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config") << dataset_keys_config("db.tadah", "");
+  {
+    const CliRun t = run_tadah({"tadah", "train", "-c", "config"});
+    INFO("train: status " << t.status << "\n" << reported(t));
+    REQUIRE(t.status == 0);
+  }
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah", "-F", "-o", "e.dat"});
+    const std::string rep = reported(p);
+    INFO("-o e.dat: status " << p.status << "\n" << rep);
+    CHECK(p.status == 1);
+    CHECK(contains(rep, "tadah predict writes the energies and the forces "
+                        "(--force): --outfile names 1 file, e.dat, and takes "
+                        "2, the energy file and the force file, or 3, the "
+                        "energy, force and stress files"));
+    CHECK_FALSE(contains(rep, "Provide"));
+    CHECK_FALSE(contains(rep, "Invalid OUTFILE size"));
+    CHECK_FALSE(std::filesystem::exists("e.dat"));
+  }
+  {
+    const CliRun p = run_tadah({"tadah", "predict", "-p", "pot.tadah", "-d",
+                                "db.tadah", "-F", "-o", "e.dat", "f.dat"});
+    INFO("-o e.dat f.dat: status " << p.status << "\n" << reported(p));
+    CHECK(p.status == 0);
+    CHECK(std::filesystem::exists("e.dat"));
+    CHECK(std::filesystem::exists("f.dat"));
+  }
+}
+
 /* Pins: `tadah predict -F` of pot.tadah, trained on db.tadah with LSCALE
  * 1.1 (its LSCALE line), rescales the data predicted by the potential's
  * LSCALE: energy.pred and forces.pred are byte for byte those of the same
@@ -8156,8 +8257,7 @@ TEST_CASE("Subcommand: predict applies the LSCALE of the potential",
  * Before the fix that states the advice in the impersonal voice: it read
  * "Give --eshift-dbatom on the command line, or an ESHIFT_DBATOM line in a
  * configuration file that includes the potential with CONFIG, to apply it to
- * this run" and "Give --ffilter on the command line, or an FFILTER line in
- * old.train, to apply it to this run": the two checks fail. */
+ * this run": the check of that WARNING fails. */
 TEST_CASE("Subcommand: train -c retrains a potential on any number of "
           "datasets, with the potential's ESHIFT",
           "[TadahCLI][train][retrain][dataset-keys][training-record]") {
@@ -8297,7 +8397,11 @@ TEST_CASE("Subcommand: train -c retrains a potential on any number of "
  * on the command line ...", so pot2.tadah had the record "DBFILE ...",
  * "OUTFILE pot2.tadah" and the WEIGHTS of pot4.tadah; outer.train's
  * WDBFILE likewise; old.train stopped with "Exceeded capacity for key:
- * EFILTER" (exit 1: the potential's two values were there). */
+ * EFILTER" (exit 1: the potential's two values were there).
+ * Before the fix that states the advice in the impersonal voice: the
+ * WARNING of old.train read "Give --ffilter on the command line, or an
+ * FFILTER line in old.train, to apply it to this run": the check of that
+ * WARNING fails. */
 TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG "
           "applies the keys of its own lines that prepare the training data",
           "[TadahCLI][train][retrain][dataset-keys]") {

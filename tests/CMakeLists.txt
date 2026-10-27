@@ -671,6 +671,28 @@ if(TADAH_ENABLE_NFP)
     TIMEOUT 900
     PROCESSORS ${_wn_jobs}
     RESOURCE_LOCK tadah_header_check)
+  # tadah_without_nfp_tests: test_tadah as a build without NFP compiles it
+  # (without_nfp/CMakeLists.txt: test_tadah_without_nfp, not part of `all`)
+  # builds, and its [not-built] cases, which only such a build compiles,
+  # pass (without_nfp/check_tests_without_nfp.cmake). Pins that every test
+  # source compiles without TADAH_ENABLE_NFP: a helper defined inside an
+  # #ifdef TADAH_ENABLE_NFP block and used outside it stops the build.
+  # Before the fix: the build failed ("'pot_key' was not declared in this
+  # scope", tests/test_tadah_cli_exit_status.cpp), so a build with
+  # -DBUILD_TESTING=ON and NFP OFF had no test_tadah.
+  add_test(NAME tadah_without_nfp_tests
+    COMMAND ${CMAKE_COMMAND}
+      -DBUILD_DIR=${CMAKE_BINARY_DIR}
+      -DCONFIG=$<CONFIG>
+      -DJOBS=${_wn_jobs}
+      -DEXE=$<TARGET_FILE:test_tadah_without_nfp>
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/without_nfp/tests_work
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/without_nfp/check_tests_without_nfp.cmake)
+  set_tests_properties(tadah_without_nfp_tests PROPERTIES
+    LABELS cmake
+    TIMEOUT 1800
+    PROCESSORS ${_wn_jobs}
+    RESOURCE_LOCK tadah_header_check)
 endif()
 
 

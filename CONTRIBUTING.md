@@ -148,8 +148,13 @@ flag: `add_test(NAME x COMMAND test_foo "[.tag]" --warn NoTests)`.
 `ctest -R tadah_catch` runs the regression tests for the discovery itself
 (`tests/catch_discovery`). `ctest -L docs` runs the unit tests of the
 documentation build tools, the layout check of the stylesheet,
-`tadah_docs_layout`, and that of the Nested Fitting pages of the built
-site, `tadah_docs_site_layout` (see *Building the documentation*).
+`tadah_docs_layout`, that of the Nested Fitting pages of the built
+site, `tadah_docs_site_layout` (see *Building the documentation*), and
+`tadah_docs_config_page_example`, which runs the `tadah` command of the
+example of the *Configuration File* page (section "Common Usage", whose
+source is the header of `docs/source/config/read_toml.py`) and checks the
+exit status it states and each line it quotes
+(`tests/config_page/check_config_page_example.py`).
 `ctest -L examples` runs the CLI examples the documentation includes
 (`tadah_cli_example_<name>`, one per `examples/CLI/<name>/README.rst` that
 `docs/source/examples.rst` includes): `tests/cli_examples` copies the
@@ -391,12 +396,16 @@ there runs nothing, which `--no-tests=error` reports as a failure (without
 it CTest exits 0). Every build checks these configurations
 in part: `tadah_without_nfp_links` (label `cmake`, builds with NFP) builds
 and runs `tadah` as a build without NFP links it (`tadah hpo` is refused
-naming `TADAH_ENABLE_NFP`), and `hpo_configure_without_ceres` (label
+naming `TADAH_ENABLE_NFP`), `tadah_without_nfp_tests` (label `cmake`)
+builds `test_tadah` as a build without NFP compiles it
+(`test_tadah_without_nfp`) and runs its `[not-built]` cases, so a test
+source that does not compile without NFP fails it, and
+`hpo_configure_without_ceres` (label
 `cmake`) configures HPO without Ceres, from the build's own cache and the
 sources of its dependencies, and checks that `tadah.hpo` still has Eigen
 (`hpo_configure_without_ceres_preset` checks that a configure from that
-cache sees what the build saw). Neither compiles HPO without
-Ceres or runs the suites of the other configurations: build and test both
+cache sees what the build saw). None of them compiles HPO without
+Ceres or runs the whole suites of the other configurations: build and test both
 after a change to the CMake files or to code under `TADAH_ENABLE_NFP` or
 `TADAH_USE_CERES`. `tadah_cmake_minimum_features` checks that no CMake file
 of Tadah.MLIP uses a command, option or test property newer than its

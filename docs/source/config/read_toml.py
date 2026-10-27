@@ -117,17 +117,23 @@ Supported KEYS
 --------------
 
 This section contains all KEYS used by Tadah!MLIP. A key marked
-**Deprecated** is still accepted in configuration and potential files so that
+**Deprecated** has no effect. A potential that has it still loads, so that
 older files load: Tadah!MLIP checks its value, ignores it and writes one
 warning per key and process to standard error
 (``WARNING: Deprecated key MBLOCK is ignored: ...``), however many lines,
 files included with CONFIG or reads of the file contain it -- the rule of
-every ignored key, :ref:`EMBF0 and RHOFORM without a DM_REAM block
-<dm_ream_only_keys>` included. VERBOSE does not silence the warning.
-``pair_style tadah`` writes it as a LAMMPS warning on rank 0 instead, in
-``log.lammps`` and on the screen, each time ``pair_coeff`` loads such a
-potential (``WARNING: pair tadah: potential 'pot.tadah': Deprecated key
-MBLOCK is ignored: ...``).
+every key without effect, :ref:`EMBF0 and RHOFORM without a DM_REAM block
+<dm_ream_only_keys>` and a :ref:`WATOM` that no descriptor reads included.
+VERBOSE does not silence the warning. ``pair_style tadah`` writes it as a
+LAMMPS warning on rank 0 instead, in ``log.lammps`` and on the screen, each
+time ``pair_coeff`` loads such a potential (``WARNING: pair tadah:
+potential 'pot.tadah': Deprecated key MBLOCK is ignored: ...``). Every fit
+(``tadah train``, the fits of nested fitting, ``tadah refit``, a program's
+own training) refuses a configuration that has a line of such a key, naming the key, its
+line and its file (``tadah train: the configuration has a line that changes
+nothing a fit gives, and a fit refuses it: MBLOCK 64 (line 18 of
+config.train): ...``); with retired keys as well, one refusal names every
+line.
 
 A key marked **Retired** has no effect: its entry gives the reason, what
 replaces it and its conversion (:ref:`fit_objective_conversion` lists those
@@ -257,8 +263,9 @@ def render_key(key_name: str, entry: dict, readers=None,
     out.append(f"{'^' * len(key_name)}\n")
 
     # ---------------------------------------------------------------------
-    # Deprecated key (blueprint field `deprecated`): still accepted in
-    # files, warned about once per parse and ignored. It has no default.
+    # Deprecated key (blueprint field `deprecated`): a potential that has
+    # it loads, warned about once per process and the key ignored; a fit
+    # refuses it. It has no default.
     # ---------------------------------------------------------------------
     if entry.get('deprecated', ""):
         reason = entry['deprecated'].strip().replace('\n', '\n   ')

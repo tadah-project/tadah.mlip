@@ -5,6 +5,8 @@ Trained MLIPs
 
 This page lists the interatomic potentials developed by Prof. Ackland's group, and those still in progress.
 
+The native Tadah! files below (Tadah!N2, Tadah!Kr1 and Tadah!Kr2) keep the keys that weighted their fit, ``EWEIGHT``, ``FWEIGHT`` and ``SWEIGHT`` (retired keys: :ref:`fit_objective_conversion`), and the settings of the run that wrote them in their :ref:`training record <training_record>`, the comment block above the key lines that no program reads. ``tadah predict`` and ``pair_style tadah`` load them without a notice of retired keys.
+
 N2
 --
 

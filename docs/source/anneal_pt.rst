@@ -63,6 +63,16 @@ It accepts ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` and positive
 ``FTOL_REL``/``FTOL_ABS``. An active stagnation restart can supply a stop
 in a single-rank run.
 
+A replica that reaches :hpo:key:`STOPVAL <OPTIMIZER.STOPVAL>` ends its
+own sweep, and the search ends after the epoch: the other replicas
+complete their sweeps of the epoch, so the evaluations of a seeded run do
+not depend on :hpo:key:`THREADS <OPTIMIZER.THREADS>`
+(:ref:`nfp_evaluation_numbers`).
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 the other replicas stopped at their next proposal, at a point
+   that depended on the timing of the workers.
+
 The tolerance test tracks the global best over ``NEPS`` consecutive
 windows. It stops when improvement stays within the configured loss
 tolerance. A window has ``SWAP_WINDOW`` epochs; with

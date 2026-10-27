@@ -66,6 +66,19 @@ Each relaunch gets fresh search budgets. Reaching an optimiser's own
 stop normally ends the policy. Restarts are triggered by stagnation.
 After ``MAX`` restarts, the next stagnation ends the run.
 
+An optimiser that evaluates several points at once
+(:hpo:opt:`TADAH:ANNEAL_PT`, :hpo:opt:`TADAH:ANNEAL_PA`, :hpo:opt:`ASA:ASA`
+with a block of states) counts the window in the order of the evaluation
+numbers, once the batch has ended (see :ref:`nfp_evaluation_numbers`).
+The window closes at the same evaluation at any
+:hpo:key:`THREADS <OPTIMIZER.THREADS>`; the later evaluations of that
+batch have run and are recorded, and the restart follows the batch.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 the window closed at the evaluation that ended first past it,
+   and the other replicas or walkers of an annealer stopped at their next
+   proposal.
+
 A chain that produces no point reuses the previous launch's starting
 points and emits a warning. An exploration with its own ``INIT`` chain
 keeps that chain; one sharing the main points receives the refreshed

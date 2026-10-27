@@ -58,6 +58,8 @@ Common keys
        of ``REPLICAS`` (``ANNEAL_PT``) and of ``POPULATION``
        (``ANNEAL_PA``). An ``EXPLORE`` block of another optimiser and
        ``CERES`` refuse it, and so does ``INNER`` (see :doc:`nfp_inner`).
+       A seeded run writes the same result files at any ``THREADS``,
+       except under :hpo:opt:`DLIB:GFS` (:ref:`nfp_evaluation_numbers`).
    * - ``SEED n``
      - Unsigned 64-bit optimiser seed. See the seed rules below.
    * - ``STEP fraction``
@@ -124,10 +126,18 @@ Seeds
 
 An optimiser's ``SEED`` controls its search stream. ``INIT SEED`` and
 ``RESTART SEED`` control their starting-point methods separately. An
-NLopt algorithm that draws random numbers takes the ``SEED`` of its block,
-else the ``SEED`` of its ``INIT`` block, else a seed drawn once for the
-run, which standard output and the journal give. ``INNER`` has no seed of
-its own.
+optimiser that draws random numbers takes the ``SEED`` of its block; an
+NLopt algorithm next takes the ``SEED`` of its ``INIT`` block. Without
+either, it draws its numbers with a seed drawn once for the run, which
+standard output and the journal give with the ``SEED`` line that draws
+the same numbers again. ``MULTISTART``, ``PRESTAGE`` and ``RESTART``
+derive the seeds of their starts and rounds from that seed as from a
+``SEED`` line. ``INNER`` has no seed of its own.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 :hpo:opt:`TADAH:RANDOM`, the annealers and :hpo:opt:`ASA:ASA`
+   without :hpo:key:`SEED <OPTIMIZER.SEED>` drew a new seed each time they
+   started, so a run of several starts or rounds could not be repeated.
 
 A ``PRESTAGE`` exploration whose optimiser reads ``SEED`` and that has no
 seed of its own takes the ``STRATEGY``-level ``SEED``. Its own seeds come

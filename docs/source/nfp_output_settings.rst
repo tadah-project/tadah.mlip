@@ -18,6 +18,11 @@ Output settings
 These root-level keys control history files and optional potential
 archives.
 
+.. contents::
+   :local:
+   :depth: 1
+   :backlinks: none
+
 History cadence and precision
 -----------------------------
 
@@ -88,6 +93,42 @@ through the link, and is checked where the link leads;
 named pipe, which the run opens once and whose reader it waits for; a
 history file may not, as the run reopens it for each row. A device such
 as ``/dev/null`` may take any of these files, a socket none.
+
+.. _nfp_evaluation_numbers:
+
+Evaluation numbers
+------------------
+
+The evaluations of a run are numbered in the order in which the optimiser
+proposes them. :hpo:opt:`TADAH:ANNEAL_PT`, :hpo:opt:`TADAH:ANNEAL_PA` and
+:hpo:opt:`ASA:ASA` with a block of states evaluate several points at once
+on the :hpo:key:`THREADS <OPTIMIZER.THREADS>` workers: the replicas of an
+epoch, the walkers of a temperature step, the states of a block. Such a
+batch numbers its evaluations in the order of their slots, the ``SLOT``
+column. The run records the batch once its last evaluation has ended, in
+that order: the history rows, each improvement of the best loss,
+``best_pot.tadah`` and the stagnation window of the
+:hpo:block:`RESTART <BLOCK.RESTART>` block. A seeded run therefore writes
+the same files at any :hpo:key:`!THREADS <OPTIMIZER.THREADS>`, apart from
+the times they record, when each loss depends on its point and on the
+earlier evaluations of its slot alone. A :hpo:key:`PC_LAMMPS` script that
+reads what an earlier script left in its LAMMPS instance, which a worker
+keeps from one evaluation to the next, breaks that condition.
+
+:hpo:opt:`DLIB:GFS` with :hpo:key:`!THREADS <OPTIMIZER.THREADS>` above 1 is
+different: it proposes each point from the evaluations that have
+ended, so its points and their numbers depend on the timing of the
+evaluations.
+
+A stop during a batch, by a signal or by
+:hpo:key:`MAXTIME <OPTIMIZER.MAXTIME>`, keeps the evaluations that ended,
+at their numbers. The journal says how many evaluations of the batch did
+not run and which numbers have no row.
+
+.. versionchanged:: 1.6.0
+   In 1.5.0 an evaluation took its number when it started and a new best
+   was recorded when it ended, so with more than one worker the numbers
+   and the best histories followed the timing of the evaluations.
 
 Potential archives
 ------------------

@@ -790,19 +790,31 @@ class PagesTest(unittest.TestCase):
     def test_an_nlopt_entry_names_the_parameters_its_algorithm_reads(self):
         # Pins: the PARAM field of an NLopt algorithm's entry names the
         # PARAM keys NLopt reads for it (algorithm_params of the optimiser
-        # list), as literals: tolg for LD_LBFGS, magic_eps for GN_DIRECT_L;
-        # an algorithm that reads none says so (LN_SBPLX). Another
+        # list), as literals: "NLopt reads the PARAM key ``tolg``" for
+        # LD_LBFGS, one key for GN_DIRECT_L, four, joined by "and", for
+        # GN_ORIG_DIRECT; an algorithm that reads none says so ("NLopt reads
+        # no PARAM key of this algorithm", LN_SBPLX). Another
         # library's entry adds nothing of the kind.
         # Before the fix: the field named the NLopt PARAM policy alone, and
         # the generator stopped on the optimiser list of the refusal of
         # unread PARAM keys and SEED ("KeyError: 'warns_unread_seed'").
+        # Before the fix of the wording: "NLopt reads ``tolg``" and "NLopt
+        # reads no parameter of this algorithm", where the reference calls
+        # them PARAM keys.
         entries = self.page_entries()
         param = {name: field_of(entries[name][2], 'PARAM') or ''
                  for name in ('NLOPT:LD_LBFGS', 'NLOPT:GN_DIRECT_L',
-                              'NLOPT:LN_SBPLX', 'DLIB:BFGS')}
-        self.assertIn('NLopt reads ``tolg``', param['NLOPT:LD_LBFGS'])
-        self.assertIn('NLopt reads ``magic_eps``', param['NLOPT:GN_DIRECT_L'])
-        self.assertIn('NLopt reads no parameter of this algorithm',
+                              'NLOPT:GN_ORIG_DIRECT', 'NLOPT:LN_SBPLX',
+                              'DLIB:BFGS')}
+        key = ':hpo:key:`!OPTIMIZER.PARAM`'
+        self.assertIn(f'NLopt reads the {key} key ``tolg``',
+                      param['NLOPT:LD_LBFGS'])
+        self.assertIn(f'NLopt reads the {key} key ``magic_eps``',
+                      param['NLOPT:GN_DIRECT_L'])
+        self.assertIn(f'NLopt reads the {key} keys ``magic_eps``, '
+                      '``magic_eps_abs``, ``sigma_reltol`` and '
+                      '``fglobal_reltol``', param['NLOPT:GN_ORIG_DIRECT'])
+        self.assertIn(f'NLopt reads no {key} key of this algorithm',
                       param['NLOPT:LN_SBPLX'])
         self.assertNotIn('NLopt reads', param['DLIB:BFGS'])
 

@@ -513,8 +513,9 @@ empty argument is dropped. Discovered entries are not affected.
 ## Building the documentation
 
 The Sphinx sources live in `docs/source` (Python requirements in
-`docs/requirements.txt`; the theme options `conf.py` sets need
-`sphinx_rtd_theme` 3.0 or later). The files the Nested Fitting pages offer
+`docs/requirements.txt`: Sphinx 7.4 or later, the oldest version the
+documentation is built and tested with; the theme options `conf.py` sets
+need `sphinx_rtd_theme` 3.0 or later). The files the Nested Fitting pages offer
 for download and include live under `docs/source/nfp/files`, which
 `conf.py` excludes from the pages (`exclude_patterns`): an rst or Markdown
 file there, such as an example's README, is not a page. The build needs

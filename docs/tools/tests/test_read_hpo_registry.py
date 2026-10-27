@@ -764,30 +764,59 @@ class PagesTest(unittest.TestCase):
             self.assertIn(':hpo:topic:`LAMMPS_SCRIPT`',
                           field_of(entries[key][2], 'Script') or '', key)
 
-    def test_seed_of_an_optimiser_that_draws_no_random_numbers(self):
-        # Pins: an optimiser that draws no random numbers does not list SEED
-        # among what it reads, and its entry says that it refuses a SEED
-        # line (tadah hpo refuses SEED for every optimiser that draws no
-        # random numbers, the NLopt ones included); the SEED entry says
-        # which optimisers refuse SEED, without the claim that such an
-        # optimiser refuses it.
-        # Before the fix: the entries of DIRECT, StoGO and AGS said
-        # "Random draws: never: a SEED line is accepted and has no effect",
-        # which tadah hpo no longer accepts; before that, they showed
-        # "Reads: SEED" and "Random draws: never".
+    def test_seed_of_every_optimiser(self):
+        # Pins: the entry of every available optimiser has a SEED field that
+        # says how a run of it reads SEED, from the field seed of the
+        # optimiser list, as tadah hpo decides it: "read" (GN_CRS2_LM,
+        # TADAH:RANDOM), "read in two OPTIM dimensions or more; refused in
+        # one" (GN_DIRECT_L_RAND), "read only when its local search draws
+        # random numbers (an INNER LN_PRAXIS); refused otherwise"
+        # (GN_MLSL_LDS, the AUGLAG forms), "refused: it draws no random
+        # numbers" (LN_SBPLX, DIRECT, DLIB:GFS). SEED is not listed among
+        # what an optimiser reads, nor in the random draws; the SEED entry
+        # does not say that such an optimiser refuses it.
+        # Before the fix: only the entries of DIRECT, StoGO and AGS said
+        # anything of SEED ("Random draws: never: a SEED line is refused");
+        # LN_SBPLX, the MLSL LDS and AUGLAG forms and GN_DIRECT_L_RAND said
+        # nothing, or listed SEED among what they read without its
+        # condition (the optimiser list had no field seed).
         entries = self.page_entries()
-        never = [f"{o['lib']}:{o['algo']}"
-                 for o in self.optimizers['optimizer']
-                 if o['status'] == 'registered'
-                 and o.get('random_draws') == 'never']
-        self.assertTrue(never)
-        for name in never:
+        expected = {
+            'read': ('read: the seed of the random numbers it draws',),
+            'two_dimensions': ('read in two OPTIM dimensions or more',
+                               'refused in one'),
+            'local_search': ('read only when its local search draws',
+                             'LN_PRAXIS', 'refused otherwise'),
+            'refused': ('refused: it draws no random numbers',)}
+        seen = set()
+        for o in self.optimizers['optimizer']:
+            if o['status'] != 'registered':
+                continue
+            name = f"{o['lib']}:{o['algo']}"
             body = entries[name][2]
             with self.subTest(optimiser=name):
+                self.assertIn(o.get('seed'), expected)
+                seen.add(o['seed'])
+                field = words_of(field_of(body, 'SEED') or '')
+                for text in expected[o['seed']]:
+                    self.assertIn(text, field)
                 self.assertNotIn('OPTIMIZER.SEED', field_of(body, 'Reads')
                                  or '')
-                self.assertIn('SEED', field_of(body, 'Random draws'))
-                self.assertIn('refused', field_of(body, 'Random draws'))
+                self.assertNotIn('SEED', field_of(body, 'Random draws')
+                                 or '')
+        self.assertEqual(seen, set(expected))
+        for name, seed in (('NLOPT:LN_SBPLX', 'refused'),
+                           ('NLOPT:GN_DIRECT_L', 'refused'),
+                           ('NLOPT:GN_MLSL_LDS', 'local_search'),
+                           ('NLOPT:LN_AUGLAG', 'local_search'),
+                           ('NLOPT:GN_DIRECT_L_RAND', 'two_dimensions'),
+                           ('NLOPT:GN_CRS2_LM', 'read'),
+                           ('TADAH:RANDOM', 'read')):
+            with self.subTest(optimiser=name):
+                lib, algo = name.split(':')
+                [o] = [o for o in self.optimizers['optimizer']
+                       if (o['lib'], o['algo']) == (lib, algo)]
+                self.assertEqual(o.get('seed'), seed)
         seed = ' '.join(paragraphs_of(entries['OPTIMIZER.SEED'][2]))
         self.assertNotIn('draws no random numbers is refused', seed)
 

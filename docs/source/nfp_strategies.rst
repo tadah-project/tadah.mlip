@@ -68,13 +68,13 @@ optimiser that takes every ``INIT`` point in one run, ``DLIB:GFS``,
 which it would run once whatever ``N_STARTS``. ``TYPE PLAIN`` runs either
 once; ``DLIB:GFS`` then takes every ``INIT`` point.
 
+.. versionchanged:: 1.6.0
+   In 1.5.0 ``MULTISTART`` accepted ``DLIB:GFS`` and ran it once.
+
 If ``BUDGET_PER_START`` is absent, a main ``MAXEVAL M`` is divided among
 ``k`` actual starts as ``ceil(M/k)`` per start. Rounding can make the sum
 larger than ``M``. A supplied ``BUDGET_PER_START`` replaces this division.
 ``MAXTIME`` applies separately to each search.
-
-.. versionchanged:: 1.6.0
-   In 1.5.0 ``MULTISTART`` accepted ``DLIB:GFS`` and ran it once.
 
 Separate starts run one after another. ``THREADS`` sets the workers that
 run the evaluation work within each search.

@@ -66,14 +66,16 @@ for an earlier evaluation to finish or for an active writer.
      - Enabled validation metrics by dataset and their averages.
 
 The first column of these histories, ``#ITERATION``, is the evaluation
-number. Each has a corresponding ``best_`` history, such as
+number. These files accumulate history rows; each file's header lists the
+enabled columns.
+
+Each has a corresponding ``best_`` history, such as
 ``best_params.tadah``, with a row for each improvement of the best loss
 that ``BOUTPUT`` writes. Its first column, ``#IMPROVEMENT``, numbers the
-improvements from one. Its second, ``EVAL``, gives the evaluation number
-of each improvement, the ``#ITERATION`` of that evaluation. The other
-history has a row for it when ``OUTPUT`` writes that evaluation, as
-under ``OUTPUT 1``. These files accumulate history rows; each file's
-header lists the enabled columns.
+improvements from one. Its second, ``EVAL``, gives the ``#ITERATION`` of
+the evaluation that made the improvement. The matching main history, such
+as ``params.tadah``, holds that row when ``OUTPUT`` writes the evaluation,
+which ``OUTPUT 1`` does for every evaluation.
 
 The run writes these files, ``hpo_run.log`` and ``best_pot.tadah`` into
 the working directory. A working directory without write permission, or

@@ -691,7 +691,8 @@ warning).  ``ALGO NONE`` in a block keeps the block and skips its stage:
 
 .. code-block:: none
 
-   REFINE: ENABLED false skips the stage, so its OPTIMIZER block has no effect; remove the OPTIMIZER block, or write ALGO NONE in it instead of ENABLED false
+   REFINE: ENABLED false skips the stage, so its OPTIMIZER block has no effect;
+   ALGO NONE in the OPTIMIZER block switches the stage off
 
 EXPLORE
 also accepts ``MAX_ADD`` (one value or three ``phi rho F``) capping the basis
@@ -869,7 +870,9 @@ random numbers; ``FTOL_ABS`` with a Ceres ``ALGO`` points to ``FTOL_REL``:
 
 .. code-block:: none
 
-   EXPLORE: SEED is not accepted in a tadah refit OPTIMIZER block: the refit's random numbers come from REFIT_COMPACT_SEED; set REFIT_COMPACT_SEED in the configuration instead.
+   EXPLORE: SEED is not accepted in a tadah refit OPTIMIZER block: the refit's
+   random numbers come from REFIT_COMPACT_SEED: REFIT_COMPACT_SEED in the
+   training configuration seeds the refit.
 
 Within a stage, a stop criterion that the block's ``ALGO`` does not read
 (the table above) is an error, named as written with the ``ALGO`` and the
@@ -993,9 +996,11 @@ optimiser, would have no effect and is an error too:
 
 .. code-block:: none
 
-   REFINE: LIB is not set; set LIB NLOPT (ALGO LD_LBFGS is an NLopt algorithm)
-   EXPLORE: LIB CERES does not match ALGO GN_MLSL_LDS, an NLopt algorithm; set LIB NLOPT
-   REFINE: LIB NLOPT does not match ALGO LBFGS, a dlib algorithm; set LIB DLIB, or with LIB NLOPT set ALGO LD_LBFGS
+   REFINE: LIB is not set; ALGO LD_LBFGS is an NLopt algorithm, whose LIB is NLOPT
+   EXPLORE: LIB CERES does not match ALGO GN_MLSL_LDS, an NLopt algorithm, whose
+   LIB is NLOPT
+   REFINE: LIB NLOPT does not match ALGO LBFGS, a dlib algorithm, whose LIB is
+   DLIB; LIB NLOPT takes ALGO LD_LBFGS
    EXPLORE INNER: LIB has no effect with ALGO NONE (no local search runs); remove LIB
    EXPLORE: LIB has no effect with ALGO UNIFORM (no global search runs); remove LIB
 

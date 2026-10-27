@@ -57,10 +57,10 @@ in order:
    neighbour distances of the element pairs it sums over (those its
    ``TYPE2B`` or ``TYPEMB`` line names, or the ``PAIRS`` of its
    ``DESCRIPTOR`` block; a pair written with ``*`` stands for each element
-   pair of the data it matches), each pair on its own: a cutoff that holds
-   no distance of one pair fails, as that pair adds nothing to the
-   descriptor, and so does a density none of whose channels reaches the
-   distances of one pair.
+   pair it matches), each pair on its own: a cutoff that holds no distance
+   of one pair fails, as that pair adds nothing to the descriptor, and so
+   does a density none of whose channels reaches the distances of one
+   pair.
 #. **Fitting the regression model** declared by ``MODEL``: it minimises
    the sum of :ref:`fit_objective`, with the :term:`error scales
    <error scale>` of the configuration and the :term:`priorities

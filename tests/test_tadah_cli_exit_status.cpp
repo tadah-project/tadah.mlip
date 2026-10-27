@@ -5390,14 +5390,18 @@ TEST_CASE("Subcommand: train -c retrains a kernel potential with another "
  * on the Nb-Ta cells, LAMBDA 0) writes 5 WEIGHTS and no WCOV, WNOISE or
  * SIGMA; `tadah train -c` with that potential, the DBFILE added, a SIGMA
  * line of 1 + 5 x 5 values appended (as an OALGO 3 potential of Tadah!
- * 1.5.0 has one) and OALGO 1 or 3, exits 0 and writes no WCOV, WNOISE or
- * SIGMA, and with OALGO 3 the WEIGHTS of the first fit (1e-12 relative:
- * the same fit of the same data).
+ * 1.5.0 has one) and OALGO 1 or 3, is refused (status 1, no re.tadah),
+ * naming the SIGMA line, a deprecated key that changes nothing a fit
+ * gives ("SIGMA 5 1e-6 0 and 23 more values (line N of re_cfg.tadah)");
+ * without the SIGMA line it exits 0 and writes no WCOV, WNOISE or SIGMA,
+ * and with OALGO 3 the WEIGHTS of the first fit (1e-12 relative: the same
+ * fit of the same data).
  * Before the fix: the potentials had the WCOV and WNOISE of their fit (this
  * case, then named "Subcommand: train -c replaces the covariance of an
  * OALGO 3 potential", compared them). Before fix/hpo-trainer-reuse: the
  * OALGO 1 potential kept the old SIGMA, and with OALGO 3 the new SIGMA was
- * appended to it. */
+ * appended to it. Until a fit refused the deprecated keys: the retrain
+ * with the SIGMA line exited 0, the line ignored with a notice. */
 TEST_CASE("Subcommand: train -c of an OALGO 3 potential writes the weights "
           "of its own fit and no covariance",
           "[TadahCLI][train][retrain]") {
@@ -5423,10 +5427,23 @@ TEST_CASE("Subcommand: train -c of an OALGO 3 potential writes the weights "
     for (int j = 0; j < 5; ++j) sigma += i == j ? " 1e-6" : " 0";
   for (int oalgo : {1, 3}) {
     CAPTURE(oalgo);
+    std::filesystem::remove("re.tadah");
     std::ofstream("re_cfg.tadah") << as_training_config(
         with_line(pot, "OALGO", "OALGO " + std::to_string(oalgo)) + sigma +
             "\n",
         "db.tadah");
+    {
+      const CliRun s = run_tadah({"tadah", "train", "-c", "re_cfg.tadah",
+                                  "-o", "re.tadah"});
+      const std::string rep = reported(s);
+      INFO("with SIGMA: status " << s.status << "\n" << rep);
+      CHECK(s.status == 1);
+      CHECK(contains(rep, "SIGMA 5 1e-6 0 and 23 more values (line "));
+      CHECK(contains(rep, " of re_cfg.tadah): "));
+      CHECK_FALSE(std::filesystem::exists("re.tadah"));
+    }
+    std::ofstream("re_cfg.tadah") << as_training_config(
+        with_line(pot, "OALGO", "OALGO " + std::to_string(oalgo)), "db.tadah");
     const CliRun r = run_tadah({"tadah", "train", "-c", "re_cfg.tadah", "-o",
                                 "re.tadah"});
     INFO("status " << r.status << "\n" << reported(r));

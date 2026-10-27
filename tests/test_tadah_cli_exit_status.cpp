@@ -1977,28 +1977,43 @@ TEST_CASE("Subcommand: data dedup without --threshold says it needs "
   CHECK_FALSE(contains(rep, "e.g."));
 }
 
-/* Pins: tadah analysis dataset_stats says what it lacks, naming only what
- * the command line accepts with its input (-c excludes --dbfile and
- * --structure): with -d alone (no configuration, so no cutoff) "analysis
- * dataset_stats: no cutoff: the statistics take the largest RCUT2B or
- * RCUTMB value of a configuration given with -c as their cutoff, and no
- * line gives one (--dbfile and --structure give none)"; with a -c
+/* Pins: tadah analysis dataset_stats says what it lacks: with a -c
+ * configuration without an RCUT2B or RCUTMB line or a DESCRIPTOR block,
+ * and -d, "analysis dataset_stats: no cutoff: the statistics take the
+ * largest cutoff of a configuration given with -c (RCUT2B, RCUTMB or the
+ * cutoff RADIUS of a DESCRIPTOR block), and no line gives one (--dbfile
+ * and --structure give none)"; with a -c
  * configuration of "RCUT2B 0" "analysis dataset_stats: the cutoff of the
  * statistics is the largest RCUT2B or RCUTMB value, 0, which is not above
- * 0"; with a -c configuration without DBFILE or STRUCTURE "analysis
- * dataset_stats: no structures loaded: the configuration has no DBFILE or
- * STRUCTURE line"; with -d of a file of no structure "analysis
- * dataset_stats: no structures loaded: the datasets of DBFILE (empty.tadah)
- * hold no structure". Each exits 1 and writes no report.
+ * 0", before the data are read (its DBFILE line names absent.tadah, a file
+ * that does not exist); with a -c configuration without DBFILE or STRUCTURE
+ * "analysis dataset_stats: no structures loaded: the configuration has no
+ * DBFILE or STRUCTURE line"; with -c and -d of a file of no structure
+ * "analysis dataset_stats: no structures loaded: the datasets of DBFILE
+ * (empty.tadah) hold no structure". Each exits 1 and writes no report.
  * Before the fix: "... RCUTMAX is not set or <= 0. Set at least one of
  * RCUT2B / RCUTMB in your config so the audit cutoff is well-defined." and
- * "... no structures loaded — provide at least one DBFILE or STRUCTURE.".
+ * "... no structures loaded — provide at least one DBFILE or STRUCTURE.",
+ * and, for the configuration of "RCUT2B 0", "DBFILE does not exist:
+ * absent.tadah" (the data were read before the cutoff was checked).
  * Before the fix that names only what the input accepts: "... RCUTMAX is
  * not set or <= 0; an RCUT2B or RCUTMB line in the configuration (-c) sets
- * it" with -d, which -c cannot join, and "... no structures loaded; a
+ * it" with -d, which -c could not join, and "... no structures loaded; a
  * DBFILE or STRUCTURE line in the configuration, --dbfile or --structure
- * gives them" with -c, which --dbfile and --structure cannot join: the four
- * checks of the messages fail. */
+ * gives them" with -c, which --dbfile and --structure could not join: the
+ * four checks of the messages fail.
+ * Before the fix that lets -c join -d and -s: the first and the fourth
+ * command lines (then -d alone, without the -c) are refused, "--dbfile
+ * excludes --config" (status 108): their two checks fail; the second
+ * reads the DBFILE of the configuration before its cutoff is checked,
+ * "DBFILE does not exist: absent.tadah" (status 1): its check of the
+ * message fails. (-d without -c is refused on the command line since that
+ * fix, "--dbfile requires --config", before the data are read.)
+ * Before the fix that takes the cutoff RADIUS of a DESCRIPTOR block as a
+ * cutoff of the configuration: the first message named RCUT2B and RCUTMB
+ * alone, "... no cutoff: the statistics take the largest RCUT2B or RCUTMB
+ * value of a configuration given with -c as their cutoff, and no line gives
+ * one ...": its check fails. */
 TEST_CASE("Subcommand: analysis dataset_stats names what it lacks and "
           "what its input accepts",
           "[TadahCLI][exit-status][analysis]") {
@@ -2006,16 +2021,17 @@ TEST_CASE("Subcommand: analysis dataset_stats names what it lacks and "
   std::ofstream("db.tadah") << dataset_entry("T1", {"Na 0 0 0",
                                                     "Cl 2.5 2.5 2.5"});
   std::ofstream("stats.config") << "RCUT2B 4.0\n";
-  std::ofstream("zero.config") << "RCUT2B 0\nDBFILE db.tadah\n";
+  std::ofstream("nocut.config") << "DBFILE db.tadah\n";
+  std::ofstream("zero.config") << "RCUT2B 0\nDBFILE absent.tadah\n";
   std::ofstream("empty.tadah") << "";
   for (const auto& [args, message] :
        std::vector<std::pair<std::vector<std::string>, std::string>>{
-           {{"tadah", "analysis", "dataset_stats", "-d", "db.tadah", "-o",
-             "st.tadah"},
+           {{"tadah", "analysis", "dataset_stats", "-c", "nocut.config",
+             "-d", "db.tadah", "-o", "st.tadah"},
             "analysis dataset_stats: no cutoff: the statistics take the "
-            "largest RCUT2B or RCUTMB value of a configuration given with -c "
-            "as their cutoff, and no line gives one (--dbfile and --structure "
-            "give none)"},
+            "largest cutoff of a configuration given with -c (RCUT2B, RCUTMB "
+            "or the cutoff RADIUS of a DESCRIPTOR block), and no line gives "
+            "one (--dbfile and --structure give none)"},
            {{"tadah", "analysis", "dataset_stats", "-c", "zero.config", "-o",
              "st.tadah"},
             "analysis dataset_stats: the cutoff of the statistics is the "
@@ -2024,13 +2040,15 @@ TEST_CASE("Subcommand: analysis dataset_stats names what it lacks and "
              "st.tadah"},
             "analysis dataset_stats: no structures loaded: the configuration "
             "has no DBFILE or STRUCTURE line"},
-           {{"tadah", "analysis", "dataset_stats", "-d", "empty.tadah", "-o",
-             "st.tadah"},
+           {{"tadah", "analysis", "dataset_stats", "-c", "stats.config",
+             "-d", "empty.tadah", "-o", "st.tadah"},
             "analysis dataset_stats: no structures loaded: the datasets of "
             "DBFILE (empty.tadah) hold no structure"}}) {
     const CliRun r = run_tadah(args);
     const std::string rep = reported(r);
-    INFO(args[3] << ": status " << r.status << "\n" << rep);
+    std::string line;
+    for (std::size_t i = 3; i < args.size(); ++i) line += " " + args[i];
+    INFO(line << ": status " << r.status << "\n" << rep);
     CHECK(r.status == 1);
     CHECK(contains(rep, message));
     CHECK_FALSE(std::filesystem::exists("st.tadah"));
@@ -2364,6 +2382,25 @@ std::optional<double> stats_pair_r_min(const std::string& text,
   return std::nullopt;
 }
 
+/* The n_pairs and r_max of the element pair `a b` in a dataset_stats file
+ * (TADAH_DATASTATS_V1: "<a> <b> n_pairs <n> r_min <x> r_max <y>"); nullopt
+ * when the file has no such line. */
+std::optional<std::pair<long, double>> stats_pair_count_r_max(
+    const std::string& text, const std::string& a, const std::string& b) {
+  std::istringstream in(text);
+  std::string line;
+  while (std::getline(in, line)) {
+    std::istringstream ss(line);
+    std::vector<std::string> tok;
+    for (std::string t; ss >> t;) tok.push_back(t);
+    if (tok.size() >= 8 && tok[0] == a && tok[1] == b &&
+        tok[2] == "n_pairs" && tok[6] == "r_max")
+      return std::make_pair(std::strtol(tok[3].c_str(), nullptr, 10),
+                            std::strtod(tok[7].c_str(), nullptr));
+  }
+  return std::nullopt;
+}
+
 }  // namespace
 
 /* Pins: `tadah analysis dataset_stats -c <config> --close-contact 0.5`, the
@@ -2420,6 +2457,149 @@ TEST_CASE("Subcommand: analysis dataset_stats --close-contact lists the "
   const auto r_min = stats_pair_r_min(slurp("stats.tadah"), "Ta", "Ta");
   REQUIRE(r_min);
   CHECK(*r_min == 0.0);
+}
+
+/* Pins: `tadah analysis dataset_stats -c run.cfg -d ta.tadah -o st.tadah`,
+ * where run.cfg has RCUT2B 5.5, a DBFILE line of nacl.tadah and a STRUCTURE
+ * line of nacl.cif, exits 0 and writes the report that `-c ref.cfg -o
+ * ref.tadah` writes (ref.cfg: RCUT2B 5.5 and DBFILE ta.tadah), byte for
+ * byte: the statistics of the datasets of -d alone, at the cutoff of the
+ * configuration. bcc-Ta (Ta at (0, 0, 0) and (2.5, 2.5, 2.5) in a 5 A
+ * cube) gives one structure, elements Ta, and inside 5.5 A the 8
+ * neighbours at 4.33 A and the 6 images at 5 A of each atom: 28 ordered
+ * Ta-Ta pairs, r_max 5 (16 pairs at a cutoff of 4.5 A).
+ * Before the fix: -c excluded -d; the command line was refused, "--dbfile
+ * excludes --config" (status 108), and no report was written. */
+TEST_CASE("Subcommand: analysis dataset_stats -c with -d gives the "
+          "statistics of the datasets of -d at the cutoff of the "
+          "configuration",
+          "[TadahCLI][exit-status][analysis]") {
+  ScratchCwd cwd("dataset_stats_c_d");
+  std::ofstream("ta.tadah") << dataset_entry("bcc-Ta",
+                                             {"Ta 0 0 0", "Ta 2.5 2.5 2.5"});
+  std::ofstream("nacl.tadah") << dataset_entry("NaCl",
+                                               {"Na 0 0 0", "Cl 2.5 2.5 2.5"});
+  std::ofstream("nacl.cif") << kNaClP1Cif;
+  std::ofstream("run.cfg")
+      << "RCUT2B 5.5\nDBFILE nacl.tadah\nSTRUCTURE nacl.cif\n";
+  std::ofstream("ref.cfg") << "RCUT2B 5.5\nDBFILE ta.tadah\n";
+
+  const CliRun ref = run_tadah({"tadah", "analysis", "dataset_stats", "-c",
+                                "ref.cfg", "-o", "ref.tadah"});
+  INFO("reference: status " << ref.status << "\n" << reported(ref));
+  REQUIRE(ref.status == 0);
+  const CliRun r = run_tadah({"tadah", "analysis", "dataset_stats", "-c",
+                              "run.cfg", "-d", "ta.tadah", "-o", "st.tadah"});
+  INFO("-c run.cfg -d ta.tadah: status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  REQUIRE(std::filesystem::exists("st.tadah"));
+
+  const std::string st = slurp("st.tadah");
+  CHECK(st == slurp("ref.tadah"));
+  CHECK(line_tokens(st, "n_structures") ==
+        std::vector<std::string>{"n_structures", "1"});
+  CHECK(line_tokens(st, "elements") ==
+        std::vector<std::string>{"elements", "1", "Ta"});
+  const auto tata = stats_pair_count_r_max(st, "Ta", "Ta");
+  REQUIRE(tata);
+  CHECK(tata->first == 28);
+  CHECK(tata->second == Approx(5.0).margin(1e-12));
+}
+
+/* Pins: `tadah analysis dataset_stats -c run.cfg -s nacl.cif -o st.tadah`,
+ * where run.cfg has RCUT2B 4.5 and a DBFILE line of ta.tadah, exits 0 and
+ * writes the report that `-c ref.cfg -o ref.tadah` writes (ref.cfg: RCUT2B
+ * 4.5 and STRUCTURE nacl.cif), byte for byte: the statistics of the
+ * structures of -s alone, at the cutoff of the configuration, whose DBFILE
+ * line is not read. The NaCl cell (4 x 5 x 6 A) gives one structure,
+ * elements Cl Na, and inside 4.5 A the Na-Na pair of the cell's 4 A images
+ * (2 ordered pairs, r_max 4), which a cutoff below 4 A would not hold.
+ * Before the fix: -c excluded -s; the command line was refused,
+ * "--structure excludes --config" (status 108), and no report was
+ * written. */
+TEST_CASE("Subcommand: analysis dataset_stats -c with -s gives the "
+          "statistics of the structures of -s at the cutoff of the "
+          "configuration, without its DBFILE",
+          "[TadahCLI][exit-status][analysis]") {
+  ScratchCwd cwd("dataset_stats_c_s");
+  std::ofstream("ta.tadah") << dataset_entry("bcc-Ta",
+                                             {"Ta 0 0 0", "Ta 2.5 2.5 2.5"});
+  std::ofstream("nacl.cif") << kNaClP1Cif;
+  std::ofstream("run.cfg") << "RCUT2B 4.5\nDBFILE ta.tadah\n";
+  std::ofstream("ref.cfg") << "RCUT2B 4.5\nSTRUCTURE nacl.cif\n";
+
+  const CliRun ref = run_tadah({"tadah", "analysis", "dataset_stats", "-c",
+                                "ref.cfg", "-o", "ref.tadah"});
+  INFO("reference: status " << ref.status << "\n" << reported(ref));
+  REQUIRE(ref.status == 0);
+  const CliRun r = run_tadah({"tadah", "analysis", "dataset_stats", "-c",
+                              "run.cfg", "-s", "nacl.cif", "-o", "st.tadah"});
+  INFO("-c run.cfg -s nacl.cif: status " << r.status << "\n" << reported(r));
+  REQUIRE(r.status == 0);
+  REQUIRE(std::filesystem::exists("st.tadah"));
+
+  const std::string st = slurp("st.tadah");
+  CHECK(st == slurp("ref.tadah"));
+  CHECK(line_tokens(st, "n_structures") ==
+        std::vector<std::string>{"n_structures", "1"});
+  CHECK(line_tokens(st, "elements") ==
+        std::vector<std::string>{"elements", "2", "Cl", "Na"});
+  const auto nana = stats_pair_count_r_max(st, "Na", "Na");
+  REQUIRE(nana);
+  CHECK(nana->first == 2);
+  CHECK(nana->second == Approx(4.0).margin(1e-12));
+}
+
+/* Pins: `tadah analysis dataset_stats` with -d or -s and without -c, the
+ * configuration that gives the cutoff, is refused on the command line,
+ * before any data are read: "--dbfile requires --config" and "--structure
+ * requires --config", for files that do not exist (absent.tadah,
+ * absent.cif), which the refusal does not name; no report is written.
+ * Before the fix: -d and -s ran without -c; the data were read first, so
+ * the runs stopped at the missing files, "DBFILE does not exist:
+ * absent.tadah" and "the structure file absent.cif does not exist" (with a
+ * dataset that exists, at "analysis dataset_stats: no cutoff: ..."). */
+TEST_CASE("Subcommand: analysis dataset_stats refuses -d or -s without -c, "
+          "naming --config, before the data are read",
+          "[TadahCLI][exit-status][analysis]") {
+  ScratchCwd cwd("dataset_stats_no_c");
+  for (const auto& [option, file] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"-d", "absent.tadah"}, {"-s", "absent.cif"}}) {
+    const CliRun r = run_tadah({"tadah", "analysis", "dataset_stats", option,
+                                file, "-o", "st.tadah"});
+    const std::string rep = reported(r);
+    INFO(option << ": status " << r.status << "\n" << rep);
+    CHECK(r.status != 0);
+    CHECK(contains(rep, std::string(option == "-d" ? "--dbfile"
+                                                   : "--structure") +
+                            " requires --config"));
+    CHECK_FALSE(contains(rep, file));
+    CHECK_FALSE(std::filesystem::exists("st.tadah"));
+  }
+}
+
+/* Pins: `tadah analysis dataset_stats -c cfg -d ta.tadah -s nacl.cif` is
+ * refused on the command line, "--structure excludes --dbfile": the data
+ * are the datasets of -d or the structures of -s, with the cutoff of -c.
+ * No report is written.
+ * Before the fix: -c excluded both, and the refusal named that,
+ * "--structure excludes --config" (status 108). */
+TEST_CASE("Subcommand: analysis dataset_stats refuses -d with -s",
+          "[TadahCLI][exit-status][analysis]") {
+  ScratchCwd cwd("dataset_stats_d_s");
+  std::ofstream("ta.tadah") << dataset_entry("bcc-Ta",
+                                             {"Ta 0 0 0", "Ta 2.5 2.5 2.5"});
+  std::ofstream("nacl.cif") << kNaClP1Cif;
+  std::ofstream("cfg") << "RCUT2B 4.5\n";
+  const CliRun r = run_tadah({"tadah", "analysis", "dataset_stats", "-c",
+                              "cfg", "-d", "ta.tadah", "-s", "nacl.cif",
+                              "-o", "st.tadah"});
+  const std::string rep = reported(r);
+  INFO("status " << r.status << "\n" << rep);
+  CHECK(r.status != 0);
+  CHECK(contains(rep, "--structure excludes --dbfile"));
+  CHECK_FALSE(std::filesystem::exists("st.tadah"));
 }
 
 /* ---- [kernel_line]: the settings line of a kernel --------------------- */

@@ -22,14 +22,18 @@ Required options
 ``--script <file>``
    LAMMPS input script. Requested outputs must be defined as equal-style
    variables; HPO checks the definitions when it reads the target file.
+   A script with a ``quit`` command, or an ``if`` command that runs one,
+   is refused: ``quit`` ends the process that runs the script.
 
 ``--varloss <name> <target> <weight> [<loss> [<parameter>]]``
    Read this variable after the script and create a weighted loss term.
    Repeat for additional terms. Target and weight must be finite;
    unlike validation and typed-observable weights, a negative weight is
-   accepted here. The default loss is root ``LOSS`` as it stood when
-   this line was read. An optional :doc:`loss name <nfp_losses>` and
-   parameter override it for this variable only.
+   accepted here. The default loss is the top-level :hpo:key:`LOSS` as
+   it stood when this line was read. An optional
+   :doc:`loss name <nfp_losses>` and parameter override it for this
+   variable only, which then does not read :hpo:key:`!LOSS`. A target
+   that the loss cannot measure is refused.
 
 Inputs and diagnostics
 ----------------------
@@ -49,16 +53,19 @@ Timeout and failed-script values
 --------------------------------
 
 ``--maxtime <time>``
-   Override ``PC_SCRIPT_TIMEOUT`` for this script: ``off``, ``unlimited``
-   or a positive ``[[HH:]MM:]SS`` time.
+   The script's own limit in place of :hpo:key:`PC_SCRIPT_TIMEOUT`:
+   ``off``, ``unlimited`` or a positive ``[[HH:]MM:]SS`` time; the line
+   then does not read :hpo:key:`!PC_SCRIPT_TIMEOUT`.
 
 ``--failscore <value>``
    Value substituted for this script's output and loss variables if it
    fails. Any finite number is accepted for ``PC_LAMMPS``; default:
-   root ``FAILSCORE`` when the line is read. The substituted variable
-   passes through its configured loss for reporting, but the whole
-   evaluation still receives a failure score. On ``PC_FAILPROBE`` this
-   option instead requires a positive number.
+   the top-level :hpo:key:`FAILSCORE` when the line is read. The
+   substituted variable passes through its configured loss for
+   reporting, but the whole evaluation still receives a failure score.
+   The line then does not read the top-level
+   :hpo:key:`!FAILSCORE`. On ``PC_FAILPROBE`` this option instead
+   requires a positive number.
 
 Warm variables
 --------------
@@ -72,11 +79,18 @@ Warm variables
 
 The script must define the returned value as an equal-style variable.
 HPO injects the cached seed before running it. Scripts without
-``--hotvar`` that reference a returned hot value run after its producer.
-Each hot-variable name must have only one producing script.
-Creating the same name with ``--invar`` or ``-var`` causes hot-value
-injection to fail: those options create index-style variables, which
-conflict with equal-style injection.
+``--hotvar`` that reference a returned hot value (``${name}``,
+``v_name``, or ``$name`` for a one-character name) run after its
+producer and are injected its value. A script with ``--hotvar`` is
+injected its own seeds only. Each hot-variable name must have only one
+producing script.
+
+A line that defines a name with ``--invar``, ``-var`` or ``-v`` is
+refused when the name is a ``--hotvar`` of the line, or, on a line
+without ``--hotvar``, a ``--hotvar`` that its script references: those
+options create index-style variables, which conflict with equal-style
+injection. A line with ``--hotvar`` may define another line's hot name,
+and its script then reads that definition.
 
 Violation variables
 -------------------
@@ -86,22 +100,27 @@ Violation variables
    no detected failure; a positive value indicates a failed simulation.
    The optional scale must be finite and positive; default ``1``.
 
-With ``FAILSCORE_GRADING ON``, a positive violation marks the simulation
-as failed and ``scale * value`` grades its severity. With grading
-``OFF``, the numeric violation is unused. In either mode an unreadable
-or non-finite fail variable fails the simulation. Define it before
-commands that might prevent the script from reaching its end.
+A positive violation marks the simulation as failed, and its evaluation
+fails in both grading modes (see :ref:`nfp_failscore_grading`). With
+:hpo:key:`FAILSCORE_GRADING` ``ON``, ``scale * value`` grades its
+severity; with ``OFF``, an explicit scale is refused. In either mode an
+unreadable or non-finite fail variable fails the simulation. The script
+defines it before any command that might stop the script early.
 
 LAMMPS command-line options
 ---------------------------
 
 Single-dash options and their values are forwarded to LAMMPS, for
-example ``-screen none``, ``-log run.log`` or ``-var pressure 0``.
+example ``-screen none``, ``-log run.log`` or ``-var pressure 0``; the
+short forms ``-sc`` and ``-l`` count as ``-screen`` and ``-log``.
 LAMMPS checks whether its build supports them. HPO reserves ``maxtime``
 for its timer: ``--invar maxtime``, ``-var maxtime`` and ``-v maxtime``
 are refused.
 
 Double-dash options belong to HPO. Unknown options and extra values
-after an HPO option are errors. Parallel script execution uses
+after an HPO option are errors. ``--script``, ``--failscore`` and
+``--maxtime`` are given once per line; a variable is declared once by
+``--hotvar`` or ``--failvar``, and defined once by ``--invar``, ``-var``
+or ``-v``. Parallel script execution uses
 ``THREADS`` and ``PC_ISOLATION``; the old ``--ncpu`` option is rejected.
 ``--gate`` and ``--s0`` belong only to ``PC_FAILPROBE``.

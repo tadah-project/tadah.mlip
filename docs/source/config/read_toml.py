@@ -24,7 +24,7 @@ header = '''
 Configuration File
 ==================
 
-.. note:: This page is auto-generated from the blueprint TOML on every docs build. Reports of any mismatch between this reference and runtime behaviour are welcome on the `Tadah!MLIP GitLab <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_.
+.. note:: This page is auto-generated from the blueprint TOML on every docs build. Reports of any mismatch between this reference and runtime behaviour are welcome on the `Tadah!MLIP issue tracker <https://github.com/tadah-project/tadah.mlip/issues>`_.
 
 This section describes the format of the configuration file used by Tadah!MLIP.
 

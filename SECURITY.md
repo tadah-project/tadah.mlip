@@ -2,17 +2,14 @@
 
 If you believe you have found a security issue in Tadah! (any of the
 modules listed in [CONTRIBUTING.md](CONTRIBUTING.md)), please report
-it as a **confidential issue** on the relevant GitLab project rather
-than opening a public issue or merge request. Open the *New issue*
-form for the affected repo on
-`https://git.ecdf.ed.ac.uk/tadah/<module>/-/issues/new` and tick the
-**Confidential** checkbox before submitting; only project members
-will be able to see the report.
-
-If you are unsure which module is affected, file the report on the
-umbrella project at
-<https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues/new> with the
-*Confidential* checkbox ticked — we will route it internally.
+it privately rather than opening a public issue or pull request: use
+*Report a vulnerability* on the Security tab of this repository,
+<https://github.com/tadah-project/tadah.mlip/security/advisories/new>,
+or, for the LAMMPS plugin, of Tadah!LAMMPS,
+<https://github.com/tadah-project/tadah.lammps/security/advisories/new>.
+Only the maintainers can see the report. If you are unsure which
+module is affected, report it on this repository; we will route it
+internally.
 
 A useful report includes the affected version (`tadah --version`),
 the build mode (`Release` / `Develop`, MPI on/off), and a minimal

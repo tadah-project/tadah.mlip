@@ -1,8 +1,6 @@
-[![pipeline](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/badges/v1-dev/pipeline.svg)](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/commits/v1-dev)
-[![coverage](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/badges/v1-dev/coverage.svg)](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/commits/v1-dev)
 [![docs](https://readthedocs.org/projects/tadah/badge/?version=v1-dev)](https://tadah.readthedocs.io/v1-dev/)
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
-[![version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/tags)
+[![version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/tadah-project/tadah.mlip/tags)
 
 # Tadah!MLIP
 
@@ -33,7 +31,7 @@ companion libraries.
 # 1. Clone the development line, v1-dev, and configure with the bundled
 #    defaults preset. For a release, clone its tag instead
 #    (git clone -b v1.6.0 ...) and add -DTADAH_GIT_BRANCH=v1.6.0.
-git clone -b v1-dev https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
+git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git
 cd tadah.mlip
 cmake -S . -B build -C cmake/presets/tadah-linux-defaults.cmake \
     -DCMAKE_BUILD_TYPE=Release \
@@ -69,7 +67,7 @@ layouts may change between minor versions until 2.0.
 
 ## Reporting issues & getting help
 
-- File an issue: <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>
+- File an issue: <https://github.com/tadah-project/tadah.mlip/issues>
 - E-mail: marcin.kirsz@ed.ac.uk
 
 A short reproducer (config files plus the failing command line) is
@@ -86,5 +84,5 @@ and merge-request checklist.
 
 GPL-3.0; see [LICENSE](LICENSE).
 
-[lammps]: https://git.ecdf.ed.ac.uk/tadah/tadah.lammps
+[lammps]: https://github.com/tadah-project/tadah.lammps
 [group]:  https://www.ph.ed.ac.uk/people/graeme-ackland

@@ -2,6 +2,8 @@
 
 Run: python3 -m unittest discover -s docs/tools/tests -v
 """
+import contextlib
+import io
 import os
 import shutil
 import subprocess
@@ -134,9 +136,42 @@ class LocateTest(unittest.TestCase):
         root = self.locate('HPO', env, runner=git)
         self.assertEqual(git.calls, [[
             'git', 'clone', '--depth', '1', '--branch', 'followups/x',
-            'https://git.ecdf.ed.ac.uk/tadah/hpo.git',
+            'https://github.com/tadah-project/hpo.git',
             os.path.join(self.clones, 'HPO')]])
         self.assertEqual(root, os.path.join(self.clones, 'HPO'))
+
+    def test_tadah_git_base_names_the_clone_host(self):
+        # TADAH_GIT_BASE replaces the public base address, as it does for
+        # the FetchContent sources (cmake-tools' tadah_git_base); a trailing
+        # '/' is dropped and an empty value counts as unset.
+        for base, url in (
+                ('https://mirror.example.org/tadah',
+                 'https://mirror.example.org/tadah/core.git'),
+                ('https://mirror.example.org/tadah/',
+                 'https://mirror.example.org/tadah/core.git'),
+                ('', 'https://github.com/tadah-project/core.git')):
+            with self.subTest(base=base):
+                git = FakeGit(marker=CORE_MARKER)
+                env = {'GITLAB_CI': 'true', 'CI_COMMIT_REF_NAME': 'v1-dev',
+                       'TADAH_GIT_BASE': base}
+                self.locate('CORE', env, runner=git)
+                self.assertEqual(git.calls[0][6], url)
+
+    def test_clone_url_credentials_are_not_printed(self):
+        # A CI base address may carry a job token: neither the progress
+        # line nor the error shows it.
+        git = FakeGit(returncode=128, stderr='fatal: not found')
+        env = {'GITLAB_CI': 'true', 'CI_COMMIT_REF_NAME': 'v1-dev',
+               'TADAH_GIT_BASE': 'https://ci-token:s3cret@host.example/tadah'}
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            with self.assertRaises(loc.SourceNotFound) as cm:
+                self.locate('HPO', env, runner=git)
+        self.assertEqual(git.calls[0][6],
+                         'https://ci-token:s3cret@host.example/tadah/hpo.git')
+        for text in (out.getvalue(), str(cm.exception)):
+            self.assertNotIn('s3cret', text)
+            self.assertIn('https://host.example/tadah/hpo.git', text)
 
     def test_rtd_branch_order_matches_tadah_get_git_branch(self):
         git = FakeGit(marker=CORE_MARKER)
@@ -163,7 +198,7 @@ class LocateTest(unittest.TestCase):
                 root = self.locate('CORE', env, runner=git)
                 self.assertEqual(git.calls, [[
                     'git', 'clone', '--depth', '1', '--branch', ident,
-                    'https://git.ecdf.ed.ac.uk/tadah/core.git',
+                    'https://github.com/tadah-project/core.git',
                     os.path.join(self.clones, 'CORE')]])
                 self.assertEqual(root, os.path.join(self.clones, 'CORE'))
 

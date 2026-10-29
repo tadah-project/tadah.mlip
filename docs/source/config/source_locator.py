@@ -16,7 +16,11 @@ Source checkouts (``locate``), in this order:
      ``<workspace>`` is the directory that contains this Tadah.MLIP checkout.
   3. ``$TADAH_PATH/CORE`` or ``$TADAH_PATH/core``.
   4. On GitLab CI and Read the Docs only: a shallow clone of the branch or
-     tag being built, named the way ``tadah_get_git_branch`` (cmake-tools)
+     tag being built from ``<base>/<repository>.git``, where ``<base>`` is
+     ``$TADAH_GIT_BASE`` when it is set and not empty (as for CMake's
+     FetchContent, cmake-tools' TADAH_GIT_BASE block), else
+     ``https://github.com/tadah-project``.  The ref is named the way
+     ``tadah_get_git_branch`` (cmake-tools)
      names it for FetchContent -- ``$CI_COMMIT_REF_NAME``, else
      ``$READTHEDOCS_GIT_IDENTIFIER`` (the ref Read the Docs checked out; its
      ``latest`` and ``stable`` versions are named after no ref), else
@@ -30,6 +34,7 @@ must contain ``index.xml``), else the ``build/docs/xml`` directory that
 import os
 import subprocess
 import tempfile
+import urllib.parse
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -38,16 +43,20 @@ CHECKOUT_ROOT = os.path.normpath(os.path.join(_HERE, '..', '..', '..'))
 WORKSPACE = os.path.dirname(CHECKOUT_ROOT)
 DEFAULT_DOXYGEN_XML_DIR = os.path.join(CHECKOUT_ROOT, 'build', 'docs', 'xml')
 
-# Repository -> (override variable, clone URL, file that identifies a usable
-# checkout).  The marker is the file the docs generators read from it.
+# Repository -> (override variable, repository name under the git base,
+# file that identifies a usable checkout).  The marker is the file the docs
+# generators read from it.
 REPOS = {
-    'CORE': ('TADAH_CORE_SOURCE_DIR',
-             'https://git.ecdf.ed.ac.uk/tadah/core.git',
+    'CORE': ('TADAH_CORE_SOURCE_DIR', 'core',
              os.path.join('blueprint', 'blueprint_tadah.toml')),
-    'HPO': ('TADAH_HPO_SOURCE_DIR',
-            'https://git.ecdf.ed.ac.uk/tadah/hpo.git',
+    'HPO': ('TADAH_HPO_SOURCE_DIR', 'hpo',
             os.path.join('blueprint', 'anneal_keys.toml')),
 }
+
+# The base address of the Tadah! repositories, as cmake-tools' TADAH_GIT_BASE
+# block sets it for FetchContent.
+GIT_BASE_VAR = 'TADAH_GIT_BASE'
+DEFAULT_GIT_BASE = 'https://github.com/tadah-project'
 
 DOXYGEN_XML_VAR = 'TADAH_DOXYGEN_XML_DIR'
 
@@ -85,6 +94,24 @@ def built_branch(environ):
     return None, None
 
 
+def clone_url(name, environ):
+    '''<base>/<name>.git: the base is $TADAH_GIT_BASE when set and not empty
+    (a trailing '/' dropped), else DEFAULT_GIT_BASE.'''
+    base = environ.get(GIT_BASE_VAR) or DEFAULT_GIT_BASE
+    return f"{base.rstrip('/')}/{name}.git"
+
+
+def shown_url(url):
+    '''*url* without the user and password a CI address may carry.'''
+    parts = urllib.parse.urlsplit(url)
+    if parts.username is None and parts.password is None:
+        return url
+    host = parts.hostname or ''
+    if parts.port is not None:
+        host += f':{parts.port}'
+    return urllib.parse.urlunsplit(parts._replace(netloc=host))
+
+
 def _checkout_names(repo):
     return [repo] if repo == repo.lower() else [repo, repo.lower()]
 
@@ -100,7 +127,7 @@ def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
     '''
     if repo not in REPOS:
         raise ValueError(f"unknown repository {repo!r}; known: {sorted(REPOS)}")
-    env_var, url, marker = REPOS[repo]
+    env_var, name, marker = REPOS[repo]
     environ = os.environ if environ is None else environ
     workspace = WORKSPACE if workspace is None else workspace
     runner = _default_runner if runner is None else runner
@@ -147,10 +174,12 @@ def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
                      f"but none of {', '.join(BUILT_BRANCH_VARS)} is set "
                      f"to a non-empty value)")
     else:
+        url = clone_url(name, environ)
+        shown = shown_url(url)
         dest = os.path.join(
             clone_root if clone_root is not None
             else tempfile.mkdtemp(prefix=f'tadah_{repo.lower()}_'), repo)
-        print(f"source_locator: cloning {url} at {branch} "
+        print(f"source_locator: cloning {shown} at {branch} "
               f"(${branch_var}, {platform}) for {marker}", flush=True)
         proc = runner(['git', 'clone', '--depth', '1', '--branch', branch,
                        url, dest])
@@ -162,7 +191,7 @@ def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
             detail = (proc.stderr or '').strip().splitlines()
             reason = (f"git clone exited with {proc.returncode}"
                       + (f": {detail[-1]}" if detail else ''))
-        tried.append(f"clone of {url} at {branch} (${branch_var}): {reason}")
+        tried.append(f"clone of {shown} at {branch} (${branch_var}): {reason}")
 
     raise SourceNotFound(
         f"Cannot locate the {repo} sources (need {marker}). Tried:\n"

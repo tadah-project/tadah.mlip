@@ -2,6 +2,24 @@ cmake_minimum_required(VERSION 3.15)
 
 include(${CMAKE_SOURCE_DIR}/cmake/functions.cmake)
 include(FetchContent)
+# >>> TADAH_GIT_BASE (the same block in every Tadah! repository's
+#     CMakeLists.txt, compared by cmake-tools' tadah_add_git_base_check)
+# Base address of the Tadah! git repositories that FetchContent clones
+# (<base>/<repository>.git): -DTADAH_GIT_BASE=<address>, else the
+# environment variable TADAH_GIT_BASE when it is set and not empty, else
+# the public repositories. A trailing '/' is dropped.
+if(NOT DEFINED TADAH_GIT_BASE)
+  if(NOT "$ENV{TADAH_GIT_BASE}" STREQUAL "")
+    set(_tadah_git_base "$ENV{TADAH_GIT_BASE}")
+  else()
+    set(_tadah_git_base "https://github.com/tadah-project")
+  endif()
+  set(TADAH_GIT_BASE "${_tadah_git_base}" CACHE STRING
+      "Base address of the Tadah! git repositories (<base>/<repository>.git)")
+  unset(_tadah_git_base)
+endif()
+string(REGEX REPLACE "/+$" "" TADAH_GIT_BASE "${TADAH_GIT_BASE}")
+# <<< TADAH_GIT_BASE
 
 set(TADAH "Tadah!")
 # Initial project() call; VERSION is set below once CORE is fetched.
@@ -78,7 +96,7 @@ endif()
 if(NOT TARGET tadah::compile_options)
   FetchContent_Declare (
     tadah_cmake
-    GIT_REPOSITORY  https://git.ecdf.ed.ac.uk/tadah/cmake-tools.git
+    GIT_REPOSITORY  ${TADAH_GIT_BASE}/cmake-tools.git
     GIT_TAG         v1-dev)
   FetchContent_MakeAvailable(tadah_cmake)   # defines tadah::compile_options
 endif()
@@ -102,14 +120,14 @@ if(TADAH_ENABLE_NFP)
   add_compile_definitions(TADAH_ENABLE_NFP)
   FetchContent_Declare(
     Tadah.HPO
-    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/hpo.git
+    GIT_REPOSITORY ${TADAH_GIT_BASE}/hpo.git
     GIT_TAG ${TADAH_GIT_BRANCH}
   )
   FetchContent_MakeAvailable(Tadah.HPO)
 
   # FetchContent_Declare(
   #   Tadah.LAMMPS
-  #   GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git
+  #   GIT_REPOSITORY ${TADAH_GIT_BASE}/tadah.lammps.git
   #   GIT_TAG ${TADAH_GIT_BRANCH}
   # )
   # FetchContent_MakeAvailable(Tadah.LAMMPS)
@@ -117,7 +135,7 @@ else()
   tadah_message("Fetching ${PROJECT_NAME} modules...")
   FetchContent_Declare(
     Tadah.MLIP
-    GIT_REPOSITORY https://git.ecdf.ed.ac.uk/tadah/mlip.git
+    GIT_REPOSITORY ${TADAH_GIT_BASE}/mlip.git
     GIT_TAG ${TADAH_GIT_BRANCH}
   )
   FetchContent_MakeAvailable(Tadah.MLIP)

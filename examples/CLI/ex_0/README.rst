@@ -80,7 +80,7 @@ And the ``--dbfile`` option of ``tadah data split``:
 Runtime Errors
 ..............
 
-Tadah! provides helpful runtime errors, such as when a configuration file is missing a necessary key. No code is entirely bug-free, and issue reports are welcome on **Tadah!’s GitLab**:
+Tadah! provides helpful runtime errors, such as when a configuration file is missing a necessary key. No code is entirely bug-free, and issue reports are welcome on the Tadah! issue tracker:
 
-- `Tadah! GitLab Issues <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>`_
+- `Tadah! issues <https://github.com/tadah-project/tadah.mlip/issues>`_
 

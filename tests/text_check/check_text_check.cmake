@@ -13,9 +13,13 @@
 #               files it read
 #   one rule    for each rule a tree with one line that breaks it, in a
 #               different kind of file each time (a .cpp, a .md, a
-#               CHANGELOG.md, a .gitignore, a .h, a README.md, and a
-#               configuration file without an extension): it fails, naming
-#               that file and that rule, and counts 1 line
+#               CHANGELOG.md, a .gitignore, a .h, a README.md, a CI file
+#               and a page under docs/, and a configuration file without an
+#               extension): it fails, naming that file and that rule, and
+#               counts 1 line
+#   unpublished the development host's software named in a file that is
+#               not published text (a .cpp, a CI file, a .py under docs/):
+#               it passes
 #   skipped     the same lines under .git, external, third_party, _deps,
 #               catch2, build_x and cmake-build-debug, at any depth, in a
 #               data file (.cif) and in a file without an extension larger
@@ -64,12 +68,16 @@ string(CONCAT bad_decision "- Kept (" "own" "er decision)")
 string(CONCAT bad_tool "." "cl" "aude/")
 string(CONCAT bad_note "// see " "la" "nes/B/tmp/run.txt")
 string(CONCAT bad_phrase "We " "del" "ve into it.")
+string(CONCAT bad_host "  - git clone https://git." "ecdf" ".ed.ac.uk/tadah/core.git")
+string(CONCAT bad_hostname "Issues are reported on " "Git" "Lab.")
 set(rule_names "a person's initials" "a co-worker reference" "a decision note"
-               "an AI tool" "a workspace note" "a stock phrase")
+               "an AI tool" "a workspace note" "a stock phrase"
+               "a development host" "a development host name")
 set(rule_lines "${bad_initials}" "${bad_coworker}" "${bad_decision}"
-               "${bad_tool}" "${bad_note}" "${bad_phrase}")
+               "${bad_tool}" "${bad_note}" "${bad_phrase}" "${bad_host}"
+               "${bad_hostname}")
 set(rule_files "src/x.cpp" "docs/y.md" "CHANGELOG.md" ".gitignore"
-               "tests/z.h" "README.md")
+               "tests/z.h" "README.md" ".gitlab-ci.yml" "docs/source/c.rst")
 
 # run_script(<root> <result var> <output var>)
 function(run_script root rvar ovar)
@@ -99,7 +107,7 @@ elseif(NOT out MATCHES "0 lines in 5 text files of ")
 endif()
 
 # --- the script: one rule ------------------------------------------------
-foreach(i RANGE 5)
+foreach(i RANGE 7)
   list(GET rule_names ${i} name)
   list(GET rule_lines ${i} line)
   list(GET rule_files ${i} rel)
@@ -123,6 +131,19 @@ file(WRITE "${root}/examples/config" "# ${bad_coworker}\nDBFILE db.train\n")
 run_script("${root}" r out)
 if(r EQUAL 0 OR NOT out MATCHES "(^|\n)examples/config: a co-worker reference: ")
   fail("noext: examples/config not reported:\n${out}")
+endif()
+
+# --- the script: unpublished ---------------------------------------------
+set(root "${WORK_DIR}/unpublished")
+write_clean("${root}")
+file(APPEND "${root}/src/a.cpp" "// ${bad_hostname}\n")
+file(WRITE "${root}/.gitlab-ci.yml" "# ${bad_hostname}\n")
+file(WRITE "${root}/docs/tools/d.py" "# ${bad_hostname}\n")
+run_script("${root}" r out)
+if(NOT r EQUAL 0)
+  fail("unpublished: the check failed:\n${out}")
+elseif(NOT out MATCHES "0 lines in 7 text files of ")
+  fail("unpublished: expected '0 lines in 7 text files of', got:\n${out}")
 endif()
 
 # --- the script: skipped -------------------------------------------------

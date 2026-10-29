@@ -39,7 +39,7 @@ Welcome to the Tadah! Website
    optimiser ``PARAM`` keys and 1-based indices in HPO output.
    `Issue reports <report any issues_>`_ are welcome.
 
-   .. _report any issues: https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues
+   .. _report any issues: https://github.com/tadah-project/tadah.mlip/issues
 
 
 This is the home of Tadah! software, used for developing and deploying machine learning interatomic potentials. This website provides documentation with examples to help users quickly get up to speed, along with an associated API for developers.

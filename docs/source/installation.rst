@@ -53,10 +53,10 @@ branch of the 1.x line, from which the releases are tagged:
 .. code-block:: bash
 
     # the 1.6.0 release
-    git clone -b v1.6.0 https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
+    git clone -b v1.6.0 https://github.com/tadah-project/tadah.mlip.git
 
     # or the development line
-    git clone -b v1-dev https://git.ecdf.ed.ac.uk/tadah/tadah.mlip.git
+    git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git
 
 Both commands name the branch or tag: a plain ``git clone`` checks out the
 repository's default branch, which need not be ``v1-dev``. CMake fetches
@@ -225,8 +225,8 @@ one git branch or tag, ``TADAH_GIT_BRANCH``.  There is no fixed default:
 ``-DTADAH_GIT_BRANCH=<branch or tag>`` is used when given, and otherwise
 the first of these (cmake-tools' ``tadah_get_git_branch``):
 
-#. ``$CI_COMMIT_REF_NAME`` on GitLab CI (the branch, or the tag of a tag
-   pipeline);
+#. ``$CI_COMMIT_REF_NAME``, in a CI pipeline that sets it (the branch, or
+   the tag of a tag pipeline);
 #. on Read the Docs, ``$READTHEDOCS_GIT_IDENTIFIER`` (the branch or tag it
    checked out; its ``latest`` and ``stable`` versions are named after no
    ref), then ``$READTHEDOCS_VERSION_NAME`` and ``$READTHEDOCS_VERSION``;
@@ -242,6 +242,22 @@ release its tag:
 .. code-block:: bash
 
     cmake -S . -B build -DTADAH_GIT_BRANCH=v1.6.0
+
+.. _installation_git_base:
+
+Where the Tadah! modules are fetched from
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+CMake fetches each Tadah! repository as ``<base>/<repository>.git``, the
+base being ``TADAH_GIT_BASE``. It is ``https://github.com/tadah-project``
+unless ``-DTADAH_GIT_BASE=<address>`` or the environment variable
+``TADAH_GIT_BASE`` names another base, such as a mirror with the same
+repository names. The ``-D`` value takes precedence over the environment
+variable:
+
+.. code-block:: bash
+
+    cmake -S . -B build -DTADAH_GIT_BASE=https://mirror.example.org/tadah
 
 Building, installing, testing and generating the docs from an out-of-tree
 ``build`` directory:
@@ -469,10 +485,10 @@ repository's default branch, which need not be either):
 .. code-block:: bash
 
     # the 1.6.0 release
-    git clone -b v1.6.0 https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git /path/to/tadah.lammps
+    git clone -b v1.6.0 https://github.com/tadah-project/tadah.lammps.git /path/to/tadah.lammps
 
     # or the development line
-    git clone -b v1-dev https://git.ecdf.ed.ac.uk/tadah/tadah.lammps.git /path/to/tadah.lammps
+    git clone -b v1-dev https://github.com/tadah-project/tadah.lammps.git /path/to/tadah.lammps
 
 **Step 3 — Configuring LAMMPS with ML‑TADAH enabled**
 

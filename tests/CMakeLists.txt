@@ -731,6 +731,13 @@ endif()
 # entry for an AI tool's state directory); cmake-tools_text fails, 2 lines
 # (that entry and its comment in .gitignore).
 tadah_add_text_check(tadah)
+
+# tadah_git_base (label cmake): the top-level CMakeLists.txt carries
+# cmake-tools' TADAH_GIT_BASE block and fetches every Tadah! repository as
+# ${TADAH_GIT_BASE}/<repository>.git (testing/tadah_git_base_check.cmake).
+# Before the fix: fails (no block; the repositories named by the address of
+# the development host).
+tadah_add_git_base_check(tadah)
 tadah_add_text_check(cmake-tools ROOT ${tadah_cmake_SOURCE_DIR})
 
 # The function and its script, on throw-away trees and a throw-away project
@@ -752,3 +759,18 @@ add_test(NAME tadah_text_check_tool
 set_tests_properties(tadah_text_check_tool PROPERTIES
   LABELS cmake
   TIMEOUT 300)
+
+# cmake-tools' git base address check (tadah_add_git_base_check, its script
+# testing/tadah_git_base_check.cmake), on throw-away CMakeLists.txt files
+# (git_base/check_git_base_check.cmake lists the cases: the block and the
+# addresses as required, a changed block, a block after the first
+# FetchContent_Declare, no block, a fixed address, no address, the
+# refusals). Before the fix: fails, the script does not exist.
+add_test(NAME tadah_git_base_check_tool
+  COMMAND ${CMAKE_COMMAND}
+    -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+    -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/git_base
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/git_base/check_git_base_check.cmake)
+set_tests_properties(tadah_git_base_check_tool PROPERTIES
+  LABELS cmake
+  TIMEOUT 120)

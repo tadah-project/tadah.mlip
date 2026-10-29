@@ -175,7 +175,10 @@ analytical gradient (``GRAD_STRATEGY ANALYTICAL`` or ``HYBRID``) differentiates
 the named paths of its ``DM_Embed`` children; a legacy key indexes the joined
 lists, which no child reads against its own grid, so ``HYBRID`` takes it by
 finite differences and ``ANALYTICAL`` names it as a parameter it cannot
-differentiate, as before ``DM_Embed``. Scalar density gates accept a single
+differentiate, as before ``DM_Embed``. :ref:`WATOM`, which weighs the density
+of a ``DM_Embed`` component, has no derivative of the component, so ``HYBRID``
+takes it by finite differences and ``ANALYTICAL`` refuses it
+(:ref:`nfp_analytical_coverage`). Scalar density gates accept a single
 scalar component; mixed terms need an explicitly defined component selection
 before such gates can be applied. A trainer of a DM_Embed potential (``tadah
 train``, ``tadah hpo``'s ``best_pot.tadah``) writes no ``RCTYPEMB`` line: the

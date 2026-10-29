@@ -57,9 +57,14 @@ Each of the seven repos fetches cmake-tools in its top-level
 
 ```cmake
 FetchContent_Declare(tadah_cmake
-  GIT_REPOSITORY  https://git.ecdf.ed.ac.uk/tadah/cmake-tools.git
+  GIT_REPOSITORY  ${TADAH_GIT_BASE}/cmake-tools.git
   GIT_TAG         v1-dev)
 ```
+
+`TADAH_GIT_BASE` comes from the block of
+`cmake-tools/testing/tadah_git_base_block.cmake`, which every one of the
+seven `CMakeLists.txt` carries unchanged before its first
+`FetchContent_Declare` (`<name>_git_base`, `ctest -L cmake`, checks it).
 
 During development the pin is `GIT_TAG v1-dev`. At a release, tag
 cmake-tools `v1.6.0` first; then the release commit of each of the seven
@@ -118,23 +123,52 @@ not run on tags):
 
 A tag pipeline runs the build jobs, which fetch the sibling modules at
 the tag, and `release_tarball`, which uploads a `git archive` of the
-tag to the project's GitLab Generic Package Registry. A tarball has no
+tag to the GitLab project's Generic Package Registry. A tarball has no
 `.git`, so `tadah_get_git_branch` finds no branch in it: users who
 build from a tarball pass the tag, `-DTADAH_GIT_BRANCH=v1.6.0`
 (installation guide, "Which ref the Tadah! modules are fetched at").
 `lint_codespell` and `docs_sphinx` do not run on tags (`when: never`).
 
+## Development and public repositories
+
+Development happens in the GitLab group `tadah` (the `origin` remote of
+every checkout): pushes, merges, tags and CI. The public repositories
+are the GitHub organisation `tadah-project`, one repository per GitLab
+project with the same name. Each GitLab project has a push mirror
+(*Settings → Repository → Mirroring repositories*) to
+`ssh://git@github.com/tadah-project/<repo>.git`, authenticated with the
+SSH key GitLab generated for that mirror, added as a write deploy key of
+the GitHub repository; it mirrors the protected branches (`main`,
+`v1-dev`) and runs after every push. Nothing is pushed to GitHub by
+hand: a commit made there is overwritten by the next mirror update.
+
+A pull request opened on GitHub is fetched
+(`git fetch github pull/<n>/head:pr-<n>`), merged into `v1-dev` without
+rewriting its commits and pushed to GitLab; the mirror then marks it
+merged. Issues are taken on `tadah.mlip` and `tadah.lammps` only.
+
+Builds read the base address of the repositories from `TADAH_GIT_BASE`
+(CMake, `source_locator.py`, `Tadah.LAMMPS/configure`), by default
+`https://github.com/tadah-project`. Every `.gitlab-ci.yml` sets it to
+`${CI_SERVER_URL}/${CI_PROJECT_NAMESPACE}`, so that CI fetches from
+GitLab and never waits for the mirror. When the GitLab group is private,
+a group CI/CD variable `TADAH_GIT_BASE` (masked) with the value
+`https://gitlab-ci-token:${CI_JOB_TOKEN}@<host>/tadah` takes precedence,
+and every project allows the group's job tokens (*Settings → CI/CD →
+Job token permissions*).
+
 ## Read the Docs
 
-CI does not publish the documentation. Read the Docs builds it from its
-own webhook, with `.readthedocs.yaml`: a docs-only CMake configure
+CI does not publish the documentation. Read the Docs builds it from
+`https://github.com/tadah-project/tadah.mlip` (its GitHub integration
+starts a build on every mirror update), with `.readthedocs.yaml`: a docs-only CMake configure
 (`-DTADAH_BUILD_DOCS_ONLY=ON`) and `make docs` for the Doxygen XML, then
 Sphinx with `docs/source/conf.py`. The configure fetches the modules at
 the ref `tadah_get_git_branch` names, and `conf.py` clones CORE and HPO
 at the same ref (`source_locator.py`). On Read the Docs that ref is
 `$READTHEDOCS_GIT_IDENTIFIER`, the branch or tag Read the Docs checked
 out (the version names `latest` and `stable` are not refs), so every
-module must have that branch or tag and be readable over HTTPS.
+module must have that branch or tag on GitHub.
 
 In the Read the Docs dashboard (admin access):
 
@@ -199,9 +233,11 @@ chain.
    `v1-dev` build succeed.
 8. **Mint a Zenodo DOI** for the umbrella tag, and add it to
    `CITATION.cff` on `v1-dev`.
-9. **Open a GitLab Release** on the umbrella project pointing at the
-   tag, the package registry tarballs, and a short changelog summary
-   (link to `CHANGELOG.md` for the full list).
+9. **Open a GitHub Release** on `tadah-project/tadah.mlip` (and
+   `tadah.lammps`) for the tag, once the mirror carries it:
+   `gh release create v1.6.0 --repo tadah-project/tadah.mlip`, with the
+   `release_tarball` archives of the tag pipelines attached and a short
+   changelog summary (link to `CHANGELOG.md` for the full list).
 
 ## Hotfixes
 
@@ -213,14 +249,15 @@ is the simplest part of the release contract and worth preserving.
 
 ## Visibility check before a public release
 
-Before announcing a release, verify each repo's GitLab visibility is
-**Public** (not *Internal*). The list:
+Before announcing a release, verify that each GitHub repository is
+public and that its mirror is current (`git ls-remote` shows the
+release tag and the `v1-dev` of GitLab). The list:
 
-- <https://git.ecdf.ed.ac.uk/tadah/cmake-tools>
-- <https://git.ecdf.ed.ac.uk/tadah/core>
-- <https://git.ecdf.ed.ac.uk/tadah/models>
-- <https://git.ecdf.ed.ac.uk/tadah/mlip>
-- <https://git.ecdf.ed.ac.uk/tadah/md>
-- <https://git.ecdf.ed.ac.uk/tadah/hpo>
-- <https://git.ecdf.ed.ac.uk/tadah/tadah.lammps>
-- <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip>
+- <https://github.com/tadah-project/cmake-tools>
+- <https://github.com/tadah-project/core>
+- <https://github.com/tadah-project/models>
+- <https://github.com/tadah-project/mlip>
+- <https://github.com/tadah-project/md>
+- <https://github.com/tadah-project/hpo>
+- <https://github.com/tadah-project/tadah.lammps>
+- <https://github.com/tadah-project/tadah.mlip>

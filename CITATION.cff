@@ -16,7 +16,7 @@ type: software
 version: "1.6.0"
 date-released: "2026-09-25"
 license: GPL-3.0-only
-repository-code: "https://git.ecdf.ed.ac.uk/tadah/tadah.mlip"
+repository-code: "https://github.com/tadah-project/tadah.mlip"
 url: "https://tadah.readthedocs.io/"
 keywords:
   - machine-learning interatomic potentials

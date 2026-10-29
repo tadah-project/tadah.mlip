@@ -4,11 +4,12 @@ Thanks for your interest in Tadah! This document is the canonical
 contributor guide for the multi-repo Tadah! project. Every per-module
 repository points back here.
 
-The project is hosted at <https://git.ecdf.ed.ac.uk/tadah/>.
+The project is hosted at <https://github.com/tadah-project/>.
 
 ## Repositories
 
-Tadah! is split across several GitLab projects on `git.ecdf.ed.ac.uk`:
+Tadah! is split across several repositories of the GitHub organisation
+`tadah-project`:
 
 | Repo | Role |
 |------|------|
@@ -27,9 +28,10 @@ every repo (see [`RELEASING.md`](RELEASING.md)).
 
 ## Reporting bugs
 
-File a bug report on the GitLab project that owns the affected code.
-If you're unsure which one, file it on
-<https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/issues>; it will be moved to the right project.
+File a bug report on the issue tracker of the umbrella project,
+<https://github.com/tadah-project/tadah.mlip/issues>, or, for the LAMMPS
+plugin, of <https://github.com/tadah-project/tadah.lammps/issues>. The
+other repositories have no issue tracker of their own.
 
 A useful bug report includes:
 
@@ -45,11 +47,11 @@ The `Bug` issue template prompts for these fields.
 
 ## Proposing features
 
-Open a feature-request issue on the relevant GitLab project before
-sending a merge request. The `Feature` issue template asks for the
+Open a feature-request issue on one of the two trackers above before
+sending a pull request. The `Feature` issue template asks for the
 motivation, the proposed surface change (CLI flag / config keyword /
 API call), and any backwards-compatibility implications. A short
-discussion on the issue is faster than an MR round-trip when the
+discussion on the issue is faster than a pull-request round-trip when the
 design is still moving.
 
 ## Setting up a development environment
@@ -70,7 +72,7 @@ for repo in cmake-tools core models mlip md hpo tadah.lammps tadah.mlip; do
     tadah.*)     dir="Tadah.$(echo "${repo#tadah.}" | tr '[:lower:]' '[:upper:]')" ;;
     *)           dir="$(echo "$repo" | tr '[:lower:]' '[:upper:]')" ;;
   esac
-  git clone -b v1-dev "https://git.ecdf.ed.ac.uk/tadah/${repo}.git" "$dir"
+  git clone -b v1-dev "https://github.com/tadah-project/${repo}.git" "$dir"
 done
 
 # Develop build: TADAH_DEVELOP=ON takes cmake-tools and the Tadah modules
@@ -81,7 +83,9 @@ cmake --build build -j
 ctest --test-dir build
 ```
 
-For a `Release` build (everything fetched from GitLab — no local
+For a `Release` build (everything fetched from
+`https://github.com/tadah-project`, or from the base address in
+`TADAH_GIT_BASE` (see *Installation* in the documentation) — no local
 sibling worktrees needed; the modules are fetched at the branch of the
 `Tadah.MLIP` checkout, here `v1-dev`):
 
@@ -93,7 +97,7 @@ cmake --build build -j
 If your local checkouts do **not** follow the `$TADAH_PATH` sibling
 convention, point CMake at each module explicitly with the
 `FETCHCONTENT_SOURCE_DIR_TADAH.<MODULE>` overrides — `FetchContent`
-then short-circuits the GitLab clone and uses your tree:
+then short-circuits the clone and uses your tree:
 
 ```bash
 cmake -S . -B build \
@@ -540,7 +544,7 @@ location it tried.
 
 | Input | Where the build looks, in order |
 |-------|---------------------------------|
-| CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the `CORE` checkout next to `Tadah.MLIP`; `$TADAH_PATH/CORE`; on GitLab CI and Read the Docs only, a shallow clone of the branch or tag being built, named the way cmake-tools' `tadah_get_git_branch` names it: `$CI_COMMIT_REF_NAME`, else `$READTHEDOCS_GIT_IDENTIFIER` (Read the Docs' `latest` and `stable` versions are named after no ref), `$READTHEDOCS_VERSION_NAME`, `$READTHEDOCS_VERSION` |
+| CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the `CORE` checkout next to `Tadah.MLIP`; `$TADAH_PATH/CORE`; on CI and Read the Docs only, a shallow clone, from `${TADAH_GIT_BASE}/core.git` (`https://github.com/tadah-project/core.git` unless `TADAH_GIT_BASE` is set and not empty), of the branch or tag being built, named the way cmake-tools' `tadah_get_git_branch` names it: `$CI_COMMIT_REF_NAME`, else `$READTHEDOCS_GIT_IDENTIFIER` (Read the Docs' `latest` and `stable` versions are named after no ref), `$READTHEDOCS_VERSION_NAME`, `$READTHEDOCS_VERSION` |
 | HPO sources (ANNEAL key tables, Nested Fitting reference pages) | the same, with `$TADAH_HPO_SOURCE_DIR` and `HPO` |
 | Doxygen XML (API pages) | `$TADAH_DOXYGEN_XML_DIR`; otherwise `build/docs/xml`, which `cmake --build build --target docs` writes. Its input is the `include/` directory of each module the build configures (`cmake/doxygen_input.cmake`): CORE, MODELS and MLIP, and HPO only with `TADAH_ENABLE_NFP`, so the Read the Docs build (NFP off) has no HPO API |
 
@@ -578,7 +582,7 @@ and mobile widths, checks for horizontal overflow, and checks that code
 lines stay whole at 1024 px and wider and wrap below. It uses a local
 Chromium, Chromium Browser or Google Chrome executable and a temporary
 Sphinx page, which it measures once ready, as `check_layout.py` (below)
-measures a page. The GitLab `docs_sphinx` job runs them
+measures a page. The CI `docs_sphinx` job runs them
 and the same build, with all three variables set explicitly, in a virtual
 environment of its own into which it installs `docs/requirements.txt` every
 time (`python3 -m venv`: the runner image needs Python's `venv` module), so a
@@ -750,21 +754,27 @@ Avoid trailing whitespace; UTF-8, LF line endings, terminal newline.
 trailing-whitespace, end-of-file-fixer, no formatter so we don't
 churn unrelated lines).
 
-## Submitting a merge request
+## Submitting a pull request
 
-1. Fork the relevant project on `git.ecdf.ed.ac.uk/tadah/<module>` (or,
-   for maintainers, push a topic branch).
+The GitHub repositories are published copies of the development
+repositories, updated after every change there. A pull request is
+reviewed on GitHub; a maintainer merges it into `v1-dev` of the
+development repository, keeping its commits, and GitHub then shows it as
+merged.
+
+1. Fork the relevant repository on `github.com/tadah-project/<repo>`
+   and open the pull request against `v1-dev`.
 2. Branch off `v1-dev` (`git checkout -b feature/short-name v1-dev`).
-3. Keep the change focused — one logical change per MR. Cross-repo
+3. Keep the change focused — one logical change per pull request. Cross-repo
    work that needs coordinated tags goes through the multi-repo
    release process described in `RELEASING.md`.
-4. Add or update tests. Pure-refactor MRs are fine, but a behaviour
+4. Add or update tests. Pure-refactor pull requests are fine, but a behaviour
    change without a test that pins it down is a hard sell.
-5. Run `ctest` in the umbrella build. Ensure the CI pipeline on your
-   branch is green; the `lint_codespell` job and the existing
-   `build_debug` / `build_release` / `compile_lammps_with_tadah` jobs
-   must pass.
-6. Write a clear MR description: motivation, summary of the change,
+5. Run `ctest` in the umbrella build. Before the merge, the maintainers'
+   CI runs the `lint_codespell` job and the `build_debug` /
+   `build_release` / `compile_lammps_with_tadah` jobs on the change;
+   they must pass.
+6. Write a clear pull-request description: motivation, summary of the change,
    anything a reviewer should pay attention to, anything explicitly
    left out of scope.
 
@@ -783,5 +793,5 @@ A reviewer looks for:
 
 Participation in the Tadah! project is governed by the
 [Code of Conduct](CODE_OF_CONDUCT.md). Reports of unacceptable
-behaviour are handled through a confidential GitLab issue (see
-[SECURITY.md](SECURITY.md) for the channel and process).
+behaviour go privately to the project lead (see the Code of Conduct for
+the address).

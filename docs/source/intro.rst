@@ -64,7 +64,7 @@ Obtaining Tadah!
 
 Tadah!MLIP and Tadah!LAMMPS are hosted at:
 
-    https://git.ecdf.ed.ac.uk/tadah
+    https://github.com/tadah-project
 
 :ref:`installation` gives the build instructions. Selected published
 potentials produced with Tadah! by |gja_link| are listed in

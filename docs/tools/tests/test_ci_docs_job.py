@@ -1,4 +1,4 @@
-"""Tests for the GitLab docs_sphinx job (.gitlab-ci.yml).
+"""Tests for the CI docs_sphinx job (.gitlab-ci.yml).
 
 The job must install docs/requirements.txt every time, into an environment
 of its own, and build with the sphinx-build that installation provides: a
@@ -128,7 +128,8 @@ class DocsSphinxJobTest(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
-    def run_job(self, runner_sphinx=True, venv_fails=False):
+    def run_job(self, runner_sphinx=True, venv_fails=False,
+                git_base='https://host.example/tadah'):
         if runner_sphinx:
             write_exe(os.path.join(self.bin, 'sphinx-build'),
                       'echo "runner-sphinx-build $*" >> "$LOG"\n')
@@ -137,6 +138,8 @@ class DocsSphinxJobTest(unittest.TestCase):
                'HOME': self.home, 'LOG': self.log,
                'CI_PROJECT_DIR': self.project, 'CI_COMMIT_REF_NAME': 'v1-dev',
                'TMPDIR': self._tmp.name}
+        if git_base is not None:
+            env['TADAH_GIT_BASE'] = git_base
         if venv_fails:
             env['VENV_FAILS'] = '1'
         # GitLab runs a script under `set -eo pipefail`.
@@ -149,6 +152,39 @@ class DocsSphinxJobTest(unittest.TestCase):
             with open(self.log, encoding='utf-8') as fh:
                 calls = fh.read().splitlines()
         return proc, calls
+
+    def test_ci_git_base_is_the_projects_own_group(self):
+        # The pipeline's TADAH_GIT_BASE (CMake's FetchContent and the clones
+        # below read it) is the group of the project being built, on the
+        # server running the pipeline; a group or project CI/CD variable of
+        # that name takes precedence over it.
+        # Before the fix: fails: the file defines no variables.
+        import yaml
+        with open(CI_CONFIG, encoding='utf-8') as fh:
+            config = yaml.safe_load(fh)
+        self.assertEqual(config.get('variables', {}).get('TADAH_GIT_BASE'),
+                         '${CI_SERVER_URL}/${CI_PROJECT_NAMESPACE}')
+
+    def test_core_and_hpo_are_cloned_from_the_git_base(self):
+        # Before the fix: fails: the clones named a fixed address.
+        proc, calls = self.run_job()
+        report = proc.stdout + proc.stderr + '\n'.join(calls)
+        self.assertEqual(proc.returncode, 0, report)
+        clones = [c for c in calls if c.startswith('git clone ')]
+        self.assertEqual(len(clones), 2, report)
+        self.assertIn(' https://host.example/tadah/core.git ', clones[0])
+        self.assertIn(' https://host.example/tadah/hpo.git ', clones[1])
+        for c in clones:
+            self.assertIn('--branch v1-dev ', c)
+
+    def test_no_git_base_fails_the_job_naming_it(self):
+        # Before the fix: fails: the job cloned from a fixed address.
+        proc, calls = self.run_job(git_base=None)
+        report = proc.stdout + proc.stderr + '\n'.join(calls)
+        self.assertNotEqual(proc.returncode, 0, report)
+        self.assertIn('TADAH_GIT_BASE', proc.stderr, report)
+        self.assertFalse([c for c in calls if c.startswith('git clone ')],
+                         report)
 
     def test_requirements_installed_when_the_runner_has_sphinx(self):
         # Pins: on a runner with a sphinx-build of its own the job exits 0,

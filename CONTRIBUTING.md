@@ -358,7 +358,16 @@ to`): with the two NNFinder cases, 17 entries, and
 `tadah_docs_site_layout` while `docs/source/nfp` holds no page. A build
 without `TADAH_ENABLE_CERES` skips `RHOFORM NONNEG/MONOTONE: no projection
 WARNING when an optimiser can leave the box: such a point is not evaluated` (its
-optimiser is `CERES:STEEPEST_DESCENT`). See the
+optimiser is `CERES:STEEPEST_DESCENT`). A build whose LAMMPS has no
+`atom_style bond` (the LAMMPS MOLECULE package) skips the four Catch cases
+of `pair_style tadah` with a `DIMER` potential that run LAMMPS: in
+test_hpo `pair_style tadah compute_dimers and the MLIP prediction agree
+for a two-species BIAS DIMER potential` and `pair_style tadah: a DIMER
+potential refuses two atoms at the same position, naming the atom IDs`, in
+test_tadah the two of `tests/test_dimer_pe_atom.cpp` (each says `this
+LAMMPS has no atom_style bond (the MOLECULE package)`); with an MPI `lmp`,
+`tadah.lammps_mpi_dimer` is skipped when that `lmp` or the serial one has
+no such style. See the
 cmake-tools README, *Skipped tests: the TADAH-SKIP marker*, for the rules.
 
 **Build configurations tested.** The suite above is that of a build with

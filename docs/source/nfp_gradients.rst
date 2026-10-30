@@ -64,10 +64,12 @@ descriptor differentiates.
 .. versionchanged:: 1.6.0
    1.5.0 stopped an ``ANALYTICAL`` run at the gradient of such a
    parameter, or of one whose structures hold no pair of atoms that
-   depends on it. Its :ref:`WATOM` gradient lacked the part of a
-   descriptor without a ``WATOM`` derivative (``DM_REAM``, ``DM_Poly``,
-   ``DM_mJoin``, ``D2_mJoin``) and the many-body force rows of
-   ``DM_Blip``, ``DM_EAD``, ``DM_mRLR`` and ``DM_mSQRT``.
+   depends on it. Beside a two-body descriptor that differentiates
+   :ref:`WATOM`, its ``WATOM`` gradient lacked the part of ``DM_REAM``,
+   ``DM_Poly`` and ``DM_mJoin`` and the force rows of ``DM_Blip``,
+   ``DM_EAD``, ``DM_mRLR`` and ``DM_mSQRT``; it lacked the part of
+   ``D2_mJoin`` beside ``DM_mBlip`` or ``DM_mBlipEnv``, and beside
+   those four in a run without force rows.
 
 .. _nfp_analytical_coverage:
 

@@ -110,12 +110,8 @@ int main(int argc, char** argv) {
       int rank = 0;
       MPI_Comm_rank(MPI_COMM_WORLD, &rank);
       if (rank == 0)
-        std::cerr << "ERROR: this MPI library provides thread level "
-                  << provided << " < MPI_THREAD_MULTIPLE, which the "
-                  << "TADAH_HPO_MPI build requires (concurrent LAMMPS "
-                  << "instances on MPI_COMM_SELF); under Cray MPICH, "
-                  << "MPICH_MAX_THREAD_SAFETY=multiple gives it, and "
-                  << "otherwise an MPI built with full thread support."
+        std::cerr << "ERROR: "
+                  << tadah::mlip::cli::mpi_thread_level_refusal(provided)
                   << std::endl;
       MPI_Finalize();
       return 1;

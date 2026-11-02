@@ -222,12 +222,24 @@ private:
  *        optimiser help (hpo::explain_optimiser).
  *
  * ALGO and LIB, in any letter case, name the optimiser of a `tadah hpo`
- * target: it throws std::runtime_error "tadah explain: ALGO names the
- * optimiser of a `tadah hpo` target, and this tadah is built without HPO
- * (TADAH_ENABLE_NFP OFF): configure it with -DTADAH_ENABLE_NFP=ON". Any
- * other name is not its own: it returns false and writes nothing.
+ * target file: it throws std::runtime_error "tadah explain: ALGO names the
+ * optimiser of a `tadah hpo` target file, and this build of tadah has no
+ * Nested Fitting Procedure; a build with -DTADAH_ENABLE_NFP=ON (see
+ * Installation) has it". Any other name is not its own: it returns false
+ * and writes nothing.
  */
 bool explain_without_hpo(const std::string &name, std::ostream &out);
+
+/**
+ * @brief The refusal of an MPI library that provides thread level
+ *        @p provided, below MPI_THREAD_MULTIPLE, which main() of a
+ *        TADAH_HPO_MPI build prints after "ERROR: " before it exits with 1.
+ *
+ * It says which MPI libraries provide MPI_THREAD_MULTIPLE (Cray MPICH with
+ * MPICH_MAX_THREAD_SAFETY=multiple, another one built with full thread
+ * support). Every build has it, so a build without MPI tests the text.
+ */
+std::string mpi_thread_level_refusal(int provided);
 
 } // namespace cli
 } // namespace mlip

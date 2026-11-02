@@ -9669,6 +9669,99 @@ TEST_CASE("Subcommand: analysis check_bounds -c of an older seed potential "
   CHECK_FALSE(contains(rep, "HPOTARGET config.hpo"));
 }
 
+/* Pins: `tadah analysis check_bounds -c config.tadah --hpotarget <file>`
+ * reads the OPTIM lines as tadah hpo reads them (D2_BP 4 4 Ta Ta of the
+ * [retrain] cases, CGRID2B 2.5 3 3.5 4):
+ *   - a.hpo, "OPTIM CGRID2B (1-2) AUTO FRAC 0.05", exits 0, the AUTO boxes
+ *     of its two values audited;
+ *   - b.hpo, "OPTIM CGRID2B (5) 2 3", exits 1 with tadah hpo's reason, the
+ *     error (main() writes it after "ERROR: ") "tadah analysis
+ *     check_bounds: line 1 of b.hpo: OPTIM CGRID2B (5): CGRID2B has 4
+ *     values in the training configuration, so the indices of OPTIM
+ *     CGRID2B run from 1 to 4\nLine: OPTIM CGRID2B (5) 2 3".
+ * `tadah refit --retarget c.hpotarget` keeps its line "OPTIM SGRID2B (1-2)
+ * AUTO" and names it in a WARNING: "tadah refit --retarget: line 2 ('OPTIM
+ * SGRID2B (1-2) AUTO') is kept as written: --retarget rewrites the lines
+ * OPTIM <KEY> (<index>) <low> <high>, and this line has an AUTO box and
+ * selects 2 indices.", exit 0.
+ * Before the fix: a.hpo was refused, "check_bounds: malformed OPTIM line 1
+ * in a.hpo — missing <lo> <hi>" (exit 1); b.hpo was refused at its corner,
+ * "check_bounds: OPTIM CGRID2B (5): the seed configuration has 4 value(s)
+ * for CGRID2B"; --retarget kept the AUTO line without a word. */
+TEST_CASE("Subcommand: analysis check_bounds reads the OPTIM lines as tadah "
+          "hpo reads them, and refit --retarget names a line it keeps",
+          "[TadahCLI][analysis][check_bounds][refit][optim_reader]") {
+  ScratchCwd cwd("check_bounds_optim_reader");
+  std::ofstream("db.tadah") << retrain_dataset();
+  std::ofstream("config.tadah")
+      << retrain_config("M_BLR BF_Linear", "LAMBDA 0.1\nOALGO 4\n");
+  std::ofstream("a.hpo") << "OPTIM CGRID2B (1-2) AUTO FRAC 0.05\n";
+  std::ofstream("b.hpo") << "OPTIM CGRID2B (5) 2 3\n";
+  {
+    const CliRun r = run_tadah({"tadah", "analysis", "check_bounds", "-c",
+                                "config.tadah", "--hpotarget", "a.hpo"});
+    const std::string rep = reported(r);
+    INFO("a.hpo: status " << r.status << "\n" << rep);
+    CHECK(r.status == 0);
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "analysis", "check_bounds", "-c",
+                                "config.tadah", "--hpotarget", "b.hpo"});
+    const std::string rep = reported(r);
+    INFO("b.hpo: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(r.what == "tadah analysis check_bounds: line 1 of b.hpo: OPTIM "
+                    "CGRID2B (5): CGRID2B has 4 values in the training "
+                    "configuration, so the indices of OPTIM CGRID2B run from "
+                    "1 to 4\nLine: OPTIM CGRID2B (5) 2 3");
+  }
+  std::ofstream("c.hpotarget") << "OPTIM CGRID2B (1) 2.375 2.625\n"
+                                  "OPTIM SGRID2B (1-2) AUTO\n";
+  const CliRun r = run_tadah({"tadah", "refit", "--retarget", "c.hpotarget",
+                              "-o", "d.hpotarget"});
+  const std::string rep = reported(r);
+  INFO("--retarget: status " << r.status << "\n" << rep);
+  CHECK(r.status == 0);
+  CHECK(contains(rep, "tadah refit --retarget: line 2 ('OPTIM SGRID2B (1-2) "
+                      "AUTO') is kept as written: --retarget rewrites the "
+                      "lines OPTIM <KEY> (<index>) <low> <high>, and this "
+                      "line has an AUTO box and selects 2 indices."));
+  CHECK(contains(slurp("d.hpotarget"), "\nOPTIM SGRID2B (1-2) AUTO\n"));
+}
+
+/* Pins: `tadah refit --retarget <file> --set 'KEY(i)=lo,hi'` on a file
+ * without a rewritten OPTIM line exits 1 and writes no file:
+ *   - a.hpotarget, "OPTIM CGRID2B (1-2) AUTO" only, --set 'CGRID2B(1)=1,2':
+ *     "--set CGRID2B(1): line 1 ('OPTIM CGRID2B (1-2) AUTO'), which
+ *     selects CGRID2B (1), is kept as written: --set applies to the lines
+ *     OPTIM <KEY> (<index>) <low> <high>.";
+ *   - b.hpotarget, no OPTIM line, --set 'CGRID2B(1)=1,2': "--set
+ *     CGRID2B(1): no such OPTIM line in the file.".
+ * Before the fix: both exited 0 and wrote the file, the --set dropped. */
+TEST_CASE("Subcommand: refit --retarget refuses --set on a file without a "
+          "rewritten OPTIM line",
+          "[TadahCLI][refit][optim_reader]") {
+  ScratchCwd cwd("retarget_set_no_rewritten_line");
+  std::ofstream("a.hpotarget") << "OPTIM CGRID2B (1-2) AUTO\n";
+  std::ofstream("b.hpotarget") << "# no search parameter\n";
+  for (const auto &[file, want] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"a.hpotarget",
+            "--set CGRID2B(1): line 1 ('OPTIM CGRID2B (1-2) AUTO'), which "
+            "selects CGRID2B (1), is kept as written: --set applies to the "
+            "lines OPTIM <KEY> (<index>) <low> <high>."},
+           {"b.hpotarget",
+            "--set CGRID2B(1): no such OPTIM line in the file."}}) {
+    const CliRun r = run_tadah({"tadah", "refit", "--retarget", file, "-o",
+                                "out.hpotarget", "--set", "CGRID2B(1)=1,2"});
+    INFO(file << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 1);
+    CHECK(r.what == want);
+    CHECK_FALSE(std::filesystem::exists("out.hpotarget"));
+    std::filesystem::remove("out.hpotarget");
+  }
+}
+
 #ifdef TADAH_ENABLE_NFP
 /* Pins: `tadah hpo -c old.tadah --hpotarget config.hpo` (the fixture of
  * write_hpo_potential_fixture: PC_ERMSE, a validation metric), old.tadah

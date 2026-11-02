@@ -354,8 +354,8 @@ the table:
 .. code-block:: none
 
    tadah refit: REFIT_MODE compact (the default) needs the compact fitter, which
-   this tadah was built without (it needs TADAH_ENABLE_NFP and
-   TADAH_ENABLE_CERES); REFIT_MODE dense fits without it
+   this build of tadah does not have (a build with -DTADAH_ENABLE_NFP=ON and
+   -DTADAH_ENABLE_CERES=ON has it); REFIT_MODE dense fits without it
 
 .. versionchanged:: 1.6.0
    A build without the compact fitter refuses compact mode; 1.5.0 fitted the

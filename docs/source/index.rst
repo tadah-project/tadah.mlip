@@ -16,9 +16,7 @@ Welcome to the Tadah! Website
    The :doc:`changelog` lists the changes of this release. An upgrade starts
    with its breaking changes, notably the error scales and priorities of a
    fit, which replace ``EWEIGHT``, ``FWEIGHT`` and ``SWEIGHT``
-   (:ref:`fit_objective`), and, from 1.4 or earlier, the ``ON``/``OFF``/``AUTO``
-   vocabulary for optimiser ``PARAM`` keys and 1-based indices in the output
-   of ``tadah hpo``.
+   (:ref:`fit_objective`).
    `Issue reports <report any issues_>`_ are welcome.
 
    .. _report any issues: https://github.com/tadah-project/tadah.mlip/issues

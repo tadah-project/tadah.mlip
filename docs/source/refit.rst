@@ -481,9 +481,9 @@ are checked, naming the key, the mode in effect and the mode that reads it:
   default), true or false: ``tadah refit: REFIT_CONSTRAIN_F0 has no effect
   under EMBF0 ZERO (the default): only EMBF0 FREE reads it; remove
   REFIT_CONSTRAIN_F0, or set EMBF0 FREE``.
-* Neither mode: a top-level ``OPTIMIZER`` block, which the stage blocks
-  replace. It is refused first, in either mode, with a text that says
-  which stage block each block inside it became (``tadah refit: a
+* Neither mode: a top-level ``OPTIMIZER`` block. It is refused first, in
+  either mode, with a text that names the stage block (``EXPLORE``,
+  ``REFINE`` or ``FUSE``) that takes each block inside it (``tadah refit: a
   top-level OPTIMIZER block ...``); under
   ``REFIT_MODE dense`` the text ends ``Under REFIT_MODE dense, which reads
   no stage block, remove the OPTIMIZER block.``
@@ -549,8 +549,8 @@ General and output
    counts round to the input's gives the input grid itself.
 
 ``OPTIM_PCT`` (float)
-   Default ``5.0``. ±% half-width of the ``OPTIM`` bounds written into the
-   target file; > 0 (also with ``--edit`` and ``--retarget``, checked before
+   Default ``5.0``. ±% half-width of the :hpo:key:`OPTIM` bounds written into
+   the target file; > 0 (also with ``--edit`` and ``--retarget``, checked before
    any file is written).
 
 Mode and basis
@@ -720,7 +720,8 @@ REFINE and FUSE also accept ``ENABLED true|false`` (``ENABLED false`` skips
 the stage), but not ``ENABLED false`` together with an ``OPTIMIZER`` block,
 which would have no effect: that is an error. EXPLORE builds the basis ladder
 and cannot be disabled: ``ENABLED false`` is an error there.  ``ALGO NONE``
-in a block keeps the block and skips its stage:
+in a REFINE or FUSE block keeps the block and skips its stage (in EXPLORE
+it is ``UNIFORM``: no global search runs, and the ladder is still built):
 
 .. code-block:: none
 
@@ -819,8 +820,9 @@ and 1e-15 in REFINE.
 
 .. versionchanged:: 1.6.0
    dlib's ``LBFGS`` takes its absolute stopping change from ``FTOL_ABS``, not
-   from ``FTOL_REL``; a 1.5.0 refit configuration without ``FTOL_ABS`` gives
-   different results.
+   from ``FTOL_REL``. Under ``GN_MLSL_LDS`` an ``INNER`` dlib ``LBFGS`` block
+   that sets ``FTOL_REL`` without ``FTOL_ABS`` gives different results from
+   1.5.0.
 
 ``MAXEVAL`` counts objective evaluations, exactly, for every NLopt and
 dlib algorithm: each call of the stage's objective, for its value or its
@@ -1111,16 +1113,19 @@ the recommended choice when the refit will be tuned further.
    ``fine`` | ``accurate``, in any letter case; another value is an error.
 
 ``N2B``
-   No default. :math:`\phi(r)` basis count, from 1 to 1024 (the
-   escalation's cap).
+   Default: the ``REFIT_LEVEL`` preset (24, 44, 60, 80 for ``coarse``,
+   ``balanced``, ``fine``, ``accurate``). :math:`\phi(r)` basis count, from
+   1 to 1024 (the escalation's cap).
 
 ``NRHO_BASIS``
-   No default. :math:`\rho(r)` basis count, from 1 to 1024. Under
+   Default: the ``REFIT_LEVEL`` preset (20, 36, 48, 64). :math:`\rho(r)`
+   basis count, from 1 to 1024. Under
    ``RHOFORM NONNEG``/``MONOTONE`` the density solve is non-negative least
    squares, whose cost grows faster with the count (:ref:`refit_rhoform`).
 
 ``NF_BASIS``
-   No default. :math:`F(\rho)` basis count, from 1 to 1024.
+   Default: the ``REFIT_LEVEL`` preset (60, 100, 130, 180). :math:`F(\rho)`
+   basis count, from 1 to 1024.
 
 ``REFIT_MAX_ESCALATIONS``
    Default ``4``. Automatic basis-escalation rounds while above tolerance,
@@ -1264,8 +1269,9 @@ it.
 (the log states it), and the edited potential keeps it (a component's
 ``FORM``, a DM_REAM potential's ``RHOFORM`` line). A DM_REAM input must
 declare ``RHOFORM`` (a DM_REAM potential without it stops
-with ``pot edit: DM_REAM: RHOFORM is required: ...`` and needs
-``RHOFORM SIGNED`` added), and under ``NONNEG`` and
+with ``pot edit: DM_REAM: RHOFORM is required: ...``; a tadah 1.5.0 fit
+keeps its density with ``RHOFORM SIGNED`` added, :ref:`dm_ream_rhoform`),
+and under ``NONNEG`` and
 ``MONOTONE`` its density must pass the checks DM_REAM applies on load (the messages are
 prefixed ``pot edit:``). **Adding** inserts a coefficient of 0, which is
 valid in every form; under ``MONOTONE`` the new function is a step
@@ -1400,8 +1406,8 @@ target file ``tadah refit`` writes.
 
 .. versionchanged:: 1.6.0
    The default output of ``--retarget`` is ``<input>_retargeted.hpotarget``;
-   1.5.0 wrote ``<input>_edited.hpotarget``, the file ``--edit`` writes, and
-   ignored ``--hpofileout``.
+   1.5.0 wrote ``<input>_edited.hpotarget`` (for ``refit.hpotarget`` the
+   file ``--edit`` writes) and ignored ``--hpofileout``.
 
 Retargeting a freshly-emitted file at the same percentage reproduces it
 byte-for-byte, and any retargeted file is a fixed point of further
@@ -1444,7 +1450,7 @@ a component's form is its potential's ``FORM``, and its radius is the
 ``RADIUS`` of its ``CUTOFF`` block. ``tadah hpo`` refuses ``OPTIM CGRIDMB``
 (``SGRIDMB``, ``AMPGRIDMB``, ``CEMBFUNC``, ``SEMBFUNC``, ``RCUTMB``) for a
 DM_Embed potential, naming the component path (:ref:`dm_embed_parameters`):
-the keys just listed need renaming to component paths, or the target file
+these keys need renaming to component paths, or the target file
 needs regenerating.
 
 **Density form.** Under ``RHOFORM NONNEG`` and ``MONOTONE`` the target file

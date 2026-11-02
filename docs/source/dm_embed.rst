@@ -58,7 +58,8 @@ in declaration order. A ``TYPEMB @ta`` line among the other ``TYPEMB``
 declarations places that block at its position, ordering blocks together with
 the other descriptors. With ``TYPEMB``, each declared ID must appear exactly
 once; any other count is an error. The flat cutoff and grid lists apply
-only to the descriptors declared by ``TYPEMB``. ``CONFIG`` includes preserve block order,
+only to the descriptors that ``TYPEMB`` names by type, never to a block: a block
+takes its cutoff and grids from its own fields. ``CONFIG`` includes preserve block order,
 boundaries and source locations: the blocks of an included file stand at the
 ``CONFIG`` line that includes it, after the blocks above that line.
 
@@ -164,10 +165,11 @@ serialisation preserves their full precision even at a lower NUMERIC setting.
 Only the configured ETA or WIDTHS path exists. Knot degrees, basis choices,
 reference modes, forms and envelope types are discrete and cannot be optimised.
 Radius optimisation under NONE is refused. Repeated dimensions and inactive
-aliases are errors. Flat ``OPTIM`` keys apply to the other many-body
-descriptors; a flat many-body key (``CGRIDMB``, ``SGRIDMB``, ``AMPGRIDMB``,
-``CEMBFUNC``, ``SEMBFUNC``, ``RCUTMB``) of a potential whose many-body term is
-DM_Embed, which has no such key, is refused naming the component path that
+aliases are errors. The many-body keys ``CGRIDMB``, ``SGRIDMB``, ``AMPGRIDMB``,
+``CEMBFUNC``, ``SEMBFUNC`` and ``RCUTMB`` apply to the many-body descriptors
+that are not ``DM_Embed`` components; an ``OPTIM`` line on one of them in a
+potential whose many-body term is DM_Embed, which has no such key, is refused
+naming the component path that
 holds the parameter (``OPTIM CGRIDMB: the potential has no CGRIDMB key: its
 many-body term is DM_Embed component(s) (DESCRIPTOR blocks), whose density
 parameter is the named path TA.DENSITY.CENTRES; ...``). A ``DM_Embed``
@@ -179,11 +181,7 @@ lists, which no child reads against its own grid, so ``HYBRID`` takes it by
 finite differences and ``ANALYTICAL`` names it as a parameter it cannot
 differentiate. ``RHOGATE`` and ``RHOBARGATE`` accept a single scalar
 component; a term with several densities is refused (:ref:`hpo_feasibility_gates`).
-Under ``tadah hpo``, a configuration either keeps ``FIXINDEX``/``FIXWEIGHT``
-and searches selected fixed coefficients (:ref:`hpo_fixweight`), or has
-neither key and supplies training data, so that every shape candidate
-re-solves its linear coefficients (:doc:`training`). Validation data alone
-does not train them. A trainer of a DM_Embed potential (``tadah
+A trainer of a DM_Embed potential (``tadah
 train``, ``tadah hpo``'s ``best_pot.tadah``) writes no ``RCTYPEMB`` line: the
 blocks' ``CUTOFF`` are the many-body cutoffs.
 
@@ -254,6 +252,14 @@ accepts ``--set 'TA.DENSITY.CENTRES(2)=1.8,2.2'``, and refuses ``--rhoform`` and
 ``--rcutmb``, which name DM_REAM keys, on a target file without ``AMPGRIDMB`` and
 ``CGRIDMB`` groups (the form is the block's ``FORM``, the radius the path
 ``TA.DENSITY.CUTOFF.RADIUS``).
+
+A potential that ``tadah refit`` writes pins every coefficient with
+``FIXINDEX`` and ``FIXWEIGHT``. Under ``tadah hpo``, each evaluation fits the
+coefficients that ``FIXINDEX`` does not pin to the training data
+(:doc:`training`), so they follow every shape candidate. Pinned coefficients
+keep their ``FIXWEIGHT`` values; ``OPTIM FIXWEIGHT`` searches selected ones
+(:ref:`hpo_fixweight`). A run without a training ``DBFILE`` is refused unless
+``FIXINDEX`` pins every coefficient: validation data alone does not train them.
 
 ``analysis bfunc --type MB DENSITY`` (or ``MB``) and ``MB EMBEDDING`` print
 component curves with the meaning of the radial curves: the bare functions;

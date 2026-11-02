@@ -30,7 +30,7 @@ Glossary and Abbreviations
 
    Coefficients
       The numbers a fit finds by regression (:math:`\mathbf w`; key
-      ``WEIGHTS`` of a potential).
+      :ref:`WEIGHTS` of a potential).
 
    Error scale
       The residual of an observation that costs one priority unit in a fit,

@@ -1,7 +1,7 @@
 Quick Start
 ===========
 
-This section covers the fundamentals and command line interface (CLI) of Tadah!MLIP. The CLI provides necessary tools to train and test models. The trained model (interatomic potential) runs molecular dynamics simulations with LAMMPS via the Tadah!LAMMPS plugin.
+This section covers the fundamentals and command line interface (CLI) of Tadah!MLIP. The CLI provides necessary tools to train and test models. LAMMPS runs molecular dynamics simulations with the trained model (interatomic potential) through the Tadah!LAMMPS plugin.
 
 :ref:`installation` gives the installation instructions, and :ref:`cli_examples` the CLI examples.
 
@@ -422,8 +422,7 @@ style tadah``), changes nothing: the pair style keeps what it held.
 
 .. versionchanged:: 1.6.0
    A later ``pair_coeff`` replaces the potential. Tadah! 1.5.0 and earlier
-   went on with the first potential without a message, under the notices of
-   the later file.
+   went on with the first potential without a message.
 
 :ref:`installation_lammps` gives the installation instructions of the Tadah!LAMMPS interface.
 

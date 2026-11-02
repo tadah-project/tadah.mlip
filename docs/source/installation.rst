@@ -132,7 +132,7 @@ The commands below build, install, test and document an out-of-tree
     cmake --build build --target docs
 
 The ``docs`` target writes the Doxygen XML to ``build/docs/xml``, where the
-Sphinx build of this site looks for it by default. The contributor guide
+Sphinx build of this site looks for it by default. ``CONTRIBUTING.md``
 (*Building the documentation*) lists every input the Sphinx build reads and
 the variables that name them explicitly (``TADAH_DOXYGEN_XML_DIR``,
 ``TADAH_CORE_SOURCE_DIR``, ``TADAH_HPO_SOURCE_DIR``).
@@ -295,13 +295,13 @@ OpenMP is supported where the system provides it. A Tadah!MLIP build with OpenMP
 
 .. _installation_hpo_mpi:
 
-MPI-Parallel Nested Fitting
+MPI-parallel nested fitting
 ...........................
 
 Training (``tadah train``) and the other ``tadah`` commands run in one
 process; OpenMP threads (:ref:`gofasterstripe`) occupy the cores of a
 node. MPI parallelism is available for nested fitting (``tadah hpo``): with
-``-DTADAH_HPO_MPI=ON`` the ``TADAH:ANNEAL_PT`` and ``TADAH:ANNEAL_PA``
+``-DTADAH_HPO_MPI=ON`` the :hpo:opt:`TADAH:ANNEAL_PT` and :hpo:opt:`TADAH:ANNEAL_PA`
 optimisers of ``tadah hpo`` distribute their replicas over MPI ranks, which
 lets one run span several nodes. It needs ``-DTADAH_ENABLE_NFP=ON``
 (:ref:`installation_nfp`) and an MPI build of LAMMPS with ML‑TADAH, both
@@ -387,22 +387,23 @@ slots
 for ``MPIEXEC_EXECUTABLE``, whichever MPI it belongs to; when another
 MPI's comes first, ``-DMPIEXEC_EXECUTABLE=/path/to/mpiexec`` at configure
 time names the launcher of step 3 (the wrong one starts one-rank jobs, and the
-multi-rank tests fail). They check the rank invariance of ``ANNEAL_PT``
-/ ``ANNEAL_PA`` (``hpo_anneal_mpi_matrix``), a signal that one rank
+multi-rank tests fail). They check the rank invariance of :hpo:opt:`!TADAH:ANNEAL_PT`
+/ :hpo:opt:`!TADAH:ANNEAL_PA` (``hpo_anneal_mpi_matrix``), a signal that one rank
 receives (``hpo_mpi_signal_*``) and ``tadah hpo`` end to end on 1 and 2
 ranks (``hpo_mpi_e2e_*``). The serial build runs none of them. ``ctest -L
 mpi`` also selects the ``pair_style tadah`` entries of
 :ref:`installation_lammps_mpi`, which every build with nested fitting has: they run an MPI
 ``lmp`` of their own and are *Skipped* unless it is named.
 
+Configuring with ``-DTADAH_BUILD_MPI=ON`` stops with an error that points
+to ``TADAH_HPO_MPI``; ``-DTADAH_BUILD_MPI=OFF`` is accepted.
+
 .. versionchanged:: 1.6.0
    The MPI training build (``-DTADAH_BUILD_MPI=ON``, the ``tadah_mpi``
-   executable and its ScaLAPACK solver) is removed.
-   Configuring with ``-DTADAH_BUILD_MPI=ON`` stops with an error that
-   points to ``TADAH_HPO_MPI``; ``OFF`` is accepted. The configuration keys
-   :ref:`MPIWPCKG`, :ref:`MBLOCK` and :ref:`NBLOCK` are deprecated
-   (:ref:`SupportedKEYS`), and the ``PC_LAMMPS --ncpu`` option of
-   ``tadah hpo`` is removed (:ref:`pc_lammps_options`).
+   executable and its ScaLAPACK solver) is removed, and with it the
+   ``PC_LAMMPS --ncpu`` option of ``tadah hpo`` (:ref:`pc_lammps_options`).
+   Its configuration keys :ref:`MPIWPCKG`, :ref:`MBLOCK` and :ref:`NBLOCK`
+   are deprecated (:ref:`SupportedKEYS`).
 
 .. _installation_nfp:
 

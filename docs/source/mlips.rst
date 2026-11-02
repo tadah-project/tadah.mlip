@@ -23,7 +23,7 @@ A ``DIMER`` potential is evaluated with every atom as Z = 1, whatever its elemen
 Kr
 --
 
-A two-body interatomic potential that performs exceptionally well given its simplicity. Two versions are provided. The first model (``Tadah!Kr1``) was fitted to dimers computed with coupled-cluster theory with single, double and perturbative triple excitations (CCSD(T)), while the second model's energies were corrected using equilateral Kr trimers (``Tadah!Kr2``). The latter model is recommended.
+A two-body interatomic potential that performs exceptionally well given its simplicity. Two versions are provided. The first model (``Tadah!Kr1``) was fitted to dimers computed with coupled-cluster theory with single, double and perturbative triple excitations (CCSD(T)). The energies of the second model (``Tadah!Kr2``) were corrected using equilateral Kr trimers. The latter model is recommended.
 
 Both potentials show very good agreement with experimental data for the equation of state, melting point, and neutron scattering of the fluid. They offer significant improvements over many empirical potentials at higher pressures while retaining applicability at ambient conditions.
 

@@ -1,7 +1,7 @@
 .. _api_examples:
 
 API Examples
-------------
+============
 
 This page shows two C++ programs that use the Tadah! library: one trains a
 potential and predicts with it, the other predicts with an existing
@@ -11,7 +11,7 @@ the training configuration is described in :ref:`config_file`.
 .. _ex1:
 
 Example 1: training and a simple prediction
-...........................................
+-------------------------------------------
 
 Example 1 c++ file:
 
@@ -31,7 +31,7 @@ Config file used for prediction:
 .. _ex2:
 
 Example 2: prediction with an existing potential
-................................................
+------------------------------------------------
 
 Example 2 c++ file:
 

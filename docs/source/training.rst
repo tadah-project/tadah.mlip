@@ -21,20 +21,8 @@ the descriptor(s), and the regression model. Every CLI flag maps
 one-to-one to an upper-case configuration key (e.g. ``--force`` ↔
 ``FORCE true``); CLI flags override file values.
 
-``-c <file>`` (key ``CONFIG``)
-   Training configuration file.
-
-``-o <file>`` (key ``OUTFILE``)
-   Trained-model output file (default ``pot.tadah``).
-
-``-F`` (key ``FORCE``)
-   Trains on forces in addition to energies (default off).
-
-``-S`` (key ``STRESS``)
-   Trains on stresses in addition to energies (default off).
-
-``-v <0|1|2>`` (key ``VERBOSE``)
-   Log level: 0 ERROR, 1 WARNING, 2 INFO (default 1).
+The options of ``tadah train``, with their keys and defaults, are listed
+in the command-line reference (:doc:`cli/cli`).
 
 .. versionchanged:: 1.6.0
    ``--uncertainty`` and an ``UNCERTAINTY`` or ``ERROR`` line are refused:
@@ -69,16 +57,14 @@ in order:
 #. **Writing the potential** (``pot.tadah``, or the file ``--outfile`` names).
 
 .. versionchanged:: 1.6.0
-   The neighbour list holds every periodic image, which changes the
-   potentials trained on structures with a cell thinner than the cutoff, a
-   triclinic cell or atoms outside the cell, and the ``tadah predict``
-   results for them.
-   Such potentials need retraining.
+   The neighbour list holds every periodic image: of the 180 neighbours of
+   each atom of a 2-atom bcc cell with :math:`a = 3.41` Å at a 10 Å cutoff,
+   Tadah! 1.5.x kept 168. Potentials trained on structures with a cell
+   thinner than the cutoff, a triclinic cell or atoms outside the cell, and
+   the ``tadah predict`` results for them, change: such potentials need
+   retraining.
 
 ``tadah predict`` agrees with ``pair_style tadah`` in LAMMPS on every cell.
-A 2-atom bcc cell with :math:`a = 3.41` Å at a 10 Å cutoff has 180
-neighbours of each atom; Tadah! 1.5.x kept 168 of them, because it missed
-the images of a cell thinner than the cutoff in some direction.
 
 .. _load_transforms:
 
@@ -463,8 +449,7 @@ No key is read from the block: ``tadah predict``, ``tadah train -c``,
 read the potential's keys, skip every line that starts with ``#``. A
 potential loads, predicts and retrains as it would without the block, and
 the ``VERBOSE`` of its record does not set the log level. A potential
-without a record (one written by Tadah! 1.5.x or older) loads in the same
-way. Two programs
+without a record loads in the same way. Two programs
 read the block itself: ``tadah refit --edit``, to copy it into the edit
 (:ref:`refit_edit`), and ``tadah hpo``, to print the balance table of the
 ``best_pot.tadah`` it wrote when the run ends. The edit is refused, naming
@@ -865,21 +850,11 @@ structures would be fitted twice. ``WDBFILE`` gives a dataset a higher
 priority.
 
 .. versionchanged:: 1.6.0
-   A retrain of an ``M_BLR`` potential written by Tadah! 1.5.x or earlier
-   listed its dataset twice, because such a potential records its ``DBFILE``
-   line, and fitted every structure twice without a message.
-   The duplicated entry is refused.
-
-The ``DBFILE`` line of an ``M_BLR`` potential of Tadah! 1.5.x or earlier
-(``tadah predict`` and ``pair_style tadah`` do not read it) is removed from
-the copy before the ``DBFILE`` of the retrain is added, or the potential is
-retrained as it is, on the dataset it names. A dataset fitted twice acts on
-a fixed ``LAMBDA`` at half strength and gives the ``OALGO 3`` ``SIGMA`` of
-twice the data. An ``M_KRR`` potential has no ``DBFILE`` line, so
-``tadah train`` with a configuration without ``DBFILE`` (an ``M_KRR``
-potential as it is) stops with ``Key not found in the Context object:
-DBFILE``. An ``M_KRR`` potential of Tadah! 1.6.0 records ``ALPHA`` and
-``BETA`` as an ``M_BLR`` one does.
+   An ``M_BLR`` potential written by Tadah! 1.5.x or earlier has the
+   ``DBFILE`` line it was trained on, so a retrain from its copy with that
+   ``DBFILE`` added fitted every structure twice without a message; it is
+   refused. The line is deleted from the copy before the ``DBFILE`` of the
+   retrain is added (``tadah predict`` and ``pair_style tadah`` do not read it).
 
 .. _pot_number_format:
 
@@ -931,8 +906,9 @@ integers are always exact. ``#`` comment lines (such as the header
   (both formats read E-notation; ``tadah`` reads its POSCAR export back
   exactly); the CASTEP cell export keeps ``NUMERIC`` decimal places, with
   no warning.
-* In predictions and in the tables of ``tadah analysis`` and ``tadah
-  properties``, ``NUMERIC`` sets the digits after the decimal point, with
+* In predictions, in the tables of ``tadah analysis descriptor``,
+  ``bfunc`` and ``cutoff``, and in those of ``tadah properties
+  pairwise``, ``NUMERIC`` sets the digits after the decimal point, with
   the default ``18``; its entry in :ref:`ConfigSection` names the notation
   of each output.
 

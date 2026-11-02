@@ -11,8 +11,8 @@ Overview
 --------
 
 The regressors, kernels and basis functions listed on this page are selected
-by their exact names in the ``MODEL`` key.  The match is
-literal but case-insensitive:
+by their exact names in the ``MODEL`` key. The names are case-sensitive
+(``MODEL m_krr Kern_RBF`` is refused):
 
 .. code-block:: ini
 
@@ -210,10 +210,12 @@ Each entry below gives:
 
 * a short description and the mathematical form;
 * the expected kernel or basis function;
-* the required keys (*bold* in the “Required key” lines).
+* the keys it reads (a kernel's ``MPARAMS`` line, the bold key names of a
+  regressor).
 
-The ``MODEL`` value names the regressor, and the training configuration
-provides exactly the keys that the entry lists under *Value Limits*.
+The ``MODEL`` value names the regressor and its kernel or basis function.
+Each key an entry names takes exactly the number of values that its entry
+in :ref:`ConfigSection` gives.
 
 The remainder of this page lists every available regressor, followed by
 supported kernels and basis functions.

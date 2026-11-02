@@ -6,8 +6,10 @@ Descriptors
 This page describes the two-body (``D2_*``) and many-body (``DM_*``)
 descriptors of Tadah! and the keys that select and configure them in the
 training configuration (format: :ref:`config_file`; keys:
-:ref:`ConfigSection`). The class name shown in each heading is exactly the
+:ref:`ConfigSection`). The heading of each descriptor below is exactly the
 value written after ``TYPE2B`` or ``TYPEMB`` in the training configuration.
+The headings ``DM_mEAD variants`` and ``DM_Poly variants`` name families of
+descriptors instead; their tables list the labels.
 
 For new scalar-density work, :ref:`DM_Embed <dm_embed>` selects density basis,
 embedding basis, spatial cutoff and optional envelope in independent component
@@ -123,24 +125,21 @@ The layout is the same on every path (``tadah train``, ``predict``,
 
 .. versionchanged:: 1.6.0
    A linear potential with ``NORM true`` and ``BIAS false`` written by
-   1.5.0 or earlier is refused when it predicts. Its conversion had no
-   intercept column for the constant, so its energies are wrong. The forces
-   are wrong too for ``M_KRR Kern_Linear`` and for ``M_BLR BF_Linear`` up to
-   1.2.0. From 1.3.0-beta.1, ``M_BLR BF_Linear`` (written by ``tadah hpo``
-   and the API) dropped the constant: the energies are off by the same
-   amount for every atom and the forces are right.
+   1.5.0 or earlier is refused when it predicts: its conversion had no
+   intercept column for the constant, so its energies are wrong.
 
 .. versionchanged:: 1.6.0
    A potential trained with ``BIAS true`` and two or more species by 1.5.x
-   or earlier has one intercept column shared by the species. ``tadah
+   or earlier has one intercept column shared by the species, so ``tadah
    predict`` and ``pair_style tadah`` refuse it, naming ``WEIGHTS``,
-   ``DSIZE``, ``BIAS`` and ``ATOM``, because its coefficients do not fit the
-   descriptor. It needs retraining, with its training configuration or with
-   the potential itself (:ref:`retrain_from_potential`: an ``M_BLR``
-   potential of those versions has its ``DBFILE`` line; an ``M_KRR``
-   potential needs one added). ``tadah train -c pot.tadah`` replaces its
-   ``WEIGHTS``, ``NMEAN`` and ``NSTDEV``. Single-species potentials are not
+   ``DSIZE``, ``BIAS`` and ``ATOM``. Single-species potentials are not
    affected.
+
+A potential refused for its intercept columns is retrained with its
+training configuration or with the potential itself
+(:ref:`retrain_from_potential`; an ``M_KRR`` potential without a
+``DBFILE`` line needs one added): ``tadah train -c pot.tadah`` replaces its
+``WEIGHTS``, ``NMEAN`` and ``NSTDEV``.
 
 Descriptor key syntax
 ---------------------
@@ -496,29 +495,22 @@ many-body cutoff ``RCTYPEMB``, :math:`\psi_n` the basis function of centre
    :math:`\bar\rho(a)` is non-increasing in the lattice constant on every
    lattice.
 
-.. versionchanged:: 1.6.0
-   ``SIGNED`` gives the density of Tadah! 1.5.0, bit for bit under the
-   conditions described below.
-
 On a density that is valid under both (every amplitude :math:`\ge 0`),
 ``NONNEG`` is bit-identical to ``SIGNED`` wherever :math:`f_c \ge 0`; the two
 differ only where the cutoff dips below 0 (``Cut_Poly`` and ``Cut_PolyS``, by
 about ``-2.7e-15`` near ``RCUTMB``). ``SIGNED`` evaluates the sums of the
 density with Tadah.MODELS' own flags.
 
-A Tadah.MODELS compiled without fused multiply-adds (FMA) gives bit for bit
-the same density as 1.5.0 built the same way and run on the same system.
-The flags of the presets on x86-64 (no ``-march=native``, no
-``-ffast-math``) compile it without FMA, with or without LTO, and also in a
-``tadah`` built with ``TADAH_MARCH_NATIVE``. The other evaluators of the
-density then agree with the descriptor: bit for bit the density checks and
-reports of ``tadah hpo`` and ``tadah refit --edit``, within one unit in the
-last place the density ``tadah refit`` fits. In a Tadah.MODELS compiled
-with FMA (``-march=native`` in ``CMAKE_CXX_FLAGS`` on a recent x86-64, or
-on an AArch64 machine, where the compilers fuse multiply-adds at their
-default flags), these relations hold to rounding errors only. The density
-can then differ from 1.5.0 built the same way (with link-time
-optimisation) by rounding errors, and its evaluators from each other.
+In a Tadah.MODELS compiled without fused multiply-adds (FMA), the other
+evaluators of the density agree with the descriptor: bit for bit the density
+checks and reports of ``tadah hpo`` and ``tadah refit --edit``, within one
+unit in the last place the density ``tadah refit`` fits. The flags of the
+presets on x86-64 (no ``-march=native``, no ``-ffast-math``) compile it
+without FMA, with or without LTO, and also in a ``tadah`` built with
+``TADAH_MARCH_NATIVE``. In a Tadah.MODELS compiled with FMA
+(``-march=native`` in ``CMAKE_CXX_FLAGS`` on a recent x86-64, or on an
+AArch64 machine, where the compilers fuse multiply-adds at their default
+flags), these relations hold to rounding errors only.
 
 The Gaussian basis, and every cutoff except ``Cut_Dummy``, ``Cut_Poly`` and
 ``Cut_PolyS``, call mathematical functions of the C library (``cos``,
@@ -614,9 +606,10 @@ refused with::
    integrated bump, a_n >= 0: rho >= 0 and non-increasing by construction).
 
 .. versionadded:: 1.6.0
-   A potential written before 1.6.0 gives its 1.5.0 energies with both
-   ``RHOFORM SIGNED`` and ``EMBF0 FREE`` added. ``RHOFORM SIGNED`` alone keeps
-   the density (bit for bit under the conditions described above).
+   ``RHOFORM SIGNED`` gives the density of Tadah! 1.5.0, bit for bit when both
+   are built the same way without FMA and run on the same system, and to
+   rounding errors otherwise. A potential written before 1.6.0 gives its
+   1.5.0 energies with both ``RHOFORM SIGNED`` and ``EMBF0 FREE`` added.
 
 ``tadah predict``, ``tadah analysis
 descriptor``, ``tadah analysis bfunc`` and ``tadah properties pairwise`` refuse a key-less DM_REAM

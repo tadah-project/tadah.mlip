@@ -10,8 +10,10 @@
 #     --tadah-pc-worker";
 #   - `tadah_without_nfp hpo -c config.train --hpotarget config.hpo` (in
 #     WORK_DIR) is refused with a non-zero status and "tadah hpo needs the
-#     Nested Fitting Procedure, which this tadah was built without;
-#     reconfigure with -DTADAH_ENABLE_NFP=ON (see Installation)".
+#     Nested Fitting Procedure, which this build of tadah does not have; a
+#     build with -DTADAH_ENABLE_NFP=ON (see Installation) has it" (it was
+#     "... which this tadah was built without; reconfigure with
+#     -DTADAH_ENABLE_NFP=ON (see Installation)").
 #
 #   cmake -DBUILD_DIR=<build> -DCONFIG=<configuration> -DJOBS=<processes>
 #         -DEXE=<tadah_without_nfp> -DVERSION=<version> -DWORK_DIR=<scratch>
@@ -67,8 +69,9 @@ file(MAKE_DIRECTORY "${WORK_DIR}")
 file(WRITE "${WORK_DIR}/config.train" "DBFILE db.tadah\n")
 file(WRITE "${WORK_DIR}/config.hpo" "OPTIM RCUT2B 3 5\n")
 string(CONCAT hpo_refusal
-  "tadah hpo needs the Nested Fitting Procedure, which this tadah was "
-  "built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see Installation)")
+  "tadah hpo needs the Nested Fitting Procedure, which this build of tadah "
+  "does not have; a build with -DTADAH_ENABLE_NFP=ON (see Installation) has "
+  "it")
 execute_process(
   COMMAND "${EXE}" hpo -c config.train --hpotarget config.hpo
   WORKING_DIRECTORY "${WORK_DIR}"

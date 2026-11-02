@@ -1324,9 +1324,16 @@ bounds. ``--retarget`` rewrites them without re-running anything::
    # absolute bounds for one parameter, edit the file in place
    tadah refit --retarget refit.hpotarget --set 'CGRID2B(3)=2.1,2.4' --in-place
 
-Every ``OPTIM`` line is rewritten — **active and commented alike, preserving
-the comment state** — around the parameter values recovered from the existing
-bounds; everything else in the file is preserved byte-for-byte. ``--pct``
+Every line of the form ``OPTIM <KEY> (<index>) <low> <high>`` is
+rewritten — **active and commented alike, preserving the comment state** and
+a comment after the bounds — around the parameter values recovered from the
+existing bounds; everything else in the file is preserved byte-for-byte.
+Keys are read in any case, as ``tadah hpo`` reads them, and keep the case
+written. An ``OPTIM`` line of another form (an ``AUTO`` box, several
+indices, a shape tag, a line continued on the next, a line ``tadah hpo``
+refuses) ``is kept as written``, which a WARNING says, naming its line and
+why; so is a commented line of another form that ``tadah hpo`` would read.
+``--pct``
 takes a bare number (the global percentage) and/or ``KEY=N`` per-key
 overrides; ``--set 'KEY(i)=lo,hi'`` (repeatable) is applied last. Output goes
 to ``<input>_retargeted.hpotarget`` by default (``refit_retargeted.hpotarget``
@@ -1339,14 +1346,20 @@ default was ``<input>_edited.hpotarget``: for ``refit.hpotarget`` that is
 runs the second overwrote the first one's file (the two are searches around
 different potentials).
 
+.. versionchanged:: 1.6.0
+   An ``OPTIM`` line of another form was kept without a warning, and a key
+   written in lower case was a group of its own.
+
 The numbers of ``--pct`` and ``--set`` are read with the number grammar of
 the hpotarget file, which ``tadah hpo`` reads the rewritten bounds with
 (:ref:`nfp_manual`): an optional sign, decimal digits with at most one
 ``.``, an optional exponent, a finite value that is zero or a normal double.
 ``5x``, ``0x10``, ``inf``, ``nan`` and ``1e-320`` are errors naming the
-token. A percentage must be positive, and ``--pct KEY=N`` needs an ``OPTIM``
-line on ``KEY`` in the file (active or commented; the error lists the keys
-it has). A ``--set`` needs finite bounds with ``lo < hi``, and its ``lo``
+token. A percentage must be positive, and ``--pct KEY=N`` needs a rewritten
+``OPTIM`` line on ``KEY`` in the file (active or commented; the error lists
+the keys it has, or names the lines of ``KEY`` it keeps as written). A
+``--set`` needs a rewritten line of its index (a line kept as written is
+named), finite bounds with ``lo < hi``, and its ``lo``
 must satisfy the rule the file's density form sets (below; ``tadah hpo``
 refuses such a box at startup). The file takes no ``RHOFORM`` or ``EMBF0``
 from a configuration (``-c``): a target file carries no potential, so they

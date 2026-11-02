@@ -485,8 +485,8 @@ are checked, naming the key, the mode in effect and the mode that reads it:
   either mode, with a text that names the stage block (``EXPLORE``,
   ``REFINE`` or ``FUSE``) that takes each block inside it (``tadah refit: a
   top-level OPTIMIZER block ...``); under
-  ``REFIT_MODE dense`` the text ends ``Under REFIT_MODE dense, which reads
-  no stage block, remove the OPTIMIZER block.``
+  ``REFIT_MODE dense`` the text ends ``REFIT_MODE dense reads no stage
+  block, and takes no OPTIMIZER block at all.``
 * Both modes: the other keys.
 
 Only the keys the configuration sets count: the defaults ``tadah`` stores

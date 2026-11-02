@@ -958,8 +958,8 @@ TEST_CASE("Subcommand: hpo: an INIT and a RESTART block on a search that "
       ++n;
     return n;
   };
-  CHECK(count(r.err, "[HPO] WARNING: " + init) == 1);
-  CHECK(count(r.err, "[HPO] WARNING: " + restart) == 1);
+  CHECK(count(r.err, "[tadah hpo] WARNING: " + init) == 1);
+  CHECK(count(r.err, "[tadah hpo] WARNING: " + restart) == 1);
   CHECK(count(journal, init) == 1);
   CHECK(count(journal, restart) == 1);
 }
@@ -9942,10 +9942,13 @@ void check_hpo_check_passed(const CliRun& r,
   }
 }
 
-/* The message of `tadah hpo` on standard error: from "HPOEngine error:" to
- * the end; "" when there is none. */
+/* The message of `tadah hpo` on standard error: from the last line that
+ * starts "ERROR: ", as every command prints its error, to the end; "" when
+ * there is none. (It began "HPOEngine error:", the class's name.) */
 std::string engine_error(const CliRun& r) {
-  const auto p = r.err.find("HPOEngine error:");
+  std::size_t p = r.err.rfind("\nERROR: ");
+  if (p != std::string::npos) ++p;
+  else if (r.err.rfind("ERROR: ", 0) == 0) p = 0;
   return p == std::string::npos ? std::string() : r.err.substr(p);
 }
 
@@ -10084,8 +10087,39 @@ TEST_CASE("Subcommand: hpo --check refuses a setup with the message of "
     CHECK(check.status == run.status);
     CHECK(contains(engine_error(run), c.says));
     CHECK(engine_error(check) == engine_error(run));
+    /* The error names no class (it began "HPOEngine error: "). */
+    CHECK_FALSE(contains(reported(run), "HPOEngine"));
     CHECK_FALSE(std::filesystem::exists("missing"));
   }
+}
+
+/* Pins: `tadah hpo` with a training configuration whose INIT2B and INITMB
+ * are both false exits 1 with the refusal "tadah hpo: INIT2B and INITMB are
+ * both false, so the potential has no term; tadah hpo needs INIT2B true or
+ * INITMB true", which escapes to main() (it prints "ERROR: " and the
+ * text), as tadah train's does, with no class name and no "Validating" log
+ * line before it.
+ * Before the fix: "HPOEngine requires INIT2B or/and INITMB parameters to be
+ * set", after the INFO line "Validating HPOEngine...". */
+TEST_CASE("Subcommand: hpo refuses a configuration without a term, naming "
+          "the command",
+          "[cli][hpo][messages]") {
+  ScratchCwd cwd("hpo_no_term");
+  write_hpo_potential_fixture();
+  std::string config = slurp("config.tadah");
+  config = replace_key_line(config, "INIT2B", "INIT2B false");
+  config = replace_key_line(config, "INITMB", "INITMB false");
+  std::ofstream("config.tadah") << config;
+  const CliRun run = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                                "--hpotarget", "config.hpo",
+                                "--validation", "config.val"});
+  INFO("status " << run.status << "\n" << reported(run));
+  CHECK(run.status == 1);
+  CHECK(run.what ==
+        "tadah hpo: INIT2B and INITMB are both false, so the potential has "
+        "no term; tadah hpo needs INIT2B true or INITMB true");
+  CHECK_FALSE(contains(reported(run), "HPOEngine"));
+  CHECK_FALSE(contains(reported(run), "Validating"));
 }
 
 /* Pins: CHECK is a setting of the run, as HPOTARGET is, and a potential

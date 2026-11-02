@@ -17,7 +17,7 @@ temporary directory and checks:
               record). At -v 0 nothing is printed and the record holds the
               table all the same.
   hpo         `tadah hpo` prints the table once, at the end of the run, after
-              "[HPO] best_pot.tadah:"; it is the table of the training record
+              "[tadah hpo] best_pot.tadah:"; it is the table of the training record
               of best_pot.tadah, and that of a retrain of best_pot.tadah on
               the same data (the table of the evaluation's own fit); the
               BDUMP archives of the new bests have none.
@@ -327,10 +327,10 @@ def case_hpo(tadah, work):
         return [f"tadah hpo printed {len(tables)} tables:\n{out}"]
     lines = out.splitlines()
     at = lines.index(tables[0][0])
-    if at == 0 or lines[at - 1] != "[HPO] best_pot.tadah:":
-        failures.append(f"the table does not follow '[HPO] best_pot.tadah:'"
+    if at == 0 or lines[at - 1] != "[tadah hpo] best_pot.tadah:":
+        failures.append(f"the table does not follow '[tadah hpo] best_pot.tadah:'"
                         f":\n{out}")
-    if any(line.startswith("[HPO]") for line in lines[at:]):
+    if any(line.startswith("[tadah hpo]") for line in lines[at:]):
         failures.append(f"the table is not printed at the end:\n{out}")
     failures += table_failures(tables[0], ["energy", "force"], 2)
     rec = record_table(work / "best_pot.tadah")

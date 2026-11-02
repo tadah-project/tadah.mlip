@@ -4453,13 +4453,13 @@ TEST_CASE("Subcommand: refit refuses a header lattice constant beyond the "
 const std::string kTopLevelOptimizerBlock =
     "OPTIMIZER\n  GLOBAL ALGO MLSL ENDGLOBAL\nENDOPTIMIZER";
 const std::string kTopLevelOptimizerText =
-    "tadah refit: a top-level OPTIMIZER block is no longer supported. The "
-    "stage pipeline is now INIT -> EXPLORE -> REFINE -> FUSE, each its own "
-    "block, with the OPTIMIZER block NESTED inside EXPLORE/REFINE/FUSE. "
-    "Migration: GLOBAL folded into EXPLORE rung 0 (set its global ALGO in "
-    "EXPLORE's OPTIMIZER, with an INNER local); POLISH -> REFINE; JOINT -> "
-    "FUSE. The Refitting page of the documentation has examples (Stage "
-    "blocks).";
+    "tadah refit: a top-level OPTIMIZER block is refused: the stages of tadah "
+    "refit are the blocks INIT, EXPLORE, REFINE and FUSE, and an OPTIMIZER "
+    "block sits inside EXPLORE, REFINE or FUSE. In the grammar of the "
+    "top-level OPTIMIZER block, GLOBAL is the global ALGO of the OPTIMIZER "
+    "block of EXPLORE (with an INNER local search, rung 0), POLISH is REFINE "
+    "and JOINT is FUSE; the Refitting page of the documentation has examples "
+    "(Stage blocks).";
 
 /* Pins: `tadah refit -c` refuses a key that the configuration's REFIT_MODE
  * does not read, with status 1, a message naming the key and the mode that
@@ -4525,9 +4525,8 @@ TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
             in_dense("the REFINE block")},
            {"REFIT_OBJECTIVE curve", in_dense("REFIT_OBJECTIVE curve")},
            {kTopLevelOptimizerBlock,
-            kTopLevelOptimizerText + " Under REFIT_MODE dense, which reads "
-                                     "no stage block, remove the OPTIMIZER "
-                                     "block."}}) {
+            kTopLevelOptimizerText + " REFIT_MODE dense reads no stage block, "
+                                     "and takes no OPTIMIZER block at all."}}) {
     const CliRun r = run(dense, extra);
     const std::string rep = reported(r);
     INFO(extra << ": status " << r.status << "\n" << rep);
@@ -12056,7 +12055,8 @@ TEST_CASE("Subcommand: train with AUDIT error trains a Gaussian density "
 /* Pins: tadah train with AUDIT error refuses a configuration with a FAIL
  * finding with exit status 1 returned to its caller, the program going
  * on: a radial GTO centred 30 A away (CGRIDMB 30) is refused naming the
- * finding ("AUDIT=error", "CGRIDMB"), and no potential is written; this
+ * finding ("AUDIT error: 1 FAIL finding(s) stop the run:", "CGRIDMB"),
+ * and no potential is written; this
  * test case runs to its end in the process that ran tadah.
  * Before the fix: TrainEngine called std::exit(EXIT_FAILURE) inside the
  * library, which ended this test program (exit status 1) before any check
@@ -12070,7 +12070,9 @@ TEST_CASE("Subcommand: train with AUDIT error refuses a FAIL finding with "
   const std::string rep = reported(r);
   INFO("status " << r.status << "\n" << rep);
   CHECK(r.status == 1);
-  CHECK(contains(rep, "AUDIT=error"));
+  /* It said "preflight_audit: AUDIT=error and one or more FAIL
+   * findings:". */
+  CHECK(contains(rep, "AUDIT error: 1 FAIL finding(s) stop the run:"));
   CHECK(contains(rep, "CGRIDMB"));
   CHECK_FALSE(std::filesystem::exists("far.tadah"));
 }

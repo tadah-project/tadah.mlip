@@ -534,7 +534,9 @@ General and output
 
 ``REFIT_LOG`` (path)
    Default ``refit_opt.log``. Live, line-flushed optimisation log; the
-   self-test is at its end.
+   self-test is at its end. The compact fit of
+   :ref:`DM_Embed components <dm_embed_refit>` writes no log, so with
+   ``DESCRIPTOR`` blocks the key is an error under ``REFIT_MODE compact``.
 
 ``OUTPUT_GRID_SCALE`` (float)
    Default ``1.0``. Output setfl grid density relative to the input table;
@@ -1270,7 +1272,7 @@ it.
 ``FORM``, a DM_REAM potential's ``RHOFORM`` line). A DM_REAM input must
 declare ``RHOFORM`` (a DM_REAM potential without it stops
 with ``pot edit: DM_REAM: RHOFORM is required: ...``; a tadah 1.5.0 fit
-keeps its density with ``RHOFORM SIGNED`` added, :ref:`dm_ream_rhoform`),
+keeps its :ref:`density <dm_ream_rhoform>` with ``RHOFORM SIGNED`` added),
 and under ``NONNEG`` and
 ``MONOTONE`` its density must pass the checks DM_REAM applies on load (the messages are
 prefixed ``pot edit:``). **Adding** inserts a coefficient of 0, which is

@@ -195,6 +195,28 @@ class RuleSelfTest(unittest.TestCase):
         text = 'Run it:\n\n::\n\n   we simply go\n\nBack to prose.\n'
         self.assertEqual(violations(prose_lines(text), 'x.rst'), [])
 
+    def test_prose_inside_admonitions_and_tables_is_checked(self):
+        text = ('.. note::\n\n   You can run it.\n\n.. list-table::\n'
+                '   :header-rows: 1\n\n   * - Key\n     - Previously 0.\n\n'
+                '..  warning::\n\n   It is simply run.\n')
+        found = violations(prose_lines(text), 'x.rst')
+        self.assertEqual([f.split(': ')[1] for f in found],
+                         ['addresses the reader',
+                          'history outside a version directive',
+                          'filler wording'])
+
+    def test_comments_labels_and_substitutions_are_skipped(self):
+        text = ('.. _we_label:\n\n.. a comment that says you\n   and we\n\n'
+                '.. |we| replace:: you\n\n..\n   you again\n\nProse.\n')
+        self.assertEqual(violations(prose_lines(text), 'x.rst'), [])
+
+    def test_hand_written_pages_beside_generated_ones_are_checked(self):
+        pages = [os.path.relpath(path, SOURCE) for path in source_pages()]
+        reference = os.path.join('nfp', 'reference')
+        self.assertIn(os.path.join(reference, 'index.rst'), pages)
+        self.assertNotIn(os.path.join(reference, 'target_keys.rst'), pages)
+        self.assertNotIn(os.path.join('config', 'config_keys.rst'), pages)
+
 
 if __name__ == '__main__':
     unittest.main()

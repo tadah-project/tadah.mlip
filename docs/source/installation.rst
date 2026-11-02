@@ -431,8 +431,10 @@ A Tadah!MLIP build with NFP takes these steps:
    - ``-DTADAH_ENABLE_NFP=ON``
    - ``-DTADAH_LAMMPS_DIR=/path/to/lammps`` (LAMMPS root directory)
    - ``-DTADAH_LAMMPS_LIB=/full/path/to/liblammps_name.ext`` (full path to the built LAMMPS library file)
-   - optionally ``-DTADAH_LAMMPS_LIBS="-lz;-lzstd"`` when linking a static LAMMPS library fails with
-     undefined references to its dependencies (e.g. ``gzflush`` needs ``-lz``)
+   - ``-DTADAH_LAMMPS_LIBS=-lz`` for a static LAMMPS library that uses zlib: one with the COMPRESS
+     package or PNG output, and the stable release of 30 Sep 2026 whenever its configure finds zlib
+     (``WITH_ZLIB``). One that also uses libzstd needs ``"-lz;-lzstd"``. An undefined reference to
+     ``gzflush`` or ``compressBound`` at the link means that ``-lz`` is missing.
    - ``-DTADAH_ENABLE_OPENMP=ON`` for a static LAMMPS library built with OpenMP (``BUILD_OMP``, on
      when the LAMMPS configure finds OpenMP): it calls the OpenMP runtime, and linking otherwise
      fails on ``omp_get_num_threads``, ``GOMP_parallel`` and the like
@@ -498,6 +500,10 @@ The usual LAMMPS CMake configure command runs from the **LAMMPS root directory**
 * ``-DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake``
 * ``-DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps``
 * ``-DTADAH_GIT_BRANCH=<the branch or tag checked out in Step 2>``
+
+A ``DIMER`` potential (*Tadah!N2*, :ref:`mlips`) needs each molecule as two
+bonded atoms, so an atom style with bonds, such as ``bond``. These styles
+are part of the LAMMPS MOLECULE package, which ``-DPKG_MOLECULE=ON`` adds.
 
 Minimal example, for a ``v1-dev`` checkout:
 

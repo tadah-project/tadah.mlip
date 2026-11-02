@@ -15,7 +15,8 @@
 // (a DIMER potential requires it), serial, in an in-process LAMMPS
 // (LammpsRunner, the instance on hpo_lammps_comm()).
 //
-// It needs pair_style tadah, so a build without TADAH_ENABLE_NFP skips it.
+// It needs pair_style tadah, so a build without TADAH_ENABLE_NFP skips it,
+// and atom_style bond, so a LAMMPS without the MOLECULE package skips it.
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
@@ -25,6 +26,7 @@
 #include <tadah/hpo/runners.h>
 
 #include <input.h>
+#include <library.h>
 #endif
 
 #include <algorithm>
@@ -34,6 +36,7 @@
 #include <iomanip>
 #include <map>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -91,6 +94,20 @@ double read_number(const LammpsRunner& runner,
   INFO("variable " << name << " = '" << t << "'");
   REQUIRE(finite_number_text(t));
   return std::stod(t);
+}
+
+/* True when the LAMMPS library has atom_style bond, which is part of the
+ * LAMMPS MOLECULE package: the molecules here are bonded atom pairs.
+ * Throws when no instance can be created, so that the test case fails
+ * instead of being skipped. */
+bool lammps_has_atom_style_bond() {
+  std::string error;
+  const auto lmp = LammpsRunner().create_instance(
+      {"lmp", "-log", "none", "-screen", "none"}, &error);
+  if (!lmp)
+    throw std::runtime_error("no LAMMPS instance to look up atom_style "
+                             "bond in: " + error);
+  return lammps_has_style(lmp.get(), "atom", "bond") != 0;
 }
 
 /* `run 0` of pair_style tadah with tadah.n2 on @p mols: molecule m (from 0)
@@ -171,6 +188,8 @@ TEST_CASE("pair_style tadah: the per-atom energies of a DIMER potential sum "
 #ifndef TADAH_ENABLE_NFP
   TADAH_SKIP("pair_style tadah is not built (TADAH_ENABLE_NFP OFF)");
 #else
+  if (!lammps_has_atom_style_bond())
+    TADAH_SKIP("this LAMMPS has no atom_style bond (the MOLECULE package)");
   tadah::core::PeriodicTable::initialize();
   std::vector<Molecule> mols;
   int k = 0;
@@ -214,6 +233,8 @@ TEST_CASE("pair_style tadah: a DIMER atom's per-atom energy is the sum over "
 #ifndef TADAH_ENABLE_NFP
   TADAH_SKIP("pair_style tadah is not built (TADAH_ENABLE_NFP OFF)");
 #else
+  if (!lammps_has_atom_style_bond())
+    TADAH_SKIP("this LAMMPS has no atom_style bond (the MOLECULE package)");
   tadah::core::PeriodicTable::initialize();
   const Molecule A{{20.0, 20.0, 20.0}, unit(0.4, 0.3)};
   const Molecule B{{23.6, 20.3, 19.8}, unit(1.3, 2.0)};

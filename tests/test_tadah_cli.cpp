@@ -220,11 +220,13 @@ TEST_CASE("Subcommand: predict: forces vanish on perfect 2-atom bcc cells "
 /* Pins: the explain hook of a tadah built without HPO (TadahCLI sets it
  * when TADAH_ENABLE_NFP is off): ALGO and LIB, in any letter case, the keys
  * that name a `tadah hpo` optimiser, are an error that says this tadah has
- * no Nested Fitting and which build has it ("tadah explain: ALGO names the
- * optimiser of a `tadah hpo` target file, and this build of tadah has no
- * Nested Fitting: a build with -DTADAH_ENABLE_NFP=ON (see Installation) has
- * it"; it said "... and this tadah is built without HPO (TADAH_ENABLE_NFP
- * OFF): configure it with -DTADAH_ENABLE_NFP=ON"); any
+ * no Nested Fitting Procedure and which build has it, in the words of the
+ * refusal of tadah hpo ("tadah explain: ALGO names the optimiser of a
+ * `tadah hpo` target file, and this build of tadah has no Nested Fitting
+ * Procedure; a build with -DTADAH_ENABLE_NFP=ON (see Installation) has it";
+ * it said "... and this tadah is built without HPO (TADAH_ENABLE_NFP
+ * OFF): configure it with -DTADAH_ENABLE_NFP=ON", then "... has no Nested
+ * Fitting: a build with ..."); any
  * other name is not its own (false, nothing written). A build with HPO
  * sets HPO's optimiser help instead (test_tadah_cli_exit_status.cpp).
  * Before the fix: none compiles (explain_without_hpo does not exist), and
@@ -239,13 +241,33 @@ TEST_CASE("explain_without_hpo: ALGO and LIB say that this tadah has no HPO",
         explain_without_hpo(name, out),
         Catch::StartsWith(std::string("tadah explain: ") + name +
                           " names the optimiser of a `tadah hpo` target file, "
-                          "and this build of tadah has no Nested Fitting: a "
-                          "build with -DTADAH_ENABLE_NFP=ON (see Installation) "
-                          "has it"));
+                          "and this build of tadah has no Nested Fitting "
+                          "Procedure; a build with -DTADAH_ENABLE_NFP=ON (see "
+                          "Installation) has it"));
     CHECK(out.str().empty());
   }
   std::ostringstream out;
   CHECK_FALSE(explain_without_hpo("LD_LBFGS", out));
   CHECK_FALSE(explain_without_hpo("bogus", out));
   CHECK(out.str().empty());
+}
+
+/* Pins: the refusal of an MPI library without MPI_THREAD_MULTIPLE, which
+ * main() of a TADAH_HPO_MPI build prints after "ERROR: ", says which MPI
+ * libraries provide that level, each in a sentence with its verb. A build
+ * without MPI has the text too, so it is tested here.
+ * Before the fix: the test does not compile (mpi_thread_level_refusal
+ * does not exist); main() ended "...; under Cray MPICH,
+ * MPICH_MAX_THREAD_SAFETY=multiple gives it, and otherwise an MPI built
+ * with full thread support." (1.5.0: ". On Cray MPICH set
+ * MPICH_MAX_THREAD_SAFETY=multiple; otherwise use an MPI built with full
+ * thread support."). */
+TEST_CASE("mpi_thread_level_refusal: the MPI libraries that provide "
+          "MPI_THREAD_MULTIPLE", "[TadahCLI][mpi]") {
+  CHECK(mpi_thread_level_refusal(2) ==
+        "this MPI library provides thread level 2 < MPI_THREAD_MULTIPLE, "
+        "which the TADAH_HPO_MPI build requires (concurrent LAMMPS instances "
+        "on MPI_COMM_SELF). Cray MPICH provides MPI_THREAD_MULTIPLE when "
+        "MPICH_MAX_THREAD_SAFETY=multiple is set; another MPI library "
+        "provides it when built with full thread support.");
 }

@@ -4455,11 +4455,11 @@ const std::string kTopLevelOptimizerBlock =
 const std::string kTopLevelOptimizerText =
     "tadah refit: a top-level OPTIMIZER block is refused: the stages of tadah "
     "refit are the blocks INIT, EXPLORE, REFINE and FUSE, and an OPTIMIZER "
-    "block sits inside EXPLORE, REFINE or FUSE. In the grammar of the "
-    "top-level OPTIMIZER block, GLOBAL is the global ALGO of the OPTIMIZER "
-    "block of EXPLORE (with an INNER local search, rung 0), POLISH is REFINE "
-    "and JOINT is FUSE; the Refitting page of the documentation has examples "
-    "(Stage blocks).";
+    "block sits inside EXPLORE, REFINE or FUSE. The GLOBAL, POLISH and JOINT "
+    "stages of a top-level OPTIMIZER block correspond to the OPTIMIZER block "
+    "inside EXPLORE (its global ALGO with an INNER local search, rung 0), to "
+    "REFINE and to FUSE; the Refitting page of the documentation has "
+    "examples (Stage blocks).";
 
 /* Pins: `tadah refit -c` refuses a key that the configuration's REFIT_MODE
  * does not read, with status 1, a message naming the key and the mode that
@@ -4594,10 +4594,10 @@ TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
   INFO("compact: status " << r.status << "\n" << rep);
   CHECK(r.status == 1);
   CHECK(contains(rep, "tadah refit: REFIT_MODE compact (the default) needs "
-                      "the compact fitter, which this tadah was built "
-                      "without (it needs TADAH_ENABLE_NFP and "
-                      "TADAH_ENABLE_CERES); REFIT_MODE dense fits without "
-                      "it"));
+                      "the compact fitter, which this build of tadah does "
+                      "not have (a build with -DTADAH_ENABLE_NFP=ON and "
+                      "-DTADAH_ENABLE_CERES=ON has it); REFIT_MODE dense "
+                      "fits without it"));
   CHECK_FALSE(std::filesystem::exists("pot.tadah"));
 #endif
 }
@@ -5102,7 +5102,9 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
   const CliRun r = run_tadah({"tadah", "explain", "ALGO"});
   INFO("ALGO: status " << r.status << "\n" << reported(r));
   CHECK(r.status == 1);
-  CHECK(contains(reported(r), "this build of tadah has no Nested Fitting"));
+  CHECK(contains(reported(r), "this build of tadah has no Nested Fitting "
+                              "Procedure; a build with -DTADAH_ENABLE_NFP=ON "
+                              "(see Installation) has it"));
 #endif
   const CliRun bogus = run_tadah({"tadah", "explain", "bogus"});
   CHECK(bogus.status == 1);

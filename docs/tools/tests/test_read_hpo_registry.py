@@ -1144,7 +1144,8 @@ class PagesTest(unittest.TestCase):
             r'A line that ends with \\ continues on the next line',
         ('LEXING', 'key_case'): r'its key, matched as written',
         ('LEXING', 'error_frame'):
-            r'Each error names the file, as --hpotarget gives it, and the line',
+            r'An error at a line of the target file names the file, as '
+            r'--hpotarget gives it, and the line',
         ('LEXING', 'unfinished_msg'):
             r'A file whose last line ends with \\ is refused',
         ('STRUCTURE', 'end_without_open_msg'):

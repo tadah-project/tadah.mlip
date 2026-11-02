@@ -9,24 +9,28 @@ Glossary and Abbreviations
       A way to interact with the program by typing commands into a terminal or console.
 
    Nested Fitting Procedure
-   Hyperparameter Optimization
+   Hyperparameter Optimisation
       A two-level fitting procedure that optimises :term:`hyperparameters<hyperparameter>` and
-      :term:`learned parameter<learned parameter>` by iteratively retraining the model and validating
+      :term:`coefficients` by iteratively retraining the model and validating
       it against :term:`performance constraint<performance constraint>`.
 
    Training Configuration
-      A file that defines the initial model and training parameters for either training or the
-      :term:`nested fitting procedure`. It completely specifies the initial model.
+      The file given with ``--config`` to ``tadah train`` or ``tadah hpo``. It
+      defines the model and its training settings and, for the
+      :term:`nested fitting procedure`, completely specifies the initial model
+      (format: :ref:`config_file`; keys: :ref:`ConfigSection`).
 
-   Nested Fitting Configuration
-   HPO Configuration
-      A file that defines the settings used for :term:`nested fitting procedure`.
+   Target File
+      The file given with ``--hpotarget`` to ``tadah hpo`` (``config.hpo`` by
+      convention). It defines the settings of the :term:`nested fitting
+      procedure` (:ref:`nfp_manual`).
 
    Hyperparameter
       A model parameter chosen *before* regression (cutoff, widths of Gaussians ...).
 
-   Learned Parameter
-      Coefficient found by regression (:math:`\mathbf w`).
+   Coefficients
+      The numbers a fit finds by regression (:math:`\mathbf w`; key
+      :ref:`WEIGHTS` of a potential).
 
    Error scale
       The residual of an observation that costs one priority unit in a fit,
@@ -64,8 +68,12 @@ Glossary and Abbreviations
       as an epoch of :hpo:opt:`TADAH:ANNEAL_PT`
       (:ref:`nfp_evaluation_numbers`).
 
-   Search Space Constraint
-      A bound placed on a :term:`hyperparameter` via an ``OPTIM`` line.
+   Search parameter
+      One :hpo:key:`OPTIM` line of the target file: a bound placed on a
+      :term:`hyperparameter`.
+
+   Search space
+      All search parameters of a target file.
 
 Abbreviations
 =============

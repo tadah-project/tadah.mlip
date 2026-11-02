@@ -3,9 +3,13 @@
 Adaptive Simulated Annealing (ASA)
 ==================================
 
-Select ``LIB ASA`` and ``ALGO ASA`` for the bundled Adaptive Simulated
-Annealing optimiser. It uses separate parameter temperatures and a cost
-temperature. Configure it in the phase that should run the search:
+This page shows how to run a search with the Adaptive Simulated Annealing
+(ASA) optimiser and lists its ``PARAM`` keys. It assumes a target file with
+an ``OPTIMIZER`` block (see :doc:`nfp_optimizer`).
+
+``LIB ASA`` and ``ALGO ASA`` select the bundled optimiser. It uses separate
+parameter temperatures and a cost temperature. The block below runs it as
+the optimiser of ``STRATEGY``:
 
 .. code-block:: none
 
@@ -20,11 +24,11 @@ temperature. Configure it in the phase that should run the search:
      ENDSTRATEGY
    ENDOPTIMIZER
 
-At least one ``OPTIM`` dimension is required. ASA takes the first
-resolved ``INIT`` point as its seed. The default ``CONFIG`` seed counts
-as such a point. If the resolved chain has no point, ASA generates a
-random start. ``SEED`` controls its random stream; omission uses a
-non-deterministic seed.
+At least one search parameter (``OPTIM`` line) is required. ASA starts at
+the first starting point of the ``INIT`` block. Without an ``INIT`` block,
+the values of the training configuration are the starting point. If no
+starting point remains, ASA draws a random start. ``SEED`` controls the
+random stream; without it, the seed is non-deterministic.
 
 Option reference
 ----------------
@@ -48,9 +52,9 @@ Options marked **indexed** accept both a uniform value and overrides:
    PARAM User_Quench_Param_Scale[3] 0.7
 
 The uniform value is applied first; indexed values override individual
-dimensions regardless of line order. Indices are 1-based and match the
-``dim`` column of ``hpo_search_space.tsv``. ``Sequential_Parameters`` is a separate scalar option with a
-zero-based value.
+search parameters regardless of line order. Indices are 1-based and match
+the ``dim`` column of ``hpo_search_space.tsv``. ``Sequential_Parameters``
+is a separate scalar option with a zero-based value.
 
 Search controls
 ---------------
@@ -68,8 +72,9 @@ independently of the common finite-difference gradient settings.
 
 Setup rejects ASA under ``TYPE MULTISTART`` or refinement of ``TOPK > 1``
 candidates under ``TYPE PRESTAGE``. It can run as the exploration phase,
-as a single refinement, or under a ``RESTART`` decorator. Multi-rank
-HPO launches support the PT/PA optimisers.
+as a single refinement, or with a ``RESTART`` block. A run of ``tadah hpo``
+on more than one MPI rank takes only ``TADAH:ANNEAL_PT`` or
+``TADAH:ANNEAL_PA`` and no ``RESTART`` block, so ASA runs on one rank.
 
 .. _asa_probes_box:
 
@@ -79,7 +84,7 @@ Probe bounds
 ASA checks tangent and curvature probes against the optimiser's
 internal parameter bounds. A ``Delta_X`` or indexed
 ``User_Delta_Parameter`` whose probes can leave a box is refused at
-startup, with the affected dimension and a fitting step size.
+startup, with the affected search parameter and a fitting step size.
 
 With ``OPTIM_SCALE AUTO``, tangent probes fit the unit box for
 ``Delta <= 1``. When ``Curvature_0`` is ``0`` or ``-1``, curvature probes

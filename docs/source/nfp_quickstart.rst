@@ -4,45 +4,44 @@
 
 .. _nfp_quick_start:
 
-Quick start
+Quick Start
 ===========
 
-This example requires a ``tadah`` build with nested fitting enabled and
-a working copy of ``Tadah.MLIP/examples/CLI/ex_2`` (also shown in
-:ref:`cli_example_2`). The working copy keeps the generated files with
-the experiment.
+This page runs the shortest real nested fitting search, which ends with a
+best potential. The search needs a ``tadah`` build with nested fitting
+enabled (see :ref:`installation_nfp`) and the files of the example in
+:ref:`cli_example_2`. A working copy of that example keeps the files that
+the run writes apart from the shipped ones.
 
 .. _the-three-inputs:
 
 Input files
 -----------
 
-.. list-table::
-   :header-rows: 1
-   :widths: 23 22 55
+``config.train`` (``--config``)
+   The training configuration: the model, the training datasets and the
+   regression settings (see :ref:`config_file`).
 
-   * - Input
-     - Command option
-     - Contents
-   * - ``config.train``
-     - ``--config``
-     - Model definition, training datasets and regression settings.
-   * - ``config.val``
-     - ``--validation``
-     - Validation datasets, listed with ``DBFILE``.
-   * - ``config.hpo``
-     - ``--hpotarget``
-     - Search parameters, targets and optimiser settings.
+``config.val`` (``--validation``)
+   The validation configuration: the validation datasets, listed with
+   :ref:`DBFILE`.
 
-Paths in the example are relative to the working directory. Run from
-the directory containing those files and the two datasets.
+``config.hpo`` (``--hpotarget``)
+   The target file: the search parameters, the targets and the optimiser
+   settings (see :doc:`nfp_configuration`).
+
+Paths in the example are relative to the working directory, the directory
+that contains these files and the two datasets.
 
 .. _a-small-search:
 
 Minimal search
 --------------
 
-For a short first run, replace the example's ``config.hpo`` with:
+For a short first run, the target file below takes the place of the
+example's ``config.hpo``:
+
+:download:`first_run.hpo <nfp_examples/first_run.hpo>`
 
 .. literalinclude:: nfp_examples/first_run.hpo
    :language: none
@@ -56,9 +55,10 @@ The model, training data and validation data come from the example.
 
    tadah hpo --config config.train --validation config.val --hpotarget config.hpo
 
-After a successful run, inspect ``best_pot.tadah``, ``best_loss.tadah``
-and ``hpo_run.log``. :doc:`nfp_output_settings` explains output controls;
-:doc:`nfp_search_space` describes parameter selection for other models.
+After a successful run, the results are in ``best_pot.tadah``,
+``best_loss.tadah`` and ``hpo_run.log``. :doc:`nfp_output_settings`
+explains output controls; :doc:`nfp_search_space` describes parameter
+selection for other models.
 
 .. _other-starting-points:
 
@@ -69,6 +69,7 @@ A run using validation metrics needs the validation input. A run using
 only physical-property targets can omit it. Each run selects one property
 target family: ``PC_OBSERVABLE`` or ``PC_LAMMPS``; see :doc:`nfp_objective`.
 
-A model with all coefficients pinned can omit training ``DBFILE`` if
-its element set is declared with ``ATOM``. For that workflow, follow
-:ref:`dm_embed_refit` and the :doc:`gradient requirements <nfp_gradients>`.
+A model whose coefficients are all fixed with :ref:`FIXINDEX` and
+:ref:`FIXWEIGHT` can omit :ref:`DBFILE` from the training configuration
+if its element set is declared with :ref:`ATOM`. :ref:`dm_embed_refit` and
+the :doc:`gradient requirements <nfp_gradients>` describe that workflow.

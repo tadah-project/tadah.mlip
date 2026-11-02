@@ -2,13 +2,19 @@
 
 .. _noise-block:
 
-Noise settings: NOISE
+Noise Settings: NOISE
 =====================
 
-``NOISE`` is an optional direct child of ``OPTIMIZER``. Its two settings
-are independent: ``AUTO`` chooses a finite-difference step from the
-search box, while ``CALIBRATION`` repeats a starting point to measure
-loss variation.
+This page explains how the :hpo:block:`NOISE` block derives the
+finite-difference step from the search space and measures the noise of the
+loss before the search. It builds on the :hpo:block:`OPTIMIZER` block (see
+:doc:`nfp_optimizer`).
+
+:hpo:block:`!NOISE` is an optional block inside :hpo:block:`!OPTIMIZER`.
+Its two keys are independent: :hpo:key:`AUTO <NOISE.AUTO>` chooses a finite-difference
+step from the search box, while :hpo:key:`CALIBRATION <NOISE.CALIBRATION>` repeats a starting
+point to measure loss variation. The syntax, values and defaults of the
+two keys are in their reference entries.
 
 .. code-block:: none
 
@@ -17,48 +23,35 @@ loss variation.
      CALIBRATION 5
    ENDNOISE
 
-Keys
-----
-
-.. list-table::
-   :header-rows: 1
-   :widths: 28 72
-
-   * - Key
-     - Values and effect
-   * - ``AUTO [boolean]``
-     - Default ``false``. ``AUTO`` alone means ``true``. Accepted
-       booleans are ``true/false``, ``1/0``, ``yes/no`` and ``on/off``
-       (case-insensitive).
-   * - ``CALIBRATION N``
-     - Nonnegative integer: ``0`` disables it (default); otherwise
-       ``N >= 2``. ``1`` is rejected.
-
 Automatic finite-difference step
 --------------------------------
 
-For ``d`` dimensions, ``AUTO`` derives::
+For ``d`` dimensions, :hpo:key:`!AUTO <NOISE.AUTO>` derives::
 
    fd_step = max(1e-3 * box_diagonal / sqrt(d), 1e-6)
 
-The diagonal is measured in transformed optimiser coordinates. This
-box-size heuristic depends solely on the search bounds and dimension count.
+The diagonal is measured in the coordinates of the search, after the bound
+transforms (see :doc:`nfp_search_space`). This box-size heuristic depends
+solely on the search bounds and dimension count.
 
-It configures the main optimiser's finite differences, including each
-``MULTISTART`` search or ``PRESTAGE`` refinement. ``EXPLORE`` retains
-its own finite-difference settings. ``AUTO`` requires a main optimiser
-that takes finite differences and an omitted ``PARAM fd_step``. The resulting
-step must fit every search box; see :doc:`nfp_gradients`.
+The step is the finite-difference step of the optimiser named in the
+:hpo:block:`!OPTIMIZER` block, including each ``MULTISTART`` search
+or ``PRESTAGE`` refinement. The :hpo:block:`EXPLORE` block retains
+its own finite-difference settings. :hpo:key:`!AUTO <NOISE.AUTO>` requires an optimiser
+that takes finite differences and an omitted ``PARAM fd_step``. The
+resulting step must fit every search box; see :doc:`nfp_gradients`.
 
 Repeated evaluations
 --------------------
 
-``CALIBRATION N`` evaluates the first main starting point ``N`` times
-before the optimiser runs. These evaluations appear in the evaluation
-history and can update the best potential. They are outside the search's
-``MAXEVAL`` budget, so include them when estimating total cost. If no
-starting point exists, calibration is skipped with a warning.
+:hpo:key:`!CALIBRATION <NOISE.CALIBRATION>` ``N`` evaluates the first starting point of that
+optimiser ``N`` times before the optimiser runs. These evaluations appear
+in the evaluation history and can update the best potential. They are
+outside the :hpo:key:`MAXEVAL <OPTIMIZER.MAXEVAL>` budget of the search, so
+the total cost of a run includes them. If no starting point exists,
+calibration is skipped with a warning.
 
-The journal reports the losses and suggests an ``FTOL_REL`` from their
-spread. Applying the suggested tolerance requires an explicit setting;
-see :doc:`nfp_stopping_settings` for supported tolerances.
+The journal reports the losses and suggests an
+:hpo:key:`FTOL_REL <OPTIMIZER.FTOL_REL>` from their spread. Applying the
+suggested tolerance requires an explicit setting; see
+:doc:`nfp_stopping_settings` for supported tolerances.

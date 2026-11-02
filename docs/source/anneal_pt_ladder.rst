@@ -1,14 +1,14 @@
 Tempering temperatures and exchanges
 ====================================
 
-These ``PARAM`` settings configure the temperature ladder and exchange
-cadence of :doc:`anneal_pt`.
+These ``PARAM`` keys of the :hpo:block:`OPTIMIZER` block set the temperature
+ladder and the exchange cadence of :doc:`anneal_pt`.
 
 Temperature endpoints
 ---------------------
 
-``T_HOT`` is positive. Omit it to calibrate the hot endpoint from loss
-probes; ``T0_PROBES`` must then be at least ``2``. If ``T_HOT`` is
+``T_HOT`` is positive. Without it, the search calibrates the hot endpoint
+from loss probes; ``T0_PROBES`` must then be at least ``2``. If ``T_HOT`` is
 explicit, the calibration settings ``T0_PROBES`` and ``T0_ACCEPT``
 are inactive and rejected.
 
@@ -41,7 +41,8 @@ within its statistical test.
 Exchange cadence
 ----------------
 
-``SWAP_EVERY`` sets the epochs between exchange rounds.
+``SWAP_EVERY`` sets the number of epochs between two rounds of swap
+attempts.
 ``SWAP_WINDOW`` controls periodic diagnostics and the tolerance-stop
 window. Its ``OFF`` value suppresses periodic diagnostic windows;
 exchanges and the tolerance test remain active.

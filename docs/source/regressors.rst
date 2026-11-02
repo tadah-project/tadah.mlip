@@ -3,12 +3,16 @@
 Regressors
 ==========
 
+This page shows how the :ref:`MODEL` key of a training configuration (see
+:ref:`ConfigSection`) selects a regressor and its kernel or basis function,
+and which further keys each one reads.
+
 Overview
 --------
 
-The models listed in this section map to C++ classes **and** the exact
-keywords of a configuration file.  The match is
-literal but case-insensitive:
+The regressors, kernels and basis functions listed on this page are selected
+by their exact names in the ``MODEL`` key. The names are case-sensitive
+(``MODEL m_krr Kern_RBF`` is refused):
 
 .. code-block:: ini
 
@@ -20,16 +24,18 @@ Quick syntax guide
 
 .. code-block:: ini
 
-   MODEL  <Regressor>  [<Kernel> | <BasisF>]
+   MODEL  <Regressor>  <Kernel | BasisF>  [<implementation>]
 
-* ``<Regressor>`` – one of the names under **Regressors** below  
+* ``<Regressor>`` – one of the names under **Regressors** below
   (``M_KRR``, ``M_BLR`` …).
 * ``<Kernel>`` – required for kernel methods (one of the *Kernels*
-  subsection).  
+  subsection).
 * ``<BasisF>`` – required for linear / basis-function methods (one of
-  the *Basis Functions* subsection).  
-* Follow-up keys such as ``MPARAMS``, ``SBASIS`` configure the
-  model and are listed in each class’s table.
+  the *Basis Functions* subsection).
+* ``<implementation>`` – optional third token of ``M_KRR`` (described
+  below).
+* Further keys such as :ref:`MPARAMS` and :ref:`SBASIS` configure the
+  model and are listed in each regressor’s table.
 
 For ``M_KRR`` a third token selects the implementation: ``1`` (the
 default) fits energies, forces and stresses by least squares over the
@@ -39,7 +45,7 @@ drawn from the training structures, for every kernel), :math:`s` the energy
 :term:`error scale` :ref:`ESIGMA` in eV: :ref:`LAMBDA` weighs against the energies
 per atom over ``ESIGMA``, as in implementation ``1``
 (:ref:`fit_objective`). With ``Kern_Linear``
-the model's weights are the descriptor weights of the basis vectors,
+the model's coefficients on the descriptor components are
 :math:`\sum_j w_j \mathbf{b}_j`, the same model, since the kernel is linear:
 its potential has ``DSIZE`` ``WEIGHTS`` and no ``BASIS``, as with
 implementation ``1`` (with ``NORM true`` they are converted to the raw
@@ -50,7 +56,7 @@ basis below.
 .. versionchanged:: 1.6.0
    ``MODEL M_KRR Kern_Linear 2`` wrote the coefficients :math:`w` of its
    basis vectors as its ``WEIGHTS``, which ``tadah predict`` and ``pair_style
-   tadah`` evaluated as descriptor weights, so its energies were wrong (the
+   tadah`` evaluated as descriptor coefficients, so its energies were wrong (the
    check of a potential's fit refuses such a potential unless ``SBASIS``
    equals ``DSIZE``). Such potentials need retraining.
 
@@ -83,7 +89,7 @@ non-linear in the descriptor. They are trained, predicted, optimised by
 below describes).
 
 **Kernel parameters** (``MPARAMS``): ``Kern_RBF`` takes
-:math:`\sigma`, :math:`K(\mathbf{b},\mathbf{x}) = \exp(-|\mathbf{x}-\mathbf{b}|^2/2\sigma^2)`
+:math:`\sigma`, :math:`K(\mathbf{b},\mathbf{x}) = \exp(-|\mathbf{x}-\mathbf{b}|^2/(2\sigma^2))`
 (:math:`\gamma = 1/\sigma^2`); ``Kern_Polynomial`` takes ``d gamma c``,
 :math:`(\gamma\,\mathbf{b}\cdot\mathbf{x} + c)^d`; ``Kern_Sigmoid`` takes
 ``gamma c``, :math:`\tanh(\gamma\,\mathbf{b}\cdot\mathbf{x} + c)`.
@@ -91,13 +97,13 @@ below describes).
 (:math:`(\mathbf{b}\cdot\mathbf{x})^2 + \mathbf{b}\cdot\mathbf{x}`) take
 none, nor do ``Kern_Linear``, ``BF_Linear`` and ``BF_Polynomial2``. The
 degree ``d`` is an integer: ``2``, ``2.0`` or ``2e0`` is read as 2, and a
-value that is not an integer (``2.7``) is refused naming ``MPARAMS (1)``
-(it was read as 2). ``Kern_RBF`` refuses :math:`\sigma = 0`; a negative
+value that is not an integer (``2.7``) is refused naming ``MPARAMS (1)``.
+``Kern_RBF`` refuses :math:`\sigma = 0`; a negative
 :math:`\sigma` is the kernel of :math:`|\sigma|`.
 
 **The basis of a kernel** (``SBASIS``, required). The atomic energy is
 :math:`E_i = \sum_j w_j K(\mathbf{b}_j, \mathbf{x}_i)` over ``SBASIS``
-basis vectors, one weight each. The first :math:`n` are the intercept
+basis vectors, one coefficient each. The first :math:`n` are the intercept
 ("bias") vectors :math:`e_0, \dots, e_{n-1}` (:math:`e_k` is 1 in component
 :math:`k`, 0 elsewhere): with ``BIAS true`` one per ``ATOM`` species, the
 species' intercept columns of the descriptor; with ``BIAS false``
@@ -118,22 +124,23 @@ naming the model (``M_KRR Kern_RBF 1: SBASIS 1: the fit needs at least 2
 basis vectors ...``): by ``tadah train`` before it reads the training data
 (with ``BIAS true`` and no ``ATOM``, once ``ATOM`` is set from the
 datasets) and by ``tadah hpo`` at startup. The potential records
-``SBASIS`` and the basis vectors (``BASIS``) with the weights; ``tadah
+``SBASIS`` and the basis vectors (``BASIS``) with the coefficients; ``tadah
 predict``, ``tadah hpo`` and ``pair_style tadah`` refuse, naming the keys,
-a potential without them, with a number of weights other than ``SBASIS``,
+a potential without them, with a number of coefficients other than ``SBASIS``,
 or with basis vectors of another length than the descriptor's. Training
 draws the basis anew and reads neither ``WEIGHTS`` nor ``BASIS``, so a
 potential retrains from its own file with any ``SBASIS`` (``tadah train -c
 pot.tadah`` with a ``DBFILE``).
 
-**Intercepts and the ridge.** ``LAMBDA`` penalises every weight but those
+**Intercepts and the ridge.** ``LAMBDA`` penalises every coefficient but those
 of the model's intercept columns, the columns that depend on an atom only
-through its species (also when ``FIXINDEX`` pins weights). With ``BIAS
+through its species (also when ``FIXINDEX`` pins coefficients). With ``BIAS
 true`` (and ``ATOM``, which ``BIAS`` requires; :math:`N` species, the
 descriptor's intercept components :math:`0 \dots N-1`):
 
 .. list-table::
    :header-rows: 1
+   :widths: 40 60
 
    * - Function
      - Intercept columns
@@ -142,7 +149,7 @@ descriptor's intercept components :math:`0 \dots N-1`):
    * - ``BF_Polynomial2``
      - the product :math:`(k,k)` of each intercept component with itself,
        one per species (column 0 with one species; columns 0 and
-       :math:`D` with two)
+       :math:`D`, :math:`D` the number of descriptor components, with two)
    * - ``Kern_Quadratic``, ``Kern_LQ``, ``Kern_Polynomial``,
        ``Kern_Sigmoid``
      - columns 0 to :math:`N-1`, :math:`K(e_k, \mathbf{x})`, which depends
@@ -158,24 +165,28 @@ column (``Kern_RBF`` with ``BIAS true`` trains).
 :math:`D(D+1)/2`) columns. Basis vectors close to each other, or a kernel
 width far from the spread of the descriptors, make the columns nearly
 collinear, and ``OALGO 1`` then drops the small singular values (its
-``rcond``). The recommended ``MPARAMS`` match the scale of the descriptors;
+rank threshold, the second value of :ref:`OALGO`). The recommended ``MPARAMS`` match the scale of the descriptors;
 ``NORM true`` standardises the descriptor components first.
 
 **LAMMPS.** ``pair_style tadah`` evaluates a non-linear potential as
 ``tadah predict`` does, also with ``BIAS true`` on several species: the
 descriptor has one intercept component per species in training and in
-``pair_style tadah`` alike (:ref:`bias_term`). A potential trained
-before 1.6.0 with ``BIAS true`` on several species, with one bias component
-shared by the species, is refused with the instruction to retrain it.
+``pair_style tadah`` alike (:ref:`bias_term`).
 ``pair_style tadah`` also refuses a ``BF_Polynomial2`` potential without
-:math:`D(D+1)/2` weights for its :math:`D` descriptor components, and a
+:math:`D(D+1)/2` coefficients for its :math:`D` descriptor components, and a
 potential of any non-linear model whose ``NMEAN``/``NSTDEV`` (``NORM
 true``) or basis vectors do not fit the descriptor.
 
-**FIXINDEX/FIXWEIGHT** with a kernel pin weights of the basis vectors
-(weights 1 to :math:`n` belong to the intercept vectors, the others to
+.. versionchanged:: 1.6.0
+   A potential trained by 1.5.x or earlier with ``BIAS true`` on several
+   species, with one intercept component shared by the species, is refused
+   with the instruction to retrain it.
+
+**FIXINDEX/FIXWEIGHT** with a kernel pin coefficients of the basis vectors
+(coefficients 1 to :math:`n` belong to the intercept vectors, the others to
 vectors drawn from the training data): a training ``DBFILE`` is required,
-also when every weight is pinned.
+also when every coefficient is pinned. ``M_KRR`` implementation ``2``
+(``MODEL M_KRR <kernel> 2``) pins no coefficient and refuses both keys.
 
 **Searching MPARAMS.** A kernel reads ``MPARAMS`` when it is built, and
 ``tadah hpo`` builds the model of every evaluation from that evaluation's
@@ -184,23 +195,27 @@ startup ``tadah hpo`` refuses ``OPTIM MPARAMS (i)`` on a function that
 reads fewer than *i* values (``Kern_Linear``, ``Kern_Quadratic``,
 ``Kern_LQ``, ``BF_Linear`` and ``BF_Polynomial2`` read none), on the
 degree of ``Kern_Polynomial`` (an integer) and on the :math:`\sigma` of
-``Kern_RBF`` with a box that is not positive. (In 1.5.0
-every evaluation after a worker's first trained with that first
-``MPARAMS``, while ``best_pot.tadah`` recorded the candidate's value: a
-potential from such a search predicts otherwise than the loss it was
-reported with, and the search needs re-running.)
+``Kern_RBF`` with a box that is not positive.
+
+.. versionchanged:: 1.6.0
+   A search over ``OPTIM MPARAMS`` trains every evaluation with its own
+   candidate. In 1.5.0 every evaluation after a worker's first trained with
+   that first ``MPARAMS`` while ``best_pot.tadah`` recorded the candidate's
+   value, so such a search needs re-running.
 
 Reading the autogenerated tables
 --------------------------------
 
-Each class entry provides:
+Each entry below gives:
 
-* A concise description & mathematical form.
-* The expected template parameter (kernel or basis).
-* Required context keys (*bold* in the “Required key” lines).
+* a short description and the mathematical form;
+* the expected kernel or basis function;
+* the keys it reads (a kernel's ``MPARAMS`` line, the bold key names of a
+  regressor).
 
-Given the class name and exactly the keys it expects (*Value Limits*),
-Tadah!MLIP constructs the corresponding regressor at run-time.
+The ``MODEL`` value names the regressor and its kernel or basis function.
+Each key an entry names takes exactly the number of values that its entry
+in :ref:`ConfigSection` gives.
 
 The remainder of this page lists every available regressor, followed by
 supported kernels and basis functions.

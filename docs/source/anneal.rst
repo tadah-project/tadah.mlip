@@ -7,6 +7,11 @@
 Simulated annealing: ANNEAL
 ===========================
 
+This page describes how ``ANNEAL`` proposes points, sets its temperature
+and stops. It needs a target file with a search space and an ``OPTIMIZER``
+block (:doc:`nfp_configuration`, :doc:`nfp_search_space`,
+:doc:`nfp_optimizer`).
+
 ``LIB TADAH`` with ``ALGO ANNEAL`` runs one derivative-free search
 chain. It proposes points inside the transformed ``OPTIM`` bounds and
 uses a Metropolis acceptance test: improvements are accepted, while
@@ -29,7 +34,7 @@ Proposal kernels
 The default CLASSIC kernel proposes all coordinates together with
 Gaussian displacements. ``PARAM STEP_FRAC`` gives the initial standard
 deviation as a fraction of each transformed interval's width.
-``BOUNDARY_MODE REFLECT`` folds out-of-bounds coordinates back into the
+``PARAM BOUNDARY_MODE REFLECT`` folds out-of-bounds coordinates back into the
 box; ``REDRAW`` resamples them. These are different proposal rules, so
 changing the boundary mode can change the search result.
 
@@ -40,15 +45,15 @@ Corana kernel
 
 With ``PARAM CORANA ON``, proposals move one coordinate at a time with
 uniform displacements. Each coordinate's step width adapts from its
-acceptance rate after ``NS`` sweeps. A sweep visits every dimension;
+acceptance rate after ``NS`` sweeps. A sweep visits every coordinate;
 a temperature rung contains ``NT`` such adjustment cycles. ``NT``
 controls the Corana rung length; ``CHAIN_LENGTH`` belongs to CLASSIC.
 
 Temperature and stopping
 ------------------------
 
-``T_INIT`` sets the starting temperature. Otherwise, the driver
-calibrates it with local loss probes; these probes count against
+``T_INIT`` sets the starting temperature. Without ``T_INIT``, the
+search calibrates it with local loss probes; these probes count against
 ``MAXEVAL``. ``T0_PROBES`` must be at least ``2`` when calibration is
 used. Explicit ``T_INIT`` makes ``T0_PROBES`` and ``T0_ACCEPT`` inactive,
 so supplying them together is rejected.
@@ -57,32 +62,33 @@ The temperature is multiplied by ``RT`` after each rung. ``RT`` must be
 in ``(0,1)``. ``T_MIN`` is positive and at most the resolved starting
 temperature. Default ``CHAIN_LENGTH AUTO`` (CLASSIC) or
 ``NT AUTO`` (Corana) divides the remaining evaluation budget across the
-schedule and therefore requires ``MAXEVAL``. Without that budget,
-supply the appropriate length explicitly.
+schedule and therefore requires ``MAXEVAL``. Without ``MAXEVAL``,
+``CHAIN_LENGTH`` (CLASSIC) or ``NT`` (Corana) needs an explicit value.
 
 ``REANNEAL ON`` can restart a completed cooling schedule from the best
 point at a reduced starting temperature while budget remains. This is
-part of the same optimiser search; it differs from the enclosing
-:doc:`nfp_restart` policy, which relaunches a whole run policy.
+part of the same search; it differs from the ``RESTART`` block (see
+:doc:`nfp_restart`), which starts the search again after stagnation.
 
 Supported stops are ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` and positive
 ``FTOL_REL``/``FTOL_ABS`` plateau tolerances. The schedule also ends
 when cooling and any permitted re-annealing are exhausted. The plateau
 test compares rung-end losses over ``NEPS`` entries and against the best
-loss. See :doc:`nfp_stopping_settings` for common budget semantics.
+loss. The stops common to all optimisers are described in
+:doc:`nfp_stopping_settings`.
 
 .. _anneal_keys:
 
 Parameter reference
 -------------------
 
-Write each key below as ``PARAM KEY value`` in the optimiser block.
-The tables are generated from the HPO parameter registry. Conditional
-ranges described above are checked in addition to the table ranges.
+Each key below is written as ``PARAM KEY value`` in the ``OPTIMIZER``
+block. Conditional ranges described above are checked in addition to the
+table ranges.
 
 .. include:: config/anneal_keys_serial.rst
 
 Common settings, including ``SEED`` and ``THREADS``, are in
 :doc:`nfp_optimizer_settings`. ``THREADS`` sizes evaluation work; the
-search chain itself is serial. This backend rejects ``STEP``,
+search chain itself is serial. This optimiser rejects ``STEP``,
 ``XTOL_*``, ``POPULATION``, ``VECTOR_ARR`` and ``GRAD_STRATEGY``.

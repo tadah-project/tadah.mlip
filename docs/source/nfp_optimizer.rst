@@ -1,17 +1,23 @@
-Optimizer
-=========
+.. _nfp_optimizer_block:
 
-``OPTIMIZER`` is the root block for the outer search in ``config.hpo``.
-It selects the search algorithm, stopping criteria and run policy.
-Settings for the model's coefficient fit belong to the training
-configuration.
+The OPTIMIZER Block
+===================
 
-Subblock hierarchy
-------------------
+This page shows how the blocks inside the ``OPTIMIZER`` block nest and
+what each one sets. It assumes the target-file syntax (see
+:doc:`nfp_configuration`).
 
-``INIT``, ``NOISE`` and ``STRATEGY`` are immediate subblocks of
-``OPTIMIZER``. The remaining subblocks belong to ``STRATEGY`` or one
-of its stages:
+The ``OPTIMIZER`` block of the target file sets the search: its optimiser,
+its starting points, the noise settings and the strategy. A target file
+has one ``OPTIMIZER`` block. Settings for the coefficient fit belong to
+the training configuration (see :ref:`ConfigSection`).
+
+Block hierarchy
+---------------
+
+``INIT``, ``NOISE`` and ``STRATEGY`` are blocks directly inside
+``OPTIMIZER``. The other blocks belong inside ``STRATEGY`` or inside one
+of its blocks:
 
 .. code-block:: none
 
@@ -29,17 +35,17 @@ of its stages:
        ├── INNER
        └── RESTART
 
-Subblock requirements depend on the run policy and algorithm.
-A staged search requires ``EXPLORE``; some NLopt composite algorithms
+Which blocks are required depends on the strategy and the algorithm.
+``STRATEGY TYPE PRESTAGE`` requires ``EXPLORE``; some NLopt algorithms
 require an explicit ``INNER`` (see :doc:`nfp_inner`). The annotated
-:doc:`configuration template <nfp_configuration>` shows the matching
-opening and closing delimiters.
+:doc:`example target file <nfp_configuration>` shows where each block
+starts and ends, for example ``STRATEGY`` and ``ENDSTRATEGY``.
 
 Shared keys
 -----------
 
 The following keys are accepted directly in ``OPTIMIZER`` and in its
-``STRATEGY``, ``EXPLORE`` and ``REFINE`` subblocks. Algorithm support
+``STRATEGY``, ``EXPLORE`` and ``REFINE`` blocks. Algorithm support
 and value restrictions are specified in the linked references.
 
 .. list-table::
@@ -49,12 +55,12 @@ and value restrictions are specified in the linked references.
    * - Keys
      - Purpose and value reference
    * - ``LIB``, ``ALGO``
-     - Driver selection: :doc:`optimizer`.
+     - Optimiser selection: :doc:`optimizer`.
    * - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``, ``FTOL_REL``, ``FTOL_ABS``,
        ``XTOL_REL``, ``XTOL_ABS``
      - Budgets and convergence: :doc:`nfp_stopping_settings`.
    * - ``POPULATION``, ``STEP``, ``SEED``, ``VECTOR_ARR``, ``THREADS``
-     - Driver controls: :doc:`nfp_optimizer_settings`.
+     - Optimiser settings: :doc:`nfp_optimizer_settings`.
    * - ``GRAD_STRATEGY``
      - Derivative calculation: :doc:`nfp_gradients`.
    * - ``PARAM``
@@ -63,69 +69,77 @@ and value restrictions are specified in the linked references.
 ``LOG_HP`` is accepted directly in ``OPTIMIZER`` or ``STRATEGY``.
 It controls search-coordinate scaling; see :doc:`nfp_search_space`.
 
-INIT subblock
--------------
+INIT block
+----------
 
-``INIT`` supplies starting points. It accepts ``METHOD``, ``K_TOTAL``,
-``SEED`` and ``WARM_ON_MISMATCH``. Repeated ``METHOD`` entries form a
-seed chain. The legacy key ``STRATEGY`` inside ``INIT`` aliases
-``METHOD``. See :doc:`nfp_initialisation`.
+``INIT`` supplies starting points. Repeated ``METHOD`` lines form a
+chain of starting points. Inside ``INIT``, a ``STRATEGY`` line is read as
+a ``METHOD`` line. See :doc:`nfp_initialisation`. The keys it accepts are
+listed in the entry :hpo:block:`INIT <BLOCK.INIT>` of the reference.
 
 Its parent can be ``OPTIMIZER``, ``STRATEGY``, ``EXPLORE`` or
 ``REFINE``. An ``EXPLORE``-level ``INIT`` configures the exploration
 starting points. The other placements configure the main starting points.
 ``INIT`` contains keys only.
 
-NOISE subblock
---------------
+NOISE block
+-----------
 
-``NOISE`` configures objective-noise detection and calibration. It accepts
-``AUTO`` and ``CALIBRATION``. Its parent is ``OPTIMIZER``, and it contains
-keys only. See :doc:`nfp_noise`.
+``NOISE`` holds the noise settings of the ``STRATEGY``-level optimiser.
+``AUTO`` derives the finite-difference step from the ``OPTIM`` boxes, and
+``CALIBRATION`` measures the noise of the loss at the first starting
+point. Its parent is ``OPTIMIZER``, and it contains keys only. See
+:doc:`nfp_noise`.
 
 .. versionchanged:: 1.6.0
    An optimiser key inside ``NOISE``, such as ``LIB``, is refused. 1.5.0
    applied it to the main search, as if it stood directly inside
    ``OPTIMIZER``.
 
-STRATEGY subblock
------------------
+STRATEGY block
+--------------
 
-``STRATEGY`` groups the run policy and main optimiser settings. Its
-parent is ``OPTIMIZER``. A plain search can place shared keys directly
-in ``OPTIMIZER``; an explicit ``STRATEGY`` adds policy controls and
-supports the nested search subblocks.
+``STRATEGY`` sets how the search runs its optimiser (``TYPE PLAIN``,
+``MULTISTART`` or ``PRESTAGE``) and holds the main optimiser settings. Its
+parent is ``OPTIMIZER``. A plain search can place the shared keys directly
+in ``OPTIMIZER``; without a ``STRATEGY`` block the search is ``PLAIN``.
+A ``STRATEGY`` block adds ``TYPE`` and its keys and may hold the
+``INIT``, ``INNER`` and ``RESTART`` blocks, and under ``TYPE PRESTAGE``
+the ``EXPLORE`` and ``REFINE`` blocks.
 
-It accepts the shared keys and ``LOG_HP``, plus ``TYPE``, ``N_STARTS``,
-``BUDGET_PER_START`` and ``TOPK``. Their applicability depends on the
-policy. See :doc:`nfp_strategies`.
+The keys it accepts are listed in the entry
+:hpo:block:`STRATEGY <BLOCK.STRATEGY>` of the reference. Which of
+``N_STARTS``, ``BUDGET_PER_START`` and ``TOPK`` applies depends on
+``TYPE``: ``N_STARTS`` and ``BUDGET_PER_START`` apply to
+``TYPE MULTISTART`` and ``TOPK`` to ``TYPE PRESTAGE``. See
+:doc:`nfp_strategies`.
 
-EXPLORE and REFINE subblocks
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+EXPLORE and REFINE blocks
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Both are children of ``STRATEGY`` and require ``TYPE PRESTAGE`` before
 their opening delimiter. Each accepts the shared keys and can contain
 ``INIT`` and ``INNER``.
 
-``EXPLORE`` configures the exploration driver. ``REFINE`` groups the
+``EXPLORE`` sets the optimiser of the exploration. ``REFINE`` groups the
 refinement settings of the surrounding ``STRATEGY``. See
 :doc:`nfp_strategies`.
 
-INNER subblock
-~~~~~~~~~~~~~~~
+INNER block
+~~~~~~~~~~~
 
-``INNER`` configures the local sub-optimiser of an eligible NLopt
-composite driver. Its parent is ``STRATEGY``, ``EXPLORE`` or ``REFINE``.
-It accepts ``LIB``, ``ALGO``, ``MAXEVAL``, ``MAXTIME``, ``FTOL_REL``,
-``FTOL_ABS``, ``XTOL_REL``, ``XTOL_ABS``, ``POPULATION``, ``STEP``,
-``VECTOR_ARR`` and ``PARAM``. It contains keys only; the enclosing
-search supplies its random stream, gradient strategy, loss threshold and
-workers (see :doc:`nfp_inner`).
+``INNER`` sets the local search that NLopt's MLSL and AUGLAG run inside
+the search of the block around it. Its parent is ``STRATEGY``, ``EXPLORE``
+or ``REFINE``. It contains keys only, listed in the entry
+:hpo:block:`INNER <BLOCK.INNER>` of the reference. The enclosing search
+supplies its random stream, gradient strategy, loss threshold and workers
+(see :doc:`nfp_inner`).
 
-RESTART subblock
-~~~~~~~~~~~~~~~~
+RESTART block
+~~~~~~~~~~~~~
 
 ``RESTART`` configures fresh search launches after stagnation. Its parent
-is ``STRATEGY``. It accepts ``AFTER_STAGNATION``, ``MAX`` and the
-``INIT`` keys, including the legacy ``STRATEGY`` alias for ``METHOD``.
-It contains keys only. See :doc:`nfp_restart`.
+is ``STRATEGY``. Its keys are listed in the entry
+:hpo:block:`RESTART <BLOCK.RESTART>` of the reference. Inside
+``RESTART``, a ``STRATEGY`` line is read as a ``METHOD`` line, as inside
+``INIT``. It contains keys only. See :doc:`nfp_restart`.

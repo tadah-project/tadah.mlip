@@ -1,62 +1,47 @@
 .. _output_files:
 
-.. _hpo_potential_archives:
-
-.. _best-improvement-histories:
-
-.. _best-only-snapshots:
-
-.. _main-log-files:
-
-.. _potential-archives:
-
-.. _run-log:
-
-Output settings
+Output Settings
 ===============
 
-These root-level keys control history files and optional potential
-archives.
+This page shows how the top-level keys of the target file (see
+:doc:`nfp_configuration`) set the history files and the optional
+potential archives of a ``tadah hpo`` run.
 
 .. contents::
    :local:
    :depth: 1
    :backlinks: none
 
+.. _main-log-files:
+
 History cadence and precision
 -----------------------------
 
-.. list-table:: History options
-   :header-rows: 1
-   :widths: 25 15 60
+The reference entry of each key gives its syntax, range and default.
 
-   * - Syntax
-     - Default
-     - Effect
-   * - ``OUTPUT N``
-     - ``1``
-     - Write a row to the main history files when the evaluation
-       number is divisible by ``N``. Requires integer ``N >= 1``.
-   * - ``BOUTPUT N``
-     - ``1``
-     - Write a row to the best histories for every ``N``-th improvement.
-       Requires integer ``N >= 1``.
-   * - ``DIGITS d``
-     - ``6``
-     - Decimal digits in scientific-notation history columns and
-       potential-header result tables. Requires integer ``1 <= d <= 15``.
-   * - ``QFLUSH N``
-     - ``10``
-     - Queue threshold for draining completed results to the history
-       writer. Requires integer ``N >= 0``; ``0`` and ``1`` attempt a
-       drain after every result. The run drains remaining results at exit.
-       The result of an evaluation of a :term:`batch` joins the queue when
-       every lower-numbered evaluation of the batch has ended
-       (:ref:`nfp_evaluation_numbers`).
+:hpo:key:`OUTPUT`
+   A row is written to the main history files when the evaluation number
+   is divisible by the value.
 
-``OUTPUT`` and ``BOUTPUT`` are cadences, so zero is invalid. Use a larger
-positive value to reduce history volume. A queue drain can still wait
-for an earlier evaluation to finish or for an active writer.
+:hpo:key:`BOUTPUT`
+   A row is written to the best histories for every ``N``-th
+   improvement, ``N`` being the value.
+
+:hpo:key:`DIGITS`
+   The decimal digits in the scientific-notation history columns and in
+   the potential-header result tables.
+
+:hpo:key:`QFLUSH`
+   The queue threshold for draining completed results to the history
+   writer; ``0`` and ``1`` attempt a drain after every result. The run
+   drains the remaining results at exit. The result of an evaluation of a
+   :term:`batch` joins the queue when every lower-numbered evaluation of
+   the batch has ended (:ref:`nfp_evaluation_numbers`).
+
+:hpo:key:`!OUTPUT` and :hpo:key:`!BOUTPUT` are cadences, so zero is
+invalid. A larger positive value writes fewer history rows. A queue drain
+can still wait for an earlier evaluation to finish or for an active
+writer.
 
 .. list-table:: History files
    :header-rows: 1
@@ -79,6 +64,8 @@ enabled columns. Each also has a ``SLOT`` column: the replica, walker or
 state that made the evaluation (:ref:`nfp_evaluation_numbers`), and 1 for
 an optimiser that evaluates one point at a time.
 
+.. _best-improvement-histories:
+
 Each has a corresponding ``best_`` history, such as
 ``best_params.tadah``, with a row for each improvement of the best loss
 that ``BOUTPUT`` writes. Its first column, ``#IMPROVEMENT``, numbers the
@@ -87,12 +74,17 @@ the evaluation that made the improvement. The matching main history, such
 as ``params.tadah``, holds that row when ``OUTPUT`` writes the evaluation,
 which ``OUTPUT 1`` does for every evaluation.
 
-The run writes these files, ``hpo_run.log`` and ``best_pot.tadah`` into
-the working directory. A working directory without write permission, or
-an existing history file, journal or lock of ``best_pot.tadah`` that the
-run cannot open (to write; the lock to read and write), stops the run,
-and ``tadah hpo --check``, at startup, before any data is loaded. A
-history file, the journal or the lock that is a symbolic link is written
+.. _run-log:
+
+The run writes these files, the journal ``hpo_run.log`` and
+``best_pot.tadah`` into the working directory. The run and
+``tadah hpo --check`` stop at startup, before any data is loaded, in two
+cases. The first is a working directory without write permission. The
+second is an existing history file or journal that the run cannot open
+to write, or an existing lock of ``best_pot.tadah`` that it cannot open
+to read and write.
+
+A history file, the journal or the lock that is a symbolic link is written
 through the link, and is checked where the link leads;
 ``best_pot.tadah`` is replaced, link and all. ``hpo_run.log`` may be a
 named pipe, which the run opens once and whose reader it waits for; a
@@ -107,15 +99,15 @@ Evaluations run at once
 The evaluations of an optimiser that evaluates one point at a time are
 numbered in the order in which it proposes them.
 :hpo:opt:`TADAH:ANNEAL_PT`, :hpo:opt:`TADAH:ANNEAL_PA` and
-:hpo:opt:`ASA:ASA` with multi-state blocks
+:hpo:opt:`ASA:ASA` when it generates several states at once
 (:hpo:param:`Gener_Block_Max <PARAM.ASA:ASA.Gener_Block_Max>` above 1, see
 :doc:`asa`) evaluate several points at once on the
 :hpo:key:`THREADS <OPTIMIZER.THREADS>` workers.
 
 The evaluations run at once form a :term:`batch`: the starting points of
 the replicas or walkers, an epoch, a round of the step calibration of
-:hpo:opt:`!TADAH:ANNEAL_PT`, a temperature step, a block of
-:hpo:opt:`!ASA:ASA` states. A batch numbers its evaluations in the order
+:hpo:opt:`!TADAH:ANNEAL_PT`, a temperature step, a group of
+:hpo:opt:`!ASA:ASA` states generated at once. A batch numbers its evaluations in the order
 of their replicas, walkers or states, which the ``SLOT`` column of the
 history files gives (1 for the first). The run records each evaluation of
 a batch in that order, once every lower-numbered evaluation of the batch
@@ -168,6 +160,8 @@ not run and which numbers have no row.
    worker the numbers and the best histories followed the timing of the
    evaluations.
 
+.. _hpo_potential_archives:
+
 Potential archives
 ------------------
 
@@ -175,6 +169,8 @@ Potential archives
 
    DUMP 100 pots
    BDUMP 5 best_pots
+
+.. _potential-archives:
 
 ``DUMP N directory`` archives the potential of every ``N``-th
 evaluation as ``directory/pot_<evaluation>.tadah``.
@@ -188,10 +184,11 @@ taken from the directory reached. A path that is itself a symbolic link
 must lead to an existing directory, because the run creates no directory
 through a link: ``DUMP 100 pots``, with ``pots`` a link to a directory
 that does not exist, is refused at its line. An existing directory must
-have write permission. A directory that does not exist must be in an existing
-directory with write permission, since only the last directory of the
-path is created, or in the directory of the other line, which the run
-creates first (``DUMP 100 archive`` with ``BDUMP 5 archive/best``, in
+have write permission.
+
+Only the last directory of the path is created. Its parent must exist and
+have write permission, or be the directory of the other line, which the
+run creates first (``DUMP 100 archive`` with ``BDUMP 5 archive/best``, in
 either order). Otherwise the run, and ``tadah hpo --check``, stop at the
 line. The run creates a missing directory right before its first
 evaluation, so a run that stops before then creates none.
@@ -199,6 +196,8 @@ evaluation, so a run that stops before then creates none.
 ``DUMP`` archives evaluated candidates, including failed fits and
 candidates whose losses exceed the current best. Archiving is limited
 to points inside the search box.
+
+.. _best-only-snapshots:
 
 The current best is saved to ``best_pot.tadah`` independently of
 ``OUTPUT``, ``BOUTPUT``, ``DUMP``, ``BDUMP`` and ``QFLUSH``. It is updated

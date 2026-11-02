@@ -8,9 +8,6 @@ This page provides step-by-step installation instructions for:
 - **Tadah!MLIP** (ML potential training; provides the ``tadah`` CLI)
 - **ML‑TADAH for LAMMPS** (Tadah!LAMMPS; adds the ``pair_style tadah`` pair style to LAMMPS)
 
-More detailed and up-to-date guidance (including platform-specific notes) is at:
-https://tadah.readthedocs.io/
-
 .. _requirements:
 
 Requirements
@@ -117,6 +114,29 @@ The build can also be configured and compiled without the preset:
     # Compile and install
     make && make install
 
+Building, installing, testing and generating the docs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The commands below build, install, test and document an out-of-tree
+``build`` directory:
+
+.. code-block:: bash
+
+    # compile
+    cmake --build build --parallel
+    # install to the chosen prefix
+    cmake --install build
+    # run tests (requires -DBUILD_TESTING=ON)
+    ctest --test-dir build
+    # generate local API docs (requires Doxygen)
+    cmake --build build --target docs
+
+The ``docs`` target writes the Doxygen XML to ``build/docs/xml``, where the
+Sphinx build of this site looks for it by default. ``CONTRIBUTING.md``
+(*Building the documentation*) lists every input the Sphinx build reads and
+the variables that name them explicitly (``TADAH_DOXYGEN_XML_DIR``,
+``TADAH_CORE_SOURCE_DIR``, ``TADAH_HPO_SOURCE_DIR``).
+
 .. _configuration_options:
 
 Configuration Options
@@ -183,6 +203,9 @@ A copy of the provided preset can also hold a default build type:
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
       "Build type (Debug, Release, RelWithDebInfo, MinSizeRel)")
 
+Build options
+^^^^^^^^^^^^^
+
 These CMake options customise the Tadah!MLIP build:
 
 - ``TADAH_ENABLE_OPENMP``: Enables OpenMP for parallelisation (default: OFF).
@@ -192,7 +215,7 @@ These CMake options customise the Tadah!MLIP build:
 - ``TADAH_LAMMPS_DIR``: Absolute path to the LAMMPS directory (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIB``: Absolute path to the LAMMPS library compiled with Tadah!LAMMPS (required by ``TADAH_ENABLE_NFP``).
 - ``TADAH_LAMMPS_LIBS``: Extra link items for the LAMMPS library, as a CMake list (e.g. ``"-lz;-lzstd"``); needed mainly for a static LAMMPS library, whose own dependencies are not propagated (optional, used by ``TADAH_ENABLE_NFP``).
-- ``TADAH_ENABLE_CERES``: Builds the Ceres Solver optimiser family of ``tadah hpo`` (``LIB CERES``) (default: ON; only relevant with ``TADAH_ENABLE_NFP``). ``PARAM fd_kernel ceres``, Ceres' finite-difference step rule, does not need it: Tadah evaluates that rule itself (before 1.6.0 it ran inside Ceres and needed this option). The compact fit of ``tadah refit`` does need it: without it ``tadah refit`` refuses ``REFIT_MODE compact``, the default, so a refit configuration of such a build sets ``REFIT_MODE dense``.
+- ``TADAH_ENABLE_CERES``: Builds the Ceres Solver optimiser family of ``tadah hpo`` (``LIB CERES``) (default: ON; only relevant with ``TADAH_ENABLE_NFP``). ``PARAM fd_kernel ceres``, Ceres' finite-difference step rule, does not need it: Tadah! evaluates that rule itself. The compact fit of ``tadah refit`` does need it: without it ``tadah refit`` refuses ``REFIT_MODE compact``, the default, so a refit configuration of such a build sets ``REFIT_MODE dense``.
 - ``TADAH_GIT_BRANCH``: The git branch or tag the Tadah! modules are fetched at (detected when not given, :ref:`installation_git_branch`; a release source tarball needs it, e.g. ``v1.6.0``).
 - ``TADAH_HPO_MPI``: Distributes the replicas of the ``TADAH:ANNEAL_PT`` / ``TADAH:ANNEAL_PA`` optimisers of ``tadah hpo`` over MPI ranks (default: OFF; only relevant with ``TADAH_ENABLE_NFP``; needs an MPI build of LAMMPS; :ref:`installation_hpo_mpi`).
 
@@ -259,22 +282,6 @@ variable:
 
     cmake -S . -B build -DTADAH_GIT_BASE=https://mirror.example.org/tadah
 
-Building, installing, testing and generating the docs from an out-of-tree
-``build`` directory:
-
-.. code-block:: bash
-
-    cmake --build build --parallel        # compile
-    cmake --install build                 # install to the chosen prefix
-    ctest --test-dir build                # run tests (requires -DBUILD_TESTING=ON)
-    cmake --build build --target docs     # generate local API docs (requires Doxygen)
-
-The ``docs`` target writes the Doxygen XML to ``build/docs/xml``, where the
-Sphinx build of this site looks for it by default. ``CONTRIBUTING.md``
-(*Building the documentation*) lists every input the Sphinx build reads and
-the variables that name them explicitly (``TADAH_DOXYGEN_XML_DIR``,
-``TADAH_CORE_SOURCE_DIR``, ``TADAH_HPO_SOURCE_DIR``).
-
 .. _gofasterstripe:
 
 Go Faster Stripe - Desktop Version
@@ -288,13 +295,13 @@ OpenMP is supported where the system provides it. A Tadah!MLIP build with OpenMP
 
 .. _installation_hpo_mpi:
 
-MPI-Parallel Hyperparameter Optimisation
-........................................
+MPI-parallel nested fitting
+...........................
 
 Training (``tadah train``) and the other ``tadah`` commands run in one
 process; OpenMP threads (:ref:`gofasterstripe`) occupy the cores of a
-node. MPI parallelism is available for hyperparameter optimisation: with
-``-DTADAH_HPO_MPI=ON`` the ``TADAH:ANNEAL_PT`` and ``TADAH:ANNEAL_PA``
+node. MPI parallelism is available for nested fitting (``tadah hpo``): with
+``-DTADAH_HPO_MPI=ON`` the :hpo:opt:`TADAH:ANNEAL_PT` and :hpo:opt:`TADAH:ANNEAL_PA`
 optimisers of ``tadah hpo`` distribute their replicas over MPI ranks, which
 lets one run span several nodes. It needs ``-DTADAH_ENABLE_NFP=ON``
 (:ref:`installation_nfp`) and an MPI build of LAMMPS with ML‑TADAH, both
@@ -308,11 +315,12 @@ that contains ``mpi`` added (``-DLAMMPS_MACHINE=mpi`` names it
 .. code-block:: bash
 
     cd /path/to/lammps
+    TL=/path/to/tadah.lammps
     cmake -S cmake -B build-mpi \
       -DBUILD_MPI=ON -DLAMMPS_MACHINE=mpi \
       -DPKG_ML-TADAH=ON \
-      -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
-      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps \
+      -DCMAKE_PROJECT_INCLUDE=$TL/integration/TadahLAMMPSProjectInclude.cmake \
+      -DTADAH_LAMMPS_SOURCE_DIR=$TL \
       -DTADAH_GIT_BRANCH=v1-dev
     cmake --build build-mpi --target lammps --parallel
 
@@ -365,7 +373,7 @@ requirements and an ARCHER2 job script are in :ref:`tadah_anneal_mpi`.
 runs in the MPI build too (``ctest --test-dir build-mpi``): each test
 program is a one-rank MPI job. The cases that build a ``PC_ISOLATION
 PROCESS`` worker pool or ask for that mode -- those of the worker pool, and
-two HPO runs under ``PROCESS`` -- are *Skipped* there (the MPI build has
+two ``tadah hpo`` runs under ``PROCESS`` -- are *Skipped* there (the MPI build has
 ``PC_ISOLATION THREAD`` only), as are the optional-data cases of the serial
 build. If the
 build stops while it lists the tests (the MPI build's test programs
@@ -379,24 +387,23 @@ slots
 for ``MPIEXEC_EXECUTABLE``, whichever MPI it belongs to; when another
 MPI's comes first, ``-DMPIEXEC_EXECUTABLE=/path/to/mpiexec`` at configure
 time names the launcher of step 3 (the wrong one starts one-rank jobs, and the
-multi-rank tests fail). They check the rank invariance of ``ANNEAL_PT``
-/ ``ANNEAL_PA`` (``hpo_anneal_mpi_matrix``), a signal that one rank
+multi-rank tests fail). They check the rank invariance of :hpo:opt:`!TADAH:ANNEAL_PT`
+/ :hpo:opt:`!TADAH:ANNEAL_PA` (``hpo_anneal_mpi_matrix``), a signal that one rank
 receives (``hpo_mpi_signal_*``) and ``tadah hpo`` end to end on 1 and 2
 ranks (``hpo_mpi_e2e_*``). The serial build runs none of them. ``ctest -L
 mpi`` also selects the ``pair_style tadah`` entries of
-:ref:`installation_lammps_mpi`, which every NFP build has: they run an MPI
+:ref:`installation_lammps_mpi`, which every build with nested fitting has: they run an MPI
 ``lmp`` of their own and are *Skipped* unless it is named.
 
-.. note::
+Configuring with ``-DTADAH_BUILD_MPI=ON`` stops with an error that points
+to ``TADAH_HPO_MPI``; ``-DTADAH_BUILD_MPI=OFF`` is accepted.
 
-   The legacy MPI training build (``-DTADAH_BUILD_MPI=ON``, the
-   ``tadah_mpi`` executable and its ScaLAPACK solver) was removed in 1.6.0.
-   Configuring with ``-DTADAH_BUILD_MPI=ON`` stops with an error that
-   points to ``TADAH_HPO_MPI``; ``OFF`` is accepted, so older presets still
-   work. Its configuration keys :ref:`MPIWPCKG`, :ref:`MBLOCK` and
-   :ref:`NBLOCK` are deprecated (:ref:`SupportedKEYS`). The ``PC_LAMMPS
-   --ncpu`` option of ``tadah hpo`` was removed with it
-   (:ref:`pc_lammps_options`).
+.. versionchanged:: 1.6.0
+   The MPI training build (``-DTADAH_BUILD_MPI=ON``, the ``tadah_mpi``
+   executable and its ScaLAPACK solver) is removed, and with it the
+   ``PC_LAMMPS --ncpu`` option of ``tadah hpo`` (:ref:`pc_lammps_options`).
+   Its configuration keys :ref:`MPIWPCKG`, :ref:`MBLOCK` and :ref:`NBLOCK`
+   are deprecated (:ref:`SupportedKEYS`).
 
 .. _installation_nfp:
 
@@ -405,12 +412,12 @@ Building Tadah!MLIP with Nested Fitting Procedure support
 
 .. warning::
 
-   The NFP module requires a LAMMPS build that includes ML‑TADAH and has LAMMPS exceptions enabled (``LAMMPS_EXCEPTIONS``).
+   Nested fitting (``tadah hpo``) requires a LAMMPS build that includes ML‑TADAH and has LAMMPS exceptions enabled (``LAMMPS_EXCEPTIONS``).
    On recent LAMMPS versions this is often enabled by default; on older versions it may need to be set explicitly in the LAMMPS build configuration. :ref:`installation_lammps` describes building LAMMPS with ML‑TADAH.
 
-Building Tadah!MLIP with NFP is more involved, and for this reason it is not built by default. The notes below describe what such a build needs.
+Building Tadah!MLIP with nested fitting is more involved, and for this reason it is not built by default. The notes below describe what such a build needs.
 
-A Tadah!MLIP build with NFP takes these steps:
+A Tadah!MLIP build with nested fitting takes these steps:
 
 1. **Compiling LAMMPS with ML‑TADAH enabled** (:ref:`installation_lammps`).
 
@@ -421,7 +428,7 @@ A Tadah!MLIP build with NFP takes these steps:
    **Serial vs. MPI**
 
    - The default (non-MPI) Tadah!MLIP build takes a serial LAMMPS build.
-   - The MPI-parallel HPO build (``TADAH_HPO_MPI``, :ref:`installation_hpo_mpi`) takes an MPI build of LAMMPS.
+   - The MPI-parallel build of ``tadah hpo`` (``TADAH_HPO_MPI``, :ref:`installation_hpo_mpi`) takes an MPI build of LAMMPS.
 
    The LAMMPS build documentation describes how each build system produces a LAMMPS library (shared/static):
    https://docs.lammps.org/Build_cmake.html
@@ -448,7 +455,7 @@ A Tadah!MLIP build with NFP takes these steps:
 Installing ML‑TADAH for LAMMPS (Tadah!LAMMPS)
 ---------------------------------------------
 
-ML‑TADAH adds the **``pair_style tadah``** pair style to LAMMPS.
+ML‑TADAH adds the ``pair_style tadah`` pair style to LAMMPS.
 It does not require Tadah!MLIP to be installed.
 
 .. important::
@@ -510,10 +517,11 @@ Minimal example, for a ``v1-dev`` checkout:
 .. code-block:: bash
 
     cd /path/to/lammps
+    TL=/path/to/tadah.lammps
     cmake -S cmake -B build \
       -DPKG_ML-TADAH=ON \
-      -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
-      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps \
+      -DCMAKE_PROJECT_INCLUDE=$TL/integration/TadahLAMMPSProjectInclude.cmake \
+      -DTADAH_LAMMPS_SOURCE_DIR=$TL \
       -DTADAH_GIT_BRANCH=v1-dev
 
 ``TADAH_GIT_BRANCH`` is the git branch or tag the Tadah! modules are
@@ -538,10 +546,11 @@ Example using the LAMMPS GCC preset and building a serial binary, for a
 .. code-block:: bash
 
     cd /path/to/lammps
+    TL=/path/to/tadah.lammps
     cmake -C cmake/presets/gcc.cmake -S cmake -B build \
       -DPKG_ML-TADAH=ON \
-      -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
-      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps \
+      -DCMAKE_PROJECT_INCLUDE=$TL/integration/TadahLAMMPSProjectInclude.cmake \
+      -DTADAH_LAMMPS_SOURCE_DIR=$TL \
       -DTADAH_GIT_BRANCH=v1-dev \
       -DLAMMPS_MACHINE=serial
 
@@ -583,10 +592,11 @@ the ``mpirun`` / ``mpiexec`` of that MPI (or ``srun``):
 .. code-block:: bash
 
     cd /path/to/lammps
+    TL=/path/to/tadah.lammps
     cmake -S cmake -B build-mpi -DBUILD_MPI=ON -DLAMMPS_MACHINE=mpi \
       -DPKG_ML-TADAH=ON \
-      -DCMAKE_PROJECT_INCLUDE=/path/to/tadah.lammps/integration/TadahLAMMPSProjectInclude.cmake \
-      -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah.lammps \
+      -DCMAKE_PROJECT_INCLUDE=$TL/integration/TadahLAMMPSProjectInclude.cmake \
+      -DTADAH_LAMMPS_SOURCE_DIR=$TL \
       -DTADAH_GIT_BRANCH=v1-dev
     cmake --build build-mpi --target lmp --parallel
     mpiexec -n 4 /path/to/lammps/build-mpi/lmp_mpi -in in.ml
@@ -620,7 +630,7 @@ steps.
 
 The test suite checks this agreement when it is given an MPI ``lmp``
 (``tadah.lammps_mpi_*``, described in ``CONTRIBUTING.md``, *Running
-tests*): a Tadah!MLIP build with tests and NFP (:ref:`installation_nfp`),
+tests*): a Tadah!MLIP build with tests and nested fitting (:ref:`installation_nfp`),
 configured with ``-DTADAH_LMP_MPI=/path/to/lammps/build-mpi/lmp_mpi`` and
 ``-DTADAH_LMP_MPIEXEC=/path/to/mpiexec``, the launcher of that MPI, runs
 them with ``ctest -L lammps``; without them the entries are *Skipped*.
@@ -697,7 +707,7 @@ The following libraries are produced, depending on the build settings:
 - ``libtadah.md`` — always built.
 - ``libtadah.mlip`` — always built.
 - ``libtadah.hpo`` — built only when ``-DTADAH_ENABLE_NFP=ON`` (also in the
-  MPI-parallel HPO build, ``-DTADAH_HPO_MPI=ON``).
+  MPI-parallel build of ``tadah hpo``, ``-DTADAH_HPO_MPI=ON``).
 
 .. _compiling_and_linking:
 
@@ -759,7 +769,7 @@ Troubleshooting
       cmake .. -DCMAKE_INSTALL_PREFIX=~/.local
       make install
 
-#. **Shared object ImportError** when running ``tadah``
+#. **error while loading shared libraries** when running ``tadah``
 
    ``LD_LIBRARY_PATH`` needs the library directory:
 

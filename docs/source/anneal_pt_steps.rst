@@ -1,7 +1,7 @@
 Tempering proposal steps
 ========================
 
-These ``PARAM`` settings control how each replica of :doc:`anneal_pt`
+These ``PARAM`` keys control how each replica of :doc:`anneal_pt`
 proposes new coordinates. The steps are measured in transformed search
 coordinates; see :doc:`nfp_search_space`.
 
@@ -27,9 +27,9 @@ FIXED`` skips that second pass.
 
 An explicit ``STEP_WARMUP_SWEEPS`` requires a mode with calibration,
 so ``FIXED`` rejects it. ``STEP_TRUST_FACTOR`` is accepted only
-with ``ADAPTIVE``. Set a number
-greater than ``1`` to bound scales around their calibrated values, or
-``OFF`` to disable that clamp. With a moving ladder, frozen proposal
+with ``ADAPTIVE``. A number
+greater than ``1`` bounds scales around their calibrated values;
+``OFF`` disables that clamp. With a moving ladder, frozen proposal
 scales remain those calibrated for the earlier slot temperatures; the
 driver warns about this combination.
 
@@ -38,7 +38,7 @@ Corana steps
 
 ``CORANA ON`` moves one coordinate at a time. Each slot adapts its step
 widths after ``NS`` sweeps, using its own acceptance counts. CLASSIC
-``STEP_MODE``, ``STEP_WARMUP_SWEEPS`` and ``STEP_TRUST_FACTOR`` settings
+``STEP_MODE``, ``STEP_WARMUP_SWEEPS`` and ``STEP_TRUST_FACTOR`` keys
 are rejected in Corana mode.
 
 Both kernels support ``BOUNDARY_MODE REFLECT`` and ``REDRAW``.

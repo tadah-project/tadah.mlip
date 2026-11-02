@@ -1,26 +1,28 @@
-.. _hpo_optimizer_common:
-
-.. _dlib_param_keys:
-
 .. _optimizer-block-common-attributes:
 
-.. _choosing-the-optimizer:
-
-.. _ceres-param-keys:
-
-Common optimiser settings
+Common Optimiser Settings
 =========================
 
-An optimiser minimises the loss over the dimensions selected by ``OPTIM``.
-Set ``LIB`` and ``ALGO`` together. The settings below belong to an
-optimiser: the main ``STRATEGY``, its ``EXPLORE`` or ``REFINE`` phase, or
-an eligible ``INNER`` search. Direct settings in ``OPTIMIZER`` are the
-short form for the main optimiser.
+This page describes the settings that every optimiser of a target file
+shares. It assumes a target file with an
+:hpo:block:`OPTIMIZER <BLOCK.OPTIMIZER>` block (see
+:doc:`nfp_configuration` and :doc:`nfp_optimizer`).
 
-``LIB`` and ``ALGO`` form a required pair of case-sensitive names;
-:doc:`optimizer` lists the supported combinations.
-Each driver accepts a subset of the settings below; unsupported settings
-are diagnosed during setup.
+An optimiser minimises the loss over the search parameters that the
+:hpo:key:`OPTIM <ROOT.OPTIM>` lines define. The settings below belong to
+an optimiser: the main :hpo:block:`STRATEGY <BLOCK.STRATEGY>`, its
+:hpo:block:`EXPLORE <BLOCK.EXPLORE>` or
+:hpo:block:`REFINE <BLOCK.REFINE>` phase, or the local search of an
+:hpo:block:`INNER <BLOCK.INNER>` block. Settings written directly in
+:hpo:block:`!OPTIMIZER <BLOCK.OPTIMIZER>` configure the main optimiser.
+
+:hpo:key:`LIB <OPTIMIZER.LIB>` and :hpo:key:`ALGO <OPTIMIZER.ALGO>` are
+always given together. They form a required pair of case-sensitive
+names; :doc:`optimizer` lists the supported combinations. Each optimiser
+accepts a subset of the settings below; unsupported settings are refused
+when ``tadah hpo`` starts.
+
+.. _choosing-the-optimizer:
 
 Common keys
 -----------
@@ -31,68 +33,86 @@ Common keys
 
    * - Key
      - Meaning
-   * - ``LIB``, ``ALGO``
-     - Required backend and algorithm names.
-   * - ``MAXEVAL``, ``MAXTIME``, ``STOPVAL``
+   * - :hpo:key:`LIB <OPTIMIZER.LIB>`, :hpo:key:`ALGO <OPTIMIZER.ALGO>`
+     - Required library and algorithm names.
+   * - :hpo:key:`MAXEVAL <OPTIMIZER.MAXEVAL>`,
+       :hpo:key:`MAXTIME <OPTIMIZER.MAXTIME>`,
+       :hpo:key:`STOPVAL <OPTIMIZER.STOPVAL>`
      - Evaluation budget, time budget and target loss. See
        :doc:`nfp_stopping_settings`.
-   * - ``FTOL_REL``, ``FTOL_ABS``, ``XTOL_REL``, ``XTOL_ABS``
-     - Backend-dependent convergence settings. See
+   * - :hpo:key:`FTOL_REL <OPTIMIZER.FTOL_REL>`,
+       :hpo:key:`FTOL_ABS <OPTIMIZER.FTOL_ABS>`,
+       :hpo:key:`XTOL_REL <OPTIMIZER.XTOL_REL>`,
+       :hpo:key:`XTOL_ABS <OPTIMIZER.XTOL_ABS>`
+     - Library-dependent convergence settings. See
        :doc:`nfp_stopping_settings`.
-   * - ``POPULATION n``
-     - Population size for ``TADAH:ANNEAL_PA`` and NLopt's CRS2, ISRES,
-       ESCH, MLSL and ``GD_STOGO_RAND`` algorithms. Other backends refuse
-       it. Defaults and valid sizes depend on the algorithm.
-   * - ``VECTOR_ARR n``
-     - NLopt stored-vector count for ``LD_LBFGS``, ``LD_VAR1``,
-       ``LD_VAR2`` and the ``LD_TNEWTON_PRECOND`` algorithms. Other
-       algorithms, ``LD_TNEWTON`` and ``LD_TNEWTON_RESTART`` included,
-       refuse it.
-   * - ``THREADS n``
-     - Positive integer, default ``1``. The main optimiser's value sizes
-       the shared worker pool for training, prediction and LAMMPS scripts.
-       The pool retains this size during ``EXPLORE`` and ``INNER`` searches.
-       In an ``EXPLORE`` block that names ``DLIB:GFS``, ``ASA:ASA``,
-       ``TADAH:ANNEAL_PT`` or ``TADAH:ANNEAL_PA``, ``THREADS`` sets how
-       many evaluations that exploration asks for at once, and the default
-       of ``REPLICAS`` (``ANNEAL_PT``) and of ``POPULATION``
-       (``ANNEAL_PA``). An ``EXPLORE`` block of another optimiser refuses
-       it, and so does ``INNER`` (see :doc:`nfp_inner`).
+   * - :hpo:key:`POPULATION <OPTIMIZER.POPULATION>`
+     - Population size for :hpo:opt:`TADAH:ANNEAL_PA` and NLopt's CRS2,
+       ISRES, ESCH, MLSL and :hpo:opt:`NLOPT:GD_STOGO_RAND` algorithms.
+       Other optimisers refuse it. Defaults and valid sizes depend on
+       the algorithm.
+   * - :hpo:key:`VECTOR_ARR <OPTIMIZER.VECTOR_ARR>`
+     - NLopt stored-vector count for :hpo:opt:`NLOPT:LD_LBFGS`,
+       :hpo:opt:`NLOPT:LD_VAR1`, :hpo:opt:`NLOPT:LD_VAR2` and the
+       ``LD_TNEWTON_PRECOND`` algorithms. Other algorithms,
+       ``LD_TNEWTON`` and ``LD_TNEWTON_RESTART`` included, refuse it.
+   * - :hpo:key:`THREADS <OPTIMIZER.THREADS>`
+     - The main optimiser's value sizes the shared worker pool for
+       training, prediction and LAMMPS scripts. The pool retains this
+       size during :hpo:block:`EXPLORE <BLOCK.EXPLORE>` and
+       :hpo:block:`INNER <BLOCK.INNER>` searches. In an
+       :hpo:block:`!EXPLORE <BLOCK.EXPLORE>` block that names
+       :hpo:opt:`DLIB:GFS`, :hpo:opt:`ASA:ASA`,
+       :hpo:opt:`TADAH:ANNEAL_PT` or :hpo:opt:`TADAH:ANNEAL_PA`,
+       :hpo:key:`!THREADS <OPTIMIZER.THREADS>` sets how many evaluations
+       that exploration asks for at once, and the default of
+       :hpo:param:`REPLICAS <PARAM.TADAH:ANNEAL.REPLICAS>`
+       (:hpo:opt:`!TADAH:ANNEAL_PT`) and of
+       :hpo:key:`!POPULATION <OPTIMIZER.POPULATION>`
+       (:hpo:opt:`!TADAH:ANNEAL_PA`).
+       An :hpo:block:`!EXPLORE <BLOCK.EXPLORE>` block of another
+       optimiser refuses it, and so does
+       :hpo:block:`!INNER <BLOCK.INNER>` (see :doc:`nfp_inner`).
        A seeded run writes the same files at any
-       :hpo:key:`THREADS <OPTIMIZER.THREADS>` under the conditions of
-       :ref:`nfp_evaluation_numbers`, except under :hpo:opt:`DLIB:GFS`.
-   * - ``SEED n``
-     - Unsigned 64-bit optimiser seed. See the seed rules below.
-   * - ``STEP fraction``
+       :hpo:key:`!THREADS <OPTIMIZER.THREADS>` under the conditions of
+       :ref:`nfp_evaluation_numbers`, except under :hpo:opt:`!DLIB:GFS`.
+   * - :hpo:key:`SEED <OPTIMIZER.SEED>`
+     - Seed of the optimiser's random numbers. See the seed rules below.
+   * - :hpo:key:`STEP <OPTIMIZER.STEP>`
      - Initial step for supported NLopt algorithms; see below.
-   * - ``GRAD_STRATEGY mode``
+   * - :hpo:key:`GRAD_STRATEGY <OPTIMIZER.GRAD_STRATEGY>`
      - Gradient calculation; see :doc:`nfp_gradients`.
-   * - ``PARAM name value``
+   * - :hpo:key:`PARAM <OPTIMIZER.PARAM>`
      - Algorithm-specific setting; see the parameter references below.
 
-``POPULATION`` and ``VECTOR_ARR`` accept unsigned integers; zero has the
-backend's own meaning. ``THREADS`` is in ``[1, 2147483647]``. Startup
-checks each setting against the selected algorithm's capabilities.
+Startup checks each setting against the selected algorithm's
+capabilities. The reference entry of each key gives its values, range
+and default.
 
 Initial step: ``STEP``
 ----------------------
 
-``STEP`` is a finite fraction in ``(0, 0.5]`` of each dimension's
-transformed search width. It is supported by selected NLopt algorithms,
-including ``LN_BOBYQA``, ``LN_COBYLA``, ``LN_SBPLX`` and
-``LN_NELDERMEAD``.
+:hpo:key:`STEP <OPTIMIZER.STEP>` is a fraction of the width of the box
+of each search parameter, in the coordinates of the search. Selected
+NLopt algorithms support it, including
+:hpo:opt:`NLOPT:LN_BOBYQA`, :hpo:opt:`NLOPT:LN_COBYLA`,
+:hpo:opt:`NLOPT:LN_SBPLX` and :hpo:opt:`NLOPT:LN_NELDERMEAD`.
 
-Use a block-wide value, optionally with overrides::
+A block-wide value can be combined with overrides:
+
+.. code-block:: none
 
    STEP 0.1
    STEP CGRID2B(1-3) 0.05
 
-Overrides can select all optimised indices of a key (omit the index
-list), or a list such as ``(1-4,7)``. Each selected index must belong to
-the search. Without a block-wide ``STEP``, overrides must cover every
-optimised dimension. An outer MLSL/AUGLAG ``STEP`` overrides the step
-of its ``INNER`` search. The effective steps are reported in the run
-journal.
+An override without an index list selects all optimised indices of a
+key; a list such as ``(1-4,7)`` selects those indices. Each selected
+index must belong to the search. Without a block-wide
+:hpo:key:`!STEP <OPTIMIZER.STEP>`, overrides must cover every search
+parameter. An outer MLSL or AUGLAG
+:hpo:key:`!STEP <OPTIMIZER.STEP>` overrides the step of its
+:hpo:block:`INNER <BLOCK.INNER>` search. The effective steps are
+reported in the run journal.
 
 Without :hpo:key:`STEP <OPTIMIZER.STEP>`, :hpo:opt:`NLOPT:LN_BOBYQA` and
 :hpo:opt:`NLOPT:LN_COBYLA` take 0.25 of the width of the box of each
@@ -112,25 +132,30 @@ parameter, or 0.75 of the distance to a bound closer than that.
 
 .. versionchanged:: 1.6.0
    In 1.5.0 a start closer to a bound than one step shrank the step of
-   that search parameter for the whole search: for
-   :hpo:opt:`!LN_BOBYQA <NLOPT:LN_BOBYQA>`, and with
-   :hpo:key:`!STEP <OPTIMIZER.STEP>` unset for
-   :hpo:opt:`!LN_COBYLA <NLOPT:LN_COBYLA>` and for either as the local
-   search of an MLSL or AUGLAG.
+   that search parameter for the whole search. This applied to
+   :hpo:opt:`!LN_BOBYQA <NLOPT:LN_BOBYQA>`. With
+   :hpo:key:`!STEP <OPTIMIZER.STEP>` unset, it applied also to
+   :hpo:opt:`!LN_COBYLA <NLOPT:LN_COBYLA>` and to either algorithm as
+   the local search of an MLSL or AUGLAG.
 
-For annealing, use its ``PARAM STEP_FRAC``. For ``TADAH:GRID``, use
-``PARAM GRID_POINTS``. Finite-difference steps use ``PARAM fd_step``;
-see :doc:`nfp_gradients`.
+Annealing sets its first proposal scale with
+:hpo:param:`STEP_FRAC <PARAM.TADAH:ANNEAL.STEP_FRAC>`.
+:hpo:opt:`TADAH:GRID` takes
+:hpo:param:`GRID_POINTS <PARAM.TADAH:GRID.GRID_POINTS>` instead of a
+step. The finite-difference step is set with
+:hpo:param:`fd_step <PARAM.FD.fd_step>` (see :doc:`nfp_gradients`).
 
 Seeds
 -----
 
-An optimiser's :hpo:key:`SEED <OPTIMIZER.SEED>` controls its search
-stream. ``INIT SEED`` and ``RESTART SEED`` control their starting-point
-methods separately. An optimiser that draws random numbers takes the
+An optimiser's :hpo:key:`SEED <OPTIMIZER.SEED>` seeds the random
+numbers of its search. :hpo:key:`SEED <INIT.SEED>` in
+:hpo:block:`INIT <BLOCK.INIT>` and in
+:hpo:block:`RESTART <BLOCK.RESTART>` seeds their starting-point methods
+separately. An optimiser that draws random numbers takes the
 :hpo:key:`!SEED <OPTIMIZER.SEED>` of its block; an NLopt algorithm next
-takes the :hpo:key:`SEED <INIT.SEED>` of its
-:hpo:block:`INIT <BLOCK.INIT>` block. :hpo:block:`INNER <BLOCK.INNER>`
+takes the :hpo:key:`!SEED <INIT.SEED>` of its
+:hpo:block:`!INIT <BLOCK.INIT>` block. :hpo:block:`INNER <BLOCK.INNER>`
 has no seed of its own.
 
 Without either seed, the optimiser draws its numbers with a seed drawn
@@ -143,7 +168,7 @@ seed as from a :hpo:key:`!SEED <OPTIMIZER.SEED>` line.
 
 .. versionchanged:: 1.6.0
    In 1.5.0 :hpo:opt:`TADAH:RANDOM`, the annealers and :hpo:opt:`ASA:ASA`
-   without :hpo:key:`SEED <OPTIMIZER.SEED>` drew a new seed each time they
+   without :hpo:key:`!SEED <OPTIMIZER.SEED>` drew a new seed each time they
    started, so a run of several starts or rounds could not be repeated.
 
 A :hpo:key:`!PRESTAGE <STRATEGY.TYPE.PRESTAGE>` exploration whose
@@ -166,40 +191,49 @@ Starting points that an :hpo:block:`!INIT <BLOCK.INIT>` or
 :hpo:block:`!RESTART <BLOCK.RESTART>` block draws repeat only with that
 block's :hpo:key:`!SEED <INIT.SEED>` (see :doc:`nfp_initialisation`).
 
-``TADAH:GRID``, ``DLIB:GFS``, ``DLIB:BFGS`` and ``CERES`` refuse ``SEED``
-because they draw no random numbers, except as a ``PRESTAGE`` refinement
-whose ``SEED`` the exploration takes. An NLopt algorithm that draws no
-random numbers, such as ``LN_SBPLX`` or ``GN_DIRECT_L``, refuses ``SEED``
-too. The :ref:`optimiser reference <nfp_ref_optimisers>` says how each
-optimiser reads ``SEED``. A stochastic search and its starting points
-repeat only with ``SEED`` set; see :doc:`nfp_initialisation` and
-:doc:`nfp_restart`.
+:hpo:opt:`TADAH:GRID`, :hpo:opt:`DLIB:GFS`, :hpo:opt:`DLIB:BFGS` and the
+:hpo:opt:`CERES` optimisers refuse :hpo:key:`!SEED <OPTIMIZER.SEED>` because
+they draw no random numbers, except as a
+:hpo:key:`!PRESTAGE <STRATEGY.TYPE.PRESTAGE>` refinement whose
+:hpo:key:`!SEED <OPTIMIZER.SEED>` the exploration takes. An NLopt
+algorithm that draws no random numbers, such as
+:hpo:opt:`NLOPT:LN_SBPLX` or :hpo:opt:`NLOPT:GN_DIRECT_L`, refuses
+:hpo:key:`!SEED <OPTIMIZER.SEED>` too. The
+:ref:`optimiser reference <nfp_ref_optimisers>` says how each optimiser
+reads :hpo:key:`!SEED <OPTIMIZER.SEED>`. A stochastic search and its
+starting points repeat only with
+:hpo:key:`!SEED <OPTIMIZER.SEED>` set; see :doc:`nfp_initialisation`
+and :doc:`nfp_restart`.
 
 .. versionchanged:: 1.6.0
-   In 1.5.0 every NLopt algorithm accepted ``SEED``.
+   In 1.5.0 every NLopt algorithm accepted
+   :hpo:key:`!SEED <OPTIMIZER.SEED>`.
+
+.. _ceres-param-keys:
 
 Algorithm parameters: ``PARAM``
 -------------------------------
 
 Parameter names keep the case shown by their reference. Each value is a
-number, except the words of the finite-difference ``PARAM fd_kernel`` and
-of the annealing keys; a word given to another key is refused.
+number, except the words of the finite-difference
+:hpo:param:`fd_kernel <PARAM.FD.fd_kernel>` and of the annealing keys; a
+word given to another key is refused.
 
 .. list-table::
    :header-rows: 1
    :widths: 28 72
 
-   * - Backend
+   * - Optimiser
      - Accepted parameter reference
-   * - ``TADAH:RANDOM``, ``DLIB:GFS``
-     - No ``PARAM`` settings.
-   * - ``TADAH:GRID``
-     - ``PARAM GRID_POINTS n``: integer at least ``2``; default ``20``
-       grid points per dimension.
-   * - ``DLIB:BFGS``
+   * - :hpo:opt:`TADAH:RANDOM`, :hpo:opt:`DLIB:GFS`
+     - No :hpo:key:`PARAM <OPTIMIZER.PARAM>` settings.
+   * - :hpo:opt:`TADAH:GRID`
+     - :hpo:param:`GRID_POINTS <PARAM.TADAH:GRID.GRID_POINTS>`: the
+       number of grid points of each search parameter.
+   * - :hpo:opt:`DLIB:BFGS`
      - Finite-difference settings in :doc:`nfp_gradients`, and
        ``tol_gradinf`` in :doc:`nfp_stopping_settings`.
-   * - ``CERES:STEEPEST_DESCENT``
+   * - :hpo:opt:`CERES:STEEPEST_DESCENT`
      - Finite-difference settings, ``tol_gradinf``, ``max_iter`` and
        ``max_ls_iter``; see :doc:`nfp_gradients` and
        :doc:`nfp_stopping_settings`.
@@ -210,12 +244,13 @@ of the annealing keys; a word given to another key is refused.
        finite-difference settings of :doc:`nfp_gradients`;
        :ref:`the optimiser reference <nfp_ref_optimisers>` names them for
        each algorithm, and any other name is refused.
-   * - ``TADAH:ANNEAL``, ``ANNEAL_PA``
+   * - :hpo:opt:`TADAH:ANNEAL`, :hpo:opt:`TADAH:ANNEAL_PA`
      - :doc:`anneal` and :doc:`anneal_pa`.
-   * - ``TADAH:ANNEAL_PT``
+   * - :hpo:opt:`TADAH:ANNEAL_PT`
      - :doc:`anneal_pt`.
-   * - ``ASA:ASA``
+   * - :hpo:opt:`ASA:ASA`
      - :doc:`asa`.
 
-``LOG_HP`` and ``OPTIM_SCALE`` configure the search coordinates. See
-:doc:`nfp_search_space`.
+:hpo:key:`LOG_HP <OPTIMIZER.LOG_HP>` and
+:hpo:key:`OPTIM_SCALE <ROOT.OPTIM_SCALE>` configure the search
+coordinates (see :doc:`nfp_search_space`).

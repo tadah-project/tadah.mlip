@@ -3,33 +3,34 @@
 Refitting tabulated EAM potentials
 ==================================
 
-.. note::
+This page shows how ``tadah refit`` converts a tabulated EAM potential (a
+*setfl* file in the LAMMPS ``eam/alloy`` or ``eam/fs`` format) into a native
+Tadah! potential and a target file for ``tadah hpo``. It needs the setfl file
+and a refit configuration (`Quick start`_).
 
-   ``tadah refit`` writes the many-body term as a resolved :ref:`DM_Embed
-   component <dm_embed>`: a ``DESCRIPTOR <id> DM_Embed`` ... ``ENDDESCRIPTOR``
-   block and ``TYPEMB @<id>`` (the ID ``eam``, or that of the block of a
-   refit configuration that declares one), whose ``DENSITY`` block carries
-   the density form (``FORM``) and whose ``EMBEDDING`` block the embedding
-   reference (``REFERENCE``). Before 1.6.0 it wrote a ``DM_REAM`` term, with
-   ``TYPEMB DM_REAM``, ``CGRIDMB``, ``SGRIDMB``, ``AMPGRIDMB``,
-   ``CEMBFUNC``, ``SEMBFUNC``, ``RCUTMB``, ``RCTYPEMB``, ``RHOFORM`` and
-   ``EMBF0`` lines; such potentials still load, train and predict unchanged,
-   and ``--edit`` edits them (`Editing a refitted potential (--edit)`_). The
-   :ref:`DM_Embed page <dm_embed>` documents independent density and
-   embedding choices, AUTO grids, physical-width coordinates, and the
-   component compact fitting path.
-
-``tadah refit`` converts a tabulated EAM potential (a *setfl* file in the
-LAMMPS ``eam/alloy`` / ``eam/fs`` format) into a native Tadah! potential. The
+The
 three tabulated functions — pair :math:`\phi(r)`, electron density
 :math:`\rho(r)` and embedding :math:`F(\rho)` — are re-expressed as small
 basis-function expansions and fitted, producing a native ``pot.tadah``. Its
 descriptors follow ``REFIT_BASIS``: a ``D2_*`` pair descriptor (e.g.
-``D2_Knot5``, ``D2_Blip``) together with a resolved ``DM_Embed`` many-body block. Legacy ``DM_REAM`` files
-remain readable.
+``D2_Knot5``, ``D2_Blip``) together with the many-body term, a resolved
+:ref:`DM_Embed component <dm_embed>`: a ``DESCRIPTOR <id> DM_Embed`` ...
+``ENDDESCRIPTOR`` block and ``TYPEMB @<id>`` (the ID ``eam``, or that of the
+block of a refit configuration that declares one), whose ``DENSITY`` block
+carries the density form (``FORM``) and whose ``EMBEDDING`` block the
+embedding reference (``REFERENCE``). The :ref:`DM_Embed page <dm_embed>`
+documents independent density and embedding choices, AUTO grids,
+physical-width coordinates, and the component compact fitting path.
+
+.. versionchanged:: 1.6.0
+   The many-body term is a ``DM_Embed`` component instead of a ``DM_REAM``
+   term. ``DM_REAM`` potentials still load, train and predict, and ``--edit``
+   edits them (`Editing a refitted potential (--edit)`_).
+
 The result is usable with ``tadah predict``, the Tadah!LAMMPS plugin, and
 :ref:`nested fitting <nested_fitting>`. ``refit`` also writes a round-trip
-*setfl* (for direct LAMMPS comparison) and a ``tadah hpo`` starter target.
+*setfl* (for direct LAMMPS comparison) and a target file for ``tadah hpo``
+(``refit.hpotarget``).
 
 Typical workflow
 ----------------
@@ -66,11 +67,11 @@ A fuller curve-mode config (pinned window edges, explicit basis ceiling):
 .. code-block:: none
 
    EAM             Ti1.eam.fs
-   RHOFORM         SIGNED           # see "Density form"; MONOTONE needs Blip/Blip5
+   RHOFORM         SIGNED           # "Density form"; MONOTONE needs Blip/Blip5
    OUTFILE         pot.tadah
    SETFL_OUT       refit.eam
    REFIT_OBJECTIVE curve
-   REFIT_BASIS     Knot5            # Knot3 suits some elements (see REFIT_BASIS)
+   REFIT_BASIS     Knot5            # Knot3 suits some elements (REFIT_BASIS)
    REFIT_COMPACT_NMAX 35            # one value, or "phi rho F" e.g. 35 12 35
 
    INIT
@@ -96,7 +97,7 @@ in stages:
   basis-function centres and widths. The optimiser at each stage is
   configurable (`Stage blocks`_).
 * **REFINE** — a high-precision local polish of centres, widths and
-  coefficients (Ceres LM).
+  coefficients (the Levenberg–Marquardt (LM) solver of Ceres).
 * **FUSE** — a final refinement: in ``curve`` mode a per-function polish of the
   weighted curve, in ``energy`` mode a joint fit of all three functions to the
   crystal energy–volume curve.
@@ -124,7 +125,13 @@ for example,
 
 .. code-block:: none
 
-   tadah refit: the lattice constant of the EAM header, a0 = 361 A, puts the nearest neighbours of the fcc crystal 255.26554800834364 A apart, at or beyond the table's cutoff, rcut = 5 A, and LAMMPS (pair_style eam/alloy) counts a pair only below rcut: the crystal has no interaction in LAMMPS. The a0 of the element line of the setfl file (`<Z> <mass> <a0> <lattice>`) is the equilibrium lattice constant in Angstrom (a value in picometres is 100 times the value in Angstrom).
+   tadah refit: the lattice constant of the EAM header, a0 = 361 A, puts the
+   nearest neighbours of the fcc crystal 255.26554800834364 A apart, at or
+   beyond the table's cutoff, rcut = 5 A, and LAMMPS (pair_style eam/alloy)
+   counts a pair only below rcut: the crystal has no interaction in LAMMPS. The
+   a0 of the element line of the setfl file (`<Z> <mass> <a0> <lattice>`) is the
+   equilibrium lattice constant in Angstrom (a value in picometres is 100 times
+   the value in Angstrom).
 
 and when it puts them less than the table's radial step ``dr`` apart at the
 strongest compression the refit tests (a/a0 = ``REFIT_REACH_SMIN``), where the
@@ -133,7 +140,12 @@ table describes no pair distance: a constant written in metres rather than
 
 .. code-block:: none
 
-   tadah refit: the lattice constant of the EAM header, a0 = 1e-323 A, puts the nearest neighbours of the fcc crystal 0 A apart at the strongest compression the refit tests (a/a0 = REFIT_REACH_SMIN 0.1), less than the step of the table's radial grid, dr = 0.0125313 A: the table describes no pair distance of that crystal. The a0 of the element line of the setfl file (`<Z> <mass> <a0> <lattice>`) is the equilibrium lattice constant in Angstrom.
+   tadah refit: the lattice constant of the EAM header, a0 = 1e-323 A, puts the
+   nearest neighbours of the fcc crystal 0 A apart at the strongest compression
+   the refit tests (a/a0 = REFIT_REACH_SMIN 0.1), less than the step of the
+   table's radial grid, dr = 0.0125313 A: the table describes no pair distance
+   of that crystal. The a0 of the element line of the setfl file (`<Z> <mass>
+   <a0> <lattice>`) is the equilibrium lattice constant in Angstrom.
 
 The setfl file itself is read as ``pair_style eam/alloy`` reads it
 (``tadah explain SETFL``): its r tables hold r = 0, ``dr``, ...,
@@ -145,7 +157,12 @@ tables are read, naming the file, the line and the numbers:
 
 .. code-block:: none
 
-   EAMSetflIO: setfl file 'Cu.eam.alloy', line 5: the r tables do not reach the cutoff: nr = 1000 points dr = 0.001 apart end at r = (nr - 1) x dr = 0.999, and rcut = 5 lies more than one step past their last point (nr x dr = 1); LAMMPS (pair_style eam/alloy) and tadah would take each table's last value for every r from 0.999 to 5. Correct nr, dr or rcut on the grid line ('nrho drho nr dr rcut').
+   EAMSetflIO: setfl file 'Cu.eam.alloy', line 5: the r tables do not reach the
+   cutoff: nr = 1000 points dr = 0.001 apart end at r = (nr - 1) x dr = 0.999,
+   and rcut = 5 lies more than one step past their last point (nr x dr = 1);
+   LAMMPS (pair_style eam/alloy) and tadah would take each table's last value
+   for every r from 0.999 to 5. Correct nr, dr or rcut on the grid line ('nrho
+   drho nr dr rcut').
 
 Files that put the cutoff at the last point, before it or one step past it
 (``rcut`` = ``nr`` × ``dr``, as in Zhou's and Mendelev's files) are read.
@@ -179,9 +196,7 @@ has the basis its block declares and does not escalate it (a configuration
 with blocks refuses ``REFIT_MAX_ESCALATIONS``): its WARNING names the
 component's counts and grids (``CENTRES AUTO <count>``, or a finer
 explicit grid), and ``REFIT_COMPONENT_ITERATIONS`` after a compact fit or
-``N2B`` (the pair function) after a dense one. Before 1.6.0 a compact fit got the dense fit's advice,
-and its window report named ``REFIT_PLACEMENT`` and the dense fit's uniform
-tail basis.
+``N2B`` (the pair function) after a dense one.
 
 .. _refit_rhoform:
 
@@ -204,33 +219,25 @@ form in the block's ``DENSITY`` (``FORM``; its ``RHOFORM`` is refused), and
 the log reads ``tadah refit: FORM <form>: ...; the density component <ID>
 declares FORM <form>.``
 
-.. list-table::
-   :header-rows: 1
-   :widths: 13 44 43
+``SIGNED``
+   Density fit: signed amplitudes :math:`a_n` of the basis functions
+   :math:`\psi_n` (the potential declares its component's ``FORM SIGNED``).
 
-   * - Form
-     - Density fit
-     - Use
-   * - ``SIGNED``
-     - Signed amplitudes :math:`a_n` of the basis functions
-       :math:`\psi_n`, as every tadah before 1.6.0 fitted them. In dense
-       mode the fitted density, ``refit.eam`` and the density's bounds in
-       ``refit.hpotarget`` are those of the density before the key existed
-       (the potential declares it as its component's ``FORM SIGNED``);
-       compact mode can differ
-       where the earlier joint refinement left a bump past the cutoff
-       (*Compact mode* below).
-     - Any table; no sign or shape guarantee.
-   * - ``NONNEG``
-     - The same columns with every :math:`a_n \ge 0`, by non-negative least
-       squares.
-     - :math:`\rho \ge 0` for every configuration the potential sees.
-   * - ``MONOTONE``
-     - The integrated-bump steps :math:`S_n` with every :math:`a_n \ge 0`,
-       by non-negative least squares. Bump bases only (``Blip``,
-       ``Blip5``, dense ``Gaussian``).
-     - :math:`\rho \ge 0` and non-increasing, so :math:`\bar\rho(a)` falls
-       monotonically under expansion on every lattice.
+   Use: any table; no sign or shape guarantee.
+
+``NONNEG``
+   Density fit: the same columns with every :math:`a_n \ge 0`, by
+   non-negative least squares.
+
+   Use: :math:`\rho \ge 0` for every configuration the potential sees.
+
+``MONOTONE``
+   Density fit: the integrated-bump steps :math:`S_n` with every
+   :math:`a_n \ge 0`, by non-negative least squares. Bump bases only
+   (``Blip``, ``Blip5``, dense ``Gaussian``).
+
+   Use: :math:`\rho \ge 0` and non-increasing, so :math:`\bar\rho(a)` falls
+   monotonically under expansion on every lattice.
 
 **Basis and mode.** Every form fits in both modes. ``MONOTONE`` is not
 defined for the one-sided knot families (``Knot3``, ``Knot5``, ``KnotMix``),
@@ -274,7 +281,7 @@ FORM SIGNED in its DENSITY block fits it.``), also in compact mode, where the
 configured grids are checked before the solve.
 
 **Dense mode.** ``SIGNED`` solves each window block by the rank-revealing
-least squares used before 1.6.0 (GELSD); ``NONNEG`` and ``MONOTONE`` solve it by
+least squares (GELSD); ``NONNEG`` and ``MONOTONE`` solve it by
 Lawson-Hanson non-negative least squares (Householder QR on the passive
 columns, never the normal equations: the step columns of ``MONOTONE`` have
 condition numbers up to about ``4e9``). ``LAMBDA`` applies in every form.
@@ -290,7 +297,7 @@ because every column whose dual is above the tolerance was refused as
 numerically dependent on the others) keeps its non-negative amplitudes and
 logs a WARNING that names the reason and that they are not proven optimal.
 
-**Compact mode** (the HPO build). The ``rho`` ladder solves its coefficients
+**Compact mode** (a build with :ref:`nested fitting <installation_nfp>`). The ``rho`` ladder solves its coefficients
 by the same non-negative least squares, with the variable-projection
 gradient taken over the passive set (the coefficients above 0). A
 coefficient solve that stops before a Kuhn-Tucker point keeps its feasible
@@ -304,10 +311,11 @@ re-solve the final coefficients non-negatively). With a bump basis (``Blip``,
 <eta>``) is 0 or less is an error in every form (a radial bump spans :math:`[\mu - w/\eta, \mu + w/\eta]`, so a
 width :math:`\le 0` has no support edge; under ``MONOTONE`` a step also needs
 ``SGRIDMB > 0``): ``tadah refit INIT [phi]: the basis at mu 5 (INIT PHI
-anchor 1) has eta -1 <= 0; a radial bump needs a width eta > 0 ...``. Before
-1.6.0 only ``MONOTONE`` refused it; in the other forms the anchor was fitted
-as its mirror (the bump is even in :math:`\eta`) and written, or the refit
-failed with ``zero entry in SGRIDMB``.
+anchor 1) has eta -1 <= 0; a radial bump needs a width eta > 0 ...``.
+
+.. versionchanged:: 1.6.0
+   A non-positive anchor width is refused in every form; only ``MONOTONE``
+   refused it before.
 
 In every form the energy-mode joint refinement (FUSE) optimises the radial
 bumps (``phi`` and ``rho``) in their outer support edges
@@ -324,34 +332,35 @@ result with the smaller ``max |dE|/tol`` is kept; the ``joint:`` lines of
 ``MAXEVAL`` with the joint solve (the stage budgets below): each pass gets the
 iterations that are left, and with none left the held re-run is skipped and
 the linear re-solve result kept (``joint: ... FUSE held re-run skipped:
-MAXEVAL 2000 spent by the joint solve, the re-solve result is kept``). Before
-tadah 1.6.0 the joint refinement bounded only the bump centres, so a bump
-could end past the cutoff, or with a negative width, which the projection
-skipped (``tadah hpo`` 1.6.0 refuses such a width in a potential); and the
-projection's curve-only re-solve could undo the energy–volume fit: compact
-``SIGNED`` refits therefore differ from those of earlier versions wherever
-that happened (the dense fit of the density is unchanged).
+MAXEVAL 2000 spent by the joint solve, the re-solve result is kept``).
+
+.. versionchanged:: 1.6.0
+   The joint refinement bounds the bump support edges at the hard cutoff.
+   Compact ``SIGNED`` refits can differ from 1.5.0 where a bump ended past
+   the cutoff or where the bump-support projection undid the energy–volume
+   fit.
 
 Under ``REFIT_OBJECTIVE curve`` FUSE refines each function against its own
 curve (no energy–volume coupling). On the radial bump channels it does so in
 the same outer support edges, bounded at the hard cutoff, with the same width
 floor, so the bump-support projection after it moves nothing and FUSE never
-ends worse than it started. Before 1.6.0 it bounded only the centres: a bump
-pushed past the cutoff was moved back and the coefficients re-solved, which
-could leave the curve score worse than before FUSE (0.0948 to 0.1020 on a
-test curve).
+ends worse than it started.
 
-``REFIT_MODE compact`` needs the compact fitter of the HPO build
-(``TADAH_ENABLE_NFP`` with ``TADAH_ENABLE_CERES``). A ``tadah`` built
+``REFIT_MODE compact`` needs the compact fitter (``TADAH_ENABLE_NFP`` with
+``TADAH_ENABLE_CERES``, see :ref:`installation_nfp`). A ``tadah`` built
 without it refuses compact mode, written or the default, before it reads
 the table:
 
 .. code-block:: none
 
-   tadah refit: REFIT_MODE compact (the default) needs the compact fitter, which this tadah was built without (it needs TADAH_ENABLE_NFP and TADAH_ENABLE_CERES); REFIT_MODE dense fits without it
+   tadah refit: REFIT_MODE compact (the default) needs the compact fitter, which
+   this tadah was built without (it needs TADAH_ENABLE_NFP and
+   TADAH_ENABLE_CERES); REFIT_MODE dense fits without it
 
-Before 1.6.0 it fitted the table in dense mode after a WARNING (a defaulted
-``Knot5`` basis became ``Blip``).
+.. versionchanged:: 1.6.0
+   A build without the compact fitter refuses compact mode; 1.5.0 fitted the
+   table in dense mode after a WARNING (a defaulted ``Knot5`` basis became
+   ``Blip``).
 
 ``refit.eam`` tabulates the fitted density from the inner fit bound up
 (the ``full_lo`` of ``refit_range_report.dat``); below it, the original
@@ -393,17 +402,17 @@ absolute reference energies need ``tadah hpo --eshift-atom`` or
 ``--eshift-dbatom``, or an ``ESHIFT`` line in the configuration (the refit
 potential with a ``DBFILE`` line: a toggle line of it is not read, since it
 is a potential, :ref:`retrain_from_potential`), not ``BIAS true``: its
-intercept columns, one per ``ATOM`` species, precede the weights that the
+intercept columns, one per ``ATOM`` species, precede the coefficients that the
 ``FIXINDEX``/``FIXWEIGHT`` and ``OPTIM FIXWEIGHT`` lines index.
 
 Configuration reference
 -----------------------
 
 The numbers of the configuration are read strictly, before the EAM file:
-a real number in the number grammar of the hpotarget file (decimal, no
+a real number in the number grammar of the target file (decimal, no
 hexadecimal float, ``inf``, ``nan`` or number below the smallest normal
 double) and an integer as decimal digits, each within the range its key
-states in the tables below.  A configuration file must also pass the type
+states in the lists below.  A configuration file must also pass the type
 check of every Tadah! configuration key, which refuses ``.5`` in every
 number and a sign (``+3``, ``-3``) in an integer (``+0.5`` is a valid real
 number).  An error names the key and the token as written:
@@ -411,14 +420,13 @@ number).  An error names the key and the token as written:
 .. code-block:: none
 
    tadah refit: REFIT_TOL_AMBIENT must be a positive number, got '0'
-   tadah refit: REFIT_COMPACT_JITTERS must be an integer from 0 to 2147483646, got '3000000000'
+   tadah refit: REFIT_COMPACT_JITTERS must be an integer from 0 to 2147483646,
+   got '3000000000'
 
-Before 1.6.0 they were read unchecked: ``REFIT_TOL_AMBIENT 0`` made the
-energy metric infinite, ``OUTPUT_GRID_SCALE 0`` wrote a 2-point
-``refit.eam`` (and so did any scale whose point counts rounded below 2 or
-overflowed an ``int``, such as ``0.0001`` or ``1e7``),
-``REFIT_COMPACT_OPT_EVERY 0`` and ``INSERT_TOPK 0`` became 1,
-and ``REFIT_COMPACT_SEED 3000000000``, a valid seed, failed converting.
+.. versionchanged:: 1.6.0
+   These numbers are checked. 1.5.0 read them unchecked, so a value such as
+   ``REFIT_TOL_AMBIENT 0`` or ``OUTPUT_GRID_SCALE 0`` gave a wrong result
+   instead of an error.
 
 .. _refit_mode_keys:
 
@@ -429,19 +437,32 @@ are checked, naming the key, the mode in effect and the mode that reads it:
 
 .. code-block:: none
 
-   tadah refit: N2B has no effect under REFIT_MODE compact (the default): only REFIT_MODE dense reads it; remove N2B, or set REFIT_MODE dense
-   tadah refit: the REFINE block has no effect under REFIT_MODE dense: only REFIT_MODE compact reads it; remove the REFINE block, or set REFIT_MODE compact
-   tadah refit: REFIT_CURVE_WEIGHTING has no effect under REFIT_OBJECTIVE energy (the default): only REFIT_OBJECTIVE curve reads it; remove REFIT_CURVE_WEIGHTING, or set REFIT_OBJECTIVE curve
-   tadah refit: REFIT_CURVE_RELAX has no effect under REFIT_CURVE_WEIGHTING false: only REFIT_CURVE_WEIGHTING true (the default) reads it; remove REFIT_CURVE_RELAX, or set REFIT_CURVE_WEIGHTING true
-   tadah refit: REFIT_COMPACT_MERGE has no effect under REFIT_BASIS Blip5: only the knot families (REFIT_BASIS Knot5, the compact default, Knot3 or KnotMix) read it; remove REFIT_COMPACT_MERGE, or set REFIT_BASIS Knot5
+   tadah refit: N2B has no effect under REFIT_MODE compact (the default): only
+   REFIT_MODE dense reads it; remove N2B, or set REFIT_MODE dense
+
+   tadah refit: the REFINE block has no effect under REFIT_MODE dense: only
+   REFIT_MODE compact reads it; remove the REFINE block, or set REFIT_MODE
+   compact
+
+   tadah refit: REFIT_CURVE_WEIGHTING has no effect under REFIT_OBJECTIVE energy
+   (the default): only REFIT_OBJECTIVE curve reads it; remove
+   REFIT_CURVE_WEIGHTING, or set REFIT_OBJECTIVE curve
+
+   tadah refit: REFIT_CURVE_RELAX has no effect under REFIT_CURVE_WEIGHTING
+   false: only REFIT_CURVE_WEIGHTING true (the default) reads it; remove
+   REFIT_CURVE_RELAX, or set REFIT_CURVE_WEIGHTING true
+
+   tadah refit: REFIT_COMPACT_MERGE has no effect under REFIT_BASIS Blip5: only
+   the knot families (REFIT_BASIS Knot5, the compact default, Knot3 or KnotMix)
+   read it; remove REFIT_COMPACT_MERGE, or set REFIT_BASIS Knot5
 
 * Compact mode only: the keys of *Objective and curve weighting* (under
   ``REFIT_MODE dense`` ``REFIT_OBJECTIVE curve`` is an error and ``energy``
   is accepted) and of *Compact ladder*, and the *Stage blocks*.
   The ``REFIT_CURVE_*`` keys are read under ``REFIT_OBJECTIVE curve``
   only, so each is an error under ``REFIT_OBJECTIVE energy`` (written or
-  the default), before its value is checked; and ``REFIT_CURVE_RELAX``, the floor of the curve
-  weighting, is read only with ``REFIT_CURVE_WEIGHTING true`` (its default),
+  the default), before its value is checked; and ``REFIT_CURVE_RELAX``, the
+  floor of the curve weighting, is read only with ``REFIT_CURVE_WEIGHTING true`` (its default),
   so it is an error with ``REFIT_CURVE_WEIGHTING false``.
   ``REFIT_COMPACT_MERGE``, ``REFIT_COMPACT_OPT_EVERY`` and
   ``REFIT_COMPACT_INSERT_TOPK`` are read by the knot families only (the
@@ -460,10 +481,10 @@ are checked, naming the key, the mode in effect and the mode that reads it:
   default), true or false: ``tadah refit: REFIT_CONSTRAIN_F0 has no effect
   under EMBF0 ZERO (the default): only EMBF0 FREE reads it; remove
   REFIT_CONSTRAIN_F0, or set EMBF0 FREE``.
-* Neither mode: a top-level ``OPTIMIZER`` block, the grammar before the
-  stage blocks. It is refused first, in either mode, with a text that says
-  which stage block each of its sub-blocks became (``tadah refit: a
-  top-level OPTIMIZER block is no longer supported. ...``); under
+* Neither mode: a top-level ``OPTIMIZER`` block. It is refused first, in
+  either mode, with a text that names the stage block (``EXPLORE``,
+  ``REFINE`` or ``FUSE``) that takes each block inside it (``tadah refit: a
+  top-level OPTIMIZER block ...``); under
   ``REFIT_MODE dense`` the text ends ``Under REFIT_MODE dense, which reads
   no stage block, remove the OPTIMIZER block.``
 * Both modes: the other keys.
@@ -481,89 +502,73 @@ no basis family of tadah refit: Blip (Blip, BLIP, blip), Blip5 (...), ...``;
 ``accurate``, and a ``REFIT_PLACEMENT`` other than ``window`` or
 ``uniform``, both read in any letter case (``tadah refit: REFIT_LEVEL must
 be 'coarse', 'balanced' (the default), 'fine' or 'accurate' (in any letter
-case), got 'acurate'``). In 1.5.0 an unknown ``REFIT_BASIS``
-(``Blipp``, ``BLIP``) fitted ``Blip`` while a WARNING called it the
-experimental Gaussian basis, another ``REFIT_LEVEL`` (``Fine``,
-``acurate``) the ``balanced`` preset, and another ``REFIT_PLACEMENT``
-(``Uniform``) the window placement. Before 1.6.0 these keys were ignored: dense mode
-never read the stage blocks (a ``REFINE`` block with ``THREADS 4`` and
-``GTOL -1``, which compact mode refuses, ran), compact mode never read the
-dense keys (``N2B 50``, ``REFIT_LEVEL accurate`` and
-``REFIT_MAX_ESCALATIONS 9`` gave the same potential as without them),
-``REFIT_CURVE_WEIGHTING`` did nothing under ``energy`` although the help
-said it was rejected there, nor did ``REFIT_CURVE_RELAX`` and
-``REFIT_CURVE_DERIV_WEIGHT`` (or ``REFIT_CURVE_RELAX`` with
-``REFIT_CURVE_WEIGHTING false``), the knot-family keys did nothing with
-a Blip basis, a top-level ``OPTIMIZER`` block was ignored in
-dense mode and refused by the compact fitter only after it had read the
-table, and any other ``REFIT_MODE`` (``Dense``, ``COMPACT`` included) ran
-the dense fit after a WARNING.
+case), got 'acurate'``).
+
+.. versionchanged:: 1.6.0
+   A key that the chosen mode does not read, a top-level ``OPTIMIZER`` block
+   in dense mode, and an unknown ``REFIT_MODE``, ``REFIT_BASIS``,
+   ``REFIT_LEVEL`` or ``REFIT_PLACEMENT`` are errors. 1.5.0 ignored them or
+   replaced them by a default after a WARNING.
 
 General and output
 ~~~~~~~~~~~~~~~~~~~
 
-.. list-table::
-   :header-rows: 1
-   :widths: 26 12 62
+``EAM`` (path)
+   Required. Input setfl EAM file to refit, single-element, read and
+   checked as the ``SETFL`` file of ``D2_EAM``/``DM_EAM`` is (a malformed
+   file is refused, naming the line and the field; :ref:`SETFL`).
 
-   * - Key
-     - Default
-     - Effect
-   * - ``EAM`` (path)
-     - —
-     - Input setfl EAM file to refit (required), single-element, read and
-       checked as the ``SETFL`` file of ``D2_EAM``/``DM_EAM`` is (a malformed
-       file is refused, naming the line and the field; :ref:`SETFL`).
-   * - ``RHOFORM``
-     - —
-     - Density form of the written potential, ``SIGNED`` | ``NONNEG`` |
-       ``MONOTONE`` (required; :ref:`refit_rhoform`).
-   * - ``OUTFILE`` (path)
-     - ``pot.tadah``
-     - Output native Tadah! potential.
-   * - ``SETFL_OUT`` (path)
-     - ``refit.eam``
-     - Round-trip setfl written from the fitted model for LAMMPS comparison.
-   * - ``HPOFILEOUT`` (path)
-     - ``refit.hpotarget``
-     - Generated ``tadah hpo`` starter target.
-   * - ``REFIT_LOG`` (path)
-     - ``refit_opt.log``
-     - Live, line-flushed optimisation log; the self-test is at its end.
-   * - ``OUTPUT_GRID_SCALE`` (float)
-     - ``1.0``
-     - Output setfl grid density relative to the input table; > 0, and the
-       grid it gives (nr × scale and nrho × scale points, rounded) must have
-       3 to 2147483647 points per table, checked once the EAM file is read,
-       before any fitting (``tadah refit: OUTPUT_GRID_SCALE '0.0001' for
-       refit.eam: EAMSetflIO: a grid scale of 0.0001 gives nrho = 1 and
-       nr = 1 points ...``). The r grid keeps the input's span
-       (nr − 1) × dr, or, when that would put ``rcut`` more than one of
-       its steps past its last point (an input with ``rcut`` = nr × dr
-       scaled up), ends one of its steps before ``rcut``; a scale whose
-       counts round to the input's gives the input grid itself.
-   * - ``OPTIM_PCT`` (float)
-     - ``5.0``
-     - ±% half-width of the OPTIM bounds written into the HPO target; > 0
-       (also with ``--edit`` and ``--retarget``, checked before any file is
-       written).
+``RHOFORM``
+   Required. Density form of the written potential, ``SIGNED`` | ``NONNEG`` |
+   ``MONOTONE`` (:ref:`refit_rhoform`).
+
+``OUTFILE`` (path)
+   Default ``pot.tadah``. Output native Tadah! potential.
+
+``SETFL_OUT`` (path)
+   Default ``refit.eam``. Round-trip setfl written from the fitted model for
+   LAMMPS comparison.
+
+``HPOFILEOUT`` (path)
+   Default ``refit.hpotarget``. Generated target file for ``tadah hpo``.
+
+``REFIT_LOG`` (path)
+   Default ``refit_opt.log``. Live, line-flushed optimisation log; the
+   self-test is at its end. The compact fit of
+   :ref:`DM_Embed components <dm_embed_refit>` writes no log, so with
+   ``DESCRIPTOR`` blocks the key is an error under ``REFIT_MODE compact``.
+
+``OUTPUT_GRID_SCALE`` (float)
+   Default ``1.0``. Output setfl grid density relative to the input table;
+   > 0, and the grid it gives (nr × scale and nrho × scale points, rounded)
+   must have 3 to 2147483647 points per table, checked once the EAM file is
+   read, before any fitting (``tadah refit: OUTPUT_GRID_SCALE '0.0001' for
+   refit.eam: EAMSetflIO: a grid scale of 0.0001 gives nrho = 1 and
+   nr = 1 points ...``). The r grid keeps the input's span
+   (nr − 1) × dr, or, when that would put ``rcut`` more than one of
+   its steps past its last point (an input with ``rcut`` = nr × dr
+   scaled up), ends one of its steps before ``rcut``; a scale whose
+   counts round to the input's gives the input grid itself.
+
+``OPTIM_PCT`` (float)
+   Default ``5.0``. ±% half-width of the :hpo:key:`OPTIM` bounds written into
+   the target file; > 0 (also with ``--edit`` and ``--retarget``, checked before
+   any file is written).
 
 Mode and basis
 ~~~~~~~~~~~~~~
 
-.. list-table::
-   :header-rows: 1
-   :widths: 26 12 62
+``REFIT_MODE``
+   Default ``compact``. ``compact`` fits a small optimised basis via the
+   ladder; ``dense`` fits fixed grids (:ref:`refit_dense`). In any letter
+   case; each mode refuses the keys only the other reads (above), and a
+   ``tadah`` built without the compact fitter refuses ``compact``.
 
-   * - Key
-     - Default
-     - Effect
-   * - ``REFIT_MODE``
-     - ``compact``
-     - ``compact`` fits a small optimised basis via the ladder; ``dense`` fits fixed grids (:ref:`refit_dense`). In any letter case; each mode refuses the keys only the other reads (above), and a ``tadah`` built without the compact fitter refuses ``compact``.
-   * - ``REFIT_BASIS``
-     - ``Knot5``
-     - Basis family (compact): ``Knot5`` quintic knots, ``Knot3`` cubic knots, ``KnotMix`` per-knot cubic/quintic, ``Blip``, ``Blip5``. Knot5 is smoothest per knot; Knot3 captures sharper features. Best family is element-dependent.
+``REFIT_BASIS``
+   Default ``Knot5``. Basis family (compact): ``Knot5`` quintic knots,
+   ``Knot3`` cubic knots, ``KnotMix`` per-knot cubic/quintic, ``Blip``,
+   ``Blip5``. Knot5 is smoothest per knot; Knot3 captures sharper features.
+   Best family is element-dependent.
 
 Objective and curve weighting
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -571,94 +576,122 @@ Objective and curve weighting
 Compact mode only (``REFIT_MODE dense`` refuses these keys, and accepts
 ``REFIT_OBJECTIVE energy``).
 
-.. list-table::
-   :header-rows: 1
-   :widths: 30 12 58
+``REFIT_OBJECTIVE``
+   Default ``energy``. ``curve`` fits the tabulated functions (value +
+   derivatives) with pressure weighting; ``energy`` fits the crystal
+   energy–volume curve. ``curve`` is the recommended choice for a faithful
+   crystal from a small basis.
 
-   * - Key
-     - Default
-     - Effect
-   * - ``REFIT_OBJECTIVE``
-     - ``energy``
-     - ``curve`` fits the tabulated functions (value + derivatives) with pressure weighting; ``energy`` fits the crystal energy–volume curve. ``curve`` is the recommended choice for a faithful crystal from a small basis.
-   * - ``REFIT_CURVE_WEIGHTING``
-     - ``true``
-     - (curve) Weights :math:`\phi,\rho` fully between the equilibrium nearest-neighbour distance and the cutoff, and :math:`F` from zero to the equilibrium density, relaxing toward compression — tighter equilibrium energies for a given basis size. Refused under ``REFIT_OBJECTIVE energy``, written or the default (before 1.6.0 it was ignored there).
-   * - ``REFIT_CURVE_RELAX``
-     - ``0.05``
-     - (curve, weighting on) Floor weight in the compressed region, in (0, 1]; smaller focuses the fit harder on the equilibrium region. Refused under ``REFIT_OBJECTIVE energy`` and with ``REFIT_CURVE_WEIGHTING false`` (before 1.6.0 it was ignored there).
-   * - ``REFIT_CURVE_DERIV_WEIGHT``
-     - ``0.0``
-     - (curve) Weight of the 1st/2nd-derivative terms relative to value, >= 0. ``0`` fits values only (best crystal energies); a larger value fits slope/curvature shape. Refused under ``REFIT_OBJECTIVE energy`` (before 1.6.0 it was ignored there).
+``REFIT_CURVE_WEIGHTING``
+   Default ``true``. (curve) Weights :math:`\phi,\rho` fully between the
+   equilibrium nearest-neighbour distance and the cutoff, and :math:`F` from
+   zero to the equilibrium density, relaxing toward compression — tighter
+   equilibrium energies for a given basis size. Refused under
+   ``REFIT_OBJECTIVE energy``, written or the default.
+
+``REFIT_CURVE_RELAX``
+   Default ``0.05``. (curve, weighting on) Floor weight in the compressed
+   region, in (0, 1]; smaller focuses the fit harder on the equilibrium
+   region. Refused under ``REFIT_OBJECTIVE energy`` and with
+   ``REFIT_CURVE_WEIGHTING false``.
+
+``REFIT_CURVE_DERIV_WEIGHT``
+   Default ``0.0``. (curve) Weight of the 1st/2nd-derivative terms relative
+   to value, >= 0. ``0`` fits values only (best crystal energies); a larger
+   value fits slope/curvature shape. Refused under ``REFIT_OBJECTIVE
+   energy``.
+
+.. versionchanged:: 1.6.0
+   ``REFIT_CURVE_WEIGHTING``, ``REFIT_CURVE_RELAX`` and
+   ``REFIT_CURVE_DERIV_WEIGHT`` are refused where they have no effect; 1.5.0
+   ignored them there.
 
 Compact ladder
 ~~~~~~~~~~~~~~
 
 Compact mode only (``REFIT_MODE dense`` refuses these keys).
 
-.. list-table::
-   :header-rows: 1
-   :widths: 30 12 58
+``REFIT_COMPONENT_ITERATIONS``
+   Default ``60``. With ``DESCRIPTOR`` blocks only: the iteration limit of
+   the compact fit of the :ref:`DM_Embed components <dm_embed_refit>` (the
+   centre and scale optimisation that their grids seed), an integer from 1.
+   A fit that stops at the limit before converging is written, with a
+   WARNING naming the stop and the key. Without blocks it is an error.
 
-   * - Key
-     - Default
-     - Effect
-   * - ``REFIT_COMPONENT_ITERATIONS``
-     - ``60``
-     - With ``DESCRIPTOR`` blocks only: the iteration limit of the compact fit of the :ref:`DM_Embed components <dm_embed_refit>` (the centre and scale optimisation that their grids seed), an integer from 1. A fit that stops at the limit before converging is written, with a WARNING naming the stop and the key. Without blocks it is an error.
-   * - ``REFIT_COMPACT_NMAX``
-     - ``40``
-     - Per-function basis ceiling: one integer from 1 (all functions) or three ``phi rho F`` (e.g. ``35 12 35``). Higher is more flexible and slower. The sample grid of at least 4×NMAX points must fit 2147483647, so the largest NMAX is at most 536870911 (checked with the other numbers, before the EAM file is read).
-   * - ``REFIT_COMPACT_SAMPLES``
-     - ``800``
-     - Sample points per function for the fit and RMSE, from 1 (raised to at least 50 and 4×NMAX). More is finer and slower.
-   * - ``REFIT_COMPACT_OPT_EVERY``
-     - ``1``
-     - Runs the full per-rung optimisation every K-th rung (K from 1); intermediate rungs grow by insertion only. Higher is faster and coarser. Knot families only: a Blip fit optimises every rung, and ``REFIT_BASIS Blip``/``Blip5`` refuses the key.
-   * - ``REFIT_COMPACT_STALL``
-     - ``12``
-     - Stops a function's ladder after this many rungs without improvement, from 1 (Blip families: 6).
-   * - ``REFIT_COMPACT_INSERT_TOPK``
-     - ``3``
-     - Tries this many top residual peaks per rung and keeps the best insertion, from 1. Knot families only: a Blip fit inserts at the curve peak, and ``REFIT_BASIS Blip``/``Blip5`` refuses the key.
-   * - ``REFIT_COMPACT_JITTERS``
-     - ``2``
-     - Randomised restarts per rung (jitters+1 candidates), from 0 to 2147483646; more explores the landscape harder.
-   * - ``REFIT_COMPACT_SHARE``
-     - ``0.5``
-     - Per-function share of the tolerance budget used by the rung-selection metric; > 0.
-   * - ``REFIT_COMPACT_SEED``
-     - ``12345``
-     - RNG seed for the jittered restarts, from 0 to 4294967295; fixes the run for reproducibility.
-   * - ``REFIT_COMPACT_MERGE``
-     - ``auto``
-     - Knot coalescence guard: penalises near-coincident knot pairs during EXPLORE and merges them after REFINE, re-inserting a fresh knot at the worst residual. ``auto`` is off for ``curve`` and on for ``energy``; ``true``/``false`` force it. Knot families only: a Blip fit has no knots, and ``REFIT_BASIS Blip``/``Blip5`` refuses the key.
+``REFIT_COMPACT_NMAX``
+   Default ``40``. Per-function basis ceiling: one integer from 1 (all
+   functions) or three ``phi rho F`` (e.g. ``35 12 35``). Higher is more
+   flexible and slower. The sample grid of at least 4×NMAX points must fit
+   2147483647, so the largest NMAX is at most 536870911 (checked with the
+   other numbers, before the EAM file is read).
+
+``REFIT_COMPACT_SAMPLES``
+   Default ``800``. Sample points per function for the fit and RMSE, from 1
+   (raised to at least 50 and 4×NMAX). More is finer and slower.
+
+``REFIT_COMPACT_OPT_EVERY``
+   Default ``1``. Runs the full per-rung optimisation every K-th rung (K from
+   1); intermediate rungs grow by insertion only. Higher is faster and
+   coarser. Knot families only: a Blip fit optimises every rung, and
+   ``REFIT_BASIS Blip``/``Blip5`` refuses the key.
+
+``REFIT_COMPACT_STALL``
+   Default ``12``. Stops a function's ladder after this many rungs without
+   improvement, from 1 (Blip families: 6).
+
+``REFIT_COMPACT_INSERT_TOPK``
+   Default ``3``. Tries this many top residual peaks per rung and keeps the
+   best insertion, from 1. Knot families only: a Blip fit inserts at the
+   curve peak, and ``REFIT_BASIS Blip``/``Blip5`` refuses the key.
+
+``REFIT_COMPACT_JITTERS``
+   Default ``2``. Randomised restarts per rung (jitters+1 candidates), from 0
+   to 2147483646; more explores the landscape harder.
+
+``REFIT_COMPACT_SHARE``
+   Default ``0.5``. Per-function share of the tolerance budget used by the
+   rung-selection metric; > 0.
+
+``REFIT_COMPACT_SEED``
+   Default ``12345``. RNG seed for the jittered restarts, from 0 to
+   4294967295; fixes the run for reproducibility.
+
+``REFIT_COMPACT_MERGE``
+   Default ``auto``. Knot coalescence guard: penalises near-coincident knot
+   pairs during EXPLORE and merges them after REFINE, re-inserting a fresh
+   knot at the worst residual. ``auto`` is off for ``curve`` and on for
+   ``energy``; ``true``/``false`` force it. Knot families only: a Blip fit
+   has no knots, and ``REFIT_BASIS Blip``/``Blip5`` refuses the key.
 
 Window and self-test
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. list-table::
-   :header-rows: 1
-   :widths: 30 12 58
+``REFIT_TOL_AMBIENT`` (meV/atom)
+   Default ``0.1``. Pass threshold for the ambient band
+   (:math:`a/a_0\,0.95\!-\!1.10`), > 0; also weights the energy-mode metric
+   there.
 
-   * - Key
-     - Default
-     - Effect
-   * - ``REFIT_TOL_AMBIENT`` (meV/atom)
-     - ``0.1``
-     - Pass threshold for the ambient band (:math:`a/a_0\,0.95\!-\!1.10`), > 0; also weights the energy-mode metric there.
-   * - ``REFIT_TOL_COMPRESSED`` (meV/atom)
-     - ``1.0``
-     - Pass threshold for the compressed band (:math:`a/a_0\,0.75\!-\!0.95`), > 0.
-   * - ``REFIT_REACH_SMIN``
-     - ``0.75``
-     - Smallest :math:`a/a_0` the fit must stay faithful at, from 0.1 to 1; sets the reachable :math:`r`/:math:`\rho` window and the span of the self-test and the E-V scans. Their neighbour lists grow as :math:`s_{\min}^{-3}` (0.01 took about a minute, 1e-6 did not finish), and the reachability probe lists neighbours only out to :math:`r_{cut}/0.1`.
-   * - ``REFIT_REACH_MARGIN``
-     - ``1.25``
-     - Safety margin on the reachable :math:`F(\rho)` window; > 0.
-   * - ``REFIT_R_LO_FRAC``
-     - ``0.20``
-     - Inner radial fit bound as a fraction of the cutoff, in (0, 1) (at least the table's dr; compact mode fits from max(0.8 r_reach, this bound)); also the lower edge of the :math:`\phi/\rho` weight ramp. Below the inner bound ``refit.eam`` carries the original table (*Output files*), and ``pot.tadah`` is not valid there.
+``REFIT_TOL_COMPRESSED`` (meV/atom)
+   Default ``1.0``. Pass threshold for the compressed band
+   (:math:`a/a_0\,0.75\!-\!0.95`), > 0.
+
+``REFIT_REACH_SMIN``
+   Default ``0.75``. Smallest :math:`a/a_0` the fit must stay faithful at,
+   from 0.1 to 1; sets the reachable :math:`r`/:math:`\rho` window and the
+   span of the self-test and the E-V scans. Their neighbour lists grow as
+   :math:`s_{\min}^{-3}`, and the reachability probe lists neighbours only
+   out to :math:`r_{cut}/0.1`.
+
+``REFIT_REACH_MARGIN``
+   Default ``1.25``. Safety margin on the reachable :math:`F(\rho)` window;
+   > 0.
+
+``REFIT_R_LO_FRAC``
+   Default ``0.20``. Inner radial fit bound as a fraction of the cutoff, in
+   (0, 1) (at least the table's dr; compact mode fits from max(0.8 r_reach,
+   this bound)); also the lower edge of the :math:`\phi/\rho` weight ramp.
+   Below the inner bound ``refit.eam`` carries the original table (*Output
+   files*), and ``pot.tadah`` is not valid there.
 
 Stage blocks
 ~~~~~~~~~~~~
@@ -684,11 +717,13 @@ the extrapolation behaviour.
 ``tadah explain refit.init`` and ``tadah explain refit.optimizer`` print
 the keys of the INIT and OPTIMIZER blocks below in the terminal.
 
-**EXPLORE / REFINE / FUSE** each accept ``ENABLED true|false`` (REFINE/FUSE;
-``ENABLED false`` skips the stage) and a nested ``OPTIMIZER`` block, but not
-both ``ENABLED false`` and an ``OPTIMIZER`` block, which would have no
-effect: that is an error (before 1.6.0 the block was ignored with a
-warning).  ``ALGO NONE`` in a block keeps the block and skips its stage:
+**EXPLORE / REFINE / FUSE** each accept a nested ``OPTIMIZER`` block.
+REFINE and FUSE also accept ``ENABLED true|false`` (``ENABLED false`` skips
+the stage), but not ``ENABLED false`` together with an ``OPTIMIZER`` block,
+which would have no effect: that is an error. EXPLORE builds the basis ladder
+and cannot be disabled: ``ENABLED false`` is an error there.  ``ALGO NONE``
+in a REFINE or FUSE block keeps the block and skips its stage (in EXPLORE
+it is ``UNIFORM``: no global search runs, and the ladder is still built):
 
 .. code-block:: none
 
@@ -696,10 +731,14 @@ warning).  ``ALGO NONE`` in a block keeps the block and skips its stage:
    ENABLED false without the block, or ALGO NONE in the block without ENABLED
    false, switches the stage off
 
+.. versionchanged:: 1.6.0
+   ``ENABLED false`` together with an ``OPTIMIZER`` block in the same stage
+   is an error; 1.5.0 ignored the block with a warning.
+
 EXPLORE
 also accepts ``MAX_ADD`` (one value or three ``phi rho F``) capping the basis
 functions added in that stage: each an integer from 0 to 2147483647.  Without
-``MAX_ADD`` there is no cap; a negative value, which used to mean no cap, is
+``MAX_ADD`` there is no cap; a negative value is
 an error (``EXPLORE MAX_ADD must be an integer from 0 to 2147483647, got
 '-1'``).
 
@@ -743,128 +782,122 @@ only the stop-criteria of its ``ALGO``; a block with ``ALGO NONE`` or
 ``UNIFORM`` runs no optimiser and takes none, except those another stage
 reads (below):
 
-.. list-table::
-   :header-rows: 1
-   :widths: 18 48 34
+EXPLORE outer
+   NLOPT ``GN_MLSL_LDS`` | ``GN_DIRECT_L`` | ``GN_CRS2_LM``; DLIB ``GLOBAL``.
+   Stop-criteria read: ``MAXEVAL``.
 
-   * - Stage
-     - LIB / ALGO
-     - Stop-criteria read
-   * - EXPLORE outer
-     - NLOPT ``GN_MLSL_LDS`` | ``GN_DIRECT_L`` | ``GN_CRS2_LM``; DLIB ``GLOBAL``
-     - ``MAXEVAL``
-   * - EXPLORE outer
-     - ``UNIFORM``
-     - none
-   * - EXPLORE ``INNER``
-     - NLOPT ``LN_SBPLX`` | ``LN_NELDERMEAD`` | ``LN_BOBYQA`` | ``LN_PRAXIS`` | ``LD_LBFGS``
-     - ``MAXEVAL``, ``FTOL_REL``, ``XTOL_REL``
-   * - EXPLORE ``INNER``
-     - DLIB ``LBFGS``
-     - ``MAXEVAL``, ``FTOL_ABS``
-   * - EXPLORE ``INNER``
-     - ``NONE``
-     - none
-   * - REFINE, FUSE
-     - CERES ``LM`` | ``DOGLEG``
-     - ``MAXEVAL`` (alias ``MAXITER``), ``FTOL_REL``, ``GTOL``
-   * - REFINE
-     - NLOPT ``LD_LBFGS``
-     - ``MAXEVAL``, ``FTOL_REL``
-   * - REFINE
-     - DLIB ``LBFGS``
-     - ``MAXEVAL``, ``FTOL_ABS``
-   * - REFINE, FUSE
-     - ``NONE``
-     - none
+EXPLORE outer
+   ``UNIFORM``. Stop-criteria read: none.
+
+EXPLORE ``INNER``
+   NLOPT ``LN_SBPLX`` | ``LN_NELDERMEAD`` | ``LN_BOBYQA`` | ``LN_PRAXIS`` |
+   ``LD_LBFGS``. Stop-criteria read: ``MAXEVAL``, ``FTOL_REL``,
+   ``XTOL_REL``.
+
+EXPLORE ``INNER``
+   DLIB ``LBFGS``. Stop-criteria read: ``MAXEVAL``, ``FTOL_ABS``.
+
+EXPLORE ``INNER``
+   ``NONE``. Stop-criteria read: none.
+
+REFINE, FUSE
+   CERES ``LM`` | ``DOGLEG``. Stop-criteria read: ``MAXEVAL`` (alias
+   ``MAXITER``), ``FTOL_REL``, ``GTOL``.
+
+REFINE
+   NLOPT ``LD_LBFGS``. Stop-criteria read: ``MAXEVAL``, ``FTOL_REL``.
+
+REFINE
+   DLIB ``LBFGS``. Stop-criteria read: ``MAXEVAL``, ``FTOL_ABS``.
+
+REFINE, FUSE
+   ``NONE``. Stop-criteria read: none.
 
 Under the EXPLORE optimiser ``GN_MLSL_LDS`` an ``INNER`` block also takes
 ``MAXEVAL``, ``FTOL_REL`` and ``XTOL_REL`` whatever its ``ALGO``: they set
 MLSL's local ``LN_SBPLX`` searches too.  ``FTOL_ABS`` is the absolute
 change of the objective at which dlib's ``LBFGS`` stops (the name
-``tadah hpo``'s ``DLIB:BFGS`` gives it); before 1.6.0 dlib took
-``FTOL_REL`` for that absolute change, and under ``GN_MLSL_LDS`` an
-``INNER`` dlib ``LBFGS`` block's ``FTOL_REL`` set both, so such a run
-without ``FTOL_ABS`` gives different results now.  The defaults are
-unchanged (1e-13 in ``INNER``, 1e-15 in REFINE).
+``tadah hpo``'s ``DLIB:BFGS`` gives it); its default is 1e-13 in ``INNER``
+and 1e-15 in REFINE.
+
+.. versionchanged:: 1.6.0
+   dlib's ``LBFGS`` takes its absolute stopping change from ``FTOL_ABS``, not
+   from ``FTOL_REL``. Under ``GN_MLSL_LDS`` an ``INNER`` dlib ``LBFGS`` block
+   that sets ``FTOL_REL`` without ``FTOL_ABS`` gives different results from
+   1.5.0.
 
 ``MAXEVAL`` counts objective evaluations, exactly, for every NLopt and
 dlib algorithm: each call of the stage's objective, for its value or its
 gradient, is one.  dlib asks for the value and the gradient of its
-objective in separate calls, so its L-BFGS counts both, in the objective
-wrapper; the call past ``MAXEVAL`` ends the search at its last iterate.
+objective in separate calls, so its L-BFGS counts both (at least two
+evaluations per iteration), in the objective wrapper; the call past ``MAXEVAL`` ends the search at its last iterate.
 Ceres' ``LM`` and ``DOGLEG`` count their solver iterations instead
 (``max_num_iterations``), each one Jacobian evaluation and one or more
 residual evaluations; ``MAXITER``, the alias of ``MAXEVAL`` for ``LM`` and
-``DOGLEG`` only, says so (with an L-BFGS REFINE, where it set the
-evaluation budget before 1.6.0, it is an error naming ``MAXEVAL``).
-Without ``MAXEVAL`` each optimiser takes its default budget:
+``DOGLEG`` only, says so (with an L-BFGS REFINE it is an error naming
+``MAXEVAL``).
+Without ``MAXEVAL`` each optimiser takes its default budget. Per stage,
+``MAXEVAL`` / ``MAXITER`` count and default as follows:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 28 44 28
+``EXPLORE`` (the seed)
+   Evaluations of ``GN_MLSL_LDS`` (its local searches included),
+   ``GN_DIRECT_L``, ``GN_CRS2_LM``; of dlib ``GLOBAL``. Default: 60000; 3000
+   for ``GLOBAL``.
 
-   * - Stage
-     - ``MAXEVAL`` / ``MAXITER`` counts
-     - Default
-   * - EXPLORE (the seed)
-     - evaluations of ``GN_MLSL_LDS`` (its local searches included),
-       ``GN_DIRECT_L``, ``GN_CRS2_LM``; of dlib ``GLOBAL``
-     - 60000; 3000 for ``GLOBAL``
-   * - EXPLORE ``INNER``
-     - evaluations of each candidate's local search (and of each local
-       search of ``GN_MLSL_LDS``)
-     - 20000
-   * - REFINE
-     - evaluations of ``LD_LBFGS`` and dlib ``LBFGS``; iterations of
-       ``LM`` and ``DOGLEG``
-     - 50000 evaluations; 1000 iterations
-   * - FUSE
-     - iterations of ``LM`` and ``DOGLEG``: in energy mode over the whole
-       stage, the joint solve and the held re-run of *Compact mode* (a
-       fallback, up to one more solve per radial bump) sharing it (before
-       1.6.0 each held pass had the full budget); under ``REFIT_OBJECTIVE
-       curve`` of each function's refine, so phi, rho and F each get the
-       whole budget
-     - 2000
+``EXPLORE`` ``INNER``
+   Evaluations of each candidate's local search (and of each local search of
+   ``GN_MLSL_LDS``). Default: 20000.
 
-Before 1.6.0 dlib ``GLOBAL`` took ``max(500, MAXEVAL/20)`` function calls,
-dlib ``LBFGS`` capped its L-BFGS iterations (at ``MAXEVAL`` in EXPLORE
-``INNER``, 50 × ``MAXEVAL`` in REFINE) rather than its evaluations, and
-REFINE ``LD_LBFGS`` took 50 × ``MAXEVAL`` evaluations, so a refit with
-one of them and an explicit ``MAXEVAL`` gives different results now.
-Without ``MAXEVAL`` the defaults of ``GLOBAL`` (3000) and of REFINE
-``LD_LBFGS`` (50000) are the budgets they had; dlib ``LBFGS`` keeps the
-numbers of its old iteration caps (20000 in EXPLORE ``INNER``, 50000 in
-REFINE), now counted in evaluations, at least two per L-BFGS iteration
-(its value and its gradient), so a default dlib ``LBFGS`` run whose cap
-binds stops sooner than before.
+``REFINE``
+   Evaluations of ``LD_LBFGS`` and dlib ``LBFGS``; iterations of ``LM`` and
+   ``DOGLEG``. Default: 50000 evaluations; 1000 iterations.
+
+``FUSE``
+   Iterations of ``LM`` and ``DOGLEG``: in energy mode over the whole
+   stage, the joint solve and the held re-run of *Compact mode* (a
+   fallback, up to one more solve per radial bump) sharing it; under
+   ``REFIT_OBJECTIVE curve`` of each function's refine, so phi, rho and F
+   each get the whole budget. Default: 2000.
+
+.. versionchanged:: 1.6.0
+   A refit with dlib ``GLOBAL``, dlib ``LBFGS`` or REFINE ``LD_LBFGS`` and an
+   explicit ``MAXEVAL`` gives different results from 1.5.0, which took
+   ``max(500, MAXEVAL/20)`` function calls for ``GLOBAL``, capped the L-BFGS
+   iterations of dlib ``LBFGS`` and took 50 × ``MAXEVAL`` evaluations for
+   REFINE ``LD_LBFGS``.
+
 ``FTOL_REL`` on the Ceres stages is Ceres' relative function tolerance,
 and ``GTOL`` its gradient tolerance.  FUSE's settings are those of the
 joint solve and, under ``REFIT_OBJECTIVE curve``, of each function's FUSE
-refine.  Before 1.6.0 the curve FUSE refine ran with REFINE's
-``MAXEVAL``/``MAXITER`` (an L-BFGS REFINE's evaluations read as Ceres
-iterations), ``FTOL_REL`` and ``GTOL``, also with REFINE ``ENABLED
-false``, and FUSE's own had no effect; FUSE ``GTOL`` was ignored, and the
-joint solve's gradient tolerance was 1e-14, still the default.  Curve
-refits that set those keys give different results now, and so does one
-whose FUSE refine reached REFINE's default 1000 iterations (FUSE's
-default is 2000).  The refit log states each stage's budget in its unit
+refine.  The joint solve's default gradient tolerance is 1e-14.
+
+.. versionchanged:: 1.6.0
+   Under ``REFIT_OBJECTIVE curve`` the FUSE refine of each function runs with
+   FUSE's own ``MAXEVAL``/``MAXITER``, ``FTOL_REL`` and ``GTOL``. 1.5.0 ran it
+   with REFINE's, so curve refits that set those keys give different
+   results.
+
+The refit log states each stage's budget in its unit
 and each stage's termination with the evaluations it spent
 (``term=DLIB_GLOBAL:MAXEVAL_REACHED(3000ev)``), and in curve mode each
 function's FUSE refine with its Ceres iterations
-(``FUSE[phi] curve score 0.0304 -> 0.0287 (NO_CONVERGENCE(501it, maxiter))``).  A stage's
+(``FUSE[phi] curve score 0.0304 -> 0.0287 (NO_CONVERGENCE(501it, maxiter))``).
+
+A stage's
 ``OPTIMIZER`` block takes only the keys the stage reads — ``LIB``, ``ALGO``,
-the stop-criteria of this table, and in EXPLORE the ``INNER`` block.  Any
+the stop-criteria listed above, and in EXPLORE the ``INNER`` block.  Any
 other optimiser attribute of :ref:`tadah hpo <nfp_manual>` (``THREADS``,
 ``MAXTIME``, ``STOPVAL``, ``POPULATION``, ``STEP``, ``PARAM``, …) and an
 ``INNER`` block in REFINE or FUSE is an error that names the keys the stage
-reads; before 1.6.0 they were accepted and did nothing:
+reads:
 
 .. code-block:: none
 
-   REFINE: THREADS is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL/MAXITER, FTOL_REL, FTOL_ABS, GTOL)
-   EXPLORE INNER: MAXTIME is not used by a tadah refit stage (it reads LIB, ALGO, MAXEVAL, FTOL_REL, FTOL_ABS, XTOL_REL)
+   REFINE: THREADS is not used by a tadah refit stage (it reads LIB, ALGO,
+   MAXEVAL/MAXITER, FTOL_REL, FTOL_ABS, GTOL)
+
+   EXPLORE INNER: MAXTIME is not used by a tadah refit stage (it reads LIB,
+   ALGO, MAXEVAL, FTOL_REL, FTOL_ABS, XTOL_REL)
 
 ``SEED`` is rejected in every stage's ``OPTIMIZER`` block, ``INNER``
 included, with a pointer to ``REFIT_COMPACT_SEED``, which seeds the refit's
@@ -877,24 +910,20 @@ random numbers; ``FTOL_ABS`` with a Ceres ``ALGO`` points to ``FTOL_REL``:
    numbers
 
 Within a stage, a stop criterion that the block's ``ALGO`` does not read
-(the table above) is an error, named as written with the ``ALGO`` and the
+(listed above) is an error, named as written with the ``ALGO`` and the
 keys it reads; ``MAXITER`` with an ``ALGO`` that counts evaluations names
-``MAXEVAL``, and ``FTOL_REL`` with dlib's ``LBFGS`` names ``FTOL_ABS``.
-Before 1.6.0 they were accepted: ``XTOL_REL`` with an ``INNER`` dlib
-``LBFGS`` had no effect (but under ``GN_MLSL_LDS``, whose local searches
-it set); ``GTOL`` with an L-BFGS REFINE had none on REFINE, but under
-``REFIT_OBJECTIVE curve`` it was the gradient tolerance of the FUSE curve
-refine (above); ``MAXITER`` with an L-BFGS REFINE set its evaluation
-budget; and ``FTOL_REL`` with dlib's ``LBFGS`` was dlib's absolute stop,
-which ``FTOL_ABS`` sets now:
+``MAXEVAL``, and ``FTOL_REL`` with dlib's ``LBFGS`` names ``FTOL_ABS``:
 
 .. code-block:: none
 
    REFINE: GTOL has no effect with ALGO LD_LBFGS (it reads MAXEVAL, FTOL_REL)
+
    EXPLORE INNER: XTOL_REL has no effect with ALGO LBFGS (it reads MAXEVAL,
    FTOL_ABS)
+
    REFINE: MAXITER counts Ceres iterations; ALGO LD_LBFGS counts objective
    evaluations, which MAXEVAL limits
+
    REFINE: FTOL_REL has no effect with ALGO LBFGS: dlib's L-BFGS stops on an
    absolute change of the objective, which FTOL_ABS sets
 
@@ -917,22 +946,23 @@ they also set, and another stop criterion there is an error that names
 those searches as what reads them (``EXPLORE INNER: FTOL_ABS has no effect
 with ALGO NONE (no local search runs; under ALGO GN_MLSL_LDS the block sets
 MLSL's local LN_SBPLX searches, which read MAXEVAL, FTOL_REL,
-XTOL_REL)``); before 1.6.0 REFINE's were accepted under
-``REFIT_OBJECTIVE curve`` too (the FUSE curve refine ran with them).  EXPLORE's ``INNER``
+XTOL_REL)``).  EXPLORE's ``INNER``
 block configures the per-rung local search whatever the EXPLORE
-optimiser, ``UNIFORM`` included.  Before 1.6.0 these keys were accepted
-and ignored:
+optimiser, ``UNIFORM`` included.  A stop criterion in a block that is
+switched off gives, for example:
 
 .. code-block:: none
 
    REFINE: MAXITER has no effect with ALGO NONE (the stage is skipped)
+
    EXPLORE: MAXEVAL has no effect with ALGO UNIFORM (no global search runs)
+
    EXPLORE INNER: FTOL_REL has no effect with ALGO NONE (no local search runs)
 
-An ``INNER`` block without ``ALGO`` used to mean no local
-search, while an EXPLORE ``OPTIMIZER`` block without an ``INNER`` block runs
-the default one (``LN_SBPLX``); leaving a stage's whole ``OPTIMIZER`` block
-out still runs the stage with its defaults:
+An ``INNER`` block without ``ALGO`` is an error, while an EXPLORE
+``OPTIMIZER`` block without an ``INNER`` block runs the default one
+(``LN_SBPLX``); leaving a stage's whole ``OPTIMIZER`` block out runs the
+stage with its defaults:
 
 .. code-block:: none
 
@@ -943,38 +973,33 @@ As in ``tadah hpo``, where every block, ``INNER`` included, sets both
 ``LIB`` and ``ALGO``, a block that runs an optimiser names the library of
 its ``ALGO`` in ``LIB``:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 18 52 30
+EXPLORE
+   ``ALGO`` (fitter name / NLopt name): ``GN_MLSL_LDS`` / ``MLSL``,
+   ``GN_DIRECT_L`` / ``DIRECT``, ``GN_CRS2_LM`` / ``CRS2``. ``LIB``:
+   ``NLOPT``.
 
-   * - Stage
-     - ``ALGO`` (fitter name / NLopt name)
-     - ``LIB``
-   * - EXPLORE
-     - ``GN_MLSL_LDS`` / ``MLSL``, ``GN_DIRECT_L`` / ``DIRECT``,
-       ``GN_CRS2_LM`` / ``CRS2``
-     - ``NLOPT``
-   * - EXPLORE
-     - ``GLOBAL`` / ``DLIB_GLOBAL``
-     - ``DLIB``
-   * - EXPLORE ``INNER``
-     - ``LN_SBPLX`` / ``SBPLX``, ``LN_NELDERMEAD`` / ``NELDERMEAD``,
-       ``LN_BOBYQA`` / ``BOBYQA``, ``LN_PRAXIS`` / ``PRAXIS``, ``LD_LBFGS``
-       / ``NLOPT_LBFGS``
-     - ``NLOPT``
-   * - EXPLORE ``INNER``, REFINE
-     - ``LBFGS`` / ``DLIB_LBFGS``
-     - ``DLIB``
-   * - REFINE
-     - ``LD_LBFGS`` / ``NLOPT_LBFGS``
-     - ``NLOPT``
-   * - REFINE, FUSE
-     - ``LM`` / ``CERES_LM``, ``DOGLEG`` / ``CERES_DOGLEG``
-     - ``CERES``
-   * - every stage
-     - ``NONE``, and ``UNIFORM`` in EXPLORE (EXPLORE: no global search;
-       ``INNER``: no local search; REFINE, FUSE: the stage is skipped)
-     - none: ``LIB`` is an error
+EXPLORE
+   ``ALGO``: ``GLOBAL`` / ``DLIB_GLOBAL``. ``LIB``: ``DLIB``.
+
+EXPLORE ``INNER``
+   ``ALGO``: ``LN_SBPLX`` / ``SBPLX``, ``LN_NELDERMEAD`` / ``NELDERMEAD``,
+   ``LN_BOBYQA`` / ``BOBYQA``, ``LN_PRAXIS`` / ``PRAXIS``, ``LD_LBFGS``
+   / ``NLOPT_LBFGS``. ``LIB``: ``NLOPT``.
+
+EXPLORE ``INNER``, REFINE
+   ``ALGO``: ``LBFGS`` / ``DLIB_LBFGS``. ``LIB``: ``DLIB``.
+
+REFINE
+   ``ALGO``: ``LD_LBFGS`` / ``NLOPT_LBFGS``. ``LIB``: ``NLOPT``.
+
+REFINE, FUSE
+   ``ALGO``: ``LM`` / ``CERES_LM``, ``DOGLEG`` / ``CERES_DOGLEG``. ``LIB``:
+   ``CERES``.
+
+every stage
+   ``ALGO``: ``NONE``, and ``UNIFORM`` in EXPLORE (EXPLORE: no global search;
+   ``INNER``: no local search; REFINE, FUSE: the stage is skipped). ``LIB``:
+   none; ``LIB`` is an error.
 
 The ``ALGO`` names are the refit's own, not those of ``tadah hpo``: the
 refit's dlib global search is ``GLOBAL`` (``tadah hpo``'s ``DLIB GFS``),
@@ -986,8 +1011,7 @@ The refit's ``MLSL``, ``DIRECT`` and ``CRS2`` are NLopt's ``GN_MLSL_LDS``,
 starts) and ``GN_DIRECT`` (DIRECT without the local bias of ``DIRECT_L``)
 are other NLopt algorithms, which ``tadah hpo`` runs as named, and
 ``GN_CRS2`` is no NLopt algorithm: the refit refuses all three, with any
-``LIB``, naming the algorithm it runs.  Before 1.6.0 they ran
-``GN_MLSL_LDS``, ``GN_DIRECT_L`` and ``GN_CRS2_LM``:
+``LIB``, naming the algorithm it runs:
 
 .. code-block:: none
 
@@ -1004,37 +1028,34 @@ optimiser, would have no effect and is an error too:
 
    REFINE: LIB is not set; ALGO LD_LBFGS is an NLopt algorithm, whose LIB
    is NLOPT
+
    EXPLORE: LIB CERES does not match ALGO GN_MLSL_LDS, an NLopt algorithm, whose
    LIB is NLOPT
+
    REFINE: LIB NLOPT does not match ALGO LBFGS, a dlib algorithm, whose LIB is
    DLIB; LIB NLOPT takes ALGO LD_LBFGS
+
    EXPLORE INNER: LIB has no effect with ALGO NONE (no local search runs)
+
    EXPLORE: LIB has no effect with ALGO UNIFORM (no global search runs)
 
-Before 1.6.0 ``LIB`` could be left out where the ``ALGO`` named the
-optimiser (``GN_MLSL_LDS``, ``LN_SBPLX``, ``LM``, ``DLIB_GLOBAL``, and
-``LD_LBFGS`` in an EXPLORE ``INNER`` block) but not elsewhere
-(``LD_LBFGS`` in REFINE), and a ``LIB`` that did not match the ``ALGO``
-was ignored (``LIB CERES ALGO GN_MLSL_LDS`` ran MLSL), and ``UNIFORM``,
-the refit's own uniform start, took any ``LIB`` (``LIB FOO`` included)
-and ignored it.  The numbers are read as strictly as in
+The numbers are read as strictly as in
 ``tadah hpo`` (:ref:`nfp_manual`): ``MAXEVAL`` and ``MAXITER`` take
 decimal digits only, from 1 to 2147483647 (the ``int`` budget the refit
-hands NLopt, dlib and Ceres; ``MAXEVAL 0`` ran Ceres with no iteration and
-NLopt without a limit), the tolerances and ``GTOL`` a finite number >= 0 in
-decimal form (no hexadecimal float such as ``0x1p-40``; 0 switches the test
-off).  Before 1.6.0 a negative tolerance was accepted: Ceres refused it and
-returned without iterating, and the refit logged that as the stage's stop
-term (``refine=FAILURE(0it, Invalid configuration...)``), so REFINE or FUSE
-did nothing; NLopt switches a negative tolerance off.  Every error of a
+hands NLopt, dlib and Ceres), the tolerances and ``GTOL`` a finite number
+>= 0 in decimal form (no hexadecimal float such as ``0x1p-40``; 0 switches
+the test off).  Every error of a
 stage's ``OPTIMIZER`` block names the block, an ``INNER`` block's as
 ``EXPLORE INNER``:
 
 .. code-block:: none
 
    REFINE: FTOL_REL must be a finite number, got '0x1p-40'
+
    REFINE: GTOL must be a number >= 0, got '-1'
-   EXPLORE INNER: MAXEVAL must be an integer from 1 to 2147483647, got '4294967299'
+
+   EXPLORE INNER: MAXEVAL must be an integer from 1 to 2147483647, got
+   '4294967299'
 
 Output files
 ------------
@@ -1048,7 +1069,7 @@ Output files
   by the constant that joins it to the fit there (:math:`\rho` clamped at 0
   under ``NONNEG`` and ``MONOTONE``). ``pot.tadah`` is valid from the inner
   fit bound out only.
-* ``refit.hpotarget`` — ``tadah hpo`` starter target.  Its ``OPTIM`` groups
+* ``refit.hpotarget`` — target file for ``tadah hpo``.  Its ``OPTIM`` groups
   are written as ``CGRID2B``, ``SGRID2B``, ``CGRIDMB``, …, ``FIXWEIGHT``;
   ``tadah hpo`` orders the dimensions by key whatever the order of the
   lines (:ref:`dimension order <hpo_dimension_order>`).
@@ -1069,16 +1090,11 @@ Output files
   wall), and a small uniform basis covers the rest down to ``full_lo``;
   with ``REFIT_PLACEMENT uniform`` it starts at ``full_lo``.
   ``refit_curve_{phi,rho,F}.dat`` flag the same windows (``in_window``).
-  Before 1.6.0 ``fit_window_lo`` was 0.9 × r_reach in both modes (``full_lo``
-  under ``REFIT_PLACEMENT uniform``), which is neither fit's window, and the
-  curve files flagged r >= 0.9 × r_reach (under ``REFIT_PLACEMENT uniform``
-  r >= 0.15 × rcut, every row of the files, whatever ``full_lo`` was).
   The note of its ``F`` row says what lies above the embedding window:
   after a compact fit ``refit.eam`` carries the original table there
   (offset-matched); the dense fit keeps a small uniform tail basis there
   (``REFIT_PLACEMENT window``) or fits one uniform basis on the full range
-  (``REFIT_PLACEMENT uniform``). Before 1.6.0 every fit had the tail
-  basis note.
+  (``REFIT_PLACEMENT uniform``).
 
 .. _refit_dense:
 
@@ -1086,7 +1102,7 @@ Dense mode
 ----------
 
 ``REFIT_MODE dense`` fits fixed basis grids instead of the ladder, with the
-grid sizes set directly. The keys of this table are read by dense mode only:
+grid sizes set directly. The keys below are read by dense mode only:
 ``REFIT_MODE compact`` refuses them (:ref:`Keys of the other mode
 <refit_mode_keys>`). Large dense grids reach very high accuracy, but every
 basis function becomes a search dimension in :ref:`nested fitting
@@ -1094,43 +1110,40 @@ basis function becomes a search dimension in :ref:`nested fitting
 ``tadah hpo`` search much larger. Compact mode (a small optimised basis) is
 the recommended choice when the refit will be tuned further.
 
-.. list-table::
-   :header-rows: 1
-   :widths: 28 12 60
+``REFIT_LEVEL``
+   Default ``balanced``. Preset grid density: ``coarse`` | ``balanced`` |
+   ``fine`` | ``accurate``, in any letter case; another value is an error.
 
-   * - Key
-     - Default
-     - Effect
-   * - ``REFIT_LEVEL``
-     - ``balanced``
-     - Preset grid density: ``coarse`` | ``balanced`` | ``fine`` | ``accurate``,
-       in any letter case; another value is an error.
-   * - ``N2B``
-     - —
-     - :math:`\phi(r)` basis count, from 1 to 1024 (the escalation's cap).
-   * - ``NRHO_BASIS``
-     - —
-     - :math:`\rho(r)` basis count, from 1 to 1024. Under ``RHOFORM NONNEG``/``MONOTONE``
-       the density solve is non-negative least squares, whose cost grows
-       faster with the count (:ref:`refit_rhoform`).
-   * - ``NF_BASIS``
-     - —
-     - :math:`F(\rho)` basis count, from 1 to 1024.
-   * - ``REFIT_MAX_ESCALATIONS``
-     - ``4``
-     - Automatic basis-escalation rounds while above tolerance, from 0. An
-       error with ``DESCRIPTOR`` blocks: a component fit has the basis its
-       block declares (``CENTRES AUTO <count>``).
-   * - ``REFIT_CONSTRAIN_F0``
-     - ``true``
-     - Under ``EMBF0 FREE``: pins the raw :math:`F(0)` softly to the table
-       value. An error under the default ``EMBF0 ZERO``, where
-       :math:`F(0) = 0` by construction.
-   * - ``REFIT_PLACEMENT``
-     - ``window``
-     - ``window`` places the basis on the reachable window; ``uniform``
-       spreads it over the full range; in any letter case, another value
-       is an error. (The compact fit always fits on the reachable windows.)
+``N2B``
+   Default: the ``REFIT_LEVEL`` preset (24, 44, 60, 80 for ``coarse``,
+   ``balanced``, ``fine``, ``accurate``). :math:`\phi(r)` basis count, from
+   1 to 1024 (the escalation's cap).
+
+``NRHO_BASIS``
+   Default: the ``REFIT_LEVEL`` preset (20, 36, 48, 64). :math:`\rho(r)`
+   basis count, from 1 to 1024. Under
+   ``RHOFORM NONNEG``/``MONOTONE`` the density solve is non-negative least
+   squares, whose cost grows faster with the count (:ref:`refit_rhoform`).
+
+``NF_BASIS``
+   Default: the ``REFIT_LEVEL`` preset (60, 100, 130, 180). :math:`F(\rho)`
+   basis count, from 1 to 1024.
+
+``REFIT_MAX_ESCALATIONS``
+   Default ``4``. Automatic basis-escalation rounds while above tolerance,
+   from 0. An error with ``DESCRIPTOR`` blocks: a component fit has the basis
+   its block declares (``CENTRES AUTO <count>``).
+
+``REFIT_CONSTRAIN_F0``
+   Default ``true``. Under ``EMBF0 FREE``: pins the raw :math:`F(0)` softly
+   to the table value. An error under the default ``EMBF0 ZERO``, where
+   :math:`F(0) = 0` by construction.
+
+``REFIT_PLACEMENT``
+   Default ``window``. ``window`` places the basis on the reachable window;
+   ``uniform`` spreads it over the full range; in any letter case, another
+   value is an error. (The compact fit always fits on the reachable
+   windows.)
 
 Dense ``REFIT_BASIS`` families are ``Blip`` | ``Blip5`` | ``Gaussian``
 (``Gaussian``, ``gaussian``, ``BP``, ``D2_BP``: experimental, with a
@@ -1165,8 +1178,8 @@ The many-body term is **optional**:
 * *pure two-body potentials* (``TYPE2B`` only — e.g. hand-built knot pair
   potentials) are fully supported through ``--func phi``;
 * *DM_Embed potentials* (as ``tadah refit`` writes them; :ref:`dm_embed`
-  describes how a component is edited) and *DM_REAM potentials* (as
-  ``tadah refit`` wrote them before 1.6.0) expose all three curves;
+  describes how a component is edited) and *DM_REAM potentials* expose all
+  three curves;
 * *any other many-body descriptor* restricts editing to ``--func phi`` —
   the many-body keys and their WEIGHTS block ride along untouched (the
   pair block is always the WEIGHTS prefix).
@@ -1174,7 +1187,7 @@ The many-body term is **optional**:
 **Adding** inserts the function with coefficient 0, so the edited potential
 predicts **bit-identically** to the input — value, every derivative, and the
 extrapolation region. The new coefficient only adds capacity: it appears as
-an extra ``OPTIM FIXWEIGHT`` line in the regenerated hpotarget, ready for a
+an extra ``OPTIM FIXWEIGHT`` line in the regenerated target file, ready for a
 ``tadah hpo`` search. Knot families take an optional ``--deg 3|5`` (default
 quintic; 3 materialises the per-knot ``KDEG*`` degree arrays) and reject
 ``--eta`` (the knot width is a pure gauge). Blip families take an optional
@@ -1210,9 +1223,15 @@ key and what reads it:
 
 .. code-block:: none
 
-   tadah refit --edit: N2B has no effect under --edit: only a refit of an EAM file in REFIT_MODE dense reads it; remove N2B
-   tadah refit --edit: REFIT_TOL_AMBIENT has no effect under --edit: only a refit of an EAM file reads it; remove REFIT_TOL_AMBIENT
-   tadah refit --retarget: the REFINE block has no effect under --retarget: only a refit of an EAM file in REFIT_MODE compact reads it; remove the REFINE block
+   tadah refit --edit: N2B has no effect under --edit: only a refit of an EAM
+   file in REFIT_MODE dense reads it; remove N2B
+
+   tadah refit --edit: REFIT_TOL_AMBIENT has no effect under --edit: only a
+   refit of an EAM file reads it; remove REFIT_TOL_AMBIENT
+
+   tadah refit --retarget: the REFINE block has no effect under --retarget: only
+   a refit of an EAM file in REFIT_MODE compact reads it; remove the REFINE
+   block
 
 The keys of either ``REFIT_MODE`` (``REFIT_MODE``, ``REFIT_BASIS``,
 ``REFIT_TOL_*``, ``REFIT_REACH_*``, ``REFIT_R_LO_FRAC``,
@@ -1222,7 +1241,7 @@ blocks are refused this way, and so is a top-level ``OPTIMIZER`` block,
 which no mode reads; ``--retarget`` also refuses ``HPOFILEOUT``
 (``--hpofileout``), which ``--edit`` reads (:ref:`refit_retarget`). The
 defaults ``tadah`` stores for the keys the configuration does not set are
-not refused. Before 1.6.0 these keys were ignored. ``NUMERIC``, the
+not refused. ``NUMERIC``, the
 precision of the potential a refit and ``--edit`` write, is refused under
 ``--retarget`` (:ref:`refit_retarget`). ``--edit`` takes it from its own
 run only: a ``NUMERIC`` line of the edited potential (every
@@ -1234,8 +1253,11 @@ and ``--retarget``: ``tadah refit -c refit.cfg --rcut2b 4.5`` (or
 ``--rcutmb``, ``--pct``, ``--set``, ``--rhoform``) is refused before the
 refit runs (``--rcut2b requires --retarget``), and a refit configuration that sets
 one of their keys is an error naming it (``tadah refit: the RETARGET_RCUT2B
-key requires --retarget <file.hpotarget>.``). Before 1.6.0 ``--rcut2b`` and
-``--rcutmb`` were accepted by a refit and had no effect.
+key requires --retarget <file.hpotarget>.``).
+
+.. versionchanged:: 1.6.0
+   Refit-only keys under ``--edit`` or ``--retarget``, and ``--rcut2b`` or
+   ``--rcutmb`` in a refit, are refused; 1.5.0 ignored them.
 
 ``EMBF0`` and ``RHOFORM`` are properties of the potential. A configuration
 passed with ``-c`` may set them only to the potential's own values: a
@@ -1249,8 +1271,9 @@ it.
 (the log states it), and the edited potential keeps it (a component's
 ``FORM``, a DM_REAM potential's ``RHOFORM`` line). A DM_REAM input must
 declare ``RHOFORM`` (a DM_REAM potential without it stops
-with ``pot edit: DM_REAM: RHOFORM is required: ...``; a fit written before
-tadah 1.6.0 needs ``RHOFORM SIGNED`` added), and under ``NONNEG`` and
+with ``pot edit: DM_REAM: RHOFORM is required: ...``; a tadah 1.5.0 fit
+keeps its :ref:`density <dm_ream_rhoform>` with ``RHOFORM SIGNED`` added),
+and under ``NONNEG`` and
 ``MONOTONE`` its density must pass the checks DM_REAM applies on load (the messages are
 prefixed ``pot edit:``). **Adding** inserts a coefficient of 0, which is
 valid in every form; under ``MONOTONE`` the new function is a step
@@ -1270,9 +1293,7 @@ Outputs default to ``pot_edited.tadah`` and ``refit_edited.hpotarget`` — the
 input file is never overwritten silently (an explicit ``-o`` /
 ``--hpofileout`` wins, on the command line or in a configuration file,
 whatever its name: ``-o pot.tadah`` writes ``pot.tadah``; writing onto
-the input is refused). In 1.5.0 a name equal to the default of a
-refit (``pot.tadah``, ``refit.hpotarget``) counted as unset, and the edited
-names were written instead, without a word. ``--retarget``
+the input is refused). ``--retarget``
 writes ``<input>_retargeted.hpotarget`` by default (below), so an
 ``--edit`` and a ``--retarget refit.hpotarget`` write different files. An output that
 cannot be written (a missing directory, a directory in its place) stops the
@@ -1280,6 +1301,11 @@ command with an error naming the file, here as in every ``refit`` mode and
 in ``tadah train``. All bookkeeping
 (``TYPE2B`` / ``TYPEMB`` count tokens, ``WEIGHTS``, ``FIXINDEX``/
 ``FIXWEIGHT``, ``KDEG*``, ``RCUT2B``/``RCUTMB``) is regenerated consistently.
+
+.. versionchanged:: 1.6.0
+   An explicit output name equal to the default of a refit (``pot.tadah``,
+   ``refit.hpotarget``) is written as given; 1.5.0 wrote the edited names
+   instead.
 
 The :ref:`training record <training_record>` of the edited potential is
 that of its input, after a line naming the input::
@@ -1289,12 +1315,11 @@ that of its input, after a line naming the input::
    # OUTFILE pot.tadah
    # --- end of training record ---
 
-An edit fits nothing: its weights are the input's, edited, so the record of
+An edit fits nothing: its coefficients are the input's, edited, so the record of
 the fit that produced them still describes them, and the edit's own ``-o``,
 ``-v`` and ``NUMERIC`` are not added (an edit of an edit lists both
 ``edited by`` lines, newest first). A ``DBFILE``,
-``VERBOSE``, ``NUMERIC`` (and so on) key line of an input an earlier
-version wrote, or one of the keys that prepared its training data
+``VERBOSE``, ``NUMERIC`` (and so on) key line of the input, or one of the keys that prepared its training data
 (``ESHIFT_ATOM``, ``EFILTER``, ``WDBFILE``, ...), is not a key line of the
 edit and is not read (the edit runs at its own ``-v`` and ``NUMERIC``): the
 edit's record lists it.
@@ -1312,10 +1337,10 @@ refit's ``-o``, ``-v`` and ``NUMERIC`` when they were given (above, the
 
 .. _refit_retarget:
 
-Rewriting HPO search bounds (``--retarget``)
---------------------------------------------
+Rewriting search bounds (``--retarget``)
+----------------------------------------
 
-The hpotarget written by ``refit`` uses ±\ ``OPTIM_PCT`` (default 5 %)
+The target file written by ``refit`` uses ±\ ``OPTIM_PCT`` (default 5 %)
 bounds. ``--retarget`` rewrites them without re-running anything::
 
    # widen every bound to +-10%, coefficients to +-2%
@@ -1345,11 +1370,7 @@ to ``<input>_retargeted.hpotarget`` by default (``refit_retargeted.hpotarget``
 for ``refit.hpotarget``; the extension and directory are the input's),
 ``-o <name>`` (any name, ``pot.tadah`` included), or back into the input
 with ``--in-place``, which an ``OUTFILE`` set in a configuration file
-contradicts as ``-o`` does (refused). Before 1.6.0 the
-default was ``<input>_edited.hpotarget``: for ``refit.hpotarget`` that is
-``refit_edited.hpotarget``, the hpotarget ``--edit`` writes, and of the two
-runs the second overwrote the first one's file (the two are searches around
-different potentials).
+contradicts as ``-o`` does (refused).
 
 .. versionchanged:: 1.6.0
    An ``OPTIM`` line of another form was kept without a warning (a line of
@@ -1361,7 +1382,7 @@ different potentials).
    of its own.
 
 The numbers of ``--pct`` and ``--set`` are read with the number grammar of
-the hpotarget file, which ``tadah hpo`` reads the rewritten bounds with
+the target file, which ``tadah hpo`` reads the rewritten bounds with
 (:ref:`nfp_manual`): an optional sign, decimal digits with at most one
 ``.``, an optional exponent, a finite value that is zero or a normal double.
 ``5x``, ``0x10``, ``inf``, ``nan`` and ``1e-320`` are errors naming the
@@ -1380,11 +1401,15 @@ take the keys of a refit of an EAM file (:ref:`as --edit does not
 or, with ``--in-place``, the input (``tadah refit --retarget: HPOFILEOUT
 has no effect under --retarget: only a refit of an EAM file and --edit read
 it; remove HPOFILEOUT (the file --retarget writes is -o, OUTFILE)``).
-Before 1.6.0 ``--hpofileout`` was ignored, and the file was written to
-``<input>_edited.hpotarget``. ``NUMERIC`` is refused the same way (``NUMERIC
+``NUMERIC`` is refused the same way (``NUMERIC
 has no effect under --retarget``): the bounds of the file are printed
 ``%.8e`` (9 significant digits) whatever ``NUMERIC`` is, as in every
-hpotarget ``tadah refit`` writes.
+target file ``tadah refit`` writes.
+
+.. versionchanged:: 1.6.0
+   The default output of ``--retarget`` is ``<input>_retargeted.hpotarget``;
+   1.5.0 wrote ``<input>_edited.hpotarget`` (for ``refit.hpotarget`` the
+   file ``--edit`` writes) and ignored ``--hpofileout``.
 
 Retargeting a freshly-emitted file at the same percentage reproduces it
 byte-for-byte, and any retargeted file is a fixed point of further
@@ -1427,15 +1452,15 @@ a component's form is its potential's ``FORM``, and its radius is the
 ``RADIUS`` of its ``CUTOFF`` block. ``tadah hpo`` refuses ``OPTIM CGRIDMB``
 (``SGRIDMB``, ``AMPGRIDMB``, ``CEMBFUNC``, ``SEMBFUNC``, ``RCUTMB``) for a
 DM_Embed potential, naming the component path (:ref:`dm_embed_parameters`):
-the keys of a target written for an older refit need renaming, or the target
+these keys need renaming to component paths, or the target file
 needs regenerating.
 
-**Density form.** Under ``RHOFORM NONNEG`` and ``MONOTONE`` the hpotarget
-of a DM_REAM potential (written by ``refit --edit`` of one, or by
-``refit`` before 1.6.0) keeps every ``AMPGRIDMB`` box
+**Density form.** Under ``RHOFORM NONNEG`` and ``MONOTONE`` the target file
+of a DM_REAM potential (written by ``refit --edit`` of one) keeps every
+``AMPGRIDMB`` box
 non-negative, :math:`lo = \max(0, v - d)` (a zero amplitude gets
 :math:`[0, d]`), and records the form in a header line, because the
-hpotarget does not carry the potential::
+target file does not carry the potential::
 
    # RHOFORM NONNEG: AMPGRIDMB bounds are non-negative (lo = max(0, v - d))
 
@@ -1444,12 +1469,13 @@ at ``lo = 0`` from its upper bound without a warning, clamps every
 rewritten ``AMPGRIDMB`` lower bound at 0, keeps the line, says so in the log
 (``tadah refit --retarget: <file> declares RHOFORM <form>: ...``) and
 refuses ``--set 'AMPGRIDMB(i)=lo,hi'`` with ``lo < 0`` (``tadah hpo``
-refuses such a box under that form as well). A ``SIGNED`` hpotarget has no
-such line and is written exactly as before. A header line that names no
+refuses such a box under that form as well). A ``SIGNED`` target file has no
+such line, and ``--retarget`` does not clamp its ``AMPGRIDMB`` lower bounds.
+A header line that names no
 density form is an error at its line.
 
 ``--rhoform SIGNED|NONNEG|MONOTONE`` states the form of the potential the
-file searches around, for an hpotarget written without the line (by a
+file searches around, for a target file written without the line (by a
 ``SIGNED`` potential, or before the potential declared a positive form).
 Under ``NONNEG`` or ``MONOTONE`` every rewritten ``AMPGRIDMB`` box is
 non-negative by the writer's rule and the header line is added where the
@@ -1463,7 +1489,7 @@ makes it ``[0, 8.5e-5]`` and adds ``# RHOFORM NONNEG: AMPGRIDMB bounds are
 non-negative (lo = max(0, v - d))``; later retargets read the form from the
 line. ``--rhoform SIGNED`` adds nothing. A file whose header names another
 form is refused, naming the line (``--rhoform MONOTONE conflicts with the
-file: line 10 declares RHOFORM NONNEG ...``): an hpotarget searches around
+file: line 10 declares RHOFORM NONNEG ...``): a target file searches around
 one potential, whose form does not change.
 
 .. _refit_rcut_contract:
@@ -1473,48 +1499,46 @@ Cutoffs: knot channels are derived, blip channels are fixed
 
 The two basis families treat ``RCUT2B`` / ``RCUTMB`` differently:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 18 41 41
+Knot (``Knot5``/``Knot3``)
+   Effective cutoff: the **largest knot position** — each knot function
+   :math:`(t - r)_+^k` vanishes :math:`C^{k-1}`-smoothly at its own knot
+   (:math:`C^4` for ``Knot5``, :math:`C^2` for ``Knot3``), so nothing exists
+   beyond the largest one.
 
-   * - Family
-     - Effective cutoff
-     - RCUT keys
-   * - Knot (``Knot5``/``Knot3``)
-     - The **largest knot position** — each knot function
-       :math:`(t - r)_+^k` vanishes :math:`C^4`-smoothly at its own knot, so
-       nothing exists beyond the largest one.
-     - **Derived.** On a line of one knot descriptor every consumer
-       (``refit``, ``--edit``, ``--retarget``, ``train``, ``predict``,
-       ``hpo``) recomputes them from the largest knot; any differing stated
-       value is replaced by it (a WARNING when the gap exceeds ``1e-9``
-       relative or the cutoff is smooth, INFO otherwise). On a ``D2_mJoin``
-       or ``DM_mJoin`` line of a potential, ``tadah predict`` and
-       ``tadah refit --edit`` keep the stated cutoffs, with which its
-       coefficients were fitted; a fit (``tadah train``, ``tadah hpo``)
-       derives each knot descriptor's own entry. Moving ``RCUT`` anywhere
-       at or beyond the largest knot is
-       prediction-exact only under a hard cutoff (``Cut_Dummy``): a smooth
-       ``RCTYPE`` evaluates :math:`f_c(r)` with the ``RCUT`` value for
-       every pair. ``pair_style tadah`` in LAMMPS reads the stated ``RCUT``
-       and does not re-derive it (as described below).
-   * - Blip (``Blip``/``Blip5``)
-     - The stated ``RCUT`` — blips near the cutoff overhang it and are
-       hard-truncated there **by design** (the truncation was present during
-       the fit).
-     - **Authoritative.** Never auto-changed; warnings only (a centre beyond
-       ``RCUT``, or OPTIM bounds that let a blip's support cross it).
+   ``RCUT`` keys: **derived.** On a line of one knot descriptor every
+   consumer (``refit``, ``--edit``, ``--retarget``, ``train``, ``predict``,
+   ``hpo``) recomputes them from the largest knot; any differing stated
+   value is replaced by it (a WARNING when the gap exceeds ``1e-9``
+   relative or the cutoff is smooth, INFO otherwise). On a ``D2_mJoin``
+   or ``DM_mJoin`` line of a potential, ``tadah predict`` and
+   ``tadah refit --edit`` keep the stated cutoffs, with which its
+   coefficients were fitted; a fit (``tadah train``, ``tadah hpo``)
+   derives each knot descriptor's own entry. Moving ``RCUT`` anywhere
+   at or beyond the largest knot is
+   prediction-exact only under a hard cutoff (``Cut_Dummy``): a smooth
+   ``RCTYPE`` evaluates :math:`f_c(r)` with the ``RCUT`` value for
+   every pair. ``pair_style tadah`` in LAMMPS reads the stated ``RCUT``
+   and does not re-derive it (as described below).
+
+Blip (``Blip``/``Blip5``)
+   Effective cutoff: the stated ``RCUT`` — blips near the cutoff overhang it
+   and are hard-truncated there **by design** (the truncation was present
+   during the fit).
+
+   ``RCUT`` keys: **authoritative.** Never auto-changed; warnings only (a
+   centre beyond ``RCUT``, or OPTIM bounds that let a blip's support cross
+   it).
 
 Practical consequences for knot potentials:
 
 * The effective cutoff changes with the ``CGRID2B`` / ``CGRIDMB`` knot
-  positions (``OPTIM CGRID2B`` in the hpotarget, or ``--edit --add`` beyond
+  positions (``OPTIM CGRID2B`` in the target file, or ``--edit --add`` beyond
   the current largest knot). A search of ``OPTIM RCUT2B`` / ``RCUTMB`` is
-  **not** useful — the keys are re-derived on every HPO evaluation, so that
-  dimension is wasted (warned at startup).
+  **not** useful — the keys are re-derived on every ``tadah hpo`` evaluation,
+  so that dimension is wasted (warned at startup).
 * During ``tadah hpo`` the neighbour list is sized once for the largest
-  cutoff the search can reach (including the upper bounds of OPTIM'd knot
-  positions), and rebuilt for an evaluation outside the ``OPTIM`` box that
+  cutoff the search can reach (including the upper bounds of knot
+  positions with an ``OPTIM`` line), and rebuilt for an evaluation outside the ``OPTIM`` box that
   reaches further (counted in ``DIAGNOSTICS``); the RCUT keys follow the
   moving knots automatically; the written ``best_pot.tadah`` is always
   self-consistent.

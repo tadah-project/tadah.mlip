@@ -1,51 +1,46 @@
 .. _strategy_block:
 
-.. _type-multistart:
+The STRATEGY, EXPLORE and REFINE Blocks
+=======================================
+
+This page shows how a search runs its optimiser: once, from several
+starting points, or as an exploration followed by a refinement. It
+assumes familiarity with the target file (:doc:`nfp_configuration`) and
+the ``OPTIMIZER`` block (:doc:`nfp_optimizer_settings`).
+
+:hpo:block:`STRATEGY <BLOCK.STRATEGY>` selects how the optimiser runs.
+At most one such block is allowed inside
+:hpo:block:`OPTIMIZER <BLOCK.OPTIMIZER>`. Without it, the main optimiser
+runs with :hpo:key:`TYPE PLAIN <STRATEGY.TYPE.PLAIN>`. Common optimiser
+settings are described in :doc:`nfp_optimizer_settings`.
+
+Keys of the STRATEGY block
+--------------------------
+
+The block has the keys :hpo:key:`TYPE <STRATEGY.TYPE>`,
+:hpo:key:`N_STARTS <STRATEGY.N_STARTS>`,
+:hpo:key:`BUDGET_PER_START <STRATEGY.BUDGET_PER_START>` and
+:hpo:key:`TOPK <STRATEGY.TOPK>`. :hpo:key:`!TYPE <STRATEGY.TYPE>` selects
+how the optimiser runs; each of the other keys belongs to one type and is
+described in the section of that type below. The reference entry of each
+key gives its values, range and default.
+
+A key of another :hpo:key:`!TYPE <STRATEGY.TYPE>` is refused, even when
+its value equals its default. A :hpo:block:`RESTART <BLOCK.RESTART>`
+block is optional inside :hpo:block:`!STRATEGY <BLOCK.STRATEGY>` for
+every :hpo:key:`!TYPE <STRATEGY.TYPE>` (see :doc:`nfp_restart`). An
+:hpo:block:`INNER <BLOCK.INNER>` block sets the local search that
+NLopt's MLSL and AUGLAG algorithms run (see :doc:`nfp_inner`).
 
 .. _type-plain:
-
-.. _type-prestage-staged-global-local:
-
-Run policies: STRATEGY, EXPLORE and REFINE
-==========================================
-
-``STRATEGY`` selects how the optimiser runs. At most one such block is
-allowed inside ``OPTIMIZER``. Without it, the main optimiser runs with
-``TYPE PLAIN``. Common optimiser settings are described in
-:doc:`nfp_optimizer_settings`.
-
-Policy keys
------------
-
-.. list-table::
-   :header-rows: 1
-   :widths: 25 75
-
-   * - Key
-     - Values and use
-   * - ``TYPE``
-     - ``PLAIN`` (default), ``MULTISTART`` or ``PRESTAGE``.
-   * - ``N_STARTS``
-     - Integer >= 2, no default; ``MULTISTART`` only, which requires it
-       (one start is ``PLAIN``).
-   * - ``BUDGET_PER_START``
-     - Integer in ``[1, 2147483647]``, no default; per-start ``MAXEVAL``
-       override for ``MULTISTART``.
-   * - ``TOPK``
-     - Positive integer, default ``1``; number of exploration candidates
-       requested for ``PRESTAGE`` refinement.
-
-Keys for another policy are rejected, even when their value equals its
-default. ``RESTART`` is an optional child of any policy; see
-:doc:`nfp_restart`. ``INNER`` is available for eligible NLopt backends;
-see :doc:`nfp_inner`.
-
-.. _one-search-plain:
 
 Single search: PLAIN
 --------------------
 
-Run the selected optimiser once::
+:hpo:key:`TYPE PLAIN <STRATEGY.TYPE.PLAIN>` runs the selected optimiser
+once:
+
+.. code-block:: none
 
    STRATEGY
      TYPE PLAIN
@@ -54,23 +49,23 @@ Run the selected optimiser once::
      MAXEVAL 200
    ENDSTRATEGY
 
-.. _several-searches-multistart:
+.. _type-multistart:
 
 Multiple searches: MULTISTART
 -----------------------------
 
-``MULTISTART`` runs :hpo:key:`N_STARTS <STRATEGY.N_STARTS>` separate
-starts, one from each of the first
-:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` points of the
+:hpo:key:`MULTISTART <STRATEGY.TYPE.MULTISTART>` runs
+:hpo:key:`N_STARTS <STRATEGY.N_STARTS>` separate starts, one from each
+of the first :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` points of the
 :hpo:block:`INIT <BLOCK.INIT>` chain; :doc:`nfp_initialisation` supplies
-the points. ``MULTISTART`` runs a local optimiser from each start. It
-refuses a global optimiser that takes one starting point, and an
-optimiser that takes every :hpo:block:`!INIT <BLOCK.INIT>` point in one
-run, :hpo:opt:`DLIB:GFS`, which it would run once whatever
-:hpo:key:`!N_STARTS <STRATEGY.N_STARTS>`.
-:hpo:key:`TYPE PLAIN <STRATEGY.TYPE.PLAIN>` runs either once;
-:hpo:opt:`!DLIB:GFS` then takes every :hpo:block:`!INIT <BLOCK.INIT>`
-point.
+the points. :hpo:key:`!MULTISTART <STRATEGY.TYPE.MULTISTART>` runs a
+local optimiser from each start. It refuses a global optimiser that
+takes one starting point. It also refuses :hpo:opt:`DLIB:GFS`, which
+takes every :hpo:block:`!INIT <BLOCK.INIT>` point in one run and so would
+run once whatever :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>`.
+:hpo:key:`TYPE PLAIN <STRATEGY.TYPE.PLAIN>` runs each of these
+optimisers once; :hpo:opt:`!DLIB:GFS` then takes every
+:hpo:block:`!INIT <BLOCK.INIT>` point.
 
 An :hpo:block:`!INIT <BLOCK.INIT>` chain that gives fewer points than
 :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` is refused at startup
@@ -88,25 +83,34 @@ startup warning says so.
    once, and ran fewer starts than :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>`
    from a chain of fewer points.
 
-If ``BUDGET_PER_START`` is absent, a main ``MAXEVAL M`` is divided among
-``k`` actual starts as ``ceil(M/k)`` per start. Rounding can make the sum
-larger than ``M``. A supplied ``BUDGET_PER_START`` replaces this division.
-``MAXTIME`` applies separately to each search.
+If :hpo:key:`BUDGET_PER_START <STRATEGY.BUDGET_PER_START>` is absent, a
+main :hpo:key:`MAXEVAL <OPTIMIZER.MAXEVAL>` ``M`` is divided among ``k``
+actual starts as ``ceil(M/k)`` per start. Rounding can make the sum
+larger than ``M``. A supplied
+:hpo:key:`!BUDGET_PER_START <STRATEGY.BUDGET_PER_START>` replaces this
+division. :hpo:key:`MAXTIME <OPTIMIZER.MAXTIME>` applies separately to
+each search.
 
-Separate starts run one after another. ``THREADS`` sets the workers that
-run the evaluation work within each search.
+Separate starts run one after another.
+:hpo:key:`THREADS <OPTIMIZER.THREADS>` sets the workers that run the
+evaluation work within each search.
 
-.. _explore-then-refine-prestage:
+.. _type-prestage-staged-global-local:
 
 Staged search: PRESTAGE
 -----------------------
 
-Declare ``TYPE PRESTAGE`` before its phase blocks. ``EXPLORE`` is
-required and has its own ``LIB`` and ``ALGO``. It runs once and collects
-up to ``TOPK`` distinct candidates with usable losses.
+:hpo:key:`TYPE PRESTAGE <STRATEGY.TYPE.PRESTAGE>` must come before the
+:hpo:block:`EXPLORE <BLOCK.EXPLORE>` and
+:hpo:block:`REFINE <BLOCK.REFINE>` blocks.
+:hpo:block:`!EXPLORE <BLOCK.EXPLORE>` is required and has its own
+:hpo:key:`LIB <OPTIMIZER.LIB>` and :hpo:key:`ALGO <OPTIMIZER.ALGO>`. It
+runs once and collects up to :hpo:key:`TOPK <STRATEGY.TOPK>` distinct
+candidates with usable losses.
 
-``REFINE`` groups the main optimiser's settings. Values written there
-configure the same optimiser as settings at ``STRATEGY`` level.
+:hpo:block:`!REFINE <BLOCK.REFINE>` groups the main optimiser's
+settings. Values written there configure the same optimiser as settings
+at :hpo:block:`!STRATEGY <BLOCK.STRATEGY>` level.
 
 .. code-block:: none
 
@@ -128,13 +132,17 @@ configure the same optimiser as settings at ``STRATEGY`` level.
    ENDSTRATEGY
 
 The refinement optimiser must use the starting point it is given.
-``TOPK > 1`` additionally requires a local or multi-seed backend. The
-refinement budget is divided among actual candidates by the same rule
-as ``MULTISTART``; exploration has its separate budget.
+:hpo:key:`!TOPK <STRATEGY.TOPK>` above 1 requires an optimiser that runs
+from each start, or one that takes several starting points in one run.
+The refinement budget is divided among actual candidates by the same
+rule as :hpo:key:`MULTISTART <STRATEGY.TYPE.MULTISTART>`; exploration
+has its separate budget.
 
-When fewer than ``TOPK`` usable candidates exist, those candidates are
-refined. When every exploration evaluation fails, the driver warns and
-runs refinement from the main ``INIT`` points instead. An exploration
-``INIT`` chain overrides the shared main starting points. A refinement
-``INIT`` chain configures those main points. Usable exploration candidates
-take precedence as refinement starting points.
+When fewer than :hpo:key:`!TOPK <STRATEGY.TOPK>` usable candidates exist,
+those candidates are refined. When every exploration evaluation fails, a
+warning is written and refinement runs from the main
+:hpo:block:`INIT <BLOCK.INIT>` points instead. An exploration
+:hpo:block:`!INIT <BLOCK.INIT>` chain overrides the shared main starting
+points. A refinement :hpo:block:`!INIT <BLOCK.INIT>` chain configures
+those main points. Usable exploration candidates take precedence as
+refinement starting points.

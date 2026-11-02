@@ -131,9 +131,9 @@ The priority of an observation is the product of two numbers, each >= 0:
 A per-structure value of 0 means that the structure has no such label.
 Its energy (forces, stress) is left out of the fit, of the metrics of
 ``tadah predict -A`` and ``tadah hpo`` and of the data statistics. An
-energy of priority 0 takes no part in the derived ``ESHIFT``. ``WDBFILE 0`` leaves a
-dataset out of the fit only: its structures still count for the energy
-shift, the filters and the data statistics. A negative or non-finite value
+energy whose ``eweight`` is 0 takes no part in the derived ``ESHIFT``.
+``WDBFILE 0`` leaves a dataset out of the fit only: its structures still
+count for the energy shift, the filters and the data statistics. A negative or non-finite value
 is refused.
 
 Priorities say which structures and datasets matter more; the error
@@ -174,8 +174,9 @@ same error scale.
 Neither adds capacity to the model: priorities and error scales move
 accuracy between data. ``tadah hpo`` can search ``ESIGMA``, ``FSIGMA``,
 ``SSIGMA`` and ``WDBFILE`` against the validation metrics and properties of
-a run (:hpo:key:`OPTIM.TARGET.ESIGMA`); its loss-term weights are a
-separate thing, the weights of the outer loss (:ref:`loss_functions`).
+a run (:hpo:key:`OPTIM.TARGET.ESIGMA`). Its loss-term weights are the
+multipliers of the terms of the ``tadah hpo`` loss, not of the observations
+of a fit (:ref:`loss_functions`).
 
 .. _fit_objective_conversion:
 
@@ -191,9 +192,10 @@ until the line is deleted (:ref:`UNCERTAINTY`). Such a
 potential loads wherever it is read (``tadah predict``, ``pair_style
 tadah``, ``tadah analysis``, ``tadah properties``, ``tadah refit
 --edit``), with one notice per load that lists the lines. Every fit refuses
-a configuration that has one, naming each line and its conversion, and
-marks a line that deleting it converts; ``tadah refit --edit`` keeps the
-lines, so the edited potential is refused too. The ``SIGMA`` line of an
+a configuration that has one of these lines. The message names each line and
+its conversion, and marks each line whose conversion is to delete it.
+``tadah refit --edit`` keeps the lines, so the edited potential is refused
+too. The ``SIGMA`` line of an
 ``OALGO 3`` potential is refused as well (:ref:`retrain_from_potential`).
 The conversions:
 
@@ -254,4 +256,4 @@ energies only, and refuses its options ``--rescale``, ``--threshold``,
    A fit minimised the sum of ``EWEIGHT`` times the squared residual of each
    total energy, ``FWEIGHT`` times that of each force component and
    ``SWEIGHT`` times that of six stress entries in eV/Å³, with the
-   per-structure weights.
+   ``eweight``, ``fweight`` and ``sweight`` of each structure.

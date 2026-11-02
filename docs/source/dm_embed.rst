@@ -3,6 +3,9 @@
 Modular scalar embedding descriptor
 ===================================
 
+This page describes the ``DM_Embed`` descriptor and its configuration. It
+assumes the descriptor overview (:ref:`descriptors`).
+
 ``DM_Embed`` represents a scalar, rotationally invariant density (L = 0):
 
 .. math::
@@ -10,7 +13,10 @@ Modular scalar embedding descriptor
    \rho_i=\sum_{j\ne i}W_{Z_iZ_j}f_c(r_{ij})\sum_n a_n T_n(r_{ij}),
    \qquad X_{im}=g_m(\rho_i)E(\rho_i)-g_m(0)E(0).
 
-The last term applies under ``REFERENCE ZERO`` (the default). Under ``FREE``
+Here :math:`W_{Z_iZ_j}` is the pair weight of the two species, :math:`f_c` the
+spatial cutoff, :math:`T_n` the density basis functions with amplitudes
+:math:`a_n`, :math:`g_m` the embedding basis functions and :math:`E` the
+envelope. The last term applies under ``REFERENCE ZERO`` (the default). Under ``FREE``
 the raw embedding is used. Model coefficients multiply the embedding outputs;
 density amplitudes are nonlinear parameters. Density and embedding select their
 bases independently. Existing ``DM_REAM`` and ``DM_mBlipEnv`` files retain their
@@ -48,11 +54,11 @@ Configuration
 
 Blocks activate the many-body term; an explicitly disabled ``INITMB`` is an
 error. IDs are unique without regard to case. Without ``TYPEMB``, blocks compose
-in declaration order. A ``TYPEMB @ta`` line among the legacy ``TYPEMB``
+in declaration order. A ``TYPEMB @ta`` line among the other ``TYPEMB``
 declarations places that block at its position, ordering blocks together with
-legacy descriptors. With ``TYPEMB``, each declared ID must appear exactly once;
-any other count is an error. Legacy cutoff and grid lists continue
-to describe the legacy terms only. ``CONFIG`` includes preserve block order,
+the other descriptors. With ``TYPEMB``, each declared ID must appear exactly
+once; any other count is an error. The flat cutoff and grid lists apply
+only to the descriptors declared by ``TYPEMB``. ``CONFIG`` includes preserve block order,
 boundaries and source locations: the blocks of an included file stand at the
 ``CONFIG`` line that includes it, after the blocks above that line.
 
@@ -74,26 +80,20 @@ With :math:`x=\eta(q-\mu)` for compact bumps, and :math:`u=|x|`:
    :header-rows: 1
 
    * - Basis
-     - Definition / support
-     - Smoothness
+     - Definition / support / smoothness
    * - ``Blip``
-     - Peak-normalised cubic B-spline, :math:`|x|<2`
-     - C2
+     - Peak-normalised cubic B-spline, :math:`|x|<2`; C2
    * - ``Blip5``
-     - Peak-normalised quintic B-spline, :math:`|x|<3`
-     - C4
+     - Peak-normalised quintic B-spline, :math:`|x|<3`; C4
    * - ``Gaussian``
-     - :math:`\exp[-\eta(q-\mu)^2]`, noncompact
-     - Analytic
+     - :math:`\exp[-\eta(q-\mu)^2]`, noncompact; analytic
    * - ``Knot5``
-     - Density :math:`(\mu-q)_+^k`; embedding :math:`(q-\mu)_+^k`
-     - :math:`C^{k-1}`
+     - Density :math:`(\mu-q)_+^k`; embedding :math:`(q-\mu)_+^k`;
+       :math:`C^{k-1}`
    * - ``WendlandC2``
-     - :math:`(1-u)_+^4(1+4u)`
-     - C2
+     - :math:`(1-u)_+^4(1+4u)`; C2
    * - ``WendlandC4``
-     - :math:`(1-u)_+^6(1+6u+35u^2/3)`
-     - C4
+     - :math:`(1-u)_+^6(1+6u+35u^2/3)`; C4
 
 ``Knot5`` accepts optional ``DEGREES`` entries 3 or 5, including mixed lists;
 without the field all degrees are 5. It accepts neither ETA nor WIDTHS. The
@@ -164,8 +164,8 @@ serialisation preserves their full precision even at a lower NUMERIC setting.
 Only the configured ETA or WIDTHS path exists. Knot degrees, basis choices,
 reference modes, forms and envelope types are discrete and cannot be optimised.
 Radius optimisation under NONE is refused. Repeated dimensions and inactive
-aliases are errors. Existing flat OPTIM syntax remains available for legacy
-terms; a legacy many-body key (``CGRIDMB``, ``SGRIDMB``, ``AMPGRIDMB``,
+aliases are errors. Flat ``OPTIM`` keys apply to the other many-body
+descriptors; a flat many-body key (``CGRIDMB``, ``SGRIDMB``, ``AMPGRIDMB``,
 ``CEMBFUNC``, ``SEMBFUNC``, ``RCUTMB``) of a potential whose many-body term is
 DM_Embed, which has no such key, is refused naming the component path that
 holds the parameter (``OPTIM CGRIDMB: the potential has no CGRIDMB key: its
@@ -174,12 +174,16 @@ parameter is the named path TA.DENSITY.CENTRES; ...``). A ``DM_Embed``
 component gives no derivative with respect to :ref:`WATOM`, which weighs its
 density (:ref:`nfp_analytical_coverage`). In a ``DM_mJoin`` the
 analytical gradient (``GRAD_STRATEGY ANALYTICAL`` or ``HYBRID``) differentiates
-the named paths of its ``DM_Embed`` children; a legacy key indexes the joined
+the named paths of its ``DM_Embed`` children; a flat key indexes the joined
 lists, which no child reads against its own grid, so ``HYBRID`` takes it by
 finite differences and ``ANALYTICAL`` names it as a parameter it cannot
-differentiate, as before ``DM_Embed``. Scalar density gates accept a single
-scalar component; mixed terms need an explicitly defined component selection
-before such gates can be applied. A trainer of a DM_Embed potential (``tadah
+differentiate. ``RHOGATE`` and ``RHOBARGATE`` accept a single scalar
+component; a term with several densities is refused (:ref:`hpo_feasibility_gates`).
+Under ``tadah hpo``, a configuration either keeps ``FIXINDEX``/``FIXWEIGHT``
+and searches selected fixed coefficients (:ref:`hpo_fixweight`), or has
+neither key and supplies training data, so that every shape candidate
+re-solves its linear coefficients (:doc:`training`). Validation data alone
+does not train them. A trainer of a DM_Embed potential (``tadah
 train``, ``tadah hpo``'s ``best_pot.tadah``) writes no ``RCTYPEMB`` line: the
 blocks' ``CUTOFF`` are the many-body cutoffs.
 
@@ -199,7 +203,7 @@ needs a real smooth cutoff; its EXPERIMENTAL warning says so. With a block,
 ``REFIT_PAIR_BASIS`` (default Blip5) selects the existing pair family
 separately; REFIT_BASIS and global many-body arrays,
 RHOFORM and EMBF0 conflict with component ownership. REFIT_PAIR_BASIS without
-a block is refused; REFIT_BASIS controls every legacy component.
+a block is refused; without a block, ``REFIT_BASIS`` selects the family of every component.
 
 A single-element refit accepts one block whose PAIRS match its source element.
 ``CENTRES AUTO [count]`` generates a grid; ``ETA AUTO`` or ``WIDTHS AUTO`` derives
@@ -209,7 +213,9 @@ Resolved potentials contain numeric values. Explicit grids are fixed in dense
 mode and are initial seeds in compact mode. Dense mode retains its knot
 restrictions. Component compact mode polishes density and embedding shapes
 with analytical variable-projection derivatives and Ceres; pair coefficients
-are fitted on the pair grid. Legacy ladder stage settings are refused for this
+are fitted on the pair grid. The compact-ladder settings (``REFIT_COMPACT_*``,
+``REFIT_CURVE_*``, ``REFIT_OBJECTIVE`` and the ``INIT``, ``EXPLORE``,
+``REFINE`` and ``FUSE`` blocks) are refused for this
 path, which takes its seeds from the component grids.
 
 A component fit has the basis its block declares and does not escalate it:
@@ -235,17 +241,17 @@ coordinate system; additions have zero coefficient. Removal reports compensation
 coefficients and is lossy. ``--eta`` specifies the new function's eta, converted
 once to its selected coordinate when the component stores WIDTHS.
 
-HPO starters (``refit.hpotarget``) list each component's parameters after the
+The starting target files of ``tadah hpo`` (``refit.hpotarget``) list each component's parameters after the
 pair section under a header of their own, ``# ---- TA component (DM_Embed)
 density and embedding shape ----``, each group after a ``# COMPONENT_PARAMETER
 <path> <rule>`` line (``NONNEG``, ``POSITIVE`` or ``FREE``), and note a zero
 reference as ``REFERENCE ZERO``. The knot centres of a density with ``CUTOFF TYPE
 NONE``, whose knots end within the fixed RADIUS, get boxes that end at RADIUS,
 recorded in a ``# TA.DENSITY.CENTRES knot-support cap: RADIUS = 4 (...)``
-comment. Retargeted starters retain named paths, their positivity rules and the
+comment. Retargeted starting target files retain named paths, their positivity rules and the
 cap; ``--retarget`` rewrites the percentage of component group comments and
 accepts ``--set 'TA.DENSITY.CENTRES(2)=1.8,2.2'``, and refuses ``--rhoform`` and
-``--rcutmb``, which name DM_REAM keys, on a starter without ``AMPGRIDMB`` and
+``--rcutmb``, which name DM_REAM keys, on a target file without ``AMPGRIDMB`` and
 ``CGRIDMB`` groups (the form is the block's ``FORM``, the radius the path
 ``TA.DENSITY.CUTOFF.RADIUS``).
 
@@ -257,12 +263,7 @@ spatial cutoff; ``MB Y`` prints the bare density functions and then a block
 with the cutoff (its derivative under ``--derivative``), in the fixed
 ``NUMERIC`` format of the two-body curves. A DM_REAM potential's density and
 embedding are printed the same way, in the declared density form (the steps of
-a ``MONOTONE`` density) and embedding reference. Generic and scalar EAM LAMMPS
-evaluation share the same composed evaluator.
-
-For HPO, a configuration either retains FIXINDEX/FIXWEIGHT and searches
-selected coefficient pins, or removes both pin keys and supplies training data
-so every shape candidate re-solves its linear coefficients. Validation data alone does not train them.
+a ``MONOTONE`` density) and embedding reference.
 
 Further candidates
 ------------------

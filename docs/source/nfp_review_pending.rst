@@ -76,26 +76,26 @@
 
 .. _material-reserved-for-the-next-review:
 
-Pending documentation review
-============================
+Further Nested Fitting Topics
+=============================
 
-The configuration reference has been separated from workflows, diagnostic
-interpretation and historical notes. The previous text is preserved in a
-temporary source file:
+The configuration reference is separate from workflows, diagnostic
+interpretation and background notes. The text of the long chapter that
+these pages replace is available as a source file:
 
-:download:`NESTED-FITTING-DEFERRED.rst <../NESTED-FITTING-DEFERRED.rst>`.
+:download:`Nested Fitting chapter, reStructuredText source <../NESTED-FITTING-DEFERRED.rst>`.
 
-That file includes the earlier chapter verbatim, including superseded
-configuration passages for context. This **review material** supports
-the next editing pass. :doc:`nfp_reference` documents current settings.
+Some passages of that file do not match the current settings, so it is
+background material and not a reference. :doc:`nfp_reference` documents
+current settings.
 
 .. _topics-to-review-next:
 
-Deferred topics
----------------
+Topics without a page
+---------------------
 
 * Fitting workflows: pinned coefficients, re-solving coefficients for each
-  candidate, legacy density and embedding settings, load-time transforms.
+  candidate, density and embedding settings, load-time transforms.
 * Run lifecycle: histories, stopping, signals, seed compatibility and
   distinctions between a warm start and optimiser-state resume.
 * LAMMPS workflows: hot-variable scripts, fail-probe recipes and failure
@@ -105,5 +105,5 @@ Deferred topics
   finite-difference derivations and worked-example result claims.
 
 Some older documentation links lead here because their detailed workflow
-text belongs to that later pass. The shorter, checked option references
-remain available from :doc:`nfp_configuration`.
+text has no page yet. The shorter, checked option references remain
+available from :doc:`nfp_configuration`.

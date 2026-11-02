@@ -1,4 +1,4 @@
-License
+Licence
 =======
 
 .. literalinclude:: ../../LICENSE

@@ -24,9 +24,10 @@ end of their :ref:`training record <training_record>`; the :hpo:key:`DUMP
 <ROOT.DUMP>` and :hpo:key:`!BDUMP <ROOT.BDUMP>` archives of ``tadah hpo``
 do not.
 
-A fit of M_KRR implementation 2, and one whose :ref:`FIXINDEX <FIXINDEX>`
-pins every coefficient, have no table: the line reads ``Fit balance:
-none``, with the reason.
+A fit with ``MODEL M_KRR <kernel> 2`` (implementation 2 of ``M_KRR``, see
+:doc:`regressors`), and one whose :ref:`FIXINDEX <FIXINDEX>` pins every
+coefficient, have no table: the line reads ``Fit balance: none``, with the
+reason.
 
 The table takes one pass over the n rows and p coefficients of the fit, of
 the order of :math:`n p^2` like the solve. It reads the rows in blocks, so
@@ -71,8 +72,10 @@ The columns
 -----------
 
 ``n``
-   The observations, as the sum counts them: at most three per atom and
-   six per stress tensor, as an entry zero by symmetry is not one.
+   The observations, as the sum counts them: one per structure for the
+   energy, at most three per atom for the forces and at most six per stress
+   tensor. An entry of priority 0 is not one, and neither is an entry zero
+   by symmetry.
 ``RMSE``, ``unit``
    The root mean square residual over every entry of priority above 0,
    those zero by symmetry included. The unit is that of the quantity's
@@ -84,10 +87,10 @@ The columns
    ``[avg]`` metrics of ``tadah hpo`` give.
 ``r/sigma``
    The root mean square of residual over error scale, over the same
-   entries. Below 1 the residuals are within their error scale. Under
-   ``ENORM SQRT`` the energy's residual is per square root of the atoms,
-   and ``ESIGMA`` is in meV per √atom. For cells of N atoms, ``r/sigma`` is
-   then the RMSE times √N over ``ESIGMA``.
+   entries. Below 1 the residuals are within their error scale on average,
+   not each one. Under ``ENORM SQRT`` the energy's residual is per square
+   root of the atoms, and ``ESIGMA`` is in meV per √atom. For cells of N
+   atoms, ``r/sigma`` is then the RMSE times √N over ``ESIGMA``.
 ``share``
    The part of the minimised sum; that of the prior is the ``LAMBDA``
    penalty.

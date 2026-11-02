@@ -1,9 +1,11 @@
-Search controls
+.. _nfp_search_controls:
+
+Search Controls
 ===============
 
-Select an algorithm, its starting points and the strategy that arranges
-its runs. Budgets, gradients and restart policies have separate references
-so that the basic configuration remains short.
+The pages below cover the choice of an algorithm, its starting points and
+the strategy that arranges its searches. Budgets, gradients and restarts
+have separate pages so that the basic configuration remains short.
 
 .. toctree::
    :maxdepth: 1

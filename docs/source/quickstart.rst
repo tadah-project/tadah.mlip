@@ -1,7 +1,7 @@
 Quick Start
 ===========
 
-This section covers the fundamentals and command line interface (CLI) of Tadah!MLIP. The CLI provides necessary tools to train and test models. The trained model (interatomic potential) can be used to run molecular dynamics simulations with LAMMPS via the Tadah!LAMMPS plugin.
+This section covers the fundamentals and command line interface (CLI) of Tadah!MLIP. The CLI provides necessary tools to train and test models. The trained model (interatomic potential) runs molecular dynamics simulations with LAMMPS via the Tadah!LAMMPS plugin.
 
 :ref:`installation` gives the installation instructions, and :ref:`cli_examples` the CLI examples.
 
@@ -10,7 +10,7 @@ For Tadah! as a C++ library, the recommended order is this Quick-Start guide fir
 Overview
 --------
 
-Training a model requires a config file (:ref:`config_file`) and a dataset (:ref:`dataset`).
+Training a model requires a training configuration (:ref:`config_file`) and a dataset (:ref:`dataset`).
 
 For prediction, a potential (trained model) and a dataset are required. The potential file is an output of the training process. It is an ASCII text file containing key-value pairs that fully determine the potential.
 
@@ -23,7 +23,7 @@ Tadah! provides some basic help, printed with the ``-h`` flag:
 
     tadah -h
 
-Each subcommand has its own help:
+Each command has its own help:
 
 .. code-block:: bash
 
@@ -47,7 +47,7 @@ The example ``config.train`` below fits energies and stresses (its ``STRESS true
 An option on the command line overrides the same key of the configuration
 file (:ref:`config_file`).
 
-The ``config.train`` is type of a :ref:`config_file`. Training datasets, descriptors, cutoffs, model, and all parameters are specified in the config file. The output of this command is a trained model as a ``pot.tadah`` file.
+``config.train`` is a training configuration (:ref:`config_file`). It sets the training datasets, descriptors, cutoffs, model and all other parameters. The output of this command is a trained model as a ``pot.tadah`` file.
 
 :download:`Here <quickstart/config.train>` is the ``config.train`` file of this example:
 
@@ -58,7 +58,7 @@ An example dataset can be downloaded from :download:`here <quickstart/db.train>`
 The keys of the file:
 
 - :ref:`DBFILE` specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory.
-- :ref:`STRESS` ``true`` fits the stresses as well as the energies (as described below). The fit weights them with the default :term:`error scales <error scale>`, 1 meV/atom for the energy per atom and 0.5 GPa for the stress (:ref:`ESIGMA`, :ref:`SSIGMA`; :ref:`fit_objective` describes the sum a fit minimises).
+- :ref:`STRESS` ``true`` fits the stresses as well as the energies (as described below). The fit divides their residuals by the default :term:`error scales <error scale>`, 1 meV/atom for the energy per atom and 0.5 GPa for the stress (:ref:`ESIGMA`, :ref:`SSIGMA`; :ref:`fit_objective` describes the sum a fit minimises).
 - The two-body (pair) block: :ref:`INIT2B` turns it on; :ref:`TYPE2B`, :ref:`RCUT2B` and :ref:`RCTYPE2B` set the descriptor (``D2_Blip``: four blip, i.e. cubic B-spline, radial functions), its cutoff distance and its cutoff function; :ref:`SGRID2B` and :ref:`CGRID2B` set the inverse widths and the centres of the blips. It is the pair block of :ref:`cli_example_1`.
 - The many-body block: :ref:`INITMB`, :ref:`TYPEMB`, :ref:`RCUTMB` and :ref:`RCTYPEMB` likewise. ``DM_mBlipEnv`` gives each atom an energy :math:`F(\rho)` of a pair density :math:`\rho` summed over its neighbours: :ref:`CGRIDMB` and :ref:`SGRIDMB` set the Gaussian that the density is built from, :ref:`CEMBFUNC` and :ref:`SEMBFUNC` the blips that :math:`F` is built from, :ref:`RCUTENV` takes :math:`F` smoothly to zero at low density, and :ref:`WATOM` scales the density of this dataset to about 1. :ref:`cli_example_3` explains these keys and how they were chosen.
 - Both blocks use the ``Cut_Cos`` cutoff (:ref:`cutoffs`): the energy and the force of a pair go smoothly to zero at the cutoff distance, so the energy is conserved when a pair crosses it in molecular dynamics. (``Cut_Dummy`` truncates instead; it is for testing only.)
@@ -86,11 +86,11 @@ The following command predicts energies on the :download:`prediction dataset <qu
 
 The ``-F`` flag also predicts forces, and the ``-S`` flag stresses.
 
-The output of the ``predict`` subcommand includes three files:
+The output of the ``predict`` command includes three files:
 
 - ``energy.pred``: Three columns where the first column is an index, second is dataset energy/atom and the third column lists predicted energy/atom. The ordering follows the order of the datasets given with ``-d``.
 - ``forces.pred``: Similar idea as above, but now forces are listed. The first row is the force on the first atom in the x-direction from the first dataset, the second row is the force on the first atom in the y-direction, and so on.
-- ``stress.pred``: The first six rows list components of the stress tensor from the first configuration, followed by six components from the second configuration, and so on. The ordering is xx, xy, xz, yy, yz, zz.
+- ``stress.pred``: The first six rows list components of the stress tensor from the first structure, followed by six components from the second structure, and so on. The ordering is xx, xy, xz, yy, yz, zz.
 
 .. versionchanged:: 1.6.0
    ``--error`` is refused: uncertainty output is removed.
@@ -139,15 +139,13 @@ Practical rules
   compatible `units` style—e.g. ``metal`` for eV / Å, ``real`` for
   kcal mol⁻¹ / Å, and so on.
 
-• Some post-processing and analysis helpers (notably the ``--analytics`` flag)
-  currently **assume eV / Å**.  Using a model trained in different units may
-  trigger an error or, worse, silently produce meaningless numbers.
+• Some post-processing and analysis helpers assume **eV / Å**. The
+  ``--analytics`` flag, for example, reports energies in meV/atom and
+  stresses in GPa. Using a model trained in different units may trigger an
+  error or silently produce meaningless numbers.
 
-.. important::
-
-   **eV for energy and Å for length** is the recommended choice, unless there
-   is a compelling reason to deviate.  That choice is tested across the entire Tadah! tool-chain and
-   matches the *metal* unit style in LAMMPS out of the box.
+The recommended units are eV for energy and Å for length. They match the
+*metal* unit style of LAMMPS.
 
 .. _config_file:
 
@@ -249,7 +247,7 @@ and ``suggest_bounds``. Its lines follow these rules:
 Dataset Format
 --------------
 
-Datasets are included using the :ref:`DBFILE` key in a Config file. More than one dataset can be specified.
+The :ref:`DBFILE` key of the training configuration names the datasets. More than one dataset can be specified.
 
 There is no restriction on the number of atoms in different structures, so one dataset can hold a structure with 12 atoms and another with 24 atoms.
 
@@ -311,7 +309,7 @@ The dataset has the following structure:
   wrapped. A cell may also be thinner than the cutoff; every image within the
   cutoff is used.
 - ``fx``, ``fy``, and ``fz`` are components of the force vector acting on the atom.
-- Each configuration is separated by a blank line.
+- A blank line separates two structures.
 
 If forces and/or stresses are not available, they can be set to zero to satisfy the parser.
 
@@ -319,62 +317,74 @@ Units are described in :ref:`units`.
 
 .. _dataset_cell_migration:
 
-.. note::
+.. versionchanged:: 1.6.0
+   A dataset written by Tadah! before 1.3.0-beta.1 may hold a wrong cell,
+   and structure files exported by ``tadah data write -s`` before 1.6.0 from
+   a non-orthogonal CIF or COD entry hold a transposed cell.
+   Re-converting or exporting again repairs them.
 
-   **Datasets written by older versions** may hold a wrong cell. Only
-   structures whose 3×3 cell block is not symmetric can be affected, and
-   ``tadah analysis dataset_stats`` lists them by index and label.
-   Such a structure needs re-converting from its source file if it was written
+A wrong cell in a dataset can occur only in structures whose 3×3 cell block
+is not symmetric; ``tadah analysis dataset_stats`` lists them by index and
+label. Such a structure needs re-converting from its source file if it was
+written
 
-   - before 1.3.0-beta.1 from a VASP OUTCAR or a CASTEP ``.castep``,
-     ``.md`` or ``.geom`` file: the cell was stored transposed (the
-     positions are right, so transposing the cell block repairs it);
-   - before 1.3.0-beta.1 from a VASP ``vasprun.xml``: the cell is right but
-     the positions are not
-     (:math:`\mathbf{r}_\text{new} = C^\mathsf{T} C^{-1}\,\mathbf{r}_\text{old}`,
-     with :math:`C` the cell block, repairs them).
+- by Tadah! before 1.3.0-beta.1 from a VASP OUTCAR or a CASTEP
+  ``.castep``, ``.md`` or ``.geom`` file: the cell was stored transposed
+  (the positions are right, so transposing the cell block repairs it);
+- by Tadah! before 1.3.0-beta.1 from a VASP ``vasprun.xml``: the cell is
+  right but the positions are not
+  (:math:`\mathbf{r}_\text{new} = C^\mathsf{T} C^{-1}\,\mathbf{r}_\text{old}`,
+  with :math:`C` the cell block, repairs them).
 
-   Structure files that ``tadah data write -s`` exported (VASP POSCAR,
-   LAMMPS data, CASTEP ``.cell``) from a non-orthogonal CIF or COD entry
-   before 1.6.0 hold a transposed cell; they need exporting again. Potentials and
-   ``tadah hpo`` results fitted to affected structures need to be
-   regenerated.
+Structure files that ``tadah data write -s`` of Tadah! before 1.6.0
+exported (VASP POSCAR, LAMMPS data, CASTEP ``.cell``) from a
+non-orthogonal CIF or COD entry hold a transposed cell and need exporting
+again. Potentials and ``tadah hpo`` results fitted to affected structures
+need regenerating.
 
 .. _dataset_vasp_migration:
 
-.. note::
+.. versionchanged:: 1.6.0
+   ``tadah data convert`` of Tadah! 1.0.0 to 1.5.x stored the stress of a VASP
+   OUTCAR or ``vasprun.xml`` with the opposite sign and an energy other than
+   F, joined the steps of an MD OUTCAR at 10000 K or more into one structure,
+   and kept the kinetic part in the stress of a CASTEP ``.md`` file.
+   Tadah! 1.6.0 stores a stress that is positive under tension and the energy F.
 
-   **Datasets converted from VASP by an earlier build** (an OUTCAR or a
-   ``vasprun.xml``, with ``tadah data convert`` from Tadah 1.0.0 to 1.5.x) hold the stress with the opposite
-   sign — VASP's pressure, positive under compression — and an energy
-   other than F. The OUTCAR reader stored the energy without entropy,
-   which differs from F by the electronic entropy term −TS (18.7 meV/atom
-   in a 54-atom Ta test file at ``SIGMA = 0.2`` with Methfessel–Paxton
-   order 1). With VASP 5.4.4 the ``vasprun.xml`` reader stored
-   energy(σ→0), which differs from F by a fraction of that term (a third
-   for Methfessel–Paxton order 1, half for Gaussian smearing; 6.2 meV/atom
-   for the same structures). Both vary by structure and grow with the
-   smearing width ``SIGMA``. A stored stress compared with the OUTCAR's
-   ``in kB`` line tells which build converted a dataset: a current
-   build stores the ``in kB`` value times −6.241509074e-4 (eV/Å³), an
-   earlier one times +6.241509074e-4.
-   **They need re-converting** from the source files with ``tadah data convert``;
-   neither can be repaired in place exactly (the entropy term is not
-   stored). A fit with ``STRESS true`` on the old stress fitted its
-   negative. An MD OUTCAR with a step at 10000 K or more, converted by any
-   earlier build, gave structures
-   that are several steps in one: VASP writes such a temperature joined to
-   its word (``(temperature10147.82 K)``), which the reader did not read,
-   so the step did not end at its ``EKIN_LAT`` line and was stored with the
-   steps after it, up to the next temperature it could read (a 6580 K run
-   of 5000 steps of 54 atoms gave 4939 structures, one of 3348 atoms: 62
-   steps in one). A structure whose atom count is a multiple of the run's
-   ``NIONS`` tells such a dataset; it needs re-converting too. Datasets from CASTEP,
-   from the LAMMPS examples shipped with Tadah!, or written with ASE
-   already have the tension-positive sign. The
-   stress of a CASTEP ``.md`` file converted by such an earlier build still
-   holds its kinetic part (about :math:`N k_B T / V`, e.g. 0.43 GPa at
-   633 K for 8 Si atoms in 163 Å³); it needs re-converting too.
+The stress and energy of a dataset converted from VASP by Tadah! 1.0.0 to
+1.5.x differ from those of 1.6.0. The stress has the opposite sign (VASP's
+pressure, positive under compression), and the energy is not F. The OUTCAR
+reader stored the energy without entropy, which differs from F by the
+electronic entropy term −TS (18.7 meV/atom in a 54-atom Ta test file at
+``SIGMA = 0.2`` with Methfessel–Paxton order 1). With VASP 5.4.4 the
+``vasprun.xml`` reader stored energy(σ→0), which differs from F by a
+fraction of that term (a third for Methfessel–Paxton order 1, half for
+Gaussian smearing; 6.2 meV/atom for the same structures). Both vary by
+structure and grow with the smearing width ``SIGMA``.
+
+A stored stress compared with the OUTCAR's ``in kB`` line tells which
+version converted a dataset: Tadah! 1.6.0 stores the ``in kB`` value
+times −6.241509074e-4 (eV/Å³), Tadah! 1.0.0 to 1.5.x times
++6.241509074e-4. Such a dataset needs re-converting from the source
+files with ``tadah data convert``; it cannot be repaired in place
+exactly, as the entropy term is not stored. A fit with ``STRESS true``
+on the opposite stress fitted its negative. Datasets from CASTEP, from
+the LAMMPS examples shipped with Tadah!, or written with ASE already
+have the tension-positive sign.
+
+An MD OUTCAR with a step at 10000 K or more, converted by Tadah! 1.0.0
+to 1.5.x, gave structures that are several steps in one. VASP writes
+such a temperature joined to its word (``(temperature10147.82 K)``),
+which the reader did not read. The step then did not end at its
+``EKIN_LAT`` line and was stored with the steps after it, up to the next
+temperature the reader could read. A 6580 K run of 5000 steps of 54 atoms
+gave 4939 structures, one of 3348 atoms: 62 steps in one. A structure
+whose atom count is a multiple of the run's ``NIONS`` tells such a
+dataset; it needs re-converting too.
+
+The stress of a CASTEP ``.md`` file converted by Tadah! 1.0.0 to 1.5.x
+still holds its kinetic part (about :math:`N k_B T / V`, e.g. 0.43 GPa
+at 633 K for 8 Si atoms in 163 Å³); it needs re-converting too.
 
 Tadah! and LAMMPS
 -----------------
@@ -386,7 +396,7 @@ Once trained, the ``pot.tadah`` file can be used with LAMMPS like any other pair
     pair_style      tadah
     pair_coeff      * * pot.tadah ELEMENT1 ELEMENT2
 
-Here is an example LAMMPS :download:`script file <quickstart/in.ml>` and :download:`pot.file <quickstart/pot.tadah>`.
+:download:`in.ml <quickstart/in.ml>` is an example LAMMPS script, and :download:`pot.tadah <quickstart/pot.tadah>` is the potential it uses.
 
 The elements after the file name map the LAMMPS atom types, in order, to
 elements of the potential (``NULL`` leaves a type out). A potential that
@@ -409,9 +419,11 @@ pair_style tadah has no potential: ...`` from its next ``run``. A line
 LAMMPS refuses before it reaches the pair style, such as ``pair_coeff 1 1
 other.tadah ELEMENT1`` (``ERROR: Pair_coeff must start with * * for pair
 style tadah``), changes nothing: the pair style keeps what it held.
-Tadah! 1.5.0 and earlier read only the first file a pair style was
-given: a later ``pair_coeff`` went on with that potential without a
-message, under the notices of the new file.
+
+.. versionchanged:: 1.6.0
+   A later ``pair_coeff`` replaces the potential. Tadah! 1.5.0 and earlier
+   went on with the first potential without a message, under the notices of
+   the later file.
 
 :ref:`installation_lammps` gives the installation instructions of the Tadah!LAMMPS interface.
 
@@ -433,11 +445,7 @@ energy (NVE), printing every 100 steps. With the shipped ``pot.tadah``:
 The lattice constant in ``in.ml`` must match the potential. This potential's own
 bcc lattice constant is 3.288 Å (at 0 K); at 3.5 Å the same run starts at
 −19 GPa. A crystal far from the potential's lattice can tear apart at the
-fixed volume of an NVE run and turn the released energy into heat: the
-D2_LJ potential that this guide shipped up to Tadah! 1.5.0 has its own bcc
-lattice near 2.9 Å, and with the 3.5 Å lattice of the ``in.ml`` of that
-time it heated from 1000 K to about 8500 K. Its hard cutoff (``Cut_Dummy``)
-also let the total energy wander by about 35 meV/atom.
+fixed volume of an NVE run and turn the released energy into heat.
 
 The fast path
 ^^^^^^^^^^^^^
@@ -452,12 +460,14 @@ the descriptors of every atom (the generic kernel), here in about a second per
 
 A potential that takes the fast path states in the LAMMPS log how accurate
 it is. For example, a D2_LJ potential (``TYPE2B D2_LJ Ta Ta``, ``RCUT2B 6.5``,
-``RCTYPE2B Cut_Dummy``, ``MODEL M_KRR Kern_Linear``; the Quick Start potential
-up to Tadah! 1.5.0, which does not hold bcc Ta, as described below) logs
+``RCTYPE2B Cut_Dummy``, ``MODEL M_KRR Kern_Linear``) logs the following line
+(shown here on three lines; the program writes it as one line):
 
 ::
 
-    Tadah! pair-collapse fast path ON (2b-only, nr=8192): table certified for r in [2.80125, 6.5] (rel tol 1e-9: energy 3e-13, force 1e-9); analytic below r=2.80125
+    Tadah! pair-collapse fast path ON (2b-only, nr=8192):
+      table certified for r in [2.80125, 6.5]
+      (rel tol 1e-9: energy 3e-13, force 1e-9); analytic below r=2.80125
 
 The potential is linear and has a single species, so ``pair_style tadah`` does not
 evaluate the descriptors for every pair of atoms: it looks the pair energy and its
@@ -473,15 +483,15 @@ The line reports how accurate the table is:
   the cutoff. ``energy`` and ``force`` are the largest of these error bounds.
 - ``analytic below r=2.80125``: pairs closer than this are evaluated from the potential
   itself. Closer in, the :math:`r^{-12}` term changes too quickly for a table of this
-  size to give the force to the tolerance; for this potential the limit is reached just
+  size to give the force to the tolerance; for this potential the limit lies slightly
   outside the minimum of the pair energy, at 2.68 Å.
 
 So the fast path gives the same energies and forces as the full calculation
 (``EAMFAST false``) to ``1e-9`` inside the certified range and exactly below it.
 Distances are in the units of the potential (Å here). The range depends on the
-last digits of the weights: the line above is for the potential shipped with
-Tadah! 1.5.0, and the same potential retrained from its configuration, whose
-weights differ only in their last digits, reports ``[2.80045, 6.5]``. A model
+last digits of the coefficients: the line above is for one fit of this
+potential, and the same potential retrained from its configuration, whose
+coefficients differ only in their last digits, reports ``[2.80045, 6.5]``. A model
 with a ``DM_REAM`` many-body block also reports a density (``rho``) table. The
 certified range is one interval that ends at the cutoff: for a potential with
 basis-function knots (for example Blip functions) or a switching cutoff such as

@@ -3,6 +3,11 @@
 Parallel tempering: ANNEAL_PT
 =============================
 
+This page shows how a parallel-tempering search is set up, how its
+replicas exchange states and when it stops. It needs a target file with a
+search space and an ``OPTIMIZER`` block (:doc:`nfp_configuration`,
+:doc:`nfp_optimizer`).
+
 ``LIB TADAH`` with ``ALGO ANNEAL_PT`` runs several derivative-free
 search chains, called replicas, at different temperatures. The replicas
 exchange states between neighbouring temperature slots. The ladder
@@ -33,16 +38,17 @@ Controls by purpose
    anneal_pt_steps
    anneal_pt_initialisation
 
-Write algorithm-specific controls as ``PARAM KEY value``. Use
-:doc:`nfp_optimizer_settings` for ``THREADS`` and ``SEED``,
-:doc:`nfp_initialisation` for the seed point, and
-:doc:`nfp_stopping_settings` for evaluation and time budgets.
+Algorithm-specific controls are written as ``PARAM KEY value``.
+:doc:`nfp_optimizer_settings` describes ``THREADS`` and ``SEED``,
+:doc:`nfp_initialisation` the starting point, and
+:doc:`nfp_stopping_settings` the evaluation and time budgets.
 
 Work and exchanges
 ------------------
 
 An epoch advances every replica by one whole-vector proposal (CLASSIC)
-or one sweep over the dimensions (Corana). Every ``SWAP_EVERY`` epochs,
+or one sweep over the dimensions (Corana). ``PARAM CORANA`` selects the
+kernel; :doc:`anneal_pt_steps` describes both. Every ``SWAP_EVERY`` epochs,
 adjacent pairs attempt exchanges, alternating even and odd pairings.
 An exchange moves the parameter vector and its loss; the temperature
 slot retains its proposal-step state. Exchange attempts need no new
@@ -50,9 +56,9 @@ loss evaluation.
 
 ``REPLICAS`` controls the number of temperature slots. ``THREADS``
 controls local concurrency and defaults to ``1``. If ``REPLICAS`` is
-``AUTO``, the count is ``max(THREADS,2)``; set it explicitly when changing
-worker count should preserve the ladder size. MPI builds can distribute
-replicas over ranks; their HPO driver accepts this backend with
+``AUTO``, the count is ``max(THREADS,2)``; an explicit count keeps the
+ladder size the same when ``THREADS`` changes. MPI builds can distribute
+replicas over ranks; there, ``tadah hpo`` accepts this optimiser with
 ``TYPE PLAIN`` and no ``RESTART`` block.
 
 Stopping
@@ -60,12 +66,15 @@ Stopping
 
 Parallel tempering runs until a supported stopping condition is met.
 It accepts ``MAXEVAL``, ``MAXTIME``, ``STOPVAL`` and positive
-``FTOL_REL``/``FTOL_ABS``. An active stagnation restart can supply a stop
-in a single-rank run.
+``FTOL_REL``/``FTOL_ABS``. In a single-rank run, an active
+:hpo:block:`RESTART` block also ends the search: once its ``MAX``
+restarts are used, ``AFTER_STAGNATION`` evaluations without a better loss
+stop it. This counts as the stop that the search requires.
 
-A replica that reaches :hpo:key:`STOPVAL <OPTIMIZER.STOPVAL>` ends its
-own sweep. The search ends after the starting points or the epoch in
-which it is reached: the other replicas complete their evaluations of it.
+A replica that reaches :hpo:key:`STOPVAL <OPTIMIZER.STOPVAL>` makes no
+further evaluations. The search ends after the phase in which a replica
+reaches it: the evaluation of the starting points, or the current epoch.
+The other replicas complete their evaluations of that phase.
 Where the search ends therefore does not depend on the timing of the
 workers. The evaluations that the replica did not make have no row
 (:ref:`nfp_evaluation_numbers`).
@@ -96,6 +105,6 @@ has its own additional budget, described in
 :doc:`anneal_pt_initialisation`. A time limit allows evaluations already
 in progress to finish.
 
-This backend rejects serial cooling controls such as ``RT``,
-``T_INIT`` and ``T_MIN``. It also rejects common ``STEP``, ``XTOL_*``,
-``POPULATION``, ``VECTOR_ARR`` and ``GRAD_STRATEGY``.
+``ANNEAL_PT`` refuses serial cooling controls such as ``RT``,
+``T_INIT`` and ``T_MIN``. It also refuses the ``OPTIMIZER`` keys ``STEP``,
+``XTOL_*``, ``POPULATION``, ``VECTOR_ARR`` and ``GRAD_STRATEGY``.

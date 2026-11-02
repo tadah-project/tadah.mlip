@@ -3,9 +3,11 @@
 Descriptors
 ===========
 
-This page lists every two-body (``D2_*``) and many-body (``DM_*``) descriptor
-compiled into Tadah!MLIP.  The class name shown in each heading is exactly the
-keyword of the configuration file.
+This page describes the two-body (``D2_*``) and many-body (``DM_*``)
+descriptors of Tadah! and the keys that select and configure them in the
+training configuration (format: :ref:`config_file`; keys:
+:ref:`ConfigSection`). The class name shown in each heading is exactly the
+value written after ``TYPE2B`` or ``TYPEMB`` in the training configuration.
 
 For new scalar-density work, :ref:`DM_Embed <dm_embed>` selects density basis,
 embedding basis, spatial cutoff and optional envelope in independent component
@@ -48,86 +50,97 @@ The layout is the same on every path (``tadah train``, ``predict``,
 
 * With a linear model (``BF_Linear``, ``Kern_Linear``) ``WEIGHTS`` 1 to
   :math:`N` are the per-species constants, in ``ATOM`` order, and the
-  descriptor weights follow, so ``FIXINDEX`` indices of descriptor weights
-  start at :math:`N + 1`. With ``BF_Polynomial2`` the constant of species
-  :math:`k` is the product of its intercept component with itself,
-  :math:`(k,k)`: weights 1 and :math:`D + 1` for two species (:math:`D` =
-  ``DSIZE``). With a dot-product kernel (``Kern_Quadratic``, ``Kern_LQ``,
-  ``Kern_Polynomial``, ``Kern_Sigmoid``) weights 1 to :math:`N` belong to
-  the intercept basis vectors. ``tadah train`` and ``tadah hpo`` print a
-  WARNING when ``FIXINDEX`` is used with ``BIAS true`` and two or more
-  species, naming the model's intercept weights: before 1.6.0 ``BIAS true``
-  gave all species one shared intercept column (a linear model's descriptor
-  weights started at 2).
+  descriptor coefficients follow, so ``FIXINDEX`` indices of descriptor
+  coefficients start at :math:`N + 1`. With ``BF_Polynomial2`` the constant
+  of species :math:`k` is the product of its intercept component with itself,
+  :math:`(k,k)`: coefficients 1 and :math:`D + 1` for two species
+  (:math:`D` = ``DSIZE``). With a dot-product kernel (``Kern_Quadratic``,
+  ``Kern_LQ``, ``Kern_Polynomial``, ``Kern_Sigmoid``) coefficients 1 to
+  :math:`N` belong to the intercept basis vectors. ``tadah train`` and
+  ``tadah hpo`` print a WARNING when ``FIXINDEX`` is used with ``BIAS true``
+  and two or more species, naming the model's intercept coefficients.
 * ``BIAS true`` requires ``ATOM``; an atom of an element ``ATOM`` does not
   list has no intercept column and is refused.
 * The ridge (``LAMBDA``) does not penalise the intercepts, also when
-  ``FIXINDEX`` pins some of them, and penalises every other weight; ``NORM``
-  does not normalise them. ``FIXINDEX``/``FIXWEIGHT`` is refused with ``NORM
-  true`` (``tadah train`` and ``tadah hpo``): the fit would pin weights of
-  the normalised descriptors, and their conversion to weights of the raw
-  descriptors moves them, so the potential would not hold the
-  ``FIXWEIGHT`` values it records (1.5.0's ``tadah train`` fitted such a
-  configuration). ``NORM true`` with ``BF_Linear``
-  or ``Kern_Linear`` requires ``BIAS true``: the weights fitted to the normalised descriptors
-  are converted to weights of the raw descriptors, and the constant this
+  ``FIXINDEX`` pins some of them, and penalises every other coefficient;
+  ``NORM`` does not normalise them.
+* ``FIXINDEX``/``FIXWEIGHT`` is refused with ``NORM true`` (``tadah train``
+  and ``tadah hpo``). The fit would pin coefficients of the normalised
+  descriptors, and their conversion to coefficients of the raw descriptors
+  moves them, so the potential would not hold the ``FIXWEIGHT`` values it
+  records.
+* ``NORM true`` with ``BF_Linear`` or ``Kern_Linear`` requires
+  ``BIAS true``. The coefficients fitted to the normalised descriptors are
+  converted to coefficients of the raw descriptors, and the constant this
   moves goes into the intercepts. A linear potential with ``NORM true`` and
-  ``BIAS false``, which earlier versions wrote, is refused when it predicts;
-  it needs retraining with ``NORM false`` or ``BIAS true``. Its conversion had no
-  intercept column for the constant: ``M_KRR Kern_Linear`` (until 1.6.0) and
-  ``M_BLR BF_Linear`` (up to 1.2.0) took descriptor component 0 for an
-  intercept, so the energies and forces are wrong; ``M_BLR BF_Linear`` from
-  1.3.0-beta.1 (written by ``tadah hpo`` and the API; ``tadah train``
-  refused the configuration) dropped the constant, so the energies are off
-  by the same amount for every atom and the forces are right.
+  ``BIAS false`` is refused when it predicts; it needs retraining with
+  ``NORM false`` or ``BIAS true``.
 * Only energies determine the constants (their force and stress rows are
-  zero). The training structures whose energies the fit observes (an energy
-  priority, ``eweight`` x ``WDBFILE``, above 0, with ``ENERGY true``:
-  :ref:`fit_objective`) must therefore have compositions that determine the
-  model's intercepts: data whose structures all have one composition (a
-  fixed stoichiometry, or ``Nb27 Ta27`` and ``Nb54 Ta54``), or no observed
-  energy at all, are refused before the fit, naming the species, the rank
-  found and the model's intercept weights, and the remedies the
-  configuration can take: under ``NORM false``, ``BIAS false`` with
-  explicit ``ESHIFT`` values (a per-species reference energy, such as the
-  isolated atom's) or ``ESHIFT_ATOM`` (isolated-atom structures in the
-  data), structures of other compositions (for example of the pure
-  elements, or an isolated atom of each species), or intercepts pinned with
-  ``FIXINDEX``/``FIXWEIGHT`` (the weights the message names); under ``NORM
-  true``, where a linear model needs ``BIAS true`` and ``FIXINDEX`` is
-  refused, structures of other compositions or ``NORM false``.
-  ``ESHIFT_DBATOM`` is no remedy: its least-squares fit of the species
+  zero). The training structures whose energies the fit observes must
+  therefore have compositions that determine the model's intercepts. An
+  energy is observed when its priority (``eweight`` x ``WDBFILE``) is above 0
+  and ``ENERGY`` is true (:ref:`fit_objective`).
+* Data whose structures all have one composition are refused before the fit,
+  and so are data with no observed energy. One composition means, for
+  example, a fixed stoichiometry, or ``Nb27 Ta27`` and ``Nb54 Ta54``. The
+  message names the species, the rank found, the model's intercept
+  coefficients and the remedies.
+* Under ``NORM false`` there are three remedies. The first is ``BIAS false``
+  with explicit ``ESHIFT`` values (a per-species reference energy, such as
+  the isolated atom's) or ``ESHIFT_ATOM`` (isolated-atom structures in the
+  data). The second is structures of other compositions (for example of the
+  pure elements, or an isolated atom of each species). The third is
+  intercepts pinned with ``FIXINDEX``/``FIXWEIGHT`` (the coefficients the
+  message names). Under ``NORM true`` a linear model needs ``BIAS true`` and
+  ``FIXINDEX`` is refused, so the remedies are structures of other
+  compositions or ``NORM false``.
+* ``ESHIFT_DBATOM`` is no remedy: its least-squares fit of the species
   energies is singular on such data and sets every ``ESHIFT`` to 0 (with a
-  WARNING), so the constant goes into the descriptor weights.
-  ``tadah train`` checks before it computes any descriptor, ``tadah hpo``
-  at startup. A non-linear kernel's intercepts are those of the basis
-  its fit draws, which starts with the intercept vectors
+  WARNING), so the constant goes into the descriptor coefficients.
+  ``tadah train`` checks before it computes any descriptor, ``tadah hpo`` at
+  startup.
+* A non-linear kernel's intercepts are those of the basis its fit draws,
+  which starts with the intercept vectors
   (:ref:`Non-linear models <nonlinear_models>`), whatever basis a potential
-  used as the training configuration holds: a dot-product kernel's weights
-  1 to N. A model without intercept columns (``Kern_RBF``) is not refused,
-  and neither is ``M_KRR`` implementation ``2``, whose energies-only solve
-  penalises every weight.
+  used as the training configuration holds: a dot-product kernel's
+  coefficients 1 to :math:`N`. A model without intercept columns
+  (``Kern_RBF``) is not refused, and neither is ``M_KRR`` implementation
+  ``2``, whose energies-only solve penalises every coefficient.
 * With ``BF_Polynomial2`` the products of two different intercept columns
   are identically zero (an atom has one species): :math:`N (N - 1) / 2` of
-  its :math:`D (D + 1) / 2` weights have no data (the ridge penalises them,
-  so with ``LAMBDA > 0`` they are 0). With a non-linear KRR kernel the basis
-  starts with one intercept vector per species.
+  its :math:`D (D + 1) / 2` coefficients have no data (the ridge penalises
+  them, so with ``LAMBDA > 0`` they are 0). With a non-linear KRR kernel the
+  basis starts with one intercept vector per species.
 
-A potential trained with ``BIAS true`` and two or more species by tadah
-1.5.x or earlier has one intercept column shared by the species. ``pair_style
-tadah`` has used one intercept column per species since 1.3.0-beta.1, so
-with ``pair_style tadah`` 1.3.0-beta.1 and later such a potential gave wrong
-LAMMPS energies and forces (a Ta-Nb ``D2_LJ`` potential: -622.5 eV/atom in
-LAMMPS against -7.65 eV/atom from ``tadah predict``); with 1.2.0 and
-earlier, whose ``pair_style tadah`` used one shared column too, LAMMPS and
-``tadah predict`` agreed. Its weights do not fit the descriptor of this
-version: ``tadah predict`` and ``pair_style tadah`` refuse it, naming
-``WEIGHTS``, ``DSIZE``, ``BIAS`` and ``ATOM``.
-It needs retraining, with its training configuration or with the potential
-itself (:ref:`retrain_from_potential`: an ``M_BLR`` potential of those
-versions has its ``DBFILE`` line; an ``M_KRR`` potential needs one added): ``tadah train
--c pot.tadah`` replaces its ``WEIGHTS``, ``NMEAN`` and ``NSTDEV``.
-Single-species potentials are not affected.
+.. versionchanged:: 1.6.0
+   ``BIAS true`` gives each species its own intercept column. In 1.5.0 all
+   species shared one intercept column, and a linear model's descriptor
+   coefficients started at 2.
+
+.. versionchanged:: 1.6.0
+   ``tadah train`` refuses ``FIXINDEX``/``FIXWEIGHT`` with ``NORM true``.
+   1.5.0 fitted such a configuration.
+
+.. versionchanged:: 1.6.0
+   A linear potential with ``NORM true`` and ``BIAS false`` written by
+   1.5.0 or earlier is refused when it predicts. Its conversion had no
+   intercept column for the constant, so its energies are wrong. The forces
+   are wrong too for ``M_KRR Kern_Linear`` and for ``M_BLR BF_Linear`` up to
+   1.2.0. From 1.3.0-beta.1, ``M_BLR BF_Linear`` (written by ``tadah hpo``
+   and the API) dropped the constant: the energies are off by the same
+   amount for every atom and the forces are right.
+
+.. versionchanged:: 1.6.0
+   A potential trained with ``BIAS true`` and two or more species by 1.5.x
+   or earlier has one intercept column shared by the species. ``tadah
+   predict`` and ``pair_style tadah`` refuse it, naming ``WEIGHTS``,
+   ``DSIZE``, ``BIAS`` and ``ATOM``, because its coefficients do not fit the
+   descriptor. It needs retraining, with its training configuration or with
+   the potential itself (:ref:`retrain_from_potential`: an ``M_BLR``
+   potential of those versions has its ``DBFILE`` line; an ``M_KRR``
+   potential needs one added). ``tadah train -c pot.tadah`` replaces its
+   ``WEIGHTS``, ``NMEAN`` and ``NSTDEV``. Single-species potentials are not
+   affected.
 
 Descriptor key syntax
 ---------------------
@@ -276,7 +289,7 @@ Composite 2-body terms with ``D2_mJoin``
    TYPE2B     D2_Blip 3 3  * *        # --- component 3
    RCUT2B     4.0
    RCTYPE2B   Cut_Cos
-   CGRID2B    LIN 3 0.0 7.5
+   CGRID2B    LIN 3 0.0 3.5
    SGRID2B    GEOM 3 0.05 0.70
 
 Reading the tables below
@@ -379,7 +392,7 @@ Many-Body
    * - ``DM_Embed``
      - Scalar EAM-form density and embedding composed in a ``DESCRIPTOR`` block (``tadah refit`` writes it); :ref:`dm_embed`
    * - ``DM_REAM``
-     - Refittable EAM: flexible density and embedding expansions (``tadah refit`` before 1.6.0)
+     - Refittable EAM: flexible density and embedding expansions
    * - ``DM_mRLR``
      - mEAD with s·ρ·log(c·ρ) embedding
    * - ``DM_mSQRT``
@@ -387,7 +400,7 @@ Many-Body
    * - ``DM_mBlip``
      - mEAD with blip-function embedding
    * - ``DM_mBlipEnv``
-     - mEAD with blip-function embedding gated by a Sin-inverse envelope
+     - mEAD with blip-function embedding and a Sin-inverse envelope
    * - ``DM_PS_SQ``
      - DM_Poly: blip radial, spherical, ρ² embedding
    * - ``DM_PS_SQRT``
@@ -445,15 +458,14 @@ DM_EAM
 DM_REAM
 ~~~~~~~
 
-The native EAM many-body descriptor that :ref:`tadah refit <refit>` wrote
-before 1.6.0; it now writes the many-body term as a :ref:`DM_Embed
-<dm_embed>` component, and DM_REAM potentials load, train, predict and edit
-unchanged. Both EAM functions are basis expansions: the pair density
+The native EAM many-body descriptor. :ref:`tadah refit <refit>` writes the
+many-body term as a :ref:`DM_Embed <dm_embed>` component; DM_REAM potentials
+load, train, predict and edit. Both EAM functions are basis expansions: the pair density
 :math:`\rho(r)=W f_c(r)\sum_n a_n\,T_n(r)` (centres ``CGRIDMB``, widths
 ``SGRIDMB``, fixed amplitudes ``AMPGRIDMB``; :math:`T_n` depends on the
 density form ``RHOFORM``, below) and the embedding
 :math:`F(\rho)=\sum_m w_m\,\tilde g_m(\rho)` (centres ``CEMBFUNC``, widths
-``SEMBFUNC``), whose coefficients :math:`w_m` are the model's linear weights.
+``SEMBFUNC``), whose coefficients :math:`w_m` enter the model linearly.
 
 .. _dm_ream_rhoform:
 
@@ -466,52 +478,47 @@ many-body cutoff ``RCTYPEMB``, :math:`\psi_n` the basis function of centre
 :math:`n` (the ``TYPEMB`` basis code) and :math:`S_n` its integrated bump
 (below):
 
-.. list-table::
-   :header-rows: 1
-   :widths: 13 37 50
+``SIGNED``
+   Pair density :math:`W f_c(r) \sum_n a_n\,\psi_n(r)`, amplitudes of any
+   sign. Guarantee: none, :math:`\rho` can go negative (in the tail, say).
 
-   * - Form
-     - Pair density
-     - Guarantee
-   * - ``SIGNED``
-     - :math:`W f_c(r) \sum_n a_n\,\psi_n(r)`, amplitudes of any sign
-     - None: :math:`\rho` can go negative (in the tail, say). This is the
-       density of every tadah before 1.6.0 (bit for bit under the
-       conditions described below).
-   * - ``NONNEG``
-     - :math:`W \max(f_c(r),0) \sum_n a_n\,\psi_n(r)`, every
-       :math:`a_n \ge 0`
-     - :math:`\rho \ge 0` exactly. With the knot family, knots
-       :math:`\le` ``RCUTMB`` and a non-increasing cutoff (every cutoff
-       except ``Cut_SinInv``), :math:`\rho` is also non-increasing and
-       convex.
-   * - ``MONOTONE``
-     - :math:`W \max(f_c(r),0) \sum_n a_n\,S_n(r)`, every
-       :math:`a_n \ge 0`
-     - :math:`\rho \ge 0` exactly and :math:`\rho' \le 0` (to rounding), so
-       the lattice density :math:`\bar\rho(a)` is non-increasing in the
-       lattice constant on every lattice.
+``NONNEG``
+   Pair density :math:`W \max(f_c(r),0) \sum_n a_n\,\psi_n(r)`, every
+   :math:`a_n \ge 0`. Guarantee: :math:`\rho \ge 0` exactly. With the knot
+   family, knots :math:`\le` ``RCUTMB`` and a non-increasing cutoff (every
+   cutoff except ``Cut_SinInv``), :math:`\rho` is also non-increasing and
+   convex.
+
+``MONOTONE``
+   Pair density :math:`W \max(f_c(r),0) \sum_n a_n\,S_n(r)`, every
+   :math:`a_n \ge 0`. Guarantee: :math:`\rho \ge 0` exactly and
+   :math:`\rho' \le 0` (to rounding), so the lattice density
+   :math:`\bar\rho(a)` is non-increasing in the lattice constant on every
+   lattice.
+
+.. versionchanged:: 1.6.0
+   ``SIGNED`` gives the density of Tadah! 1.5.0, bit for bit under the
+   conditions described below.
 
 On a density that is valid under both (every amplitude :math:`\ge 0`),
 ``NONNEG`` is bit-identical to ``SIGNED`` wherever :math:`f_c \ge 0`; the two
 differ only where the cutoff dips below 0 (``Cut_Poly`` and ``Cut_PolyS``, by
 about ``-2.7e-15`` near ``RCUTMB``). ``SIGNED`` evaluates the sums of the
-density of tadah before 1.6.0 with the same code, compiled with
-Tadah.MODELS' own flags.
+density with Tadah.MODELS' own flags.
 
 A Tadah.MODELS compiled without fused multiply-adds (FMA) gives bit for bit
-the density of tadah before 1.6.0 built the same way and run on the same
-system. The flags of the presets on x86-64 (no ``-march=native``, no
+the same density as 1.5.0 built the same way and run on the same system.
+The flags of the presets on x86-64 (no ``-march=native``, no
 ``-ffast-math``) compile it without FMA, with or without LTO, and also in a
 ``tadah`` built with ``TADAH_MARCH_NATIVE``. The other evaluators of the
-density then agree with the descriptor: bit for bit the density gates and
+density then agree with the descriptor: bit for bit the density checks and
 reports of ``tadah hpo`` and ``tadah refit --edit``, within one unit in the
 last place the density ``tadah refit`` fits. In a Tadah.MODELS compiled
 with FMA (``-march=native`` in ``CMAKE_CXX_FLAGS`` on a recent x86-64, or
 on an AArch64 machine, where the compilers fuse multiply-adds at their
 default flags), these relations hold to rounding errors only. The density
-can then differ from tadah before 1.6.0 built the same way (with link-time
-optimisation), and its evaluators from each other.
+can then differ from 1.5.0 built the same way (with link-time
+optimisation) by rounding errors, and its evaluators from each other.
 
 The Gaussian basis, and every cutoff except ``Cut_Dummy``, ``Cut_Poly`` and
 ``Cut_PolyS``, call mathematical functions of the C library (``cos``,
@@ -565,7 +572,8 @@ Monotonicity holds to rounding only: the Blip5 step has 1-ulp rises for
 ``tadah analysis bfunc`` plots the basis functions :math:`\psi_n`, never the
 steps :math:`S_n`.
 
-*Validation* (in the constructor and on every HPO candidate; an invalid
+*Validation* (when the descriptor is built and in every evaluation of
+``tadah hpo``; an invalid
 density is an error naming the 1-based entry and its value). Every form:
 the ``TYPEMB`` basis code (the token after ``DM_REAM``) is an integer naming
 a known basis, 0 to 3 (a code that is not an integer, or no code, is an
@@ -575,8 +583,8 @@ checks (``CGRIDMB``/``SGRIDMB``/``AMPGRIDMB``/``KDEGMB``), no zero
 ``SGRIDMB`` entry for the bump families and ``KDEGMB`` entries in
 ``{3, 5}``. ``WATOM`` values are read with the decimal number grammar of
 potential files (a sign, digits with at most one ``.``, an optional
-exponent; a finite value) by the model, the density checks and the HPO
-density gates alike: anything else, such as ``0x1p-1``, ``inf`` or ``nan``,
+exponent; a finite value) by the model, the density checks and the density
+checks of ``tadah hpo`` alike: anything else, such as ``0x1p-1``, ``inf`` or ``nan``,
 is an error (``WATOM entry 1 ('0x1p-1') is not a decimal number: ...``).
 ``NONNEG`` and ``MONOTONE`` add:
 
@@ -605,9 +613,12 @@ refused with::
    0 by construction) or MONOTONE (rho = W f_c sum a_n S_n(r), S_n the
    integrated bump, a_n >= 0: rho >= 0 and non-increasing by construction).
 
-The key is new in tadah 1.6.0: a potential written before 1.6.0 is used
-unchanged with ``RHOFORM SIGNED`` added (bit for bit under the conditions
-described above). ``tadah predict``, ``tadah analysis
+.. versionadded:: 1.6.0
+   A potential written before 1.6.0 gives its 1.5.0 energies with both
+   ``RHOFORM SIGNED`` and ``EMBF0 FREE`` added. ``RHOFORM SIGNED`` alone keeps
+   the density (bit for bit under the conditions described above).
+
+``tadah predict``, ``tadah analysis
 descriptor``, ``tadah analysis bfunc`` and ``tadah properties pairwise`` refuse a key-less DM_REAM
 potential (the form belongs to the potential, whose amplitudes were fitted
 in it), and ``tadah refit --edit`` refuses a ``RHOFORM`` of its
@@ -663,12 +674,12 @@ is treated:
 * ``EMBF0 ZERO`` (default): every embedding basis function is
   zero-referenced, :math:`\tilde g_m(\rho) = g_m(\rho) - g_m(0)`, with
   :math:`g_m(0)` computed from the ``CEMBFUNC``/``SEMBFUNC``/``KDEGEMB``
-  values actually evaluated (for every HPO candidate as well). Hence
-  :math:`F(0) = 0` exactly for any weights: with a linear model and
+  values actually evaluated (in every evaluation of ``tadah hpo`` as well). Hence
+  :math:`F(0) = 0` exactly for any coefficients: with a linear model and
   ``BIAS false`` an isolated atom has energy 0.0, on every path (``tadah
   predict``/``train``/``hpo`` and the LAMMPS pair style, all kernels).
 * ``EMBF0 FREE``: the raw basis :math:`\tilde g_m = g_m` of tadah 1.5.0 and
-  earlier, where :math:`F(0) = \sum_m w_m g_m(0)` is whatever the weights
+  earlier, where :math:`F(0) = \sum_m w_m g_m(0)` is whatever the coefficients
   make it.
 
 ``EMBF0`` is a property of the potential: every DM_REAM ``pot.tadah`` that
@@ -680,7 +691,7 @@ potential is read (``Invalid value for key EMBF0 on line N of
 pot.tadah: 'ZEROO' (allowed: ZERO, FREE)``). It is not an ``OPTIM`` target (:ref:`hpo_embf0`). ``EMBF0`` has no
 effect on a potential without a DM_REAM block (:ref:`RHOFORM and EMBF0 without a DM_REAM block <dm_ream_only_keys>`).
 
-.. list-table:: What changes between ZERO and FREE for the same weights
+.. list-table:: What changes between ZERO and FREE for the same coefficients
    :header-rows: 1
    :widths: 30 70
 
@@ -707,7 +718,7 @@ absent: default ZERO, ...)``. Training on absolute reference energies, such as D
 ``ZERO`` needs a per-atom reference energy from ``ESHIFT``, ``ESHIFT_ATOM`` or
 ``ESHIFT_DBATOM`` (compatible with the LAMMPS ``EAMFAST`` kernel) or
 ``BIAS true`` (disables ``EAMFAST``; its intercept columns, one per ``ATOM``
-species, precede the descriptor weights, so ``FIXINDEX``/``FIXWEIGHT``
+species, precede the descriptor coefficients, so ``FIXINDEX``/``FIXWEIGHT``
 indices shift). External tools that tabulate the embedding from ``WEIGHTS``
 (setfl converters) must tabulate :math:`F(\rho) - F(0)` unless the potential
 says ``EMBF0 FREE``.

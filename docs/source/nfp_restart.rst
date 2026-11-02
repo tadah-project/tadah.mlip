@@ -1,11 +1,15 @@
 .. _restart_decorator:
 
-Stagnation restarts: RESTART
+Stagnation Restarts: RESTART
 ============================
 
-An optional ``RESTART`` block inside ``STRATEGY`` relaunches the policy
-when evaluations stop improving the run's best loss. Each relaunch starts
-a fresh search within the current process.
+This page shows how a search restarts when evaluations stop improving the
+best loss. It assumes the target-file syntax (see :doc:`nfp_configuration`)
+and the :hpo:block:`STRATEGY <BLOCK.STRATEGY>` block (see :doc:`nfp_strategies`).
+
+An optional :hpo:block:`RESTART <BLOCK.RESTART>` block inside
+:hpo:block:`STRATEGY <BLOCK.STRATEGY>` restarts the search when evaluations stop improving the best loss of the
+run. Each restart starts a fresh search within the current process.
 
 .. code-block:: none
 
@@ -19,48 +23,35 @@ a fresh search within the current process.
 Keys
 ----
 
-.. list-table::
-   :header-rows: 1
-   :widths: 29 71
+:hpo:key:`AFTER_STAGNATION <RESTART.AFTER_STAGNATION>` is the number of
+evaluations without a better loss that triggers a restart, and
+:hpo:key:`MAX <RESTART.MAX>` is the largest number of restarts. The
+:hpo:key:`METHOD <INIT.METHOD>`, :hpo:key:`K_TOTAL <INIT.K_TOTAL>`,
+:hpo:key:`SEED <INIT.SEED>` and
+:hpo:key:`WARM_ON_MISMATCH <INIT.WARM_ON_MISMATCH>` keys draw the starting
+points of each restart, with the syntax of :doc:`nfp_initialisation`. The
+syntax, values and defaults of all six keys are in their reference
+entries.
 
-   * - Key
-     - Values and effect
-   * - ``AFTER_STAGNATION N``
-     - Integer >= 1, required. Trigger after ``N`` evaluations without a
-       better loss within the active window.
-   * - ``MAX N``
-     - Integer >= 1, required. The largest number of restarts.
-   * - ``METHOD ...``
-     - Repeatable starting-point methods, with the same syntax as
-       :doc:`nfp_initialisation`.
-   * - ``K_TOTAL K``
-     - Integer >= 1 with the same meaning as in ``INIT``: the
-       ``RESTART`` blocks make one chain, and each restart keeps its first
-       ``K`` points. A value at or above the points the methods give caps
-       nothing and is refused, so blocks without a ``METHOD`` line, which
-       give one ``CONFIG`` point, take no ``K_TOTAL``.
-   * - ``SEED n``
-     - Unsigned 64-bit seed for the restart-point chain. Restart round
-       ``r`` draws with ``n + r`` (unsigned 64-bit arithmetic).
-   * - ``WARM_ON_MISMATCH policy``
-     - ``warn`` (default), ``error`` or ``skip``; applies to this block's
-       ``WARM`` entries.
-
-A ``RESTART`` block without ``AFTER_STAGNATION`` or ``MAX`` is refused,
-as is a value of 0: such a block would never restart the search. An
-empty method chain uses ``CONFIG``. The initial launch
-uses ``INIT``; the restart chain is used only after stagnation.
+A :hpo:block:`!RESTART <BLOCK.RESTART>` block without
+:hpo:key:`!AFTER_STAGNATION <RESTART.AFTER_STAGNATION>` or
+:hpo:key:`!MAX <RESTART.MAX>` is refused, as is a value of 0 for either.
+A block without a :hpo:key:`!METHOD <INIT.METHOD>` line uses
+``METHOD CONFIG``, one point from the training configuration. The initial
+launch uses :hpo:block:`INIT <BLOCK.INIT>`; the restart chain is used only
+after stagnation.
 
 .. _what-restarts:
 
 Restart scope
 -------------
 
-A restart relaunches the whole policy: a ``PLAIN`` search, all the
-``MULTISTART`` starts, or both ``PRESTAGE`` phases. Separate starts and
-refinement seeds have separate stagnation windows. A stagnating
-exploration hands its candidates to refinement before the enclosing
-policy can restart.
+A restart runs the whole :hpo:block:`!STRATEGY <BLOCK.STRATEGY>` block
+again: a ``PLAIN`` search, all the ``MULTISTART`` starts, or both
+``PRESTAGE`` phases. Each ``MULTISTART`` start and each point that an
+exploration hands to refinement has its own stagnation window. A
+stagnating exploration hands its candidates to refinement before the
+enclosing strategy can restart.
 
 Under :hpo:key:`TYPE MULTISTART <STRATEGY.TYPE.MULTISTART>`, each
 restart runs :hpo:key:`N_STARTS <STRATEGY.N_STARTS>` starts from the
@@ -74,9 +65,10 @@ first nodes of the grid again (:hpo:topic:`rule <RULE.restart_grid>`).
    :hpo:key:`!N_STARTS <STRATEGY.N_STARTS>` from a restart chain of fewer
    points.
 
-Each relaunch gets fresh search budgets. Reaching an optimiser's own
-stop normally ends the policy. Restarts are triggered by stagnation.
-After ``MAX`` restarts, the next stagnation ends the run.
+Each restart gets fresh search budgets. Reaching an optimiser's own
+stop normally ends the strategy. Restarts are triggered by stagnation.
+After :hpo:key:`MAX <RESTART.MAX>` restarts, the next stagnation ends the
+search.
 
 :hpo:opt:`TADAH:ANNEAL_PT`, :hpo:opt:`TADAH:ANNEAL_PA` and
 :hpo:opt:`ASA:ASA` with
@@ -97,10 +89,11 @@ batch still run and are recorded, and the restart follows the batch.
 A chain that produces no point reuses the previous launch's starting
 points and emits a warning. An exploration with its own ``INIT`` chain
 keeps that chain; one sharing the main points receives the refreshed
-points. Seeded optimiser streams also change between launches, and the
-journal records the derived seeds. Without ``RESTART SEED``, a base seed
+points. Each restart also derives new seeds for the random numbers of the
+optimisers, and ``hpo_run.log`` records them (see
+:doc:`nfp_output_settings`). Without ``RESTART SEED``, a base seed
 is drawn once and recorded when the first restart occurs.
 
-A run on several MPI ranks refuses ``RESTART``. See
-:doc:`nfp_stopping_settings` for search budgets and
-:doc:`nfp_initialisation` for starting a new run from a saved potential.
+A run on several MPI ranks refuses ``RESTART``. Search budgets are
+described in :doc:`nfp_stopping_settings`, and starting a new run from a
+saved potential in :doc:`nfp_initialisation`.

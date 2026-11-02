@@ -19,23 +19,25 @@ Key features
 ------------
 
 - **Pluggable descriptors and regressors** — descriptor families
-  (2-body, many-body, EAM-style) combine with linear or kernel regressors.
-- **Nested fitting (HPO)** — an outer optimiser drives the training loop
+  (2-body, many-body, embedded-atom-method style) combine with linear or
+  kernel regressors.
+- **Nested fitting** — an outer optimiser drives the training loop
   and scores trial potentials against physics-informed constraints
   (elastic constants, equilibrium volume, surface energies, …;
   :ref:`nested_fitting`).
 - **LAMMPS interface** — every descriptor and model exposed through
-  ``pair_style tadah``; ``LSCALE`` and ``ESHIFT`` round-trip through the
-  potential file.
+  ``pair_style tadah``. The potential file stores :ref:`LSCALE` and
+  :ref:`ESHIFT` for ``tadah predict`` and a retrain; ``pair_style tadah``
+  does not re-apply :ref:`LSCALE`.
 - **OpenMP build** — desktop parallelism via ``OMP_NUM_THREADS``.
-  An MPI build (``TADAH_HPO_MPI``) spreads the parallel annealing
-  optimisers of ``tadah hpo`` over several nodes
+  An MPI (Message Passing Interface) build (``TADAH_HPO_MPI``) spreads the
+  parallel annealing optimisers of ``tadah hpo`` over several nodes
   (:ref:`installation_hpo_mpi`); training itself runs in one process.
 - **C++ API** — ``libtadah.mlip`` / ``libtadah.core`` link into other
   programs for embedded use (:ref:`compiling_and_linking`).
 
-CLI surface
------------
+Commands
+--------
 
 The ``tadah`` driver exposes the following top-level commands (each
 documented in :doc:`cli/cli`):
@@ -44,8 +46,8 @@ documented in :doc:`cli/cli`):
 - ``tadah hpo`` — nested fitting (hyperparameter optimisation).
 - ``tadah data`` — dataset and structure tools: convert, ``balance``,
   ``dedup``, ``merge``, ``sample``, ``split``, ``print``, ``write``
-  (CIF, VASP, CASTEP, LAMMPS; online sources MP/COD/NOMAD via
-  ``--structure``).
+  (CIF, VASP, CASTEP, LAMMPS; online sources: the Materials Project, the
+  Crystallography Open Database, AFLOW and NOMAD via ``--structure``).
 - ``tadah analysis`` — plots basis functions, cutoffs, descriptors.
 - ``tadah properties pairwise`` — pairwise energy between two atoms.
 - ``tadah explain <command>.<option>`` — prints the help text of a command

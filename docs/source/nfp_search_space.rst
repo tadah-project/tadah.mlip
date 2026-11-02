@@ -1,24 +1,19 @@
 .. _search_space_constraints:
 
-.. _hpo_dimension_order:
-
-.. _search_space_scaling:
-
-.. _hpo_fixweight:
-
-.. _optim-search-space-constraints:
-
-.. _bound-transforms:
-
-.. _pinning-and-searching-linear-coefficients:
-
-Search parameters and bounds
+Search Parameters and Bounds
 ============================
 
-``OPTIM`` selects continuous values from the training configuration or
-potential supplied with ``--config``. Each selected value becomes one
-dimension of the outer search. Unselected values retain their configured
-values, except model coefficients that the inner fit solves.
+This page shows how to choose the search space of a target file: which
+values ``OPTIM`` searches and within which bounds. It assumes a training
+configuration (see :ref:`ConfigSection`) or a potential supplied with
+``--config``, and a target file (see :doc:`nfp_configuration`).
+
+``OPTIM`` selects continuous values from that configuration or
+potential. Each selected value becomes one dimension of the search
+space. Unselected values retain their configured values, except model
+coefficients that the training fits.
+
+.. _optim-search-space-constraints:
 
 Explicit bounds
 ---------------
@@ -46,8 +41,6 @@ Discrete choices, integer-only values, internal derived keys and
 inactive parameters are rejected by ``OPTIM``. Examples include descriptor
 families, density forms, ``FIXINDEX``, ``SBASIS`` and ``OALGO (1)``.
 
-.. _bounds-from-the-configured-values:
-
 Automatic bounds
 ----------------
 
@@ -67,7 +60,7 @@ runs that obtain their starting point through ``METHOD WARM``.
      - Meaning
    * - ``RATIO f``
      - Bounds are the smaller and larger of ``x0/f`` and ``x0*f``.
-       Requires ``f > 1`` and a nonzero seed. Default: ``RATIO 2``
+       Requires ``f > 1`` and a nonzero ``x0``. Default: ``RATIO 2``
        for positive scale keys, including component eta and widths.
    * - ``FRAC p``
      - Bounds are ``x0 - d`` and ``x0 + d``, where
@@ -75,14 +68,14 @@ runs that obtain their starting point through ``METHOD WARM``.
        Default for other keys: ``FRAC 0.5``.
    * - ``FLOOR a``
      - Absolute minimum half-width for ``FRAC``; ``a >= 0``.
-       Use a positive value when every selected seed is zero.
+       A positive value is needed when every selected ``x0`` is zero.
    * - ``GROUP_FLOOR r``
      - Relative minimum half-width for ``FRAC``; ``r >= 0``.
-       ``group_max`` is the largest absolute seed selected by this line.
+       ``group_max`` is the largest absolute ``x0`` selected by this line.
 
 ``RATIO`` and ``FRAC`` are mutually exclusive. A zero-width box is an
-error. To give all selected centres the same absolute half-width, use
-``AUTO FRAC 0 FLOOR 0.1``. ``FLOOR`` and ``GROUP_FLOOR`` apply to
+error. ``AUTO FRAC 0 FLOOR 0.1`` gives all selected centres the same
+absolute half-width, 0.1. ``FLOOR`` and ``GROUP_FLOOR`` apply to
 ``FRAC`` boxes only: with ``RATIO``, given or the default of a positive
 scale key, they are refused.
 
@@ -92,12 +85,17 @@ scale key, they are refused.
 
 For nonnegative density amplitudes, ``FRAC`` bounds are clipped at zero.
 Without either floor option these amplitudes receive
-``GROUP_FLOOR 0.001``; if the whole group is zero, supply ``FLOOR`` or
-explicit bounds. ``RATIO`` requires positive seeds for such amplitudes.
-Legacy keys beginning with ``RCUT`` require explicit bounds.
+``GROUP_FLOOR 0.001``; a group whose values are all zero needs ``FLOOR``
+or explicit bounds. ``RATIO`` requires a positive ``x0`` for such
+amplitudes. Keys beginning with ``RCUT`` require explicit bounds.
 
 Coordinate scaling
 ------------------
+
+.. _bound-transforms:
+
+Shape tags
+~~~~~~~~~~
 
 The trailing shape tag determines the coordinate used by the optimiser:
 
@@ -115,11 +113,6 @@ The trailing shape tag determines the coordinate used by the optimiser:
      - ``asinh(x/c)``; requires finite ``c > 0`` and supports
        ranges that cross zero.
 
-At the root level, ``OPTIM_SCALE AUTO`` maps these transformed bounds
-to ``[0, 1]`` for each dimension. This is the default.
-``OPTIM_SCALE NONE`` retains the transformed bounds at their original
-scale, including any ``LOG`` or ``ASINH`` transform.
-
 ``LOG_HP ratio`` is an optional key inside ``OPTIMIZER`` or ``STRATEGY``.
 It converts linear dimensions to logarithmic ones when their lower bound
 is positive and ``high/low >= ratio``; ``ratio`` must be finite and at
@@ -130,6 +123,17 @@ least one. It converts only untagged dimensions: a dimension tagged
 .. versionchanged:: 1.6.0
    In 1.5.0 ``LOG_HP`` also log-scaled a dimension tagged ``LIN``.
 
+.. _search_space_scaling:
+
+Scaling of the search box
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The top-level key :hpo:key:`OPTIM_SCALE <ROOT.OPTIM_SCALE>` with the
+value ``AUTO`` maps the transformed bounds to ``[0, 1]`` for each
+dimension. This is the default. ``OPTIM_SCALE NONE`` retains the
+transformed bounds at their original scale, including any ``LOG`` or
+``ASINH`` transform.
+
 The bounds and values written in ``params.tadah`` use the selected
 physical coordinates. Scaling applies to the optimiser's coordinates;
 reported parameter columns retain their physical units.
@@ -137,8 +141,8 @@ reported parameter columns retain their physical units.
 Component parameters
 --------------------
 
-A :doc:`DM_Embed <dm_embed>` block exposes named parameter paths. Replace
-``ta`` below with the descriptor's ID:
+A :doc:`DM_Embed <dm_embed>` descriptor exposes named parameter paths.
+In the paths below, ``ta`` stands for the descriptor's ID:
 
 .. list-table:: Searchable component paths
    :header-rows: 1
@@ -175,43 +179,54 @@ value. Spatial neighbour lists use interaction radii.
    OPTIM ta.embedding.widths (1-4) AUTO RATIO 1.2
    OPTIM ta.density.cutoff.radius (1) 5.5 6.5
 
-The example requires matching component arrays, ``WIDTHS`` in the
-embedding component and a smooth density cutoff. Named paths are required
-for component parameters; legacy many-body keys such as ``CGRIDMB`` apply
-to legacy descriptors.
+The example requires a density with at least three centres, an embedding
+component that declares at least four ``WIDTHS`` and a smooth density
+cutoff. Named paths are required for component parameters; many-body keys
+such as ``CGRIDMB`` apply to the many-body descriptors that are not
+``DM_Embed`` components.
+
+.. _hpo_fixweight:
 
 Pinned coefficients
 -------------------
 
-Pinned coefficients remain fixed during the inner fit. ``OPTIM FIXWEIGHT``
-selects them for the outer search. With all coefficients pinned, evaluation
-proceeds directly from the selected weights. The refit workflow supports
-both pinned-coefficient searches and re-solving coefficients from training
-data; see :ref:`DM_Embed refit workflows <dm_embed_refit>`.
+Pinned coefficients remain fixed during the fit. ``OPTIM FIXWEIGHT``
+selects them for the search. With all coefficients pinned, evaluation
+proceeds directly from the selected coefficients. The refit workflow
+supports both pinned-coefficient searches and re-solving coefficients
+from training data; see :ref:`DM_Embed refit workflows <dm_embed_refit>`.
 
-``OPTIM WEIGHTS`` is rejected. To search model coefficients, pin them
-with ``FIXINDEX`` and ``FIXWEIGHT`` in ``--config``, then use
-``OPTIM FIXWEIGHT``. Its indices name model weights:
+.. _pinning-and-searching-linear-coefficients:
 
-.. code-block:: none
+Searching a coefficient
+~~~~~~~~~~~~~~~~~~~~~~~
 
-   # In the training configuration:
+``OPTIM WEIGHTS`` is rejected. A coefficient is searched by pinning it
+with ``FIXINDEX`` and ``FIXWEIGHT`` in the training configuration and
+selecting it with ``OPTIM FIXWEIGHT``, whose indices name model
+coefficients. The training configuration pins the coefficients:
+
+.. code-block:: ini
+
    FIXINDEX 5 2
    FIXWEIGHT 0.3 -0.1
 
-   # In the hpotarget:
+The target file searches coefficient 5:
+
+.. code-block:: none
+
    OPTIM FIXWEIGHT (5) -1.0 1.0
 
-This searches weight 5, initially ``0.3``, labelled ``FIXWEIGHT[5]`` in
-the result files. Weight 2 remains pinned at ``-0.1``. Each searched
-weight must appear in ``FIXINDEX``.
+This searches coefficient 5, initially ``0.3``, labelled
+``FIXWEIGHT[5]`` in the result files. Coefficient 2 remains pinned at
+``-0.1``. Each searched coefficient must appear in ``FIXINDEX``.
 
-.. _inspecting-the-resolved-space:
+.. _hpo_dimension_order:
 
 Resolved search space
 ---------------------
 
-``hpo_search_space.tsv`` lists each dimension, its bounds, seed, shape
+``hpo_search_space.tsv`` lists each dimension, its bounds, ``x0``, shape
 and optimiser coordinates. If any box uses ``AUTO``,
 ``hpo_optim_resolved.hpo`` also contains explicit ``OPTIM`` lines with
 round-trip precision, suitable for reusing the resolved bounds.
@@ -219,5 +234,5 @@ round-trip precision, suitable for reusing the resolved bounds.
 Dimensions are ordered alphabetically by uppercase key, then by their
 position within that key. For ``FIXWEIGHT`` the position is the slot in
 ``FIXINDEX``. This order is independent of ``OPTIM`` declaration order.
-Use the TSV's ``dim`` column when an optimiser option takes a dimension
-number.
+The ``dim`` column of ``hpo_search_space.tsv`` gives the dimension
+number that an optimiser option expects.

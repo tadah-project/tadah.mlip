@@ -4,39 +4,21 @@ Welcome to the Tadah! Website
 .. image:: images/tadah_cli.png
    :align: center
 
-.. admonition:: Tadah! |release| — work in progress, ready to use
+.. admonition:: Tadah! |release|
    :class: note
 
-   This release is a **usable work in progress**: the Tadah! authors fit
-   and run potentials with this version, and feedback on it is welcome. The CLI
-   (subcommands, flags, configuration keys) and the ``pot.tadah`` format
-   are stable across 1.x; the C++ API is **not** yet stable and may change
-   before 2.0. Highlights since the 1.3 beta:
+   This release is ready to use: the Tadah! authors fit and run potentials
+   with this version, and feedback on it is welcome. The command-line
+   interface and the ``pot.tadah`` format are stable across 1.x, except for
+   the breaking changes listed in the :doc:`changelog`. The C++ API is
+   **not** stable and may change before 2.0.
 
-   * **Nested fitting** (``tadah hpo``) — new optimisers: simulated
-     annealing (``TADAH:ANNEAL`` with Corana steps), parallel tempering
-     (``ANNEAL_PT``) and population annealing (``ANNEAL_PA``), Ingber's
-     Adaptive Simulated Annealing (``LIB ASA``) and Ceres gradient solvers;
-     a unit-cube search-space scaling layer (``OPTIM_SCALE AUTO``,
-     ``OPTIM ... AUTO`` boxes); per-dataset validation targets and weights;
-     graded ``FAILSCORE`` and process-isolated ``PC_LAMMPS`` scripts.
-   * **Refit** (``tadah refit``) — converts tabulated EAM potentials into
-     native Tadah! potentials, with a fast EAM-collapse path in LAMMPS.
-   * **Descriptors** — rotationally invariant power-spectrum family
-     (``DM_PS_*``, ``DM_GPS_*``, ``DM_OW_*``) and bump-support checks for
-     blip channels.
-   * **Data** — load-time dataset transforms: ``LSCALE`` and the resolved
-     ``ESHIFT`` are part of the potential and apply in ``tadah predict``,
-     ``tadah hpo`` and a retrain; ``EFILTER``/``FFILTER``, ``WDBFILE``, …
-     prepare the training data, are kept in the potential's training record
-     and apply to prediction only when given to ``tadah predict``
-     (:ref:`load_transforms_predict`).
-
-   An upgrade starts with the breaking changes in the :doc:`changelog` —
-   notably the error scales and priorities of a fit, which replace
-   ``EWEIGHT``, ``FWEIGHT`` and ``SWEIGHT`` (:ref:`fit_objective`), and,
-   from 1.4 or earlier, the ``ON``/``OFF``/``AUTO`` vocabulary for
-   optimiser ``PARAM`` keys and 1-based indices in HPO output.
+   The :doc:`changelog` lists the changes of this release. An upgrade starts
+   with its breaking changes, notably the error scales and priorities of a
+   fit, which replace ``EWEIGHT``, ``FWEIGHT`` and ``SWEIGHT``
+   (:ref:`fit_objective`), and, from 1.4 or earlier, the ``ON``/``OFF``/``AUTO``
+   vocabulary for optimiser ``PARAM`` keys and 1-based indices in the output
+   of ``tadah hpo``.
    `Issue reports <report any issues_>`_ are welcome.
 
    .. _report any issues: https://github.com/tadah-project/tadah.mlip/issues

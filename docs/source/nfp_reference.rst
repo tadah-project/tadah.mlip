@@ -1,9 +1,11 @@
-Settings reference
+.. _nfp_settings_reference:
+
+Settings Reference
 ==================
 
 Each page lists the values and restrictions for one part of a nested
-fitting run. For placement and file syntax, start with
-:doc:`nfp_configuration` and :doc:`nfp_block_keys`.
+fitting run. Where each setting may appear and the file syntax are
+described in :doc:`nfp_configuration` and :doc:`nfp_block_keys`.
 
 .. toctree::
    :maxdepth: 1

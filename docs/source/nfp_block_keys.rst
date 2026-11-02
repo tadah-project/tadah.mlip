@@ -1,13 +1,16 @@
-Block and key directory
+Block and Key Directory
 =======================
 
-The outer-search file contains root directives and one ``OPTIMIZER``
-block. This directory groups root keys by purpose. The :doc:`nfp_optimizer`
-section covers the block, its subblocks and their keys. Accepted values,
-defaults and restrictions appear in the linked reference pages.
+This page shows where each target-file key is documented. It assumes the
+target-file syntax of :doc:`nfp_configuration`.
 
-Root directives
----------------
+The target file has top-level keys and one ``OPTIMIZER`` block. This
+directory groups the top-level keys by purpose. The :doc:`nfp_optimizer`
+page covers the block, the blocks inside it and their keys. Accepted
+values, defaults and restrictions appear in the linked reference pages.
+
+Top-level keys
+--------------
 
 These keys appear outside ``OPTIMIZER``.
 
@@ -35,33 +38,16 @@ These keys appear outside ``OPTIMIZER``.
    * - ``OUTPUT``, ``BOUTPUT``, ``QFLUSH``, ``DIGITS``, ``DUMP``, ``BDUMP``
      - Histories, precision and potential archives: :doc:`nfp_output_settings`.
 
-The legacy root key ``MAXTIME`` aliases ``PC_SCRIPT_TIMEOUT``. Inside
-``OPTIMIZER`` and its search subblocks, ``MAXTIME`` sets a search time
-budget. The explicit root spelling ``PC_SCRIPT_TIMEOUT`` distinguishes
-the script limit from the search budget.
+As a top-level key, ``MAXTIME`` is another name for
+``PC_SCRIPT_TIMEOUT``. Inside ``OPTIMIZER`` and the blocks inside it,
+``MAXTIME`` sets a search time budget. The explicit top-level spelling
+``PC_SCRIPT_TIMEOUT`` distinguishes the script limit from the search
+budget.
 
-.. _shared-optimiser-keys:
+The ``OPTIMIZER`` block
+-----------------------
 
-.. _block-scopes:
-
-.. _optimizer-the-outer-search:
-
-.. _strategy-how-searches-are-arranged:
-
-.. _explore-and-refine-staged-searches:
-
-.. _init-starting-points:
-
-.. _noise-objective-noise-calibration:
-
-.. _inner-an-nlopt-local-sub-optimiser:
-
-.. _restart-launches-after-stagnation:
-
-Optimizer block
----------------
-
-``OPTIMIZER`` configures the outer search. Its immediate subblocks are
-``INIT``, ``NOISE`` and ``STRATEGY``. The staged-search subblocks
+``OPTIMIZER`` configures the search. The blocks directly inside it are
+``INIT``, ``NOISE`` and ``STRATEGY``. The staged-search blocks
 ``EXPLORE`` and ``REFINE`` belong inside ``STRATEGY``.
-See :doc:`nfp_optimizer` for their hierarchy and key directory.
+The :doc:`nfp_optimizer` page describes their nesting and their keys.

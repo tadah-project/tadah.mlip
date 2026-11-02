@@ -1,18 +1,18 @@
-.. _hpo_init_methods:
+.. _nfp_initialisation:
 
-.. _init-block-seeding-strategies:
-
-.. _chain-entries:
-
-.. _top-level-keys-inside-the-init-block:
-
-Starting points: INIT
+Starting Points: INIT
 =====================
 
+This page describes how an ``INIT`` block sets the starting points of a
+search. It assumes a target file with an :hpo:block:`OPTIMIZER` block (see
+:doc:`nfp_configuration` and :doc:`nfp_optimizer`).
+
 ``INIT`` supplies starting points, in the order written. It can appear
-inside ``OPTIMIZER``, ``STRATEGY``, ``EXPLORE`` or ``REFINE``. The first,
-second and fourth locations configure the main optimiser's same
-initialisation settings. ``EXPLORE`` has its own settings.
+inside ``OPTIMIZER``, ``STRATEGY``, ``EXPLORE`` or ``REFINE``. The
+``INIT`` blocks inside ``OPTIMIZER``, ``STRATEGY`` and ``REFINE`` set the
+starting points of the main optimiser together, as one chain. The
+``INIT`` block inside ``EXPLORE`` sets the starting points of the
+exploration.
 
 .. code-block:: none
 
@@ -28,10 +28,16 @@ initialisation settings. ``EXPLORE`` has its own settings.
    :depth: 1
    :backlinks: none
 
+.. _hpo_init_methods:
+
 Methods
 -------
 
-Repeat ``METHOD`` to concatenate methods into one chain.
+.. _chain-entries:
+
+Repeated ``METHOD`` lines form one chain, in the order of the file.
+
+.. _init-block-seeding-strategies:
 
 .. list-table::
    :header-rows: 1
@@ -39,56 +45,58 @@ Repeat ``METHOD`` to concatenate methods into one chain.
 
    * - Entry
      - Points produced
-   * - ``METHOD CONFIG``
+   * - :hpo:key:`METHOD CONFIG <METHOD.CONFIG>`
      - One point from the selected parameter values in the training
        configuration. No arguments.
-   * - ``METHOD RANDOM K``
-     - ``K`` independent uniform samples in transformed search
-       coordinates; integer ``K >= 1``.
-   * - ``METHOD LHS K``
-     - ``K`` Latin-hypercube samples in transformed coordinates;
-       integer ``K >= 1``.
-   * - ``METHOD SOBOL K``
+   * - :hpo:key:`METHOD RANDOM K <METHOD.RANDOM>`
+     - ``K`` independent uniform samples in search coordinates; integer
+       ``K >= 1``.
+   * - :hpo:key:`METHOD LHS K <METHOD.LHS>`
+     - ``K`` Latin-hypercube samples in search coordinates; integer
+       ``K >= 1``.
+   * - :hpo:key:`METHOD SOBOL K <METHOD.SOBOL>`
      - ``K`` Sobol sequence points mapped through the search transform;
        integer ``K >= 1``. The seed selects a block of ``K`` points that
        starts at a multiple of ``K``: a ``K`` that is a power of 2 puts
        one point in each 1/``K`` of every range, in search coordinates.
-   * - ``METHOD WARM file``
+   * - :hpo:key:`METHOD WARM file <METHOD.WARM>`
      - One point read from the named potential; only selected ``OPTIM``
-       values are taken. See the mismatch policy below.
+       values are taken. ``WARM_ON_MISMATCH`` sets the response to a
+       mismatch (:ref:`reading-a-warm-seed`).
 
 An absent ``INIT`` block, or an empty method chain, supplies one ``CONFIG``
 point; inside ``EXPLORE`` it leaves the exploration the main starting
 points. An explicit chain supplies only its declared methods. Near-duplicate
-points in a chain are removed in transformed coordinates, retaining the
+points in a chain are removed in search coordinates, retaining the
 first occurrence.
+
+.. _top-level-keys-inside-the-init-block:
 
 Other keys
 ----------
 
-.. list-table::
-   :header-rows: 1
-   :widths: 28 72
+:hpo:key:`K_TOTAL <INIT.K_TOTAL>`
+   Caps a chain at its first ``K_TOTAL`` points, a single method
+   included. The ``INIT`` blocks inside ``OPTIMIZER``, ``STRATEGY`` and
+   ``REFINE`` make one chain, those inside ``EXPLORE`` another, and the
+   ``RESTART`` blocks a third. A value at or above the points the methods
+   give (the ``CONFIG`` lines give one point, and so do the ``WARM``
+   lines of one file) caps nothing and is refused. An ``INIT`` block
+   inside ``EXPLORE`` without a method refuses it too. Without the key,
+   every point is kept.
 
-   * - Key
-     - Values and effect
-   * - ``K_TOTAL K``
-     - Integer >= 1. The ``INIT`` blocks inside ``OPTIMIZER``,
-       ``STRATEGY`` and ``REFINE`` make one chain, and those inside
-       ``EXPLORE`` another; ``K_TOTAL`` keeps the first ``K`` points of
-       its chain, a single method included. A value at or above the
-       points the methods give (the ``CONFIG`` lines give one point, and
-       so do the ``WARM`` lines of one file) caps nothing and is refused. An ``INIT`` block inside ``EXPLORE``
-       without a method refuses it. Omission keeps every point.
-   * - ``SEED n``
-     - Unsigned 64-bit seed for the sampling methods. Without it, a chain
-       that draws its points draws them with a seed drawn once for the
-       run, which standard output and the journal give: ``SEED`` with that
-       value draws the same points again. This is separate from the
-       optimiser's seed, apart from NLopt's documented fallback.
-   * - ``WARM_ON_MISMATCH policy``
-     - ``warn`` (default), ``error`` or ``skip``, lower case. Applies to
-       missing selected parameters and values outside the current bounds.
+:hpo:key:`SEED <INIT.SEED>`
+   Seeds the sampling methods. Without it, a chain that draws its points
+   draws them with a seed drawn once for the run, which standard output
+   and the journal give: ``SEED`` with that value draws the same points
+   again. This seed is separate from the ``SEED`` of the optimiser,
+   except that an NLopt optimiser that draws random numbers and has no
+   ``SEED`` of its own takes this one.
+
+:hpo:key:`WARM_ON_MISMATCH <INIT.WARM_ON_MISMATCH>`
+   Sets the response of the ``WARM`` lines to a missing selected
+   parameter or a value outside the current bounds (see
+   :ref:`reading-a-warm-seed`).
 
 .. versionchanged:: 1.6.0
    In 1.5.0 ``K_TOTAL`` replaced the ``K`` of a single ``RANDOM``,
@@ -96,8 +104,8 @@ Other keys
    ``s`` skipped ``s`` points, so a block was evenly spread only when
    ``s + 1`` was a multiple of ``K``.
 
-``STRATEGY`` remains an accepted alias for ``METHOD`` inside ``INIT``;
-use ``METHOD`` in new files to distinguish a method line from the
+Inside ``INIT``, a ``STRATEGY`` line is read as a ``METHOD`` line.
+``METHOD`` keeps a method line distinct from the
 ``STRATEGY ... ENDSTRATEGY`` block.
 
 .. _reading-a-warm-seed:
@@ -106,7 +114,8 @@ Warm seeds
 ----------
 
 ``WARM`` reads the values selected by this run's ``OPTIM`` lines,
-including named component paths. Other model settings come from the
+including named component paths (:ref:`dm_embed_parameters`). Other
+model settings come from the
 current training configuration. ``WARM`` starts a fresh optimiser search
 from those parameter values.
 

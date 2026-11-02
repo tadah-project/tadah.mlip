@@ -119,6 +119,8 @@ _ENTRY_FIELDS = {
     'untested': 'not shown: why no invalid line shows a message',
 }
 _TEST = 'not shown: how the conformance test runs a case'
+#: The fields only the parser reads: the order of its steps.
+_ORDER = 'not shown: the order of the checks'
 #: Every field of every object of the target-file registry (the loader's
 #: dataclasses, by class name) and what the pages make of it. A field that
 #: is not shown says why: a message whose condition a field of the entry
@@ -172,6 +174,7 @@ FIELDS = {
                   refuse_msg='not shown: the Refused field states it',
                   unreachable_msgs='not shown: no target file reaches them',
                   requires='Checks', close_checks='Checks',
+                  close_steps=_ORDER,
                   doc='paragraph', long_doc='paragraph', quirk='paragraph'),
     'Key': dict(_ENTRY_FIELDS, name='heading', synopsis='Syntax',
                 repeat='Repeat',
@@ -181,22 +184,29 @@ FIELDS = {
                 misplaced_msg='not shown: the Where field states it',
                 default='Default', alias_of='Alias of', refused='Refused',
                 env='Override', checks='Checks', doc='paragraph',
-                long_doc='paragraph', quirk='paragraph'),
+                long_doc='paragraph', quirk='paragraph', steps=_ORDER,
+                effect='not shown: a part of the message of a close check '
+                       'of STRATEGY'),
     'LineOption': dict(_ENTRY_FIELDS, option='heading', lines='Where',
                        synopsis='Syntax', args='Values', repeat='Repeat',
                        repeat_msg='not shown: the Repeat field states it',
                        default='Default', refused='Refused',
                        checks='Checks', doc='paragraph',
-                       long_doc='paragraph', quirk='paragraph'),
+                       long_doc='paragraph', quirk='paragraph',
+                       case='not shown: the doc states the case of a word '
+                            'where it matters'),
     'Form': dict(_ENTRY_FIELDS, line='Where', word='heading',
                  synopsis='Syntax', args='Values', refused='Refused',
                  checks='Checks', doc='paragraph', long_doc='paragraph',
-                 quirk='paragraph'),
+                 quirk='paragraph',
+                 case='not shown: the doc states the case of a word where '
+                      'it matters'),
     'Removed': dict(_ENTRY_FIELDS, name='heading', hint='Message',
                     doc='paragraph'),
     'Rule': dict(_ENTRY_FIELDS, title='heading', check='Checked',
                  msg='Message', msg_doc='Message', keys='Keys',
-                 doc='paragraph', quirk='paragraph'),
+                 doc='paragraph', quirk='paragraph',
+                 what='not shown: msg_doc says what the message holds'),
     'Env': dict(_ENTRY_FIELDS, name='heading', key='Overrides',
                 values='Values',
                 msg='not shown: the Values field and the text state it',
@@ -215,7 +225,9 @@ FIELDS = {
     'Param': dict(_ENTRY_FIELDS, name='heading', optimizers='Where',
                   args='Values', default='Default', indexed='Syntax',
                   checks='Checks', doc='paragraph', long_doc='paragraph',
-                  quirk='paragraph'),
+                  quirk='paragraph',
+                  explain='not shown: the line of the PARAM table of '
+                          'tadah explain; doc says what the key does'),
     'ParamExcluded': dict(_ENTRY_FIELDS, name='heading',
                           optimizers='Where', why='Refused',
                           doc='paragraph'),
@@ -227,7 +239,9 @@ FIELDS = {
              'owner': _TEST, 'part': _TEST, 'kind': _TEST, 'index': _TEST,
              'wrap': _TEST, 'check': _TEST, 'context': _TEST,
              'error': _TEST, 'at': _TEST, 'msg_of': _TEST},
-    'Check': {'msg': 'Checks: the message', 'doc': 'Checks: the caption'},
+    'Check': {'msg': 'Checks: the message', 'doc': 'Checks: the caption',
+              'at': 'not shown: the caption says which line the refusal '
+                    'names'},
     'Untested': {'msg': 'not shown', 'why': 'not shown'},
     'Arg': {'name': 'Values', 'kind': 'Values', 'optional': 'Values',
             'repeat': 'Values', 'min': 'Values', 'max': 'Values',
@@ -235,7 +249,9 @@ FIELDS = {
             'refused_words': 'Values: the words; their messages not shown',
             'what': 'not shown: a part of the message',
             'msg': 'not shown: the Values field states it',
-            'noun': 'Values', 'default': 'Values', 'doc': 'Values'},
+            'noun': 'Values', 'default': 'Values', 'doc': 'Values',
+            'case': 'not shown: the doc states the case of a word where '
+                    'it matters'},
     'Default': {'literal': 'Default', 'text': 'Default',
                 'unchecked': 'not shown: why the tests check no setting'},
     'Refusal': {'key': 'Refused', 'why': 'Refused'},
@@ -275,7 +291,8 @@ SECTION_FIELDS = {
         'end_without_open_msg', 'end_mismatch_msg', 'end_takes_no_value_msg',
         'open_takes_no_value_msg', 'unclosed_msg', 'unknown_root_msg',
         'root_key_in_block_msg')},
-        check_order='not shown: the order of the checks',
+        check_order=_ORDER, open_order=_ORDER, close_order=_ORDER,
+        line_steps=_ORDER, eof_order=_ORDER,
         removed_msg='Message of a removed key'),
     'OPTIM': {'synopsis': 'Syntax of OPTIM',
               'positive_only': 'not shown: the text of OPTIM AUTO names '
@@ -656,6 +673,8 @@ KEY_REPEAT = {
     'last_wins': 'A later line replaces the value.',
     'warn_last_wins': 'A later line replaces the value, with a warning.',
     'error': 'Once: a second line is refused.',
+    'error_until_read': 'Again only after a line that reads the value: a '
+                        'second line before one is refused.',
     'add': 'Each line adds one more.',
 }
 OPTION_REPEAT = {

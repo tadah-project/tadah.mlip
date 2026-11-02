@@ -79,9 +79,9 @@ TadahCLI::TadahCLI()
   // TADAH_ENABLE_NFP has: tadah hpo is refused before it runs, with what
   // to do (Scheduler::execute).
   mlip::engines::EngineFactory::registerNotBuilt("HPO",
-      "tadah hpo needs the Nested Fitting Procedure, which this tadah was "
-      "built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see "
-      "Installation)");
+      "tadah hpo needs the Nested Fitting Procedure, which this build of "
+      "tadah does not have; a build with -DTADAH_ENABLE_NFP=ON (see "
+      "Installation) has it");
 #endif
 
   registerModules();
@@ -122,8 +122,8 @@ bool explain_without_hpo(const std::string &name, std::ostream &) {
   if (upper != "ALGO" && upper != "LIB") return false;
   throw std::runtime_error(
       "tadah explain: " + name + " names the optimiser of a `tadah hpo` "
-      "target, and this tadah is built without HPO (TADAH_ENABLE_NFP OFF): "
-      "configure it with -DTADAH_ENABLE_NFP=ON");
+      "target file, and this build of tadah has no Nested Fitting: a build "
+      "with -DTADAH_ENABLE_NFP=ON (see Installation) has it");
 }
 
 int TadahCLI::run(int argc, char** argv) {

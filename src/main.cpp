@@ -113,9 +113,10 @@ int main(int argc, char** argv) {
         std::cerr << "ERROR: this MPI library provides thread level "
                   << provided << " < MPI_THREAD_MULTIPLE, which the "
                   << "TADAH_HPO_MPI build requires (concurrent LAMMPS "
-                  << "instances on MPI_COMM_SELF). On Cray MPICH set "
-                  << "MPICH_MAX_THREAD_SAFETY=multiple; otherwise use an "
-                  << "MPI built with full thread support." << std::endl;
+                  << "instances on MPI_COMM_SELF); under Cray MPICH, "
+                  << "MPICH_MAX_THREAD_SAFETY=multiple gives it, and "
+                  << "otherwise an MPI built with full thread support."
+                  << std::endl;
       MPI_Finalize();
       return 1;
     }

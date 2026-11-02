@@ -53,7 +53,11 @@ OPAQUE = re.compile(
     r'^\s*\.\.\s+(code-block|sourcecode|literalinclude|parsed-literal|'
     r'versionchanged|versionadded|deprecated|math|raw|include|toctree|'
     r'only|autodoxygen\w*|doxygen\w*|csv-table)::')
-COMMENT = re.compile(r'^\s*\.\.(\s|$)')
+# A comment, label, target, substitution or footnote: ".." not followed by
+# a directive name and "::". The other directives (note, list-table,
+# glossary, figure) hold prose, which is checked.
+COMMENT = re.compile(r'^\s*\.\.(?!\s+\w[\w:+-]*::)(\s|$)')
+DIRECTIVE = re.compile(r'^\s*\.\.\s+\w[\w:+-]*::')
 INLINE = re.compile(r"``.*?``|:\w+(?::\w+)*:`[^`]*`|`[^`]*`_{0,2}")
 
 
@@ -75,7 +79,8 @@ def prose_lines(text):
         if OPAQUE.match(line) or COMMENT.match(line):
             skip_above = indent(line)
             continue
-        if previous.rstrip().endswith('::') and not line.strip():
+        if (previous.rstrip().endswith('::') and not line.strip()
+                and not DIRECTIVE.match(previous)):
             skip_above = indent(previous)
             previous = line
             continue
@@ -84,7 +89,10 @@ def prose_lines(text):
 
 
 # What the build generates (git ignores it) or what is no page.
-GENERATED = ('config', os.path.join('nfp', 'reference'))
+# The generated pages of nfp/reference stand beside its hand-written
+# index.rst.
+GENERATED = ('config',)
+GENERATED_BESIDE = {os.path.join('nfp', 'reference'): 'index.rst'}
 NOT_PAGES = ('API', '_extra', '_static', 'images', 'mlips')
 
 
@@ -95,7 +103,10 @@ def source_pages():
                          os.path.normpath(os.path.join(relative, d))
                          not in GENERATED)
         for name in sorted(files):
-            if name.endswith('.rst') and name != 'cli_auto_gen.rst':
+            generated = (name == 'cli_auto_gen.rst' or
+                         (relative in GENERATED_BESIDE and
+                          name != GENERATED_BESIDE[relative]))
+            if name.endswith('.rst') and not generated:
                 yield os.path.join(dirpath, name)
 
 

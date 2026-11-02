@@ -151,7 +151,7 @@ Early-rejection options
        the metric's units (listed above).
    * - ``--skip-rel <ratio>``
      - Reject when the metric exceeds this finite positive multiple
-       of its best previously accepted value. No relative comparison
+       of its best accepted value so far. No relative comparison
        is made before such a value exists. Evaluations run at once
        compare with the best value recorded before all of them
        (:ref:`nfp_evaluation_numbers`).

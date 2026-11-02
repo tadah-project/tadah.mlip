@@ -79,9 +79,9 @@ TadahCLI::TadahCLI()
   // TADAH_ENABLE_NFP has: tadah hpo is refused before it runs, with what
   // to do (Scheduler::execute).
   mlip::engines::EngineFactory::registerNotBuilt("HPO",
-      "tadah hpo needs the Nested Fitting Procedure, which this tadah was "
-      "built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see "
-      "Installation)");
+      "tadah hpo needs the Nested Fitting Procedure, which this build of "
+      "tadah does not have; a build with -DTADAH_ENABLE_NFP=ON (see "
+      "Installation) has it");
 #endif
 
   registerModules();
@@ -122,8 +122,19 @@ bool explain_without_hpo(const std::string &name, std::ostream &) {
   if (upper != "ALGO" && upper != "LIB") return false;
   throw std::runtime_error(
       "tadah explain: " + name + " names the optimiser of a `tadah hpo` "
-      "target, and this tadah is built without HPO (TADAH_ENABLE_NFP OFF): "
-      "configure it with -DTADAH_ENABLE_NFP=ON");
+      "target file, and this build of tadah has no Nested Fitting "
+      "Procedure; a build with -DTADAH_ENABLE_NFP=ON (see Installation) has "
+      "it");
+}
+
+std::string mpi_thread_level_refusal(int provided) {
+  return "this MPI library provides thread level " +
+         std::to_string(provided) +
+         " < MPI_THREAD_MULTIPLE, which the TADAH_HPO_MPI build requires "
+         "(concurrent LAMMPS instances on MPI_COMM_SELF). Cray MPICH "
+         "provides MPI_THREAD_MULTIPLE when MPICH_MAX_THREAD_SAFETY=multiple "
+         "is set; another MPI library provides it when built with full "
+         "thread support.";
 }
 
 int TadahCLI::run(int argc, char** argv) {

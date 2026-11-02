@@ -354,8 +354,8 @@ the table:
 .. code-block:: none
 
    tadah refit: REFIT_MODE compact (the default) needs the compact fitter, which
-   this tadah was built without (it needs TADAH_ENABLE_NFP and
-   TADAH_ENABLE_CERES); REFIT_MODE dense fits without it
+   this build of tadah does not have (a build with -DTADAH_ENABLE_NFP=ON and
+   -DTADAH_ENABLE_CERES=ON has it); REFIT_MODE dense fits without it
 
 .. versionchanged:: 1.6.0
    A build without the compact fitter refuses compact mode; 1.5.0 fitted the
@@ -485,8 +485,8 @@ are checked, naming the key, the mode in effect and the mode that reads it:
   either mode, with a text that names the stage block (``EXPLORE``,
   ``REFINE`` or ``FUSE``) that takes each block inside it (``tadah refit: a
   top-level OPTIMIZER block ...``); under
-  ``REFIT_MODE dense`` the text ends ``Under REFIT_MODE dense, which reads
-  no stage block, remove the OPTIMIZER block.``
+  ``REFIT_MODE dense`` the text ends ``REFIT_MODE dense reads no stage
+  block, and takes no OPTIMIZER block at all.``
 * Both modes: the other keys.
 
 Only the keys the configuration sets count: the defaults ``tadah`` stores

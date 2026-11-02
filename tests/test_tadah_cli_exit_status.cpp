@@ -889,12 +889,17 @@ TEST_CASE("Subcommand: hpo: a PRESTAGE refinement on a search that does not "
  * standard error ("[HPO] WARNING: ") and in the journal: "the INIT block
  * on line 2: the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not start
  * at the point it is given (DIRECT evaluates the centre of the OPTIM box
- * first and then divides the whole box; NLopt never reads that point), so
- * the search never evaluates the block's INIT points. ..." and "the RESTART
+ * first and then divides the whole box; NLopt never reads the point it is
+ * given), so the search never evaluates the block's INIT points. An
+ * optimiser that starts at the point it is given starts the search at
+ * them." and "the RESTART
  * block on line 10: the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not
  * start ... and draws no random numbers, so every RESTART round, whatever
  * points it starts from, asks for round 0's points again, which the run's
  * record answers: no round after round 0 evaluates a new point, ...".
+ * The parenthesis said "NLopt never reads that point", and the INIT
+ * warning ended "... To start the search at them, use an optimiser that
+ * starts at the point it is given."
  * Before the fix: the run gave neither warning (the checks fail). */
 TEST_CASE("Subcommand: hpo: an INIT and a RESTART block on a search that "
           "does not start at its point are warned about at startup, naming "
@@ -935,10 +940,12 @@ TEST_CASE("Subcommand: hpo: an INIT and a RESTART block on a search that "
   const std::string direct =
       "the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not start at the "
       "point it is given (DIRECT evaluates the centre of the OPTIM box first "
-      "and then divides the whole box; NLopt never reads that point)";
+      "and then divides the whole box; NLopt never reads the point it is "
+      "given)";
   const std::string init = "the INIT block on line 2: " + direct +
                            ", so the search never evaluates the block's INIT "
-                           "points.";
+                           "points. An optimiser that starts at the point it "
+                           "is given starts the search at them.";
   const std::string restart =
       "the RESTART block on line 10: " + direct +
       " and draws no random numbers, so every RESTART round, whatever points "
@@ -951,8 +958,8 @@ TEST_CASE("Subcommand: hpo: an INIT and a RESTART block on a search that "
       ++n;
     return n;
   };
-  CHECK(count(r.err, "[HPO] WARNING: " + init) == 1);
-  CHECK(count(r.err, "[HPO] WARNING: " + restart) == 1);
+  CHECK(count(r.err, "[tadah hpo] WARNING: " + init) == 1);
+  CHECK(count(r.err, "[tadah hpo] WARNING: " + restart) == 1);
   CHECK(count(journal, init) == 1);
   CHECK(count(journal, restart) == 1);
 }
@@ -3321,11 +3328,13 @@ TEST_CASE("Subcommand: analysis bfunc plots the basis of a BIAS true "
 
 namespace {
 
-/* What a tadah built without TADAH_ENABLE_NFP says of hpo. */
+/* What a tadah built without TADAH_ENABLE_NFP says of hpo: what the build
+ * lacks and the option that has it (it was "... which this tadah was built
+ * without; reconfigure with -DTADAH_ENABLE_NFP=ON (see Installation)"). */
 const char* const kHpoNotBuilt =
-    "tadah hpo needs the Nested Fitting Procedure, which this tadah was "
-    "built without; reconfigure with -DTADAH_ENABLE_NFP=ON (see "
-    "Installation)";
+    "tadah hpo needs the Nested Fitting Procedure, which this build of "
+    "tadah does not have; a build with -DTADAH_ENABLE_NFP=ON (see "
+    "Installation) has it";
 
 /* `text` with each run of whitespace one space (the help wraps its lines). */
 std::string one_line(const std::string& text) {
@@ -3354,8 +3363,8 @@ void write_hpo_target() {
 #ifndef TADAH_ENABLE_NFP
 /* Pins: in a tadah built without TADAH_ENABLE_NFP, `tadah hpo -c
  * config.train --hpotarget config.hpo` exits 1 with "tadah hpo needs the
- * Nested Fitting Procedure, which this tadah was built without; reconfigure
- * with -DTADAH_ENABLE_NFP=ON (see Installation)" and writes no
+ * Nested Fitting Procedure, which this build of tadah does not have; a
+ * build with -DTADAH_ENABLE_NFP=ON (see Installation) has it" and writes no
  * best_pot.tadah.
  * Before the fix: it exited 1 with "EngineFactory::create: No engine found
  * for HPO". */
@@ -3379,8 +3388,8 @@ TEST_CASE("Subcommand: hpo in a tadah built without NFP is refused, naming "
 
 /* Pins: in a tadah built without TADAH_ENABLE_NFP, `tadah -h` lists hpo as
  * "hpo Optimises the model architecture and hyperparameters. tadah hpo needs
- * the Nested Fitting Procedure, ...; reconfigure with -DTADAH_ENABLE_NFP=ON
- * (see Installation)." (whitespace collapsed: the listing wraps), `tadah
+ * the Nested Fitting Procedure, ...; a build with -DTADAH_ENABLE_NFP=ON
+ * (see Installation) has it." (whitespace collapsed: the listing wraps), `tadah
  * hpo -h` has the same two sentences, and `tadah explain hpo` ends with a
  * blank line and that message with a full stop; each exits 0.
  * Before the fix: none of them had the message (the listing and `tadah
@@ -4444,13 +4453,13 @@ TEST_CASE("Subcommand: refit refuses a header lattice constant beyond the "
 const std::string kTopLevelOptimizerBlock =
     "OPTIMIZER\n  GLOBAL ALGO MLSL ENDGLOBAL\nENDOPTIMIZER";
 const std::string kTopLevelOptimizerText =
-    "tadah refit: a top-level OPTIMIZER block is no longer supported. The "
-    "stage pipeline is now INIT -> EXPLORE -> REFINE -> FUSE, each its own "
-    "block, with the OPTIMIZER block NESTED inside EXPLORE/REFINE/FUSE. "
-    "Migration: GLOBAL folded into EXPLORE rung 0 (set its global ALGO in "
-    "EXPLORE's OPTIMIZER, with an INNER local); POLISH -> REFINE; JOINT -> "
-    "FUSE. The Refitting page of the documentation has examples (Stage "
-    "blocks).";
+    "tadah refit: a top-level OPTIMIZER block is refused: the stages of tadah "
+    "refit are the blocks INIT, EXPLORE, REFINE and FUSE, and an OPTIMIZER "
+    "block sits inside EXPLORE, REFINE or FUSE. The GLOBAL, POLISH and JOINT "
+    "stages of a top-level OPTIMIZER block correspond to the OPTIMIZER block "
+    "inside EXPLORE (its global ALGO with an INNER local search, rung 0), to "
+    "REFINE and to FUSE; the Refitting page of the documentation has "
+    "examples (Stage blocks).";
 
 /* Pins: `tadah refit -c` refuses a key that the configuration's REFIT_MODE
  * does not read, with status 1, a message naming the key and the mode that
@@ -4516,9 +4525,8 @@ TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
             in_dense("the REFINE block")},
            {"REFIT_OBJECTIVE curve", in_dense("REFIT_OBJECTIVE curve")},
            {kTopLevelOptimizerBlock,
-            kTopLevelOptimizerText + " Under REFIT_MODE dense, which reads "
-                                     "no stage block, remove the OPTIMIZER "
-                                     "block."}}) {
+            kTopLevelOptimizerText + " REFIT_MODE dense reads no stage block, "
+                                     "and takes no OPTIMIZER block at all."}}) {
     const CliRun r = run(dense, extra);
     const std::string rep = reported(r);
     INFO(extra << ": status " << r.status << "\n" << rep);
@@ -4586,10 +4594,10 @@ TEST_CASE("Subcommand: refit: a key of the other REFIT_MODE is refused "
   INFO("compact: status " << r.status << "\n" << rep);
   CHECK(r.status == 1);
   CHECK(contains(rep, "tadah refit: REFIT_MODE compact (the default) needs "
-                      "the compact fitter, which this tadah was built "
-                      "without (it needs TADAH_ENABLE_NFP and "
-                      "TADAH_ENABLE_CERES); REFIT_MODE dense fits without "
-                      "it"));
+                      "the compact fitter, which this build of tadah does "
+                      "not have (a build with -DTADAH_ENABLE_NFP=ON and "
+                      "-DTADAH_ENABLE_CERES=ON has it); REFIT_MODE dense "
+                      "fits without it"));
   CHECK_FALSE(std::filesystem::exists("pot.tadah"));
 #endif
 }
@@ -5020,7 +5028,7 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     INFO("ld_lbfgs: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
     CHECK(r.out.rfind("Options for NLOPT:LD_LBFGS\n", 0) == 0);
-    CHECK(contains(r.out, "Stops that end a run: MAXEVAL"));
+    CHECK(contains(r.out, "Stops that end a search: MAXEVAL"));
   }
   {
     const CliRun r =
@@ -5031,11 +5039,15 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     CHECK(contains(r.out, "Options for CERES:STEEPEST_DESCENT\n"));
     CHECK(contains(r.out, "PARAM tol_gradinf"));
     CHECK(contains(r.out, "ignores the OPTIM box"));
-    CHECK(contains(r.out, "Such a point is not evaluated: it is scored as a "
+    /* It said "Such a point is not evaluated: it is scored as a failure
+     * graded by its distance to the box, whose slope points away from the
+     * box, so a descent step leads back into it; it counts against
+     * MAXEVAL ...". */
+    CHECK(contains(r.out, "Such a point is not evaluated. It is scored as a "
                           "failure graded by its distance to the box"));
-    CHECK(contains(r.out, "whose slope points away from the box, so a "
-                          "descent step leads back into it; it counts "
-                          "against MAXEVAL"));
+    CHECK(contains(r.out, "so the score rises away from the box and a "
+                          "descent step leads back into it. Such a point "
+                          "counts against MAXEVAL"));
     CHECK_FALSE(contains(r.out, "points back into it"));
   }
   {
@@ -5067,26 +5079,32 @@ TEST_CASE("Subcommand: explain: ALGO lists the optimisers of tadah hpo, and "
     const CliRun r = run_tadah({"tadah", "explain", "NLOPT:G_MLSL_LDS"});
     INFO("NLOPT:G_MLSL_LDS: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
+    /* It said "the local search it runs, from the points it\n     samples
+     * in the OPTIM box: LIB NLOPT and a local ALGO; a global one ...". */
     CHECK(contains(r.out, "\n   * INNER ... ENDINNER: the local search it "
-                          "runs, from the points it\n     samples in the "
-                          "OPTIM box: LIB NLOPT and a local ALGO; a global "
-                          "one"));
-    CHECK(contains(r.out, "The block is required: NLopt has no default"));
+                          "runs from the points it samples\n     in the "
+                          "OPTIM box. The block takes LIB NLOPT and a local "
+                          "ALGO (`tadah\n     explain ALGO` marks each); a "
+                          "global ALGO is refused"));
+    CHECK(contains(r.out, "The block is required: NLopt has no\n     "
+                          "default local optimiser for it."));
   }
   {
     const CliRun r = run_tadah({"tadah", "explain", "LN_AUGLAG"});
     INFO("LN_AUGLAG: status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
     CHECK(contains(r.out, "\n   * INNER ... ENDINNER: the local search it "
-                          "runs, from its own starting\n     point: LIB NLOPT "
-                          "and a local ALGO"));
+                          "runs from its own starting\n     point. The block "
+                          "takes LIB NLOPT and a local ALGO"));
     CHECK(contains(r.out, "Without one NLopt runs its default LN_COBYLA."));
   }
 #else
   const CliRun r = run_tadah({"tadah", "explain", "ALGO"});
   INFO("ALGO: status " << r.status << "\n" << reported(r));
   CHECK(r.status == 1);
-  CHECK(contains(reported(r), "this tadah is built without HPO"));
+  CHECK(contains(reported(r), "this build of tadah has no Nested Fitting "
+                              "Procedure; a build with -DTADAH_ENABLE_NFP=ON "
+                              "(see Installation) has it"));
 #endif
   const CliRun bogus = run_tadah({"tadah", "explain", "bogus"});
   CHECK(bogus.status == 1);
@@ -5123,7 +5141,7 @@ TEST_CASE("Subcommand: explain: a name that is a configuration key and an "
         " also names an optimiser of `tadah hpo`:\nOptions for "
         "TADAH:RANDOM\n");
     CHECK(also != std::string::npos);
-    CHECK(contains(r.out, "Stops that end a run: MAXEVAL"));
+    CHECK(contains(r.out, "Stops that end a search: MAXEVAL"));
     CHECK(r.out.find(key_text, 1) == std::string::npos);
 #else
     CHECK_FALSE(contains(r.out, "also names"));
@@ -7435,10 +7453,13 @@ void write_hpo_potential_fixture() {
  * best_pot.tadah, refusing "No training DBFILE and no FIXINDEX/FIXWEIGHT:
  * the model weights cannot be determined" and ending with the advice ("A
  * potential has no DBFILE line ... Retraining from a potential)."); the
- * potential without its ATOM line is refused "the training configuration
- * declares the element set with the ATOM key, such as ATOM Ta." (it was
- * "the ATOM key is required in the training configuration to declare the
- * element set (e.g. 'ATOM Ta')."), with the same advice.
+ * potential without its ATOM line is refused "No training DBFILE and no
+ * ATOM key: without training data the training configuration declares the
+ * element set with the ATOM key, such as ATOM Ta." (it was "No training
+ * DBFILE: the training configuration declares the element set ...", which
+ * did not name the missing key, and before that "the ATOM key is required
+ * in the training configuration to declare the element set (e.g. 'ATOM
+ * Ta')."), with the same advice.
  * Before the fix: both refusals ended with their own remedy ("... or pin
  * every weight with FIXINDEX/FIXWEIGHT.", "(e.g. 'ATOM Ta')."), without the
  * advice.
@@ -7469,8 +7490,9 @@ TEST_CASE("Subcommand: hpo -c of a potential without a DBFILE line says "
        "No training DBFILE and no FIXINDEX/FIXWEIGHT: the model weights "
        "cannot be determined"},
       {"the potential without ATOM", with_line(slurp("pot.tadah"), "ATOM", ""),
-       "No training DBFILE: the training configuration declares the "
-       "element set with the ATOM key, such as ATOM Ta. "},
+       "No training DBFILE and no ATOM key: without training data the "
+       "training configuration declares the element set with the ATOM key, "
+       "such as ATOM Ta. "},
   };
   for (const Case& c : cases) DYNAMIC_SECTION(c.name) {
     std::ofstream("seed.tadah") << c.pot;
@@ -9922,10 +9944,13 @@ void check_hpo_check_passed(const CliRun& r,
   }
 }
 
-/* The message of `tadah hpo` on standard error: from "HPOEngine error:" to
- * the end; "" when there is none. */
+/* The message of `tadah hpo` on standard error: from the last line that
+ * starts "ERROR: ", as every command prints its error, to the end; "" when
+ * there is none. (It began "HPOEngine error:", the class's name.) */
 std::string engine_error(const CliRun& r) {
-  const auto p = r.err.find("HPOEngine error:");
+  std::size_t p = r.err.rfind("\nERROR: ");
+  if (p != std::string::npos) ++p;
+  else if (r.err.rfind("ERROR: ", 0) == 0) p = 0;
   return p == std::string::npos ? std::string() : r.err.substr(p);
 }
 
@@ -10064,8 +10089,39 @@ TEST_CASE("Subcommand: hpo --check refuses a setup with the message of "
     CHECK(check.status == run.status);
     CHECK(contains(engine_error(run), c.says));
     CHECK(engine_error(check) == engine_error(run));
+    /* The error names no class (it began "HPOEngine error: "). */
+    CHECK_FALSE(contains(reported(run), "HPOEngine"));
     CHECK_FALSE(std::filesystem::exists("missing"));
   }
+}
+
+/* Pins: `tadah hpo` with a training configuration whose INIT2B and INITMB
+ * are both false exits 1 with the refusal "tadah hpo: INIT2B and INITMB are
+ * both false, so the potential has no term; tadah hpo needs INIT2B true or
+ * INITMB true", which escapes to main() (it prints "ERROR: " and the
+ * text), as tadah train's does, with no class name and no "Validating" log
+ * line before it.
+ * Before the fix: "HPOEngine requires INIT2B or/and INITMB parameters to be
+ * set", after the INFO line "Validating HPOEngine...". */
+TEST_CASE("Subcommand: hpo refuses a configuration without a term, naming "
+          "the command",
+          "[cli][hpo][messages]") {
+  ScratchCwd cwd("hpo_no_term");
+  write_hpo_potential_fixture();
+  std::string config = slurp("config.tadah");
+  config = replace_key_line(config, "INIT2B", "INIT2B false");
+  config = replace_key_line(config, "INITMB", "INITMB false");
+  std::ofstream("config.tadah") << config;
+  const CliRun run = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                                "--hpotarget", "config.hpo",
+                                "--validation", "config.val"});
+  INFO("status " << run.status << "\n" << reported(run));
+  CHECK(run.status == 1);
+  CHECK(run.what ==
+        "tadah hpo: INIT2B and INITMB are both false, so the potential has "
+        "no term; tadah hpo needs INIT2B true or INITMB true");
+  CHECK_FALSE(contains(reported(run), "HPOEngine"));
+  CHECK_FALSE(contains(reported(run), "Validating"));
 }
 
 /* Pins: CHECK is a setting of the run, as HPOTARGET is, and a potential
@@ -12035,7 +12091,8 @@ TEST_CASE("Subcommand: train with AUDIT error trains a Gaussian density "
 /* Pins: tadah train with AUDIT error refuses a configuration with a FAIL
  * finding with exit status 1 returned to its caller, the program going
  * on: a radial GTO centred 30 A away (CGRIDMB 30) is refused naming the
- * finding ("AUDIT=error", "CGRIDMB"), and no potential is written; this
+ * finding ("AUDIT error: 1 FAIL finding(s) stop the run:", "CGRIDMB"),
+ * and no potential is written; this
  * test case runs to its end in the process that ran tadah.
  * Before the fix: TrainEngine called std::exit(EXIT_FAILURE) inside the
  * library, which ended this test program (exit status 1) before any check
@@ -12049,7 +12106,9 @@ TEST_CASE("Subcommand: train with AUDIT error refuses a FAIL finding with "
   const std::string rep = reported(r);
   INFO("status " << r.status << "\n" << rep);
   CHECK(r.status == 1);
-  CHECK(contains(rep, "AUDIT=error"));
+  /* It said "preflight_audit: AUDIT=error and one or more FAIL
+   * findings:". */
+  CHECK(contains(rep, "AUDIT error: 1 FAIL finding(s) stop the run:"));
   CHECK(contains(rep, "CGRIDMB"));
   CHECK_FALSE(std::filesystem::exists("far.tadah"));
 }

@@ -295,8 +295,11 @@ GFS_MAXEVAL_STATUS = "DLIB:GFS: MAXEVAL reached"
 FD_INSIDE_STOP = ("DLIB:BFGS stopped: no usable gradient: a failed evaluation "
                   "in the finite-difference stencil (the loss at CGRID2B[2] "
                   "= 1.25 is 1.797693135e+308)")
-FAILSCORE_ZERO_ERROR = ("Error on line 13: FAILSCORE must be a positive "
-                        "finite number, got '0'")
+# The refusal names the target file as --hpotarget gives it (it was
+# "Error on line 13: ...", without the file), after the "ERROR: " every
+# command prints.
+FAILSCORE_ZERO_ERROR = ("ERROR: line 13 of config.hpo: FAILSCORE must be a "
+                        "positive finite number, got '0'")
 NO_USABLE_ERROR = ("no evaluation produced a usable loss; no best_pot.tadah "
                    "was written")
 # The default FAILSCORE, the largest double, as loss.tadah prints it with

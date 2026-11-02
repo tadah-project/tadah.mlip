@@ -5160,9 +5160,10 @@ TEST_CASE("Subcommand: hpo --help points to tadah explain ALGO",
  * description when it has no long description, then its EXAMPLES: the
  * refit numbers' ranges, which `tadah refit --help` points to, are shown
  * (refit.refit_compact_seed "an integer from 0 to 4294967295",
- * refit.refit_reach_smin "A number from 0.1 to 1", refit.output_grid_scale
+ * refit.refit_reach_margin "a number > 0", refit.output_grid_scale
  * "a number > 0"); a key with a long description prints that, not the
- * description (refit.add).
+ * description (refit.add), and a refit number's long description gives its
+ * range (refit.refit_reach_smin "a number from 0.1 to 1").
  * Before the fix: only the long description was printed, so a key without
  * one printed an empty line and its EXAMPLES (the description is not
  * found in the output). */
@@ -5176,7 +5177,7 @@ TEST_CASE("Subcommand: explain: a key without a long description prints its "
             "`tadah refit` compact mode: RNG seed for the jittered ladder "
             "restarts (deterministic reruns), an integer from 0 to "
             "4294967295. Default 12345."},
-           {"refit.refit_reach_smin", "A number from 0.1 to 1"},
+           {"refit.refit_reach_margin", "a number > 0. Default 1.25."},
            {"refit.output_grid_scale", "a number > 0"},
            {"refit.refit_tol_ambient", "A number > 0. Default 0.1."}}) {
     const CliRun r = run_tadah({"tadah", "explain", key});
@@ -5192,6 +5193,12 @@ TEST_CASE("Subcommand: explain: a key without a long description prints its "
                           "by --func"));
   CHECK_FALSE(contains(add.out, "`tadah refit --edit`: inserts a basis "
                                 "function at this centre"));
+  const CliRun smin =
+      run_tadah({"tadah", "explain", "refit.refit_reach_smin"});
+  INFO("refit.refit_reach_smin: status " << smin.status << "\n"
+                                         << reported(smin));
+  CHECK(smin.status == 0);
+  CHECK(contains(smin.out, "a number from 0.1 to 1 (default 0.75"));
 }
 
 /* Pins: `tadah data print -s si.cif` on diamond Si given only by its

@@ -1017,6 +1017,60 @@ class PagesTest(unittest.TestCase):
         with self.assertRaisesRegex(error, r'\bCase\.files\b'):
             self.rhr.render(reg, self.optimizers, self.anneal)
 
+    #: The fields of the registry only the parser reads (the order of its
+    #: steps, the case of a word, the texts it puts into messages), by
+    #: class (or section) and field.
+    PARSER_ONLY = {
+        ('Key', 'steps'), ('Key', 'effect'), ('Block', 'close_steps'),
+        ('Check', 'at'), ('Arg', 'case'), ('LineOption', 'case'),
+        ('Form', 'case'), ('Rule', 'what'), ('Param', 'explain'),
+        ('STRUCTURE', 'open_order'), ('STRUCTURE', 'close_order'),
+        ('STRUCTURE', 'line_steps'), ('STRUCTURE', 'eof_order'),
+    }
+
+    def test_the_fields_only_the_parser_reads_are_not_shown(self):
+        # Pins: the fields the parser reads and the pages leave out are
+        # listed as not shown, and the pages do not change with their
+        # values: the registry with each such field changed (the orders
+        # reversed, the case of every word any, an effect, a what and an
+        # explain of other text, every close check at its key's line)
+        # gives the same six pages. A rule `error_until_read`, which a
+        # key's own repeat_doc states, has words of its own.
+        # Before the fix: the generator stops on these fields (the pages do
+        # not account for them).
+        import copy
+        for cls, name in sorted(self.PARSER_ONLY):
+            with self.subTest(field=f'{cls}.{name}'):
+                table = (self.rhr.SECTION_FIELDS.get(cls) if cls.isupper()
+                         else self.rhr.FIELDS.get(cls))
+                self.assertIsNotNone(table)
+                self.assertTrue(table.get(name, '').startswith('not shown'))
+        self.assertIn('error_until_read', self.rhr.KEY_REPEAT)
+        reg = copy.deepcopy(self.reg)
+        st = reg.structure.fields
+        for name in ('open_order', 'close_order', 'eof_order'):
+            st[name] = list(reversed(st[name]))
+        st['line_steps'] = {k: list(reversed(v))
+                            for k, v in st['line_steps'].items()}
+        for e in reg.entries():
+            for a in getattr(e, 'args', []) or []:
+                a.case = 'any'
+            if hasattr(e, 'case'):
+                e.case = 'any'
+            for c in getattr(e, 'close_checks', []) or []:
+                c.at = 'key_line'
+        for b in reg.blocks:
+            b.close_steps = list(reversed(b.close_steps))
+        for k in reg.keys:
+            k.steps = ['value']
+            k.effect = k.effect + ' or not'
+        for r in reg.rules:
+            r.what = {ref: 'thing' for ref in r.keys}
+        for p in reg.params:
+            p.explain = 'another text'
+        self.assertEqual(self.rhr.render(reg, self.optimizers, self.anneal),
+                         self.pages)
+
     def test_an_unknown_value_of_a_rule_field_stops_the_generator(self):
         # Pins: a repeat rule or a check stage the generator has no words
         # for stops it with the entry and the value, not a KeyError.

@@ -31,21 +31,21 @@ function(check_build_type)
       OR
       CMAKE_BUILD_TYPE STREQUAL "RELEASE"
       OR
-      CMAKE_BUILD_TYPE STREQUAL "PROFILE"
+      CMAKE_BUILD_TYPE STREQUAL "RELWITHDEBINFO"
       OR
-      CMAKE_BUILD_TYPE STREQUAL "DEVELOP"
+      CMAKE_BUILD_TYPE STREQUAL "MINSIZEREL"
     )
     tadah_message(STATUS "Build type:  ${CMAKE_BUILD_TYPE}.")
   else()
     tadah_message(FATAL_ERROR "
     Selected build type is not supported: ${CMAKE_BUILD_TYPE}.
-    Supported build types: Release, Debug, Profile Develop"
+    Supported build types: Debug, Release, RelWithDebInfo, MinSizeRel"
   )
 endif()
 
 # Update the documentation string of CMAKE_BUILD_TYPE for GUIs
 set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
-  "Choose the type of build, options are: None Debug Release Profile."
+  "Type of build; supported values: Debug, Release, RelWithDebInfo, MinSizeRel."
   FORCE)
 endfunction()
 

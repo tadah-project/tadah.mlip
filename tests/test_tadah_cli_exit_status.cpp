@@ -9729,6 +9729,39 @@ TEST_CASE("Subcommand: analysis check_bounds reads the OPTIM lines as tadah "
   CHECK(contains(slurp("d.hpotarget"), "\nOPTIM SGRID2B (1-2) AUTO\n"));
 }
 
+/* Pins: `tadah refit --retarget <file> --set 'KEY(i)=lo,hi'` on a file
+ * without a rewritten OPTIM line exits 1 and writes no file:
+ *   - a.hpotarget, "OPTIM CGRID2B (1-2) AUTO" only, --set 'CGRID2B(1)=1,2':
+ *     "--set CGRID2B(1): line 1 ('OPTIM CGRID2B (1-2) AUTO'), which
+ *     selects CGRID2B (1), is kept as written: --set applies to the lines
+ *     OPTIM <KEY> (<index>) <low> <high>.";
+ *   - b.hpotarget, no OPTIM line, --set 'CGRID2B(1)=1,2': "--set
+ *     CGRID2B(1): no such OPTIM line in the file.".
+ * Before the fix: both exited 0 and wrote the file, the --set dropped. */
+TEST_CASE("Subcommand: refit --retarget refuses --set on a file without a "
+          "rewritten OPTIM line",
+          "[TadahCLI][refit][optim_reader]") {
+  ScratchCwd cwd("retarget_set_no_rewritten_line");
+  std::ofstream("a.hpotarget") << "OPTIM CGRID2B (1-2) AUTO\n";
+  std::ofstream("b.hpotarget") << "# no search parameter\n";
+  for (const auto &[file, want] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"a.hpotarget",
+            "--set CGRID2B(1): line 1 ('OPTIM CGRID2B (1-2) AUTO'), which "
+            "selects CGRID2B (1), is kept as written: --set applies to the "
+            "lines OPTIM <KEY> (<index>) <low> <high>."},
+           {"b.hpotarget",
+            "--set CGRID2B(1): no such OPTIM line in the file."}}) {
+    const CliRun r = run_tadah({"tadah", "refit", "--retarget", file, "-o",
+                                "out.hpotarget", "--set", "CGRID2B(1)=1,2"});
+    INFO(file << ": status " << r.status << "\n" << reported(r));
+    CHECK(r.status == 1);
+    CHECK(r.what == want);
+    CHECK_FALSE(std::filesystem::exists("out.hpotarget"));
+    std::filesystem::remove("out.hpotarget");
+  }
+}
+
 #ifdef TADAH_ENABLE_NFP
 /* Pins: `tadah hpo -c old.tadah --hpotarget config.hpo` (the fixture of
  * write_hpo_potential_fixture: PC_ERMSE, a validation metric), old.tadah

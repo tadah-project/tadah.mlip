@@ -170,7 +170,9 @@ terms; a legacy many-body key (``CGRIDMB``, ``SGRIDMB``, ``AMPGRIDMB``,
 DM_Embed, which has no such key, is refused naming the component path that
 holds the parameter (``OPTIM CGRIDMB: the potential has no CGRIDMB key: its
 many-body term is DM_Embed component(s) (DESCRIPTOR blocks), whose density
-parameter is the named path TA.DENSITY.CENTRES; ...``). In a ``DM_mJoin`` the
+parameter is the named path TA.DENSITY.CENTRES; ...``). A ``DM_Embed``
+component gives no derivative with respect to :ref:`WATOM`, which weighs its
+density (:ref:`nfp_analytical_coverage`). In a ``DM_mJoin`` the
 analytical gradient (``GRAD_STRATEGY ANALYTICAL`` or ``HYBRID``) differentiates
 the named paths of its ``DM_Embed`` children; a legacy key indexes the joined
 lists, which no child reads against its own grid, so ``HYBRID`` takes it by

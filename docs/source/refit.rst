@@ -1332,7 +1332,9 @@ Keys are read in any case, as ``tadah hpo`` reads them, and keep the case
 written. An ``OPTIM`` line of another form (an ``AUTO`` box, several
 indices, a shape tag, a line continued on the next, a line ``tadah hpo``
 refuses) ``is kept as written``, which a WARNING says, naming its line and
-why; so is a commented line of another form that ``tadah hpo`` would read.
+why. A commented line ``# OPTIM <KEY> (...`` is read as an active one and
+named the same way; another comment that starts with ``OPTIM`` is text and
+is not named.
 ``--pct``
 takes a bare number (the global percentage) and/or ``KEY=N`` per-key
 overrides; ``--set 'KEY(i)=lo,hi'`` (repeatable) is applied last. Output goes
@@ -1347,8 +1349,10 @@ runs the second overwrote the first one's file (the two are searches around
 different potentials).
 
 .. versionchanged:: 1.6.0
-   An ``OPTIM`` line of another form was kept without a warning, and a key
-   written in lower case was a group of its own.
+   An ``OPTIM`` line of another form was kept without a warning, a line of
+   one index and two numbers that ``tadah hpo`` refuses (the index ``(0)``,
+   a high bound not above the low one) was rewritten around the midpoint of
+   its bounds, and a key written in lower case was a group of its own.
 
 The numbers of ``--pct`` and ``--set`` are read with the number grammar of
 the hpotarget file, which ``tadah hpo`` reads the rewritten bounds with

@@ -64,12 +64,9 @@ descriptor differentiates.
 .. versionchanged:: 1.6.0
    1.5.0 stopped an ``ANALYTICAL`` run at the gradient of such a
    parameter, or of one whose structures hold no pair of atoms that
-   depends on it. Beside a two-body descriptor that differentiates
-   :ref:`WATOM`, its ``WATOM`` gradient lacked the part of ``DM_REAM``,
-   ``DM_Poly`` and ``DM_mJoin`` and the force rows of ``DM_Blip``,
-   ``DM_EAD``, ``DM_mRLR`` and ``DM_mSQRT``; it lacked the part of
-   ``D2_mJoin`` beside ``DM_mBlip`` or ``DM_mBlipEnv``, and beside
-   those four in a run without force rows.
+   depends on it. In some of the :ref:`WATOM` setups below it ran on
+   instead, with a gradient that lacked the part of the descriptor
+   without that derivative.
 
 .. _nfp_analytical_coverage:
 
@@ -107,22 +104,22 @@ says otherwise. A key of the fit, such as :ref:`LAMBDA`, has none.
      - none
 
 A search parameter has an analytical derivative only in the rows that
-every descriptor depending on it differentiates. One that a descriptor
+every descriptor that depends on it differentiates. One that a descriptor
 differentiates in the energy rows only takes ``ANALYTICAL`` in a run
 without force rows: :ref:`FORCE` false and no
 :hpo:key:`PC_FRMSE <ROOT.PC_FRMSE>`. The analytical gradient of
 ``DM_mJoin`` and of ``DESCRIPTOR`` blocks is described with the blocks
 (:doc:`dm_embed`).
 
-Most two-body and many-body descriptors read :ref:`WATOM` (the key lists
-them), so both descriptors of a configuration usually depend on it.
-Beside ``DM_REAM``, a ``DM_Poly`` descriptor, a ``DESCRIPTOR`` block,
-``DM_mJoin`` or ``D2_mJoin``, which give no derivative with respect to
-it, a ``WATOM`` value that weighs their pairs has no analytical
-derivative, whatever the other descriptor gives: ``HYBRID`` takes it by
-finite differences, and ``ANALYTICAL`` refuses it at startup. Beside
-``DM_Blip``, ``DM_EAD``, ``DM_mRLR`` or ``DM_mSQRT`` it has one in the
-energy rows only.
+Most two-body and many-body descriptors read :ref:`WATOM` (the key names
+those that do not), so both descriptors of a configuration usually depend
+on it. ``DM_REAM``, the ``DM_Poly`` descriptors, ``DESCRIPTOR`` blocks,
+``DM_mJoin`` and ``D2_mJoin`` depend on ``WATOM`` and give no derivative
+with respect to it. A ``WATOM`` value that weighs their pairs has no
+analytical derivative, whatever the other descriptor gives. ``HYBRID``
+takes it by finite differences, and ``ANALYTICAL`` refuses it at
+startup. Beside ``DM_Blip``, ``DM_EAD``, ``DM_mRLR`` or ``DM_mSQRT`` it
+has one in the energy rows only.
 
 Finite-difference keys
 ----------------------

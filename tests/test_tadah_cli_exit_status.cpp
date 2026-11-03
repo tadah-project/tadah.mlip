@@ -12930,13 +12930,14 @@ TEST_CASE("Subcommand: hpo refuses a line that changes nothing a fit gives, "
 /* Pins: `tadah hpo --check` and the run refuse, with status 1, the target
  * file line `OPTIM WATOM (1) 0.5 2.0` (line 8 of config.hpo) for a D2_EAM +
  * DM_EAM training configuration with WATOM 1, whose descriptors read no
- * WATOM: "OPTIM WATOM (line 8 of the target file) is not a valid search
- * target: no descriptor of the training configuration reads WATOM ..."; the
- * run evaluates nothing and writes no best_pot.tadah.
+ * WATOM: "line 8 of config.hpo: OPTIM WATOM is not a valid search target:
+ * no descriptor of the training configuration reads WATOM ..."; the run
+ * evaluates nothing and writes no best_pot.tadah.
  * Before the fix: --check exited 0 ("passed the startup checks") and the run
  * exited 0 with best_pot.tadah, every evaluation but the start scoring
  * FAILSCORE (its fit refused the candidate's WATOM, which no descriptor
- * reads). */
+ * reads). Then the refusal began "OPTIM WATOM (line 8 of the target file)
+ * is not ...", without the file: the check fails on it. */
 TEST_CASE("Subcommand: hpo refuses OPTIM WATOM when no descriptor reads "
           "WATOM, by --check and the run",
           "[TadahCLI][exit-status][hpo][inert]") {
@@ -12956,8 +12957,8 @@ TEST_CASE("Subcommand: hpo refuses OPTIM WATOM when no descriptor reads "
     const std::string rep = reported(r);
     INFO("status " << r.status << "\n" << rep);
     CHECK(r.status == 1);
-    CHECK(contains(rep, "OPTIM WATOM (line 8 of the target file) is not a "
-                        "valid search target: no descriptor of the training "
+    CHECK(contains(rep, "line 8 of config.hpo: OPTIM WATOM is not a valid "
+                        "search target: no descriptor of the training "
                         "configuration reads WATOM"));
     CHECK_FALSE(contains(rep, "passed the startup checks"));
     CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));

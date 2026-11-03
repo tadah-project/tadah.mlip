@@ -15,10 +15,11 @@
 // where FORCE/STRESS came from, and FORCE in the --validation file is refused
 // at its line. The [startup] cases run `tadah hpo` with a PRESTAGE refinement
 // on NLOPT:GN_DIRECT_L, which does not start at its candidate, and with an
-// INNER block that names a global optimiser (no nested global search); each
-// is refused at startup, at its line; and with a PLAIN NLOPT:GN_DIRECT_L
-// whose INIT and RESTART blocks have no effect on it, each warned about at
-// startup, naming its line.
+// INNER block that names a global optimiser (no nested global search), and
+// with a PLAIN NLOPT:GN_DIRECT_L under an INIT block with a METHOD line,
+// whose points it would never evaluate; each is refused at startup, at its
+// line; a RESTART block on that search, which has no effect on it, is
+// warned about at startup, naming its line.
 //
 // The [data] cases run the `tadah data` tools on small structure files:
 // `data convert` on a file that is not DFT output, or that does not exist,
@@ -883,74 +884,35 @@ TEST_CASE("Subcommand: hpo: a PRESTAGE refinement on a search that does not "
 }
 
 /* Pins: `tadah hpo` with a PLAIN NLOPT:GN_DIRECT_L -- which never reads the
- * point it is given and draws no random numbers -- under an INIT block
- * (line 2, METHOD CONFIG) and an active RESTART block (line 10) runs (exit
- * 0, a best_pot.tadah) and warns about both at startup, once each, on
- * standard error ("[HPO] WARNING: ") and in the journal: "the INIT block
- * on line 2: the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not start
- * at the point it is given (DIRECT evaluates the centre of the OPTIM box
- * first and then divides the whole box; NLopt never reads the point it is
- * given), so the search never evaluates the block's INIT points. An
- * optimiser that starts at the point it is given starts the search at
- * them." and "the RESTART
- * block on line 10: the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not
- * start ... and draws no random numbers, so every RESTART round, whatever
- * points it starts from, asks for round 0's points again, which the run's
- * record answers: no round after round 0 evaluates a new point, ...".
- * The parenthesis said "NLopt never reads that point", and the INIT
- * warning ended "... To start the search at them, use an optimiser that
- * starts at the point it is given."
- * Before the fix: the run gave neither warning (the checks fail). */
-TEST_CASE("Subcommand: hpo: an INIT and a RESTART block on a search that "
-          "does not start at its point are warned about at startup, naming "
-          "their lines",
+ * point it is given and draws no random numbers:
+ *  - under an INIT block with a METHOD line (METHOD CONFIG on line 3) is
+ *    refused at startup: a non-zero exit, no best_pot.tadah and no
+ *    loss.tadah, and the refusal names line 3 of config.hpo and says "the
+ *    STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not start at the
+ *    point it is given (DIRECT evaluates the centre of the OPTIM box first
+ *    and then divides the whole box; NLopt never reads the point it is
+ *    given), so the search would never evaluate the starting points of
+ *    this INIT block";
+ *  - under an active RESTART block (line 7) runs (exit 0, a
+ *    best_pot.tadah) and warns about it at startup, once, on standard error
+ *    ("[tadah hpo] WARNING: ") and in the journal: "the RESTART block on
+ *    line 7: the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not start
+ *    ... and draws no random numbers, so every RESTART round, whatever
+ *    points it starts from, asks for round 0's points again, which the
+ *    run's record answers: no round after round 0 evaluates a new point,
+ *    ...".
+ * Before the fix: the run with the INIT block exited 0, with a WARNING
+ * that the search never evaluates the block's INIT points (the first
+ * checks fail). */
+TEST_CASE("Subcommand: hpo: an INIT block on a search that does not start "
+          "at its point is refused at its METHOD line, a RESTART block "
+          "warned about at startup",
           "[TadahCLI][hpo][startup]") {
-  ScratchCwd cwd("plain_direct_init_restart");
-  write_frmse_fixture("config.tadah", "FORCE true\nSTRESS false\n");
-  {
-    std::ofstream os("config.hpo");
-    os << "OPTIMIZER\n"                // line 1
-          "  INIT\n"                   // line 2
-          "    METHOD CONFIG\n"
-          "  ENDINIT\n"
-          "  STRATEGY\n"
-          "    TYPE PLAIN\n"
-          "    LIB NLOPT\n"
-          "    ALGO GN_DIRECT_L\n"
-          "    MAXEVAL 6\n"
-          "    RESTART\n"              // line 10
-          "      AFTER_STAGNATION 2\n"
-          "      MAX 1\n"
-          "    ENDRESTART\n"
-          "  ENDSTRATEGY\n"
-          "ENDOPTIMIZER\n"
-          "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
-          "OPTIM FIXWEIGHT (1) -30.0 0.0\n";
-  }
-  const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
-                              "--hpotarget", "config.hpo",
-                              "--validation", "config.val"});
-  const std::string journal = std::filesystem::exists("hpo_run.log")
-                                  ? slurp("hpo_run.log")
-                                  : std::string();
-  INFO("exception: " << r.what << "\nstderr:\n" << r.err
-                     << "\nhpo_run.log:\n" << journal);
-  CHECK(r.status == 0);
-  CHECK(std::filesystem::exists("best_pot.tadah"));
   const std::string direct =
       "the STRATEGY-level optimiser NLOPT:GN_DIRECT_L does not start at the "
       "point it is given (DIRECT evaluates the centre of the OPTIM box first "
       "and then divides the whole box; NLopt never reads the point it is "
       "given)";
-  const std::string init = "the INIT block on line 2: " + direct +
-                           ", so the search never evaluates the block's INIT "
-                           "points. An optimiser that starts at the point it "
-                           "is given starts the search at them.";
-  const std::string restart =
-      "the RESTART block on line 10: " + direct +
-      " and draws no random numbers, so every RESTART round, whatever points "
-      "it starts from, asks for round 0's points again, which the run's "
-      "record answers: no round after round 0 evaluates a new point";
   const auto count = [](const std::string& text, const std::string& what) {
     std::size_t n = 0;
     for (auto p = text.find(what); p != std::string::npos;
@@ -958,10 +920,83 @@ TEST_CASE("Subcommand: hpo: an INIT and a RESTART block on a search that "
       ++n;
     return n;
   };
-  CHECK(count(r.err, "[tadah hpo] WARNING: " + init) == 1);
-  CHECK(count(r.err, "[tadah hpo] WARNING: " + restart) == 1);
-  CHECK(count(journal, init) == 1);
-  CHECK(count(journal, restart) == 1);
+  SECTION("an INIT block with a METHOD line is refused") {
+    ScratchCwd cwd("plain_direct_init");
+    write_frmse_fixture("config.tadah", "FORCE true\nSTRESS false\n");
+    {
+      std::ofstream os("config.hpo");
+      os << "OPTIMIZER\n"               // line 1
+            "  INIT\n"                  // line 2
+            "    METHOD CONFIG\n"       // line 3
+            "  ENDINIT\n"
+            "  STRATEGY\n"
+            "    TYPE PLAIN\n"
+            "    LIB NLOPT\n"
+            "    ALGO GN_DIRECT_L\n"
+            "    MAXEVAL 6\n"
+            "  ENDSTRATEGY\n"
+            "ENDOPTIMIZER\n"
+            "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
+            "OPTIM FIXWEIGHT (1) -30.0 0.0\n";
+    }
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                                "--hpotarget", "config.hpo",
+                                "--validation", "config.val"});
+    const std::string journal = std::filesystem::exists("hpo_run.log")
+                                    ? slurp("hpo_run.log")
+                                    : std::string();
+    INFO("exception: " << r.what << "\nstderr:\n" << r.err
+                       << "\nhpo_run.log:\n" << journal);
+    CHECK(r.status != 0);
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+    CHECK_FALSE(std::filesystem::exists("loss.tadah"));
+    auto names_refusal = [&](const std::string& s) {
+      return names_line(s, 3) && contains(s, "METHOD CONFIG") &&
+             contains(s, direct + ", so the search would never evaluate the "
+                                  "starting points of this INIT block");
+    };
+    CHECK((names_refusal(r.what) || names_refusal(r.err) ||
+           names_refusal(r.out) || names_refusal(journal)));
+  }
+  SECTION("a RESTART block is warned about") {
+    ScratchCwd cwd("plain_direct_restart");
+    write_frmse_fixture("config.tadah", "FORCE true\nSTRESS false\n");
+    {
+      std::ofstream os("config.hpo");
+      os << "OPTIMIZER\n"               // line 1
+            "  STRATEGY\n"
+            "    TYPE PLAIN\n"
+            "    LIB NLOPT\n"
+            "    ALGO GN_DIRECT_L\n"
+            "    MAXEVAL 6\n"
+            "    RESTART\n"             // line 7
+            "      AFTER_STAGNATION 2\n"
+            "      MAX 1\n"
+            "    ENDRESTART\n"
+            "  ENDSTRATEGY\n"
+            "ENDOPTIMIZER\n"
+            "LOSS L2\nPC_ERMSE 0 1\nPC_FRMSE 0 1\n"
+            "OPTIM FIXWEIGHT (1) -30.0 0.0\n";
+    }
+    const CliRun r = run_tadah({"tadah", "hpo", "-c", "config.tadah",
+                                "--hpotarget", "config.hpo",
+                                "--validation", "config.val"});
+    const std::string journal = std::filesystem::exists("hpo_run.log")
+                                    ? slurp("hpo_run.log")
+                                    : std::string();
+    INFO("exception: " << r.what << "\nstderr:\n" << r.err
+                       << "\nhpo_run.log:\n" << journal);
+    CHECK(r.status == 0);
+    CHECK(std::filesystem::exists("best_pot.tadah"));
+    const std::string restart =
+        "the RESTART block on line 7: " + direct +
+        " and draws no random numbers, so every RESTART round, whatever "
+        "points it starts from, asks for round 0's points again, which the "
+        "run's record answers: no round after round 0 evaluates a new point";
+    CHECK(count(r.err, "[tadah hpo] WARNING: " + restart) == 1);
+    CHECK(count(journal, restart) == 1);
+    CHECK(count(journal, "the INIT block") == 0);
+  }
 }
 
 /* Pins: `tadah hpo` with STRATEGY TYPE PLAIN NLOPT:G_MLSL_LDS whose INNER

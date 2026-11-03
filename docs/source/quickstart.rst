@@ -207,7 +207,11 @@ and ``suggest_bounds``. Its lines follow these rules:
   ``ANALYTICS`` (``-A`` of ``tadah predict``) or ``REFIT_MODE`` (a key of
   the ``tadah refit`` configuration), is refused at its line in the
   configuration file of a command that does not read it, and the error
-  names the commands that read it. The settings of a ``tadah hpo`` run,
+  names the commands that read it. The configuration file of a command
+  whose ``-c`` needs the key's option on the command line refuses its line
+  too, as the option replaces the line: :ref:`OUTFILE` of ``tadah analysis
+  dataset_stats``, :ref:`RANGE` and :ref:`TYPE` of ``tadah analysis
+  bfunc``. The error then names the option that ``-c`` needs. The settings of a ``tadah hpo`` run,
   ``HPOTARGET``, ``VALIDATION``, ``CHECK`` and ``HEALTH_LOG``, are
   accepted in every training configuration and listed in the potential's
   :ref:`training record <training_record>`.

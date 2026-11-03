@@ -273,7 +273,8 @@ def number_admits(phrase, value):
     """Whether the Values phrase of a number admits *value*: an integer or
     a number, with its range (from a to b, >= a, <= b, above a, below b,
     and the two-sided forms "above a, up to b" and "from a, below b"), or
-    the one value a range of one value is."""
+    the one value a range of one value is. An integer is written in
+    decimal digits, with a '-' for a negative value: 10.0 is none."""
     if re.fullmatch(r'-?[0-9][0-9.e+-]*', phrase):
         return Fraction(value) == Fraction(phrase)
     m = re.match(r'(an integer|a number|a positive(?: [a-z]+)* number)\b(.*)',
@@ -281,9 +282,9 @@ def number_admits(phrase, value):
     if not m:
         return True
     noun, rest = m.group(1), m.group(2)
-    value = Fraction(value)
-    if noun == 'an integer' and value.denominator != 1:
+    if noun == 'an integer' and not re.fullmatch(r'-?[0-9]+', value):
         return False
+    value = Fraction(value)
     if noun.startswith('a positive') and value <= 0:
         return False
     num = r'(-?[0-9][0-9.e+-]*)'
@@ -873,10 +874,13 @@ class PagesTest(unittest.TestCase):
         # Pins: the Values field of an argument does not admit a number
         # that an invalid case of the entry refuses for its range or for a
         # fraction: an exclusive minimum is "above", a whole number "an
-        # integer". Refusals of one optimiser (a group key's message that
+        # integer", which is written in digits (PARAM GRID_POINTS 10.0 is
+        # refused). Refusals of one optimiser (a group key's message that
         # names it) and those of the context are not ranges of the key.
         # Before the fix: nine ASA options read "a number >= 0" and refused
-        # 0; GRID_POINTS and the integer ASA options took fractions.
+        # 0; GRID_POINTS and the integer ASA options took fractions; "an
+        # integer" admitted 10.0, which the registry's invalid case of
+        # GRID_POINTS refuses.
         entries = self.page_entries()
         refusal = re.compile(r'must be (an integer|a positive|>=? ?-?\d|'
                              r'<=? ?-?\d)|requires PARAM \S+ > 0|'
@@ -1243,12 +1247,15 @@ class PagesTest(unittest.TestCase):
         # out because the doc, the long_doc or the text of the section
         # states it is stated by the text of its topic, and a field given
         # that reason has a phrase here. Guard: the keys of [optim]'s
-        # positive_only and its auto_excluded_prefix are not shown as
-        # fields; the entry of OPTIM AUTO states both in its text.
+        # positive_only and of its auto_excluded (the distance cutoffs,
+        # RCUT2B and RCUTMB, which take no AUTO box; it was the prefix
+        # RCUT, auto_excluded_prefix) are not shown as fields; the entry of
+        # OPTIM AUTO names each key of both in its text.
         # Before the fix: no page said that a file whose last line ends
         # with a backslash is refused ('unfinished line N'), nor that an
         # END line without an open block or an unknown key is refused,
-        # and the reason of each said the text states it.
+        # and the reason of each said the text states it; the guard of
+        # auto_excluded fails while [optim] has no such field.
         claimed = {(section, name)
                    for section, fields in self.rhr.SECTION_FIELDS.items()
                    for name, why in fields.items()
@@ -1266,9 +1273,29 @@ class PagesTest(unittest.TestCase):
             self.page_entries()['OPTIM.AUTO'][2]))
         for name in optim.get('positive_only', []):
             self.assertRegex(body, r'\b' + re.escape(name) + r'\b')
-        prefix = optim.get('auto_excluded_prefix')
-        if prefix:
-            self.assertIn(f'starts with {prefix}', body)
+        excluded = optim.get('auto_excluded')
+        self.assertTrue(excluded)
+        for name in excluded:
+            self.assertRegex(body, r'\b' + re.escape(name) + r'\b')
+
+    def test_no_page_names_a_field_of_the_registry(self):
+        # Pins: no page names a field of a section of the target-file
+        # registry ([lexing], [reading], [structure], [optim],
+        # [lammps_script]) that is written as a code name, with an
+        # underscore (auto_excluded, positive_only, root_key_in_block_msg):
+        # such a name is the registry's, not a word of the reader's.
+        # Before the fix: the caption of the OPTIM refusal of an AUTO box
+        # for a cutoff on pc_options ends "(the keys of auto_excluded)".
+        names = {n for fields in self.rhr.SECTION_FIELDS.values()
+                 for n in fields if '_' in n}
+        names |= {n for n in self.reg.optim.fields if '_' in n}
+        self.assertIn('auto_excluded', names)
+        for page in PAGES:
+            for name in sorted(names):
+                with self.subTest(page=page, field=name):
+                    self.assertNotRegex(
+                        self.pages[page],
+                        r'(?<![\w-])' + re.escape(name) + r'(?![\w-])')
 
     def test_values_placeholders_are_in_the_syntax(self):
         # Pins: each <name> the Values field describes is in the Syntax of

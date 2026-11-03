@@ -414,25 +414,33 @@ class ReadTomlTest(unittest.TestCase):
         # Pins: the page says what a key marked Command key is, that its
         # entry names the commands and shows an example line only when one
         # of them reads a configuration file, that a configuration file of
-        # another command refuses its line (one clause and a link to the
-        # Quick Start's rule, its owner), and that a potential is read
-        # without it, with one warning per key that goes where the warning
-        # of a deprecated key goes: standard error, or log.lammps under
-        # pair_style tadah.
+        # another command, or of a command whose -c needs the key's option
+        # (OUTFILE of tadah analysis dataset_stats), refuses its line (one
+        # clause and a link to the Quick Start's rule, its owner), and that
+        # a potential is read without it, with one warning per key that
+        # goes where the warning of a deprecated key goes: standard error,
+        # or log.lammps under pair_style tadah; an OUTFILE line of a
+        # potential, a setting of the run that wrote it, gives no warning.
         # Before the fix: it said that the line "is refused at its line"
         # and that the warning of a potential goes to standard error,
-        # which pair_style tadah writes to its log instead.
+        # which pair_style tadah writes to its log instead; then it named
+        # only a configuration file of another command, and gave every
+        # line of a command key in a potential a warning, OUTFILE too.
         page = self.rt.render(self.command_blueprint())
         intro = ' '.join(page[:page.index('.. _LAMBDA:')].split())
         self.assertIn('only some commands read', intro)
         self.assertIn('Its entry names the commands, and shows an example '
                       'line only when one of them reads a configuration '
                       'file.', intro)
-        self.assertIn('A configuration file of another command refuses its '
-                      'line (:ref:`config_file`).', intro)
+        self.assertIn('A configuration file of another command, or of a '
+                      "command whose ``-c`` needs the key's option, "
+                      'refuses its line (:ref:`config_file`).', intro)
         self.assertIn('one warning per key, which goes where the warning of '
                       'a deprecated key goes (standard error, or '
                       '``log.lammps`` under ``pair_style tadah``)', intro)
+        self.assertIn('An ``OUTFILE`` line of a potential, a setting of the '
+                      'run that wrote it, is not read and gives no such '
+                      'warning.', intro)
         self.assertNotIn('is refused at its line', intro)
 
 

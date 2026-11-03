@@ -318,6 +318,14 @@ the file and a non-zero exit status.
 .. versionchanged:: 1.6.0
    Tadah! 1.5.0 logged an ``ERROR`` line and exited 0 without a potential.
 
+A configuration shared with ``tadah hpo`` has no :ref:`OUTFILE` line, as a
+configuration file of ``tadah hpo`` refuses one (:ref:`config_file`);
+``tadah train -o`` names the potential file.
+
+.. versionchanged:: 1.6.0
+   Tadah! 1.5.0 read an ``OUTFILE`` line in a configuration of ``tadah hpo``,
+   which wrote no file of its name.
+
 pot.tadah format
 ~~~~~~~~~~~~~~~~
 

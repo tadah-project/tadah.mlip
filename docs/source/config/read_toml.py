@@ -155,10 +155,12 @@ of their command line, such as ``ANALYTICS`` (``-A`` of ``tadah predict``),
 or a key of their configuration file, such as ``REFIT_MODE`` (``tadah
 refit``). Its entry names the commands, and shows an example line only when
 one of them reads a configuration file. A configuration file of another
-command refuses its line (:ref:`config_file`). A potential that holds such a
-line loads without it, with one warning per key, which goes where the
-warning of a deprecated key goes (standard error, or ``log.lammps`` under
-``pair_style tadah``).
+command, or of a command whose ``-c`` needs the key's option, refuses its
+line (:ref:`config_file`). A potential that holds such a line loads without
+it, with one warning per key, which goes where the warning of a deprecated
+key goes (standard error, or ``log.lammps`` under ``pair_style tadah``).
+An ``OUTFILE`` line of a potential, a setting of the run that wrote it, is
+not read and gives no such warning.
 
 '''
 

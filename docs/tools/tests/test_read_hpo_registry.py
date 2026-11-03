@@ -780,6 +780,9 @@ class PagesTest(unittest.TestCase):
         # SEED entry does not say that such an optimiser refuses it.
         # Before the fix (DLIB:GFS): its SEED field said "refused: it draws
         # no random numbers", and its entry said nothing of random draws.
+        # Before the fix (the random draws of DLIB:GFS): they said "from a
+        # fixed internal seed of dlib, which tadah hpo does not set", the
+        # reason the SEED field gives.
         # Before the fix: only the entries of DIRECT, StoGO and AGS said
         # anything of SEED ("Random draws: never: a SEED line is refused");
         # LN_SBPLX, the MLSL LDS and AUGLAG forms and GN_DIRECT_L_RAND said
@@ -808,9 +811,11 @@ class PagesTest(unittest.TestCase):
                     texts = ('refused: dlib draws its random points from a '
                              'fixed internal seed, which tadah hpo does not '
                              'set',)
-                    self.assertIn('from a fixed internal seed of dlib',
-                                  words_of(field_of(body, 'Random draws')
-                                           or ''))
+                    draws = words_of(field_of(body, 'Random draws') or '')
+                    self.assertIn('from a fixed internal seed of dlib', draws)
+                    # The SEED field gives the reason once; the random
+                    # draws do not repeat it.
+                    self.assertNotIn('does not set', draws)
                 for text in texts:
                     self.assertIn(text, field)
                 self.assertNotIn('OPTIMIZER.SEED', field_of(body, 'Reads')

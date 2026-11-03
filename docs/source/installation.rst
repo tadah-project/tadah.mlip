@@ -42,7 +42,7 @@ Installing Tadah!MLIP Software
 Tadah!MLIP provides the command-line interface binary, ``tadah``, for developing machine-learning interatomic potentials.
 
 Obtaining Source Code
-.....................
+~~~~~~~~~~~~~~~~~~~~~
 
 Tadah!MLIP is cloned at a release tag, or at ``v1-dev``, the development
 branch of the 1.x line, from which the releases are tagged:
@@ -64,7 +64,7 @@ a tag checkout has no branch, so a release clone is configured with
 .. _building_tadah:
 
 Configuration and Compilation
-.............................
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Tadah!MLIP uses CMake for configuration and a standard build tool for compilation.
 
@@ -72,7 +72,7 @@ The executable ``tadah`` is installed in the ``bin`` directory by default (``${C
 After a successful compilation (before installation), the ``tadah`` binary should also be present inside the build directory (commonly as ``build/tadah`` or under a subdirectory like ``build/bin/``, depending on the platform and the CMake generator).
 
 Using the provided CMake defaults preset (recommended)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Tadah!MLIP ships a CMake *initial cache* file with Linux end-user defaults at
 ``cmake/presets/tadah-linux-defaults.cmake``. It serves as-is, or edited to match
@@ -140,7 +140,7 @@ the variables that name them explicitly (``TADAH_DOXYGEN_XML_DIR``,
 .. _configuration_options:
 
 Configuration Options
-.....................
+~~~~~~~~~~~~~~~~~~~~~
 
 .. note::
 
@@ -151,7 +151,7 @@ Configuration Options
    reusing it for future builds.
 
 Installation location
-^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~
 
 ``CMAKE_INSTALL_PREFIX``, set during configuration, changes the installation location from the
 default (typically ``/usr/local`` on Linux):
@@ -161,7 +161,7 @@ default (typically ``/usr/local`` on Linux):
     cmake .. -DCMAKE_INSTALL_PREFIX=/your/path
 
 Choosing a build type
-^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~
 
 On Linux, CMake commonly uses a *single-config* generator (Ninja or Unix Makefiles). In this case the build type is selected at **configure time** using ``CMAKE_BUILD_TYPE``.
 
@@ -204,7 +204,7 @@ A copy of the provided preset can also hold a default build type:
       "Build type (Debug, Release, RelWithDebInfo, MinSizeRel)")
 
 Build options
-^^^^^^^^^^^^^
+~~~~~~~~~~~~~
 
 These CMake options customise the Tadah!MLIP build:
 
@@ -239,7 +239,7 @@ One call takes several ``-D<option>=<value>`` pairs.
 .. _installation_git_branch:
 
 Which ref the Tadah! modules are fetched at
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Tadah!MLIP fetches the Tadah! modules it builds on from their git
 repositories (Tadah.MLIP, Tadah.MODELS and Tadah.CORE; with
@@ -269,7 +269,7 @@ release its tag:
 .. _installation_git_base:
 
 Where the Tadah! modules are fetched from
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CMake fetches each Tadah! repository as ``<base>/<repository>.git``, the
 base being ``TADAH_GIT_BASE``. It is ``https://github.com/tadah-project``
@@ -285,7 +285,7 @@ variable:
 .. _gofasterstripe:
 
 Go Faster Stripe - Desktop Version
-..................................
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 OpenMP is supported where the system provides it. A Tadah!MLIP build with OpenMP support performs best with as many threads as CPU cores:
 
@@ -296,7 +296,7 @@ OpenMP is supported where the system provides it. A Tadah!MLIP build with OpenMP
 .. _installation_hpo_mpi:
 
 MPI-parallel nested fitting
-...........................
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Training (``tadah train``) and the other ``tadah`` commands run in one
 process; OpenMP threads (:ref:`gofasterstripe`) occupy the cores of a
@@ -408,7 +408,7 @@ to ``TADAH_HPO_MPI``; ``-DTADAH_BUILD_MPI=OFF`` is accepted.
 .. _installation_nfp:
 
 Building Tadah!MLIP with Nested Fitting Procedure support
-.........................................................
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. warning::
 
@@ -473,7 +473,7 @@ There are two ways to build LAMMPS with ML‑TADAH:
 2. **Traditional make-based build (deprecated)**
 
 CMake build with ML‑TADAH (recommended)
-.......................................
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This method integrates ML‑TADAH into a normal LAMMPS CMake configure/build, by adding a small set of extra CMake options.
 
@@ -582,7 +582,7 @@ The CMake integration also supports additional options (e.g. verbosity controls 
 .. _installation_lammps_mpi:
 
 Running pair_style tadah on several MPI ranks
-.............................................
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``pair_style tadah`` runs domain-decomposed like any LAMMPS pair style.
 LAMMPS is configured with the options of Step 3 and ``-DBUILD_MPI=ON``
@@ -636,7 +636,7 @@ configured with ``-DTADAH_LMP_MPI=/path/to/lammps/build-mpi/lmp_mpi`` and
 them with ``ctest -L lammps``; without them the entries are *Skipped*.
 
 Traditional make-based build
-............................
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The classic LAMMPS ``make`` workflow is **not supported** for
 Tadah!LAMMPS in this release. The CMake build documented above replaces it.
@@ -657,7 +657,7 @@ location such as ``/usr`` or ``/usr/local`` nothing extra is required:
     g++ my_code.cpp -ltadah.core -o my_code  # headers and libs found automatically
 
 Non-standard prefix (e.g. ``$HOME/.local``)
-...........................................
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 When Tadah! is installed in a private directory, the compiler and linker need
 a hint. The quickest hint is the include and library paths, given on the
 command line:
@@ -670,7 +670,7 @@ command line:
         -ltadah.mlip -o my_code
 
 Run-time resolution
-...................
+~~~~~~~~~~~~~~~~~~~
 ``LD_LIBRARY_PATH`` tells the dynamic loader where to find the shared object
 after the executable has been built:
 
@@ -680,7 +680,7 @@ after the executable has been built:
     ./my_code
 
 Optional convenience variables
-..............................
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Environment variables, set once for the shell (or in a module file), save
 repeating the ``-I``/``-L`` flags:
 
@@ -698,7 +698,7 @@ session, or environment module), which avoids accidental conflicts with other
 software.
 
 Compiled Libraries
-..................
+~~~~~~~~~~~~~~~~~~
 
 The following libraries are produced, depending on the build settings:
 
@@ -712,7 +712,7 @@ The following libraries are produced, depending on the build settings:
 .. _compiling_and_linking:
 
 Compiling and Linking with Library
-..................................
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 C++ library use needs C++17 or higher. Library headers are included with the prefix ``tadah/``, and the relevant libraries are linked. For ``libtadah.mlip`` it is often the case that both ``libtadah.models`` and ``libtadah.core`` must be linked as well.
 

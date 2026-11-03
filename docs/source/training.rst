@@ -498,10 +498,10 @@ and ``log.lammps`` are the input script's output, and none of the lines
 changes a force or an energy.
 
 .. versionchanged:: 1.6.0
-   The training record is new. Its opening
-   line is ``# --- training record (no key is read from it) ---``; ``tadah
+   The opening line of the training record is
+   ``# --- training record (no key is read from it) ---``; ``tadah
    refit --edit`` refuses a block opened by any other line at its end
-   line. tadah 1.5.x
+   line. tadah 1.5.x, which had no training record,
    wrote some of these keys as key lines (the ``DBFILE`` of an ``M_BLR``
    potential, a ``best_pot.tadah``'s ``HPOTARGET``,
    ``VERBOSE`` and ``NUMERIC`` and, when its run had a validation file,

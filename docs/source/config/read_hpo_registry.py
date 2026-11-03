@@ -297,8 +297,8 @@ SECTION_FIELDS = {
     'OPTIM': {'synopsis': 'Syntax of OPTIM',
               'positive_only': 'not shown: the text of OPTIM AUTO names '
                                'these keys',
-              'auto_excluded_prefix': 'not shown: the text of OPTIM AUTO '
-                                      'states it',
+              'auto_excluded': 'not shown: the text of OPTIM AUTO names '
+                               'these keys',
               'checks': 'Checks of OPTIM'},
     'LAMMPS_SCRIPT': {'fixture': 'Script'},
 }

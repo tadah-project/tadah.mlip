@@ -1017,9 +1017,10 @@ class PagesTest(unittest.TestCase):
         with self.assertRaisesRegex(error, r'\bCase\.files\b'):
             self.rhr.render(reg, self.optimizers, self.anneal)
 
-    #: The fields of the registry only the parser reads (the order of its
-    #: steps, the case of a word, the texts it puts into messages), by
-    #: class (or section) and field.
+    #: The fields of the registry only the program reads: the order of the
+    #: parser's steps, the case of a word, the texts the parser puts into
+    #: messages, and the explain of a PARAM key (its row of
+    #: `tadah explain`), by class (or section) and field.
     PARSER_ONLY = {
         ('Key', 'steps'), ('Key', 'effect'), ('Block', 'close_steps'),
         ('Check', 'at'), ('Arg', 'case'), ('LineOption', 'case'),
@@ -1029,8 +1030,8 @@ class PagesTest(unittest.TestCase):
     }
 
     def test_the_fields_only_the_parser_reads_are_not_shown(self):
-        # Pins: the fields the parser reads and the pages leave out are
-        # listed as not shown, and the pages do not change with their
+        # Pins: the fields only the program reads, which the pages leave
+        # out, are listed as not shown, and the pages do not change with their
         # values: the registry with each such field changed (the orders
         # reversed, the case of every word any, an effect, a what and an
         # explain of other text, every close check at its key's line)

@@ -1278,6 +1278,25 @@ class PagesTest(unittest.TestCase):
         for name in excluded:
             self.assertRegex(body, r'\b' + re.escape(name) + r'\b')
 
+    def test_no_page_names_a_field_of_the_registry(self):
+        # Pins: no page names a field of a section of the target-file
+        # registry ([lexing], [reading], [structure], [optim],
+        # [lammps_script]) that is written as a code name, with an
+        # underscore (auto_excluded, positive_only, root_key_in_block_msg):
+        # such a name is the registry's, not a word of the reader's.
+        # Before the fix: the caption of the OPTIM refusal of an AUTO box
+        # for a cutoff on pc_options ends "(the keys of auto_excluded)".
+        names = {n for fields in self.rhr.SECTION_FIELDS.values()
+                 for n in fields if '_' in n}
+        names |= {n for n in self.reg.optim.fields if '_' in n}
+        self.assertIn('auto_excluded', names)
+        for page in PAGES:
+            for name in sorted(names):
+                with self.subTest(page=page, field=name):
+                    self.assertNotRegex(
+                        self.pages[page],
+                        r'(?<![\w-])' + re.escape(name) + r'(?![\w-])')
+
     def test_values_placeholders_are_in_the_syntax(self):
         # Pins: each <name> the Values field describes is in the Syntax of
         # the entry (an argument of words only lists its words); a refused

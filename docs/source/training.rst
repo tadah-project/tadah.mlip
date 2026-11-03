@@ -498,22 +498,10 @@ and ``log.lammps`` are the input script's output, and none of the lines
 changes a force or an energy.
 
 .. versionchanged:: 1.6.0
-   The training record is new. Its opening
-   line is ``# --- training record (no key is read from it) ---``; ``tadah
-   refit --edit`` refuses a block opened by any other line at its end
-   line. tadah 1.5.x
-   wrote some of these keys as key lines (the ``DBFILE`` of an ``M_BLR``
-   potential, a ``best_pot.tadah``'s ``HPOTARGET``,
-   ``VERBOSE`` and ``NUMERIC`` and, when its run had a validation file,
-   ``VALIDATION``, ``AUDIT_SAMPLE``, and the keys that prepared the
-   training data) and left the others out, and a run read them as its own:
-   a retrain from a ``best_pot.tadah`` ran at its ``VERBOSE`` and wrote at
-   its ``NUMERIC 12`` (to its ``OUTFILE``, when it had one), ``tadah hpo
-   -c`` of it validated on its ``VALIDATION`` file, ``tadah analysis
-   check_bounds -c`` of it took its target file from its ``HPOTARGET``
-   line, and its ``VERBOSE`` set the
-   Tadah log level of whatever loaded it, ``pair_style tadah`` included, and
-   the verbosity of its models.
+   Tadah! 1.5.x had no training record. It wrote some of these keys as key
+   lines, and a run that loaded such a potential took them as its own
+   settings (a retrain ran at its ``VERBOSE``, ``tadah hpo -c`` validated on
+   its ``VALIDATION`` file).
 
 .. _retrain_from_potential:
 

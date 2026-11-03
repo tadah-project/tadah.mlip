@@ -2693,7 +2693,7 @@ TEST_CASE("Subcommand: each run prints the settings line of the kernel it "
  * exactly 'WEIGHTS 14 2500 -3 0.5'; 'FIXINDEX 1 3' (FIXWEIGHT 0.5 -0.25)
  * writes the WEIGHTS line 'FIXINDEX 1,3' writes, weights 1 and 3 the pinned
  * values; 'FIXINDEX 1,1' with one FIXWEIGHT value exits 1 ("FIXINDEX 1,1
- * names weight 1 twice") and 'FIXINDEX 3-1' exits 1 naming the descending
+ * names coefficient 1 twice") and 'FIXINDEX 3-1' exits 1 naming the descending
  * range, neither writing pot.tadah.
  * Before the fix: the separate values were joined into one malformed
  * segment and dropped ("Error: Non-numeric value or incorrect syntax
@@ -2740,7 +2740,7 @@ TEST_CASE("Subcommand: train reads FIXINDEX given as separate values as the "
     const std::string rt = reported(t);
     INFO("twice: status " << t.status << "\n" << rt);
     CHECK(t.status == 1);
-    CHECK(contains(rt, "FIXINDEX 1,1 names weight 1 twice"));
+    CHECK(contains(rt, "FIXINDEX 1,1 names coefficient 1 twice"));
     CHECK_FALSE(std::filesystem::exists("pot.tadah"));
     const CliRun d = train("desc.cfg", "FIXINDEX 3-1\nFIXWEIGHT 0.5 -0.25 1\n");
     const std::string rd = reported(d);
@@ -3324,6 +3324,96 @@ TEST_CASE("Subcommand: analysis bfunc plots the basis of a BIAS true "
   CHECK(slurp("bias.out") == slurp("nobias.out"));
 }
 
+/* ---- [hpo-input]: the input files of tadah hpo ------------------------ */
+
+/* Pins: tadah hpo needs --config whatever else its command line gives:
+ * `tadah hpo --hpotarget config.hpo`, `tadah hpo --validation
+ * config.val` and `tadah hpo --check --hpotarget config.hpo` each exit
+ * non-zero at the command line, before any file is read, with "<option>
+ * requires --config" (--hpotarget, --validation and --hpotarget), and write
+ * no best_pot.tadah. The case needs no Nested Fitting build: the command
+ * line is the same in both.
+ * Before the fix: only --config needed --hpotarget; the three lines passed
+ * the command line, and a build with the Nested Fitting Procedure started
+ * the run on an empty training configuration and refused it with "INIT2B
+ * and INITMB are both false" (the message names neither --config nor the
+ * command line), so every "requires --config" check fails. */
+TEST_CASE("Subcommand: hpo without --config is refused at the command line, "
+          "naming --config",
+          "[TadahCLI][exit-status][hpo-input]") {
+  ScratchCwd cwd("hpo_without_config");
+  std::ofstream("config.hpo") << "LOSS L2\nPC_ERMSE 0 1\n"
+                                 "OPTIM CGRID2B (1) 2.3 2.7\n";
+  std::ofstream("config.val") << "DBFILE val.db\n";
+  struct Line {
+    std::vector<std::string> args;
+    std::string refusal;
+  };
+  for (const Line& line : std::vector<Line>{
+           {{"tadah", "hpo", "--hpotarget", "config.hpo"},
+            "--hpotarget requires --config"},
+           {{"tadah", "hpo", "--validation", "config.val"},
+            "--validation requires --config"},
+           {{"tadah", "hpo", "--check", "--hpotarget", "config.hpo"},
+            "--hpotarget requires --config"}}) {
+    const CliRun r = run_tadah(line.args);
+    const std::string rep = reported(r);
+    std::string cmd;
+    for (const auto& a : line.args) cmd += a + " ";
+    INFO(cmd << ": status " << r.status << "\n" << rep);
+    CHECK(r.status != 0);
+    CHECK(contains(rep, line.refusal));
+    CHECK_FALSE(contains(rep, "INIT2B and INITMB are both false"));
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  }
+}
+
+/* The help of tadah hpo says that --config and --hpotarget are required,
+ * and the count of its input group agrees: "[Between 2 and 3 of the
+ * following options are required]"; `tadah hpo` without options exits
+ * non-zero asking for at least 2 of them. The case needs no Nested Fitting
+ * build: the command line is the same in both.
+ * Before the fix: the group took 1 to 3 options, so the help said
+ * "[Between 1 and 3 of the following options are required]" under the
+ * sentence that two are required, and `tadah hpo` alone was refused with
+ * "At least 1 option from [...] is required". */
+TEST_CASE("Subcommand: hpo -h and hpo without options ask for --config and "
+          "--hpotarget",
+          "[TadahCLI][exit-status][hpo-input]") {
+  ScratchCwd cwd("hpo_input_count");
+  auto squeeze = [](const std::string& text) {
+    std::string out;
+    bool blank = false;
+    for (char ch : text) {
+      if (std::isspace(static_cast<unsigned char>(ch))) {
+        blank = true;
+        continue;
+      }
+      if (blank && !out.empty()) out += ' ';
+      blank = false;
+      out += ch;
+    }
+    return out;
+  };
+  const CliRun h = run_tadah({"tadah", "hpo", "-h"});
+  const std::string help = squeeze(h.out);
+  INFO("tadah hpo -h: status " << h.status << "\n" << reported(h));
+  CHECK(h.status == 0);
+  CHECK(contains(help, "--config and --hpotarget are required; --validation "
+                       "is optional."));
+  CHECK(contains(help, "[Between 2 and 3 of the following options are "
+                       "required]"));
+  CHECK_FALSE(contains(help, "Between 1 and 3"));
+
+  const CliRun n = run_tadah({"tadah", "hpo"});
+  const std::string rn = reported(n);
+  INFO("tadah hpo: status " << n.status << "\n" << rn);
+  CHECK(n.status != 0);
+  CHECK(contains(rn, "Requires at least 2 options used but only 0 were "
+                     "given"));
+  CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+}
+
 /* ---- [not-built]: tadah hpo in a tadah built without NFP -------------- */
 
 namespace {
@@ -3431,9 +3521,13 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo say "
 /* Pins: in a tadah built with TADAH_ENABLE_NFP, `tadah -h` lists hpo as
  * "hpo Optimises the model architecture and hyperparameters.", and neither
  * it, `tadah hpo -h` nor `tadah explain hpo` (each exits 0 and prints
- * something) says "which this tadah was built without".
+ * something) has the message of a tadah without NFP, kHpoNotBuilt
+ * (whitespace collapsed: the help wraps its lines).
  * Before the fix: passes as well (a pin: only a tadah without NFP has the
- * message). */
+ * message). The check looked for "which this tadah was built without",
+ * an earlier wording of that message, which no build prints, so it could
+ * not fail; with the hpo description of this build ending in
+ * kHpoNotBuilt it fails, where the old check passed. */
 TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo of a "
           "tadah built with NFP do not say hpo is not built",
           "[TadahCLI][exit-status][not-built]") {
@@ -3443,7 +3537,7 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo of a "
     const CliRun r = run_tadah(args);
     INFO(args[1] << ": status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
-    CHECK_FALSE(contains(r.out, "which this tadah was built without"));
+    CHECK_FALSE(contains(one_line(r.out), kHpoNotBuilt));
     CHECK_FALSE(r.out.empty());
   }
   const CliRun h = run_tadah({"tadah", "-h"});
@@ -7014,6 +7108,57 @@ TEST_CASE("Subcommand: train refuses an ERROR or UNCERTAINTY line of its "
                      "the line)"));
   CHECK(contains(rg, kRemoved));
   CHECK_FALSE(std::filesystem::exists("g.tadah"));
+}
+
+/* A QUANTITY line, which tadah train of Tadah! 1.5.0 wrote into the
+ * potential when its configuration set the key ("QUANTITY          volume"),
+ * is a retired key: a potential with it predicts what it predicts without
+ * it (exit 0), with one notice ("Retired key QUANTITY (line N of q.tadah)
+ * is ignored"), and the configuration of `tadah train` with it is refused
+ * (exit 1), naming the line marked as converted by deleting it and the
+ * reason, without writing a potential.
+ * Before the fix: the key was deleted from the blueprint, so the
+ * prediction exited 1 with "Invalid key QUANTITY on line N of q.tadah" and
+ * the training with "Invalid key QUANTITY on line N of config.train
+ * (closest key: ...)". */
+TEST_CASE("Subcommand: a potential with a QUANTITY line predicts, and train "
+          "refuses the line with the reason",
+          "[TadahCLI][train][retired]") {
+  ScratchCwd cwd("quantity_retired");
+  std::ofstream("db.tadah") << retrain_dataset();
+  const std::string config = retrain_config("M_BLR BF_Linear", "LAMBDA 1e-3\n");
+  const std::string line_no =
+      std::to_string(std::count(config.begin(), config.end(), '\n') + 1);
+  std::ofstream("config.train") << config << "QUANTITY volume\n";
+  const CliRun t = run_tadah({"tadah", "train", "-c", "config.train", "-o",
+                              "q.tadah"});
+  const std::string rep = reported(t);
+  INFO("train: status " << t.status << "\n" << rep);
+  CHECK(t.status == 1);
+  CHECK(contains(rep, "QUANTITY volume (line " + line_no +
+                          " of config.train; converted by deleting the "
+                          "line)"));
+  CHECK(contains(rep, "QUANTITY: QUANTITY was read by no command"));
+  CHECK_FALSE(std::filesystem::exists("q.tadah"));
+
+  std::ofstream("plain.train") << config;
+  const CliRun ok = run_tadah({"tadah", "train", "-c", "plain.train", "-o",
+                               "plain.tadah"});
+  INFO("train: status " << ok.status << "\n" << reported(ok));
+  REQUIRE(ok.status == 0);
+  std::ofstream("q.tadah") << slurp("plain.tadah")
+                           << "QUANTITY          volume\n";
+  const CliRun p0 = run_tadah({"tadah", "predict", "-p", "plain.tadah", "-d",
+                               "db.tadah", "-o", "plain.pred"});
+  REQUIRE(p0.status == 0);
+  const CliRun p = run_tadah({"tadah", "predict", "-p", "q.tadah", "-d",
+                              "db.tadah", "-o", "q.pred"});
+  const std::string rp = reported(p);
+  INFO("predict: status " << p.status << "\n" << rp);
+  CHECK(p.status == 0);
+  CHECK(contains(rp, "Retired key QUANTITY (line "));
+  CHECK(contains(rp, " of q.tadah) is ignored"));
+  CHECK(slurp("q.pred") == slurp("plain.pred"));
 }
 
 /* Pins: `tadah explain` of predict.error, properties.pairwise.error,
@@ -12882,13 +13027,14 @@ TEST_CASE("Subcommand: hpo refuses a line that changes nothing a fit gives, "
 /* Pins: `tadah hpo --check` and the run refuse, with status 1, the target
  * file line `OPTIM WATOM (1) 0.5 2.0` (line 8 of config.hpo) for a D2_EAM +
  * DM_EAM training configuration with WATOM 1, whose descriptors read no
- * WATOM: "OPTIM WATOM (line 8 of the target file) is not a valid search
- * target: no descriptor of the training configuration reads WATOM ..."; the
- * run evaluates nothing and writes no best_pot.tadah.
+ * WATOM: "line 8 of config.hpo: OPTIM WATOM is not a valid search target:
+ * no descriptor of the training configuration reads WATOM ..."; the run
+ * evaluates nothing and writes no best_pot.tadah.
  * Before the fix: --check exited 0 ("passed the startup checks") and the run
  * exited 0 with best_pot.tadah, every evaluation but the start scoring
  * FAILSCORE (its fit refused the candidate's WATOM, which no descriptor
- * reads). */
+ * reads). Then the refusal began "OPTIM WATOM (line 8 of the target file)
+ * is not ...", without the file: the check fails on it. */
 TEST_CASE("Subcommand: hpo refuses OPTIM WATOM when no descriptor reads "
           "WATOM, by --check and the run",
           "[TadahCLI][exit-status][hpo][inert]") {
@@ -12908,8 +13054,8 @@ TEST_CASE("Subcommand: hpo refuses OPTIM WATOM when no descriptor reads "
     const std::string rep = reported(r);
     INFO("status " << r.status << "\n" << rep);
     CHECK(r.status == 1);
-    CHECK(contains(rep, "OPTIM WATOM (line 8 of the target file) is not a "
-                        "valid search target: no descriptor of the training "
+    CHECK(contains(rep, "line 8 of config.hpo: OPTIM WATOM is not a valid "
+                        "search target: no descriptor of the training "
                         "configuration reads WATOM"));
     CHECK_FALSE(contains(rep, "passed the startup checks"));
     CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));

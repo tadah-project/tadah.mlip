@@ -191,11 +191,12 @@ Starting points that an :hpo:block:`!INIT <BLOCK.INIT>` or
 :hpo:block:`!RESTART <BLOCK.RESTART>` block draws repeat only with that
 block's :hpo:key:`!SEED <INIT.SEED>` (see :doc:`nfp_initialisation`).
 
-:hpo:opt:`TADAH:GRID`, :hpo:opt:`DLIB:GFS`, :hpo:opt:`DLIB:BFGS` and the
-:hpo:opt:`CERES` optimisers refuse :hpo:key:`!SEED <OPTIMIZER.SEED>` because
-they draw no random numbers, except as a
-:hpo:key:`!PRESTAGE <STRATEGY.TYPE.PRESTAGE>` refinement whose
-:hpo:key:`!SEED <OPTIMIZER.SEED>` the exploration takes. An NLopt
+:hpo:opt:`TADAH:GRID`, :hpo:opt:`DLIB:BFGS` and the :hpo:opt:`CERES`
+optimisers refuse :hpo:key:`!SEED <OPTIMIZER.SEED>` because they draw no
+random numbers. :hpo:opt:`DLIB:GFS` refuses it because dlib draws its random
+points from a fixed internal seed, which ``tadah hpo`` does not set. Each
+accepts it as a :hpo:key:`!PRESTAGE <STRATEGY.TYPE.PRESTAGE>` refinement
+whose :hpo:key:`!SEED <OPTIMIZER.SEED>` the exploration takes. An NLopt
 algorithm that draws no random numbers, such as
 :hpo:opt:`NLOPT:LN_SBPLX` or :hpo:opt:`NLOPT:GN_DIRECT_L`, refuses
 :hpo:key:`!SEED <OPTIMIZER.SEED>` too. The

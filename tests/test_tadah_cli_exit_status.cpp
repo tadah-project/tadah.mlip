@@ -3324,6 +3324,50 @@ TEST_CASE("Subcommand: analysis bfunc plots the basis of a BIAS true "
   CHECK(slurp("bias.out") == slurp("nobias.out"));
 }
 
+/* ---- [hpo-input]: the input files of tadah hpo ------------------------ */
+
+/* Pins: tadah hpo needs --config whatever else its command line gives:
+ * `tadah hpo --hpotarget config.hpo`, `tadah hpo --validation
+ * config.val` and `tadah hpo --check --hpotarget config.hpo` each exit
+ * non-zero at the command line, before any file is read, with "<option>
+ * requires --config" (--hpotarget, --validation and --hpotarget), and write
+ * no best_pot.tadah. The case needs no Nested Fitting build: the command
+ * line is the same in both.
+ * Before the fix: only --config needed --hpotarget; the three lines passed
+ * the command line, and a build with the Nested Fitting Procedure started
+ * the run on an empty training configuration and refused it with "INIT2B
+ * and INITMB are both false" (the message names neither --config nor the
+ * command line), so every "requires --config" check fails. */
+TEST_CASE("Subcommand: hpo without --config is refused at the command line, "
+          "naming --config",
+          "[TadahCLI][exit-status][hpo-input]") {
+  ScratchCwd cwd("hpo_without_config");
+  std::ofstream("config.hpo") << "LOSS L2\nPC_ERMSE 0 1\n"
+                                 "OPTIM CGRID2B (1) 2.3 2.7\n";
+  std::ofstream("config.val") << "DBFILE val.db\n";
+  struct Line {
+    std::vector<std::string> args;
+    std::string refusal;
+  };
+  for (const Line& line : std::vector<Line>{
+           {{"tadah", "hpo", "--hpotarget", "config.hpo"},
+            "--hpotarget requires --config"},
+           {{"tadah", "hpo", "--validation", "config.val"},
+            "--validation requires --config"},
+           {{"tadah", "hpo", "--check", "--hpotarget", "config.hpo"},
+            "--hpotarget requires --config"}}) {
+    const CliRun r = run_tadah(line.args);
+    const std::string rep = reported(r);
+    std::string cmd;
+    for (const auto& a : line.args) cmd += a + " ";
+    INFO(cmd << ": status " << r.status << "\n" << rep);
+    CHECK(r.status != 0);
+    CHECK(contains(rep, line.refusal));
+    CHECK_FALSE(contains(rep, "INIT2B and INITMB are both false"));
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  }
+}
+
 /* ---- [not-built]: tadah hpo in a tadah built without NFP -------------- */
 
 namespace {
@@ -3431,9 +3475,13 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo say "
 /* Pins: in a tadah built with TADAH_ENABLE_NFP, `tadah -h` lists hpo as
  * "hpo Optimises the model architecture and hyperparameters.", and neither
  * it, `tadah hpo -h` nor `tadah explain hpo` (each exits 0 and prints
- * something) says "which this tadah was built without".
+ * something) has the message of a tadah without NFP, kHpoNotBuilt
+ * (whitespace collapsed: the help wraps its lines).
  * Before the fix: passes as well (a pin: only a tadah without NFP has the
- * message). */
+ * message). The check looked for "which this tadah was built without",
+ * an earlier wording of that message, which no build prints, so it could
+ * not fail; with the hpo description of this build ending in
+ * kHpoNotBuilt it fails, where the old check passed. */
 TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo of a "
           "tadah built with NFP do not say hpo is not built",
           "[TadahCLI][exit-status][not-built]") {
@@ -3443,7 +3491,7 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo of a "
     const CliRun r = run_tadah(args);
     INFO(args[1] << ": status " << r.status << "\n" << reported(r));
     CHECK(r.status == 0);
-    CHECK_FALSE(contains(r.out, "which this tadah was built without"));
+    CHECK_FALSE(contains(one_line(r.out), kHpoNotBuilt));
     CHECK_FALSE(r.out.empty());
   }
   const CliRun h = run_tadah({"tadah", "-h"});

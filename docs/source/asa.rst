@@ -28,11 +28,12 @@ At least one search parameter (``OPTIM`` line) is required. ASA starts at
 the first starting point of the ``INIT`` block. Without an ``INIT`` block,
 the values of the training configuration are the starting point. If no
 starting point remains, ASA draws a random start. A starting point whose
-evaluation fails is kept as ASA's first state with the loss of the failure,
-at most about 1e18, the largest cost ASA takes: the first point with a usable
-loss replaces it as ASA's best, and ``hpo_run.log`` names the failed start
-and its cost. ``SEED`` controls the
-random stream; without it, the seed is non-deterministic.
+loss ASA does not take (at or above :hpo:key:`FAILSCORE`, about 1e18 or more,
+or not finite) stays ASA's first state, with that loss capped at about 1e18.
+Every loss ASA takes is lower, so the first state that ASA generates after
+it with a usable loss becomes ASA's best; ``hpo_run.log`` names the failed
+start. ``SEED`` controls the random stream; without it, the seed is
+non-deterministic.
 
 Option reference
 ----------------

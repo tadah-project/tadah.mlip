@@ -315,17 +315,16 @@ A potential file that cannot be written (its directory does not exist, or
 a directory has its name) stops ``tadah train`` with an error that names
 the file and a non-zero exit status.
 
-``OUTFILE`` is a key of the commands that write a file. A configuration file
-given to ``tadah hpo``, ``tadah analysis check_bounds`` or ``tadah analysis
-dataset_stats`` refuses an ``OUTFILE`` line at its line, so a configuration
-shared with these commands leaves the potential file of ``tadah train`` to
-``-o``.
-
-.. versionchanged:: 1.6.0
-   ``tadah hpo -c`` read an ``OUTFILE`` line and wrote no file of its name.
-
 .. versionchanged:: 1.6.0
    Tadah! 1.5.0 logged an ``ERROR`` line and exited 0 without a potential.
+
+A configuration shared with ``tadah hpo`` has no :ref:`OUTFILE` line, as a
+configuration file of ``tadah hpo`` refuses one (:ref:`config_file`);
+``tadah train -o`` names the potential file.
+
+.. versionchanged:: 1.6.0
+   Tadah! 1.5.0 read an ``OUTFILE`` line in a configuration of ``tadah hpo``,
+   which wrote no file of its name.
 
 pot.tadah format
 ~~~~~~~~~~~~~~~~

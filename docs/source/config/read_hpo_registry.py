@@ -706,8 +706,7 @@ SEED_USE = {
 RANDOM = {'never': 'never',
           'between_sides': 'only to choose between sides of equal length',
           'trial_points': 'for its trial points',
-          'fixed_seed': 'from a fixed internal seed of dlib, which tadah hpo '
-                        'does not set'}
+          'fixed_seed': 'from a fixed internal seed of dlib'}
 # The SEED line of an optimiser that refuses SEED although it draws random
 # numbers, by its random_draws (SEED_USE['refused'] says it draws none).
 SEED_REFUSED = {'fixed_seed': 'refused: dlib draws its random points from a '

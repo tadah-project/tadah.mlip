@@ -772,9 +772,14 @@ class PagesTest(unittest.TestCase):
         # one" (GN_DIRECT_L_RAND), "read only when its local search draws
         # random numbers (an INNER LN_PRAXIS); refused otherwise"
         # (GN_MLSL_LDS, the AUGLAG forms), "refused: it draws no random
-        # numbers" (LN_SBPLX, DIRECT, DLIB:GFS). SEED is not listed among
-        # what an optimiser reads, nor in the random draws; the SEED entry
-        # does not say that such an optimiser refuses it.
+        # numbers" (LN_SBPLX, DIRECT), and for DLIB:GFS, which refuses SEED
+        # though it draws random points, "refused: dlib draws its random
+        # points from a fixed internal seed, which tadah hpo does not set",
+        # its random draws "from a fixed internal seed of dlib". SEED is not
+        # listed among what an optimiser reads, nor in the random draws; the
+        # SEED entry does not say that such an optimiser refuses it.
+        # Before the fix (DLIB:GFS): its SEED field said "refused: it draws
+        # no random numbers", and its entry said nothing of random draws.
         # Before the fix: only the entries of DIRECT, StoGO and AGS said
         # anything of SEED ("Random draws: never: a SEED line is refused");
         # LN_SBPLX, the MLSL LDS and AUGLAG forms and GN_DIRECT_L_RAND said
@@ -798,7 +803,15 @@ class PagesTest(unittest.TestCase):
                 self.assertIn(o.get('seed'), expected)
                 seen.add(o['seed'])
                 field = words_of(field_of(body, 'SEED') or '')
-                for text in expected[o['seed']]:
+                texts = expected[o['seed']]
+                if name == 'DLIB:GFS':
+                    texts = ('refused: dlib draws its random points from a '
+                             'fixed internal seed, which tadah hpo does not '
+                             'set',)
+                    self.assertIn('from a fixed internal seed of dlib',
+                                  words_of(field_of(body, 'Random draws')
+                                           or ''))
+                for text in texts:
                     self.assertIn(text, field)
                 self.assertNotIn('OPTIMIZER.SEED', field_of(body, 'Reads')
                                  or '')

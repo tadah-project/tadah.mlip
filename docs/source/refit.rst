@@ -1417,8 +1417,10 @@ retargeting at the same settings. Bound recovery is exact at the printed
 precision (``%.8e``, 9 significant digits); a hand-pruned group (deleted
 lines) shifts the group's scale floor relative to a fresh emission
 (warned). A line whose
-lower bound was clamped (the width channels, ``RCUT``, the non-negative
-amplitudes below) is recovered with the percentage of its own group comment
+lower bound was clamped (the width channels, ``RCUT``, the centre
+channels ``CGRID2B`` and ``CGRIDMB``, whose boxes stay at or above 0 as
+``tadah hpo`` requires, the non-negative amplitudes below) is recovered
+with the percentage of its own group comment
 (``# KEY  (+-X%``, which a per-key ``--pct`` rewrites), so repeating a
 per-key retarget such as ``--pct 5 SGRIDMB=50`` is a fixed point too. An
 ``RCUT2B``/``RCUTMB`` line has no group comment in a fresh file: a per-key

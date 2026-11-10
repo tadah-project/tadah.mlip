@@ -3843,18 +3843,21 @@ cli_needs = ["potential"]
 cli_needs = ["potential"]
 
 [TASKS.hpo]
-description = "Optimises the model architecture and hyperparameters."
+description = "Searches the hyperparameters of a potential by nested fitting."
 long_description = """
-Refines a model's architecture and hyperparameters with Tadah!'s nested
-fitting procedure. Each evaluation trains a potential and scores it with the
-loss terms of the target file. Some loss terms measure the errors of the
-potential on the datasets of the validation configuration. Others compare a
-property computed with the potential, by a LAMMPS script (such as a surface
-energy or a phase stability) or by tadah itself (PC_OBSERVABLE), with a
-target value. The optimiser
-named in the OPTIMIZER block searches the search space of the target file
-and keeps the best potential. The target file also defines the loss-term
-weight of each loss term.
+Searches the hyperparameters of a potential, the settings that a fit does
+not determine, such as its cutoffs and basis widths, by nested fitting. An
+optimiser proposes values of the search parameters, the OPTIM lines of the
+target file (--hpotarget). Each evaluation trains a potential with these
+values and the training configuration (--config), as tadah train does, and
+scores it with the loss terms of the target file. Some loss terms measure
+the errors of the potential on the datasets of the validation configuration
+(--validation). Others compare a property computed with the potential, by a
+LAMMPS script (PC_LAMMPS, such as a surface energy or a phase stability) or
+by tadah itself (PC_OBSERVABLE), with a target value. The target file also
+defines the loss-term weight of each loss term. The run keeps the potential
+of the smallest loss in best_pot.tadah and records the search in
+hpo_run.log and the history files.
 
 The OPTIMIZER block of the target file names its optimiser with LIB and
 ALGO: `tadah explain ALGO` lists the optimisers of this build by library
@@ -3878,7 +3881,7 @@ and BDUMP archives have no table). The run prints the table of
 best_pot.tadah once, when it ends, at VERBOSE 1 and above (the section The
 balance table of the page What a Fit Minimises of the documentation).
 """
-examples         = ["tadah hpo -c config.tadah --hpotarget config.hpo --validation valid.tadah", "tadah hpo --check -c config.tadah --hpotarget config.hpo --validation valid.tadah"]
+examples         = ["tadah hpo -c config.train --validation config.val --hpotarget config.hpo", "tadah hpo --check -c config.train --validation config.val --hpotarget config.hpo"]
 [TASKS.hpo.keys]
 INHERIT          = ["ALLOWED_KEYS.check", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.lscale", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.eshift_atom", "ALLOWED_KEYS.eshift_dbatom", "ALLOWED_KEYS.efilter", "ALLOWED_KEYS.ffilter", "ALLOWED_KEYS.wdbfile", "ALLOWED_KEYS.wdbfile_auto", "ALLOWED_KEYS.eweight_temp", "ALLOWED_KEYS.zero_com_force"]
 [TASKS.hpo.groups.input]

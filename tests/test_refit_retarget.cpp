@@ -18,6 +18,7 @@
 #include <fstream>
 #include <iterator>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <unistd.h>
 #include <vector>
@@ -1607,4 +1608,72 @@ TEST_CASE_METHOD(PTFixture,
     for (const auto &x : centre_bounds(read_lines("r10.hpotarget")))
       CHECK(x.first >= 0.0);
   }
+}
+
+/* Pins: tadah refit --retarget writes no box below the lower limit that
+ * the descriptors declare for a key, which tadah hpo refuses:
+ *   - --set with a lo below the limit is refused, naming the limit:
+ *     CGRID2B(1)=-1,2 ("--set CGRID2B(1): lo must be >= 0: the
+ *     descriptors require every CGRID2B value >= 0 (`tadah hpo` refuses a
+ *     box below it)") and SGRID2B(1)=-0.5,1 ("lo must be > 0: the
+ *     descriptors require every SGRID2B value > 0 ..."); SGRID2B(1)=0.5,1
+ *     is written as given;
+ *   - a line of a key outside the refit groups is rewritten with the
+ *     symmetric rule and the limit of its key: OPTIM RCUTENV (1) 1 2 at
+ *     --pct 150 (centre 1.5, x0 - d = -0.75) is [0.75, 3.75], its low
+ *     bound half the centre as for a width group, and the warning says
+ *     that the descriptors require every RCUTENV value > 0.
+ * Before the fix: the two --set boxes were written as given, and the
+ * RCUTENV line was rewritten as [-0.75, 3.75] with the warning "rewritten
+ * with the plain symmetric rule"; tadah hpo refuses all three. */
+TEST_CASE_METHOD(PTFixture,
+                 "retarget: --set and the rewrite keep a box at or above the "
+                 "lower limit of its key",
+                 "[retarget][low_bound]") {
+  ScopedTempDir tmp;
+  Context pot = make_blip_pot();
+  pot.remove("RCTYPE2B");
+  pot.add("RCTYPE2B", "Cut_Cos");
+  write_hpotarget("a.hpotarget", pot, 5.0);
+  auto refused = [](RetargetOptions::SetOverride s) {
+    RetargetOptions o;
+    o.sets.push_back(s);
+    auto lines = read_lines("a.hpotarget");
+    try {
+      retarget_hpotarget_lines(lines, o);
+    } catch (const std::exception &e) {
+      return std::string(e.what());
+    }
+    return std::string("accepted");
+  };
+  CHECK(refused({"CGRID2B", 1, -1.0, 2.0}) ==
+        "--set CGRID2B(1): lo must be >= 0: the descriptors require every "
+        "CGRID2B value >= 0 (`tadah hpo` refuses a box below it).");
+  CHECK(refused({"SGRID2B", 1, -0.5, 1.0}) ==
+        "--set SGRID2B(1): lo must be > 0: the descriptors require every "
+        "SGRID2B value > 0 (`tadah hpo` refuses a box below it).");
+  CHECK(refused({"SGRID2B", 1, 0.0, 1.0}) ==
+        "--set SGRID2B(1): lo must be > 0: the descriptors require every "
+        "SGRID2B value > 0 (`tadah hpo` refuses a box below it).");
+  RetargetOptions ok;
+  ok.sets.push_back({"SGRID2B", 1, 0.5, 1.0});
+  auto lines = read_lines("a.hpotarget");
+  REQUIRE_NOTHROW(retarget_hpotarget_lines(lines, ok));
+  bool written = false;
+  for (const auto &l : lines)
+    written |= l.find("OPTIM SGRID2B (1) 5.00000000e-01 1.00000000e+00") !=
+               std::string::npos;
+  CHECK(written);
+
+  std::vector<std::string> env = {
+      "OPTIM RCUTENV (1) 1.00000000e+00 2.00000000e+00"};
+  RetargetOptions o150;
+  o150.pct = 150.0;
+  const RetargetReport rep = retarget_hpotarget_lines(env, o150);
+  CHECK(env[0] == "OPTIM RCUTENV (1) 7.50000000e-01 3.75000000e+00");
+  std::string warnings;
+  for (const auto &w : rep.warnings) warnings += w + "\n";
+  CHECK_THAT(warnings,
+             Catch::Contains("the descriptors require every RCUTENV value "
+                             "> 0, so a low bound at or below 0 is clamped"));
 }

@@ -367,6 +367,40 @@ TEST_CASE("check_bounds: a corner below the lower limit a descriptor "
   std::remove(path.c_str());
 }
 
+/* Pins: on a DM_mJoin line, RCUTENV, which the line gives every
+ * descriptor whole, keeps the rule of DM_mBlipEnv in any order of the
+ * line: the box [-1, 7] fails its corner at -1 with DM_mBlip first and
+ * with DM_mBlipEnv first, as tadah hpo refuses the box at its line.
+ * Before the fix: with DM_mBlip first no corner failed (the rule went by
+ * the first descriptor of the line, which declares no limit for RCUTENV). */
+TEST_CASE("check_bounds: RCUTENV on a DM_mJoin line keeps the rule of "
+          "DM_mBlipEnv in any order",
+          "[check_bounds][low_bound][join]") {
+  tadah::core::PeriodicTable::initialize();
+  tadah::mlip::StructureDB stdb;
+  for (const char *line :
+       {"DM_mJoin DM_mBlip 0 1 1 2 2 Ta Ta DM_mBlipEnv 0 1 1 2 2 Ta Ta",
+        "DM_mJoin DM_mBlipEnv 0 1 1 2 2 Ta Ta DM_mBlip 0 1 1 2 2 Ta Ta"}) {
+    INFO(line);
+    Context c;
+    c.add("ATOM", "Ta");
+    c.add("INIT2B", "false");
+    c.add("INITMB", "true");
+    c.add("TYPEMB", line);
+    c.add("CGRIDMB", "0.1 0.1");
+    c.add("SGRIDMB", "0.2 0.2");
+    c.add("CEMBFUNC", "1.0 2.0 1.0 2.0");
+    c.add("SEMBFUNC", "1.0 1.0 1.0 1.0");
+    c.add("RCUTENV", 1.5);
+    c.add("RCTYPEMB", "Cut_Cos Cut_Cos");
+    c.add("RCUTMB", "5.0 5.0");
+    c.add("VERBOSE", 0);
+    const auto r = run_corners(stdb, c, {box("RCUTENV", -1, -1.0, 7.0)});
+    CHECK(r.n_corners == 2);
+    CHECK(r.n_corners_failing == 1);
+  }
+}
+
 TEST_CASE("check_bounds: a radial bump width box needs lo > 0 in every form",
           "[check_bounds][rhoform][bump_width]") {
   // Every radial bump width > 0 -- SGRIDMB

@@ -17,6 +17,8 @@
 #include <tadah/core/context.h>
 #include <tadah/core/core_user_config_parser.h>
 #include <tadah/core/periodic_table.h>
+#include <tadah/core/number_format.h>
+#include <tadah/mlip/engines/hpotarget_writer.h>
 #include <tadah/mlip/hpotarget_optim.h>
 
 #include <sstream>
@@ -384,7 +386,7 @@ TEST_CASE("OPTIM reader: AUTO is refused for the distance cutoffs only",
  * per descriptor family:
  *   - DM_mBlipEnv: RCUTENV -1 (the box OPTIM RCUTENV (1) -1 7), SGRIDMB 0
  *     and SEMBFUNC -0.5 are not > 0, "... so the low bound of its box is
- *     > 0 (an AUTO FRAC box is clamped at 1e-06)"; CGRIDMB -0.5 is
+ *     > 0 (an AUTO FRAC box is clamped at half its seed)"; CGRIDMB -0.5 is
  *     negative, "... is >= 0 (its AUTO FRAC box, the default, is clamped
  *     at 0)"; RCUTMB -1, a cutoff, which takes no AUTO box, "... is >= 0";
  *   - D2_BP: SGRID2B -0.5 (a Gaussian width) is not > 0, CGRID2B -1 is
@@ -395,13 +397,14 @@ TEST_CASE("OPTIM reader: AUTO is refused for the distance cutoffs only",
  * CGRIDMB [0, 0.5], SGRID2B [1e-3, 1], CGRID2B [0, 2.5].
  * Before the fix: every such box was read, and an evaluation whose value
  * the descriptor refuses (RCUTENV < 0: "Cutoff distance cannot be
- * negative") scored FAILSCORE. */
+ * negative") scored FAILSCORE. Before the fix of the clamp: the > 0 tail
+ * said "(an AUTO FRAC box is clamped at 1e-06)". */
 TEST_CASE("OPTIM reader: an explicit box below the lower limit of the key "
           "is refused at its line",
           "[hpotarget_optim][low_bound]") {
   const std::string positive_tail =
       ", so the low bound of its box is > 0 (an AUTO FRAC box is clamped at "
-      "1e-06)";
+      "half its seed)";
   const std::string nonneg_tail =
       ", so the low bound of its box is >= 0 (its AUTO FRAC box, the "
       "default, is clamped at 0)";
@@ -448,15 +451,16 @@ TEST_CASE("OPTIM reader: an explicit box below the lower limit of the key "
 
 /* Pins: an AUTO box that reaches below the lower limit of the key is
  * clamped at it, and the clamped box is the box of the value: the limit of
- * a key whose values are >= 0 (AutoLinearNonneg), 1e-6 for a key whose
- * values are > 0 (AutoLinearPositive):
+ * a key whose values are >= 0 (AutoLinearNonneg), half the seed for a key
+ * whose values are > 0 (AutoLinearPositive), as the refit writer clamps
+ * the box of a width:
  *   - DM_mBlipEnv: RCUTENV 1.5 AUTO FRAC 1.5 (x0 - d = -0.75) is
- *     [1e-6, 3.75]; SGRIDMB 0.2 AUTO FRAC 1.5 (-0.1) is [1e-6, 0.5];
+ *     [0.75, 3.75]; SGRIDMB 0.2 AUTO FRAC 1.5 (-0.1) is [0.1, 0.5];
  *     CGRIDMB 0 AUTO FRAC 0 FLOOR 0.5 (-0.5) is [0, 0.5]; RCUTENV AUTO
  *     FRAC 1.5 LOG is read with the clamped box, which lies above 0;
- *   - D2_Blip: SGRID2B 1 AUTO FRAC 2 (the bump rule, -1) is [1e-6, 3];
+ *   - D2_Blip: SGRID2B 1 AUTO FRAC 2 (the bump rule, -1) is [0.5, 3];
  *   - DM_REAM under NONNEG: WATOM 73 AUTO FRAC 1.5 (the form's rule,
- *     -36.5) is [1e-6, 182.5];
+ *     -36.5) is [36.5, 182.5];
  * an AUTO box above the limit is unchanged (RCUTENV AUTO FRAC 0.2 is
  * [1.2, 1.8], AutoLinear); a seed the rule does not take is refused,
  * naming it (D2_BP SGRID2B -0.5: "the seed -0.5 is not > 0, but the D2_BP
@@ -466,17 +470,19 @@ TEST_CASE("OPTIM reader: an explicit box below the lower limit of the key "
  * SGRID2B of D2_Blip and the WATOM boxes were refused ("the AUTO box
  * [-1, 3] has the low bound -1, which is not > 0, but the D2_Blip pair
  * basis requires every SGRID2B width > 0, ..."); a negative D2_BP width
- * took the mirrored box [-1, -0.25]. */
+ * took the mirrored box [-1, -0.25]. Before the fix of the clamp: a box of
+ * a value > 0 was clamped at 1e-6 ([1e-6, 3.75], [1e-6, 0.5], [1e-6, 3],
+ * [1e-6, 182.5]), the refit writer's at half the seed. */
 TEST_CASE("OPTIM reader: an AUTO box below the lower limit of the key is "
           "clamped at it",
           "[hpotarget_optim][low_bound]") {
   const Context env = blipenv_seed();
   const OptimLine r = read_line(env, "OPTIM RCUTENV (1) AUTO FRAC 1.5");
-  CHECK(boxes_of(r) == std::vector<std::pair<double, double>>{{1e-6, 3.75}});
+  CHECK(boxes_of(r) == std::vector<std::pair<double, double>>{{0.75, 3.75}});
   REQUIRE(r.boxes.size() == 1);
   CHECK(r.boxes[0].origin == OptimBoxOrigin::AutoLinearPositive);
   const OptimLine s = read_line(env, "OPTIM SGRIDMB (1) AUTO FRAC 1.5");
-  CHECK(boxes_of(s) == std::vector<std::pair<double, double>>{{1e-6, 0.5}});
+  CHECK(boxes_of(s) == std::vector<std::pair<double, double>>{{0.1, 0.5}});
   REQUIRE(s.boxes.size() == 1);
   CHECK(s.boxes[0].origin == OptimBoxOrigin::AutoLinearPositive);
   const OptimLine c = read_line(env, "OPTIM CGRIDMB (1) AUTO FRAC 0 FLOOR 0.5");
@@ -484,7 +490,7 @@ TEST_CASE("OPTIM reader: an AUTO box below the lower limit of the key is "
   REQUIRE(c.boxes.size() == 1);
   CHECK(c.boxes[0].origin == OptimBoxOrigin::AutoLinearNonneg);
   const OptimLine l = read_line(env, "OPTIM RCUTENV (1) AUTO FRAC 1.5 LOG");
-  CHECK(boxes_of(l) == std::vector<std::pair<double, double>>{{1e-6, 3.75}});
+  CHECK(boxes_of(l) == std::vector<std::pair<double, double>>{{0.75, 3.75}});
   const OptimLine u = read_line(env, "OPTIM RCUTENV (1) AUTO FRAC 0.2");
   REQUIRE(u.boxes.size() == 1);
   CHECK(u.boxes[0].lo == 1.5 - 0.2 * 1.5);
@@ -492,15 +498,106 @@ TEST_CASE("OPTIM reader: an AUTO box below the lower limit of the key is "
   CHECK(u.boxes[0].origin == OptimBoxOrigin::AutoLinear);
 
   const OptimLine b = read_line(blip_seed(), "OPTIM SGRID2B (1) AUTO FRAC 2");
-  CHECK(boxes_of(b) == std::vector<std::pair<double, double>>{{1e-6, 3.0}});
+  CHECK(boxes_of(b) == std::vector<std::pair<double, double>>{{0.5, 3.0}});
   REQUIRE(b.boxes.size() == 1);
   CHECK(b.boxes[0].origin == OptimBoxOrigin::AutoLinearPositive);
   const OptimLine w = read_line(ream_nonneg_seed(), "OPTIM WATOM (1) AUTO FRAC 1.5");
-  CHECK(boxes_of(w) == std::vector<std::pair<double, double>>{{1e-6, 182.5}});
+  CHECK(boxes_of(w) == std::vector<std::pair<double, double>>{{36.5, 182.5}});
 
   CHECK(refusal(bp_seed("-0.5 1.0"), "OPTIM SGRID2B (1) AUTO") ==
         "1: OPTIM SGRID2B (1): the seed -0.5 is not > 0, but the D2_BP "
         "descriptor requires every SGRID2B value > 0");
+}
+
+/* Pins: the low end of a clamped AUTO FRAC box of a value > 0 is the one
+ * the refit writer gives the box of a width (engines::optim_group_bound
+ * with positive_only, the starter target file of tadah refit) at the same
+ * percentage: SGRID2B 1 and 1e-6 of a D2_BP at FRAC 1.5 and at 150% (a
+ * group floor below the seed), half the seed, so the two programs give one
+ * box.
+ * Before the fix of the clamp: the reader clamped at 1e-6 (seed 1) and the
+ * writer at max(1e-6, |v|/2) (seed 1e-6: 1e-6, the seed itself). */
+TEST_CASE("OPTIM reader: a clamped AUTO FRAC box of a width starts where "
+          "the refit writer's box starts",
+          "[hpotarget_optim][low_bound]") {
+  for (const double seed : {1.0, 1e-6}) {
+    INFO("SGRID2B " << seed);
+    const std::string widths = tadah::core::format_roundtrip(seed) + " 1.0";
+    const OptimLine r =
+        read_line(bp_seed(widths.c_str()), "OPTIM SGRID2B (1) AUTO FRAC 1.5");
+    REQUIRE(r.boxes.size() == 1);
+    const engines::OptimBound w =
+        engines::optim_group_bound(seed, 150.0, 1e-3 * seed, true);
+    CHECK(r.boxes[0].lo == w.lo);
+    CHECK(r.boxes[0].lo == 0.5 * seed);
+  }
+}
+
+/* Pins: the seed of an AUTO box that the low-bound rule of a >= 0 key
+ * does not take is refused, naming the seed, the descriptor and the rule,
+ * for AUTO FRAC and AUTO RATIO alike: a D2_BP centre CGRID2B -0.5 with
+ * OPTIM CGRID2B (1) AUTO FRAC 0.5 or AUTO RATIO 2 gives "the seed -0.5 is
+ * negative, but the D2_BP descriptor requires every CGRID2B value >= 0";
+ * the centre 0 is taken ([0, 0.5] under AUTO FRAC 0 FLOOR 0.5).
+ * Before the fix: AUTO FRAC 0.5 searched the box [-0.75, -0.25] and AUTO
+ * RATIO 2 the box [-1, -0.25] of the centre, every value of which
+ * tadah hpo refuses in an explicit box. */
+TEST_CASE("OPTIM reader: a negative seed of a centre is refused for an AUTO "
+          "box",
+          "[hpotarget_optim][low_bound]") {
+  Context c = bp_seed();
+  c.remove("CGRID2B");
+  c.add("CGRID2B", "-0.5 2.0");
+  for (const char *line : {"OPTIM CGRID2B (1) AUTO FRAC 0.5",
+                           "OPTIM CGRID2B (1) AUTO RATIO 2"}) {
+    INFO(line);
+    CHECK(refusal(c, line) ==
+          "1: OPTIM CGRID2B (1): the seed -0.5 is negative, but the D2_BP "
+          "descriptor requires every CGRID2B value >= 0");
+  }
+  CHECK(boxes_of(read_line(bp_seed(), "OPTIM CGRID2B (1) AUTO FRAC 0 FLOOR "
+                                      "0.5")) ==
+        std::vector<std::pair<double, double>>{{0.0, 0.5}});
+}
+
+/* Pins: on a DM_mJoin line, RCUTENV, which the line gives every
+ * descriptor whole, keeps the rule of DM_mBlipEnv whatever the order of
+ * the descriptors: with DM_mBlip first and with DM_mBlipEnv first,
+ * OPTIM RCUTENV (1) -1 7 is refused ("the low bound -1 is not > 0, but the
+ * DM_mBlipEnv descriptor requires every RCUTENV value > 0, ...") and
+ * RCUTENV 1.5 AUTO FRAC 1.5 is clamped to [0.75, 3.75]
+ * (AutoLinearPositive).
+ * Before the fix: with DM_mBlip first the box [-1, 7] was taken and the
+ * AUTO box was [-0.75, 3.75] (AutoLinear): the rule went by the first
+ * descriptor of the line, which declares no limit for RCUTENV. */
+TEST_CASE("OPTIM reader: RCUTENV on a DM_mJoin line keeps the rule of "
+          "DM_mBlipEnv in any order",
+          "[hpotarget_optim][low_bound]") {
+  for (const char *line :
+       {"DM_mJoin DM_mBlip 0 1 1 2 2 Ta Ta DM_mBlipEnv 0 1 1 2 2 Ta Ta",
+        "DM_mJoin DM_mBlipEnv 0 1 1 2 2 Ta Ta DM_mBlip 0 1 1 2 2 Ta Ta"}) {
+    INFO(line);
+    Context c = blipenv_seed();
+    for (const char *k : {"TYPEMB", "CGRIDMB", "SGRIDMB", "CEMBFUNC",
+                          "SEMBFUNC", "RCTYPEMB", "RCUTMB"})
+      c.remove(k);
+    c.add("TYPEMB", line);
+    c.add("CGRIDMB", "0.1 0.1");
+    c.add("SGRIDMB", "0.2 0.2");
+    c.add("CEMBFUNC", "1.0 2.0 1.0 2.0");
+    c.add("SEMBFUNC", "1.0 1.0 1.0 1.0");
+    c.add("RCTYPEMB", "Cut_Cos Cut_Cos");
+    c.add("RCUTMB", "5.0 5.0");
+    CHECK(refusal(c, "OPTIM RCUTENV (1) -1 7") ==
+          "1: OPTIM RCUTENV (1): the low bound -1 is not > 0, but the "
+          "DM_mBlipEnv descriptor requires every RCUTENV value > 0, so the "
+          "low bound of its box is > 0 (an AUTO FRAC box is clamped at half "
+          "its seed)");
+    const OptimLine a = read_line(c, "OPTIM RCUTENV (1) AUTO FRAC 1.5");
+    CHECK(boxes_of(a) == std::vector<std::pair<double, double>>{{0.75, 3.75}});
+    REQUIRE(a.boxes.size() == 1);
+    CHECK(a.boxes[0].origin == OptimBoxOrigin::AutoLinearPositive);
+  }
 }
 
 #else

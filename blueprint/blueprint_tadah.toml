@@ -159,10 +159,11 @@ file, or a TYPE2B or TYPEMB line other than those tadah writes, is refused
 line the run does not read, such as the EFILTER line of an included
 potential (the same page), sets nothing. An option of the command line
 takes precedence over the lines of its key. An option that -c of the
-command needs (Needs in the help of the command) replaces a line of its
-key on every run. A configuration file of that command refuses such a
-line of a key that only some commands read: OUTFILE of tadah analysis
-dataset_stats, RANGE and TYPE of tadah analysis bfunc.
+command needs (Needs in the help of the command) would replace a line of
+its key on every run, so a configuration file of that command refuses
+such a line: OUTFILE of tadah analysis dataset_stats and tadah analysis
+suggest_bounds, RANGE and TYPE of tadah analysis bfunc, HPOTARGET of
+tadah hpo.
 
 A relative path is relative to the working directory, the directory the
 command runs in, not to the directory of the file that holds the line. This
@@ -1270,7 +1271,8 @@ and BDUMP archives name the file in their training record, a comment block
 above their key lines that is never read as keys; the journal, hpo_run.log,
 names it too).
 
-tadah hpo -c takes the file from --hpotarget, which it requires.
+tadah hpo -c takes the file from --hpotarget, which it requires, and its
+configuration file refuses an HPOTARGET line at its line.
 tadah analysis check_bounds -c takes it from --hpotarget or from an
 HPOTARGET line of a configuration file without WEIGHTS. An HPOTARGET line of
 a potential is not read, also when the configuration includes the potential.
@@ -1393,10 +1395,12 @@ produces more than one output.
 
 OUTFILE names the output file of tadah train, refit, predict, properties
 pairwise and the data and analysis commands that list it. Of these, tadah
-train, tadah refit, tadah analysis suggest_bounds and tadah analysis bfunc
-also read an OUTFILE line of their configuration file (-c); the others
-take it with -o only. A configuration file of tadah analysis dataset_stats
-refuses an OUTFILE line at its line, as its -c needs -o. So does a
+train, tadah refit and tadah analysis bfunc also read an OUTFILE line of
+their configuration file (-c); the others take it with -o only. A
+configuration file of tadah analysis dataset_stats or tadah analysis
+suggest_bounds refuses an OUTFILE line at its line, as their -c needs -o
+(an OUTFILE line of a training configuration names the potential file).
+So does a
 configuration file of tadah hpo, which writes files of its own
 (best_pot.tadah and the others), and one of tadah analysis check_bounds,
 which writes no file. A configuration shared by tadah train and tadah hpo
@@ -4394,8 +4398,9 @@ descriptor's TYPE2B line (the screening parameters of D2_ZBL, the exponents
 of D2_MIE) gets a row without an OPTIM line, numbered as an OPTIM line
 numbers the values of the key, by the numbers among them: tadah hpo does
 not search it. Prints the table and writes the OPTIM lines, one line per
-run of entries of a key with the same range (to --outfile, or to standard
-output).
+run of entries of a key with the same range, to the file --outfile names,
+which -c needs: the configuration file refuses an OUTFILE line, which in a
+training configuration names the potential file.
 """
 examples         = ["tadah analysis suggest_bounds -c train.tadah --outfile suggested.hpo"]
 [TASKS.analysis.suggest_bounds.keys]

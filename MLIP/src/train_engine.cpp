@@ -1,0 +1,260 @@
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <tadah/core/context.h>
+#include <tadah/core/logger.h>
+#include <tadah/core/number_format.h>
+#include <tadah/core/periodic_table.h>
+#include <tadah/mlip/engines/train_engine.h>
+#include <tadah/mlip/fit_balance.h>
+#include <tadah/mlip/intercepts.h>
+#include <tadah/mlip/key_provenance.h>
+#include <tadah/mlip/load_transforms.h>
+#include <tadah/models/eam/pot_curve_edit.h>
+#include <tadah/models/descriptors/dm/embf0.h>
+#include <tadah/models/descriptors/dm/rhoform.h>
+#include <tadah/mlip/memory/imlip_workspace_manager.h>
+#include <tadah/mlip/memory/mlip_workspace_manager.h>
+#include <tadah/mlip/preflight_audit.h>
+#include <tadah/mlip/row_weights.h>
+#include <tadah/mlip/structure_db.h>
+#include <tadah/mlip/trainer.h>
+#include <tadah/mlip/training_datasets.h>
+#include <tadah/mlip/training_record.h>
+#include <tadah/mlip/weight_provisioning.h>
+
+namespace tadah {
+namespace mlip {
+namespace engines {
+
+namespace {
+// EMBF0 ZERO pins the DM_REAM isolated-atom energy at 0. Without BIAS or an
+// ESHIFT the model then has no free per-atom constant, which matters when the
+// reference energies are absolute (e.g. DFT totals). The toggles are named
+// with their options: a retrain's configuration is a potential, whose own
+// toggle line is not read (potential_line_not_read).
+void hint_embf0_reference(const Trainer &tr,
+                          const LoadTransformReport &report) {
+  if (!tr.DCS.dmb) return;
+  const auto mode = tr.DCS.dmb->embf0_mode();
+  if (!mode || *mode != tadah::models::EmbF0Mode::Zero) return;
+  if (tr.DCS.bias > 0 || !report.eshift.empty()) return;
+  tadah::core::Logger::instance().log(
+      tadah::core::LogLevel::WARNING,
+      std::string("HINT: ")+(tr.context.blocks("DESCRIPTOR").empty()?"EMBF0 ZERO":"REFERENCE ZERO")+" fixes the "+tr.DCS.dmb->label()+" isolated-atom energy at 0 and the "
+      "model has no other per-atom constant (BIAS false, no ESHIFT). For "
+      "absolute reference energies, such as DFT totals, ESHIFT, or "
+      "ESHIFT_ATOM or ESHIFT_DBATOM for the run (--eshift-atom, "
+      "--eshift-dbatom: a potential's own line of them is not read), gives "
+      "that constant, all compatible with EAMFAST. BIAS true also adds a "
+      "per-atom constant, but its intercept columns, one per ATOM species, "
+      "precede the descriptor weights (FIXINDEX/FIXWEIGHT indices shift) "
+      "and it disables EAMFAST.");
+}
+}  // namespace
+
+int TrainEngine::run(tadah::mlip::Task &task) {
+  core::Context context = task.getContext();
+  // A potential's lines of the keys of its training record but DBFILE --
+  // those that prepared the data of its own fit and the settings of the
+  // run that wrote it (VERBOSE, NUMERIC, OUTFILE, AUDIT, ...) -- are not
+  // read for this run (a potential of an earlier version has them as key
+  // lines): TaskFactory's
+  // parse skipped them wherever the configuration file has the potential
+  // (tadah train -c pot.tadah plus a DBFILE line, CONFIG pot.tadah in a
+  // file), and the WARNING names
+  // those tadah train reads; a context without a KeyProvenance is taken as
+  // one file, and the dataset keys are removed here (no parse stores a
+  // potential's run settings, so a program's own are kept). The run's own
+  // lines of them apply.
+  {
+    const std::string ignored = ignore_configuration_potential_lines(
+        context, task.getKeyProvenance(), "train");
+    if (!ignored.empty())
+      core::Logger::instance().log(core::LogLevel::WARNING, ignored);
+  }
+  // The training record of this run (the potential's comment block): the
+  // keys a potential does not use, as the configuration and the command
+  // line gave them, taken before anything inserts a default. A retrain's
+  // configuration is a potential, whose own record is a comment the
+  // retrain does not read: the record is the retrain's.
+  const TrainingRecord record =
+      training_record(context, task.getKeyProvenance());
+  // A retired key (a potential of an earlier version given as the
+  // configuration has them as key lines), an error scale a fit cannot take
+  // and one of a quantity the fit does not observe are refused before any
+  // dataset is read; the fit checks the same (M_BLR, M_KRR train).
+  require_fit_settings(context, "tadah train");
+  // The datasets to fit: a configuration without DBFILE (a potential, which
+  // has no DBFILE line, given as it is) is refused, saying how to retrain,
+  // before anything is read; one dataset listed twice would be fitted twice.
+  require_training_datasets(context);
+  require_distinct_training_datasets(context);
+  // The SBASIS of a fit that draws basis vectors (M_KRR with a non-linear
+  // kernel, implementation 2 with any kernel), refused naming the model
+  // before any dataset is read; with BIAS true and no ATOM its bound counts
+  // the species, which the datasets give, so it is checked once ATOM is set
+  // from them.
+  const bool draws_basis = fit_draws_basis(context);
+  const bool sbasis_needs_atoms =
+      draws_basis && context.get<bool>("BIAS") &&
+      (!context.contains("ATOM") || context.size("ATOM") == 0);
+  if (draws_basis && !sbasis_needs_atoms) checked_sbasis(context);
+  models::D_mJoin::expand_grids(context);
+  // Knot-family refit configs: RCUT2B/RCUTMB are derived from the largest
+  // knot — a hand-tweaked/stale stated value is warned about and corrected
+  // here, BEFORE the neighbour list is sized from RCUTMAX.
+  models::potedit::normalize_knot_rcut(context, "tadah train");
+  std::set<core::Element> unique_elements = StructureDB::find_unique_elements(context);
+  StructureDB::check_atom_key(context, unique_elements);
+  StructureDB::check_watom_key(context, unique_elements);
+  check_bias_constraints(context);
+  if (sbasis_needs_atoms) checked_sbasis(context);
+
+  tadah::mlip::memory::MLIPWorkspaceManager workspaceManager;
+  Trainer tr(context, workspaceManager);
+  {
+    // which weights are intercepts is the model function's (and needs
+    // DSIZE); a non-linear kernel's, those of the basis its fit draws
+    const std::string w = fixindex_intercept_warning(tr.context, *tr.fb);
+    if (!w.empty())
+      tadah::core::Logger::instance().log(tadah::core::LogLevel::WARNING, w);
+  }
+  {
+    // FIXINDEX pinning every weight leaves the fit nothing to change (a
+    // refit potential retrained as it is): said before any dataset is read.
+    const std::string w = all_weights_pinned_warning(tr.context, *tr.fb);
+    if (!w.empty())
+      tadah::core::Logger::instance().log(tadah::core::LogLevel::WARNING, w);
+  }
+
+  // Load structures and provide feedback if verbose
+  tadah::core::Logger::instance().log(tadah::core::LogLevel::INFO, "Loading structures...");
+  StructureDB stdb(tr.context);
+
+  // Apply load-time transforms (LSCALE, ESHIFT, EFILTER/FFILTER,
+  // ZERO_COM_FORCE) before any neighbour-finding or descriptor calculation,
+  // so downstream code sees the already-transformed positions, energies and
+  // forces (WDBFILE, the priority of each dataset, applies in the fit).
+  LoadTransformReport report = apply_load_transforms(stdb, tr.context);
+  hint_embf0_reference(tr, report);
+  // BIAS true: the energy-weighted compositions must determine the
+  // intercepts the fit has (a non-linear kernel's: those of the intercept
+  // vectors its basis draw starts with), refused before the neighbour lists
+  // are built.
+  require_intercepts_determined(stdb, tr.context, *tr.fb);
+
+  // Calculate nearest neighbors and provide feedback
+  tadah::core::Logger::instance().log(tadah::core::LogLevel::INFO,
+      "Finding nearest neighbours within: " +
+      core::to_string(tr.context.get<double>("RCUTMAX"),5) +
+      " cutoff distance...");
+  tr.nnf.calc(stdb, tr.context);
+
+  // Pre-flight audit. Default mode is `off` (AUDIT unset); users opt into `warn`, or `error`
+  // for hard refusal-to-launch via the AUDIT context key. Reads
+  // dataset stats (cheap — same NN list) and walks every configured
+  // descriptor's meta() to flag ρ-collapse and out-of-range parameter
+  // combinations (part of the bound-validation pipeline).
+  {
+    AuditMode mode = audit_mode_from_context(tr.context);
+    if (mode != AuditMode::Off) {
+      auto report = run_preflight_from_db(stdb, tr.context, mode);
+      report.log();
+      try {
+        enforce_audit_mode(report, mode);
+      } catch (const std::exception& e) {
+        // AUDIT=error and there are FAIL findings: the run is refused
+        // before the fit, with the findings, and the engine's status 1
+        // (EXIT_FAILURE) is the status of the run (Scheduler::execute
+        // returns the first status that is not 0, and stops). The status
+        // is returned, not exited with: the program that runs tadah goes
+        // on.
+        tadah::core::Logger::instance().log(
+            tadah::core::LogLevel::ERROR, e.what());
+        return EXIT_FAILURE;
+      }
+    }
+  }
+
+  // Begin the training process and inform if verbose
+  tadah::core::Logger::instance().log(tadah::core::LogLevel::INFO, "Training start...");
+  tr.model->train(stdb, tr.dc);
+
+  tadah::core::Context param_file = tr.model->get_param_file();
+  stamp_into_param_file(param_file, report);
+  // The balance table of the fit (one O(n p^2) pass over its rows, from the
+  // design matrix the fit keeps): the last lines of the potential's
+  // training record, and printed once the potential is written.
+  const FitBalance balance = tr.model->fit_balance();
+  TrainingRecord written = record;
+  add_fit_balance(written, balance);
+  dumpPotFile(context.get<std::string>("OUTFILE"), param_file, written);
+
+  // At VERBOSE 1 and above; the legend of the columns after the first
+  // table of the run.
+  if (core::Logger::instance().getLogLevel() >= core::LogLevel::WARNING)
+    print_fit_balance(std::cout, fit_balance_lines(balance),
+                      balance.computed() && first_fit_balance_legend());
+  return EXIT_SUCCESS;
+}
+void TrainEngine::validate(const tadah::mlip::Task &task) {
+  const auto &context = task.getContext();
+  if (!context.get<bool>("INIT2B") && !context.get<bool>("INITMB")) {
+    throw std::runtime_error(
+        "tadah train: INIT2B and INITMB are both false, so the potential has "
+        "no term; tadah train needs INIT2B true or INITMB true");
+  }
+}
+
+
+// helper function to dump the potential file
+void TrainEngine::dumpPotFile(const std::string &outfile,
+                              const core::Context &context,
+                              const TrainingRecord &record) {
+  core::Logger::instance().log(tadah::core::LogLevel::INFO,
+      "Saving parameters to file: " + outfile);
+  // NUMERIC = significant digits of the numbers written below; absent ->
+  // 18 (exact round trip). Looked up without default insertion, and never a
+  // key line of the potential (write_potential skips it; the training
+  // record lists the run's NUMERIC).
+  const core::PotDigits pd = core::resolve_pot_digits(context);
+  const std::string digits_warning = core::pot_digits_warning(pd);
+  if (!digits_warning.empty())
+    core::Logger::instance().log(core::LogLevel::WARNING,
+        outfile + ": " + digits_warning);
+  core::Context modContext = context;
+  // The key lines are the model's settings and its fit: neither the inputs
+  // of the run (VERBOSE, NUMERIC, OUTFILE, the AUDIT and HEALTH_LOG
+  // diagnostics, a tadah hpo run's HPOTARGET and VALIDATION, which a
+  // best_pot.tadah used as the configuration had) nor its training data (a refit --edit potential is a copy of its input's
+  // context, which may be an M_BLR potential written with its DBFILE) and
+  // the keys that prepared or weighted it (EFILTER, the ESHIFT toggles,
+  // WDBFILE, ...:
+  // the resolved ESHIFT and LSCALE are key lines):
+  // write_potential_with_record leaves out the keys of
+  // training_record_keys() and writes the record of the run above the key
+  // lines instead.
+  tadah::models::normalise_embf0_key(modContext);
+  // A DM_REAM potential must declare its density form (absent -> throws
+  // before the file is opened, so nothing is written); the key is
+  // canonicalised, or stripped from a potential without a DM_REAM block.
+  tadah::models::normalise_rhoform_key(modContext);
+  // A potential that cannot be written is an error: logging it and
+  // returning let `tadah train -o <unwritable>` exit 0 without a potential.
+  std::ofstream outstream(outfile);
+  if (!outstream.is_open())
+    throw std::runtime_error("Cannot open the potential file " + outfile +
+                             " for writing.");
+  write_potential_with_record(outstream, modContext, record, pd.digits);
+  outstream << std::endl;
+  outstream.close();
+  if (!outstream)
+    throw std::runtime_error("Cannot write the potential file " + outfile +
+                             ".");
+}
+
+} // namespace engines
+} // namespace mlip
+} // namespace tadah

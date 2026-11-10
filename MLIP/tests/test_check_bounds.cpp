@@ -1,0 +1,1510 @@
+// Catch2 v2 unit tests for the check_bounds dry-run.
+//
+// Verifies:
+//   * parse_hpo_target_bounds reads the OPTIM lines as tadah hpo reads them
+//     against a seed configuration: (key, slot, lo, hi) of each value
+//     `OPTIM <KEY> (1) lo hi` and `OPTIM <KEY> (1-N) lo hi` select, and
+//     skips comments, blank lines and the other lines.
+//   * sample_corners returns 2^k for k <= 12 with each corner having
+//     either lo or hi at every dimension.
+//   * sample_corners' Latin-hypercube branch returns ⌈k log₂ k⌉
+//     samples for k > 12.
+//   * check_bounds_at_corners refuses a dataset with two atoms at one
+//     position, naming the structure (NNFinder's refusal).
+//   * The engine (`tadah analysis check_bounds`) is wired —
+//     tested elsewhere via the smoke path; this file focuses on the
+//     pure-function library.
+
+#include "catch2/catch.hpp"
+
+#include <tadah/mlip/check_bounds.h>
+#include <tadah/core/context.h>
+#include <tadah/core/periodic_table.h>
+
+#include <cmath>
+#include <cstdio>
+#include <fstream>
+#include <iostream>
+#include <set>
+#include <sstream>
+#include <string>
+#include <unistd.h>
+
+using tadah::mlip::Bound;
+using tadah::mlip::parse_hpo_target_bounds;
+using tadah::mlip::sample_corners;
+
+/* The seed the parse tests read their OPTIM lines against: D2_Blip 4 4 Ta
+ * Ta (CGRID2B 2 3 4 5, SGRID2B 1 1 1 1, RCUT2B 5.5) and DM_Blip 0 4 4 Ta Ta
+ * (CGRIDMB 3 3.5 4 4.5, SGRIDMB 1 1 1 1, RCUTMB 5). */
+static tadah::core::Context parse_seed() {
+  tadah::core::PeriodicTable::initialize();
+  tadah::core::Context c;
+  c.add("ATOM", "Ta");
+  c.add("INIT2B", "true");
+  c.add("INITMB", "true");
+  c.add("TYPE2B", "D2_Blip 4 4 Ta Ta");
+  c.add("CGRID2B", "2.0 3.0 4.0 5.0");
+  c.add("SGRID2B", "1.0 1.0 1.0 1.0");
+  c.add("RCTYPE2B", "Cut_Cos");
+  c.add("RCUT2B", 5.5);
+  c.add("TYPEMB", "DM_Blip 0 4 4 Ta Ta");
+  c.add("CGRIDMB", "3.0 3.5 4.0 4.5");
+  c.add("SGRIDMB", "1.0 1.0 1.0 1.0");
+  c.add("RCTYPEMB", "Cut_Cos");
+  c.add("RCUTMB", 5.0);
+  c.add("VERBOSE", 0);
+  return c;
+}
+
+/* parse_hpo_target_bounds of @p path against parse_seed(). */
+static std::vector<Bound> parse_bounds(const std::string& path) {
+  tadah::core::Context seed = parse_seed();
+  return parse_hpo_target_bounds(path, seed);
+}
+
+/* A file of its own for each call, in each process: test cases run as
+ * processes of their own at once (CTest), and std::rand() draws the same
+ * numbers in each of them. */
+static std::string write_tmp(const std::string& body) {
+  static int counter = 0;
+  std::string path = "/tmp/test_check_bounds_" + std::to_string(::getpid()) +
+                     "_" + std::to_string(counter++) + ".tadah";
+  std::ofstream f(path);
+  f << body;
+  f.close();
+  return path;
+}
+
+/* Pins: an OPTIM line of one index gives one bound, the slot of its value
+ * (arg_pos 0 for (1): the first value), its index as written and its line;
+ * the lines of a block are not OPTIM lines.
+ * Before the fix: arg_pos was -1 ("scalar") for (1), so the case failed at
+ * "bounds[0].arg_pos == 0" (-1 == 0); Bound had no index and no line (run
+ * with a shim that gives them no value: each of those assertions fails). */
+TEST_CASE("check_bounds: parse scalar OPTIM lines", "[check_bounds]") {
+  const std::string body =
+      "# header comment\n"
+      "OPTIMIZER\n"
+      "  TYPE foo\n"
+      "ENDOPTIMIZER\n"
+      "\n"
+      "OPTIM RCUT2B (1) 3.0 6.0\n"
+      "OPTIM CGRIDMB (1) 2.0 4.0\n";
+  auto path = write_tmp(body);
+  auto bounds = parse_bounds(path);
+  std::remove(path.c_str());
+
+  REQUIRE(bounds.size() == 2);
+  REQUIRE(bounds[0].key == "RCUT2B");
+  REQUIRE(bounds[0].arg_pos == 0);
+  REQUIRE(bounds[0].index == 1);
+  REQUIRE(bounds[0].line == 6);
+  REQUIRE(bounds[0].lo == Approx(3.0));
+  REQUIRE(bounds[0].hi == Approx(6.0));
+
+  REQUIRE(bounds[1].key == "CGRIDMB");
+  REQUIRE(bounds[1].arg_pos == 0);
+  REQUIRE(bounds[1].line == 7);
+}
+
+/* Pins: an index list gives one bound per value it selects, at the value's
+ * slot: (1-4) arg_pos 0..3, (1,3) arg_pos 0 and 2 with indices 1 and 3.
+ * Before the fix: (1,3) gave one bound, value 1 (arg_pos -1, "scalar"), so
+ * the case failed at "bounds.size() == 4 + 3 + 2" (8 == 9). */
+TEST_CASE("check_bounds: parse vector OPTIM lines", "[check_bounds]") {
+  const std::string body =
+      "OPTIM CGRID2B (1-4) 0.0 6.0\n"
+      "OPTIM SGRID2B (1-3) 0.1 5.0\n"
+      "OPTIM CGRIDMB (1,3) 2.5 4.5\n";
+  auto path = write_tmp(body);
+  auto bounds = parse_bounds(path);
+  std::remove(path.c_str());
+  REQUIRE(bounds.size() == 4 + 3 + 2);
+  CHECK(bounds[7].key == "CGRIDMB");
+  CHECK(bounds[7].arg_pos == 0);
+  CHECK(bounds[7].index == 1);
+  CHECK(bounds[8].arg_pos == 2);
+  CHECK(bounds[8].index == 3);
+
+  // CGRID2B occupies arg_pos 0..3
+  for (int i = 0; i < 4; ++i) {
+    REQUIRE(bounds[i].key == "CGRID2B");
+    REQUIRE(bounds[i].arg_pos == i);
+    REQUIRE(bounds[i].lo == Approx(0.0));
+    REQUIRE(bounds[i].hi == Approx(6.0));
+  }
+  // SGRID2B at indices 4..6
+  for (int i = 0; i < 3; ++i) {
+    REQUIRE(bounds[4 + i].key == "SGRID2B");
+    REQUIRE(bounds[4 + i].arg_pos == i);
+  }
+}
+
+TEST_CASE("check_bounds: parse rejects malformed OPTIM lines", "[check_bounds]") {
+  const std::string body = "OPTIM RCUT2B (1)\n";   // missing lo hi
+  auto path = write_tmp(body);
+  REQUIRE_THROWS_AS(parse_bounds(path), std::runtime_error);
+  std::remove(path.c_str());
+}
+
+TEST_CASE("check_bounds: sample_corners full enumeration k<=12", "[check_bounds]") {
+  std::vector<Bound> bounds(3);
+  for (int i = 0; i < 3; ++i) {
+    bounds[i].lo = static_cast<double>(i);
+    bounds[i].hi = static_cast<double>(i) + 10.0;
+  }
+  auto corners = sample_corners(bounds);
+  REQUIRE(corners.size() == 8);     // 2^3
+
+  // Every corner has each dimension == lo or hi.
+  std::set<std::string> seen;
+  for (const auto& c : corners) {
+    REQUIRE(c.size() == 3);
+    std::string sig;
+    for (std::size_t j = 0; j < 3; ++j) {
+      const bool is_hi = std::fabs(c[j] - bounds[j].hi) < 1e-12;
+      const bool is_lo = std::fabs(c[j] - bounds[j].lo) < 1e-12;
+      REQUIRE((is_hi || is_lo));
+      sig += is_hi ? "H" : "L";
+    }
+    seen.insert(sig);
+  }
+  REQUIRE(seen.size() == 8);   // all distinct
+}
+
+TEST_CASE("check_bounds: sample_corners empty returns empty", "[check_bounds]") {
+  std::vector<Bound> bounds;
+  auto corners = sample_corners(bounds);
+  REQUIRE(corners.empty());
+}
+
+TEST_CASE("check_bounds: sample_corners LHS branch k=15", "[check_bounds]") {
+  std::vector<Bound> bounds(15);
+  for (int i = 0; i < 15; ++i) {
+    bounds[i].lo = 0.0;
+    bounds[i].hi = 1.0;
+  }
+  auto corners = sample_corners(bounds, /*seed=*/42);
+  // ⌈15 · log₂(15)⌉ = ⌈15 × 3.907⌉ = 59
+  const auto expected = static_cast<std::size_t>(
+      std::ceil(15.0 * std::log2(15.0)));
+  REQUIRE(corners.size() == expected);
+  // Each corner has 15 entries, all in {0, 1}.
+  for (const auto& c : corners) {
+    REQUIRE(c.size() == 15);
+    for (double v : c) {
+      REQUIRE((v == 0.0 || v == 1.0));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  check_bounds_at_corners: the density form of a DM_REAM seed, and the
+//  corner context of a vector key
+// ---------------------------------------------------------------------------
+
+#include <tadah/core/context.h>
+#include <tadah/core/periodic_table.h>
+#include <tadah/mlip/structure_db.h>
+#include <tadah/models/descriptors/dm/rhoform.h>
+
+namespace {
+
+using tadah::core::Context;
+
+Bound box(const std::string &key, int arg_pos, double lo, double hi) {
+  Bound b;
+  b.key = key;
+  b.arg_pos = arg_pos;
+  b.lo = lo;
+  b.hi = hi;
+  return b;
+}
+
+/* A D2_Blip5 + DM_REAM seed in the density form `form` (nullptr: no RHOFORM
+ * line) with the TYPEMB basis code `code` (3 = Blip5, 1 = Gaussian). */
+Context ream_seed(const char *form, int code = 3) {
+  tadah::core::PeriodicTable::initialize();
+  Context c;
+  c.add("ATOM", "Ta");
+  c.add("WATOM", 73);
+  c.add("INIT2B", "true");
+  c.add("INITMB", "true");
+  c.add("TYPE2B", "D2_Blip5 4 4 Ta Ta");
+  c.add("CGRID2B", "2.5 3.2 3.9 4.5");
+  c.add("SGRID2B", "3.0 3.0 3.0 3.0");
+  c.add("TYPEMB", "DM_REAM");
+  c.add("TYPEMB", code);
+  c.add("TYPEMB", "3 3 3 5 5 0 0 Ta Ta");
+  c.add("CGRIDMB", "2.8 3.6 4.4");
+  c.add("SGRIDMB", "3.0 3.0 3.0");
+  c.add("AMPGRIDMB", "0.5 0.3 0.1");
+  if (form) c.add("RHOFORM", form);
+  c.add("CEMBFUNC", "-0.2 0.3 0.8 1.3 1.8");
+  c.add("SEMBFUNC", "2.0 2.0 2.0 2.0 2.0");
+  c.add("RCTYPE2B", "Cut_Cos");
+  c.add("RCTYPEMB", "Cut_Cos");
+  c.add("RCUT2B", 5.5);
+  c.add("RCUTMB", 5.5);
+  c.add("VERBOSE", 0);
+  return c;
+}
+
+tadah::mlip::CheckBoundsResult run_corners(tadah::mlip::StructureDB &stdb,
+                                           const Context &seed,
+                                           const std::vector<Bound> &b) {
+  return tadah::mlip::check_bounds_at_corners(stdb, seed, b,
+                                              sample_corners(b));
+}
+
+}  // namespace
+
+TEST_CASE("check_bounds: a DM_REAM seed must declare RHOFORM",
+          "[check_bounds][rhoform]") {
+  tadah::mlip::StructureDB stdb;
+  const std::vector<Bound> b = {box("AMPGRIDMB", -1, -0.1, 0.5)};
+  REQUIRE_THROWS_AS(run_corners(stdb, ream_seed(nullptr), b),
+                    tadah::models::DensityFormError);
+  REQUIRE_THROWS_WITH(run_corners(stdb, ream_seed(nullptr), b),
+                      Catch::Contains("DM_REAM: RHOFORM is required"));
+  REQUIRE_NOTHROW(run_corners(stdb, ream_seed("SIGNED"), b));
+}
+
+TEST_CASE("check_bounds: the corners below the density form's low bounds "
+          "fail under NONNEG and MONOTONE, none under SIGNED",
+          "[check_bounds][rhoform]") {
+  tadah::mlip::StructureDB stdb;
+  // AMPGRIDMB (1) reaches below 0: the two corners at its low bound fail
+  const std::vector<Bound> b = {box("AMPGRIDMB", -1, -0.1, 0.5),
+                                box("CGRIDMB", 1, 3.5, 3.7)};
+  for (const char *form : {"NONNEG", "MONOTONE"}) {
+    INFO(form);
+    const auto res = run_corners(stdb, ream_seed(form), b);
+    CHECK(res.n_corners == 4);
+    CHECK(res.n_corners_failing == 2);
+    for (std::size_t ci : res.failing_corner_indices)
+      CHECK(sample_corners(b)[ci][0] == -0.1);
+  }
+  const auto s = run_corners(stdb, ream_seed("SIGNED"), b);
+  CHECK(s.n_corners == 4);
+  CHECK(s.n_corners_failing == 0);
+}
+
+/* Pins: a Gaussian density's SGRIDMB box from -0.5 fails its corner at
+ * -0.5 under NONNEG (the form's rule), under MONOTONE and under SIGNED,
+ * where the density form sets no rule but DM_REAM declares every SGRIDMB
+ * value > 0 (models::optim_box_low_bound_rule, by which tadah hpo refuses
+ * such a box).
+ * Before the fix: no corner failed under SIGNED (a Gaussian density is not
+ * a bump channel, and the declared limit was not a rule). */
+TEST_CASE("check_bounds: under NONNEG a Gaussian density's SGRIDMB box needs "
+          "lo > 0", "[check_bounds][rhoform]") {
+  tadah::mlip::StructureDB stdb;
+  const std::vector<Bound> b = {box("SGRIDMB", -1, -0.5, 2.0)};
+  const auto g = run_corners(stdb, ream_seed("NONNEG", 1), b);
+  CHECK(g.n_corners == 2);
+  CHECK(g.n_corners_failing == 1);
+  CHECK(run_corners(stdb, ream_seed("SIGNED", 1), b).n_corners_failing == 1);
+  CHECK(run_corners(stdb, ream_seed("MONOTONE", 3), b).n_corners_failing == 1);
+}
+
+/* Pins: a corner below the lower limit that the descriptor reading the key
+ * declares fails, as tadah hpo refuses such a box at its line
+ * (models::optim_box_low_bound_rule): on a D2_BP, SGRID2B (1) [-0.5, 1]
+ * (> 0) and CGRID2B (2) [-0.5, 2.5] (>= 0) fail their corner at -0.5,
+ * CGRID2B (2) [0, 2.5] none; on a DM_mBlipEnv, RCUTENV [-1, 7] fails its
+ * corner at -1 and CEMBFUNC [-1, 1] (no limit) none. Read from a target
+ * file, OPTIM RCUTENV (1) -1 7 is refused with the reader's message, as
+ * tadah hpo refuses it.
+ * Before the fix: no corner failed, and the line was read. */
+TEST_CASE("check_bounds: a corner below the lower limit a descriptor "
+          "declares fails",
+          "[check_bounds][low_bound]") {
+  tadah::core::PeriodicTable::initialize();
+  tadah::mlip::StructureDB stdb;
+  Context bp;
+  bp.add("ATOM", "Ta");
+  bp.add("INIT2B", "true");
+  bp.add("INITMB", "false");
+  bp.add("TYPE2B", "D2_BP 2 2 Ta Ta");
+  bp.add("CGRID2B", "0.0 2.0");
+  bp.add("SGRID2B", "0.5 1.0");
+  bp.add("RCTYPE2B", "Cut_Cos");
+  bp.add("RCUT2B", 5.0);
+  bp.add("VERBOSE", 0);
+  const auto w = run_corners(stdb, bp, {box("SGRID2B", 0, -0.5, 1.0)});
+  CHECK(w.n_corners == 2);
+  CHECK(w.n_corners_failing == 1);
+  CHECK(run_corners(stdb, bp, {box("CGRID2B", 1, -0.5, 2.5)})
+            .n_corners_failing == 1);
+  CHECK(run_corners(stdb, bp, {box("CGRID2B", 1, 0.0, 2.5)})
+            .n_corners_failing == 0);
+
+  Context env = bp;
+  env.remove("INITMB");
+  env.add("INITMB", "true");
+  env.add("TYPEMB", "DM_mBlipEnv 0 1 1 2 2 Ta Ta");
+  env.add("CGRIDMB", 0.0);
+  env.add("SGRIDMB", 0.2);
+  env.add("CEMBFUNC", "1.0 2.0");
+  env.add("SEMBFUNC", "1.0 1.0");
+  env.add("RCUTENV", 1.5);
+  env.add("RCTYPEMB", "Cut_Cos");
+  env.add("RCUTMB", 5.0);
+  CHECK(run_corners(stdb, env, {box("RCUTENV", -1, -1.0, 7.0)})
+            .n_corners_failing == 1);
+  CHECK(run_corners(stdb, env, {box("CEMBFUNC", 0, -1.0, 1.0)})
+            .n_corners_failing == 0);
+
+  const std::string path = write_tmp("OPTIM RCUTENV (1) -1 7\n");
+  Context seed = env;
+  CHECK_THROWS_WITH(parse_hpo_target_bounds(path, seed),
+                    Catch::Contains(
+                        "OPTIM RCUTENV (1): the low bound -1 is not > 0, but "
+                        "the DM_mBlipEnv descriptor requires every RCUTENV "
+                        "value > 0"));
+  std::remove(path.c_str());
+}
+
+/* Pins: on a DM_mJoin line, RCUTENV, which the line gives every
+ * descriptor whole, keeps the rule of DM_mBlipEnv in any order of the
+ * line: the box [-1, 7] fails its corner at -1 with DM_mBlip first and
+ * with DM_mBlipEnv first, as tadah hpo refuses the box at its line.
+ * Before the fix: with DM_mBlip first no corner failed (the rule went by
+ * the first descriptor of the line, which declares no limit for RCUTENV). */
+TEST_CASE("check_bounds: RCUTENV on a DM_mJoin line keeps the rule of "
+          "DM_mBlipEnv in any order",
+          "[check_bounds][low_bound][join]") {
+  tadah::core::PeriodicTable::initialize();
+  tadah::mlip::StructureDB stdb;
+  for (const char *line :
+       {"DM_mJoin DM_mBlip 0 1 1 2 2 Ta Ta DM_mBlipEnv 0 1 1 2 2 Ta Ta",
+        "DM_mJoin DM_mBlipEnv 0 1 1 2 2 Ta Ta DM_mBlip 0 1 1 2 2 Ta Ta"}) {
+    INFO(line);
+    Context c;
+    c.add("ATOM", "Ta");
+    c.add("INIT2B", "false");
+    c.add("INITMB", "true");
+    c.add("TYPEMB", line);
+    c.add("CGRIDMB", "0.1 0.1");
+    c.add("SGRIDMB", "0.2 0.2");
+    c.add("CEMBFUNC", "1.0 2.0 1.0 2.0");
+    c.add("SEMBFUNC", "1.0 1.0 1.0 1.0");
+    c.add("RCUTENV", 1.5);
+    c.add("RCTYPEMB", "Cut_Cos Cut_Cos");
+    c.add("RCUTMB", "5.0 5.0");
+    c.add("VERBOSE", 0);
+    const auto r = run_corners(stdb, c, {box("RCUTENV", -1, -1.0, 7.0)});
+    CHECK(r.n_corners == 2);
+    CHECK(r.n_corners_failing == 1);
+  }
+}
+
+TEST_CASE("check_bounds: a radial bump width box needs lo > 0 in every form",
+          "[check_bounds][rhoform][bump_width]") {
+  // Every radial bump width > 0 -- SGRIDMB
+  // of a DM_REAM Blip/Blip5 density and SGRID2B of a D2_Blip/D2_Blip5 pair
+  // term, in every RHOFORM (models::optim_low_bound_rule(key, ctx), the
+  // rule tadah hpo refuses such a box by). The Blip5 density under NONNEG
+  // and SIGNED set no width rule before.
+  tadah::mlip::StructureDB stdb;
+  for (const char *form : {"SIGNED", "NONNEG", "MONOTONE"}) {
+    INFO(form);
+    for (const Bound &b : {box("SGRIDMB", -1, -0.5, 2.0),
+                           box("SGRIDMB", 1, 0.0, 4.0),
+                           box("SGRID2B", -1, 0.0, 4.0),
+                           box("SGRID2B", 2, -1.0, 4.0)}) {
+      INFO(b.key << " (" << b.arg_pos << ") " << b.lo);
+      const auto res = run_corners(stdb, ream_seed(form, 3), {b});
+      CHECK(res.n_corners == 2);
+      CHECK(res.n_corners_failing == 1);
+    }
+    CHECK(run_corners(stdb, ream_seed(form, 3), {box("SGRID2B", 1, 0.5, 4.0)})
+              .n_corners_failing == 0);
+  }
+}
+
+/* Pins: on a D2_mJoin of D2_BP 2 2 (SGRID2B entries 1-2) and D2_Blip 2 2
+ * (entries 3-4), a width box of the D2_BP below 0, SGRID2B (1) -0.5 1.0,
+ * fails its corner at -0.5 as on a D2_BP alone, by the limit the D2_BP
+ * declares (every SGRID2B value > 0), and a box of the D2_Blip from 0,
+ * SGRID2B (4) 0 2, fails its corner at 0 by its bump rule
+ * (models::optim_box_low_bound_rule of the box's entry, the rule tadah hpo
+ * refuses such a box by).
+ * Before the fix: the D2_BP's box failed its corner at -0.5 by the
+ * D2_Blip's rule, which held every SGRID2B entry of the line. Before the
+ * fix that makes the limits the descriptors declare a rule: it failed no
+ * corner, as on a D2_BP alone (a Gaussian width had no rule). */
+TEST_CASE("check_bounds: a width box of a D2_BP of a D2_mJoin with a D2_Blip "
+          "is held as on a D2_BP alone",
+          "[check_bounds][bump_width][join]") {
+  tadah::core::PeriodicTable::initialize();
+  tadah::mlip::StructureDB stdb;
+  Context c;
+  c.add("ATOM", "Ta");
+  c.add("WATOM", 73);
+  c.add("INIT2B", "true");
+  c.add("INITMB", "false");
+  c.add("TYPE2B", "D2_mJoin D2_BP 2 2 Ta Ta D2_Blip 2 2 Ta Ta");
+  c.add("CGRID2B", "0 0 4.0 3.0");
+  c.add("SGRID2B", "0.5 1.0 2.0 1.0");
+  c.add("RCTYPE2B", "Cut_Cos Cut_Cos");
+  c.add("RCUT2B", "5.0 5.0");
+  c.add("VERBOSE", 0);
+  const auto bp = run_corners(stdb, c, {box("SGRID2B", 0, -0.5, 1.0)});
+  CHECK(bp.n_corners == 2);
+  CHECK(bp.n_corners_failing == 1);
+  const auto blip = run_corners(stdb, c, {box("SGRID2B", 3, 0.0, 2.0)});
+  CHECK(blip.n_corners == 2);
+  CHECK(blip.n_corners_failing == 1);
+}
+
+TEST_CASE("check_bounds: a corner of a vector key changes only its own entry",
+          "[check_bounds]") {
+  // The corner context took (arg_pos + 1) copies of the corner value for
+  // OPTIM KEY (i), and a single value for KEY (1): CGRIDMB (3) on a
+  // four-entry grid audited [c, c, c], so every corner failed the DM_Blip
+  // CGRIDMB/SGRIDMB size check. Each corner now keeps the seed's other
+  // entries (the context tadah hpo evaluates).
+  tadah::core::PeriodicTable::initialize();
+  Context seed;
+  seed.add("ATOM", "Ta");
+  seed.add("INIT2B", "false");
+  seed.add("INITMB", "true");
+  seed.add("TYPEMB", "DM_Blip 0 4 4 Ta Ta");
+  seed.add("CGRIDMB", "3.0 3.5 4.0 4.5");
+  seed.add("SGRIDMB", "1.0 1.0 1.0 1.0");
+  seed.add("RCTYPEMB", "Cut_Cos");
+  seed.add("RCUTMB", 5.0);
+  seed.add("VERBOSE", 0);
+  tadah::mlip::StructureDB stdb;
+  stdb.add("tests_data/structure_1.dat");
+  REQUIRE(stdb.size() == 1);
+
+  SECTION("OPTIM CGRIDMB (3), CGRIDMB (1) and two lines on one key") {
+    for (const auto &b : std::vector<std::vector<Bound>>{
+             {box("CGRIDMB", 2, 3.9, 4.1)},
+             {box("CGRIDMB", -1, 2.9, 3.1)},
+             {box("CGRIDMB", 1, 3.4, 3.6), box("CGRIDMB", 3, 4.4, 4.6)}}) {
+      const auto res = run_corners(stdb, seed, b);
+      INFO(b.size() << " bound(s) on CGRIDMB, first arg_pos " << b[0].arg_pos);
+      CHECK(res.n_corners == (std::size_t{1} << b.size()));
+      CHECK(res.n_corners_failing == 0);
+    }
+  }
+  SECTION("the seed's other entries are kept") {
+    // entry 1 far outside the data's r_ij range: every corner of a box on
+    // entry 3 keeps it, so every corner fails the DM_Blip CGRIDMB check
+    Context far = seed;
+    far.remove("CGRIDMB");
+    far.add("CGRIDMB", "30.0 3.5 4.0 4.5");
+    const std::vector<Bound> b = {box("CGRIDMB", 2, 3.9, 4.1)};
+    const auto res = run_corners(stdb, far, b);
+    CHECK(res.n_corners == 2);
+    CHECK(res.n_corners_failing == 2);
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  check_bounds_at_corners: a dataset with two atoms at one position
+// ---------------------------------------------------------------------------
+
+#include <tadah/mlip/atom.h>
+#include <tadah/mlip/structure.h>
+
+#include <exception>
+#include <stdexcept>
+
+namespace {
+
+/* bcc Ta (a = 3.3 A) labelled `label`; with `coincident` a third Ta on top
+ * of atom 1, at (0, 0, 0). */
+tadah::mlip::Structure bcc_ta_cell(const std::string &label, bool coincident) {
+  tadah::core::PeriodicTable::initialize();
+  const auto ta = tadah::core::PeriodicTable::find_by_symbol("Ta");
+  tadah::mlip::Structure st;
+  st.label = label;
+  st.energy = -20.0;
+  st.cell.load(3.3, 0.0, 0.0, 0.0, 3.3, 0.0, 0.0, 0.0, 3.3);
+  st.add_atom(tadah::mlip::Atom(ta, 0.0, 0.0, 0.0));
+  st.add_atom(tadah::mlip::Atom(ta, 1.65, 1.65, 1.65));
+  if (coincident) st.add_atom(tadah::mlip::Atom(ta, 0.0, 0.0, 0.0));
+  return st;
+}
+
+/* The type and message of what @p f throws: {"", ""} when nothing is
+ * thrown. */
+template <class F>
+std::pair<std::string, std::string> thrown_by(F f) {
+  try {
+    f();
+  } catch (const std::invalid_argument &e) {
+    return {"invalid_argument", e.what()};
+  } catch (const std::exception &e) {
+    return {"other exception", e.what()};
+  }
+  return {"", ""};
+}
+
+}  // namespace
+
+/* Pins: check_bounds refuses a dataset in which two atoms are at the same
+ * position, as training, prediction and HPO do (NNFinder's refusal), instead
+ * of auditing the corners against statistics that count the pair at
+ * distance 0: of a bcc Ta cell and 'coincident-Ta' (the same cell with a
+ * third Ta on atom 1), check_bounds_at_corners throws std::invalid_argument
+ * naming "structure 2 of 2 ('coincident-Ta')", "atoms 1 and 3 (Ta, Ta)" and
+ * "same position". The same seed and box on the bcc cell alone are audited
+ * without an exception (so the refusal is the dataset's). Only `tadah
+ * analysis dataset_stats`, which audits the data, lists such a pair.
+ * Before the fix: compute_data_stats builds its lists with
+ * NNFinder::list_coincident(true), so it counts the pair at distance 0
+ * (per_pair r_min 0) and throws nothing; the two corners are audited
+ * against those statistics and a CheckBoundsResult is returned, so
+ * CHECK_THROWS_AS fails and the message is empty. (Before list_coincident
+ * the NNFinder refusal did not reach the caller either:
+ * check_bounds_at_corners catches every exception of compute_data_stats,
+ * logs "check_bounds: dataset stats failed (...); per-corner audits will
+ * run with empty stats." and audits the corners against empty statistics.) */
+TEST_CASE("check_bounds: a dataset with two atoms at the same position is "
+          "refused, naming the structure",
+          "[check_bounds][coincident]") {
+  tadah::core::PeriodicTable::initialize();
+  Context seed;
+  seed.add("ATOM", "Ta");
+  seed.add("INIT2B", "false");
+  seed.add("INITMB", "true");
+  seed.add("TYPEMB", "DM_Blip 0 4 4 Ta Ta");
+  seed.add("CGRIDMB", "3.0 3.5 4.0 4.5");
+  seed.add("SGRIDMB", "1.0 1.0 1.0 1.0");
+  seed.add("RCTYPEMB", "Cut_Cos");
+  seed.add("RCUTMB", 5.0);
+  seed.add("VERBOSE", 0);
+  const std::vector<Bound> b = {box("CGRIDMB", 2, 3.9, 4.1)};
+
+  {
+    tadah::mlip::StructureDB clean;
+    clean.add(bcc_ta_cell("bcc-Ta", false));
+    tadah::mlip::CheckBoundsResult res;
+    REQUIRE_NOTHROW(res = run_corners(clean, seed, b));
+    CHECK(res.n_corners == 2);
+  }
+
+  tadah::mlip::StructureDB stdb;
+  stdb.add(bcc_ta_cell("bcc-Ta", false));
+  stdb.add(bcc_ta_cell("coincident-Ta", true));
+  const auto t = thrown_by([&] { (void)run_corners(stdb, seed, b); });
+  INFO(t.first << ": " << t.second);
+  CHECK(t.first == "invalid_argument");
+  CHECK(t.second.find("structure 2 of 2 ('coincident-Ta')") !=
+        std::string::npos);
+  CHECK(t.second.find("atoms 1 and 3 (Ta, Ta)") != std::string::npos);
+  CHECK(t.second.find("same position") != std::string::npos);
+}
+
+/* Pins: check_bounds refuses a dataset whose statistics cannot be computed,
+ * whatever the reason, instead of auditing the corners against empty
+ * statistics (which reports every corner safe): of a bcc Ta cell and
+ * 'tiny' (one Ta in a 0.4 A cube, too small for the 5 A cutoff: NNFinder's
+ * std::runtime_error), check_bounds_at_corners throws, naming "structure 2
+ * of 2 ('tiny')" and "too small".
+ * Before the fix: only std::invalid_argument was let out; this failure was
+ * logged ("per-corner audits will run with empty stats") and the corners
+ * were reported, so nothing was thrown. */
+TEST_CASE("check_bounds: a dataset whose statistics cannot be computed is "
+          "refused",
+          "[check_bounds]") {
+  tadah::core::PeriodicTable::initialize();
+  Context seed;
+  seed.add("ATOM", "Ta");
+  seed.add("INIT2B", "false");
+  seed.add("INITMB", "true");
+  seed.add("TYPEMB", "DM_Blip 0 4 4 Ta Ta");
+  seed.add("CGRIDMB", "3.0 3.5 4.0 4.5");
+  seed.add("SGRIDMB", "1.0 1.0 1.0 1.0");
+  seed.add("RCTYPEMB", "Cut_Cos");
+  seed.add("RCUTMB", 5.0);
+  seed.add("VERBOSE", 0);
+  const std::vector<Bound> b = {box("CGRIDMB", 2, 3.9, 4.1)};
+  tadah::mlip::Structure tiny;
+  tiny.label = "tiny";
+  tiny.energy = -10.0;
+  tiny.cell.load(0.4, 0.0, 0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.4);
+  tiny.add_atom(tadah::mlip::Atom(tadah::core::PeriodicTable::find_by_symbol("Ta"),
+                                  0.0, 0.0, 0.0));
+  tadah::mlip::StructureDB stdb;
+  stdb.add(bcc_ta_cell("bcc-Ta", false));
+  stdb.add(tiny);
+  const auto t = thrown_by([&] { (void)run_corners(stdb, seed, b); });
+  INFO(t.first << ": " << t.second);
+  CHECK_FALSE(t.first.empty());
+  CHECK(t.second.find("structure 2 of 2 ('tiny')") != std::string::npos);
+  CHECK(t.second.find("too small") != std::string::npos);
+}
+
+// ---------------------------------------------------------------------------
+//  check_bounds_at_corners judges a density channel by its reach
+// ---------------------------------------------------------------------------
+
+#include <tadah/mlip/preflight_audit.h>
+
+namespace {
+
+/* The many-body part of the Ta seed of the HPO tests (tests/data/ta of
+ * HPO): DM_mBlipEnv, a Gaussian exp(-SGRIDMB r^2) centred at the origin
+ * (CGRIDMB 0, SGRIDMB 0.2), RCUTMB 5.6; `cgridmb`, `sgridmb` and `rcutmb`
+ * replace those values. No pair term. */
+Context mblipenv_seed(double cgridmb = 0.0, double sgridmb = 0.2,
+                      double rcutmb = 5.6) {
+  tadah::core::PeriodicTable::initialize();
+  Context c;
+  c.add("ATOM", "Ta");
+  c.add("WATOM", 1.0);
+  c.add("INIT2B", "false");
+  c.add("INITMB", "true");
+  c.add("TYPEMB", "DM_mBlipEnv 0 1 1 7 7 Ta Ta");
+  c.add("RCUTENV", 5.0);
+  c.add("RCTYPEMB", "Cut_Poly");
+  c.add("RCUTMB", rcutmb);
+  c.add("SGRIDMB", sgridmb);
+  c.add("CGRIDMB", cgridmb);
+  c.add("SEMBFUNC", "1 1 1 1 1 1 1");
+  c.add("CEMBFUNC", "1 2 3 4 5 6 7");
+  c.add("VERBOSE", 0);
+  return c;
+}
+
+/* Two bcc Ta cells (a = 3.3 A): the neighbour distances start at 2.858 A. */
+tadah::mlip::StructureDB bcc_ta_db() {
+  tadah::mlip::StructureDB stdb;
+  stdb.add(bcc_ta_cell("bcc-Ta-1", false));
+  stdb.add(bcc_ta_cell("bcc-Ta-2", false));
+  return stdb;
+}
+
+}  // namespace
+
+/* Pins: the box of the Ta seed of the HPO tests, SGRIDMB 0.05 to 1.0 and
+ * RCUTMB 4 to 5.6 around a Gaussian centred at the origin (CGRIDMB 0),
+ * passes at its 4 corners on bcc Ta (r_min 2.858 A: exp(-1.0 * 2.858^2) is
+ * 2.8e-4 at the narrowest corner); with SGRIDMB up to 8 the 2 corners at 8
+ * (exp(-8 * 2.858^2) = 4e-29) fail, and with CGRIDMB 30 all 4 do.
+ * Before the fix: all 4 corners of every box failed ("CGRIDMB=0.000000 is
+ * outside the dataset's r_ij range [...] -- ρ will be ~0 for every
+ * atom"): the check compared the centre alone with the neighbour
+ * distances. */
+TEST_CASE("check_bounds: a Gaussian density centred at the origin passes "
+          "the corners where its width reaches the neighbours",
+          "[check_bounds][density_reach]") {
+  tadah::mlip::StructureDB stdb = bcc_ta_db();
+  const std::vector<Bound> b = {box("SGRIDMB", -1, 0.05, 1.0),
+                                box("RCUTMB", -1, 4.0, 5.6)};
+  const auto seed_box = run_corners(stdb, mblipenv_seed(), b);
+  CHECK(seed_box.n_corners == 4);
+  CHECK(seed_box.n_corners_failing == 0);
+
+  const std::vector<Bound> wide = {box("SGRIDMB", -1, 0.05, 8.0),
+                                   box("RCUTMB", -1, 4.0, 5.6)};
+  const auto narrow = run_corners(stdb, mblipenv_seed(), wide);
+  CHECK(narrow.n_corners == 4);
+  CHECK(narrow.n_corners_failing == 2);
+  for (std::size_t ci : narrow.failing_corner_indices)
+    CHECK(sample_corners(wide)[ci][0] == 8.0);
+
+  const auto far = run_corners(stdb, mblipenv_seed(30.0), b);
+  CHECK(far.n_corners_failing == 4);
+}
+
+/* Pins: the dataset statistics of check_bounds reach the largest cutoff of
+ * the box: with the seed's RCUTMB 2.0, below the nearest neighbour (2.858
+ * A), and a box RCUTMB 2.0 to 5.6, only the 2 corners at 2.0 fail ("below
+ * the smallest neighbour distance"); the corners at 5.6 find the
+ * neighbours.
+ * Before the fix: the statistics were computed at the seed's cutoff
+ * (RCUTMAX 2.0: Context::addInternal recomputes RCUTMAX from RCUT2B and
+ * RCUTMB, which undid the widening to the box) and found no neighbour
+ * distance, and no corner failed: the checks of DM_mBlipEnv passed
+ * statistics without neighbours, so the corners at 2.0, whose density
+ * sums over no neighbour, passed too. */
+TEST_CASE("check_bounds: the statistics reach the largest cutoff of the box",
+          "[check_bounds][density_reach]") {
+  tadah::mlip::StructureDB stdb = bcc_ta_db();
+  const std::vector<Bound> b = {box("RCUTMB", -1, 2.0, 5.6),
+                                box("SGRIDMB", -1, 0.1, 0.2)};
+  const auto res = run_corners(stdb, mblipenv_seed(0.0, 0.2, 2.0), b);
+  CHECK(res.n_corners == 4);
+  CHECK(res.n_corners_failing == 2);
+  for (std::size_t ci : res.failing_corner_indices)
+    CHECK(sample_corners(b)[ci][0] == 2.0);
+}
+
+/* Pins: the pre-flight audit of the Ta seed of the HPO tests (DM_mBlipEnv,
+ * CGRIDMB 0, SGRIDMB 0.2, RCUTMB 5.6) on bcc Ta has no FAIL finding, so
+ * AUDIT error lets it train: enforce_audit_mode(..., Error) throws nothing.
+ * Before the fix: the CGRIDMB check failed ("CGRIDMB=0.000000 is outside
+ * the dataset's r_ij range"), and tadah train with AUDIT error refused the
+ * seed (exit 1). */
+TEST_CASE("check_bounds: AUDIT error accepts the Ta seed whose Gaussian "
+          "density is centred at the origin",
+          "[check_bounds][density_reach][preflight_audit]") {
+  tadah::mlip::StructureDB stdb = bcc_ta_db();
+  Context seed = mblipenv_seed();
+  const auto rep = tadah::mlip::run_preflight_from_db(
+      stdb, seed, tadah::mlip::AuditMode::Error);
+  std::string findings;
+  for (const auto &m : rep.messages)
+    findings += m.descriptor_label + "." + m.param_key + ": " + m.text + "\n";
+  INFO(findings);
+  CHECK_FALSE(rep.any_fail());
+  CHECK_NOTHROW(tadah::mlip::enforce_audit_mode(
+      rep, tadah::mlip::AuditMode::Error));
+}
+
+// ---------------------------------------------------------------------------
+//  tadah analysis check_bounds reads a grid generator as the grid it makes
+// ---------------------------------------------------------------------------
+
+#include <tadah/core/logger.h>
+#include <tadah/mlip/engines/analysis_check_bounds_engine.h>
+#include <tadah/mlip/task.h>
+
+#include <cstdlib>
+#include <filesystem>
+#include <unistd.h>
+
+/* Pins: `tadah analysis check_bounds` expands a radial grid given by a
+ * generator, as tadah hpo does, before it audits the corners: a DM_Blip
+ * seed with "CGRIDMB LIN 4 3.0 4.5" and "SGRIDMB LIN 4 1 1" (four blips
+ * from 3 to 4.5 A) and a box RCUTMB 4 to 5 on bcc Ta passes at its 2
+ * corners (exit status 0).
+ * Before the fix: the checks read the generator's tokens as the grid, and
+ * the CGRIDMB check of DM_Blip threw on "LIN" ("Failed converting "LIN" for
+ * key=CGRIDMB"), which ended the run. */
+TEST_CASE("check_bounds: a grid generator is read as the grid it makes",
+          "[check_bounds][seed]") {
+  namespace fs = std::filesystem;
+  tadah::core::PeriodicTable::initialize();
+  const fs::path dir = fs::temp_directory_path() /
+                       ("tadah_cb_lin_" + std::to_string(::getpid()));
+  fs::create_directories(dir);
+  tadah::mlip::StructureDB db;
+  db.add(bcc_ta_cell("bcc-Ta-1", false));
+  db.add(bcc_ta_cell("bcc-Ta-2", false));
+  const std::string dbfile = (dir / "bcc.tadahdb").string();
+  db.dump_to_file(dbfile, /*append=*/false, 18);
+  const std::string target = (dir / "box.hpo").string();
+  std::ofstream(target) << "OPTIM RCUTMB (1) 4.0 5.0\n";
+  Context c;
+  c.add("DBFILE", dbfile);
+  c.add("HPOTARGET", target);
+  c.add("ATOM", "Ta");
+  c.add("INIT2B", "false");
+  c.add("INITMB", "true");
+  c.add("TYPEMB", "DM_Blip 0 4 4 Ta Ta");
+  c.add("CGRIDMB", "LIN 4 3.0 4.5");
+  c.add("SGRIDMB", "LIN 4 1 1");
+  c.add("RCTYPEMB", "Cut_Cos");
+  c.add("RCUTMB", 5.0);
+  c.add("VERBOSE", 0);
+  tadah::mlip::Task task("analysis", c);
+  int rc = -1;
+  std::string what;
+  try {
+    tadah::mlip::engines::AnalysisCheckBoundsEngine engine;
+    engine.validate(task);
+    rc = engine.run(task);
+  } catch (const std::exception &e) {
+    what = e.what();
+  }
+  std::error_code ec;
+  fs::remove_all(dir, ec);
+  INFO(what);
+  CHECK(rc == EXIT_SUCCESS);
+}
+
+/* Pins: a box whose high bound is not above its low bound is refused with
+ * tadah hpo's reason, "<high> H is not greater than <low> L": the parse of
+ * "OPTIM SGRIDMB (1) 0.2 0.2" (zero width) and of "OPTIM RCUT2B (1) 6 4"
+ * throws std::runtime_error naming the line number, the line and that
+ * reason; "OPTIM RCUT2B (1) 4 6" is read. (The expected reason was check_
+ * bounds' own, "the high bound H is not above the low bound L", until the
+ * OPTIM lines were read with tadah hpo's reader.)
+ * Before the fix: check_bounds gave its own reason, "... the high bound 0.2
+ * is not above the low bound 0.2; tadah hpo refuses such a box", without
+ * tadah hpo's "is not greater than <low>". */
+TEST_CASE("check_bounds: parse refuses a box whose high bound is not above "
+          "its low bound",
+          "[check_bounds]") {
+  for (const std::string line : {"OPTIM SGRIDMB (1) 0.2 0.2",
+                                 "OPTIM RCUT2B (1) 6 4"}) {
+    CAPTURE(line);
+    const auto path = write_tmp("OPTIM RCUTMB (1) 4 6\n" + line + "\n");
+    std::string what;
+    try {
+      parse_bounds(path);
+    } catch (const std::runtime_error& e) {
+      what = e.what();
+    }
+    std::remove(path.c_str());
+    INFO(what);
+    CHECK(what.find("line 2") != std::string::npos);
+    CHECK(what.find(line) != std::string::npos);
+    CHECK(what.find("is not greater than <low>") != std::string::npos);
+  }
+  const auto path = write_tmp("OPTIM RCUT2B (1) 4 6\n");
+  CHECK(parse_bounds(path).size() == 1u);
+  std::remove(path.c_str());
+}
+
+// ---------------------------------------------------------------------------
+//  The cutoff of a knot channel is its largest knot, as tadah hpo takes it
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/* TYPE2B D2_Knot5 with the knots @p knots (KDEG2B 5 each) under Cut_Dummy,
+ * with the stated cutoff RCUT2B @p rcut. */
+Context knot_seed(const std::vector<double> &knots, double rcut) {
+  tadah::core::PeriodicTable::initialize();
+  Context c;
+  c.add("ATOM", "Ta");
+  c.add("WATOM", 73);
+  c.add("INIT2B", "true");
+  c.add("INITMB", "false");
+  const std::string n = std::to_string(knots.size());
+  c.add("TYPE2B", "D2_Knot5 " + n + " " + n + " Ta Ta");
+  for (double k : knots) {
+    c.add("CGRID2B", k);
+    c.add("KDEG2B", 5);
+  }
+  c.add("RCTYPE2B", "Cut_Dummy");
+  c.add("RCUT2B", rcut);
+  c.add("VERBOSE", 0);
+  return c;
+}
+
+}  // namespace
+
+/* Pins: check_bounds audits a knot channel at the cutoff tadah hpo gives
+ * it, its largest knot (tadah hpo and tadah train replace a stated cutoff
+ * that differs): for D2_Knot5 with knots 2.5, 3.5 and 4.5 A and a stated
+ * RCUT2B of 2 A, below every neighbour distance of bcc Ta (from 2.858 A),
+ * and a box CGRID2B (1) 2.4 to 2.6, both corners pass.
+ * Before the fix: the statistics were taken at the stated 2 A, where the
+ * data have no pair, and the RCUT2B check failed both corners ("RCUT2B =
+ * 2: no pair of atoms of the dataset lies within it"), a box that tadah
+ * hpo --check accepts. */
+TEST_CASE("check_bounds: a knot channel is audited at its largest knot",
+          "[check_bounds][knot]") {
+  tadah::mlip::StructureDB stdb = bcc_ta_db();
+  const std::vector<Bound> b = {box("CGRID2B", 0, 2.4, 2.6)};
+  const auto res = run_corners(stdb, knot_seed({2.5, 3.5, 4.5}, 2.0), b);
+  CHECK(res.n_corners == 2);
+  CHECK(res.n_corners_failing == 0);
+}
+
+/* Pins: the cutoff of a knot channel follows the largest knot of each
+ * corner, as tadah hpo re-derives it for each candidate: for D2_Knot5 with
+ * knots 1.5, 2 and 4.5 A (RCUT2B 4.5) and a box CGRID2B (3) 2.2 to 4.5,
+ * the context of the corner at 2.2 has RCUT2B 2.2 and that of the corner
+ * at 4.5 has RCUT2B 4.5; on bcc Ta (neighbour distances from 2.858 A) the
+ * corner at 2.2, whose cutoff holds no neighbour, fails and the corner at
+ * 4.5 passes.
+ * Before the fix: every corner kept the seed's RCUT2B 4.5, and both
+ * corners passed. */
+TEST_CASE("check_bounds: the cutoff of a knot channel follows the largest "
+          "knot of each corner",
+          "[check_bounds][knot]") {
+  const Context seed = knot_seed({1.5, 2.0, 4.5}, 4.5);
+  const std::vector<Bound> b = {box("CGRID2B", 2, 2.2, 4.5)};
+  CHECK(tadah::mlip::corner_context(seed, b, {2.2}).get<double>("RCUT2B") ==
+        2.2);
+  CHECK(tadah::mlip::corner_context(seed, b, {4.5}).get<double>("RCUT2B") ==
+        4.5);
+  tadah::mlip::StructureDB stdb = bcc_ta_db();
+  const auto res = run_corners(stdb, seed, b);
+  CHECK(res.n_corners == 2);
+  REQUIRE(res.n_corners_failing == 1);
+  CHECK(sample_corners(b)[res.failing_corner_indices[0]][0] == 2.2);
+}
+
+/* Pins: the cutoff of a knot descriptor of a joined line follows the
+ * largest knot of each corner, as tadah hpo re-derives it for each
+ * candidate, and the other descriptor's cutoff stays: for TYPE2B D2_mJoin
+ * of D2_Knot5 (knots 1.5, 2 and 4.5 A) and D2_Blip (centre 3, width 2),
+ * RCUT2B 4.5 5, and a box CGRID2B (3) 2.2 to 4.8, the corner at 2.2 has
+ * RCUT2B 2.2 5 and the corner at 4.8 RCUT2B 4.8 5.
+ * Before the fix: every corner kept RCUT2B 4.5 5 (the derivation read the
+ * line's first value, D2_mJoin). */
+TEST_CASE("check_bounds: the cutoff of a knot descriptor of a joined line "
+          "follows its largest knot of each corner",
+          "[check_bounds][knot][join]") {
+  tadah::core::PeriodicTable::initialize();
+  Context seed;
+  seed.add("ATOM", "Ta");
+  seed.add("WATOM", 73);
+  seed.add("INIT2B", "true");
+  seed.add("INITMB", "false");
+  seed.add("TYPE2B", "D2_mJoin D2_Knot5 3 3 Ta Ta D2_Blip 1 1 Ta Ta");
+  seed.add("CGRID2B", "1.5 2.0 4.5 3.0");
+  seed.add("KDEG2B", "5 5 5");
+  seed.add("SGRID2B", "2");
+  seed.add("RCTYPE2B", "Cut_Dummy Cut_Dummy");
+  seed.add("RCUT2B", "4.5 5.0");
+  seed.add("VERBOSE", 0);
+  const std::vector<Bound> b = {box("CGRID2B", 2, 2.2, 4.8)};
+  for (const double corner : {2.2, 4.8}) {
+    CAPTURE(corner);
+    const Context c = tadah::mlip::corner_context(seed, b, {corner});
+    REQUIRE(c.size("RCUT2B") == 2u);
+    CHECK(c.get<double>("RCUT2B", 0) == corner);
+    CHECK(c.get<double>("RCUT2B", 1) == 5.0);
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  check_bounds_at_corners judges a descriptor by the element pairs of its
+//  line
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/* Two copies of a cell of two Ta and two W atoms 20 A wide: Ta (0, 0, 0),
+ * Ta (2.86, 0, 0), W (0, 2.4, 0), W (0, 2.4, 2.5); the (Ta, Ta) distance is
+ * 2.86 A, the (W, W) distance 2.5 A, the (Ta, W) distances from 2.4 A. */
+tadah::mlip::StructureDB ta_w_db() {
+  tadah::core::PeriodicTable::initialize();
+  const auto ta = tadah::core::PeriodicTable::find_by_symbol("Ta");
+  const auto w = tadah::core::PeriodicTable::find_by_symbol("W");
+  tadah::mlip::StructureDB stdb;
+  for (const char *label : {"ta-w-1", "ta-w-2"}) {
+    tadah::mlip::Structure st;
+    st.label = label;
+    st.energy = -40.0;
+    st.cell.load(20.0, 0.0, 0.0, 0.0, 20.0, 0.0, 0.0, 0.0, 20.0);
+    st.add_atom(tadah::mlip::Atom(ta, 0.0, 0.0, 0.0));
+    st.add_atom(tadah::mlip::Atom(ta, 2.86, 0.0, 0.0));
+    st.add_atom(tadah::mlip::Atom(w, 0.0, 2.4, 0.0));
+    st.add_atom(tadah::mlip::Atom(w, 0.0, 2.4, 2.5));
+    stdb.add(st);
+  }
+  return stdb;
+}
+
+/* TYPE2B D2_Blip 2 2 <pairs> alone, RCUT2B 5, centres 1 and 2, SGRID2B 1 1,
+ * Cut_Cos. */
+Context ta_w_blip_seed(const std::string &pairs) {
+  Context c;
+  c.add("ATOM", "Ta W");
+  c.add("WATOM", "73 74");
+  c.add("INIT2B", "true");
+  c.add("INITMB", "false");
+  c.add("TYPE2B", "D2_Blip 2 2 " + pairs);
+  c.add("RCTYPE2B", "Cut_Cos");
+  c.add("RCUT2B", 5.0);
+  c.add("CGRID2B", "1 2");
+  c.add("SGRID2B", "1 1");
+  c.add("VERBOSE", 0);
+  return c;
+}
+
+}  // namespace
+
+/* Pins: a box RCUT2B 2.6 to 5 on the Ta-W data (ta_w_db()): for D2_Blip
+ * 2 2 Ta Ta, the corner at 2.6, below the (Ta, Ta) distance of 2.86 A,
+ * fails (1 of 2 corners); for D2_Blip 2 2 W W no corner fails, 2.6 holding
+ * the (W, W) distance of 2.5 A (a pin: as since the check read every
+ * element pair).
+ * Before the fix: the corner at 2.6 of the Ta Ta descriptor passed, as it
+ * holds the (Ta, W) distance of 2.4 A, a pair the descriptor does not sum
+ * over (0 of 2 corners failed). */
+TEST_CASE("check_bounds: a corner is judged by the element pairs of the "
+          "descriptor's line",
+          "[check_bounds][cutoff][line_pairs]") {
+  const std::vector<Bound> b = {box("RCUT2B", -1, 2.6, 5.0)};
+  {
+    tadah::mlip::StructureDB stdb = ta_w_db();
+    const auto res = run_corners(stdb, ta_w_blip_seed("Ta Ta"), b);
+    CHECK(res.n_corners == 2);
+    REQUIRE(res.n_corners_failing == 1);
+    CHECK(sample_corners(b)[res.failing_corner_indices[0]][0] == 2.6);
+  }
+  {
+    tadah::mlip::StructureDB stdb = ta_w_db();
+    const auto res = run_corners(stdb, ta_w_blip_seed("W W"), b);
+    CHECK(res.n_corners == 2);
+    CHECK(res.n_corners_failing == 0);
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  A descriptor placed among DESCRIPTOR blocks on TYPEMB is judged at each
+//  corner by the element pairs of its own line
+// ---------------------------------------------------------------------------
+
+#include <tadah/core/core_user_config_parser.h>
+
+namespace {
+
+/* DM_EAD 0 1 1 <pairs> (RCUTMB 5, CGRIDMB 2.9, SGRIDMB 1) on the TYPEMB
+ * line "DM_EAD 0 1 1 <pairs>" then "@ta", the block "ta" of a DM_Embed
+ * descriptor of PAIRS W W (RADIUS 5). */
+Context embed_mixed_seed(const std::string &pairs) {
+  tadah::core::PeriodicTable::initialize();
+  std::istringstream text(
+      "ATOM Ta W\nWATOM 73 74\nINIT2B false\nINITMB true\n"
+      "TYPEMB DM_EAD 0 1 1 " + pairs + "\nTYPEMB @ta\n"
+      "RCTYPEMB Cut_Cos\nRCUTMB 5\nCGRIDMB 2.9\nSGRIDMB 1\nVERBOSE 0\n"
+      "DESCRIPTOR ta DM_Embed\nPAIRS W W\nDENSITY\nBASIS Blip5\n"
+      "FORM NONNEG\nCENTRES 1.0 2.5 4.0\nETA 1.5 1.5 1.5\n"
+      "AMPLITUDES 0.4 0.2 0.1\nCUTOFF\nTYPE Cut_Poly\nRADIUS 5.0\n"
+      "ENDCUTOFF\nENDDENSITY\nEMBEDDING\nBASIS Gaussian\n"
+      "CENTRES 0.0 0.5 1.0 1.5\nWIDTHS 0.5 0.5 0.5 0.5\nREFERENCE ZERO\n"
+      "ENDEMBEDDING\nENDDESCRIPTOR\n");
+  return tadah::core::CoreUserConfigParser().parse(text);
+}
+
+}  // namespace
+
+/* Pins: a box RCUTMB 2.6 to 5 on the Ta-W data (ta_w_db()) for the seed of
+ * a DM_EAD descriptor placed before a DESCRIPTOR block on TYPEMB
+ * (embed_mixed_seed()): for DM_EAD 0 1 1 Ta Ta the corner at 2.6, below
+ * the (Ta, Ta) distance of 2.86 A, fails (1 of 2 corners); for DM_EAD 0 1
+ * 1 W W no corner fails.
+ * Before the fix: the element pairs of the descriptor were read from the
+ * whole TYPEMB key, @ta among them: check_bounds_at_corners threw ("the
+ * element types of a descriptor's line come in pairs, and the line has 3
+ * of them, Ta Ta @ta"). */
+TEST_CASE("check_bounds: a descriptor placed among DESCRIPTOR blocks is "
+          "judged by the element pairs of its own line",
+          "[check_bounds][cutoff][line_pairs][embed]") {
+  const std::vector<Bound> b = {box("RCUTMB", -1, 2.6, 5.0)};
+  auto failing = [&](const std::string &pairs) -> std::string {
+    tadah::mlip::StructureDB stdb = ta_w_db();
+    try {
+      const auto res = run_corners(stdb, embed_mixed_seed(pairs), b);
+      std::string out = std::to_string(res.n_corners_failing) + " of " +
+                        std::to_string(res.n_corners);
+      for (std::size_t ci : res.failing_corner_indices)
+        out += ", at " + std::to_string(sample_corners(b)[ci][0]);
+      return out;
+    } catch (const std::exception &e) {
+      return std::string("threw: ") + e.what();
+    }
+  };
+  CHECK(failing("Ta Ta") == "1 of 2, at " + std::to_string(2.6));
+  CHECK(failing("W W") == "0 of 2");
+}
+
+// ---------------------------------------------------------------------------
+//  A FAIL of the sampled scan of the pre-flight audit is judged on every
+//  structure
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/* Four 20 A cells: structure @p w a W2 dimer (W-W 2.5 A), the others a Ta2
+ * dimer (Ta-Ta 2.86 A); with @p w out of range (4), each cell holds a Ta2
+ * dimer and one W atom more than 15 A from both, so that the data have no
+ * (W, W) pair within 5 A. */
+tadah::mlip::StructureDB ta_cells_one_w(std::size_t w) {
+  tadah::core::PeriodicTable::initialize();
+  const auto ta = tadah::core::PeriodicTable::find_by_symbol("Ta");
+  const auto wel = tadah::core::PeriodicTable::find_by_symbol("W");
+  tadah::mlip::StructureDB stdb;
+  for (std::size_t i = 0; i < 4; ++i) {
+    tadah::mlip::Structure st;
+    st.label = "cell-" + std::to_string(i);
+    st.energy = -20.0;
+    st.cell.load(40.0, 0.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 40.0);
+    if (i == w) {
+      st.add_atom(tadah::mlip::Atom(wel, 0.0, 0.0, 0.0));
+      st.add_atom(tadah::mlip::Atom(wel, 2.5, 0.0, 0.0));
+    } else {
+      st.add_atom(tadah::mlip::Atom(ta, 0.0, 0.0, 0.0));
+      st.add_atom(tadah::mlip::Atom(ta, 2.86, 0.0, 0.0));
+      if (w >= 4) st.add_atom(tadah::mlip::Atom(wel, 10.0, 10.0, 10.0));
+    }
+    stdb.add(st);
+  }
+  return stdb;
+}
+
+/* TYPE2B D2_mJoin of D2_Blip 2 2 Ta Ta and D2_Blip 2 2 W W (RCUT2B 5 5),
+ * AUDIT_SAMPLE 3: the audit's statistics from 3 of the 4 structures. */
+Context ta_w_joined_sampled_seed() {
+  Context c;
+  c.add("ATOM", "Ta W");
+  c.add("WATOM", "73 74");
+  c.add("INIT2B", "true");
+  c.add("INITMB", "false");
+  c.add("TYPE2B", "D2_mJoin");
+  c.add("TYPE2B", "D2_Blip 2 2 Ta Ta");
+  c.add("TYPE2B", "D2_Blip 2 2 W W");
+  c.add("RCTYPE2B", "Cut_Cos Cut_Cos");
+  c.add("RCUT2B", "5 5");
+  c.add("CGRID2B", "1 2 1 2");
+  c.add("SGRID2B", "1 1 1 1");
+  c.add("AUDIT_SAMPLE", 3);
+  c.add("VERBOSE", 0);
+  return c;
+}
+
+/* The FAIL findings of run_preflight_from_db on @p stdb and @p seed under
+ * AUDIT error, each "<label>.<key>: <text>". */
+std::vector<std::string> from_db_fails(tadah::mlip::StructureDB &stdb,
+                                       const Context &seed) {
+  std::vector<std::string> out;
+  for (const auto &m : tadah::mlip::run_preflight_from_db(
+                           stdb, seed, tadah::mlip::AuditMode::Error)
+                           .messages)
+    if (m.level == tadah::mlip::AuditMessage::Level::Fail)
+      out.push_back(m.descriptor_label + "." + m.param_key + ": " + m.text);
+  return out;
+}
+
+}  // namespace
+
+/* Pins: run_preflight_from_db with AUDIT_SAMPLE 3 of four structures, the
+ * W2 dimer in one of them (ta_cells_one_w(w)), the D2_Blip W W descriptor
+ * of a D2_mJoin line with RCUT2B 5 (ta_w_joined_sampled_seed()): for every
+ * place of the dimer, w = 0 to 3, no FAIL, the sample holding the dimer or
+ * not; and data with no (W, W) pair within 5 A (ta_cells_one_w(4)) still
+ * fail, "D2_Blip.RCUT2B: RCUT2B = 5: no (W, W) pair of atoms of the dataset
+ * lies within it, so the descriptor sums over no neighbour and is 0 for
+ * every atom." (a pin: as before the fix).
+ * Before the fix: the descriptor was judged by the statistics of the
+ * sampled structures alone: the place of the dimer that the sample left
+ * out gave that FAIL, which says the dataset has no (W, W) pair when it has
+ * one. */
+TEST_CASE("preflight_audit: a FAIL of the sampled scan is judged on every "
+          "structure",
+          "[preflight_audit][check_bounds][line_pairs][sample]") {
+  const std::string none =
+      "D2_Blip.RCUT2B: RCUT2B = 5: no (W, W) pair of atoms of the dataset "
+      "lies within it, so the descriptor sums over no neighbour and is 0 for "
+      "every atom.";
+  for (std::size_t w = 0; w < 4; ++w) {
+    CAPTURE(w);
+    tadah::mlip::StructureDB stdb = ta_cells_one_w(w);
+    CHECK(from_db_fails(stdb, ta_w_joined_sampled_seed()) ==
+          std::vector<std::string>{});
+  }
+  tadah::mlip::StructureDB stdb = ta_cells_one_w(4);
+  CHECK(from_db_fails(stdb, ta_w_joined_sampled_seed()) ==
+        std::vector<std::string>{none});
+}
+
+// ---------------------------------------------------------------------------
+//  Each element pair of a descriptor's line is judged on its own
+// ---------------------------------------------------------------------------
+
+/* Pins: on the Ta-W data (ta_w_db(): (Ta, Ta) 2.86 A, (W, W) 2.5 A, (Ta,
+ * W) from 2.4 A), D2_Blip 2 2 Ta Ta W W is judged by each pair of its line
+ * on its own:
+ *  - check_bounds_at_corners of a box RCUT2B 2.6 to 5: the corner at 2.6,
+ *    below the (Ta, Ta) distance, fails (1 of 2 corners);
+ *  - run_preflight_from_db (the audit of tadah train and tadah hpo) with
+ *    RCUT2B 2.6 under AUDIT error, its statistics taken up to the cutoff:
+ *    one FAIL, "D2_Blip.RCUT2B: RCUT2B = 2.6 holds no (Ta, Ta) pair of
+ *    atoms of the dataset: the (Ta, Ta) pair adds nothing to the descriptor,
+ *    which sums over its other element pairs alone.";
+ *  - with RCUT2B 5, which holds every pair of the line: no FAIL (a pin).
+ * Before the fix: the pairs of the line were judged together, RCUT2B 2.6
+ * holding the (W, W) distance: no corner failed (0 of 2) and the audit gave
+ * no FAIL, although the descriptor is 0 for every Ta atom. */
+TEST_CASE("check_bounds and the audit judge each element pair of a "
+          "descriptor's line on its own",
+          "[check_bounds][preflight_audit][cutoff][line_pairs]") {
+  const std::vector<Bound> b = {box("RCUT2B", -1, 2.6, 5.0)};
+  {
+    tadah::mlip::StructureDB stdb = ta_w_db();
+    const auto res = run_corners(stdb, ta_w_blip_seed("Ta Ta W W"), b);
+    CHECK(res.n_corners == 2);
+    CHECK(res.n_corners_failing == 1);
+    if (res.failing_corner_indices.size() == 1u)
+      CHECK(sample_corners(b)[res.failing_corner_indices[0]][0] == 2.6);
+  }
+  {
+    tadah::mlip::StructureDB stdb = ta_w_db();
+    Context seed = ta_w_blip_seed("Ta Ta W W");
+    seed.remove("RCUT2B");
+    seed.add("RCUT2B", 2.6);
+    CHECK(from_db_fails(stdb, seed) ==
+          std::vector<std::string>{
+              "D2_Blip.RCUT2B: RCUT2B = 2.6 holds no (Ta, Ta) pair of atoms "
+              "of the dataset: the (Ta, Ta) pair adds nothing to the "
+              "descriptor, which sums over its other element pairs alone."});
+  }
+  {
+    tadah::mlip::StructureDB stdb = ta_w_db();
+    CHECK(from_db_fails(stdb, ta_w_blip_seed("Ta Ta W W")).empty());
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  tadah analysis check_bounds reads the OPTIM lines as tadah hpo reads them
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/* What `tadah analysis check_bounds` (AnalysisCheckBoundsEngine) does with
+ * the target file @p target on the two bcc Ta cells of bcc_ta_cell(): its
+ * exit code (-1 when it throws), what it throws and its log (INFO and
+ * above). */
+struct CbRun {
+  int rc = -1;
+  std::string error;
+  std::string log;
+};
+
+CbRun run_check_bounds(Context c, const std::string &target) {
+  namespace fs = std::filesystem;
+  static int counter = 0;
+  const fs::path dir = fs::temp_directory_path() /
+                       ("tadah_cb_reader_" + std::to_string(::getpid()) +
+                        "_" + std::to_string(counter++));
+  fs::create_directories(dir);
+  tadah::mlip::StructureDB db;
+  db.add(bcc_ta_cell("bcc-Ta-1", false));
+  db.add(bcc_ta_cell("bcc-Ta-2", false));
+  const std::string dbfile = (dir / "bcc.tadahdb").string();
+  db.dump_to_file(dbfile, /*append=*/false, 18);
+  const std::string hpo = (dir / "t.hpo").string();
+  std::ofstream(hpo) << target;
+  c.add("DBFILE", dbfile);
+  c.add("HPOTARGET", hpo);
+  tadah::mlip::Task task("analysis", c);
+  CbRun out;
+  auto &log = tadah::core::Logger::instance();
+  const auto old_level = log.getLogLevel();
+  log.setLogLevel(tadah::core::LogLevel::INFO);
+  std::ostringstream captured;
+  std::streambuf *old_buf = std::cout.rdbuf(captured.rdbuf());
+  try {
+    tadah::mlip::engines::AnalysisCheckBoundsEngine engine;
+    engine.validate(task);
+    out.rc = engine.run(task);
+  } catch (const std::exception &e) {
+    out.error = e.what();
+  }
+  std::cout.rdbuf(old_buf);
+  log.setLogLevel(old_level);
+  out.log = captured.str();
+  std::error_code ec;
+  fs::remove_all(dir, ec);
+  // the file's path in a message is the run's own: written as t.hpo
+  for (auto p = out.error.find(hpo); p != std::string::npos;
+       p = out.error.find(hpo))
+    out.error.replace(p, hpo.size(), "t.hpo");
+  return out;
+}
+
+/* DM_Blip 0 4 4 Ta Ta, CGRIDMB 3 3.5 4 4.5, SGRIDMB 1 1 1 1, RCUTMB 5:
+ * every corner of a box around its values passes on bcc Ta. */
+Context dm_blip_seed() {
+  tadah::core::PeriodicTable::initialize();
+  Context c;
+  c.add("ATOM", "Ta");
+  c.add("INIT2B", "false");
+  c.add("INITMB", "true");
+  c.add("TYPEMB", "DM_Blip 0 4 4 Ta Ta");
+  c.add("CGRIDMB", "3.0 3.5 4.0 4.5");
+  c.add("SGRIDMB", "1.0 1.0 1.0 1.0");
+  c.add("RCTYPEMB", "Cut_Cos");
+  c.add("RCUTMB", 5.0);
+  c.add("VERBOSE", 0);
+  return c;
+}
+
+/* The "parsed N bound entries" count of a run's log, -1 without one. */
+int parsed_entries(const CbRun &r) {
+  const std::string tag = "analysis check_bounds: parsed ";
+  const auto p = r.log.find(tag);
+  if (p == std::string::npos) return -1;
+  return std::stoi(r.log.substr(p + tag.size()));
+}
+
+}  // namespace
+
+/* Pins: tadah analysis check_bounds audits every value an OPTIM index
+ * list selects, as tadah hpo searches them, on the DM_Blip seed
+ * dm_blip_seed() (four CGRIDMB values; five for (1-3,5)): (1,3) gives 2
+ * bound entries ("parsed 2 bound entries"), (1-3,5) 4, (1-4:2) 2 and
+ * ( 2 ) 1, each run exiting 0.
+ * Before the fix: the index text was read with std::stoi of its body or of
+ * the two sides of its first '-': (1,3) gave 1 entry (value 3 left out),
+ * (1-3,5) 3 (value 5 left out), (1-4:2) 4 (the stride ignored), and ( 2 )
+ * was refused, "check_bounds: malformed OPTIM line 1 in t.hpo — missing
+ * <lo> <hi>". */
+TEST_CASE("check_bounds: audits every value an index list selects",
+          "[check_bounds][optim_reader]") {
+  struct Row { std::string line; int entries; bool five; };
+  for (const Row &row : std::vector<Row>{
+           {"OPTIM CGRIDMB (1,3) 2.9 4.1", 2, false},
+           {"OPTIM CGRIDMB (1-3,5) 2.9 4.1", 4, true},
+           {"OPTIM CGRIDMB (1-4:2) 2.9 4.1", 2, false},
+           {"OPTIM CGRIDMB ( 2 ) 3.4 3.6", 1, false}}) {
+    CAPTURE(row.line);
+    Context seed = dm_blip_seed();
+    if (row.five) {
+      seed.remove("TYPEMB");
+      seed.add("TYPEMB", "DM_Blip 0 5 5 Ta Ta");
+      seed.remove("CGRIDMB");
+      seed.add("CGRIDMB", "3.0 3.5 4.0 4.2 4.5");
+      seed.remove("SGRIDMB");
+      seed.add("SGRIDMB", "1.0 1.0 1.0 1.0 1.0");
+    }
+    const CbRun r = run_check_bounds(seed, row.line + "\n");
+    INFO(r.error << r.log);
+    CHECK(r.error.empty());
+    CHECK(parsed_entries(r) == row.entries);
+  }
+}
+
+/* Pins: the boxes of an AUTO line are audited, those tadah hpo derives:
+ * OPTIM CGRIDMB (1-4) AUTO FRAC 0.02 gives 4 bound entries, each corner
+ * passing (exit 0); OPTIM CGRIDMB (4) AUTO FRAC 9 the box [4.5 - 40.5,
+ * 4.5 + 40.5], whose low corner fails the audit (exit 1, the WARNING
+ * "check_bounds: first-failing corner"). A continued line is joined
+ * (OPTIM CGRIDMB (2) 3.4 \ + 3.6: 1 entry, exit 0).
+ * Before the fix: each line was refused, "check_bounds: malformed OPTIM
+ * line 1 in t.hpo — missing <lo> <hi>" (AUTO, or the backslash, read as a
+ * bound), and nothing was audited. */
+TEST_CASE("check_bounds: audits the boxes of an AUTO line and joins a "
+          "continued line",
+          "[check_bounds][optim_reader]") {
+  {
+    const CbRun r =
+        run_check_bounds(dm_blip_seed(), "OPTIM CGRIDMB (1-4) AUTO FRAC 0.02\n");
+    INFO(r.error << r.log);
+    CHECK(r.error.empty());
+    CHECK(parsed_entries(r) == 4);
+    CHECK(r.rc == EXIT_SUCCESS);
+  }
+  {
+    const CbRun r =
+        run_check_bounds(dm_blip_seed(), "OPTIM CGRIDMB (4) AUTO FRAC 9\n");
+    INFO(r.error << r.log);
+    CHECK(r.error.empty());
+    CHECK(parsed_entries(r) == 1);
+    CHECK(r.rc == EXIT_FAILURE);
+    CHECK(r.log.find("check_bounds: first-failing corner") !=
+          std::string::npos);
+  }
+  {
+    const CbRun r = run_check_bounds(dm_blip_seed(),
+                                     "OPTIM CGRIDMB (2) 3.4 \\\n  3.6\n");
+    INFO(r.error << r.log);
+    CHECK(r.error.empty());
+    CHECK(parsed_entries(r) == 1);
+    CHECK(r.rc == EXIT_SUCCESS);
+  }
+}
+
+/* Pins: OPTIM FIXWEIGHT (5) names coefficient 5, the FIXWEIGHT value its
+ * FIXINDEX entry pairs with (FIXINDEX 5, FIXWEIGHT 0.3: the first value):
+ * 1 bound entry, exit 0.
+ * Before the fix: the index was read as the position of a FIXWEIGHT value,
+ * and the corner refused it: "check_bounds: OPTIM FIXWEIGHT (5): the seed
+ * configuration has 1 value(s) for FIXWEIGHT". */
+TEST_CASE("check_bounds: reads FIXWEIGHT coefficients through FIXINDEX",
+          "[check_bounds][optim_reader]") {
+  Context seed = dm_blip_seed();
+  seed.add("FIXINDEX", "5");
+  seed.add("FIXWEIGHT", "0.3");
+  const CbRun r = run_check_bounds(seed, "OPTIM FIXWEIGHT (5) 0 1\n");
+  INFO(r.error << r.log);
+  CHECK(r.error.empty());
+  CHECK(parsed_entries(r) == 1);
+  CHECK(r.rc == EXIT_SUCCESS);
+}
+
+namespace {
+
+/* One DM_Embed component, ta (PAIRS Ta Ta: Blip5 density centres 1, 2.5,
+ * 4, Cut_Poly RADIUS @p radius), and nothing else on TYPEMB. */
+Context embed_only_seed(const std::string &radius) {
+  tadah::core::PeriodicTable::initialize();
+  std::istringstream text(
+      "ATOM Ta\nWATOM 73\nINIT2B false\nINITMB true\nVERBOSE 0\n"
+      "DESCRIPTOR ta DM_Embed\nPAIRS Ta Ta\nDENSITY\nBASIS Blip5\n"
+      "FORM NONNEG\nCENTRES 1.0 2.5 4.0\nETA 1.5 1.5 1.5\n"
+      "AMPLITUDES 0.4 0.2 0.1\nCUTOFF\nTYPE Cut_Poly\nRADIUS " + radius +
+      "\nENDCUTOFF\nENDDENSITY\nEMBEDDING\nBASIS Gaussian\n"
+      "CENTRES 0.0 0.5 1.0 1.5\nWIDTHS 0.5 0.5 0.5 0.5\nREFERENCE ZERO\n"
+      "ENDEMBEDDING\nENDDESCRIPTOR\n");
+  return tadah::core::CoreUserConfigParser().parse(text);
+}
+
+}  // namespace
+
+/* Pins: a DM_Embed component path is audited, its corner written into the
+ * component as tadah hpo writes a candidate: OPTIM ta.DENSITY.CENTRES (2)
+ * 2.4 2.6 gives 1 entry, exit 0. A box on the component's RADIUS from 2.6,
+ * below every Ta-Ta distance of bcc Ta (2.86 A), to 5 (seed RADIUS 2.6)
+ * fails at its low corner only: the statistics are taken at the largest
+ * RADIUS of the box (exit 1, the first-failing corner named), the high
+ * corner holding the neighbours of the data.
+ * Before the fix: the path was read as a key of the seed, which stores
+ * none: the box on CENTRES (2) was refused, "check_bounds: OPTIM
+ * ta.DENSITY.CENTRES (2): the seed configuration has 0 value(s) for
+ * ta.DENSITY.CENTRES", and the box on RADIUS (1) added to the corner's
+ * context as a key, which the context refuses ("Key not allowed:
+ * TA.DENSITY.CUTOFF.RADIUS"). */
+TEST_CASE("check_bounds: audits a DM_Embed component path",
+          "[check_bounds][optim_reader][embed]") {
+  {
+    const CbRun r = run_check_bounds(embed_only_seed("5.0"),
+                                     "OPTIM ta.DENSITY.CENTRES (2) 2.4 2.6\n");
+    INFO(r.error << r.log);
+    CHECK(r.error.empty());
+    CHECK(parsed_entries(r) == 1);
+    CHECK(r.rc == EXIT_SUCCESS);
+  }
+  {
+    const CbRun r = run_check_bounds(
+        embed_only_seed("2.6"), "OPTIM TA.DENSITY.CUTOFF.RADIUS (1) 2.6 5\n");
+    INFO(r.error << r.log);
+    CHECK(r.error.empty());
+    CHECK(parsed_entries(r) == 1);
+    CHECK(r.rc == EXIT_FAILURE);
+    CHECK(r.log.find("check_bounds: 1/2 corners produced FAIL findings") !=
+          std::string::npos);
+  }
+}
+
+/* Pins: an OPTIM line tadah hpo refuses is refused with tadah hpo's reason,
+ * framed with the command, the line and the file, and the line: "OPTIM
+ * CGRIDMB (2) 3.4 3.6 x" throws "tadah analysis check_bounds: line 1 of
+ * t.hpo: OPTIM CGRIDMB: unexpected token(s) '3.4 3.6 x' -- the grammar is
+ * ...\nLine: OPTIM CGRIDMB (2) 3.4 3.6 x"; "OPTIM CGRIDMB (5) 1 2" on the
+ * four values names their count; "OPTIM CGRIDMB (0) 1 2" the first index.
+ * Before the fix: the first was audited as the box [3.4, 3.6] (exit 0, the
+ * token x not read), the second refused at its corner ("the seed
+ * configuration has 4 value(s) for CGRIDMB") and the third audited as the
+ * first value. */
+TEST_CASE("check_bounds: refuses an OPTIM line tadah hpo refuses, with its "
+          "message",
+          "[check_bounds][optim_reader]") {
+  const std::string grammar =
+      " -- the grammar is OPTIM <KEY> (indices) <low> <high> [LIN | LOG | "
+      "ASINH <c>] or OPTIM <KEY> (indices) AUTO [RATIO <f> | FRAC <p>] "
+      "[FLOOR <a>] [GROUP_FLOOR <r>] [LIN | LOG | ASINH <c>]";
+  CHECK(run_check_bounds(dm_blip_seed(), "OPTIM CGRIDMB (2) 3.4 3.6 x\n")
+            .error ==
+        "tadah analysis check_bounds: line 1 of t.hpo: OPTIM CGRIDMB: "
+        "unexpected token(s) '3.4 3.6 x'" + grammar +
+        "\nLine: OPTIM CGRIDMB (2) 3.4 3.6 x");
+  CHECK(run_check_bounds(dm_blip_seed(),
+                         "# a comment\nOPTIM CGRIDMB (5) 1 2  # past\n")
+            .error ==
+        "tadah analysis check_bounds: line 2 of t.hpo: OPTIM CGRIDMB (5): "
+        "CGRIDMB has 4 values in the training configuration, so the indices "
+        "of OPTIM CGRIDMB run from 1 to 4\nLine: OPTIM CGRIDMB (5) 1 2");
+  CHECK(run_check_bounds(dm_blip_seed(), "OPTIM CGRIDMB (0) 1 2\n").error ==
+        "tadah analysis check_bounds: line 1 of t.hpo: OPTIM CGRIDMB: bad "
+        "index list (0): OPTIM indices start at 1\nLine: OPTIM CGRIDMB (0) "
+        "1 2");
+}

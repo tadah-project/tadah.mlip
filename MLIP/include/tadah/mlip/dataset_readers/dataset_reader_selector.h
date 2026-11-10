@@ -1,0 +1,38 @@
+#ifndef DATASET_READER_SELECTOR_H
+#define DATASET_READER_SELECTOR_H
+
+#include <tadah/mlip/structure_db.h>
+#include <tadah/mlip/dataset_readers/dataset_reader.h>
+#include <string>
+#include <memory>
+namespace tadah {
+namespace mlip {
+
+/**
+ * @class DatasetReaderSelector
+ * @brief Selects the appropriate DatasetReader based on file type.
+ */
+class DatasetReaderSelector {
+public:
+  /**
+   * @brief Factory method to create specific DatasetReader objects.
+   *
+   * @param filepath File path to check the content.
+   * @param db Reference to a StructureDB object to store parsed data.
+   * @return A unique pointer to a DatasetReader object.
+   */
+  static std::unique_ptr<DatasetReader> get_reader(const std::string& filepath, StructureDB& db);
+
+  /**
+   * @brief Determines the file type based on its content.
+   *
+   * @param filepath File path to check the content.
+   * @return A string representing the detected file type.
+   */
+  static std::string determine_file_type_by_content(const std::string& filepath);
+
+};
+
+} // namespace mlip
+} // namespace tadah
+#endif // DATASET_READER_SELECTOR_H

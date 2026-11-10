@@ -1555,3 +1555,56 @@ TEST_CASE_METHOD(PTFixture, "retarget --pct and --set on kept lines",
                       "--set CGRID2B(1): no such OPTIM line in the file.");
   }
 }
+
+/* Pins: the starter target file of tadah refit keeps a centre box at or
+ * above 0, the lower limit of CGRID2B that the pair descriptors declare,
+ * which tadah hpo refuses an explicit box below: a centre at 0 (CGRID2B
+ * 0 4.5, ±5%, the group floor 4.5e-3) gets the box [0, 4.5e-3] on the
+ * plain path (Cut_Cos) and on the bump-pair path (Cut_Dummy), and every
+ * CGRID2B box is at or above 0; a retarget at the same percentage gives
+ * the file byte for byte (the clamped centre comes back from hi), and a
+ * retarget at 10% keeps every centre box at or above 0.
+ * Before the fix: the box was [-4.5e-3, 4.5e-3], which tadah hpo refuses
+ * once the line is uncommented. */
+TEST_CASE_METHOD(PTFixture,
+                 "write_hpotarget: a centre box is clamped at 0, the lower "
+                 "limit of the centres, and retarget keeps it",
+                 "[retarget][low_bound]") {
+  auto centre_bounds = [](const std::vector<std::string> &lines) {
+    std::vector<std::pair<double, double>> out;
+    for (const auto &l : lines) {
+      const auto p = l.find("OPTIM CGRID2B (");
+      if (p == std::string::npos) continue;
+      std::istringstream ls(l.substr(l.find(')', p) + 1));
+      double lo, hi;
+      ls >> lo >> hi;
+      out.emplace_back(lo, hi);
+    }
+    return out;
+  };
+  for (const char *cutoff : {"Cut_Cos", "Cut_Dummy"}) {
+    INFO(cutoff);
+    ScopedTempDir tmp;
+    Context pot = make_blip_pot();
+    pot.remove("CGRID2B");
+    pot.add("CGRID2B", 0.0);
+    pot.add("CGRID2B", 4.5);
+    pot.remove("RCTYPE2B");
+    pot.add("RCTYPE2B", cutoff);
+    write_hpotarget("c.hpotarget", pot, 5.0);
+    const std::string fresh = slurp("c.hpotarget");
+    const auto b = centre_bounds(read_lines("c.hpotarget"));
+    REQUIRE(b.size() == 2);
+    CHECK(b[0].first == 0.0);
+    CHECK(b[0].second == Approx(4.5e-3));
+    for (const auto &x : b) CHECK(x.first >= 0.0);
+    RetargetOptions o5;
+    retarget_hpotarget_file("c.hpotarget", "r5.hpotarget", false, o5);
+    CHECK(slurp("r5.hpotarget") == fresh);
+    RetargetOptions o10;
+    o10.pct = 10.0;
+    retarget_hpotarget_file("c.hpotarget", "r10.hpotarget", false, o10);
+    for (const auto &x : centre_bounds(read_lines("r10.hpotarget")))
+      CHECK(x.first >= 0.0);
+  }
+}

@@ -1412,12 +1412,6 @@ has no effect under --retarget``): the bounds of the file are printed
 target file ``tadah refit`` writes.
 
 .. versionchanged:: 1.6.0
-   A ``--set`` box below the lower limit of its key is refused, a line
-   below it is kept as written, and a centre or ``RCUTENV`` line keeps its
-   low bound to that limit. 1.5.0 wrote such boxes, which ``tadah hpo``
-   refuses.
-
-.. versionchanged:: 1.6.0
    The default output of ``--retarget`` is ``<input>_retargeted.hpotarget``;
    1.5.0 wrote ``<input>_edited.hpotarget`` (for ``refit.hpotarget`` the
    file ``--edit`` writes) and ignored ``--hpofileout``.

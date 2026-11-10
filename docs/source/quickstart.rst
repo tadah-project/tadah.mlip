@@ -213,11 +213,12 @@ and ``suggest_bounds``. Its lines follow these rules:
   replace the line: :ref:`OUTFILE` of ``tadah analysis dataset_stats`` and
   ``tadah analysis suggest_bounds``, :ref:`RANGE` and :ref:`TYPE` of
   ``tadah analysis bfunc``, and :ref:`HPOTARGET` of ``tadah hpo``. The
-  error names the option that ``-c`` needs. The settings of a ``tadah hpo``
-  run, ``VALIDATION``, ``CHECK`` and ``HEALTH_LOG``, are accepted in every
-  training configuration, and ``HPOTARGET`` in that of every other
-  command; each is listed in the potential's :ref:`training record
-  <training_record>`.
+  error names the option that ``-c`` needs.
+- The settings of a ``tadah hpo`` run, ``VALIDATION``, ``CHECK`` and
+  ``HEALTH_LOG``, are accepted in every training configuration. An
+  ``HPOTARGET`` line is accepted in the configuration file of every
+  command but ``tadah hpo``. The potential's :ref:`training record
+  <training_record>` lists each of them.
 - An error of a line names the line and the file (for a line of an
   included file, that file and the ``CONFIG`` lines that include it): a key
   that is no configuration key, a value that the key does not take (with

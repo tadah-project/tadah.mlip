@@ -1358,8 +1358,9 @@ and the lines that ``--rhoform`` (below), ``--rcut2b`` and ``--rcutmb``
 change.
 Keys are read in any case, as ``tadah hpo`` reads them, and keep the case
 written. An ``OPTIM`` line of another form (an ``AUTO`` box, several
-indices, a shape tag, a line continued on the next, a line ``tadah hpo``
-refuses) is kept as written, with a WARNING naming its line and why.
+indices, a shape tag, a line continued on the next, a line whose syntax
+``tadah hpo`` refuses, a line whose low bound breaks the lower limit of its
+key) is kept as written, with a WARNING naming its line and why.
 A commented line ``# OPTIM <KEY> (...`` is read as an active one and
 named the same way; another comment that starts with ``OPTIM`` is text and
 is not named.
@@ -1396,7 +1397,8 @@ for a width and ``RCUTENV``, at or above 0 for a centre and a cutoff) and
 the rule the file's density form sets (below); ``tadah hpo`` refuses such a
 box at startup. A line of a key outside the groups ``tadah refit`` writes,
 such as ``RCUTENV``, is rewritten with the symmetric rule, its low bound
-kept to that limit (half the centre for a value above 0), with a WARNING. The file takes no ``RHOFORM`` or ``EMBF0``
+kept to that limit (half the midpoint of the box for a value above 0), with
+a WARNING. The file takes no ``RHOFORM`` or ``EMBF0``
 from a configuration (``-c``): a target file carries no potential, so they
 would have no effect, and either is an error (``RHOFORM has no effect on
 --retarget ...``); the density form is ``--rhoform``, below. Nor does it
@@ -1411,6 +1413,12 @@ has no effect under --retarget``): the bounds of the file are printed
 target file ``tadah refit`` writes.
 
 .. versionchanged:: 1.6.0
+   A ``--set`` box below the lower limit of its key is refused, a line
+   below it is kept as written, and a centre or ``RCUTENV`` line keeps its
+   low bound to that limit. 1.5.0 wrote such boxes, which ``tadah hpo``
+   refuses.
+
+.. versionchanged:: 1.6.0
    The default output of ``--retarget`` is ``<input>_retargeted.hpotarget``;
    1.5.0 wrote ``<input>_edited.hpotarget`` (for ``refit.hpotarget`` the
    file ``--edit`` writes) and ignored ``--hpofileout``.
@@ -1422,7 +1430,7 @@ precision (``%.8e``, 9 significant digits); a hand-pruned group (deleted
 lines) shifts the group's scale floor relative to a fresh emission
 (warned). A line whose
 lower bound was clamped (the width channels, whose box starts at half the
-centre when it would reach 0, ``RCUT``, the centre
+width when it would reach 0, ``RCUT``, the centre
 channels ``CGRID2B`` and ``CGRIDMB``, whose boxes stay at or above 0 as
 ``tadah hpo`` requires, the non-negative amplitudes below) is recovered
 with the percentage of its own group comment

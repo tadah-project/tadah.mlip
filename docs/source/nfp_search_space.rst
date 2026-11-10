@@ -61,7 +61,8 @@ runs that obtain their starting point through ``METHOD WARM``.
    * - ``RATIO f``
      - Bounds are the smaller and larger of ``x0/f`` and ``x0*f``.
        Requires ``f > 1`` and a nonzero ``x0``. Default: ``RATIO 2``
-       for positive scale keys, including component eta and widths.
+       for positive scale keys, including component eta, widths and
+       ``RCUTENV``.
    * - ``FRAC p``
      - Bounds are ``x0 - d`` and ``x0 + d``, where
        ``d = max(p*abs(x0), a, r*group_max)``. Requires ``p >= 0``.
@@ -87,7 +88,15 @@ For nonnegative density amplitudes, ``FRAC`` bounds are clipped at zero.
 Without either floor option these amplitudes receive
 ``GROUP_FLOOR 0.001``; a group whose values are all zero needs ``FLOOR``
 or explicit bounds. ``RATIO`` requires a positive ``x0`` for such
-amplitudes. Keys beginning with ``RCUT`` require explicit bounds.
+amplitudes.
+
+An explicit box keeps to the lower limit of its key, and a ``FRAC`` box
+that breaks that limit is clamped (:hpo:key:`OPTIM.AUTO`). ``RCUT2B`` and
+``RCUTMB`` take explicit bounds only.
+
+.. versionchanged:: 1.6.0
+   An explicit box below the lower limit of its key is refused at its
+   line. 1.5.0 searched it.
 
 Coordinate scaling
 ------------------

@@ -1,0 +1,19 @@
+# Pathological pure-2B fixture: one D2_Blip bump 0.002 wide (eta = 2000)
+# centred inside the top table segment below RCUT2B. Its third derivative
+# jumps by 9*eta^3 there, so no cubic Hermite table on the 8192-node grid
+# meets the collapse tolerance in the top segment.
+ATOM              Ta
+BIAS              false
+CGRID2B           6.4996
+DIMER             false 0 false
+INIT2B            true
+INITMB            false
+LAMBDA            0
+MODEL             M_BLR BF_Linear
+NORM              false
+RCTYPE2B          Cut_Dummy
+RCUT2B            6.5
+SGRID2B           2000
+TYPE2B            D2_Blip 1 1 Ta Ta
+WATOM             1
+WEIGHTS           1.0

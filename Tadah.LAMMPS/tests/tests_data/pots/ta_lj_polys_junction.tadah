@@ -1,0 +1,20 @@
+# The D2_LJ potential of ta_lj_cutdummy.tadah (the Tadah! 1.6.0 quickstart
+# potential) with a Cut_PolyS switch. Cut_PolyS is only C^2 at its inner
+# radius rc - 1 (the third derivative jumps there), and
+# with this cutoff that junction, r = 8.00060436239767, lies at t = 0.95 of
+# table segment 7280 (nr = 8192): next to a node, where the force error of
+# the cubic Hermite table peaks in a narrow band between sparse check points.
+ATOM     Ta
+BIAS     false
+DIMER     false     0     false
+INIT2B     true
+INITMB     false
+LAMBDA     0
+MODEL     M_KRR     Kern_Linear     1
+NORM     false
+OALGO     1
+RCTYPE2B     Cut_PolyS
+RCUT2B     9.00060436239767
+TYPE2B     D2_LJ     Ta     Ta
+WATOM     73
+WEIGHTS     14.204213349318765225     2604.396965191186154698

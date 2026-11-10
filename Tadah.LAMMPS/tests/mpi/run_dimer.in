@@ -1,0 +1,29 @@
+# One run of the dimer case of check_pair_tadah_mpi.py: pair_style tadah with
+# the DIMER potential ${pot} (rigid molecules of two bonded atoms, its
+# compute_dimers kernel, which needs newton off) on the molecules of ${data}
+# (atom_style bond, one bond per molecule), the processor grid ${procs}.
+# `run 0` dumps every atom's force, energy and virial (pe/atom, stress/atom:
+# the per-atom tallies) by atom id, and thermo prints the energy, the sum of
+# the per-atom energies and the pressure tensor. Every number is written with
+# 17 significant digits. The bonds hold the molecules together for LAMMPS;
+# bond_style zero adds no energy or force.
+units           metal
+atom_style      bond
+newton          off
+boundary        p p p
+processors      ${procs}
+read_data       ${data}
+pair_style      tadah
+pair_coeff      * * ${pot} ${species}
+bond_style      zero
+bond_coeff      1 ${bond}
+neighbor        2.0 bin
+compute         peatom all pe/atom
+compute         pesum all reduce sum c_peatom
+compute         satom all stress/atom NULL
+thermo_style    custom step pe c_pesum press pxx pyy pzz pxy pxz pyz
+thermo_modify   format float %.17g
+dump            d0 all custom 1 ${out}.0.dump id fx fy fz c_peatom &
+                c_satom[1] c_satom[2] c_satom[3] c_satom[4] c_satom[5] c_satom[6]
+dump_modify     d0 format float %.17g sort id
+run             0

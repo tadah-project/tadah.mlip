@@ -1,0 +1,19 @@
+# The D2_LJ potential of ta_lj_cutdummy.tadah (the Tadah! 1.6.0 quickstart
+# potential) with RCUT2B 7.999196555374454: for this cutoff and nr = 8192,
+# (nr-1)*(rc/(nr-1)) rounds ABOVE rc, so a table node computed as k*dr at
+# k = nr-1 lies beyond the cutoff.
+ATOM     Ta
+BIAS     false
+DIMER     false     0     false
+INIT2B     true
+INITMB     false
+LAMBDA     0
+MODEL     M_KRR     Kern_Linear     1
+NORM     false
+OALGO     1
+RCTYPE2B     Cut_Dummy
+RCUT2B     7.999196555374454
+TYPE2B     D2_LJ     Ta     Ta
+WATOM     73
+WEIGHTS     14.204213349318765225     2604.396965191186154698
+

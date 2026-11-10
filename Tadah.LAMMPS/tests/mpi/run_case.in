@@ -1,0 +1,33 @@
+# One run of check_pair_tadah_mpi.py: pair_style tadah with the potential
+# ${pot} (elements ${species}) on the cell ${data}, newton ${newton}, the
+# processor grid ${procs}. `run 0` dumps every atom's force, energy and
+# virial (pe/atom, stress/atom: the per-atom tallies) by atom id, and thermo
+# prints the energy and the pressure tensor; then ${nsteps} NVE steps move
+# atoms between sub-domains (neighbour-list rebuilds) and the final unwrapped
+# positions and velocities are dumped. Every number is written with 17
+# significant digits.
+units           metal
+atom_style      atomic
+newton          ${newton}
+boundary        p p p
+processors      ${procs}
+read_data       ${data}
+pair_style      tadah
+pair_coeff      * * ${pot} ${species}
+neighbor        0.5 bin
+neigh_modify    every 1 delay 0 check yes
+compute         peatom all pe/atom
+compute         satom all stress/atom NULL
+thermo_style    custom step pe press pxx pyy pzz pxy pxz pyz
+thermo_modify   format float %.17g
+dump            d0 all custom 1 ${out}.0.dump id fx fy fz c_peatom &
+                c_satom[1] c_satom[2] c_satom[3] c_satom[4] c_satom[5] c_satom[6]
+dump_modify     d0 format float %.17g sort id
+run             0
+undump          d0
+fix             nve all nve
+timestep        0.003
+thermo          ${nsteps}
+run             ${nsteps}
+write_dump      all custom ${out}.N.dump id xu yu zu vx vy vz &
+                modify format float %.17g sort id

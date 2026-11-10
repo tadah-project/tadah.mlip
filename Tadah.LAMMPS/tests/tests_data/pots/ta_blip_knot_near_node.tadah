@@ -1,0 +1,21 @@
+# One D2_Blip function (centre 5.0001672567452085, eta 1.6408253205128203),
+# Cut_Dummy at 6.5. The cubic B-spline is only C^2 at its knots
+# c + k / eta (k = -2..2: 3.78127, 4.39072, 5.00017, 5.60962, 6.21907), and
+# each knot lies at t = 0.98 of its table segment (nr = 8192): next to a
+# node, where the force error of the cubic Hermite table peaks in a narrow
+# band between sparse check points.
+ATOM              Ta
+BIAS              false
+CGRID2B           5.0001672567452085
+DIMER             false 0 false
+INIT2B            true
+INITMB            false
+LAMBDA            0
+MODEL             M_BLR BF_Linear
+NORM              false
+RCTYPE2B          Cut_Dummy
+RCUT2B            6.5
+SGRID2B           1.6408253205128203
+TYPE2B            D2_Blip 1 1 Ta Ta
+WATOM             1
+WEIGHTS           1.0

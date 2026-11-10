@@ -1,0 +1,20 @@
+# The cell of check_pair_tadah_mpi.py: bcc Ta (a = 3.30 A, the lattice of the
+# Quick Start), ${nx} x ${nx} x ${nx} conventional cells, ${ntypes} atom
+# type(s), every atom displaced at random by up to 0.12 A along each axis
+# (so no force vanishes by symmetry) and given velocities of 1000 K, written
+# to the data file ${out} that every run of the case reads. The script runs
+# it once, with the reference executable, so every rank count starts from
+# the same state; written that way it also is decomposition independent
+# (displace_atoms seeds by position, velocity ... loop geom).
+units           metal
+atom_style      atomic
+boundary        p p p
+lattice         bcc 3.30
+region          box block 0 ${nx} 0 ${nx} 0 ${nx}
+create_box      ${ntypes} box
+create_atoms    1 box
+mass            * 180.95
+if "${ntypes} > 1" then "mass 2 92.906" "set type 1 type/fraction 2 0.5 7341"
+displace_atoms  all random 0.12 0.12 0.12 4711 units box
+velocity        all create 1000 4981299 dist gaussian loop geom
+write_data      ${out}

@@ -1,0 +1,24 @@
+*.swp
+build
+
+# --- Build trees, editor and tool files, coverage and profiling ---
+build_*/
+cmake-build-*/
+_build/
+out/
+install_manifest.txt
+*.swo
+*~
+.DS_Store
+.vscode/
+.idea/
+.cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.gcda
+*.gcno
+coverage*.info
+coverage_html/
+perf.data
+perf.data.old

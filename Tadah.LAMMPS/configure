@@ -1,0 +1,34 @@
+#!/bin/sh
+
+echo "************************************************************************"
+echo "                   WARNING"
+echo "                   WORK IN PROGRESS"
+echo Compilation with make does NOT work.
+echo Make will compile without error but won\'t compile and link
+echo libtadah.lammps to necessary cmrc library. 
+echo Use CMake instead. This works fine.
+echo You might need to remove build directory before running cmake.
+echo "************************************************************************"
+
+mkdir -p build
+
+GIT_BRANCH=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
+
+# Base address of the Tadah! repositories: TADAH_GIT_BASE when set and not
+# empty, else the public repositories (as CMake's TADAH_GIT_BASE).
+GIT_BASE=${TADAH_GIT_BASE:-https://github.com/tadah-project}
+GIT_BASE=${GIT_BASE%/}
+CORE_URL=$GIT_BASE/core.git
+MODELS_URL=$GIT_BASE/models.git
+MD_URL=$GIT_BASE/md.git
+
+if ! git clone -b ${GIT_BRANCH} $CORE_URL build/CORE 2>/dev/null && [ -d CORE ] ; then  echo Skipping CORE clone as directory exists;  fi
+
+if ! git clone -b ${GIT_BRANCH} $MODELS_URL build/MODELS 2>/dev/null && [ -d MODELS ] ; then  echo Skipping MODELS clone as directory exists;  fi
+
+if ! git clone -b ${GIT_BRANCH} $MD_URL build/MD 2>/dev/null && [ -d MD ] ; then  echo Skipping MD clone as directory exists;  fi
+
+cp Makefile.in Makefile
+sed -i '1s/^/TADAH_MD_CONFIGURED=true\n/' Makefile
+echo Configure done!
+echo Run make to compile

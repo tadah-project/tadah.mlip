@@ -1,0 +1,38 @@
+# Two species for the multi-rank tests (tests/mpi/check_pair_tadah_mpi.py): the
+# weights of ta_quickstart_blip_env.tadah (the Quick Start potential) with
+# ATOM Ta Nb, both descriptors declared for every element pair (* *), and
+# density weights WATOM 0.309 (Ta) and 0.25 (Nb). Not a physical potential:
+# it makes pair_style tadah map two LAMMPS types, local and ghost, to two
+# elements with different densities in the generic many-body kernel (the
+# collapsed kernels take one type only).
+ATOM              Ta   Nb
+BIAS              false
+CEMBFUNC          0.5   0.75   1   1.25   1.5
+CGRID2B           1   2.43333333333333357   3.8666666666666667   5.29999999999999982
+CGRIDMB           2.87999999999999989
+DIMER             false   0   false
+ESHIFT_ATOM       false
+ESHIFT_DBATOM     false
+FORCE             false
+INIT2B            true
+INITMB            true
+LAMBDA            9.99999999999999955e-08
+LSCALE            1
+MODEL             M_KRR   Kern_Linear   1
+NORM              false
+OALGO             1
+RCTYPE2B          Cut_Cos
+RCTYPEMB          Cut_Cos
+RCUT2B            5.29999999999999982
+RCUTENV           0.599999999999999978
+RCUTMB            5
+SEMBFUNC          2   2   2   2   2
+SGRID2B           0.100000000000000033   0.21544346900318842   0.464158883361277919   0.999999999999999889
+SGRIDMB           8
+STRESS            true
+TYPE2B            D2_Blip   4   4   *   *
+TYPEMB            DM_mBlipEnv   0   1   1   5   5   *   *
+WATOM             0.309   0.25
+WEIGHTS           133.357774127816555   -123.755171524655708   -10.4804763244958963   -18.0240635733812411   -6.3685917658913116   4.13446130558423164   -8.25236089850869803   3.95181987589451467   -6.04877887227442557
+ZERO_COM_FORCE    false
+

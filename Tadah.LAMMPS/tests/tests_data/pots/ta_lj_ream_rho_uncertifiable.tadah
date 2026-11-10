@@ -1,0 +1,29 @@
+# ta_lj_ream.tadah with a fifth DM_REAM density Blip, 0.002 wide (eta 2000),
+# centred at 5.9996 inside the top rho table segment below RCUTMB 6.0
+# (Cut_Dummy, so the cutoff does not damp it). No cubic Hermite table on the
+# 8192-node grid follows it, so the rho table misses the collapse tolerance
+# already in its top segment; the phi table is the certified one of
+# ta_lj_ream.tadah.
+# RHOFORM SIGNED, as ta_lj_ream.tadah.
+ATOM              Ta
+AMPGRIDMB         0.40 0.25 0.12 0.05 0.3
+BIAS              false
+CEMBFUNC          0.0 0.4 0.8 1.2 1.6
+CGRIDMB           1.0 2.0 3.0 4.0 5.9996
+DIMER             false 0 false
+INIT2B            true
+INITMB            true
+LAMBDA            0
+MODEL             M_BLR BF_Linear
+NORM              false
+RCTYPE2B          Cut_Dummy
+RCTYPEMB          Cut_Dummy
+RCUT2B            6.5
+RCUTMB            6.0
+RHOFORM           SIGNED
+SEMBFUNC          1.5 1.5 1.5 1.5 1.5
+SGRIDMB           1.0 1.0 1.0 1.0 2000
+TYPE2B            D2_LJ Ta Ta
+TYPEMB            DM_REAM 0 5 5 5 5 5 0 0 Ta Ta
+WATOM             1
+WEIGHTS           1036.907574500269861425 190120.978458956589292954 -1.2 -0.9 -0.6 -0.3 0.1

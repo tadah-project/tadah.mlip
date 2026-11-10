@@ -1,0 +1,28 @@
+# Synthetic single-species DM_REAM fixture (Blip5, basis code 3) for the EAM
+# collapse tests: 4 pair bumps + 3 density bumps + 5 embedding bumps, four of
+# which cover rho = 0 (|SEMBFUNC*CEMBFUNC| < 3), so the embedding reference
+# EMBF0 matters (no EMBF0 line: the default ZERO applies). RHOFORM SIGNED
+# (every density amplitude is > 0, so the MONOTONE test reuses the file with
+# RHOFORM MONOTONE).
+ATOM              Ta
+BIAS              false
+INIT2B            true
+INITMB            true
+MODEL             M_BLR   BF_Linear
+NORM              false
+TYPE2B            D2_Blip5   4   4   Ta   Ta
+CGRID2B           2.5   3.2   3.9   4.5
+SGRID2B           3.0   3.0   3.0   3.0
+TYPEMB            DM_REAM   3   3   3   3   5   5   0   0   Ta   Ta
+CGRIDMB           2.8   3.6   4.4
+SGRIDMB           3.0   3.0   3.0
+AMPGRIDMB         0.5   0.3   0.1
+RHOFORM           SIGNED
+CEMBFUNC          -0.2   0.3   0.8   1.3   1.8
+SEMBFUNC          2.0   2.0   2.0   2.0   2.0
+RCTYPE2B          Cut_Dummy
+RCTYPEMB          Cut_Dummy
+RCUT2B            5.5
+RCUTMB            5.5
+WATOM             1.0
+WEIGHTS           0.8   -0.3   0.1   -0.05   -2.0   1.5   -0.7   0.4   0.2

@@ -721,8 +721,8 @@ TEST_CASE("tadah explain: the text of a command this program was built "
   /* Pins: after EngineFactory::registerNotBuilt("HPO", "tadah hpo needs a
    * part this program was built without") (test_mlip has no HPO engine in
    * any build), `tadah explain hpo` prints the command's long description
-   * (its first line, "Refines a model's architecture and hyperparameters
-   * with Tadah!'s nested", first), then a blank line and the message with
+   * (its first line, "Searches the hyperparameters of a potential, the
+   * settings that a fit does", first), then a blank line and the message with
    * a full stop as its last two lines; the text of `tadah explain
    * data.split`, whose engine is never registered as not built, and of
    * `tadah explain hpo.verbose`, an option of the command, do not have the
@@ -736,7 +736,7 @@ TEST_CASE("tadah explain: the text of a command this program was built "
   const auto lines = lines_of(out);
   REQUIRE(lines.size() >= 3);
   CHECK(lines.front() ==
-        "Refines a model's architecture and hyperparameters with Tadah!'s nested");
+        "Searches the hyperparameters of a potential, the settings that a fit does");
   CHECK(lines[lines.size() - 2].empty());
   CHECK(lines.back() == msg + ".");
   CHECK(explain("data.split").find(msg) == std::string::npos);

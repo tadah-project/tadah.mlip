@@ -56,59 +56,40 @@ design is still moving.
 
 ## Setting up a development environment
 
-The umbrella repo (`tadah.mlip`) drives the multi-module build. The
-quickest path:
+One clone holds all Tadah! sources: the application at the root of the
+repository, the modules in the directories `CORE`, `MODELS`, `MLIP`, `MD`,
+`HPO` and `Tadah.LAMMPS`, and the shared CMake helpers in `cmake-tools`.
 
 ```bash
-# Pick a directory; clone the repos as siblings, on v1-dev (a plain
-# clone checks out each repository's default branch, which need not be
-# v1-dev), under the directory names the develop build looks for:
-# cmake-tools, CORE, MODELS, MLIP, MD, HPO, Tadah.LAMMPS, Tadah.MLIP.
-export TADAH_PATH=/path/to/your/tadah_root
-mkdir -p "$TADAH_PATH" && cd "$TADAH_PATH"
-for repo in cmake-tools core models mlip md hpo tadah.lammps tadah.mlip; do
-  case "$repo" in
-    cmake-tools) dir=cmake-tools ;;
-    tadah.*)     dir="Tadah.$(echo "${repo#tadah.}" | tr '[:lower:]' '[:upper:]')" ;;
-    *)           dir="$(echo "$repo" | tr '[:lower:]' '[:upper:]')" ;;
-  esac
-  git clone -b v1-dev "https://github.com/tadah-project/${repo}.git" "$dir"
-done
+git clone https://github.com/tadah-project/tadah.mlip.git
+cd tadah.mlip
 
-# Develop build: TADAH_DEVELOP=ON takes cmake-tools and the Tadah modules
-# from the sibling checkouts in $TADAH_PATH instead of fetching them.
-cd Tadah.MLIP
+# TADAH_PATH names the root of the clone. With TADAH_DEVELOP=ON the build
+# takes cmake-tools and every module it builds from the directories of
+# $TADAH_PATH.
+export TADAH_PATH="$PWD"
 cmake -S . -B build -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON
 cmake --build build -j
 ctest --test-dir build
 ```
 
-For a `Release` build (everything fetched from
-`https://github.com/tadah-project`, or from the base address in
-`TADAH_GIT_BASE` (see *Installation* in the documentation) — no local
-sibling worktrees needed; the modules are fetched at the branch of the
-`Tadah.MLIP` checkout, here `v1-dev`):
+This build contains `MLIP`, `MODELS` and `CORE`; with
+`-DTADAH_ENABLE_NFP=ON` (see *Installation* in the documentation) also
+`HPO`, `MD` and `Tadah.LAMMPS`. An edit in the directory of a module of
+the build is picked up by the next `cmake --build`.
 
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
-```
+`TADAH_PATH` is an environment variable. Every configure step of a build
+with `TADAH_DEVELOP=ON` reads it, including the one a later
+`cmake --build` starts by itself, and stops when it is not set. Every
+shell that builds therefore needs it.
 
-If your local checkouts do **not** follow the `$TADAH_PATH` sibling
-convention, point CMake at each module explicitly with the
-`FETCHCONTENT_SOURCE_DIR_TADAH.<MODULE>` overrides — `FetchContent`
-then short-circuits the clone and uses your tree:
-
-```bash
-cmake -S . -B build \
-    -DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=/abs/path/CORE \
-    -DFETCHCONTENT_SOURCE_DIR_TADAH.MODELS=/abs/path/MODELS \
-    -DFETCHCONTENT_SOURCE_DIR_TADAH.MLIP=/abs/path/MLIP \
-    -DFETCHCONTENT_SOURCE_DIR_TADAH.HPO=/abs/path/HPO
-```
-
-Local edits in any of those repos are picked up on the next
-`cmake --build`.
+Without `-DTADAH_DEVELOP=ON` the configure step does not use the module
+directories and `cmake-tools` of the clone. It fetches cmake-tools at
+`v1-dev` and the modules at the ref `TADAH_GIT_BRANCH`, from
+`https://github.com/tadah-project` or from the base address in
+`TADAH_GIT_BASE`. Without `-DTADAH_GIT_BRANCH=<ref>` that ref is the name
+of the upstream branch of the checkout, else of its local branch (see
+*Installation* in the documentation).
 
 LAMMPS integration: see `Tadah.LAMMPS/README.md` and the docs page on
 LAMMPS.

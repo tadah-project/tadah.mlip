@@ -4410,6 +4410,8 @@ required_min = 1
 required_max = 1
 [TASKS.analysis.suggest_bounds.groups.input.keys]
 INHERIT          = ["ALLOWED_KEYS.config"]
+[TASKS.analysis.suggest_bounds.groups.input.keys.config]
+cli_needs = ["outfile"]
 
 [TASKS.analysis.check_bounds]
 description      = "Validates the search bounds of a target file: runs the pre-flight audit at every corner of the boxes tadah hpo searches. Returns a non-zero exit code if an OPTIM line is refused or any corner gives a FAIL finding."

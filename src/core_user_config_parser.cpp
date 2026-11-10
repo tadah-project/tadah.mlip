@@ -414,10 +414,9 @@ namespace {
     // run setting (OUTFILE), which the potential's lines of the run that
     // wrote it hold and the run-setting rule below skips and lists; in a
     // configuration file of a command that does not read it, it is
-    // refused, and so it is in a configuration file of a command whose -c
-    // needs the key's option on the command line (config_needs_option:
-    // OUTFILE of tadah analysis dataset_stats), whose value would replace
-    // the line. True when the line is not read.
+    // refused (a configuration file of a command whose -c needs the key's
+    // option is refused before, by neededOptionLine). True when the line
+    // is not read.
     auto commandOnlyLine = [&](const std::string &uKey, std::size_t at,
                                const std::string &text,
                                std::size_t block_end = 0) {
@@ -437,21 +436,34 @@ namespace {
       if (refused.command.empty()) return false;
       const std::string command = task_command_words(refused.command);
       const std::vector<std::string> readers = commands_reading_key(uKey);
-      if (std::find(readers.begin(), readers.end(), command) != readers.end()) {
-        if (!config_needs_option(refused.command, uKey)) return false;
-        throw std::runtime_error(
-            "Key " + uKey + " on " + where(at, source, state) +
-            " is not accepted here: " + uKey + " is the option " +
-            option_text(uKey) + " that " + option_text("CONFIG") + " of " +
-            command + " needs on the command line, not a key of a "
-            "configuration file of " + command);
-      }
+      if (std::find(readers.begin(), readers.end(), command) != readers.end())
+        return false;
       throw std::runtime_error("Key " + uKey + " on " +
                                where(at, source, state) +
                                " is not accepted here: " +
                                command_key_text(uKey) +
                                ", not a key of a configuration file of " +
                                command);
+    };
+    // A line of a key whose option -c of the command needs on the command
+    // line (config_needs_option: OUTFILE of tadah analysis dataset_stats
+    // and suggest_bounds, HPOTARGET of tadah hpo, RANGE and TYPE of tadah
+    // analysis bfunc), at line @p at, in a configuration file of that
+    // command (not a potential, whose lines of a run setting the rule of
+    // run settings skips): refused, as the option's value would replace
+    // it, whether other commands read the key from a configuration file
+    // (HPOTARGET: tadah analysis check_bounds) or only from their command
+    // line (BlueprintKey::command_only).
+    auto neededOptionLine = [&](const std::string &uKey, std::size_t at) {
+      if (potential || refused.command.empty()) return;
+      if (!config_needs_option(refused.command, uKey)) return;
+      const std::string command = task_command_words(refused.command);
+      throw std::runtime_error(
+          "Key " + uKey + " on " + where(at, source, state) +
+          " is not accepted here: " + uKey + " is the option " +
+          option_text(uKey) + " that " + option_text("CONFIG") + " of " +
+          command + " needs on the command line, not a key of a "
+          "configuration file of " + command);
     };
     for (size_t i = 0; i < lines.size(); ++i) {
       std::string rawLine = trim(lines[i]);
@@ -553,6 +565,7 @@ namespace {
                                    where(first_line + i, source, state) +
                                    " is not closed; expected " + endTok);
         }
+        neededOptionLine(uKey, first_line + i);
         const auto blockKey = keyMap.find(uKey);
         if (blockKey != keyMap.end() && blockKey->second.command_only &&
             commandOnlyLine(uKey, first_line + i, uKey, first_line + k)) {
@@ -587,6 +600,7 @@ namespace {
         throw std::runtime_error(valueRefusal(
             uKey, val, keyInfo, where(first_line + i, source, state)));
       }
+      neededOptionLine(uKey, first_line + i);
       if (keyInfo.command_only) {
         std::string text = uKey;
         for (std::size_t j = 1; j < tokens.size(); ++j) text += " " + tokens[j];

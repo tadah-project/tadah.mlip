@@ -90,9 +90,8 @@ made available, so CORE's blueprint is found in both the sibling
 (developer) and the FetchContent layout; a missing blueprint or version
 line is a configure error, never a `0.0.0` default. The blueprint is a
 configure dependency, so a bump re-runs CMake on the next build. The
-Sphinx docs read the same file (`docs/source/config/source_locator.py`:
-`$TADAH_CORE_SOURCE_DIR`, the sibling CORE checkout, `$TADAH_PATH/CORE`,
-or, on GitLab CI and Read the Docs, a clone of the ref being built; see
+Sphinx docs read CORE's blueprint as well (`docs/source/config/source_locator.py`:
+`$TADAH_CORE_SOURCE_DIR`, else the directory `CORE` of the repository; see
 CONTRIBUTING.md, "Building the documentation"), and `ctest -R
 tadah_version` checks that `tadah --version` matches it.
 

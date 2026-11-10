@@ -1,8 +1,8 @@
 """Tests for docs/source/config/read_hpo_registry.py (the reference pages).
 
-The cases on the pages read HPO's registries from the HPO checkout the
-documentation build uses (source_locator.py): $TADAH_HPO_SOURCE_DIR, the
-HPO checkout next to this repository or $TADAH_PATH/HPO. Without one, or
+The cases on the pages read HPO's registries from the HPO sources the
+documentation build uses (source_locator.py): $TADAH_HPO_SOURCE_DIR, else
+the directory HPO of this repository. Without one, or
 with one that has no target-file registry, they are skipped, saying why;
 a $TADAH_HPO_SOURCE_DIR that names no such checkout is a failure.
 

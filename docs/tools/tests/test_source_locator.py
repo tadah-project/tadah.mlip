@@ -11,6 +11,7 @@ import sys
 import tempfile
 import types
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DOCS = os.path.normpath(os.path.join(HERE, '..', '..'))
@@ -48,10 +49,16 @@ class LocateTest(unittest.TestCase):
         self.tmp = tempfile.mkdtemp(prefix='tadah_locator_test_')
         self.addCleanup(shutil.rmtree, self.tmp)
         self.workspace = os.path.join(self.tmp, 'workspace')
+        self.checkout = os.path.join(self.workspace, 'checkout')
         self.tadah_path = os.path.join(self.tmp, 'tadah_path')
         self.clones = os.path.join(self.tmp, 'clones')
-        for d in (self.workspace, self.tadah_path, self.clones):
+        for d in (self.checkout, self.tadah_path, self.clones):
             os.makedirs(d)
+        # The repository of the pages is a fixture too: these tests are about
+        # the order of the locations, not about the real modules.
+        patch = mock.patch.object(loc, 'CHECKOUT_ROOT', self.checkout)
+        patch.start()
+        self.addCleanup(patch.stop)
 
     def locate(self, repo, environ, runner=None):
         return loc.locate(repo, environ=environ, workspace=self.workspace,
@@ -86,7 +93,35 @@ class LocateTest(unittest.TestCase):
             self.locate('HPO', {'TADAH_HPO_SOURCE_DIR': ''})
         self.assertIn('set but empty', str(cm.exception))
 
-    # -- 2. sibling, 3. $TADAH_PATH -------------------------------------------
+    # -- 2. the repository of the pages -----------------------------------------
+    def test_own_directory_before_sibling_checkout_and_tadah_path(self):
+        own = make_checkout(os.path.join(self.checkout, 'HPO'), HPO_MARKER)
+        make_checkout(os.path.join(self.workspace, 'HPO'), HPO_MARKER)
+        make_checkout(os.path.join(self.workspace, 'hpo'), HPO_MARKER)
+        make_checkout(os.path.join(self.tadah_path, 'HPO'), HPO_MARKER)
+        self.assertEqual(self.locate('HPO', {'TADAH_PATH': self.tadah_path}),
+                         own)
+
+    def test_own_directory_without_the_file_is_an_error_not_a_fallback(self):
+        # An incomplete checkout: reading the checkout beside it instead
+        # would make the result depend on the surroundings again.
+        own = os.path.join(self.checkout, 'CORE')
+        os.makedirs(own)
+        make_checkout(os.path.join(self.workspace, 'CORE'), CORE_MARKER)
+        make_checkout(os.path.join(self.tadah_path, 'CORE'), CORE_MARKER)
+        git = FakeGit(marker=CORE_MARKER)
+        with self.assertRaises(loc.SourceNotFound) as cm:
+            self.locate('CORE', {'TADAH_PATH': self.tadah_path,
+                                 'READTHEDOCS': 'True',
+                                 'READTHEDOCS_GIT_IDENTIFIER': 'v1-dev'},
+                        runner=git)
+        self.assertEqual(git.calls, [])
+        msg = str(cm.exception)
+        self.assertIn(os.path.join(own, CORE_MARKER), msg)
+        self.assertIn('TADAH_CORE_SOURCE_DIR', msg)
+        self.assertNotIn(self.tadah_path, msg)
+
+    # -- 3. sibling, 4. $TADAH_PATH -------------------------------------------
     def test_sibling_checkout_before_tadah_path(self):
         sibling = make_checkout(os.path.join(self.workspace, 'CORE'), CORE_MARKER)
         make_checkout(os.path.join(self.tadah_path, 'CORE'), CORE_MARKER)
@@ -106,7 +141,7 @@ class LocateTest(unittest.TestCase):
         root = make_checkout(os.path.join(self.tadah_path, 'HPO'), HPO_MARKER)
         self.assertEqual(self.locate('HPO', {'TADAH_PATH': self.tadah_path}), root)
 
-    # -- 4. clone, CI/RTD only --------------------------------------------------
+    # -- 5. clone, CI/RTD only --------------------------------------------------
     def test_no_clone_outside_ci_and_error_lists_every_location(self):
         git = FakeGit(marker=HPO_MARKER)
         env = {'TADAH_PATH': self.tadah_path,
@@ -116,13 +151,17 @@ class LocateTest(unittest.TestCase):
         self.assertEqual(git.calls, [])
         msg = str(cm.exception)
         for expected in ('$TADAH_HPO_SOURCE_DIR: not set',
+                         os.path.join(self.checkout, 'HPO', HPO_MARKER),
                          os.path.join(self.workspace, 'HPO', HPO_MARKER),
                          os.path.join(self.workspace, 'hpo', HPO_MARKER),
                          os.path.join(self.tadah_path, 'HPO', HPO_MARKER),
                          os.path.join(self.tadah_path, 'hpo', HPO_MARKER),
                          'skipped (not on GitLab CI or Read the Docs)',
-                         'Set TADAH_HPO_SOURCE_DIR'):
+                         'Set TADAH_HPO_SOURCE_DIR',
+                         f"Restore the directory HPO of this repository "
+                         f"({os.path.join(self.checkout, 'HPO')})"):
             self.assertIn(expected, msg)
+        self.assertNotIn('Tadah.MLIP', msg)
         self.assertNotIn('develop', msg)
 
     def test_error_says_when_tadah_path_is_unset(self):
@@ -290,6 +329,21 @@ class LocateTest(unittest.TestCase):
             loc.locate('MODELS', environ={})
 
 
+class OwnRepositoryTest(unittest.TestCase):
+    """The modules the pages are generated from are those of the repository
+    that holds the pages, whatever lies beside its checkout."""
+
+    def test_a_module_directory_beside_the_checkout_is_not_read(self):
+        with tempfile.TemporaryDirectory(prefix='tadah_locator_test_') as tmp:
+            for repo, marker in (('CORE', CORE_MARKER), ('HPO', HPO_MARKER)):
+                make_checkout(os.path.join(tmp, repo), marker)
+                make_checkout(os.path.join(tmp, repo.lower()), marker)
+                self.assertEqual(
+                    loc.locate(repo, environ={}, workspace=tmp,
+                               runner=FakeGit(), clone_root=tmp),
+                    os.path.join(loc.CHECKOUT_ROOT, repo))
+
+
 class DoxygenXmlTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix='tadah_xml_test_')
@@ -353,7 +407,9 @@ class ConfPyTest(unittest.TestCase):
     def sphinx(self, **overrides):
         env = dict(os.environ, **overrides)
         return subprocess.run(
-            ['sphinx-build', '-W', '-b', 'html', os.path.join(DOCS, 'source'),
+            # --no-color: the message is compared as text (FORCE_COLOR).
+            ['sphinx-build', '-W', '--no-color', '-b', 'html',
+             os.path.join(DOCS, 'source'),
              os.path.join(self.tmp, 'html')],
             env=env, capture_output=True, text=True, timeout=300)
 

@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.normpath(os.path.join(HERE, '..'))
@@ -148,7 +149,10 @@ def build(files, extensions=('hpotarget_domain',), strict=False):
             with open(path, 'w', encoding='utf-8') as fh:
                 fh.write(text)
         out = os.path.join(tmp, 'html')
-        cmd = [sys.executable, '-m', 'sphinx', '-b', 'html', '-q']
+        # --no-color: the warnings are compared as text, whatever the
+        # environment says about colour (FORCE_COLOR).
+        cmd = [sys.executable, '-m', 'sphinx', '-b', 'html', '-q',
+               '--no-color']
         if strict:
             cmd += ['-W', '--keep-going']
         proc = subprocess.run(cmd + [src, out], capture_output=True,
@@ -279,6 +283,16 @@ class RoleTest(unittest.TestCase):
                          r"the id of one")
         self.assertEqual(links(html['guide']), [])
         self.assertIn('SEED', literals(html['guide']))
+
+    def test_warnings_are_plain_text_when_the_environment_forces_colour(self):
+        env = {k: v for k, v in os.environ.items() if k != 'NO_COLOR'}
+        with mock.patch.dict(os.environ, dict(env, FORCE_COLOR='1'), clear=True):
+            status, warnings, _ = build({
+                'reference.rst': ENTRIES,
+                'guide.rst': page('Guide', 'One :hpo:key:`MAXEVL`.')})
+        self.assertEqual(len(warnings), 1, warnings)
+        self.assertRegex(warnings[0], r"^guide\.rst:4: WARNING: hpo:key: ")
+        self.assertNotIn('\x1b', warnings[0])
 
     def test_an_unknown_name_is_a_warning_at_its_page_and_line(self):
         status, warnings, _ = build({

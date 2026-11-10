@@ -644,9 +644,10 @@ an older Python each of these scripts stops with `<script> needs Python
 3.11 or later: ...`, naming the interpreter; Sphinx loads the extension
 before `conf.py` runs the generators, so the build stops with
 `legacy_routes.py needs Python 3.11 or later: ...`. The build reads
-three inputs from outside this repository. It never falls back to
-another branch: when an input is missing it stops and lists every
-location it tried.
+the three inputs of the table below. It never falls back to another
+branch: when an input is missing it stops and lists every location it
+tried. A directory `CORE` or `HPO` of the repository that lacks the
+needed file stops the build at once.
 
 The `nfp_archive` extension builds `docs/source/nfp/nfp-files.zip` from the
 files directory before Sphinx reads the pages. It stores members under
@@ -657,7 +658,7 @@ not committed; a download link on the tutorial hub publishes it.
 
 | Input | Where the build looks, in order |
 |-------|---------------------------------|
-| CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the `CORE` checkout next to `Tadah.MLIP`; `$TADAH_PATH/CORE`; on CI and Read the Docs only, a shallow clone, from `${TADAH_GIT_BASE}/core.git` (`https://github.com/tadah-project/core.git` unless `TADAH_GIT_BASE` is set and not empty), of the branch or tag being built, named the way cmake-tools' `tadah_get_git_branch` names it: `$CI_COMMIT_REF_NAME`, else `$READTHEDOCS_GIT_IDENTIFIER` (Read the Docs' `latest` and `stable` versions are named after no ref), `$READTHEDOCS_VERSION_NAME`, `$READTHEDOCS_VERSION` |
+| CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the directory `CORE` of the repository that holds the pages; a `CORE` checkout next to that repository; `$TADAH_PATH/CORE`; on CI and Read the Docs only, a shallow clone, from `${TADAH_GIT_BASE}/core.git` (`https://github.com/tadah-project/core.git` unless `TADAH_GIT_BASE` is set and not empty), of the branch or tag being built, named the way cmake-tools' `tadah_get_git_branch` names it: `$CI_COMMIT_REF_NAME`, else `$READTHEDOCS_GIT_IDENTIFIER` (Read the Docs' `latest` and `stable` versions are named after no ref), `$READTHEDOCS_VERSION_NAME`, `$READTHEDOCS_VERSION` |
 | HPO sources (Nested Fitting reference pages) | the same, with `$TADAH_HPO_SOURCE_DIR` and `HPO` |
 | Doxygen XML (API pages) | `$TADAH_DOXYGEN_XML_DIR`; otherwise `build/docs/xml`, which `cmake --build build --target docs` writes. Its input is the `include/` directory of each module the build configures (`cmake/doxygen_input.cmake`): CORE, MODELS and MLIP, and HPO only with `TADAH_ENABLE_NFP`, so the Read the Docs build (NFP off) has no HPO API |
 

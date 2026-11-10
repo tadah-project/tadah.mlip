@@ -2,10 +2,9 @@
 Locate CORE's blueprint_tadah.toml -- the single source of truth for the
 Tadah! version and the configuration-key reference.
 
-The CORE checkout is found by source_locator.py: $TADAH_CORE_SOURCE_DIR,
-then the CORE checkout next to this repository, then $TADAH_PATH/CORE, then
-(on GitLab CI / Read the Docs only) a shallow clone of the branch being
-built.  There is no default: if the blueprint cannot be found the docs build
+The CORE sources are found by source_locator.py: $TADAH_CORE_SOURCE_DIR,
+else the directory CORE of this repository (its docstring gives the full
+order).  There is no default: if the blueprint cannot be found the docs build
 fails with the list of locations tried.
 '''
 import os

@@ -1,9 +1,9 @@
 '''
 Locate the external inputs of the Sphinx docs build.
 
-The generated pages read files from two sibling repositories -- CORE's
-blueprint (version, configuration keys, CLI) and HPO's ANNEAL key registry
--- and the API pages read Doxygen XML.  Every input is resolved explicitly;
+The generated pages read files of two modules -- CORE's blueprint (version,
+configuration keys, CLI) and HPO's ANNEAL key registry -- and the API pages
+read Doxygen XML.  Every input is resolved explicitly;
 nothing falls back to a default branch, and a failure lists every location
 that was tried.
 
@@ -12,10 +12,15 @@ Source checkouts (``locate``), in this order:
   1. ``$TADAH_CORE_SOURCE_DIR`` / ``$TADAH_HPO_SOURCE_DIR``.  When the
      variable is set it must name a checkout that contains the needed file;
      otherwise the build fails without looking anywhere else.
-  2. A sibling checkout: ``<workspace>/CORE`` or ``<workspace>/core``, where
-     ``<workspace>`` is the directory that contains this Tadah.MLIP checkout.
-  3. ``$TADAH_PATH/CORE`` or ``$TADAH_PATH/core``.
-  4. On GitLab CI and Read the Docs only: a shallow clone of the branch or
+  2. The repository that holds these pages: its directory ``CORE`` (``HPO``).
+     When that directory exists it must contain the needed file; otherwise
+     the build fails without looking anywhere else, so a directory of the
+     same name beside the checkout is never read in its place.
+  3. A sibling checkout: ``<workspace>/CORE`` or ``<workspace>/core``, where
+     ``<workspace>`` is the directory that contains the checkout of this
+     repository.
+  4. ``$TADAH_PATH/CORE`` or ``$TADAH_PATH/core``.
+  5. On CI and Read the Docs only: a shallow clone of the branch or
      tag being built from ``<base>/<repository>.git``, where ``<base>`` is
      ``$TADAH_GIT_BASE`` when it is set and not empty (as for CMake's
      FetchContent, cmake-tools' TADAH_GIT_BASE block), else
@@ -38,7 +43,7 @@ import urllib.parse
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
-# config/ -> source/ -> docs/ -> Tadah.MLIP/ ; its parent is the workspace.
+# config/ -> source/ -> docs/ -> the repository ; its parent is the workspace.
 CHECKOUT_ROOT = os.path.normpath(os.path.join(_HERE, '..', '..', '..'))
 WORKSPACE = os.path.dirname(CHECKOUT_ROOT)
 DEFAULT_DOXYGEN_XML_DIR = os.path.join(CHECKOUT_ROOT, 'build', 'docs', 'xml')
@@ -122,8 +127,8 @@ def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
     The checkout must contain the repository's marker file (see REPOS).
     Raises SourceNotFound listing every location tried.  *environ*,
     *workspace*, *runner* and *clone_root* exist for the tests; the defaults
-    are the process environment, the directory containing this Tadah.MLIP
-    checkout, ``subprocess.run`` and a fresh temporary directory.
+    are the process environment, the directory containing the checkout of
+    this repository, ``subprocess.run`` and a fresh temporary directory.
     '''
     if repo not in REPOS:
         raise ValueError(f"unknown repository {repo!r}; known: {sorted(REPOS)}")
@@ -149,21 +154,32 @@ def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
 
     tried = [f"${env_var}: not set"]
 
-    # 2. Sibling checkout, 3. $TADAH_PATH.
+    # 2. This repository: authoritative when it has the module directory.
+    own = os.path.abspath(os.path.join(CHECKOUT_ROOT, repo))
+    if os.path.isfile(os.path.join(own, marker)):
+        return own
+    if os.path.isdir(own):
+        raise SourceNotFound(
+            f"The directory {repo} of this repository does not contain "
+            f"{marker} (looked for {os.path.join(own, marker)}); restore it, "
+            f"or set {env_var} to build from another {repo} checkout.")
+    tried.append(f"this repository: {os.path.join(own, marker)} (not found)")
+
+    # 3. Sibling checkout, 4. $TADAH_PATH.
     bases = [('sibling checkout', workspace)]
     tadah_path = environ.get('TADAH_PATH')
     if tadah_path:
         bases.append(('$TADAH_PATH', tadah_path))
     for label, base in bases:
-        for name in _checkout_names(repo):
-            root = os.path.abspath(os.path.join(base, name))
+        for directory in _checkout_names(repo):
+            root = os.path.abspath(os.path.join(base, directory))
             if os.path.isfile(os.path.join(root, marker)):
                 return root
             tried.append(f"{label}: {os.path.join(root, marker)} (not found)")
     if not tadah_path:
         tried.append("$TADAH_PATH: not set")
 
-    # 4. Clone of the built branch, on CI/RTD only.
+    # 5. Clone of the built branch, on CI/RTD only.
     platform = ci_platform(environ)
     branch_var, branch = built_branch(environ)
     if platform is None:
@@ -196,9 +212,8 @@ def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
     raise SourceNotFound(
         f"Cannot locate the {repo} sources (need {marker}). Tried:\n"
         + "\n".join(f"  {i}. {t}" for i, t in enumerate(tried, 1))
-        + f"\nSet {env_var} to the {repo} checkout, set TADAH_PATH to a Tadah "
-          f"workspace that contains {repo}, or build from a workspace with "
-          f"{repo} next to Tadah.MLIP.")
+        + f"\nRestore the directory {repo} of this repository ({own}). "
+          f"Set {env_var} to build from another {repo} checkout.")
 
 
 def locate_file(repo, relpath, **kwargs):

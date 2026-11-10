@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.normpath(os.path.join(HERE, '..'))
@@ -76,6 +77,9 @@ def build(files, theme_options=None, theme='sphinx_rtd_theme', extra_conf='',
         src = os.path.join(tmp, 'src')
         conf = (f'import sys\nsys.path.insert(0, {TOOLS!r})\n'
                 "project = 'Fixture'\nextensions = ['nfp_checks']\n"
+                # Whole warning lines are compared: without the type that
+                # Sphinx appends by default from version 8 on.
+                'show_warning_types = False\n'
                 f'html_theme = {theme!r}\n'
                 f'html_theme_options = {theme_options or {}!r}\n' + extra_conf)
         for name, text in dict(files, **{'conf.py': conf}).items():
@@ -83,7 +87,10 @@ def build(files, theme_options=None, theme='sphinx_rtd_theme', extra_conf='',
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, 'w', encoding='utf-8') as fh:
                 fh.write(text)
-        cmd = [sys.executable, '-m', 'sphinx', '-b', 'html', '-q']
+        # --no-color: the warnings are compared as text, whatever the
+        # environment says about colour (FORCE_COLOR).
+        cmd = [sys.executable, '-m', 'sphinx', '-b', 'html', '-q',
+               '--no-color']
         if strict:
             cmd += ['-W', '--keep-going']
         proc = subprocess.run(cmd + [src, os.path.join(tmp, 'html')],
@@ -366,6 +373,16 @@ class CodeBlockTest(unittest.TestCase):
                            text)), 8, text)
         self.assertEqual(len(warnings), 8, text)
 
+    def test_warnings_are_plain_text_when_the_environment_forces_colour(self):
+        env = {k: v for k, v in os.environ.items() if k != 'NO_COLOR'}
+        with mock.patch.dict(os.environ, dict(env, FORCE_COLOR='1'), clear=True):
+            status, warnings = self.build_blocks(
+                directive('code-block:: bash', 'tadah hpo -h'),
+                '..\n   .. code-block:: bash\n\n      tadah hpo -h')
+        self.assertEqual(len(warnings), 1, warnings)
+        self.assertRegex(warnings[0], r'^nfp/blocks\.rst:9: WARNING: ')
+        self.assertNotIn('\x1b', warnings[0])
+
     def test_a_bash_block_that_the_page_does_not_show_is_a_warning(self):
         status, warnings = self.build_blocks(
             directive('code-block:: bash', 'tadah hpo -h'),
@@ -640,6 +657,19 @@ class LinkedFilesTest(unittest.TestCase):
             'literalinclude, include or the :file: of a csv-table)',
             'WARNING: nfp/files/unit2/hidden.csv: no page links it (:download:, '
             'literalinclude, include or the :file: of a csv-table)'])
+
+    def test_the_warning_of_an_unlinked_file_has_its_own_type(self):
+        files = dict(GOOD)
+        files['index.rst'] = root(['nfp/overview', 'nfp/tutorial/index',
+                                   'nfp/reference/index'])
+        files['nfp/files/unit2/hidden.csv'] = 'Quantity,Value\nBest loss,1\n'
+        files['nfp/files/manifest.txt'] = '# runs\n'
+        status, warnings = build(files, {'navigation_depth': 2},
+                                 extra_conf='show_warning_types = True\n')
+        self.assertEqual(warnings, [
+            'WARNING: nfp/files/unit2/hidden.csv: no page links it (:download:, '
+            'literalinclude, include or the :file: of a csv-table) '
+            '[nfp_checks.unlinked]'])
 
     def test_a_tree_whose_files_are_all_linked_passes(self):
         unit = self.UNIT.replace('code-block:: none', 'rst-class:: x').replace(

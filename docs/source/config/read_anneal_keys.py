@@ -17,9 +17,8 @@ sentences after the description, each the refusal it is (the annealers
 refuse a key its rule does not allow), so documentation cannot drift from
 validation.
 
-The HPO checkout is found by source_locator.py: $TADAH_HPO_SOURCE_DIR, then
-the HPO checkout next to this repository, then $TADAH_PATH/HPO, then (on
-GitLab CI / Read the Docs only) a shallow clone of the branch being built.
+The HPO sources are found by source_locator.py: $TADAH_HPO_SOURCE_DIR, else
+the directory HPO of this repository (its docstring gives the full order).
 There is no fallback branch: a missing registry fails the docs build with
 the list of locations tried.
 """

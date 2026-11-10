@@ -9153,12 +9153,14 @@ TEST_CASE("Subcommand: a retrain that includes a potential with CONFIG reads "
  *   - one.train "OUTFILE a_out.tadah b_out.tadah", "CONFIG plain.train":
  *     `tadah train -c` exits 1 with "Too many values for key OUTFILE on line
  *     1 of one.train: OUTFILE of tadah train takes at most 1, and its lines
- *     read so far give 2" and writes neither file, and `tadah analysis
- *     suggest_bounds -c` with "... OUTFILE of tadah analysis suggest_bounds
- *     takes at most 1, ...".
+ *     read so far give 2" and writes neither file.
  * Before the fix: each run exited 0 and wrote a_out.tadah, b_out.tadah
  * ignored without a message (Tadah! 1.5.0 wrote b_out.tadah for out.train:
- * the include replaced the line above it). */
+ * the include replaced the line above it). `tadah analysis suggest_bounds
+ * -c one.train` was checked here as well ("... OUTFILE of tadah analysis
+ * suggest_bounds takes at most 1, ...") until its -c needed -o, so that
+ * its configuration refuses an OUTFILE line (the case of
+ * [suggest_bounds_outfile]). */
 TEST_CASE("Subcommand: a configuration file takes one OUTFILE value over "
           "its CONFIG includes",
           "[TadahCLI][train][config-include]") {
@@ -9185,8 +9187,7 @@ TEST_CASE("Subcommand: a configuration file takes one OUTFILE value over "
   std::ofstream("one.train")
       << "OUTFILE a_out.tadah b_out.tadah\nCONFIG plain.train\n";
   for (const std::vector<std::string> command :
-       {std::vector<std::string>{"train"},
-        std::vector<std::string>{"analysis", "suggest_bounds"}}) {
+       {std::vector<std::string>{"train"}}) {
     std::vector<std::string> args{"tadah"};
     std::string words = "tadah";
     for (const std::string& w : command) {
@@ -11590,6 +11591,112 @@ TEST_CASE("Subcommand: the OPTIM lines analysis suggest_bounds writes for a "
   INFO("check_bounds: status " << r.status << "\n" << reported(r) << "\n"
                                << slurp("far_sb.hpo"));
   CHECK(r.status == 0);
+}
+
+/* Pins: `tadah analysis suggest_bounds -c` needs -o, and its configuration
+ * refuses an OUTFILE line, which a training configuration uses for the
+ * potential file. On the Ta-W data (kTaWDb), with pot.tadah standing for a
+ * trained potential:
+ *   - `-c far.train` (no -o) exits non-zero at the command line with
+ *     "--config requires --outfile" and writes no file;
+ *   - `-c out.train -o sb.hpo`, out.train far.train with "OUTFILE
+ *     pot.tadah" on its last line, <n>, exits 1 with "Key OUTFILE on line
+ *     <n> of out.train is not accepted here: OUTFILE is the option
+ *     --outfile (-o) that --config (-c) of tadah analysis suggest_bounds
+ *     needs on the command line, not a key of a configuration file of tadah
+ *     analysis suggest_bounds", and writes no sb.hpo;
+ *   - `-c far.train -o sb.hpo` exits 0 and writes sb.hpo with its OPTIM
+ *     lines;
+ * pot.tadah is unchanged after each.
+ * Before the fix: `-c far.train` printed the lines on standard output and
+ * `-c out.train -o sb.hpo` wrote sb.hpo, both exiting 0; `-c out.train`
+ * alone wrote the suggestions into pot.tadah, over the potential. */
+TEST_CASE("Subcommand: analysis suggest_bounds -c needs -o and refuses an "
+          "OUTFILE line of its configuration",
+          "[TadahCLI][analysis][suggest_bounds_outfile]") {
+  ScratchCwd cwd("suggest_bounds_outfile");
+  { std::ofstream os("taw.db"); os << kTaWDb; }
+  const std::string config = ta_w_pairs_config("5");
+  std::ofstream("far.train") << config;
+  std::ofstream("out.train") << config << "OUTFILE pot.tadah\n";
+  const std::string potential = "WEIGHTS 1.0 2.0\n";
+  std::ofstream("pot.tadah") << potential;
+  {
+    const CliRun r =
+        run_tadah({"tadah", "analysis", "suggest_bounds", "-c", "far.train"});
+    const std::string rep = reported(r);
+    INFO("-c far.train: status " << r.status << "\n" << rep);
+    CHECK(r.status != 0);
+    CHECK(contains(rep, "--config requires --outfile"));
+    CHECK_FALSE(contains(rep, "OPTIM RCUT2B"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "analysis", "suggest_bounds", "-c",
+                                "out.train", "-o", "sb.hpo"});
+    const std::string rep = reported(r);
+    INFO("-c out.train -o sb.hpo: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key OUTFILE on line " +
+                            std::to_string(lines_in(config) + 1) +
+                            " of out.train is not accepted here: OUTFILE is "
+                            "the option --outfile (-o) that --config (-c) of "
+                            "tadah analysis suggest_bounds needs on the "
+                            "command line, not a key of a configuration file "
+                            "of tadah analysis suggest_bounds"));
+    CHECK_FALSE(std::filesystem::exists("sb.hpo"));
+  }
+  CHECK(slurp("pot.tadah") == potential);
+  {
+    const CliRun r = run_tadah({"tadah", "analysis", "suggest_bounds", "-c",
+                                "far.train", "-o", "sb.hpo"});
+    INFO("-c far.train -o sb.hpo: status " << r.status << "\n"
+                                            << reported(r));
+    CHECK(r.status == 0);
+    CHECK(contains(slurp("sb.hpo"), "\nOPTIM RCUT2B (1) "));
+  }
+  CHECK(slurp("pot.tadah") == potential);
+}
+
+/* Pins: a configuration file given to `tadah hpo -c` refuses an HPOTARGET
+ * line at its line, as --hpotarget, which -c needs, gives the target
+ * file: `tadah hpo --check -c line.train --hpotarget config.hpo`, line.train
+ * "HPOTARGET other.hpo" on line 2, exits 1 with "Key HPOTARGET on line 2
+ * of line.train is not accepted here: HPOTARGET is the option --hpotarget
+ * that --config (-c) of tadah hpo needs on the command line, not a key of
+ * a configuration file of tadah hpo", and writes no best_pot.tadah; the
+ * same command line with plain.train, without the line, has no such
+ * refusal. The case needs no Nested Fitting build: the configuration is
+ * read before the command runs.
+ * Before the fix: the line was read and replaced by --hpotarget without a
+ * message. */
+TEST_CASE("Subcommand: hpo -c refuses an HPOTARGET line of its "
+          "configuration",
+          "[TadahCLI][exit-status][hpo-input]") {
+  ScratchCwd cwd("hpo_hpotarget_line");
+  std::ofstream("config.hpo") << "LOSS L2\nPC_ERMSE 0 1\n"
+                                 "OPTIM CGRID2B (1) 2.3 2.7\n";
+  std::ofstream("line.train") << "DBFILE db.tadah\nHPOTARGET other.hpo\n";
+  std::ofstream("plain.train") << "DBFILE db.tadah\n";
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "--check", "-c", "line.train",
+                                "--hpotarget", "config.hpo"});
+    const std::string rep = reported(r);
+    INFO("-c line.train: status " << r.status << "\n" << rep);
+    CHECK(r.status == 1);
+    CHECK(contains(rep, "Key HPOTARGET on line 2 of line.train is not "
+                        "accepted here: HPOTARGET is the option --hpotarget "
+                        "that --config (-c) of tadah hpo needs on the "
+                        "command line, not a key of a configuration file of "
+                        "tadah hpo"));
+    CHECK_FALSE(std::filesystem::exists("best_pot.tadah"));
+  }
+  {
+    const CliRun r = run_tadah({"tadah", "hpo", "--check", "-c",
+                                "plain.train", "--hpotarget", "config.hpo"});
+    const std::string rep = reported(r);
+    INFO("-c plain.train: status " << r.status << "\n" << rep);
+    CHECK_FALSE(contains(rep, "is not accepted here"));
+  }
 }
 
 /* `tadah analysis suggest_bounds -c` of a configuration whose TYPE2B line

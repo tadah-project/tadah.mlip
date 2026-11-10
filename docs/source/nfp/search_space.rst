@@ -68,9 +68,9 @@ of :hpo:opt:`TADAH:GRID`.
 Choosing bounds
 ---------------
 
-Each search parameter is searched inside a box. The box is written on the
-line (:hpo:key:`range <OPTIM.range>`), or :hpo:key:`OPTIM.AUTO` derives it
-from the value of the training configuration.
+Each search parameter is searched inside a box. The box is written on the line
+(:hpo:key:`range <OPTIM.range>`), or :hpo:key:`OPTIM.AUTO` derives it from the
+value of the training configuration. It keeps to the lower limit of its key.
 
 Explicit bounds are the recommended choice for a first search, where the values
 of the training configuration are guesses. Physics then sets them: neighbour

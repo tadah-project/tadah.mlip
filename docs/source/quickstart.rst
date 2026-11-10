@@ -209,14 +209,18 @@ and ``suggest_bounds``. Its lines follow these rules:
   ``ANALYTICS`` (``-A`` of ``tadah predict``) or ``REFIT_MODE`` (a key of
   the ``tadah refit`` configuration), is refused at its line in the
   configuration file of a command that does not read it, and the error
-  names the commands that read it. The configuration file of a command
-  whose ``-c`` needs the key's option on the command line refuses its line
-  too, as the option replaces the line: :ref:`OUTFILE` of ``tadah analysis
-  dataset_stats``, :ref:`RANGE` and :ref:`TYPE` of ``tadah analysis
-  bfunc``. The error then names the option that ``-c`` needs. The settings of a ``tadah hpo`` run,
-  ``HPOTARGET``, ``VALIDATION``, ``CHECK`` and ``HEALTH_LOG``, are
-  accepted in every training configuration and listed in the potential's
-  :ref:`training record <training_record>`.
+  names the commands that read it.
+- The configuration file of a command whose ``-c`` needs the option of a
+  key on the command line refuses a line of that key, as the option would
+  replace the line: :ref:`OUTFILE` of ``tadah analysis dataset_stats`` and
+  ``tadah analysis suggest_bounds``, :ref:`RANGE` and :ref:`TYPE` of
+  ``tadah analysis bfunc``, and :ref:`HPOTARGET` of ``tadah hpo``. The
+  error names the option that ``-c`` needs.
+- The settings of a ``tadah hpo`` run, ``VALIDATION``, ``CHECK`` and
+  ``HEALTH_LOG``, are accepted in every training configuration. An
+  ``HPOTARGET`` line is accepted in the configuration file of every
+  command but ``tadah hpo``. The potential's :ref:`training record
+  <training_record>` lists each of them.
 - An error of a line names the line and the file (for a line of an
   included file, that file and the ``CONFIG`` lines that include it): a key
   that is no configuration key, a value that the key does not take (with

@@ -158,12 +158,9 @@ file, or a TYPE2B or TYPEMB line other than those tadah writes, is refused
 (the Training page of the documentation, Retraining from a potential). A
 line the run does not read, such as the EFILTER line of an included
 potential (the same page), sets nothing. An option of the command line
-takes precedence over the lines of its key. An option that -c of the
-command needs (Needs in the help of the command) would replace a line of
-its key on every run, so a configuration file of that command refuses
-such a line: OUTFILE of tadah analysis dataset_stats and tadah analysis
-suggest_bounds, RANGE and TYPE of tadah analysis bfunc, HPOTARGET of
-tadah hpo.
+takes precedence over the lines of its key. A configuration file of a
+command whose -c needs an option (Needs in the help of the command)
+refuses a line of that option's key, as the option would replace it.
 
 A relative path is relative to the working directory, the directory the
 command runs in, not to the directory of the file that holds the line. This
@@ -1400,8 +1397,7 @@ their configuration file (-c); the others take it with -o only. A
 configuration file of tadah analysis dataset_stats or tadah analysis
 suggest_bounds refuses an OUTFILE line at its line, as their -c needs -o
 (an OUTFILE line of a training configuration names the potential file).
-So does a
-configuration file of tadah hpo, which writes files of its own
+So does a configuration file of tadah hpo, which writes files of its own
 (best_pot.tadah and the others), and one of tadah analysis check_bounds,
 which writes no file. A configuration shared by tadah train and tadah hpo
 therefore has no OUTFILE line; tadah train -o names the potential file.

@@ -1391,8 +1391,12 @@ token. A percentage must be positive, and ``--pct KEY=N`` needs a rewritten
 the keys it has, or names the lines of ``KEY`` it keeps as written). A
 ``--set`` needs a rewritten line of its index (a line kept as written is
 named), finite bounds with ``lo < hi``, and its ``lo``
-must satisfy the rule the file's density form sets (below; ``tadah hpo``
-refuses such a box at startup). The file takes no ``RHOFORM`` or ``EMBF0``
+must satisfy the lower limit the descriptors declare for the key (above 0
+for a width and ``RCUTENV``, at or above 0 for a centre and a cutoff) and
+the rule the file's density form sets (below); ``tadah hpo`` refuses such a
+box at startup. A line of a key outside the groups ``tadah refit`` writes,
+such as ``RCUTENV``, is rewritten with the symmetric rule, its low bound
+kept to that limit (half the centre for a value above 0), with a WARNING. The file takes no ``RHOFORM`` or ``EMBF0``
 from a configuration (``-c``): a target file carries no potential, so they
 would have no effect, and either is an error (``RHOFORM has no effect on
 --retarget ...``); the density form is ``--rhoform``, below. Nor does it
@@ -1417,7 +1421,8 @@ retargeting at the same settings. Bound recovery is exact at the printed
 precision (``%.8e``, 9 significant digits); a hand-pruned group (deleted
 lines) shifts the group's scale floor relative to a fresh emission
 (warned). A line whose
-lower bound was clamped (the width channels, ``RCUT``, the centre
+lower bound was clamped (the width channels, whose box starts at half the
+centre when it would reach 0, ``RCUT``, the centre
 channels ``CGRID2B`` and ``CGRIDMB``, whose boxes stay at or above 0 as
 ``tadah hpo`` requires, the non-negative amplitudes below) is recovered
 with the percentage of its own group comment

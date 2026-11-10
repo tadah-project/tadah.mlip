@@ -71,7 +71,8 @@ Top-level command map
 
 ``explain``         Detailed help for any command/option (dot-notation)
 
-``hpo``             Global hyper-parameter optimisation of a model
+``hpo``             Nested fitting: searches the hyperparameters of a
+                    potential (:ref:`nested_fitting`)
 
 ``predict``         Runs a trained potential on datasets or raw structures
 
@@ -81,6 +82,8 @@ Top-level command map
 
 ``train``           Fits a new potential (``-c config.tadah``)
 ==================  ============================================================
+
+.. _cli_commands:
 
 Commands reference
 ------------------

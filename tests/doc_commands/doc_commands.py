@@ -1,6 +1,7 @@
 """The commands of the ``bash`` code blocks of an rst file.
 
     bash_commands(path) -> [Command(line, argv), ...]
+    bash_blocks(path)   -> [Block(line, commands), ...]
 
 Shared by the tests that run what the documentation tells a reader to run:
 cli_examples/check_cli_example.py (the CLI examples' README.rst) and
@@ -13,6 +14,14 @@ directive's options (``:caption:``, ...) are not content; blank and
 comment-only lines are not commands. The content ends at the first
 non-blank line indented no more than the directive. ``line`` is the
 1-based line of the file where the command starts.
+
+A Block is one such directive: ``line`` is the 1-based line of the
+directive itself (the line Sphinx gives the block it renders, which
+docs/tools/nfp_checks.py compares with the blocks of a page), and
+``commands`` are its commands. Only this spelling is read: another
+directive that renders a bash block (``code``, ``sourcecode``, a
+``literalinclude``, other spacing or letter case) is not, and nfp_checks
+warns on such a block in a Nested Fitting page.
 """
 import re
 import shlex
@@ -22,20 +31,23 @@ DIRECTIVE = re.compile(r'^(\s*)\.\. code-block::\s*bash\s*$')
 OPTION = re.compile(r'^\s*:[\w-]+:')
 
 Command = namedtuple('Command', 'line argv')
+Block = namedtuple('Block', 'line commands')
 
 
-def bash_commands(path):
-    '''The commands of the bash code blocks of the rst file *path*, in
-    order.'''
+def bash_blocks(path):
+    '''The bash code blocks of the rst file *path*, in order.'''
     with open(path, encoding='utf-8') as fh:
         lines = fh.read().splitlines()
-    commands = []
+    blocks = []
     i = 0
     while i < len(lines):
         m = DIRECTIVE.match(lines[i])
         i += 1
         if not m:
             continue
+        block = Block(i, [])
+        blocks.append(block)
+        commands = block.commands
         indent = len(m.group(1))
         # The directive's options: indented lines right after it.
         while (i < len(lines) and lines[i].strip()
@@ -62,7 +74,13 @@ def bash_commands(path):
             argv = shlex.split(pending, comments=True)
             if argv:
                 commands.append(Command(start, argv))
-    return commands
+    return blocks
+
+
+def bash_commands(path):
+    '''The commands of the bash code blocks of the rst file *path*, in
+    order.'''
+    return [c for b in bash_blocks(path) for c in b.commands]
 
 
 def tadah_commands(path):

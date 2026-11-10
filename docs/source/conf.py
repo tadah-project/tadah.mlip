@@ -38,7 +38,8 @@ from sphinx.errors import ConfigError as _ConfigError
 
 _CONFDIR = os.path.dirname(os.path.abspath(__file__))
 _sys.path.insert(0, os.path.join(_CONFDIR, 'config'))
-# docs/tools holds the check_redirect extension (see html_extra_path),
+# docs/tools holds the legacy_routes extension, which writes the pages of
+# earlier releases that the site no longer builds (see extensions),
 # nfp_checks, the layout and structure rules of the pages, and
 # hpotarget_domain, the entries of the target-file reference and the :hpo:
 # roles that cite them (see extensions).
@@ -77,8 +78,10 @@ extensions = ['breathe',
               'myst_parser',
               'sphinx_exec_code',
               'matplotlib.sphinxext.plot_directive',
-              'check_redirect',
+              'legacy_routes',
               'nfp_checks',
+              'nfp_archive',
+              'nfp_voice',
               'hpotarget_domain']
 
 # plot_directive: deterministic inline figures (temperature ladders,
@@ -114,8 +117,15 @@ language = 'C++'
 # This pattern also affects html_static_path and html_extra_path.
 # nfp/files holds the files the Nested Fitting pages offer for download and
 # include (data, scripts, the files of each tutorial unit and example, with
-# their READMEs): none of them is a page.
-exclude_patterns = ['nfp/files/**']
+# their READMEs): none of them is a page. cli/cli_auto_gen.rst, the command
+# reference that cli/generate_cli.py writes, is part of cli/cli.rst, which
+# includes it; it is not a page of its own, and its command labels are
+# defined once. config/anneal_keys_*.rst are the key tables that
+# config/read_anneal_keys.py writes when it runs as a script; no page
+# includes them (the annealing reference is nfp/reference/anneal_params.rst),
+# and a checkout may still hold them from a build that generated them.
+exclude_patterns = ['nfp/files/**', 'cli/cli_auto_gen.rst',
+                    'config/anneal_keys_*.rst']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
@@ -158,12 +168,13 @@ html_theme_options = {
 html_static_path = ['_static']
 html_css_files = ['tables.css']
 
-# Files copied verbatim to the output root.  _extra/hpo.html redirects the
-# pre-1.6.0 Nested Fitting page (hpo.html) to the pages it was split into;
-# the check_redirect extension (docs/tools/check_redirect.py) verifies its
-# targets after every 'html' build and warns that it is unchecked when
-# another builder copies it.
-html_extra_path = ['_extra']
+# The pages of earlier releases that the site no longer builds (hpo.html,
+# hpo_examples.html, optimizer.html, anneal.html, anneal_pt.html, asa.html,
+# cli/cli_auto_gen.html) lead to the pages that hold their topics. The
+# legacy_routes extension (docs/tools/legacy_routes.py) writes them from its
+# table, docs/tools/legacy_routes.toml, after every 'html' build, once it
+# has checked that each destination is a page of the site with the id it
+# names; another builder writes none.
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -278,8 +289,6 @@ def setup(app):
                        cwd=_CONFDIR, env=env, check=True)
     run('config', 'read_toml.py')
     run('cli', 'generate_cli.py')   # requires blueprint.toml from read_toml.py
-    # ANNEAL-family key tables from HPO's registry (single source of truth)
-    run('config', 'read_anneal_keys.py')
     # The Nested Fitting reference pages (nfp/reference/, but its index.rst)
     # from HPO's target-file registry, optimiser list and anneal keys.
     run('config', 'read_hpo_registry.py')

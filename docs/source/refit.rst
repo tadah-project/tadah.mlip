@@ -409,10 +409,9 @@ Configuration reference
 -----------------------
 
 The numbers of the configuration are read strictly, before the EAM file:
-a real number in the number grammar of the target file (decimal, no
-hexadecimal float, ``inf``, ``nan`` or number below the smallest normal
-double) and an integer as decimal digits, each within the range its key
-states in the lists below.  A configuration file must also pass the type
+a real number in the number grammar of the target file
+(:ref:`nfp_target_file_lines`) and an integer as decimal digits, each within
+the range its key states in the lists below.  A configuration file must also pass the type
 check of every Tadah! configuration key, which refuses ``.5`` in every
 number and a sign (``+3``, ``-3``) in an integer (``+0.5`` is a valid real
 number).  An error names the key and the token as written:
@@ -693,6 +692,8 @@ Window and self-test
    Below the inner bound ``refit.eam`` carries the original table (*Output
    files*), and ``pot.tadah`` is not valid there.
 
+.. _refit_stage_blocks:
+
 Stage blocks
 ~~~~~~~~~~~~
 
@@ -886,7 +887,7 @@ function's FUSE refine with its Ceres iterations
 A stage's
 ``OPTIMIZER`` block takes only the keys the stage reads — ``LIB``, ``ALGO``,
 the stop-criteria listed above, and in EXPLORE the ``INNER`` block.  Any
-other optimiser attribute of :ref:`tadah hpo <nfp_manual>` (``THREADS``,
+other optimiser attribute of :ref:`tadah hpo <nfp_ref_optimizer_keys>` (``THREADS``,
 ``MAXTIME``, ``STOPVAL``, ``POPULATION``, ``STEP``, ``PARAM``, …) and an
 ``INNER`` block in REFINE or FUSE is an error that names the keys the stage
 reads:
@@ -1040,7 +1041,7 @@ optimiser, would have no effect and is an error too:
    EXPLORE: LIB has no effect with ALGO UNIFORM (no global search runs)
 
 The numbers are read as strictly as in
-``tadah hpo`` (:ref:`nfp_manual`): ``MAXEVAL`` and ``MAXITER`` take
+``tadah hpo`` (:ref:`nfp_target_file_lines`): ``MAXEVAL`` and ``MAXITER`` take
 decimal digits only, from 1 to 2147483647 (the ``int`` budget the refit
 hands NLopt, dlib and Ceres), the tolerances and ``GTOL`` a finite number
 >= 0 in decimal form (no hexadecimal float such as ``0x1p-40``; 0 switches
@@ -1072,7 +1073,7 @@ Output files
 * ``refit.hpotarget`` — target file for ``tadah hpo``.  Its ``OPTIM`` groups
   are written as ``CGRID2B``, ``SGRID2B``, ``CGRIDMB``, …, ``FIXWEIGHT``;
   ``tadah hpo`` orders the dimensions by key whatever the order of the
-  lines (:ref:`dimension order <hpo_dimension_order>`).
+  lines (:ref:`dimension order <nfp_search_space_order>`).
 * ``refit_opt.log`` — optimisation log and crystal self-test.
 * ``refit_basis_info.dat`` — final basis: function, centre, width, coefficient, degree.
 * ``refit_curve_{phi,rho,F}.dat`` — fitted vs tabulated curves and derivatives.
@@ -1384,9 +1385,7 @@ contradicts as ``-o`` does (refused).
 
 The numbers of ``--pct`` and ``--set`` are read with the number grammar of
 the target file, which ``tadah hpo`` reads the rewritten bounds with
-(:ref:`nfp_manual`): an optional sign, decimal digits with at most one
-``.``, an optional exponent, a finite value that is zero or a normal double.
-``5x``, ``0x10``, ``inf``, ``nan`` and ``1e-320`` are errors naming the
+(:ref:`nfp_target_file_lines`); a token outside it is an error naming the
 token. A percentage must be positive, and ``--pct KEY=N`` needs a rewritten
 ``OPTIM`` line on ``KEY`` in the file (active or commented; the error lists
 the keys it has, or names the lines of ``KEY`` it keeps as written). A
@@ -1553,10 +1552,9 @@ Practical consequences for knot potentials:
   so that dimension is wasted (warned at startup).
 * During ``tadah hpo`` the neighbour list is sized once for the largest
   cutoff the search can reach (including the upper bounds of knot
-  positions with an ``OPTIM`` line), and rebuilt for an evaluation outside the ``OPTIM`` box that
-  reaches further (counted in ``DIAGNOSTICS``); the RCUT keys follow the
-  moving knots automatically; the written ``best_pot.tadah`` is always
-  self-consistent.
+  positions with an ``OPTIM`` line), and a point outside the ``OPTIM`` box
+  is not evaluated; the RCUT keys follow the moving knots automatically; the
+  written ``best_pot.tadah`` is always self-consistent.
 * Hand-editing knot positions in a ``pot.tadah`` is safe for ``tadah``: the
   stale RCUT is detected and replaced by whichever command reads the file
   next. ``pair_style tadah`` (LAMMPS) reads the stated ``RCUT`` as it is,

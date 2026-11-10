@@ -1,0 +1,572 @@
+# Each guide owns an explicit list of entry ids. The generator inverts
+# these lists to an id -> label map; no registry name or prefix supplies
+# a default. Each id belongs to exactly one guide.
+[guides]
+
+nfp_training_hpo_refused = [
+    "RULE.fit_LAMBDA_evidence_OALGO",
+    "RULE.fit_LAMBDA_negative",
+    "RULE.fit_LAMBDA_one_value",
+    "RULE.fit_OALGO1_threshold",
+    "RULE.fit_OALGO3_intercepts",
+    "RULE.fit_OALGO3_intercepts_evidence",
+    "RULE.fit_OALGO3_threshold",
+    "RULE.fit_OALGO_one_value",
+    "RULE.fit_OALGO_option",
+    "RULE.fit_error_scales",
+    "RULE.fit_krr_implementation",
+    "RULE.fit_krr_implementation2_LAMBDA",
+    "RULE.fit_krr_implementation2_OALGO",
+    "RULE.fit_krr_implementation2_ignores",
+]
+
+nfp_target_file_blocks = [
+    "STRUCTURE",
+]
+
+nfp_target_file_lines = [
+    "LEXING",
+    "READING",
+]
+
+nfp_target_file_order = [
+    "RULE.settings_taken_by_lines",
+]
+
+nfp_search_space_bounds = [
+    "OPTIM.AUTO",
+    "OPTIM.AUTO.FLOOR",
+    "OPTIM.AUTO.FRAC",
+    "OPTIM.AUTO.GROUP_FLOOR",
+    "OPTIM.AUTO.RATIO",
+    "OPTIM.range",
+]
+
+nfp_search_space_coefficients = [
+    "OPTIM.TARGET.FIXINDEX",
+    "OPTIM.TARGET.FIXWEIGHT",
+    "OPTIM.TARGET.WEIGHTS",
+]
+
+nfp_search_space_components = [
+    "OPTIM.TARGET.AMPGRIDMB",
+    "OPTIM.TARGET.CEMBFUNC",
+    "OPTIM.TARGET.CGRIDMB",
+    "OPTIM.TARGET.EMBF0",
+    "OPTIM.TARGET.RCUTMB",
+    "OPTIM.TARGET.RHOFORM",
+    "OPTIM.TARGET.SEMBFUNC",
+    "OPTIM.TARGET.SGRIDMB",
+]
+
+nfp_search_space_feasibility = [
+    "ENV.TADAH_BUMPGATE",
+    "RHOBARGATE.NPTS",
+    "RHOBARGATE.SEED",
+    "RHOGATE.NPTS",
+    "RHOGATE.R_LO",
+    "RHOGATE.SEED",
+    "ROOT.BUMPGATE",
+    "ROOT.RHOBARGATE",
+    "ROOT.RHOGATE",
+    "RULE.density_key_arming",
+]
+
+nfp_search_space_parameters = [
+    "OPTIM",
+    "OPTIM.TARGET.DIMER",
+    "OPTIM.TARGET.EFILTER",
+    "OPTIM.TARGET.ENERGY",
+    "OPTIM.TARGET.ENORM",
+    "OPTIM.TARGET.ERROR",
+    "OPTIM.TARGET.ESHIFT",
+    "OPTIM.TARGET.ESHIFT_ATOM",
+    "OPTIM.TARGET.ESHIFT_DBATOM",
+    "OPTIM.TARGET.ESIGMA",
+    "OPTIM.TARGET.EWEIGHT",
+    "OPTIM.TARGET.EWEIGHT_TEMP",
+    "OPTIM.TARGET.FFILTER",
+    "OPTIM.TARGET.FSIGMA",
+    "OPTIM.TARGET.FWEIGHT",
+    "OPTIM.TARGET.KDEG2B",
+    "OPTIM.TARGET.KDEGEMB",
+    "OPTIM.TARGET.KDEGMB",
+    "OPTIM.TARGET.LAMBDA",
+    "OPTIM.TARGET.LSCALE",
+    "OPTIM.TARGET.MODEL",
+    "OPTIM.TARGET.OALGO",
+    "OPTIM.TARGET.QUANTITY",
+    "OPTIM.TARGET.RCTYPE2B",
+    "OPTIM.TARGET.RCTYPEMB",
+    "OPTIM.TARGET.SSIGMA",
+    "OPTIM.TARGET.SWEIGHT",
+    "OPTIM.TARGET.TYPE2B",
+    "OPTIM.TARGET.TYPEMB",
+    "OPTIM.TARGET.UNCERTAINTY",
+    "OPTIM.TARGET.WCOV",
+    "OPTIM.TARGET.WDBFILE",
+    "OPTIM.TARGET.WDBFILE_AUTO",
+    "OPTIM.TARGET.WNOISE",
+    "OPTIM.TARGET.ZERO_COM_FORCE",
+    "ROOT.OPTIM",
+    "RULE.OPTIM_LAMBDA_evidence",
+    "RULE.OPTIM_MPARAMS",
+    "RULE.OPTIM_MPARAMS_positive",
+    "RULE.OPTIM_OALGO_threshold_box",
+    "RULE.OPTIM_file_cutoff",
+    "RULE.OPTIM_unread_watom",
+    "RULE.asa_search_dimensions",
+    "RULE.optim_LAMBDA_OALGO3_intercepts",
+    "RULE.optim_error_scale_no_fit",
+    "RULE.optim_error_scale_only_quantity",
+    "RULE.optim_error_scale_quantity_off",
+    "RULE.optim_relative_error_scale",
+    "RULE.optim_wdbfile_one_dataset",
+    "RULE.search_dimensions_required",
+]
+
+nfp_search_space_scaling = [
+    "ENV.TADAH_OPTIM_SCALE",
+    "ROOT.OPTIM_SCALE",
+]
+
+nfp_search_space_transforms = [
+    "OPTIM.ASINH",
+    "OPTIM.LIN",
+    "OPTIM.LOG",
+    "OPTIMIZER.LOG_HP",
+]
+
+nfp_targets_failures = [
+    "ENV.TADAH_FAILSCORE_GRADING",
+    "PC_FAILPROBE.--gate",
+    "PC_FAILPROBE.--s0",
+    "PC_LAMMPS.--failscore",
+    "PC_LAMMPS.--failvar",
+    "ROOT.FAILSCORE",
+    "ROOT.FAILSCORE_GRADING",
+    "ROOT.PC_FAILPROBE",
+]
+
+nfp_targets_function = [
+    "LOSS.HUBER",
+    "LOSS.L1",
+    "LOSS.L2",
+    "LOSS.LOG_COSH",
+    "LOSS.MAPE",
+    "LOSS.RMSLE",
+    "LOSS.TUKEY",
+    "ROOT.LOSS",
+]
+
+nfp_targets_losses = [
+    "REMOVED.PC_SRMSE",
+    "ROOT.PC_EMAE",
+    "ROOT.PC_ERMSE",
+    "ROOT.PC_ERSQ",
+    "ROOT.PC_ErRMSE",
+    "ROOT.PC_FRMSE",
+    "ROOT.PC_SRMSE_GPA",
+]
+
+nfp_targets_mean = [
+    "RULE.loss_source_required",
+]
+
+nfp_targets_observables = [
+    "PC_OBSERVABLE.cohesive_energy",
+    "PC_OBSERVABLE.cohesive_energy.--etol",
+    "PC_OBSERVABLE.cohesive_energy.--fmax-converged",
+    "PC_OBSERVABLE.cohesive_energy.--hotvar",
+    "PC_OBSERVABLE.cohesive_energy.--lattice",
+    "PC_OBSERVABLE.cohesive_energy.--loss",
+    "PC_OBSERVABLE.cohesive_energy.--max-wall-time",
+    "PC_OBSERVABLE.cohesive_energy.--maxeval",
+    "PC_OBSERVABLE.cohesive_energy.--maxiter",
+    "PC_OBSERVABLE.cohesive_energy.--ptol",
+    "PC_OBSERVABLE.cohesive_energy.--species",
+    "PC_OBSERVABLE.cohesive_energy.--supercell",
+    "PC_OBSERVABLE.cohesive_energy.--target",
+    "PC_OBSERVABLE.cohesive_energy.--unconverged",
+    "PC_OBSERVABLE.cohesive_energy.--weight",
+    "ROOT.PC_OBSERVABLE",
+    "RULE.PC_OBSERVABLE_GRAD_STRATEGY",
+    "RULE.PC_OBSERVABLE_excludes_PC_LAMMPS",
+]
+
+nfp_targets_rejection = [
+    "PC_EMAE.--skip-above",
+    "PC_EMAE.--skip-rel",
+]
+
+nfp_targets_scripts = [
+    "ENV.TADAH_PC_ISOLATION",
+    "ENV.TADAH_PC_WORKER_TIMEOUT",
+    "LAMMPS_SCRIPT",
+    "PC_LAMMPS.--hotvar",
+    "PC_LAMMPS.--invar",
+    "PC_LAMMPS.--maxtime",
+    "PC_LAMMPS.--ncpu",
+    "PC_LAMMPS.--outvar",
+    "PC_LAMMPS.--script",
+    "PC_LAMMPS.--varloss",
+    "ROOT.MAXTIME",
+    "ROOT.PC_ISOLATION",
+    "ROOT.PC_LAMMPS",
+    "ROOT.PC_SCRIPT_TIMEOUT",
+    "ROOT.PC_WORKER_TIMEOUT",
+    "RULE.PC_LAMMPS_GRAD_STRATEGY",
+    "RULE.PC_LAMMPS_INNER_gradient_free",
+    "RULE.PC_LAMMPS_INNER_local_optimiser",
+    "RULE.PC_LAMMPS_hotvar_unique",
+    "RULE.PC_LAMMPS_local_optimiser",
+]
+
+nfp_targets_validation = [
+    "RULE.metric_needs_validation",
+]
+
+nfp_optimizer_block = [
+    "OPTIMIZER.VECTOR_ARR",
+    "REMOVED.ENDLOCAL",
+    "REMOVED.ENDPRESTAGE",
+    "REMOVED.INCLUDE_CONFIG",
+    "REMOVED.INIT_INCLUDE_CONFIG",
+    "REMOVED.INIT_K",
+    "REMOVED.INIT_SEED",
+    "REMOVED.INIT_STRATEGY",
+    "REMOVED.LOCAL",
+    "REMOVED.MULTISTART",
+    "REMOVED.MULTISTART_BUDGET_PER_START",
+    "REMOVED.MULTISTART_PARALLEL",
+    "REMOVED.NOISE_AUTO",
+    "REMOVED.NOISE_CALIBRATION",
+    "REMOVED.PARALLEL",
+    "REMOVED.PRESTAGE",
+    "REMOVED.RESTART_AFTER_STAGNATION",
+    "REMOVED.RESTART_INIT_STRATEGY",
+    "REMOVED.RESTART_MAX",
+    "REMOVED.STAGE_GLOBAL",
+    "RULE.optimizer_block_required",
+]
+
+nfp_optimizer_block_budgets = [
+    "OPTIMIZER.FTOL_ABS",
+    "OPTIMIZER.FTOL_REL",
+    "OPTIMIZER.MAXEVAL",
+    "OPTIMIZER.MAXTIME",
+    "OPTIMIZER.STOPVAL",
+    "OPTIMIZER.XTOL_ABS",
+    "OPTIMIZER.XTOL_REL",
+    "STRATEGY.BUDGET_PER_START",
+]
+
+nfp_optimizer_block_initialisation = [
+    "BLOCK.INIT",
+    "INIT.K_TOTAL",
+    "INIT.METHOD",
+    "INIT.WARM_ON_MISMATCH",
+    "METHOD.CONFIG",
+    "METHOD.LHS",
+    "METHOD.RANDOM",
+    "METHOD.SOBOL",
+    "METHOD.WARM",
+    "RULE.set_once_for_starting_points",
+]
+
+nfp_optimizer_block_inner = [
+    "BLOCK.INNER",
+    "RULE.inner_block_not_accepted",
+    "RULE.inner_block_required",
+    "RULE.inner_global_search",
+    "RULE.inner_needs_own_inner",
+    "RULE.inner_not_nlopt",
+    "RULE.inner_search_needs_stop",
+    "RULE.local_search_needs_stop",
+]
+
+nfp_optimizer_block_noise = [
+    "BLOCK.NOISE",
+    "NOISE.AUTO",
+    "NOISE.CALIBRATION",
+]
+
+nfp_optimizer_block_restart = [
+    "BLOCK.RESTART",
+    "RESTART.AFTER_STAGNATION",
+    "RESTART.MAX",
+    "RULE.multi_rank_restart",
+    "RULE.restart_grid",
+]
+
+nfp_optimizer_block_strategies = [
+    "BLOCK.EXPLORE",
+    "BLOCK.OPTIMIZER",
+    "BLOCK.REFINE",
+    "BLOCK.STRATEGY",
+    "GROUP.OPTIMIZER",
+    "RULE.set_once_for_optimiser",
+    "STRATEGY.N_STARTS",
+    "STRATEGY.TOPK",
+    "STRATEGY.TYPE",
+    "STRATEGY.TYPE.MULTISTART",
+    "STRATEGY.TYPE.PLAIN",
+    "STRATEGY.TYPE.PRESTAGE",
+]
+
+nfp_optimizer_block_threads = [
+    "INIT.SEED",
+    "OPTIMIZER.SEED",
+    "OPTIMIZER.THREADS",
+    "RULE.multi_rank_optimiser",
+    "RULE.multi_rank_population",
+]
+
+nfp_choosing = [
+    "OPTIMIZER.ALGO",
+    "OPTIMIZER.LIB",
+    "OPTIMIZER.PARAM",
+    "PARAM.NLOPT",
+]
+
+nfp_choosing_baselines = [
+    "PARAM.TADAH:GRID",
+    "PARAM.TADAH:GRID.GRID_POINTS",
+    "PARAM.TADAH:RANDOM",
+    "TADAH:GRID",
+    "TADAH:RANDOM",
+]
+
+nfp_choosing_global = [
+    "DLIB:GFS",
+    "NLOPT:GD_MLSL",
+    "NLOPT:GD_MLSL_LDS",
+    "NLOPT:GD_STOGO",
+    "NLOPT:GD_STOGO_RAND",
+    "NLOPT:GN_AGS",
+    "NLOPT:GN_CRS2_LM",
+    "NLOPT:GN_DIRECT",
+    "NLOPT:GN_DIRECT_L",
+    "NLOPT:GN_DIRECT_L_NOSCAL",
+    "NLOPT:GN_DIRECT_L_RAND",
+    "NLOPT:GN_DIRECT_L_RAND_NOSCAL",
+    "NLOPT:GN_DIRECT_NOSCAL",
+    "NLOPT:GN_ESCH",
+    "NLOPT:GN_ISRES",
+    "NLOPT:GN_MLSL",
+    "NLOPT:GN_MLSL_LDS",
+    "NLOPT:GN_ORIG_DIRECT",
+    "NLOPT:GN_ORIG_DIRECT_L",
+    "NLOPT:G_MLSL",
+    "NLOPT:G_MLSL_LDS",
+    "OPTIMIZER.POPULATION",
+    "PARAM.DLIB:GFS",
+]
+
+nfp_choosing_gradients = [
+    "CERES:DOGLEG",
+    "CERES:LBFGS",
+    "CERES:LEVENBERG_MARQUARDT",
+    "CERES:NLCG",
+    "CERES:STEEPEST_DESCENT",
+    "CERES:SUBSPACE_DOGLEG",
+    "CERES:WOLFE",
+    "DLIB:BFGS",
+    "NLOPT:LD_AUGLAG",
+    "NLOPT:LD_AUGLAG_EQ",
+    "NLOPT:LD_CCSAQ",
+    "NLOPT:LD_LBFGS",
+    "NLOPT:LD_MMA",
+    "NLOPT:LD_SLSQP",
+    "NLOPT:LD_TNEWTON",
+    "NLOPT:LD_TNEWTON_PRECOND",
+    "NLOPT:LD_TNEWTON_PRECOND_RESTART",
+    "NLOPT:LD_TNEWTON_RESTART",
+    "NLOPT:LD_VAR1",
+    "NLOPT:LD_VAR2",
+    "NLOPT:NLOPT_LD_LBFGS_NOCEDAL",
+    "OPTIMIZER.GRAD_STRATEGY",
+    "PARAM.CERES",
+    "PARAM.CERES.max_iter",
+    "PARAM.CERES.max_ls_iter",
+    "PARAM.CERES.tol_gradinf",
+    "PARAM.DLIB:BFGS",
+    "PARAM.DLIB:BFGS.tol_gradinf",
+    "PARAM.FD.diff_method",
+    "PARAM.FD.fd_kernel",
+    "PARAM.FD.fd_step",
+    "RULE.PC_LAMMPS_gradient_free",
+]
+
+nfp_choosing_local = [
+    "NLOPT:AUGLAG",
+    "NLOPT:AUGLAG_EQ",
+    "NLOPT:LN_AUGLAG",
+    "NLOPT:LN_AUGLAG_EQ",
+    "NLOPT:LN_BOBYQA",
+    "NLOPT:LN_COBYLA",
+    "NLOPT:LN_NELDERMEAD",
+    "NLOPT:LN_NEWUOA",
+    "NLOPT:LN_NEWUOA_BOUND",
+    "NLOPT:LN_PRAXIS",
+    "NLOPT:LN_SBPLX",
+]
+
+nfp_choosing_step = [
+    "OPTIMIZER.STEP",
+]
+
+nfp_annealing = [
+    "PARAM.TADAH:ANNEAL.C",
+    "PARAM.TADAH:ANNEAL.L",
+    "PARAM.TADAH:ANNEAL.LADDER_ADAPT_UPDATES",
+    "PARAM.TADAH:ANNEAL.STEP_ADAPT_EVERY",
+    "PARAM.TADAH:ANNEAL.STEP_AUTO",
+    "PARAM.TADAH:ANNEAL.STEP_AUTO_SWEEPS",
+    "PARAM.TADAH:ANNEAL.T0_PACCEPT",
+]
+
+nfp_annealing_choice = [
+    "PARAM.TADAH:ANNEAL",
+    "TADAH:ANNEAL",
+    "TADAH:ANNEAL_PA",
+    "TADAH:ANNEAL_PT",
+]
+
+nfp_annealing_initialisation = [
+    "PARAM.TADAH:ANNEAL.INIT_JITTER_AUDIT",
+    "PARAM.TADAH:ANNEAL.INIT_JITTER_LADDER",
+    "PARAM.TADAH:ANNEAL.INIT_JITTER_MAX",
+    "PARAM.TADAH:ANNEAL.INIT_JITTER_MAXEVAL",
+    "PARAM.TADAH:ANNEAL.INIT_JITTER_MAXTIME_FRAC",
+    "PARAM.TADAH:ANNEAL.INIT_JITTER_PROBES",
+    "PARAM.TADAH:ANNEAL.INIT_JITTER_SAMPLE",
+    "PARAM.TADAH:ANNEAL.INIT_MODE",
+]
+
+nfp_annealing_replicas = [
+    "PARAM.TADAH:ANNEAL.LADDER_ADAPT",
+    "PARAM.TADAH:ANNEAL.LADDER_ADAPT_DECAY",
+    "PARAM.TADAH:ANNEAL.LADDER_ADAPT_EVERY",
+    "PARAM.TADAH:ANNEAL.LADDER_ADAPT_GAIN",
+    "PARAM.TADAH:ANNEAL.LADDER_FREEZE",
+    "PARAM.TADAH:ANNEAL.LADDER_MIN_GAP",
+    "PARAM.TADAH:ANNEAL.LADDER_POWER",
+    "PARAM.TADAH:ANNEAL.REPLICAS",
+    "PARAM.TADAH:ANNEAL.SWAP_EVERY",
+    "PARAM.TADAH:ANNEAL.SWAP_WINDOW",
+]
+
+nfp_annealing_steps = [
+    "PARAM.TADAH:ANNEAL.BOUNDARY_MODE",
+    "PARAM.TADAH:ANNEAL.CORANA",
+    "PARAM.TADAH:ANNEAL.CORANA_C",
+    "PARAM.TADAH:ANNEAL.NS",
+    "PARAM.TADAH:ANNEAL.RESET_TO_BEST",
+    "PARAM.TADAH:ANNEAL.STEP_FRAC",
+    "PARAM.TADAH:ANNEAL.STEP_MODE",
+    "PARAM.TADAH:ANNEAL.STEP_TRUST_FACTOR",
+    "PARAM.TADAH:ANNEAL.STEP_WARMUP_SWEEPS",
+    "PARAM.TADAH:ANNEAL.V_FLOOR_FRAC",
+]
+
+nfp_annealing_stopping = [
+    "PARAM.TADAH:ANNEAL.NEPS",
+]
+
+nfp_annealing_temperatures = [
+    "PARAM.TADAH:ANNEAL.CHAIN_LENGTH",
+    "PARAM.TADAH:ANNEAL.ESS_TARGET",
+    "PARAM.TADAH:ANNEAL.LADDER_SPAN",
+    "PARAM.TADAH:ANNEAL.NT",
+    "PARAM.TADAH:ANNEAL.REANNEAL",
+    "PARAM.TADAH:ANNEAL.REANNEAL_SCALE",
+    "PARAM.TADAH:ANNEAL.RT",
+    "PARAM.TADAH:ANNEAL.T0_ACCEPT",
+    "PARAM.TADAH:ANNEAL.T0_PROBES",
+    "PARAM.TADAH:ANNEAL.T_COLD",
+    "PARAM.TADAH:ANNEAL.T_HOT",
+    "PARAM.TADAH:ANNEAL.T_INIT",
+    "PARAM.TADAH:ANNEAL.T_MIN",
+]
+
+nfp_annealing_terms = [
+    "PARAM.TADAH:ANNEAL.SWEEPS",
+]
+
+nfp_asa = [
+    "ASA:ASA",
+    "PARAM.ASA:ASA",
+    "PARAM.ASA:ASA.Asa_Recursive_Level",
+    "PARAM.ASA:ASA.Asymp_Exp_Param",
+    "PARAM.ASA:ASA.Bias_Acceptance",
+    "PARAM.ASA:ASA.Coarse_Resolution",
+    "PARAM.ASA:ASA.Fit_Local",
+    "PARAM.ASA:ASA.Include_Integer_Parameters",
+    "PARAM.ASA:ASA.Iter_Max",
+    "PARAM.ASA:ASA.Limit_Weights",
+    "PARAM.ASA:ASA.Multi_Grid",
+    "PARAM.ASA:ASA.Multi_Number",
+    "PARAM.ASA:ASA.Multi_Specify",
+    "PARAM.ASA:ASA.NoOfSamples",
+    "PARAM.ASA:ASA.Penalty",
+    "PARAM.ASA:ASA.Queue_Resolution",
+    "PARAM.ASA:ASA.Queue_Size",
+    "PARAM.ASA:ASA.Random_Array_Dim",
+    "PARAM.ASA:ASA.Sequential_Parameters",
+    "PARAM.ASA:ASA.User_Cost_Temperature",
+]
+
+nfp_asa_batches = [
+    "PARAM.ASA:ASA.Gener_Block",
+    "PARAM.ASA:ASA.Gener_Block_Max",
+    "PARAM.ASA:ASA.Gener_Mov_Avr",
+]
+
+nfp_asa_minimal = [
+    "PARAM.ASA:ASA.Number_Cost_Samples",
+    "PARAM.ASA:ASA.User_Initial_Parameters",
+]
+
+nfp_asa_probes = [
+    "PARAM.ASA:ASA.Curvature_0",
+    "PARAM.ASA:ASA.Delta_X",
+    "PARAM.ASA:ASA.Reanneal_Parameters",
+    "PARAM.ASA:ASA.User_Delta_Parameter",
+    "PARAM.ASA:ASA.User_Tangents",
+]
+
+nfp_asa_stopping = [
+    "PARAM.ASA:ASA.Cost_Precision",
+    "PARAM.ASA:ASA.Limit_Acceptances",
+    "PARAM.ASA:ASA.Limit_Generated",
+    "PARAM.ASA:ASA.Limit_Invalid_Generated_States",
+    "PARAM.ASA:ASA.Maximum_Cost_Repeat",
+]
+
+nfp_asa_tuning = [
+    "PARAM.ASA:ASA.Acceptance_Frequency_Modulus",
+    "PARAM.ASA:ASA.Accepted_To_Generated_Ratio",
+    "PARAM.ASA:ASA.Cost_Parameter_Scale_Ratio",
+    "PARAM.ASA:ASA.Generated_Frequency_Modulus",
+    "PARAM.ASA:ASA.Initial_Parameter_Temperature",
+    "PARAM.ASA:ASA.Reanneal_Cost",
+    "PARAM.ASA:ASA.Temperature_Anneal_Scale",
+    "PARAM.ASA:ASA.Temperature_Ratio_Scale",
+    "PARAM.ASA:ASA.User_Parameter_Temperature",
+    "PARAM.ASA:ASA.User_Quench_Cost_Scale",
+    "PARAM.ASA:ASA.User_Quench_Param_Scale",
+    "PARAM.ASA:ASA.User_Temperature_Ratio",
+]
+
+nfp_output_archives = [
+    "ROOT.BDUMP",
+    "ROOT.DUMP",
+]
+
+nfp_output_histories = [
+    "ROOT.BOUTPUT",
+    "ROOT.DIGITS",
+    "ROOT.OUTPUT",
+    "ROOT.QFLUSH",
+]

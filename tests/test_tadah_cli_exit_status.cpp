@@ -3512,9 +3512,10 @@ TEST_CASE("Subcommand: hpo in a tadah built without NFP is refused, naming "
 }
 
 /* Pins: in a tadah built without TADAH_ENABLE_NFP, `tadah -h` lists hpo as
- * "hpo Optimises the model architecture and hyperparameters. tadah hpo needs
- * the Nested Fitting Procedure, ...; a build with -DTADAH_ENABLE_NFP=ON
- * (see Installation) has it." (whitespace collapsed: the listing wraps), `tadah
+ * "hpo Searches the hyperparameters of a potential by nested fitting. tadah
+ * hpo needs the Nested Fitting Procedure, ...; a build with
+ * -DTADAH_ENABLE_NFP=ON (see Installation) has it." (whitespace collapsed:
+ * the listing wraps), `tadah
  * hpo -h` has the same two sentences, and `tadah explain hpo` ends with a
  * blank line and that message with a full stop; each exits 0.
  * Before the fix: none of them had the message (the listing and `tadah
@@ -3525,8 +3526,8 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo say "
           "that a tadah built without NFP has no hpo",
           "[TadahCLI][exit-status][not-built]") {
   ScratchCwd cwd("hpo_not_built_help");
-  const std::string described = std::string("Optimises the model architecture "
-                                            "and hyperparameters. ") +
+  const std::string described = std::string("Searches the hyperparameters of "
+                                            "a potential by nested fitting. ") +
                                 kHpoNotBuilt + ".";
   {
     const CliRun r = run_tadah({"tadah", "-h"});
@@ -3554,9 +3555,9 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo say "
 }
 #else
 /* Pins: in a tadah built with TADAH_ENABLE_NFP, `tadah -h` lists hpo as
- * "hpo Optimises the model architecture and hyperparameters.", and neither
- * it, `tadah hpo -h` nor `tadah explain hpo` (each exits 0 and prints
- * something) has the message of a tadah without NFP, kHpoNotBuilt
+ * "hpo Searches the hyperparameters of a potential by nested fitting.", and
+ * neither it, `tadah hpo -h` nor `tadah explain hpo` (each exits 0 and
+ * prints something) has the message of a tadah without NFP, kHpoNotBuilt
  * (whitespace collapsed: the help wraps its lines).
  * Before the fix: passes as well (a pin: only a tadah without NFP has the
  * message). The check looked for "which this tadah was built without",
@@ -3577,7 +3578,8 @@ TEST_CASE("Subcommand: tadah -h, tadah hpo -h and tadah explain hpo of a "
   }
   const CliRun h = run_tadah({"tadah", "-h"});
   CHECK(contains(one_line(h.out),
-                 "hpo Optimises the model architecture and hyperparameters."));
+                 "hpo Searches the hyperparameters of a potential by nested "
+                 "fitting."));
 }
 #endif  // TADAH_ENABLE_NFP
 

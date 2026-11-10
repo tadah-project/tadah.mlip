@@ -539,6 +539,11 @@ def generate_cli_rst(tasks_map, allowed_map, output_path):
     """
     same approach: each command is rendered as a heading followed by::
     then the block from create_command_block
+
+    Each heading has the label cli_<words of the command joined by _>
+    (cli_hpo, cli_data_print), which other pages cite with :ref:. cli.rst
+    includes the page, and conf.py does not build it as a page of its own,
+    so each label is defined once.
     """
     tree = build_nested_task_hierarchy(tasks_map)
 
@@ -551,6 +556,8 @@ def generate_cli_rst(tasks_map, allowed_map, output_path):
         heading_text = " ".join(path_names)
 
         underline_char = ["=", "-", "~", "^", '"'][min(depth, 4)]
+        lines.append(f".. _cli_{'_'.join(path_names).lower()}:")
+        lines.append("")
         lines.append(heading_text)
         lines.append(underline_char * len(heading_text))
         lines.append("")

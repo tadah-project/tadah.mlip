@@ -5,19 +5,18 @@ This example shows what the :term:`balance table` of a fit tells about the balan
 between energies and forces, and what a smaller :ref:`ESIGMA <ESIGMA>`
 changes. It applies when a fit's energies, forces or stresses miss the
 accuracy asked for, and when choosing ``ESIGMA``, :ref:`FSIGMA <FSIGMA>` and
-:ref:`SSIGMA <SSIGMA>`. It fits the energies and forces of the training data
-of :ref:`cli_example_2` twice: with the default error scales, and with
-``ESIGMA`` ten times smaller. The columns of the table and how to read them
+:ref:`SSIGMA <SSIGMA>`. It fits the energies and forces of a Ta dataset
+twice: with the default error scales, and with ``ESIGMA`` ten times
+smaller. The columns of the table and how to read them
 are described in :ref:`fit_balance`, which shows the tables of both fits.
 
 Files
 .....
 
 The example reads the dataset :download:`tdata.db
-<../../examples/CLI/ex_2/tdata.db>` of Example 2: 100 snapshots of bcc Ta
+<../../examples/CLI/ex_4_fit_balance/tdata.db>`: 100 snapshots of bcc Ta
 cells of 54 atoms from LAMMPS molecular dynamics with the Ta1_Ravelo_2013
-EAM potential. Its training configurations read it as ``../ex_2/tdata.db``,
-from a directory ``ex_2`` beside the example's directory.
+EAM potential, in the example's directory.
 
 The first fit, :download:`config.train
 <../../examples/CLI/ex_4_fit_balance/config.train>`, fits energies and

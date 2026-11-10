@@ -170,9 +170,10 @@ docs_sphinx:
       git clone --depth 1 --branch "$CI_COMMIT_REF_NAME" "${TADAH_GIT_BASE:?the CI/CD variable TADAH_GIT_BASE is not set}/core.git" "$docs_src/CORE"
       git clone --depth 1 --branch "$CI_COMMIT_REF_NAME" "${TADAH_GIT_BASE:?the CI/CD variable TADAH_GIT_BASE is not set}/hpo.git" "$docs_src/HPO"
       export TADAH_CORE_SOURCE_DIR="$docs_src/CORE" TADAH_HPO_SOURCE_DIR="$docs_src/HPO"
-      # Locator and hpo.html redirect checks, then the build (conf.py runs
-      # the page generators; its check_redirect extension checks hpo.html
-      # against the built site).
+      # Locator and compatibility-page checks, then the build (conf.py runs
+      # the page generators; its legacy_routes extension checks the
+      # destinations of the pages of earlier releases against the built site
+      # and writes those pages).
       python3 -m unittest discover -s docs/tools/tests -v
       sphinx-build -W --keep-going -b html docs/source docs/build/html
   artifacts:

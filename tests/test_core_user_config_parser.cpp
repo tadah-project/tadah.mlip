@@ -2268,8 +2268,8 @@ TEST_CASE("Config parser: a second line of a potential's key in a file that "
 
 /* Pins: a key that a command takes fewer values of than the key itself (the
  * command's table in the blueprint gives the key a number of its own:
- * OUTFILE of tadah train, tadah refit and tadah analysis bfunc and
- * suggest_bounds, each of which writes one file) is read with the
+ * OUTFILE of tadah train, tadah refit and tadah analysis bfunc, each of
+ * which writes one file) is read with the
  * command's number in a configuration file of that command
  * (set_command()):
  *  - outer.cfg "OUTFILE a.tadah", "CONFIG inc.cfg", inc.cfg "OUTFILE
@@ -2281,17 +2281,19 @@ TEST_CASE("Config parser: a second line of a potential's key in a file that "
  *    read so far give 2" (of tadah refit, ... for the others);
  *  - a parse of no command reads both lines, and both values of one line,
  *    as OUTFILE takes any number of values.
- * A configuration file of tadah analysis dataset_stats, whose -c needs -o
- * (the cli_needs of its CONFIG key), refuses the first OUTFILE line of
- * either file at its line: "Key OUTFILE on line 1 of <outer> is not
- * accepted here: OUTFILE is the option --outfile (-o) that --config (-c)
- * of tadah analysis dataset_stats needs on the command line, not a key of
- * a configuration file of tadah analysis dataset_stats".
+ * A configuration file of tadah analysis dataset_stats or tadah analysis
+ * suggest_bounds, whose -c needs -o (the cli_needs of its CONFIG key),
+ * refuses the first OUTFILE line of either file at its line: "Key OUTFILE
+ * on line 1 of <outer> is not accepted here: OUTFILE is the option
+ * --outfile (-o) that --config (-c) of tadah analysis dataset_stats needs
+ * on the command line, not a key of a configuration file of tadah analysis
+ * dataset_stats".
  * Before the fix: every parse read both lines and both values (OUTFILE
  * a.tadah b.tadah), and the command wrote the first file, a.tadah, the
  * other ignored without a message. Before the fix of a key that -c needs
  * on the command line, tadah analysis dataset_stats was one of the
- * commands above, with their two messages. */
+ * commands above, with their two messages; before the fix that makes the
+ * -c of tadah analysis suggest_bounds need -o, so was suggest_bounds. */
 TEST_CASE("Config parser: a key a command takes one value of is set once in "
           "a configuration file of that command",
           "[config][config_include][concatenation][command_counts]") {
@@ -2301,8 +2303,7 @@ TEST_CASE("Config parser: a key a command takes one value of is set once in "
       "outfile_outer.cfg", "OUTFILE a.tadah\nCONFIG " + inc + "\n");
   const std::string one =
       dir.write("outfile_one.cfg", "OUTFILE a.tadah b.tadah\n");
-  for (const std::string task :
-       {"TRAIN", "REFIT", "ANALYSIS.bfunc", "ANALYSIS.suggest_bounds"}) {
+  for (const std::string task : {"TRAIN", "REFIT", "ANALYSIS.bfunc"}) {
     INFO("command " << task);
     CoreUserConfigParser parser;
     parser.set_command(task);
@@ -2316,19 +2317,71 @@ TEST_CASE("Config parser: a key a command takes one value of is set once in "
               ": OUTFILE of " + task_command_words(task) +
               " takes at most 1, and its lines read so far give 2");
   }
-  {
+  for (const std::string task :
+       {"ANALYSIS.dataset_stats", "ANALYSIS.suggest_bounds"}) {
+    INFO("command " << task);
     CoreUserConfigParser parser;
-    parser.set_command("ANALYSIS.dataset_stats");
+    parser.set_command(task);
+    const std::string words = task_command_words(task);
     for (const std::string &file : {outer, one})
       CHECK(runtime_error_of([&] { return parser.parse(file); },
                              "parse " + file) ==
             "Key OUTFILE on line 1 of " + file +
                 " is not accepted here: OUTFILE is the option --outfile (-o) "
-                "that --config (-c) of tadah analysis dataset_stats needs on "
-                "the command line, not a key of a configuration file of "
-                "tadah analysis dataset_stats");
+                "that --config (-c) of " + words + " needs on the command "
+                "line, not a key of a configuration file of " + words);
   }
   const std::vector<std::string> both{"a.tadah", "b.tadah"};
   CHECK(CoreUserConfigParser().parse(outer)("OUTFILE") == both);
   CHECK(CoreUserConfigParser().parse(one)("OUTFILE") == both);
+}
+
+/* Pins: a configuration file of a command whose -c needs the option of a
+ * key on the command line refuses a line of that key at its line, also
+ * for a key that other commands read from a configuration file
+ * (HPOTARGET, which tadah analysis check_bounds reads from one): a
+ * configuration file of tadah hpo with "HPOTARGET config.hpo" on line 2,
+ * "Key HPOTARGET on line 2 of <file> is not accepted here: HPOTARGET is
+ * the option --hpotarget that --config (-c) of tadah hpo needs on the
+ * command line, not a key of a configuration file of tadah hpo"; a CONFIG
+ * include of tadah hpo names the line of the including file as well
+ * ("... on line 1 of <inc> (CONFIG on line 1 of <outer>) ..."); the same
+ * file is read by tadah analysis check_bounds (HPOTARGET config.hpo) and
+ * by a parse of no command; a potential (a file with WEIGHTS) with an
+ * HPOTARGET line loads as a configuration file of tadah hpo without it,
+ * the line of a run setting.
+ * Before the fix: tadah hpo read the line, and its --hpotarget, which its
+ * -c needs, replaced it without a message. */
+TEST_CASE("Config parser: a configuration file of tadah hpo refuses an "
+          "HPOTARGET line, which --hpotarget replaces",
+          "[config][command_keys][hpotarget]") {
+  RefuseScratch dir;
+  const std::string file =
+      dir.write("hpo_target.cfg", "DBFILE db.tadah\nHPOTARGET config.hpo\n");
+  const std::string inc = dir.write("hpo_inc.cfg", "HPOTARGET config.hpo\n");
+  const std::string outer =
+      dir.write("hpo_outer.cfg", "CONFIG " + inc + "\nDBFILE db.tadah\n");
+  CoreUserConfigParser hpo;
+  hpo.set_command("HPO");
+  CHECK(runtime_error_of([&] { return hpo.parse(file); }, "parse " + file) ==
+        "Key HPOTARGET on line 2 of " + file +
+            " is not accepted here: HPOTARGET is the option --hpotarget that "
+            "--config (-c) of tadah hpo needs on the command line, not a key "
+            "of a configuration file of tadah hpo");
+  CHECK(runtime_error_of([&] { return hpo.parse(outer); }, "parse " + outer) ==
+        "Key HPOTARGET on line 1 of " + inc + " (CONFIG on line 1 of " +
+            outer +
+            ") is not accepted here: HPOTARGET is the option --hpotarget "
+            "that --config (-c) of tadah hpo needs on the command line, not "
+            "a key of a configuration file of tadah hpo");
+  CoreUserConfigParser check;
+  check.set_command("ANALYSIS.check_bounds");
+  CHECK(check.parse(file).get<std::string>("HPOTARGET") == "config.hpo");
+  CHECK(CoreUserConfigParser().parse(file).get<std::string>("HPOTARGET") ==
+        "config.hpo");
+  const std::string pot = dir.write(
+      "hpo_pot.tadah", "WEIGHTS 1.0 2.0\nHPOTARGET config.hpo\n");
+  const tadah::core::Context p = hpo.parse(pot);
+  CHECK(p.has_stored("WEIGHTS"));
+  CHECK_FALSE(p.has_stored("HPOTARGET"));
 }

@@ -264,15 +264,21 @@ TEST_CASE("TaskFactory refuses OUTFILE in a configuration file of tadah hpo "
 /* Pins: a command whose -c (--config) needs an option on the command line
  * (the blueprint's cli_needs of its CONFIG key) refuses a line of that
  * option's key in its configuration file, at its line, naming the option,
- * the command and its -c: tadah analysis dataset_stats -c needs
- * --outfile (-o), and tadah analysis bfunc -c needs --range (-r) and
- * --type, so the command line always gives the key and its value replaces
- * the line.
+ * the command and its -c: tadah analysis dataset_stats -c and tadah
+ * analysis suggest_bounds -c need --outfile (-o), tadah analysis bfunc -c
+ * needs --range (-r) and --type, and tadah hpo -c needs --hpotarget, a key
+ * that tadah analysis check_bounds reads from a configuration file; the
+ * command line always gives the key and its value would replace the line.
  * Before the fix: the line was read and then replaced by the option's
  * value, without a word: tadah analysis dataset_stats -c cfg.tadah -o
  * stats.txt with an OUTFILE line in cfg.tadah wrote stats.txt only, and
  * tadah analysis bfunc took --range and --type over the RANGE and TYPE
- * lines; read_config here returned "" for each. */
+ * lines; read_config here returned "" for each. Before the fix that makes
+ * the -c of tadah analysis suggest_bounds need -o and refuses a line of a
+ * key that is no command key: suggest_bounds read the OUTFILE line (and
+ * wrote the configuration's OUTFILE, a training configuration's potential
+ * file), and tadah hpo read the HPOTARGET line, which --hpotarget
+ * replaced: read_config returned "" for both. */
 TEST_CASE("TaskFactory refuses a line of an option that -c of the command "
           "needs",
           "[task_factory][command_keys][outfile]") {
@@ -290,7 +296,11 @@ TEST_CASE("TaskFactory refuses a line of an option that -c of the command "
         Case{"ANALYSIS.bfunc", "tadah analysis bfunc", "RANGE 0.5 5 3",
              "RANGE", "--range (-r)"},
         Case{"ANALYSIS.bfunc", "tadah analysis bfunc", "TYPE mb N", "TYPE",
-             "--type"}}) {
+             "--type"},
+        Case{"ANALYSIS.suggest_bounds", "tadah analysis suggest_bounds",
+             "OUTFILE suggested.hpo", "OUTFILE", "--outfile (-o)"},
+        Case{"HPO", "tadah hpo", "HPOTARGET config.hpo", "HPOTARGET",
+             "--hpotarget"}}) {
     DYNAMIC_SECTION(c.command << ": " << c.line) {
       const std::string file = tmp.write(
           std::string(c.key) + ".cfg", std::string(kHead) + c.line + "\n");
@@ -305,17 +315,18 @@ TEST_CASE("TaskFactory refuses a line of an option that -c of the command "
   }
 }
 
-/* Pins: tadah analysis suggest_bounds -c and tadah analysis bfunc -c read
- * the OUTFILE line of their configuration file (the task's OUTFILE is
- * out.txt): their -c needs no --outfile.
- * Before the fix: passes as well (a pin). */
+/* Pins: tadah analysis bfunc -c reads the OUTFILE line of its
+ * configuration file (the task's OUTFILE is out.txt): its -c needs no
+ * --outfile.
+ * Before the fix: passes as well (a pin). It pinned tadah analysis
+ * suggest_bounds -c as well until its -c needed -o (the case above). */
 TEST_CASE("TaskFactory reads OUTFILE in a configuration file of tadah "
-          "analysis suggest_bounds and tadah analysis bfunc",
+          "analysis bfunc",
           "[task_factory][command_keys][outfile]") {
   Scratch tmp;
   const std::string file =
       tmp.write("analysis.cfg", std::string(kHead) + "OUTFILE out.txt\n");
-  for (const std::string task : {"ANALYSIS.suggest_bounds", "ANALYSIS.bfunc"}) {
+  for (const std::string task : {"ANALYSIS.bfunc"}) {
     DYNAMIC_SECTION(task) {
       tadah::core::Context ctx;
       const std::string what = read_config(task, file, &ctx);

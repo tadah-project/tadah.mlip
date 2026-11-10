@@ -37,6 +37,14 @@ std::size_t optim_value_position(const std::vector<std::string>& tokens,
   return offset;
 }
 
+/* How a value fails the low-bound rule @p r, after the value in a
+ * message: " is not > 0", " is negative" (a rule >= 0), " is below 3". */
+std::string low_bound_failure(const models::OptimLowBoundRule& r) {
+  const std::string bound = core::format_roundtrip(r.bound);
+  if (r.strict) return " is not > " + bound;
+  return r.bound == 0.0 ? std::string(" is negative") : " is below " + bound;
+}
+
 /* Whether @p value is finite, by its bits (neither -ffast-math nor a
  * floating-point mode can defeat the test). */
 bool value_is_finite(double value) {
@@ -49,13 +57,13 @@ bool value_is_finite(double value) {
 
 }  // namespace
 
-/* Positive-only OPTIM keys, from the same table the refit hpotarget writer
- * uses (MLIP hpotarget_writer.h) so HPO and the writer cannot disagree;
- * keys unknown to that table are sign-free. */
+/* Positive-only OPTIM keys: those whose values the registered descriptors
+ * declare > 0 (models::declared_low_bound_rule), as the refit hpotarget
+ * writer reads them, so HPO and the writer cannot disagree; any other key
+ * is sign-free. */
 bool optim_key_positive_only(const std::string& key) {
-  for (const auto& g : engines::hpotarget_group_specs())
-    if (key == g.key) return g.positive_only;
-  return false;
+  const auto rule = models::declared_low_bound_rule(key);
+  return rule && rule->strict;
 }
 
 std::string optim_fitted_key_error(const std::string& key) {
@@ -416,18 +424,21 @@ OptimLine OptimReader::read(std::istringstream& iss, std::size_t nline) {
    * The distance cutoffs (kOptimAutoExcludedKeys: RCUT2B, RCUTMB) are
    * excluded: the neighbour list is sized from explicit high bounds. */
 
-  /* The low-bound rule of the box (models::optim_low_bound_rule(k,
-   * context)). RHOFORM NONNEG / MONOTONE (rho >= 0 by construction): the
-   * AMPGRIDMB boxes are non-negative (models::optim_key_lower_bound: AUTO
-   * lo = max(0, x0 - d), an explicit lo < 0 is refused), the WATOM boxes
-   * positive and the SGRIDMB boxes positive under MONOTONE and, for the
-   * Gaussian basis, under NONNEG. Every form: a radial bump width box
-   * (SGRID2B of D2_Blip/D2_Blip5, SGRIDMB of a Blip/Blip5 density) is
-   * positive. */
+  /* The low-bound rule of the box (models::optim_box_low_bound_rule(k,
+   * context)): an explicit box below it is refused, an AUTO box that
+   * reaches below it is clamped at OptimLowBoundRule::clamp_low. RHOFORM
+   * NONNEG / MONOTONE (rho >= 0 by construction): the AMPGRIDMB boxes are
+   * non-negative (models::optim_key_lower_bound: AUTO lo = max(0, x0 -
+   * d)), the WATOM boxes positive and the SGRIDMB boxes positive under
+   * MONOTONE and, for the Gaussian basis, under NONNEG. Every form: a
+   * radial bump width box (SGRID2B of D2_Blip/D2_Blip5, SGRIDMB of a
+   * Blip/Blip5 density) is positive. Else the lower limit that the
+   * descriptor reading the key declares: > 0 for the widths and RCUTENV,
+   * >= 0 for the cutoffs and the centres. */
   const bool named_amp=named && k.size()>=11 && k.compare(k.size()-11,11,".AMPLITUDES")==0;
   const bool nonneg_amp = named ? named_amp && binding->positive :
       models::optim_key_lower_bound(k, seed_.rho_form) == models::OptimLowerBound::NonNegative;
-  auto low_rule = named ? std::optional<models::OptimLowBoundRule>{} : models::optim_low_bound_rule(k, context);
+  auto low_rule = named ? std::optional<models::OptimLowBoundRule>{} : models::optim_box_low_bound_rule(k, context);
   if(named && binding->positive)
     low_rule=models::OptimLowBoundRule{!named_amp,named_amp?"nonnegative amplitudes":"a positive scale or radius",k};
   /* What makes the amplitudes of a non-negative amplitude line >= 0: the
@@ -572,7 +583,7 @@ OptimLine OptimReader::read(std::istringstream& iss, std::size_t nline) {
    * descriptor whose entry it is (a D2_BP's width has none). */
   auto entry_low_rule = [&](std::size_t ui) {
     if (!named && low_rule)
-      return models::optim_low_bound_rule(k, context, ui - 1);
+      return models::optim_box_low_bound_rule(k, context, ui - 1);
     return low_rule;
   };
   auto box_passes = [&](double lo_b, double hi_b, std::size_t ui) {
@@ -598,6 +609,8 @@ OptimLine OptimReader::read(std::istringstream& iss, std::size_t nline) {
     const double a = 0.5;  // a FLOOR above 0
     double lo_b = x0 - a;
     if (frac_clamped(vr) && lo_b < 0.0) lo_b = 0.0;
+    if (const auto r = entry_low_rule(ui); r && !r->admits(lo_b))
+      lo_b = r->clamp_low(x0);
     return box_passes(lo_b, x0 + a, ui);
   };
   /* The explicit bounds that give the value of index @p ui (written
@@ -786,6 +799,12 @@ OptimLine OptimReader::read(std::istringstream& iss, std::size_t nline) {
         if (value_rule && !value_rule->strict && x0 < 0.0)
           throw std::runtime_error("the seed " + seed + " is negative, but " +
                                    value_rule->why);
+        /* A seed the low-bound rule of the entry does not take: no AUTO box
+         * around it keeps to the rule. */
+        if (const auto r = entry_low_rule(ui); r && !r->admits(x0))
+          throw std::runtime_error(
+              "the seed " + seed + low_bound_failure(*r) + ", but " + r->by +
+              " requires " + r->requirement);
         if (geometric) {
           if (!(x0 != 0.0)) {
             /* The key, with the index for FSIGMA and SSIGMA, whose two
@@ -861,6 +880,15 @@ OptimLine OptimReader::read(std::istringstream& iss, std::size_t nline) {
             if (lo_i < 0.0) lo_i = 0.0;
             origin = OptimBoxOrigin::AutoLinearNonneg;
           }
+          /* The low-bound rule of the entry: a box that reaches below it
+           * is clamped at it (half-way to the seed for a value that must be
+           * > 0, as the refit writer clamps the box of a width), before the
+           * LOG check below. */
+          if (const auto r = entry_low_rule(ui); r && !r->admits(lo_i)) {
+            lo_i = r->clamp_low(x0);
+            origin = r->strict ? OptimBoxOrigin::AutoLinearPositive
+                               : OptimBoxOrigin::AutoLinearNonneg;
+          }
           /* A half-width below the spacing of the doubles at the seed
            * rounds the box to the seed (the seed of a clamped box is >= 0:
            * a negative one is refused above). */
@@ -919,27 +947,34 @@ OptimLine OptimReader::read(std::istringstream& iss, std::size_t nline) {
             "of a search is inside (0, 1)");
       /* The low-bound rule of this entry (entry_low_rule: on a D2_mJoin
        * line, that of the descriptor whose entry it is): an explicit low
-       * bound as written, an AUTO box with both ends (the line wrote
-       * neither). */
+       * bound as written is refused below it; an AUTO box was clamped at
+       * it above. */
       if (const auto entry_rule = entry_low_rule(ui);
           entry_rule && !entry_rule->admits(lo_i)) {
-        const std::string requires_ =
-            entry_rule->by + " requires " + entry_rule->requirement;
         if (auto_box)
-          throw std::runtime_error(
-              "the AUTO box [" + core::format_roundtrip(lo_i) + ", " +
-              core::format_roundtrip(hi_i) + "] has the low bound " +
-              core::format_roundtrip(lo_i) + ", which " +
-              (entry_rule->strict ? "is not > 0" : "is negative") + ", but " +
-              requires_ + ", so the low bound of its box is " +
-              (entry_rule->strict ? "> 0" : ">= 0"));
+          throw std::logic_error(
+              "OPTIM " + k + ": the AUTO box [" + core::format_roundtrip(lo_i) +
+              ", " + core::format_roundtrip(hi_i) + "] is below the rule of "
+              "its key after its clamp");
+        const std::string bound = core::format_roundtrip(entry_rule->bound);
+        /* The AUTO FRAC box of the key, clamped at the rule (the distance
+         * cutoffs take no AUTO box). */
+        std::string clamp;
+        if (std::find(kOptimAutoExcludedKeys.begin(),
+                      kOptimAutoExcludedKeys.end(),
+                      k) == kOptimAutoExcludedKeys.end())
+          /* a > rule has the bound 0 (OptimLowBoundRule::bound), and
+           * clamp_low halves the seed */
+          clamp = entry_rule->strict
+                      ? std::string(" (an AUTO FRAC box is clamped at half "
+                                    "its seed)")
+                      : " (its AUTO FRAC box, the default, is clamped at " +
+                            bound + ")";
         throw std::runtime_error(
-            "the low bound " + low_tok +
-            (entry_rule->strict ? " is not > 0" : " is negative") + ", but " +
-            requires_ + ", so the low bound of its box is " +
-            (entry_rule->strict ? std::string("> 0")
-                                : std::string(">= 0 (its AUTO FRAC box, the "
-                                              "default, is clamped at 0)")));
+            "the low bound " + low_tok + low_bound_failure(*entry_rule) +
+            ", but " + entry_rule->by + " requires " +
+            entry_rule->requirement + ", so the low bound of its box is " +
+            (entry_rule->strict ? "> " : ">= ") + bound + clamp);
       }
       selected[i] = nline;
       out.boxes.push_back({typed, i, lo_i, hi_i, origin});

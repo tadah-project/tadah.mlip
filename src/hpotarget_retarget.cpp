@@ -129,7 +129,8 @@ void read_kept_selector(const std::string &rest, KeptLine &k) {
 // it; a commented one a physical line `# OPTIM <KEY> (...` (its text cut at
 // the next '#'), another comment that starts with OPTIM being prose. A
 // commented line is read as the active one would be, a line the syntax
-// refuses kept with tadah hpo's reason.
+// refuses kept with tadah hpo's reason, as is a box whose low bound breaks
+// the lower limit the descriptors declare for its key.
 struct Classified {
   std::vector<OptimLine> rewritten;
   std::vector<KeptLine> kept;
@@ -173,10 +174,28 @@ Classified classify_optim_lines(const std::vector<std::string> &lines) {
     std::getline(in, rest, '\0');
     return rest;
   };
+  // Why tadah hpo refuses the explicit box of a one-index line, @p syn,
+  // whose low bound breaks the lower limit the descriptors declare for its
+  // key (one per key, so the file needs no potential for it); empty when
+  // the limit admits it.
+  auto limit_reason = [](const OptimSyntax &syn) -> std::string {
+    const auto rule = tadah::models::declared_low_bound_rule(syn.key);
+    if (!rule || rule->admits(syn.box.low)) return {};
+    const std::string low = tadah::core::format_roundtrip(syn.box.low);
+    const std::string bound = tadah::core::format_roundtrip(rule->bound);
+    const std::string broken =
+        rule->strict ? " is not > " + bound
+        : rule->bound == 0.0 ? std::string(" is negative")
+                             : " is below " + bound;
+    return "is one tadah hpo refuses (OPTIM " + syn.key + " (" +
+           std::to_string(syn.selector.indices.front()) + "): the low bound " +
+           low + broken + ", but the descriptors require " +
+           rule->requirement + ")";
+  };
   // The syntax of an OPTIM line, @p rest its text after the word OPTIM, as
   // tadah hpo reads it; a line it refuses is none, with tadah hpo's reason
   // in @p reasons. @p kept takes the key and indices the line selects.
-  auto read_syntax = [&form_reasons](const std::string &rest, KeptLine &kept,
+  auto read_syntax = [&form_reasons, &limit_reason](const std::string &rest, KeptLine &kept,
                                      std::vector<std::string> &reasons)
       -> std::optional<OptimSyntax> {
     std::istringstream in(rest);
@@ -185,6 +204,8 @@ Classified classify_optim_lines(const std::vector<std::string> &lines) {
       kept.key = syn.key;
       kept.indices = syn.selector.indices;
       for (auto &r : form_reasons(syn)) reasons.push_back(r);
+      if (reasons.empty())
+        if (auto r = limit_reason(syn); !r.empty()) reasons.push_back(r);
       return syn;
     } catch (const std::exception &x) {
       reasons.push_back(std::string("is one tadah hpo refuses (") + x.what() +
@@ -286,20 +307,21 @@ Classified classify_optim_lines(const std::vector<std::string> &lines) {
   return out;
 }
 
+/* Whether the boxes of @p key keep a low bound > 0, and in @p known
+ * whether the key is a group the refit writer emits: a DM_Embed path by
+ * its leaf, any other key by the lower limit the descriptors declare for
+ * its values (hpotarget_group_bound: the widths and RCUTENV), whether or
+ * not the writer emits it. */
 bool group_positive_only(const std::string &key, bool &known) {
   if(key.find('.')!=std::string::npos) {
     const auto leaf=tadah::core::to_upper(key.substr(key.find_last_of('.')+1));
     known=leaf=="CENTRES" || leaf=="AMPLITUDES" || leaf=="ETA" || leaf=="WIDTHS" || leaf=="RADIUS" || leaf=="CUTOFF";
     return leaf=="ETA" || leaf=="WIDTHS" || leaf=="RADIUS" || leaf=="CUTOFF";
   }
-  for (const auto &s : hpotarget_group_specs()) {
-    if (key == s.key) {
-      known = true;
-      return s.positive_only;
-    }
-  }
   known = false;
-  return false;
+  for (const auto &s : hpotarget_group_specs())
+    if (key == s.key) known = true;
+  return hpotarget_group_bound(key).positive_only;
 }
 
 }  // namespace
@@ -514,8 +536,15 @@ RetargetReport retarget_hpotarget_lines(std::vector<std::string> &lines,
            (key == "CGRIDMB" && bump_w.count("MB"));
   };
 
+  // A group whose boxes the writer keeps at or above 0: the amplitudes of
+  // a non-negative density (the file's RHOFORM line or its components),
+  // and a key whose values the descriptors declare >= 0 (the centres:
+  // hpotarget_group_bound).
   auto nonneg_key = [&form,&nonnegative_components](const std::string &key) {
     if(nonnegative_components.count(tadah::core::to_upper(key)))return true;
+    if (hpotarget_group_bound(key).lower ==
+        tadah::models::OptimLowerBound::NonNegative)
+      return true;
     return tadah::models::optim_key_lower_bound(key, form) ==
            tadah::models::OptimLowerBound::NonNegative;
   };
@@ -597,11 +626,24 @@ RetargetReport retarget_hpotarget_lines(std::vector<std::string> &lines,
     const bool is_rcut = group.front()->is_rcut;
     if (is_rcut && forced_rcut.count(key))
       continue;  // centre declared via --rcut2b/--rcutmb: nothing to recover
-    if (!known && !is_rcut)
+    if (!known && !is_rcut) {
+      /* the lower limit of the key that the rewrite keeps to, as tadah hpo
+       * refuses a box below it */
+      std::string limit;
+      if (const auto rule = tadah::models::declared_low_bound_rule(key))
+        limit = "; the descriptors require " + rule->requirement +
+                (rule->strict ? ", so a low bound at or below " +
+                                    tadah::core::format_roundtrip(rule->bound) +
+                                    " is clamped at half the midpoint of the "
+                                    "box"
+                              : ", so a low bound below " +
+                                    tadah::core::format_roundtrip(rule->bound) +
+                                    " is clamped at it");
       rep.warnings.push_back(
           "OPTIM key '" + group.front()->key_written +
           "' is not a standard refit hpotarget group — rewritten with the "
-          "plain symmetric rule.");
+          "plain symmetric rule" + limit + ".");
+    }
 
     // contiguity check: a hand-pruned group shifts gmax/floor vs a fresh
     // emission (bounds still valid, just not identical to a full re-emit)
@@ -663,7 +705,9 @@ RetargetReport retarget_hpotarget_lines(std::vector<std::string> &lines,
       if (std::fabs(d_obs - d_exp) <= 1e-6 * std::max(d_obs, d_exp))
         continue;  // consistent with the rule: midpoint is the centre
       double v;
-      const bool from_lo = is_bump_cgrid && p < 1.0;
+      // A bump centre's box clamped at 0 (its lo moved, its hi capped or
+      // not) recovers from hi, as a clamped non-negative box does.
+      const bool from_lo = is_bump_cgrid && p < 1.0 && !(nonneg && ol->lo == 0.0);
       if (from_lo) {
         v = ol->lo / (1.0 - p);              // branch p·v >= floor
         if (p * std::fabs(v) < floor) v = ol->lo + floor;  // floor branch
@@ -744,7 +788,7 @@ RetargetReport retarget_hpotarget_lines(std::vector<std::string> &lines,
     } else {
       lo = v - d;
       hi = v + d;
-      if (positive_only && lo <= 0.0) lo = std::max(1e-6, 0.5 * std::fabs(v));
+      if (positive_only && lo <= 0.0) lo = tadah::models::positive_box_low(v);
       if (nonneg && lo < 0.0) lo = 0.0;  // the writer's lo = max(0, v - d)
       if (hi <= lo) hi = lo + std::max(floor, 1e-6);
       // the writer's knot-support cap: the box ends at RADIUS
@@ -844,6 +888,16 @@ RetargetReport retarget_hpotarget_lines(std::vector<std::string> &lines,
               ": the file declares RHOFORM " + rep.rhoform + ", which "
               "requires " + rule->requirement + " (`tadah hpo` refuses such "
               "a box under that form).");
+        // The lower limit the descriptors declare for the values of the key
+        // (one per key, so the file needs no potential for it), which
+        // tadah hpo holds every box to.
+        if (const auto rule = tadah::models::declared_low_bound_rule(s.key);
+            rule && !rule->admits(s.lo))
+          throw std::runtime_error(
+              what + "lo must be " + (rule->strict ? "> " : ">= ") +
+              tadah::core::format_roundtrip(rule->bound) +
+              ": the descriptors require " + rule->requirement +
+              " (`tadah hpo` refuses such a box).");
         ol.lo = s.lo;
         ol.hi = s.hi;
         found = true;

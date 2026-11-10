@@ -291,6 +291,13 @@ TEST_CASE("check_bounds: the corners below the density form's low bounds "
   CHECK(s.n_corners_failing == 0);
 }
 
+/* Pins: a Gaussian density's SGRIDMB box from -0.5 fails its corner at
+ * -0.5 under NONNEG (the form's rule), under MONOTONE and under SIGNED,
+ * where the density form sets no rule but DM_REAM declares every SGRIDMB
+ * value > 0 (models::optim_box_low_bound_rule, by which tadah hpo refuses
+ * such a box).
+ * Before the fix: no corner failed under SIGNED (a Gaussian density is not
+ * a bump channel, and the declared limit was not a rule). */
 TEST_CASE("check_bounds: under NONNEG a Gaussian density's SGRIDMB box needs "
           "lo > 0", "[check_bounds][rhoform]") {
   tadah::mlip::StructureDB stdb;
@@ -298,9 +305,100 @@ TEST_CASE("check_bounds: under NONNEG a Gaussian density's SGRIDMB box needs "
   const auto g = run_corners(stdb, ream_seed("NONNEG", 1), b);
   CHECK(g.n_corners == 2);
   CHECK(g.n_corners_failing == 1);
-  // a Gaussian density is not a bump channel: no width rule under SIGNED
-  CHECK(run_corners(stdb, ream_seed("SIGNED", 1), b).n_corners_failing == 0);
+  CHECK(run_corners(stdb, ream_seed("SIGNED", 1), b).n_corners_failing == 1);
   CHECK(run_corners(stdb, ream_seed("MONOTONE", 3), b).n_corners_failing == 1);
+}
+
+/* Pins: a corner below the lower limit that the descriptor reading the key
+ * declares fails, as tadah hpo refuses such a box at its line
+ * (models::optim_box_low_bound_rule): on a D2_BP, SGRID2B (1) [-0.5, 1]
+ * (> 0) and CGRID2B (2) [-0.5, 2.5] (>= 0) fail their corner at -0.5,
+ * CGRID2B (2) [0, 2.5] none; on a DM_mBlipEnv, RCUTENV [-1, 7] fails its
+ * corner at -1 and CEMBFUNC [-1, 1] (no limit) none. Read from a target
+ * file, OPTIM RCUTENV (1) -1 7 is refused with the reader's message, as
+ * tadah hpo refuses it.
+ * Before the fix: no corner failed, and the line was read. */
+TEST_CASE("check_bounds: a corner below the lower limit a descriptor "
+          "declares fails",
+          "[check_bounds][low_bound]") {
+  tadah::core::PeriodicTable::initialize();
+  tadah::mlip::StructureDB stdb;
+  Context bp;
+  bp.add("ATOM", "Ta");
+  bp.add("INIT2B", "true");
+  bp.add("INITMB", "false");
+  bp.add("TYPE2B", "D2_BP 2 2 Ta Ta");
+  bp.add("CGRID2B", "0.0 2.0");
+  bp.add("SGRID2B", "0.5 1.0");
+  bp.add("RCTYPE2B", "Cut_Cos");
+  bp.add("RCUT2B", 5.0);
+  bp.add("VERBOSE", 0);
+  const auto w = run_corners(stdb, bp, {box("SGRID2B", 0, -0.5, 1.0)});
+  CHECK(w.n_corners == 2);
+  CHECK(w.n_corners_failing == 1);
+  CHECK(run_corners(stdb, bp, {box("CGRID2B", 1, -0.5, 2.5)})
+            .n_corners_failing == 1);
+  CHECK(run_corners(stdb, bp, {box("CGRID2B", 1, 0.0, 2.5)})
+            .n_corners_failing == 0);
+
+  Context env = bp;
+  env.remove("INITMB");
+  env.add("INITMB", "true");
+  env.add("TYPEMB", "DM_mBlipEnv 0 1 1 2 2 Ta Ta");
+  env.add("CGRIDMB", 0.0);
+  env.add("SGRIDMB", 0.2);
+  env.add("CEMBFUNC", "1.0 2.0");
+  env.add("SEMBFUNC", "1.0 1.0");
+  env.add("RCUTENV", 1.5);
+  env.add("RCTYPEMB", "Cut_Cos");
+  env.add("RCUTMB", 5.0);
+  CHECK(run_corners(stdb, env, {box("RCUTENV", -1, -1.0, 7.0)})
+            .n_corners_failing == 1);
+  CHECK(run_corners(stdb, env, {box("CEMBFUNC", 0, -1.0, 1.0)})
+            .n_corners_failing == 0);
+
+  const std::string path = write_tmp("OPTIM RCUTENV (1) -1 7\n");
+  Context seed = env;
+  CHECK_THROWS_WITH(parse_hpo_target_bounds(path, seed),
+                    Catch::Contains(
+                        "OPTIM RCUTENV (1): the low bound -1 is not > 0, but "
+                        "the DM_mBlipEnv descriptor requires every RCUTENV "
+                        "value > 0"));
+  std::remove(path.c_str());
+}
+
+/* Pins: on a DM_mJoin line, RCUTENV, which the line gives every
+ * descriptor whole, keeps the rule of DM_mBlipEnv in any order of the
+ * line: the box [-1, 7] fails its corner at -1 with DM_mBlip first and
+ * with DM_mBlipEnv first, as tadah hpo refuses the box at its line.
+ * Before the fix: with DM_mBlip first no corner failed (the rule went by
+ * the first descriptor of the line, which declares no limit for RCUTENV). */
+TEST_CASE("check_bounds: RCUTENV on a DM_mJoin line keeps the rule of "
+          "DM_mBlipEnv in any order",
+          "[check_bounds][low_bound][join]") {
+  tadah::core::PeriodicTable::initialize();
+  tadah::mlip::StructureDB stdb;
+  for (const char *line :
+       {"DM_mJoin DM_mBlip 0 1 1 2 2 Ta Ta DM_mBlipEnv 0 1 1 2 2 Ta Ta",
+        "DM_mJoin DM_mBlipEnv 0 1 1 2 2 Ta Ta DM_mBlip 0 1 1 2 2 Ta Ta"}) {
+    INFO(line);
+    Context c;
+    c.add("ATOM", "Ta");
+    c.add("INIT2B", "false");
+    c.add("INITMB", "true");
+    c.add("TYPEMB", line);
+    c.add("CGRIDMB", "0.1 0.1");
+    c.add("SGRIDMB", "0.2 0.2");
+    c.add("CEMBFUNC", "1.0 2.0 1.0 2.0");
+    c.add("SEMBFUNC", "1.0 1.0 1.0 1.0");
+    c.add("RCUTENV", 1.5);
+    c.add("RCTYPEMB", "Cut_Cos Cut_Cos");
+    c.add("RCUTMB", "5.0 5.0");
+    c.add("VERBOSE", 0);
+    const auto r = run_corners(stdb, c, {box("RCUTENV", -1, -1.0, 7.0)});
+    CHECK(r.n_corners == 2);
+    CHECK(r.n_corners_failing == 1);
+  }
 }
 
 TEST_CASE("check_bounds: a radial bump width box needs lo > 0 in every form",
@@ -329,12 +427,15 @@ TEST_CASE("check_bounds: a radial bump width box needs lo > 0 in every form",
 
 /* Pins: on a D2_mJoin of D2_BP 2 2 (SGRID2B entries 1-2) and D2_Blip 2 2
  * (entries 3-4), a width box of the D2_BP below 0, SGRID2B (1) -0.5 1.0,
- * fails no corner, as on a D2_BP alone (a Gaussian width has no rule), and
- * a box of the D2_Blip from 0, SGRID2B (4) 0 2, fails its corner at 0
- * (models::optim_low_bound_rule of the box's entry, the rule tadah hpo
+ * fails its corner at -0.5 as on a D2_BP alone, by the limit the D2_BP
+ * declares (every SGRID2B value > 0), and a box of the D2_Blip from 0,
+ * SGRID2B (4) 0 2, fails its corner at 0 by its bump rule
+ * (models::optim_box_low_bound_rule of the box's entry, the rule tadah hpo
  * refuses such a box by).
  * Before the fix: the D2_BP's box failed its corner at -0.5 by the
- * D2_Blip's rule, which held every SGRID2B entry of the line. */
+ * D2_Blip's rule, which held every SGRID2B entry of the line. Before the
+ * fix that makes the limits the descriptors declare a rule: it failed no
+ * corner, as on a D2_BP alone (a Gaussian width had no rule). */
 TEST_CASE("check_bounds: a width box of a D2_BP of a D2_mJoin with a D2_Blip "
           "is held as on a D2_BP alone",
           "[check_bounds][bump_width][join]") {
@@ -353,7 +454,7 @@ TEST_CASE("check_bounds: a width box of a D2_BP of a D2_mJoin with a D2_Blip "
   c.add("VERBOSE", 0);
   const auto bp = run_corners(stdb, c, {box("SGRID2B", 0, -0.5, 1.0)});
   CHECK(bp.n_corners == 2);
-  CHECK(bp.n_corners_failing == 0);
+  CHECK(bp.n_corners_failing == 1);
   const auto blip = run_corners(stdb, c, {box("SGRID2B", 3, 0.0, 2.0)});
   CHECK(blip.n_corners == 2);
   CHECK(blip.n_corners_failing == 1);

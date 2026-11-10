@@ -19,15 +19,25 @@ namespace tadah {
 namespace mlip {
 namespace engines {
 
-/** \brief The OPTIM key groups an hpotarget carries, with their bound rule.
- *  positive_only keys (the width channels) get the lo > 0 clamp. The
- *  density-form rule (AMPGRIDMB lo >= 0 under RHOFORM NONNEG/MONOTONE,
- *  models::optim_key_lower_bound) is applied on top of this static table,
- *  which `tadah hpo` shares. */
+/** \brief The OPTIM key groups an hpotarget carries. The bound rule of a
+ *  group is the lower limit the descriptors declare for its key
+ *  (hpotarget_group_bound: the widths get the lo > 0 clamp, the centres
+ *  lo >= 0), which `tadah hpo` applies to its boxes; the density-form rule
+ *  (AMPGRIDMB lo >= 0 under RHOFORM NONNEG/MONOTONE,
+ *  models::optim_key_lower_bound) is applied on top of it. */
 struct OptimGroupSpec {
   const char *key;
-  bool positive_only;
 };
+
+/** \brief The bound rule of the boxes of a group @p key: positive_only
+ *  (the lo > 0 clamp) for a key whose values the descriptors declare > 0,
+ *  lower NonNegative (lo = max(0, v - d)) for one they declare >= 0
+ *  (models::declared_low_bound_rule), else neither. */
+struct GroupBound {
+  bool positive_only = false;
+  tadah::models::OptimLowerBound lower = tadah::models::OptimLowerBound::Free;
+};
+GroupBound hpotarget_group_bound(const std::string &key);
 
 /** \brief The 8 group keys in emission order (shape blocks + FIXWEIGHT). */
 const std::array<OptimGroupSpec, 8> &hpotarget_group_specs();

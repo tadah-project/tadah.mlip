@@ -26,9 +26,11 @@
 namespace tadah {
 namespace mlip {
 
-/** Positive-only OPTIM keys (geometric AUTO boxes by default), from the
- *  refit hpotarget writer's key table (engines::hpotarget_group_specs()),
- *  so tadah hpo and the writer cannot disagree; another key is sign-free. */
+/** Positive-only OPTIM keys (geometric AUTO boxes by default): the keys
+ *  whose values the registered descriptors declare > 0
+ *  (models::declared_low_bound_rule: SGRID2B, SGRIDMB, SEMBFUNC, RCUTENV),
+ *  as the refit hpotarget writer reads them, so tadah hpo and the writer
+ *  cannot disagree; another key is sign-free. */
 bool optim_key_positive_only(const std::string& key);
 
 /** \brief What the fit requires of a searched value. */
@@ -136,7 +138,8 @@ enum class OptimBoxOrigin : std::uint8_t {
   Explicit,         ///< the line's bounds
   AutoLinear,       ///< AUTO: seed +- max(FRAC |seed|, FLOOR, GROUP_FLOOR max|seed|)
   AutoGeometric,    ///< AUTO: [seed/RATIO, seed*RATIO]
-  AutoLinearNonneg  ///< AUTO linear, its low bound clamped at 0
+  AutoLinearNonneg,   ///< AUTO linear, its low bound clamped at the >= rule of its key (0)
+  AutoLinearPositive  ///< AUTO linear, its low bound clamped at half its seed by the > 0 rule of its key (models::positive_box_low)
 };
 
 /** \brief The box of one value an OPTIM line selects. */

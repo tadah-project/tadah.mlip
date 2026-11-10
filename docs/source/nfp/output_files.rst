@@ -117,10 +117,6 @@ refused before training, holds ``nan`` (``NaN`` in ``outvar.tadah``). Each
 ``best_`` file has the columns of its history file, with ``#IMPROVEMENT``, the
 improvement number, and ``EVAL``, its evaluation, in place of ``#ITERATION``.
 
-.. versionchanged:: 1.6.0
-   1.5.0 wrote the improvement number in a column ``#ITERATION`` of the
-   ``best_`` files and gave no evaluation.
-
 Rows reach the files in groups of :hpo:key:`QFLUSH` results, a few
 evaluations behind the journal. :hpo:key:`OUTPUT` and :hpo:key:`BOUTPUT`
 thin the rows of a long run; :hpo:key:`DIGITS` sets the digits:

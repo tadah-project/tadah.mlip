@@ -397,13 +397,6 @@ mpi`` also selects the ``pair_style tadah`` entries of
 Configuring with ``-DTADAH_BUILD_MPI=ON`` stops with an error that points
 to ``TADAH_HPO_MPI``; ``-DTADAH_BUILD_MPI=OFF`` is accepted.
 
-.. versionchanged:: 1.6.0
-   The MPI training build (``-DTADAH_BUILD_MPI=ON``, the ``tadah_mpi``
-   executable and its ScaLAPACK solver) is removed, and with it the
-   ``PC_LAMMPS --ncpu`` option of ``tadah hpo`` (:ref:`nfp_ref_pc_options`).
-   Its configuration keys :ref:`MPIWPCKG`, :ref:`MBLOCK` and :ref:`NBLOCK`
-   are deprecated (:ref:`SupportedKEYS`).
-
 .. _installation_nfp:
 
 Building Tadah!MLIP with Nested Fitting Procedure support

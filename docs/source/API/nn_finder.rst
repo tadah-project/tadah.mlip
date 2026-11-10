@@ -85,17 +85,5 @@ Refusals:
 
 A structure without atoms gets an empty list; its cell is not examined.
 
-.. versionchanged:: 1.6.0
-   Two atoms at the same position are refused; they were listed at distance
-   0, so ``tadah predict`` printed ``nan`` forces, ``tadah train`` failed with
-   a LAPACK error naming no structure (or, fitting energies only, fitted the
-   structure), and ``tadah hpo`` failed every evaluation.
-
-.. versionchanged:: 1.6.0
-   Earlier versions missed periodic images when the cell was thinner than the
-   cutoff in some direction, or was triclinic, or held atoms outside the cell.
-   For example, a 2-atom bcc cell with :math:`a = 3.41` Å at a 10 Å cutoff
-   listed 168 of each atom's 180 neighbours.
-
 .. doxygenclass:: tadah::mlip::NNFinder
     :members:

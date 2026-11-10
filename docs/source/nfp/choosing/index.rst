@@ -188,9 +188,8 @@ With a :hpo:key:`PC_LAMMPS` or :hpo:key:`PC_FAILPROBE` line, every optimiser
 :hpo:topic:`runs without gradients <RULE.PC_LAMMPS_gradient_free>`: the
 results of a LAMMPS script have no gradient.
 
-.. versionchanged:: 1.6.0
-   :hpo:opt:`!DLIB:BFGS` is refused beside a :hpo:key:`!PC_LAMMPS` or
-   :hpo:key:`!PC_FAILPROBE` line, as every gradient-based optimiser is.
+:hpo:opt:`!DLIB:BFGS` is refused beside a :hpo:key:`!PC_LAMMPS` or
+:hpo:key:`!PC_FAILPROBE` line, as every gradient-based optimiser is.
 
 .. _nfp_choosing_step:
 

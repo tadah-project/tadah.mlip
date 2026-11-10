@@ -147,10 +147,6 @@ included. A tag on each line is the recommended choice: the shape of each
 search parameter is then written next to its box. :hpo:key:`!LOG_HP` suits a
 target file of many lines written by a tool.
 
-.. versionchanged:: 1.6.0
-   A box tagged :hpo:key:`!LIN` stays linear under :hpo:key:`!LOG_HP`;
-   1.5.0 log-scaled it as an untagged box.
-
 .. _nfp_search_space_scaling:
 
 Scaling the search space

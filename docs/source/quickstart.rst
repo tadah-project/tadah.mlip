@@ -94,13 +94,6 @@ The output of the ``predict`` command includes three files:
 - ``forces.pred``: Similar idea as above, but now forces are listed. The first row is the force on the first atom in the x-direction from the first dataset, the second row is the force on the first atom in the y-direction, and so on.
 - ``stress.pred``: The first six rows list components of the stress tensor from the first structure, followed by six components from the second structure, and so on. The ordering is xx, xy, xz, yy, yz, zz.
 
-.. versionchanged:: 1.6.0
-   ``--error`` is refused: uncertainty output is removed.
-   In Tadah! 1.0.0 to 1.5.0 its errors were not standard deviations
-   (negative ones among them), and with any ``EWEIGHT``, ``FWEIGHT``,
-   ``SWEIGHT`` or :term:`priority` of a structure other than 1 it scaled the
-   predicted values too.
-
 .. _units:
 
 Units and Tadah!
@@ -234,24 +227,6 @@ and ``suggest_bounds``. Its lines follow these rules:
      Invalid key FOOBAR on line 3 of config.train (closest key: FORMAT)
      Invalid value for key RCUT2B on line 6 of config.train: 'abc'
 
-.. versionchanged:: 1.6.0
-   A ``TASK`` line is refused as an unknown key at its line: task files and
-   ``tadah --task`` are removed. Each ``TASK`` section becomes a command of
-   its own: its lines go into the configuration file of a command that
-   takes ``-c``, the options ``-c`` needs stay on the command line, and the
-   lines of another command become its options.
-
-.. versionchanged:: 1.6.0
-   Tadah! 1.5.0 let the included file's lines replace the lines of their
-   keys above the ``CONFIG`` line without a message (a ``DBFILE`` above it
-   was dropped), and a second line of a key of one value replace the first.
-
-.. versionchanged:: 1.6.0
-   Tadah! 1.5.0 accepted a line of a *Command key* in every configuration
-   file, and ``tadah train`` wrote it into the potential, where it changed
-   nothing. Such a potential loads without that line, with a warning
-   (:ref:`SupportedKEYS`).
-
 .. _dataset:
 
 Dataset Format
@@ -325,14 +300,6 @@ If forces and/or stresses are not available, they can be set to zero to satisfy 
 
 Units are described in :ref:`units`.
 
-.. _dataset_cell_migration:
-
-.. versionchanged:: 1.6.0
-   A dataset written by Tadah! before 1.3.0-beta.1 may hold a wrong cell,
-   and structure files exported by ``tadah data write -s`` before 1.6.0 from
-   a non-orthogonal CIF or COD entry hold a transposed cell.
-   Re-converting or exporting again repairs them.
-
 A wrong cell in a dataset can occur only in structures whose 3×3 cell block
 is not symmetric; ``tadah analysis dataset_stats`` lists them by index and
 label. Such a structure needs re-converting from its source file if it was
@@ -351,15 +318,6 @@ exported (VASP POSCAR, LAMMPS data, CASTEP ``.cell``) from a
 non-orthogonal CIF or COD entry hold a transposed cell and need exporting
 again. Potentials and ``tadah hpo`` results fitted to affected structures
 need regenerating.
-
-.. _dataset_vasp_migration:
-
-.. versionchanged:: 1.6.0
-   ``tadah data convert`` of Tadah! 1.0.0 to 1.5.x stored the stress of a VASP
-   OUTCAR or ``vasprun.xml`` with the opposite sign and an energy other than
-   F, joined the steps of an MD OUTCAR at 10000 K or more into one structure,
-   and kept the kinetic part in the stress of a CASTEP ``.md`` file.
-   Tadah! 1.6.0 stores a stress that is positive under tension and the energy F.
 
 The stress and energy of a dataset converted from VASP by Tadah! 1.0.0 to
 1.5.x differ from those of 1.6.0. The stress has the opposite sign (VASP's
@@ -437,10 +395,6 @@ pair_style tadah has no potential: ...`` from its next ``run``. A line
 LAMMPS refuses before it reaches the pair style, such as ``pair_coeff 1 1
 other.tadah ELEMENT1`` (``ERROR: Pair_coeff must start with * * for pair
 style tadah``), changes nothing: the pair style keeps what it held.
-
-.. versionchanged:: 1.6.0
-   A later ``pair_coeff`` replaces the potential. Tadah! 1.5.0 and earlier
-   went on with the first potential without a message.
 
 :ref:`installation_lammps` gives the installation instructions of the Tadah!LAMMPS interface.
 

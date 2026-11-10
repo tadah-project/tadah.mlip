@@ -251,9 +251,3 @@ to another fit: the defaults of Tadah! 1.5.0 (``EWEIGHT``, ``FWEIGHT`` and
 energies only, and refuses its options ``--rescale``, ``--threshold``,
 ``--force`` and ``--stress``; in a target file of ``tadah hpo``,
 :hpo:key:`PC_SRMSE_GPA` replaces ``PC_SRMSE``.
-
-.. versionchanged:: 1.6.0
-   A fit minimised the sum of ``EWEIGHT`` times the squared residual of each
-   total energy, ``FWEIGHT`` times that of each force component and
-   ``SWEIGHT`` times that of six stress entries in eV/Å³, with the
-   ``eweight``, ``fweight`` and ``sweight`` of each structure.

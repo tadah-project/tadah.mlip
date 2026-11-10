@@ -114,27 +114,6 @@ The layout is the same on every path (``tadah train``, ``predict``,
   them, so with ``LAMBDA > 0`` they are 0). With a non-linear KRR kernel the
   basis starts with one intercept vector per species.
 
-.. versionchanged:: 1.6.0
-   ``BIAS true`` gives each species its own intercept column. In 1.5.0 all
-   species shared one intercept column, and a linear model's descriptor
-   coefficients started at 2.
-
-.. versionchanged:: 1.6.0
-   ``tadah train`` refuses ``FIXINDEX``/``FIXWEIGHT`` with ``NORM true``.
-   1.5.0 fitted such a configuration.
-
-.. versionchanged:: 1.6.0
-   A linear potential with ``NORM true`` and ``BIAS false`` written by
-   1.5.0 or earlier is refused when it predicts: its conversion had no
-   intercept column for the constant, so its energies are wrong.
-
-.. versionchanged:: 1.6.0
-   A potential trained with ``BIAS true`` and two or more species by 1.5.x
-   or earlier has one intercept column shared by the species, so ``tadah
-   predict`` and ``pair_style tadah`` refuse it, naming ``WEIGHTS``,
-   ``DSIZE``, ``BIAS`` and ``ATOM``. Single-species potentials are not
-   affected.
-
 A potential refused for its intercept columns is retrained with its
 training configuration or with the potential itself
 (:ref:`retrain_from_potential`; an ``M_KRR`` potential without a
@@ -226,10 +205,8 @@ Key points
 * Each constituent can target its own element pair(s), cutoff type and
   distance.
 
-.. versionchanged:: 1.6.0
-   Values that no descriptor takes are refused; 1.5.0 ignored them. A
-   potential that 1.5.0 wrote with such values loads, with a warning that
-   names them.
+A potential that holds values that no descriptor takes loads, with a
+warning that names them.
 
 Quick examples
 --------------
@@ -605,12 +582,6 @@ refused with::
    reference), NONNEG (the same with every a_n >= 0: rho >= 0 by
    construction) or MONOTONE (rho = W f_c sum a_n S_n(r), S_n the integrated
    bump, a_n >= 0: rho >= 0 and non-increasing by construction).
-
-.. versionadded:: 1.6.0
-   ``RHOFORM SIGNED`` gives the density of Tadah! 1.5.0, bit for bit when both
-   are built the same way without FMA and run on the same system, and to
-   rounding errors otherwise. A potential written before 1.6.0 gives its
-   1.5.0 energies with both ``RHOFORM SIGNED`` and ``EMBF0 FREE`` added.
 
 ``tadah predict``, ``tadah analysis
 descriptor``, ``tadah analysis bfunc`` and ``tadah properties pairwise`` refuse a key-less DM_REAM

@@ -24,11 +24,6 @@ one-to-one to an upper-case configuration key (e.g. ``--force`` ↔
 The options of ``tadah train``, with their keys and defaults, are listed
 in the command-line reference (:doc:`cli/cli`).
 
-.. versionchanged:: 1.6.0
-   ``--uncertainty`` and an ``UNCERTAINTY`` or ``ERROR`` line are refused:
-   uncertainty output is removed. The errors of Tadah! 1.0.0 to 1.5.0 were
-   not standard deviations, and no calibrated estimate replaces them.
-
 Training data must be supplied as one or more Tadah! database files via
 ``DBFILE`` in the configuration; :ref:`dataset` gives the on-disk format.
 
@@ -55,14 +50,6 @@ in order:
    <error scale>` of the configuration and the :term:`priorities
    <priority>` of the data (``WDBFILE`` among them).
 #. **Writing the potential** (``pot.tadah``, or the file ``--outfile`` names).
-
-.. versionchanged:: 1.6.0
-   The neighbour list holds every periodic image: of the 180 neighbours of
-   each atom of a 2-atom bcc cell with :math:`a = 3.41` Å at a 10 Å cutoff,
-   Tadah! 1.5.x kept 168. Potentials trained on structures with a cell
-   thinner than the cutoff, a triclinic cell or atoms outside the cell, and
-   the ``tadah predict`` results for them, change: such potentials need
-   retraining.
 
 ``tadah predict`` agrees with ``pair_style tadah`` in LAMMPS on every cell.
 
@@ -131,13 +118,6 @@ are divided by ``s`` and stresses (eV Å⁻³) by ``s³``: the virial
 reads ``LSCALE: ... stress by 1/s^3; energy invariant``. ``s = 1``
 (the default) is a no-op and ``s <= 0`` is a configuration error.
 
-.. versionchanged:: 1.6.0
-   ``LSCALE`` divides the stress by ``s³``. Tadah! 1.3.0-beta.1, which
-   introduced ``LSCALE``, to 1.5.x left the stress unchanged, which made the
-   targets of a ``STRESS true`` fit too large by ``s³`` (6 % at
-   ``s = 1.02``); their log line read ``LSCALE: ... energy and stress
-   invariant``.
-
 The intended use is matching a DFT lattice constant to experiment:
 ``LSCALE = a_exp / a_DFT`` puts the trained model's equilibrium volume
 at the experimental scale.
@@ -149,12 +129,6 @@ the rescaled frame. ``--lscale s`` replaces the stored value;
 ``--no-lscale`` ignores it when the dataset is already at the trained
 scale. The LAMMPS ``pair_style tadah`` does **not** re-apply ``LSCALE`` —
 LAMMPS needs positions already at the trained scale.
-
-.. versionchanged:: 1.6.0
-   ``tadah predict`` applies the potential's ``LSCALE``. Earlier versions
-   (1.5.x included) replaced it with 1.0, the default of ``tadah predict``, unless
-   ``--lscale`` was given: the data predicted was not rescaled, as with
-   ``--no-lscale``.
 
 ESHIFT: per-element energy shift
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -197,15 +171,6 @@ data: ``--no-eshift`` subtracts none, so ``energy.pred`` compares the
 model's energies, which do not change, with the reference energies as they
 are. A potential written before Tadah! 1.6.0 has its toggle as a key line
 beside ``ESHIFT``; ``tadah predict`` ignores it too.
-
-.. versionchanged:: 1.6.0
-   The toggles are no key lines of a potential. Earlier versions wrote them
-   as the configuration set them, so ``tadah predict`` of a potential
-   trained with one of them ``true`` printed ``WARNING: Multiple ESHIFT
-   sources set; precedence: explicit > ATOM > DBATOM.``, and with
-   ``--no-eshift`` the toggle derived a shift from the dataset predicted
-   (``ESHIFT_DBATOM`` a least-squares fit to it) and subtracted it from its
-   reference energies.
 
 .. note::
 
@@ -284,14 +249,6 @@ that are not at their default::
    potential's training record, not as key lines); --efilter, --ffilter and
    --zero-com-force filter the data predicted.
 
-.. versionchanged:: 1.6.0
-   Earlier versions applied a potential's ``EFILTER`` and ``FFILTER`` to
-   the data it predicted (a structure outside the training window was left
-   out of ``energy.pred`` and of the ``-A`` metrics) and its
-   ``ESHIFT_ATOM``/``ESHIFT_DBATOM`` with ``--no-eshift``; its
-   ``ZERO_COM_FORCE true`` was not applied (the default of ``tadah predict``,
-   ``false``, replaced it).
-
 A retrain from the potential (:ref:`retrain_from_potential`) does not take
 them from the potential either.
 
@@ -315,16 +272,9 @@ A potential file that cannot be written (its directory does not exist, or
 a directory has its name) stops ``tadah train`` with an error that names
 the file and a non-zero exit status.
 
-.. versionchanged:: 1.6.0
-   Tadah! 1.5.0 logged an ``ERROR`` line and exited 0 without a potential.
-
 A configuration shared with ``tadah hpo`` has no :ref:`OUTFILE` line, as a
 configuration file of ``tadah hpo`` refuses one (:ref:`config_file`);
 ``tadah train -o`` names the potential file.
-
-.. versionchanged:: 1.6.0
-   Tadah! 1.5.0 read an ``OUTFILE`` line in a configuration of ``tadah hpo``,
-   which wrote no file of its name.
 
 pot.tadah format
 ~~~~~~~~~~~~~~~~
@@ -505,12 +455,6 @@ builds; a ``tadah hpo`` run prints it once, for its
 and ``log.lammps`` are the input script's output, and none of the lines
 changes a force or an energy.
 
-.. versionchanged:: 1.6.0
-   Tadah! 1.5.x had no training record. It wrote some of these keys as key
-   lines, and a run that loaded such a potential took them as its own
-   settings (a retrain ran at its ``VERBOSE``, ``tadah hpo -c`` validated on
-   its ``VALIDATION`` file).
-
 .. _retrain_from_potential:
 
 Retraining from a potential
@@ -575,10 +519,6 @@ are the ``FIXWEIGHT`` values and says so before it reads a dataset::
    the documentation, Retraining from a potential).
 
 It is a warning, not a refusal: such a fit can be deliberate.
-
-.. versionchanged:: 1.6.0
-   ``tadah train`` warns when ``FIXINDEX`` and ``FIXWEIGHT`` pin every
-   coefficient. Tadah! 1.5.0 wrote the same potential without a message.
 
 ``tadah hpo`` runs without a training ``DBFILE`` only when ``FIXINDEX`` and
 ``FIXWEIGHT`` pin every coefficient (:ref:`nfp_training_hpo_fit`). Its refusals of a
@@ -708,11 +648,6 @@ are the two ``RCUT2B`` lines:
    copy of the potential (the Training page of the documentation,
    Retraining from a potential)
 
-.. versionchanged:: 1.6.0
-   A second line of a key of the descriptors in a copy of a potential was
-   read with the potential's values, without a message: a copy with
-   ``RCUT2B 5.6`` and an appended ``RCUT2B 6.0`` trained a cutoff of 6.0.
-
 The ``WARNING`` for values a potential's descriptors do not take
 (:ref:`composite_descriptors`) is given for values on one line of the
 potential file. ``tadah predict`` and ``pair_style tadah`` read a second
@@ -807,37 +742,11 @@ given one of them``.
 A retrain reproduces the first fit when it is given the keys its record
 lists, on the command line or in the file that includes the copy.
 
-.. versionchanged:: 1.6.0
-   A potential had the keys that prepared its training data as key lines,
-   and a retrain applied them to its own datasets: a ``WDBFILE`` of the
-   first fit's datasets stopped a retrain with another number of datasets
-   (``WDBFILE size (2) does not match number of datasets (3).``), and the
-   first fit's ``EFILTER``, ``FFILTER``, ``EWEIGHT_TEMP`` and
-   ``ZERO_COM_FORCE`` applied to the retrain's; its ``ESHIFT_ATOM`` or
-   ``ESHIFT_DBATOM`` was overruled by its ``ESHIFT`` line (``Multiple ESHIFT
-   sources set``) and, without one, derived the shift from the retrain's
-   data; its run settings were the retrain's (a ``best_pot.tadah``'s
-   ``VERBOSE`` and ``NUMERIC 12`` set the retrain's verbosity and digits, and an
-   ``OUTFILE`` line its output file). A
-   line of the run that included such a potential with ``CONFIG`` was
-   mixed with the potential's line of the same key: one after the
-   ``CONFIG`` line was appended to the potential's values (``WDBFILE``) or
-   refused (``Exceeded capacity for key: EFILTER``), and one before it was
-   replaced by the potential's.
-
 With ``LAMBDA -1`` the potential records the ``ALPHA`` and ``BETA``
 the evidence approximation found (the fit's :math:`\lambda = \alpha/\beta`;
 they are the approximation's starting guesses in a configuration), so a
 retrain starts the approximation from them (on the same datasets it stops
 there, to its convergence tolerance).
-
-.. versionchanged:: 1.6.0
-   The evidence approximation counts the observations alone (it counted the
-   design matrix's augmentation rows, one per coefficient, and its rows of
-   priority 0), so the λ and the coefficients of a ``LAMBDA -1`` fit change: by
-   a little when only the augmentation rows were counted, by orders of
-   magnitude in λ when the fit has many rows of priority 0 (a ``FORCE
-   true`` fit of structures stored with ``fweight 0``).
 
 A ``DBFILE`` that lists one dataset file twice (the same path, two spellings
 of it, or a link to it) is refused, naming both entries, by ``tadah train``
@@ -845,12 +754,10 @@ and, at startup, by ``tadah hpo``: each entry is a dataset, so each of its
 structures would be fitted twice. ``WDBFILE`` gives a dataset a higher
 priority.
 
-.. versionchanged:: 1.6.0
-   An ``M_BLR`` potential written by Tadah! 1.5.x or earlier has the
-   ``DBFILE`` line it was trained on, so a retrain from its copy with that
-   ``DBFILE`` added fitted every structure twice without a message; it is
-   refused. The line is deleted from the copy before the ``DBFILE`` of the
-   retrain is added (``tadah predict`` and ``pair_style tadah`` do not read it).
+A potential that holds the ``DBFILE`` line it was trained on is refused in
+the same way when a retrain from its copy adds that ``DBFILE`` again. The
+line is deleted from the copy before the ``DBFILE`` of the retrain is added
+(``tadah predict`` and ``pair_style tadah`` do not read it).
 
 .. _pot_number_format:
 
@@ -963,12 +870,6 @@ The load-time transforms (:ref:`load_transforms`) prepare the training data
 once, and every evaluation fits the data so prepared. A key that prepares
 the data therefore keeps its value from the training configuration in every
 evaluation, and :hpo:key:`OPTIM` refuses it as a search parameter.
-
-.. versionchanged:: 1.6.0
-   :hpo:key:`!OPTIM` of a key that prepares the data is refused at its
-   line. Tadah! 1.5.0 accepted it for :ref:`LSCALE <lscale>`,
-   :ref:`ESHIFT <eshift>`, :ref:`EFILTER <efilter>` and
-   :ref:`FFILTER <ffilter>`, and every evaluation fitted the same data.
 
 .. _nfp_training_hpo_start:
 

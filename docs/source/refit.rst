@@ -22,11 +22,6 @@ embedding reference (``REFERENCE``). The :ref:`DM_Embed page <dm_embed>`
 documents independent density and embedding choices, AUTO grids,
 physical-width coordinates, and the component compact fitting path.
 
-.. versionchanged:: 1.6.0
-   The many-body term is a ``DM_Embed`` component instead of a ``DM_REAM``
-   term. ``DM_REAM`` potentials still load, train and predict, and ``--edit``
-   edits them (`Editing a refitted potential (--edit)`_).
-
 The result is usable with ``tadah predict``, the Tadah!LAMMPS plugin, and
 :ref:`nested fitting <nested_fitting>`. ``refit`` also writes a round-trip
 *setfl* (for direct LAMMPS comparison) and a target file for ``tadah hpo``
@@ -313,10 +308,6 @@ width :math:`\le 0` has no support edge; under ``MONOTONE`` a step also needs
 ``SGRIDMB > 0``): ``tadah refit INIT [phi]: the basis at mu 5 (INIT PHI
 anchor 1) has eta -1 <= 0; a radial bump needs a width eta > 0 ...``.
 
-.. versionchanged:: 1.6.0
-   A non-positive anchor width is refused in every form; only ``MONOTONE``
-   refused it before.
-
 In every form the energy-mode joint refinement (FUSE) optimises the radial
 bumps (``phi`` and ``rho``) in their outer support edges
 :math:`\mu + w/\eta`, bounded at the hard cutoff, and keeps every free bump
@@ -334,12 +325,6 @@ iterations that are left, and with none left the held re-run is skipped and
 the linear re-solve result kept (``joint: ... FUSE held re-run skipped:
 MAXEVAL 2000 spent by the joint solve, the re-solve result is kept``).
 
-.. versionchanged:: 1.6.0
-   The joint refinement bounds the bump support edges at the hard cutoff.
-   Compact ``SIGNED`` refits can differ from 1.5.0 where a bump ended past
-   the cutoff or where the bump-support projection undid the energy–volume
-   fit.
-
 Under ``REFIT_OBJECTIVE curve`` FUSE refines each function against its own
 curve (no energy–volume coupling). On the radial bump channels it does so in
 the same outer support edges, bounded at the hard cutoff, with the same width
@@ -356,11 +341,6 @@ the table:
    tadah refit: REFIT_MODE compact (the default) needs the compact fitter, which
    this build of tadah does not have (a build with -DTADAH_ENABLE_NFP=ON and
    -DTADAH_ENABLE_CERES=ON has it); REFIT_MODE dense fits without it
-
-.. versionchanged:: 1.6.0
-   A build without the compact fitter refuses compact mode; 1.5.0 fitted the
-   table in dense mode after a WARNING (a defaulted ``Knot5`` basis became
-   ``Blip``).
 
 ``refit.eam`` tabulates the fitted density from the inner fit bound up
 (the ``full_lo`` of ``refit_range_report.dat``); below it, the original
@@ -421,11 +401,6 @@ number).  An error names the key and the token as written:
    tadah refit: REFIT_TOL_AMBIENT must be a positive number, got '0'
    tadah refit: REFIT_COMPACT_JITTERS must be an integer from 0 to 2147483646,
    got '3000000000'
-
-.. versionchanged:: 1.6.0
-   These numbers are checked. 1.5.0 read them unchecked, so a value such as
-   ``REFIT_TOL_AMBIENT 0`` or ``OUTPUT_GRID_SCALE 0`` gave a wrong result
-   instead of an error.
 
 .. _refit_mode_keys:
 
@@ -502,12 +477,6 @@ no basis family of tadah refit: Blip (Blip, BLIP, blip), Blip5 (...), ...``;
 ``uniform``, both read in any letter case (``tadah refit: REFIT_LEVEL must
 be 'coarse', 'balanced' (the default), 'fine' or 'accurate' (in any letter
 case), got 'acurate'``).
-
-.. versionchanged:: 1.6.0
-   A key that the chosen mode does not read, a top-level ``OPTIMIZER`` block
-   in dense mode, and an unknown ``REFIT_MODE``, ``REFIT_BASIS``,
-   ``REFIT_LEVEL`` or ``REFIT_PLACEMENT`` are errors. 1.5.0 ignored them or
-   replaced them by a default after a WARNING.
 
 General and output
 ~~~~~~~~~~~~~~~~~~~
@@ -599,11 +568,6 @@ Compact mode only (``REFIT_MODE dense`` refuses these keys, and accepts
    to value, >= 0. ``0`` fits values only (best crystal energies); a larger
    value fits slope/curvature shape. Refused under ``REFIT_OBJECTIVE
    energy``.
-
-.. versionchanged:: 1.6.0
-   ``REFIT_CURVE_WEIGHTING``, ``REFIT_CURVE_RELAX`` and
-   ``REFIT_CURVE_DERIV_WEIGHT`` are refused where they have no effect; 1.5.0
-   ignored them there.
 
 Compact ladder
 ~~~~~~~~~~~~~~
@@ -732,10 +696,6 @@ it is ``UNIFORM``: no global search runs, and the ladder is still built):
    ENABLED false without the block, or ALGO NONE in the block without ENABLED
    false, switches the stage off
 
-.. versionchanged:: 1.6.0
-   ``ENABLED false`` together with an ``OPTIMIZER`` block in the same stage
-   is an error; 1.5.0 ignored the block with a warning.
-
 EXPLORE
 also accepts ``MAX_ADD`` (one value or three ``phi rho F``) capping the basis
 functions added in that stage: each an integer from 0 to 2147483647.  Without
@@ -772,11 +732,6 @@ twice in an ``OPTIMIZER`` or ``INNER`` block (``MAXEVAL`` and its alias
 repeated ``ENABLED`` or ``MAX_ADD`` are refused. The message names the
 stage, the block and the key as written (``REFINE: MAXITER is set twice
 in the OPTIMIZER block; each key is given once``).
-
-.. versionchanged:: 1.6.0
-   1.5.0 used the later value of a repeated key: a second ``OPTIMIZER``
-   block replaced the settings both blocks gave, and a second ``INNER``
-   block replaced the first.
 
 Legal optimisers and the stop-criteria each one reads.  A block takes
 only the stop-criteria of its ``ALGO``; a block with ``ALGO NONE`` or
@@ -821,12 +776,6 @@ change of the objective at which dlib's ``LBFGS`` stops (the name
 ``tadah hpo``'s ``DLIB:BFGS`` gives it); its default is 1e-13 in ``INNER``
 and 1e-15 in REFINE.
 
-.. versionchanged:: 1.6.0
-   dlib's ``LBFGS`` takes its absolute stopping change from ``FTOL_ABS``, not
-   from ``FTOL_REL``. Under ``GN_MLSL_LDS`` an ``INNER`` dlib ``LBFGS`` block
-   that sets ``FTOL_REL`` without ``FTOL_ABS`` gives different results from
-   1.5.0.
-
 ``MAXEVAL`` counts objective evaluations, exactly, for every NLopt and
 dlib algorithm: each call of the stage's objective, for its value or its
 gradient, is one.  dlib asks for the value and the gradient of its
@@ -860,23 +809,10 @@ Without ``MAXEVAL`` each optimiser takes its default budget. Per stage,
    ``REFIT_OBJECTIVE curve`` of each function's refine, so phi, rho and F
    each get the whole budget. Default: 2000.
 
-.. versionchanged:: 1.6.0
-   A refit with dlib ``GLOBAL``, dlib ``LBFGS`` or REFINE ``LD_LBFGS`` and an
-   explicit ``MAXEVAL`` gives different results from 1.5.0, which took
-   ``max(500, MAXEVAL/20)`` function calls for ``GLOBAL``, capped the L-BFGS
-   iterations of dlib ``LBFGS`` and took 50 × ``MAXEVAL`` evaluations for
-   REFINE ``LD_LBFGS``.
-
 ``FTOL_REL`` on the Ceres stages is Ceres' relative function tolerance,
 and ``GTOL`` its gradient tolerance.  FUSE's settings are those of the
 joint solve and, under ``REFIT_OBJECTIVE curve``, of each function's FUSE
 refine.  The joint solve's default gradient tolerance is 1e-14.
-
-.. versionchanged:: 1.6.0
-   Under ``REFIT_OBJECTIVE curve`` the FUSE refine of each function runs with
-   FUSE's own ``MAXEVAL``/``MAXITER``, ``FTOL_REL`` and ``GTOL``. 1.5.0 ran it
-   with REFINE's, so curve refits that set those keys give different
-   results.
 
 The refit log states each stage's budget in its unit
 and each stage's termination with the evaluations it spent
@@ -1256,10 +1192,6 @@ refit runs (``--rcut2b requires --retarget``), and a refit configuration that se
 one of their keys is an error naming it (``tadah refit: the RETARGET_RCUT2B
 key requires --retarget <file.hpotarget>.``).
 
-.. versionchanged:: 1.6.0
-   Refit-only keys under ``--edit`` or ``--retarget``, and ``--rcut2b`` or
-   ``--rcutmb`` in a refit, are refused; 1.5.0 ignored them.
-
 ``EMBF0`` and ``RHOFORM`` are properties of the potential. A configuration
 passed with ``-c`` may set them only to the potential's own values: a
 different value is refused before anything is written (``RHOFORM
@@ -1302,11 +1234,6 @@ command with an error naming the file, here as in every ``refit`` mode and
 in ``tadah train``. All bookkeeping
 (``TYPE2B`` / ``TYPEMB`` count tokens, ``WEIGHTS``, ``FIXINDEX``/
 ``FIXWEIGHT``, ``KDEG*``, ``RCUT2B``/``RCUTMB``) is regenerated consistently.
-
-.. versionchanged:: 1.6.0
-   An explicit output name equal to the default of a refit (``pot.tadah``,
-   ``refit.hpotarget``) is written as given; 1.5.0 wrote the edited names
-   instead.
 
 The :ref:`training record <training_record>` of the edited potential is
 that of its input, after a line naming the input::
@@ -1374,15 +1301,6 @@ for ``refit.hpotarget``; the extension and directory are the input's),
 with ``--in-place``, which an ``OUTFILE`` set in a configuration file
 contradicts as ``-o`` does (refused).
 
-.. versionchanged:: 1.6.0
-   An ``OPTIM`` line of another form was kept without a warning (a line of
-   one index and two words that are not both numbers drew ``non-numeric
-   OPTIM bounds``), and a line with a comment after its bounds kept its old
-   bounds. A line of one index and two numbers that ``tadah hpo`` refuses
-   (the index ``(0)``, a high bound not above the low one) was rewritten
-   around the midpoint of its bounds, and a key in lower case was a group
-   of its own.
-
 The numbers of ``--pct`` and ``--set`` are read with the number grammar of
 the target file, which ``tadah hpo`` reads the rewritten bounds with
 (:ref:`nfp_target_file_lines`); a token outside it is an error naming the
@@ -1410,11 +1328,6 @@ it; remove HPOFILEOUT (the file --retarget writes is -o, OUTFILE)``).
 has no effect under --retarget``): the bounds of the file are printed
 ``%.8e`` (9 significant digits) whatever ``NUMERIC`` is, as in every
 target file ``tadah refit`` writes.
-
-.. versionchanged:: 1.6.0
-   The default output of ``--retarget`` is ``<input>_retargeted.hpotarget``;
-   1.5.0 wrote ``<input>_edited.hpotarget`` (for ``refit.hpotarget`` the
-   file ``--edit`` writes) and ignored ``--hpofileout``.
 
 Retargeting a freshly-emitted file at the same percentage reproduces it
 byte-for-byte, and any retargeted file is a fixed point of further

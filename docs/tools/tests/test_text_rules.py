@@ -1,12 +1,13 @@
 """Wording rules of the documentation that a pattern decides.
 
-The prose of every page under docs/source (not the code, the literal blocks,
-the program output and the version directives, which keep history) and the
-help text of the CORE and HPO blueprints (the `description`,
-`long_description` and `doc` fields, which the generated pages and the
-command-line help show) never address the reader, never use the filler,
-process and invented words the documentation rules ban, and never tell
-history outside a version directive.
+The prose of every page under docs/source (not the code, the literal blocks
+and the program output) and the help text of the CORE and HPO blueprints
+(the `description`, `long_description` and `doc` fields, which the generated
+pages and the command-line help show) never address the reader, never use
+the filler, process and invented words the documentation rules ban, and
+never tell history. No hand-written page carries a version note
+(`versionchanged`, `versionadded`): a page states what the program does, and
+the changelog holds the difference between versions.
 
 The blueprint cases read the CORE and HPO checkouts the documentation build
 uses (source_locator.py) and are skipped, saying why, without one; a
@@ -46,12 +47,13 @@ HISTORY = re.compile(
     re.I)
 RULES = (('addresses the reader', READER), ('filler wording', FILLER),
          ('process wording', PROCESS), ('invented jargon', JARGON),
-         ('history outside a version directive', HISTORY))
+         ('tells history', HISTORY))
+VERSION_NOTE = re.compile(r'^\s*\.\.\s+version(changed|added)::')
 
-# Directives whose body is not prose of the page, or keeps history.
+# Directives whose body is not prose of the page.
 OPAQUE = re.compile(
     r'^\s*\.\.\s+(code-block|sourcecode|literalinclude|parsed-literal|'
-    r'versionchanged|versionadded|deprecated|math|raw|include|toctree|'
+    r'deprecated|math|raw|include|toctree|'
     r'only|autodoxygen\w*|doxygen\w*|csv-table)::')
 # A comment, label, target, substitution or footnote: ".." not followed by
 # a directive name and "::". The other directives (note, list-table,
@@ -96,10 +98,10 @@ GENERATED_BESIDE = {os.path.join('nfp', 'reference'): 'index.rst'}
 NOT_PAGES = ('API', '_extra', '_static', 'images', 'mlips')
 
 
-def source_pages():
+def source_pages(not_pages=NOT_PAGES):
     for dirpath, dirs, files in os.walk(SOURCE):
         relative = os.path.relpath(dirpath, SOURCE)
-        dirs[:] = sorted(d for d in dirs if d not in NOT_PAGES and
+        dirs[:] = sorted(d for d in dirs if d not in not_pages and
                          os.path.normpath(os.path.join(relative, d))
                          not in GENERATED)
         for name in sorted(files):
@@ -108,6 +110,13 @@ def source_pages():
                           name != GENERATED_BESIDE[relative]))
             if name.endswith('.rst') and not generated:
                 yield os.path.join(dirpath, name)
+
+
+def version_notes(text, label):
+    """The version notes of an rst source, as violations."""
+    return [f'{label}:{number}: version note: {line.strip()}'
+            for number, line in enumerate(text.splitlines(), 1)
+            if VERSION_NOTE.match(line)]
 
 
 def violations(lines, label):
@@ -167,6 +176,16 @@ class ProseRulesTest(unittest.TestCase):
                                     os.path.relpath(path, SOURCE))
         self.assertEqual(found, [], '\n' + '\n'.join(found))
 
+    def test_no_hand_written_page_carries_a_version_note(self):
+        # The pages of the API reference are hand-written too.
+        not_pages = tuple(d for d in NOT_PAGES if d != 'API')
+        found = []
+        for path in source_pages(not_pages):
+            with open(path, encoding='utf-8') as fh:
+                found += version_notes(fh.read(),
+                                       os.path.relpath(path, SOURCE))
+        self.assertEqual(found, [], '\n' + '\n'.join(found))
+
 
 @unittest.skipUnless(HAVE_TOMLLIB, 'tomllib needs Python 3.11')
 class HelpTextRulesTest(unittest.TestCase):
@@ -200,7 +219,17 @@ class RuleSelfTest(unittest.TestCase):
                 'listed.\n')
         found = violations(prose_lines(text), 'x.rst')
         self.assertEqual([f.split(': ')[1] for f in found],
-                         ['addresses the reader', 'filler wording'])
+                         ['addresses the reader', 'tells history',
+                          'filler wording'])
+
+    def test_a_version_note_is_found_at_any_indentation(self):
+        text = ('Intro.\n\n.. versionchanged:: 1.6.0\n   It differed.\n\n'
+                '* item\n\n  .. versionadded:: 1.6.0\n     New.\n\n'
+                '``.. versionchanged::`` in a literal is no note.\n\n'
+                '.. deprecated:: 1.6.0\n   A key.\n')
+        self.assertEqual(version_notes(text, 'x.rst'), [
+            'x.rst:3: version note: .. versionchanged:: 1.6.0',
+            'x.rst:8: version note: .. versionadded:: 1.6.0'])
 
     def test_literal_blocks_after_a_double_colon_are_skipped(self):
         text = 'Run it:\n\n::\n\n   we simply go\n\nBack to prose.\n'
@@ -212,8 +241,7 @@ class RuleSelfTest(unittest.TestCase):
                 '..  warning::\n\n   It is simply run.\n')
         found = violations(prose_lines(text), 'x.rst')
         self.assertEqual([f.split(': ')[1] for f in found],
-                         ['addresses the reader',
-                          'history outside a version directive',
+                         ['addresses the reader', 'tells history',
                           'filler wording'])
 
     def test_comments_labels_and_substitutions_are_skipped(self):

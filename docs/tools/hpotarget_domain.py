@@ -48,8 +48,44 @@ of the role's kind answers to (naming the kind it is when another role
 takes it); a name of several entries (naming their ids, each of which
 resolves it); a removed name that no entry has (with its hint). The text
 is then shown without a link.
+
+Refusals::
+
+    .. hpo:refusal::
+       :wrap: strategy
+
+       maxeval 5
+
+quotes how ``tadah hpo`` refuses a line of a target file. The content is
+the line (or the lines) of an invalid case of HPO's target-file registry
+(the ``[[...invalid]]`` tables of ``blueprint/hpotarget*.toml``: wrap,
+text, error), which HPO's conformance test runs through the parser: the
+parser refuses each with exactly its error. The directive shows the line
+as a ``none`` code block and the error as a ``text`` code block, each line
+longer than 80 characters broken at blanks, its continuation lines
+indented four blanks more (the convention of the quotes of program
+output, tests/nfp_docs/nfp_files.py). The registry is read as
+config/read_hpo_registry.py reads it (HPO's own loader, from the checkout
+config/source_locator.py finds). Options:
+
+    :wrap: <name>    the wrapper of the case (root, strategy, none, ...),
+                     needed when cases of several wrappers have the line
+                     with different errors
+    :entry: <id>     the entry the case belongs to (OPTIMIZER.MAXEVAL)
+    :file:           show the whole target file of the case (the line in
+                     its wrapper) instead of the line: an error that names
+                     a line number counts the lines of that file
+
+The error is the parser's message for the line; ``tadah hpo`` prints it
+after the file name and line number. Each of these is a build warning at
+the directive's line: no invalid case has the content (with the closest
+cases), cases with different errors have it, and a registry that cannot
+be read.
 """
 import difflib
+import importlib.util
+import os
+import sys
 
 from docutils import nodes
 from docutils.parsers.rst import directives
@@ -80,6 +116,68 @@ TEXT_NODE = {k: nodes.inline if k == 'topic' else nodes.literal
 
 def _names(text):
     return tuple(text.split()) if text else ()
+
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+CONFIG_DIR = os.path.normpath(os.path.join(HERE, '..', 'source', 'config'))
+NFP_FILES = os.path.normpath(os.path.join(HERE, '..', '..', 'tests',
+                                          'nfp_docs', 'nfp_files.py'))
+#: The target-file registry, read once per process: (registry, loader,
+#: blueprint directory, None) or (None, None, None, why it cannot be read).
+_REGISTRY = []
+
+
+def _load_nfp_files():
+    """tests/nfp_docs/nfp_files.py: the wrap of the quotes of program
+    output."""
+    spec = importlib.util.spec_from_file_location('hpo_quote_files',
+                                                  NFP_FILES)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+nfp_files = _load_nfp_files()
+
+
+def target_registry():
+    """(registry, loader, blueprint, error) of the HPO checkout the build
+    reads, as config/read_hpo_registry.py reads it."""
+    if _REGISTRY:
+        return _REGISTRY[0]
+    if CONFIG_DIR not in sys.path:
+        sys.path.insert(0, CONFIG_DIR)
+    try:
+        import read_hpo_registry
+        import source_locator
+    except (ImportError, SystemExit) as err:
+        _REGISTRY.append((None, None, None, f'config/read_hpo_registry.py '
+                          f'cannot be imported: {err}'))
+        return _REGISTRY[0]
+    try:
+        hpo = read_hpo_registry.locate_hpo()
+        blueprint = os.path.join(hpo, read_hpo_registry.BLUEPRINT)
+        loader = read_hpo_registry.load_loader(blueprint)
+    except (source_locator.SourceNotFound,
+            read_hpo_registry.GenerationError) as err:
+        _REGISTRY.append((None, None, None, str(err)))
+        return _REGISTRY[0]
+    try:
+        _REGISTRY.append((loader.load(blueprint), loader, blueprint, None))
+    except loader.RegistryError as err:
+        _REGISTRY.append((None, None, None, f'the registry in {blueprint} '
+                          f"does not pass HPO's loader:\n{err}"))
+    return _REGISTRY[0]
+
+
+def _case_text(text):
+    """A target-file text compared as a line of a page: its lines without
+    trailing blanks, and without blank lines before and after."""
+    return '\n'.join(l.rstrip() for l in text.split('\n')).strip('\n')
+
+
+def _shown(text):
+    return text.replace('\n', ' \\n ')
 
 
 def _warn(message, node):
@@ -187,6 +285,69 @@ class HpoRole(XRefRole):
         return result, messages
 
 
+class HpoRefusal(SphinxDirective):
+    """A refusal of a target-file line, quoted from an invalid case of the
+    registry: the line, then the error."""
+
+    has_content = True
+    option_spec = {'wrap': directives.unchanged_required,
+                   'entry': directives.unchanged_required,
+                   'file': directives.flag}
+
+    def warn(self, message):
+        logger.warning(f'hpo:refusal: {message}',
+                       location=(self.env.docname, self.lineno), type='hpo',
+                       subtype='refusal')
+        return []
+
+    def run(self):
+        text = _case_text('\n'.join(self.content))
+        if not text:
+            return self.warn('no line: the content is the invalid line')
+        reg, loader, blueprint, error = target_registry()
+        if error is not None:
+            return self.warn(f'the target-file registry cannot be read: '
+                             f'{error}')
+        for name in reg.files:
+            self.env.note_dependency(os.path.join(blueprint, name))
+        invalid = [c for c in reg.cases() if c.kind == 'invalid']
+        found = [c for c in invalid if _case_text(c.text) == text]
+        named = ''
+        for option, field in (('wrap', 'wrap'), ('entry', 'owner')):
+            if option in self.options:
+                found = [c for c in found
+                         if getattr(c, field) == self.options[option]]
+                named += f' with :{option}: {self.options[option]}'
+        if not found:
+            texts = sorted({_case_text(c.text) for c in invalid})
+            close = difflib.get_close_matches(text, texts, n=3, cutoff=0.6)
+            cases = [c for t in close for c in invalid
+                     if _case_text(c.text) == t][:5]
+            shown = ', '.join(f'"{_shown(_case_text(c.text))}" (:wrap: '
+                              f'{c.wrap}, {c.owner})' for c in cases)
+            return self.warn(f'no invalid line of the target-file registry '
+                             f'is "{_shown(text)}"{named} (closest: '
+                             f'{shown or "none"})')
+        if len({c.error for c in found}) > 1:
+            shown = ', '.join(f':wrap: {c.wrap} ({c.owner})' for c in found)
+            return self.warn(f'"{_shown(text)}" is an invalid line of '
+                             f'{len(found)} entries with different messages: '
+                             f'{shown}; name one with :wrap: or :entry:')
+        case = found[0]
+        line = (loader.compose(reg, case.wrap, case.text, case.context)
+                .file.rstrip('\n') if 'file' in self.options
+                else _case_text(case.text))
+        message = '\n'.join(nfp_files.wrap_output(case.error))
+        blocks = []
+        for content, language in ((line, 'none'), (message, 'text')):
+            block = nodes.literal_block(content, content)
+            block['language'] = language
+            block['nfp_refusal'] = True
+            self.set_source_info(block)
+            blocks.append(block)
+        return blocks
+
+
 class HpoDomain(Domain):
     """The entries of the target-file reference and the roles citing them."""
 
@@ -194,7 +355,7 @@ class HpoDomain(Domain):
     label = 'tadah hpo target file'
     object_types = {k: ObjType(KIND_WORDS[k], k) for k in KINDS}
     directives = dict({k: HpoEntry for k in KINDS}, removed=HpoRemoved,
-                      target=HpoTarget)
+                      target=HpoTarget, refusal=HpoRefusal)
     roles = {k: HpoRole(innernodeclass=TEXT_NODE[k]) for k in KINDS}
     initial_data = {'objects': {}, 'removed': {}}
     data_version = 1

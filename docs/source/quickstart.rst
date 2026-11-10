@@ -58,7 +58,7 @@ An example dataset can be downloaded from :download:`here <quickstart/db.train>`
 The keys of the file:
 
 - :ref:`DBFILE` specifies the dataset to be used for training. The path can be either absolute or relative, and the relative path is resolved with respect to the working directory.
-- :ref:`STRESS` ``true`` fits the stresses as well as the energies (as described below). The fit divides their residuals by the default :term:`error scales <error scale>`, 1 meV/atom for the energy per atom and 0.5 GPa for the stress (:ref:`ESIGMA`, :ref:`SSIGMA`; :ref:`fit_objective` describes the sum a fit minimises).
+- :ref:`STRESS <stress>` ``true`` fits the stresses as well as the energies (as described below). The fit divides their residuals by the default :term:`error scales <error scale>`, 1 meV/atom for the energy per atom and 0.5 GPa for the stress (:ref:`ESIGMA`, :ref:`SSIGMA`; :ref:`fit_objective` describes the sum a fit minimises).
 - The two-body (pair) block: :ref:`INIT2B` turns it on; :ref:`TYPE2B`, :ref:`RCUT2B` and :ref:`RCTYPE2B` set the descriptor (``D2_Blip``: four blip, i.e. cubic B-spline, radial functions), its cutoff distance and its cutoff function; :ref:`SGRID2B` and :ref:`CGRID2B` set the inverse widths and the centres of the blips. It is the pair block of :ref:`cli_example_1`.
 - The many-body block: :ref:`INITMB`, :ref:`TYPEMB`, :ref:`RCUTMB` and :ref:`RCTYPEMB` likewise. ``DM_mBlipEnv`` gives each atom an energy :math:`F(\rho)` of a pair density :math:`\rho` summed over its neighbours: :ref:`CGRIDMB` and :ref:`SGRIDMB` set the Gaussian that the density is built from, :ref:`CEMBFUNC` and :ref:`SEMBFUNC` the blips that :math:`F` is built from, :ref:`RCUTENV` takes :math:`F` smoothly to zero at low density, and :ref:`WATOM` scales the density of this dataset to about 1. :ref:`cli_example_3` explains these keys and how they were chosen.
 - Both blocks use the ``Cut_Cos`` cutoff (:ref:`cutoffs`): the energy and the force of a pair go smoothly to zero at the cutoff distance, so the energy is conserved when a pair crosses it in molecular dynamics. (``Cut_Dummy`` truncates instead; it is for testing only.)
@@ -85,6 +85,8 @@ The following command predicts energies on the :download:`prediction dataset <qu
 - ``-A``: Provides some basic analysis of the prediction, such as the RMSE (Root Mean Square Error) between true and predicted values.
 
 The ``-F`` flag also predicts forces, and the ``-S`` flag stresses.
+With several datasets after ``-d``, the ``-A`` table has a column of their
+mean, then one column per dataset, in the order given.
 
 The output of the ``predict`` command includes three files:
 
@@ -390,6 +392,8 @@ The stress of a CASTEP ``.md`` file converted by Tadah! 1.0.0 to 1.5.x
 still holds its kinetic part (about :math:`N k_B T / V`, e.g. 0.43 GPa
 at 633 K for 8 Si atoms in 163 Å³); it needs re-converting too.
 
+.. _lammps_usage:
+
 Tadah! and LAMMPS
 -----------------
 
@@ -408,6 +412,12 @@ cannot be loaded, or an element it does not have, stops LAMMPS with an
 ``ERROR`` that gives the reason, on the screen and in ``log.lammps``, e.g.
 ``ERROR: pair_coeff: failed to initialise Tadah potential 'pot.tadah':
 Symbol not in potential file: W``.
+
+A potential needs a ``pair_style tadah`` built from the same or a later
+Tadah! release than the ``tadah`` that wrote it. An older build refuses a key
+it does not know, such as the ``ENERGY`` line of a potential written by
+Tadah! 1.6.0; LAMMPS rebuilt with the matching Tadah!LAMMPS
+(:ref:`installation_lammps`) reads it.
 
 Each ``pair_coeff`` line reads the file it names, so one script can run
 several potentials: a later ``pair_coeff * * other.tadah ELEMENT1 ...``

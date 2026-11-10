@@ -682,7 +682,7 @@ refuse such files with ``Invalid key: EMBF0``), and a potential without the
 line is read as ``ZERO``. It takes ``ZERO`` or ``FREE`` only, in any case;
 any other value is an error at its line when the configuration file or
 potential is read (``Invalid value for key EMBF0 on line N of
-pot.tadah: 'ZEROO' (allowed: ZERO, FREE)``). It is not an ``OPTIM`` target (:ref:`hpo_embf0`). ``EMBF0`` has no
+pot.tadah: 'ZEROO' (allowed: ZERO, FREE)``). It is not an ``OPTIM`` target (:ref:`nfp_search_space_components`). ``EMBF0`` has no
 effect on a potential without a DM_REAM block (:ref:`RHOFORM and EMBF0 without a DM_REAM block <dm_ream_only_keys>`).
 
 .. list-table:: What changes between ZERO and FREE for the same coefficients
@@ -718,6 +718,8 @@ indices shift). External tools that tabulate the embedding from ``WEIGHTS``
 says ``EMBF0 FREE``.
 
 .. doxygenclass:: tadah::models::DM_REAM
+
+.. _dm_mead_variants:
 
 DM_mEAD variants
 ~~~~~~~~~~~~~~~~
@@ -861,3 +863,57 @@ DM_mJoin
 ~~~~~~~~
 
 .. doxygenclass:: tadah::models::DM_mJoin
+
+.. _descriptor_analytical_derivatives:
+
+Analytical derivatives in tadah hpo
+-----------------------------------
+
+The analytical gradient of ``tadah hpo`` (``GRAD_STRATEGY ANALYTICAL`` or
+``HYBRID``, :ref:`nfp_choosing_gradients`) differentiates the parameters of
+the descriptors below, in the energy and the force rows unless the table
+says otherwise. A key of the fit, such as :ref:`LAMBDA`, has none.
+:ref:`RCUT2B` and :ref:`RCUTMB` act through the cutoff function, and
+``Cut_Dummy`` gives no derivative with respect to them.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 32 68
+
+   * - Descriptor
+     - Search parameters with an analytical derivative
+   * - ``D2_Blip``, ``D2_Blip5``, ``D2_BP``
+     - :ref:`CGRID2B`, :ref:`SGRID2B`, :ref:`RCUT2B`, :ref:`WATOM`
+   * - ``D2_Knot5``
+     - :ref:`CGRID2B`, :ref:`RCUT2B`, :ref:`WATOM`
+   * - ``D2_LJ``, ``D2_MIE``, ``D2_ZBL``
+     - :ref:`RCUT2B`, :ref:`WATOM`
+   * - ``DM_mBlip``
+     - :ref:`CGRIDMB`, :ref:`SGRIDMB`, :ref:`RCUTMB`, :ref:`WATOM`,
+       :ref:`CEMBFUNC`, :ref:`SEMBFUNC`
+   * - ``DM_mBlipEnv``
+     - those of ``DM_mBlip`` and :ref:`RCUTENV`
+   * - ``DM_Blip``, ``DM_EAD``, ``DM_mRLR``, ``DM_mSQRT``
+     - :ref:`CGRIDMB`, :ref:`SGRIDMB`, :ref:`RCUTMB`, :ref:`WATOM`, in
+       the energy rows only
+   * - ``D2_mJoin`` and every other descriptor but ``DM_mJoin`` and
+       ``DESCRIPTOR`` blocks
+     - none
+
+A search parameter has an analytical derivative only in the rows that
+every descriptor that depends on it differentiates. One that a descriptor
+differentiates only in the energy rows is accepted under ``ANALYTICAL``
+solely in a run without force rows: :ref:`FORCE` false and no
+:hpo:key:`PC_FRMSE <ROOT.PC_FRMSE>`. The analytical gradient of
+``DM_mJoin`` and of ``DESCRIPTOR`` blocks is described with the blocks
+(:ref:`dm_embed`).
+
+Most two-body and many-body descriptors read :ref:`WATOM` (the key names
+those that do not), so both descriptors of a configuration usually depend
+on it. ``DM_REAM``, the ``DM_Poly`` descriptors, ``DESCRIPTOR`` blocks,
+``DM_mJoin`` and ``D2_mJoin`` depend on ``WATOM`` and give no derivative
+with respect to it. A ``WATOM`` value that weighs their pairs has no
+analytical derivative, whatever the other descriptor gives. ``HYBRID``
+takes it by finite differences, and ``ANALYTICAL`` refuses it at
+startup. Beside ``DM_Blip``, ``DM_EAD``, ``DM_mRLR`` or ``DM_mSQRT`` it
+has one in the energy rows only.

@@ -37,8 +37,8 @@ docs/source/nfp/reference/pc_options.rst
 docs/source/nfp/reference/optimisers.rst
 docs/source/nfp/reference/anneal_params.rst
 docs/source/nfp/reference/asa_params.rst
+docs/source/nfp/nfp-files.zip
 docs/build/
 
 # ctest scratch
 Testing/
-

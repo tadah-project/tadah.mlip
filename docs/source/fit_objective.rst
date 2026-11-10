@@ -176,7 +176,7 @@ accuracy between data. ``tadah hpo`` can search ``ESIGMA``, ``FSIGMA``,
 ``SSIGMA`` and ``WDBFILE`` against the validation metrics and properties of
 a run (:hpo:key:`OPTIM.TARGET.ESIGMA`). Its loss-term weights are the
 multipliers of the terms of the ``tadah hpo`` loss, not of the observations
-of a fit (:ref:`loss_functions`).
+of a fit (:ref:`nfp_targets_losses`).
 
 .. _fit_objective_conversion:
 

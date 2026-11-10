@@ -1,6 +1,6 @@
-# The training data of Example 2: 100 snapshots of bcc Ta cells of 54 atoms
-# from LAMMPS molecular dynamics with the Ta1_Ravelo_2013 EAM potential.
-DBFILE   ../ex_2/tdata.db
+# The training data: 100 snapshots of bcc Ta cells of 54 atoms from LAMMPS
+# molecular dynamics with the Ta1_Ravelo_2013 EAM potential.
+DBFILE   tdata.db
 
 # Each cell has one energy and 162 force components: the fit counts
 # 100 energies and 16200 force components.

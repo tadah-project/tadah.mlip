@@ -45,12 +45,18 @@ python:
    install:
    - requirements: docs/requirements.txt
 
-# Server-side search: hpo.html is only a redirect (docs/source/_extra), so it
-# is not indexed.  Setting 'ignore' replaces Read the Docs' default list, so
-# the defaults are repeated.
+# Server-side search: the pages of docs/tools/legacy_routes.toml only lead
+# to other pages, so they are not indexed.  Setting 'ignore' replaces Read
+# the Docs' default list, so the defaults are repeated.
 search:
    ignore:
    - hpo.html
+   - hpo_examples.html
+   - optimizer.html
+   - anneal.html
+   - anneal_pt.html
+   - asa.html
+   - cli/cli_auto_gen.html
    - search.html
    - search/index.html
    - 404.html

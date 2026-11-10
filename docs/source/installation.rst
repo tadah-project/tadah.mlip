@@ -366,8 +366,7 @@ LAMMPS that is only named differently. The MPI library must provide ``MPI_THREAD
 ``build-mpi/CMakeCache.txt``. A launcher of another MPI — one that comes
 first on ``PATH``, from a conda environment for example — does not start
 one job of N ranks but N independent one-rank runs, which all write the
-unsuffixed ``hpo_run.log`` and result files of a one-rank run. The
-requirements and an ARCHER2 job script are in :ref:`tadah_anneal_mpi`.
+unsuffixed ``hpo_run.log`` and result files of a one-rank run.
 
 **4. Testing an MPI build.** With ``-DBUILD_TESTING=ON`` the whole suite
 runs in the MPI build too (``ctest --test-dir build-mpi``): each test
@@ -401,7 +400,7 @@ to ``TADAH_HPO_MPI``; ``-DTADAH_BUILD_MPI=OFF`` is accepted.
 .. versionchanged:: 1.6.0
    The MPI training build (``-DTADAH_BUILD_MPI=ON``, the ``tadah_mpi``
    executable and its ScaLAPACK solver) is removed, and with it the
-   ``PC_LAMMPS --ncpu`` option of ``tadah hpo`` (:ref:`pc_lammps_options`).
+   ``PC_LAMMPS --ncpu`` option of ``tadah hpo`` (:ref:`nfp_ref_pc_options`).
    Its configuration keys :ref:`MPIWPCKG`, :ref:`MBLOCK` and :ref:`NBLOCK`
    are deprecated (:ref:`SupportedKEYS`).
 

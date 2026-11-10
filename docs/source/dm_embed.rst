@@ -174,13 +174,14 @@ holds the parameter (``OPTIM CGRIDMB: the potential has no CGRIDMB key: its
 many-body term is DM_Embed component(s) (DESCRIPTOR blocks), whose density
 parameter is the named path TA.DENSITY.CENTRES; ...``). A ``DM_Embed``
 component gives no derivative with respect to :ref:`WATOM`, which weighs its
-density (:ref:`nfp_analytical_coverage`). In a ``DM_mJoin`` the
+density (:ref:`descriptor_analytical_derivatives`). In a ``DM_mJoin`` the
 analytical gradient (``GRAD_STRATEGY ANALYTICAL`` or ``HYBRID``) differentiates
 the named paths of its ``DM_Embed`` children; a flat key indexes the joined
 lists, which no child reads against its own grid, so ``HYBRID`` takes it by
 finite differences and ``ANALYTICAL`` names it as a parameter it cannot
 differentiate. ``RHOGATE`` and ``RHOBARGATE`` accept a single scalar
-component; a term with several densities is refused (:ref:`hpo_feasibility_gates`).
+component; a term with several densities is refused
+(:ref:`nfp_search_space_feasibility`).
 A trainer of a DM_Embed potential (``tadah
 train``, ``tadah hpo``'s ``best_pot.tadah``) writes no ``RCTYPEMB`` line: the
 blocks' ``CUTOFF`` are the many-body cutoffs.
@@ -258,8 +259,9 @@ A potential that ``tadah refit`` writes pins every coefficient with
 coefficients that ``FIXINDEX`` does not pin to the training data
 (:doc:`training`), so they follow every shape candidate. Pinned coefficients
 keep their ``FIXWEIGHT`` values; ``OPTIM FIXWEIGHT`` searches selected ones
-(:ref:`hpo_fixweight`). A run without a training ``DBFILE`` is refused unless
-``FIXINDEX`` pins every coefficient: validation data alone does not train them.
+(:ref:`nfp_search_space_coefficients`). A run without a training
+``DBFILE`` is refused unless ``FIXINDEX`` pins every coefficient: validation
+data alone does not train them.
 
 ``analysis bfunc --type MB DENSITY`` (or ``MB``) and ``MB EMBEDDING`` print
 component curves with the meaning of the radial curves: the bare functions;

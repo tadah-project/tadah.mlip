@@ -63,6 +63,11 @@ def sections(n):
     return ''.join(f'Section {i}\n---------\n\nText {i}.\n\n' for i in range(1, n + 1))
 
 
+# The navigation block a page with three or more sections starts with.
+CONTENTS = directive('contents::', options=[':local:', ':depth: 1',
+                                            ':backlinks: none'])
+
+
 def build(files, theme_options=None, theme='sphinx_rtd_theme', extra_conf='',
           strict=False):
     """Build a project of *files* (relative path -> text) with nfp_checks;
@@ -143,13 +148,13 @@ GOOD = {
         f"A literal ``{'y' * 40}`` and ``{'z' * 30} {'z' * 30}``.",
         directive('code-block:: none', LINE_80),
         directive('literalinclude:: files/eighty.txt', options=[':language: none']),
-        table(2), sections(7), lines=250),
+        table(2), CONTENTS, sections(7), lines=250),
     # A tab expands to the next multiple of 8 columns: 8 + 72 = 80.
     'nfp/files/eighty.txt': LINE_80 + '\n\t' + 't' * 72 + '\n',
     'nfp/tutorial/index.rst': page('Tutorial', 'Units.', toctree(['unit1'])),
     'nfp/tutorial/unit1.rst': page('Unit 1', lines=200),
     'nfp/reference/index.rst': page('Reference', 'Keys.', toctree(['keys'])),
-    'nfp/reference/keys.rst': page('Keys', sections(9), lines=400),
+    'nfp/reference/keys.rst': page('Keys', CONTENTS, sections(9), lines=400),
 }
 
 
@@ -181,7 +186,7 @@ class ChapterRulesTest(unittest.TestCase):
                                        + 't' * 73 + '\n')
         files['nfp/leaf.rst'] = page('Leaf')
         files['nfp/long.rst'] = page('Long', lines=251)
-        files['nfp/many.rst'] = page('Many', sections(8))
+        files['nfp/many.rst'] = page('Many', CONTENTS, sections(8))
         files['nfp/tutorial/index.rst'] = page(
             'Tutorial', 'Units.', toctree(['unit1', 'unit2']))
         files['nfp/tutorial/unit2.rst'] = page('Unit 2', lines=201)
@@ -229,11 +234,318 @@ class ChapterRulesTest(unittest.TestCase):
                       'captioned "Nested Fitting"', warnings[0])
 
 
+@unittest.skipUnless(HAVE_SPHINX, 'Sphinx and sphinx_rtd_theme are required')
+class NavigationTest(unittest.TestCase):
+    """A page of the chapter with three or more sections starts with the
+    block CONTENTS, before its first section; a literalinclude in the
+    chapter sets :language:."""
+
+    def build_pages(self, pages):
+        files = dict(GOOD)
+        files['index.rst'] = root(['nfp/overview', 'nfp/tutorial/index',
+                                   'nfp/reference/index'] + sorted(pages))
+        files.update({f'{name}.rst': text for name, text in pages.items()})
+        return build(files, {'navigation_depth': 2})
+
+    def test_a_page_with_three_sections_starts_with_the_contents_block(self):
+        status, warnings = self.build_pages({
+            'nfp/two': page('Two', 'Intro.', sections(2)),
+            'nfp/three': page('Three', 'Intro.', CONTENTS, sections(3)),
+            'nfp/missing': page('Missing', 'Intro.', sections(3)),
+            # Under the first section's title the block belongs to it.
+            'nfp/late': page('Late', 'Section 0\n---------\n', CONTENTS,
+                             sections(2)),
+            'nfp/options': page('Options', directive(
+                'contents::', options=[':local:', ':depth: 2']), sections(3)),
+        })
+        text = '\n'.join(warnings)
+        expected = [
+            r'nfp/missing\.rst: WARNING: a page with 3 sections starts with '
+            r'"\.\. contents::" \(:local:, :depth: 1, :backlinks: none\) '
+            r'before its first section',
+            r'nfp/late\.rst: WARNING: a page with 3 sections starts with',
+            r'nfp/options\.rst:\d+: WARNING: the contents block has :depth: 2, '
+            r'and no :backlinks: none \(it takes :local:, :depth: 1, '
+            r':backlinks: none\)',
+        ]
+        for pattern in expected:
+            self.assertRegex(text, pattern)
+        self.assertEqual(len(warnings), len(expected), text)
+
+    def test_every_literalinclude_sets_its_language(self):
+        status, warnings = self.build_pages({
+            'nfp/files_page': page(
+                'Files', directive('literalinclude:: files/eighty.txt'),
+                directive('literalinclude:: files/eighty.txt',
+                          options=[':language: none'])),
+        })
+        self.assertEqual(len(warnings), 1, warnings)
+        self.assertRegex(warnings[0], r'^nfp/files_page\.rst:\d+: WARNING: '
+                         r'literalinclude without :language:')
+        # Outside the chapter no rule applies.
+        files = dict(GOOD)
+        files['other.rst'] = page('Other', directive(
+            'literalinclude:: nfp/files/eighty.txt'))
+        status, warnings = build(files, {'navigation_depth': 2}, strict=True)
+        self.assertEqual((status, warnings), (0, []))
+
+
+@unittest.skipUnless(HAVE_SPHINX, 'Sphinx and sphinx_rtd_theme are required')
+class CodeBlockTest(unittest.TestCase):
+    """A code block of the chapter is bash, ini, none or text, and each
+    bash block is one that the runs of the pages read: a ``.. code-block::
+    bash`` of the page itself (tests/doc_commands/doc_commands.py). A bash
+    block they read is one the page shows."""
+
+    def build_blocks(self, *parts, extra=None, strict=False):
+        files = dict(GOOD)
+        files['index.rst'] = root(['nfp/overview', 'nfp/tutorial/index',
+                                   'nfp/reference/index', 'nfp/blocks'])
+        files['nfp/blocks.rst'] = page('Blocks', *parts)
+        files.update(extra or {})
+        return build(files, {'navigation_depth': 2}, strict=strict)
+
+    def test_the_four_languages_and_a_bash_block_the_runs_read_pass(self):
+        # The text block quotes program output: its marker names the run
+        # of the manifest that checks it (QuoteLintTest).
+        status, warnings = self.build_blocks(
+            directive('code-block:: bash', 'tadah hpo -h',
+                      options=[':caption: help']),
+            directive('code-block:: ini', 'RCUT2B 6.5'),
+            directive('code-block:: none', 'OPTIM RCUT2B (1) 6.0 7.5'),
+            '.. output: blocks stdout command=1',
+            directive('code-block:: text', 'Best loss 14.4'),
+            directive('literalinclude:: files/eighty.txt',
+                      options=[':language: ini']),
+            extra={'nfp/files/manifest.txt': BLOCKS_MANIFEST},
+            strict=True)
+        self.assertEqual((status, warnings), (0, []))
+
+    def test_another_language_is_a_warning(self):
+        _, warnings = self.build_blocks(
+            directive('code-block:: console', 'tadah hpo -h'),
+            directive('code-block:: shell', 'tadah hpo -h'),
+            directive('code-block:: sh', 'tadah hpo -h'),
+            directive('code-block:: Bash', 'tadah hpo -h'),
+            'A literal block::\n\n   tadah hpo -h',
+            '>>> tadah hpo -h',
+            directive('literalinclude:: files/eighty.txt',
+                      options=[':language: python']))
+        text = '\n'.join(warnings)
+        for language in ('console', 'shell', 'sh', 'Bash', 'python'):
+            self.assertRegex(text, r'nfp/blocks\.rst:\d+: WARNING: code block '
+                             rf'in the language "{language}" \(a chapter page '
+                             r'uses bash, ini, none or text\)')
+        self.assertRegex(text, r'nfp/blocks\.rst:\d+: WARNING: literal block '
+                         r'"::" without a language')
+        self.assertRegex(text, r'nfp/blocks\.rst:\d+: WARNING: doctest block')
+        self.assertEqual(len(warnings), 7, text)
+
+    def test_a_bash_block_that_the_runs_do_not_read_is_a_warning(self):
+        # Each of these renders as a bash block; none is a ".. code-block::
+        # bash" line of the page that the runs read.
+        _, warnings = self.build_blocks(
+            directive('code:: bash', 'tadah hpo -h'),
+            directive('sourcecode:: bash', 'tadah hpo -h'),
+            directive('Code-Block:: bash', 'tadah hpo -h'),
+            directive('code-block :: bash', 'tadah hpo -h'),
+            '..  code-block:: bash\n\n   tadah hpo -h',
+            directive('literalinclude:: files/run.sh',
+                      options=[':language: bash']),
+            '.. include:: part.txt',
+            '.. highlight:: bash',
+            directive('code-block::', 'tadah hpo -h'),
+            extra={'nfp/files/run.sh': 'tadah hpo -h\n',
+                   'nfp/part.txt': directive('code-block:: bash',
+                                             'tadah hpo -h')})
+        text = '\n'.join(warnings)
+        self.assertEqual(
+            len(re.findall(r'WARNING: bash code block that the runs of the '
+                           r'pages do not read: a command block is a '
+                           r'"\.\. code-block:: bash" line of the page itself',
+                           text)), 8, text)
+        self.assertEqual(len(warnings), 8, text)
+
+    def test_a_bash_block_that_the_page_does_not_show_is_a_warning(self):
+        status, warnings = self.build_blocks(
+            directive('code-block:: bash', 'tadah hpo -h'),
+            '..\n   .. code-block:: bash\n\n      tadah hpo -h')
+        self.assertEqual(len(warnings), 1, warnings)
+        self.assertRegex(warnings[0], r'^nfp/blocks\.rst:9: WARNING: the runs of '
+                         r'the pages read this "\.\. code-block:: bash", which '
+                         r'the page does not show')
+
+    def test_outside_the_chapter_no_language_rule_applies(self):
+        files = dict(GOOD)
+        files['other.rst'] = page('Other', directive('code:: bash', 'ls'),
+                                  directive('code-block:: console', '$ ls'),
+                                  'Literal::\n\n   ls')
+        status, warnings = build(files, {'navigation_depth': 2}, strict=True)
+        self.assertEqual((status, warnings), (0, []))
+
+
 THREE_LEVELS = {
     'index.rst': root(['nfp/overview']),
     'other.rst': page('Other', 'Section\n-------\n\nSub\n~~~\n\nText.'),
     'nfp/overview.rst': page('Overview'),
 }
+
+
+# The manifest of the runs of the fixture: one line, which runs the
+# commands of nfp/blocks.rst.
+BLOCKS_MANIFEST = 'blocks | nfp/blocks.rst | . | - | 60 | best_loss=1e-3\n'
+
+# training.rst with the section "Training inside tadah hpo" (label
+# training_hpo) between two others.
+TRAINING = page(
+    'Training',
+    'Before\n------',
+    directive('code-block:: text', 'outside the section'),
+    '.. message: a placeholder outside the section',
+    '.. _training_hpo:\n\nTraining inside tadah hpo\n'
+    '-------------------------',
+    directive('code-block:: text', 'inside the section'),
+    '.. message: a placeholder inside the section',
+    'After\n-----',
+    directive('code-block:: text', 'after the section'))
+
+
+@unittest.skipUnless(HAVE_SPHINX, 'Sphinx and sphinx_rtd_theme are required')
+class QuoteLintTest(unittest.TestCase):
+    """A text block (program output) of a hand-written page of the chapter
+    or of the section training_hpo is a quote that a test checks: one
+    preceded by an output marker that names a run of the manifest (checked
+    by that run, tests/nfp_docs/check_nfp_run.py), or one the hpo:refusal
+    directive renders from the registry. A ".. message:" placeholder is a
+    warning when nfp_message_comments_fail is on."""
+
+    def build_quotes(self, blocks, training=TRAINING, extra_conf='',
+                     extra=None):
+        files = dict(GOOD)
+        files['index.rst'] = root(['nfp/overview', 'nfp/tutorial/index',
+                                   'nfp/reference/index', 'nfp/blocks'],
+                                  other=('other', 'training'))
+        files['nfp/blocks.rst'] = page('Blocks', directive(
+            'code-block:: bash', 'tadah hpo -h'), *blocks)
+        files['nfp/files/manifest.txt'] = BLOCKS_MANIFEST
+        files['training.rst'] = training
+        # A generated reference page quotes messages without markers.
+        files['nfp/reference/keys.rst'] = page(
+            'Keys', directive('code-block:: text', 'a message of a check'))
+        files.update(extra or {})
+        return build(files, {'navigation_depth': 2}, extra_conf=extra_conf)
+
+    def test_a_marked_quote_passes_and_an_unmarked_one_is_a_warning(self):
+        status, warnings = self.build_quotes([
+            '.. output: blocks stdout command=1',
+            directive('code-block:: text', 'quoted'),
+            directive('code-block:: text', 'not quoted from a run'),
+            directive('literalinclude:: files/eighty.txt',
+                      options=[':language: text'])])
+        text = '\n'.join(warnings)
+        # Lines: the bash block 4, the marker 8, its block 10, the
+        # unmarked block 14, the literalinclude 18; in training.rst the
+        # block of the section training_hpo, 18.
+        for where in ('nfp/blocks.rst:14', 'nfp/blocks.rst:18',
+                      'training.rst:18'):
+            self.assertRegex(text, re.escape(where) + r': WARNING: program '
+                             r'output \(a text code block\) that no test '
+                             r'checks: precede a "\.\. code-block:: text" '
+                             r'with an output marker')
+        # The placeholder of TRAINING is the switch's case, not a quote.
+        quotes = [w for w in warnings if 'placeholder' not in w]
+        self.assertEqual(len(quotes), 3, text)
+
+    def test_a_marker_that_names_no_run_is_a_warning_at_its_line(self):
+        _, warnings = self.build_quotes([
+            '.. output: nosuch hpo_run.log',
+            directive('code-block:: text', 'quoted'),
+            '.. output: blocks stdout command=2',
+            directive('code-block:: text', 'quoted'),
+            '.. output: blocks out.log',
+            directive('code-block:: text', 'quoted')],
+            training=page('Training'))
+        text = '\n'.join(warnings)
+        self.assertRegex(text, r'nfp/blocks\.rst:8: WARNING: the output '
+                         r'marker names "nosuch", which is not an id of '
+                         r'.*manifest\.txt')
+        self.assertRegex(text, r'nfp/blocks\.rst:14: WARNING: command=2, and '
+                         r'nfp/blocks\.rst has 1 tadah command\(s\)')
+        self.assertRegex(text, r'nfp/blocks\.rst:20: WARNING: the source '
+                         r'"out\.log" is not stdout, stderr or a file of a '
+                         r'search')
+        # A block after a marker that names no run is still a quote: the
+        # marker's warning is the one to fix.
+        self.assertEqual(len(warnings), 3, text)
+
+    def test_a_marker_on_a_page_no_run_reads_is_a_warning(self):
+        # The runs check the quotes of the pages under nfp/ and of
+        # training.rst; a marker elsewhere names a run that never compares
+        # its block.
+        outside = page('Outside', '.. output: blocks stdout command=1',
+                       directive('code-block:: text', 'quoted'))
+        _, warnings = self.build_quotes(
+            [], extra={'outside.rst': outside,
+                       'index.rst': root(['nfp/overview', 'nfp/tutorial/index',
+                                          'nfp/reference/index',
+                                          'nfp/blocks'],
+                                         other=('other', 'training',
+                                                'outside'))})
+        text = '\n'.join(warnings)
+        self.assertRegex(text, r'outside\.rst:4: WARNING: an output marker on '
+                         r'a page whose quotes no run checks')
+        self.assertEqual(len([w for w in warnings if 'outside.rst' in w]), 1,
+                         text)
+
+    def test_a_block_of_the_section_training_hpo_has_a_language(self):
+        # Program output in the section is a text block with a marker; a
+        # literal block "::" or another language would escape the check,
+        # as on the pages of the chapter.
+        training = page(
+            'Training',
+            'Before\n------\n\nOutput::\n\n   before the section',
+            '.. _training_hpo:\n\nTraining inside tadah hpo\n'
+            '-------------------------',
+            'Output::\n\n   inside the section',
+            directive('code-block:: console', 'inside the section'),
+            directive('code-block:: ini', 'RCUT2B 5.0'),
+            'After\n-----',
+            directive('code-block:: console', 'after the section'))
+        _, warnings = self.build_quotes([], training=training)
+        mine = [w for w in warnings if w.startswith('training.rst')]
+        self.assertEqual(len(mine), 2, warnings)
+        self.assertRegex(mine[0], r'^training\.rst:\d+: WARNING: literal block '
+                         r'"::" without a language')
+        self.assertRegex(mine[1], r'^training\.rst:\d+: WARNING: code block in '
+                         r'the language "console"')
+
+    def test_message_placeholders_are_warnings_when_the_switch_is_on(self):
+        blocks = ['.. message: the RESULT section of hpo_run.log']
+        _, warnings = self.build_quotes(
+            blocks, extra_conf='nfp_message_comments_fail = True\n')
+        placeholders = [w for w in warnings if 'placeholder' in w]
+        self.assertEqual(len(placeholders), 2, warnings)
+        self.assertRegex(placeholders[0], r'^nfp/blocks\.rst:8: WARNING: a '
+                         r'"\.\. message:" placeholder: replace it with the '
+                         r'quote of the program output it names')
+        self.assertRegex(placeholders[1], r'^training\.rst:22: WARNING: a '
+                         r'"\.\. message:" placeholder')
+        _, warnings = self.build_quotes(
+            blocks, extra_conf='nfp_message_comments_fail = False\n')
+        self.assertEqual([w for w in warnings if 'placeholder' in w], [])
+
+    def test_a_placeholder_is_a_warning_of_every_build(self):
+        # No page of the chapter holds a placeholder: each one was replaced
+        # by a tested quote. A placeholder is therefore a warning of every
+        # build whose conf.py does not turn the switch off.
+        _, warnings = self.build_quotes(
+            ['.. message: the RESULT section of hpo_run.log'])
+        placeholders = [w for w in warnings if 'placeholder' in w]
+        self.assertEqual(len(placeholders), 2, warnings)
+        self.assertRegex(placeholders[0], r'^nfp/blocks\.rst:8: WARNING: a '
+                         r'"\.\. message:" placeholder')
+        self.assertRegex(placeholders[1], r'^training\.rst:22: WARNING: a '
+                         r'"\.\. message:" placeholder')
 
 
 @unittest.skipUnless(HAVE_SPHINX, 'Sphinx and sphinx_rtd_theme are required')
@@ -279,10 +591,61 @@ class ShippedFilesTest(unittest.TestCase):
         files = dict(GOOD)
         files['nfp/files/examples/pt/README.rst'] = page(
             'Readme', directive('code-block:: none', LINE_80 + 'x'))
+        files['index.rst'] = root(['nfp/overview', 'nfp/tutorial/index',
+                                   'nfp/reference/index', 'nfp/pt'])
+        files['nfp/pt.rst'] = page(
+            'PT', ':download:`README <files/examples/pt/README.rst>`')
         status, warnings = build(files, {'navigation_depth': 2},
                                  extra_conf=f'exclude_patterns = {exclude!r}\n',
                                  strict=True)
         self.assertEqual((status, warnings), (0, []), exclude)
+
+
+@unittest.skipUnless(HAVE_SPHINX, 'Sphinx and sphinx_rtd_theme are required')
+class LinkedFilesTest(unittest.TestCase):
+    """Every file under nfp/files but manifest.txt is linked from a page,
+    as Sphinx records the link: a path in a comment or a code block links
+    nothing."""
+
+    UNIT = page(
+        'Unit 2',
+        'The files: :download:`config.train <../files/unit2/config.train>`.',
+        directive('literalinclude:: ../files/unit2/config.hpo',
+                  options=[':language: none']),
+        directive('csv-table:: Results', options=[
+            ':header-rows: 1', ':file: ../files/unit2/expected.csv']),
+        directive('code-block:: none',
+                  ':download:`x <../files/unit2/config.val>`'),
+        '..\n   .. csv-table:: Hidden\n      :file: ../files/unit2/hidden.csv')
+
+    def build_unit(self, extra=None):
+        files = dict(GOOD)
+        files['index.rst'] = root(['nfp/overview', 'nfp/tutorial/index',
+                                   'nfp/reference/index'])
+        files['nfp/tutorial/index.rst'] = page('Tutorial', 'Units.',
+                                               toctree(['unit1', 'unit2']))
+        files['nfp/tutorial/unit2.rst'] = self.UNIT
+        for name in ('config.train', 'config.hpo', 'config.val'):
+            files[f'nfp/files/unit2/{name}'] = 'x\n'
+        files['nfp/files/unit2/expected.csv'] = 'Quantity,Value\nBest loss,1\n'
+        files['nfp/files/unit2/hidden.csv'] = 'Quantity,Value\nBest loss,1\n'
+        files['nfp/files/manifest.txt'] = '# runs\n'
+        files.update(extra or {})
+        return build(files, {'navigation_depth': 2})
+
+    def test_files_that_no_page_links_are_a_warning(self):
+        status, warnings = self.build_unit()
+        self.assertEqual(sorted(warnings), [
+            'WARNING: nfp/files/unit2/config.val: no page links it (:download:, '
+            'literalinclude, include or the :file: of a csv-table)',
+            'WARNING: nfp/files/unit2/hidden.csv: no page links it (:download:, '
+            'literalinclude, include or the :file: of a csv-table)'])
+
+    def test_a_tree_whose_files_are_all_linked_passes(self):
+        unit = self.UNIT.replace('code-block:: none', 'rst-class:: x').replace(
+            '..\n   .. csv-table:: Hidden', '.. csv-table:: Hidden')
+        status, warnings = self.build_unit({'nfp/tutorial/unit2.rst': unit})
+        self.assertEqual(warnings, [])
 
 
 class SiteRootTest(unittest.TestCase):

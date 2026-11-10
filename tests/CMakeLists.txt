@@ -189,7 +189,8 @@ add_subdirectory(catch_discovery)
 # 7. Documentation build tools (docs/tools/tests)
 # ------------------------------------------------------------------
 # Unit tests of the docs input lookup (docs/source/config/source_locator.py),
-# of the hpo.html redirect check (docs/tools/check_redirect.py), of the
+# of the compatibility pages of earlier releases (docs/tools/legacy_routes.py
+# and its table), of the
 # configuration-keys and CLI page generators (docs/source/config/read_toml.py,
 # docs/source/cli/generate_cli.py), of the ANNEAL key tables' generator
 # (docs/source/config/read_anneal_keys.py, which needs Python 3.11 or later
@@ -249,9 +250,16 @@ set_tests_properties(tadah_docs_layout PROPERTIES
 # docs_layout/check_site_layout.py builds the documentation as
 # CONTRIBUTING.md describes -- Doxygen with this build's docs/Doxyfile, then
 # sphinx-build -W --keep-going with its XML and the CORE and HPO sources of
-# this build -- in the build tree, and checks every page under nfp/ with
-# docs/tools/check_layout.py at 1280, 1024, 900, 768 and 390 px; every page
-# source under docs/source/nfp must be a built page. Skipped (77) without
+# this build -- in the build tree, checks the compatibility pages of the
+# built site with docs/tools/legacy_routes.py (each is the page its table,
+# docs/tools/legacy_routes.toml, generates, and each of its destinations is
+# a page of the site with the id it names), and checks every page under nfp/
+# with docs/tools/check_layout.py at 1280, 1024, 900, 768 and 390 px; every
+# page source under docs/source/nfp must be a built page.
+# Before the fix: the compatibility check failed -- the build copied an
+# hpo.html of its own (docs/source/_extra), which differs from the generated
+# page, built hpo_examples.html as a page of the site, and nfp/overview, the
+# destination of hpo.html, had no id nested-fitting. Skipped (77) without
 # Doxygen, a Python module of docs/requirements.txt or a Chromium-family
 # browser, and while docs/source/nfp holds no page. Without NFP the build
 # does not configure HPO, and the docs build looks its sources up itself.
@@ -489,6 +497,11 @@ if(NOT _nfp_runs_result EQUAL 0)
   message(FATAL_ERROR "nfp_docs/check_nfp_run.py --list failed: ${_nfp_runs_error}")
 endif()
 string(REPLACE "\n" ";" _nfp_runs "${_nfp_runs}")
+# Whether tadah links MKL (the LAPACK libraries of the build).
+set(_tadah_nfp_mkl OFF)
+if("${LAPACK_LIBRARIES}" MATCHES "mkl")
+  set(_tadah_nfp_mkl ON)
+endif()
 foreach(_run IN LISTS _nfp_runs)
   if(_run STREQUAL "")
     continue()
@@ -511,7 +524,59 @@ foreach(_run IN LISTS _nfp_runs)
     TIMEOUT ${_ctest_timeout}
     SKIP_RETURN_CODE 77
     ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+  # The tolerances of a line hold for a build whose BLAS rounds otherwise.
+  # In a build with MKL, a line without slow (a short variant, or a page
+  # whose run is short) runs a second time with MKL on its compatible code
+  # path (MKL_CBWR=COMPATIBLE, the kernels of a processor without AVX),
+  # which rounds otherwise than the default path of this processor:
+  # tadah_nfp_<id>_mkl_compatible, labels examples and slow.
+  if(_tadah_nfp_mkl AND NOT "slow" IN_LIST _labels)
+    add_test(NAME tadah_nfp_${_id}_mkl_compatible
+      COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/nfp_docs/check_nfp_run.py
+        --manifest ${_nfp_manifest} --id ${_id}
+        --tadah $<TARGET_FILE:tadah>
+        --workdir ${CMAKE_CURRENT_BINARY_DIR}/nfp_docs/${_id}_mkl_compatible
+        --nfp ${_cli_example_nfp})
+    set_tests_properties(tadah_nfp_${_id}_mkl_compatible PROPERTIES
+      LABELS "examples;slow"
+      TIMEOUT ${_ctest_timeout}
+      SKIP_RETURN_CODE 77
+      ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1;MKL_CBWR=COMPATIBLE")
+  endif()
 endforeach()
+
+# The shipped files themselves (nfp_docs/check_nfp_files.py):
+# tadah_nfp_files_static reads them and runs nothing -- every file is at
+# most 1 MiB, and every DFT value of a target file (a --varloss target, a
+# PC_OBSERVABLE --target) equals dft_reference.csv, every target file
+# that runs a search sets THREADS, and the page of the Ta data gives the
+# counts of the datasets and the reference values the files hold;
+# tadah_nfp_files_check
+# runs `tadah hpo --check` with the arguments of every `tadah hpo` command
+# of the manifest's pages, and fails on a target file that no page runs.
+# The second is Skipped (77) in a build without NFP.
+add_test(NAME tadah_nfp_files_static
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/nfp_docs/check_nfp_files.py static
+    --files ${PROJECT_SOURCE_DIR}/docs/source/nfp/files
+    --data-page ${PROJECT_SOURCE_DIR}/docs/source/nfp/tutorial/index.rst)
+set_tests_properties(tadah_nfp_files_static PROPERTIES
+  LABELS docs
+  TIMEOUT 120
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+add_test(NAME tadah_nfp_files_check
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/nfp_docs/check_nfp_files.py check
+    --manifest ${_nfp_manifest}
+    --tadah $<TARGET_FILE:tadah>
+    --workdir ${CMAKE_CURRENT_BINARY_DIR}/nfp_files_check
+    --nfp ${_cli_example_nfp})
+set_tests_properties(tadah_nfp_files_check PROPERTIES
+  LABELS "docs;examples"
+  TIMEOUT 900
+  SKIP_RETURN_CODE 77
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
 
 
 # ------------------------------------------------------------------

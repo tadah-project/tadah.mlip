@@ -6,6 +6,8 @@ cites them. Requires Sphinx and sphinx_rtd_theme.
 
 Run: python3 -m unittest discover -s docs/tools/tests -v
 """
+import collections
+import html as html_lib
 import importlib.util
 import os
 import re
@@ -16,6 +18,10 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.normpath(os.path.join(HERE, '..'))
+CONFIG = os.path.normpath(os.path.join(TOOLS, '..', 'source', 'config'))
+NFP_DOCS = os.path.normpath(os.path.join(TOOLS, '..', '..', 'tests',
+                                         'nfp_docs'))
+HPO_VAR = 'TADAH_HPO_SOURCE_DIR'
 HAVE_SPHINX = all(importlib.util.find_spec(m) for m in
                   ('sphinx', 'sphinx_rtd_theme'))
 
@@ -339,6 +345,162 @@ class RoleTest(unittest.TestCase):
         self.assertEqual(status, 0, warnings)
         self.assertEqual([w for w in warnings if w.startswith('nfp/guide')],
                          [])
+
+
+
+def registry():
+    """(the target-file registry of the HPO checkout the build finds, None)
+    or (None, why there is none). A $TADAH_HPO_SOURCE_DIR that names no
+    checkout with the registry is a failure."""
+    sys.path.insert(0, CONFIG)
+    try:
+        import read_hpo_registry
+        import source_locator
+    finally:
+        sys.path.remove(CONFIG)
+    try:
+        hpo = read_hpo_registry.locate_hpo()
+    except source_locator.SourceNotFound as err:
+        if HPO_VAR in os.environ:
+            raise AssertionError(f'{HPO_VAR} names no HPO checkout with the '
+                                 f'registry: {err}')
+        return None, f'no HPO checkout with the registry: {err}'
+    blueprint = os.path.join(hpo, 'blueprint')
+    loader = read_hpo_registry.load_loader(blueprint)
+    return loader.load(blueprint), None
+
+
+def nfp_files():
+    sys.path.insert(0, NFP_DOCS)
+    try:
+        import nfp_files as module
+    finally:
+        sys.path.remove(NFP_DOCS)
+    return module
+
+
+def code_blocks(html, language):
+    """The text of each code block of *language* the page shows."""
+    return [html_lib.unescape(re.sub(r'<[^>]+>', '', m)) for m in re.findall(
+        rf'<div class="highlight-{language} notranslate"><div '
+        r'class="highlight"><pre>(.*?)</pre>', html, re.S)]
+
+
+REG, NO_REGISTRY = (registry() if HAVE_SPHINX else (None, 'no Sphinx'))
+
+
+@unittest.skipUnless(HAVE_SPHINX, 'Sphinx and sphinx_rtd_theme are required')
+@unittest.skipIf(REG is None, NO_REGISTRY or '')
+class RefusalTest(unittest.TestCase):
+    """``.. hpo:refusal::`` quotes a refusal of the target file from the
+    invalid lines of HPO's registry, which its conformance test checks
+    against the parser: the line as a ``none`` block and the message as a
+    ``text`` block, wrapped to 80 characters."""
+
+    @classmethod
+    def setUpClass(cls):
+        invalid = [c for c in REG.cases() if c.kind == 'invalid']
+        by_text = collections.defaultdict(list)
+        for c in invalid:
+            by_text[c.text.strip()].append(c)
+        # A one-line invalid text of one entry, with a message longer than
+        # a code line; and a text that several entries refuse differently.
+        cls.single = next(
+            v[0] for k, v in by_text.items() if len(v) == 1
+            and '\n' not in k and '\n' not in v[0].error
+            and 100 < len(v[0].error) < 400 and len(k) < 60)
+        cls.ambiguous = next(
+            v for k, v in by_text.items() if '\n' not in k
+            and len({c.error for c in v}) > 1
+            and len({c.wrap for c in v}) == len(v))
+
+    def build_guide(self, text):
+        return build({'nfp/guide.rst': page('Guide', text)},
+                     extensions=('hpotarget_domain', 'nfp_checks'))
+
+    def guide_warnings(self, warnings):
+        # The fixture's root document has no Nested Fitting toctree, which
+        # nfp_checks reports; only the guide's warnings count here.
+        return [w for w in warnings if w.startswith('nfp/guide')]
+
+    def test_an_invalid_line_shows_the_message_of_its_entry(self):
+        c = self.single
+        status, warnings, html = self.build_guide(
+            f'.. hpo:refusal::\n\n   {c.text.strip()}\n')
+        self.assertEqual(self.guide_warnings(warnings), [])
+        self.assertEqual(code_blocks(html['nfp/guide'], 'none'),
+                         [c.text.strip() + '\n'])
+        shown = code_blocks(html['nfp/guide'], 'text')
+        self.assertEqual(len(shown), 1, shown)
+        lines = shown[0].rstrip('\n').split('\n')
+        files = nfp_files()
+        self.assertEqual(lines, files.wrap_output(c.error))
+        self.assertGreater(len(lines), 1)
+        self.assertTrue(all(len(l) <= 80 for l in lines), lines)
+        # The convention of the quotes joins the lines into the message.
+        self.assertIsNone(files.match_quote(lines, c.error))
+
+    def test_a_line_of_several_entries_names_its_wrapper(self):
+        cases = self.ambiguous
+        text = cases[0].text.strip()
+        status, warnings, html = self.build_guide(
+            f'Line 3.\n\n.. hpo:refusal::\n\n   {text}\n')
+        mine = self.guide_warnings(warnings)
+        self.assertEqual(len(mine), 1, warnings)
+        self.assertRegex(mine[0], r'^nfp/guide\.rst:6: WARNING: hpo:refusal: '
+                         rf'"{re.escape(text)}" is an invalid line of '
+                         rf'{len(cases)} entries with different messages')
+        for c in cases:
+            self.assertIn(f':wrap: {c.wrap} ({c.owner})', mine[0])
+        c = cases[1]
+        status, warnings, html = self.build_guide(
+            f'.. hpo:refusal::\n   :wrap: {c.wrap}\n\n   {text}\n')
+        self.assertEqual(self.guide_warnings(warnings), [])
+        self.assertEqual(code_blocks(html['nfp/guide'], 'text'),
+                         ['\n'.join(nfp_files().wrap_output(c.error)) + '\n'])
+
+    def test_the_file_option_shows_the_line_in_its_wrapper(self):
+        c = self.single
+        status, warnings, html = self.build_guide(
+            f'.. hpo:refusal::\n   :file:\n\n   {c.text.strip()}\n')
+        self.assertEqual(self.guide_warnings(warnings), [])
+        shown = code_blocks(html['nfp/guide'], 'none')
+        self.assertEqual(len(shown), 1, shown)
+        self.assertIn(c.text.strip(), shown[0])
+        if c.wrap != 'none':
+            self.assertGreater(len(shown[0].strip().split('\n')), 1)
+
+    def test_a_line_no_entry_refuses_is_a_warning_with_the_closest(self):
+        c = self.single
+        wrong = c.text.strip() + ' extra'
+        status, warnings, html = self.build_guide(
+            f'Line 3.\n\n.. hpo:refusal::\n\n   {wrong}\n')
+        mine = self.guide_warnings(warnings)
+        self.assertEqual(len(mine), 1, warnings)
+        self.assertRegex(mine[0], r'^nfp/guide\.rst:6: WARNING: hpo:refusal: '
+                         rf'no invalid line of the target-file registry is '
+                         rf'"{re.escape(wrong)}" \(closest: ')
+        self.assertIn(f'"{c.text.strip()}" (:wrap: {c.wrap}, {c.owner})',
+                      mine[0])
+        self.assertEqual(code_blocks(html['nfp/guide'], 'text'), [])
+        status, warnings, html = self.build_guide(
+            f'.. hpo:refusal::\n   :wrap: nosuchwrapper\n\n   '
+            f'{c.text.strip()}\n')
+        mine = self.guide_warnings(warnings)
+        self.assertEqual(len(mine), 1, warnings)
+        self.assertIn('with :wrap: nosuchwrapper', mine[0])
+
+    def test_a_refusal_is_a_tested_quote_for_the_lint(self):
+        # nfp_checks accepts the text block of the directive as a quote
+        # that a test checks; a text block of the page without a marker is
+        # a warning.
+        c = self.single
+        status, warnings, html = self.build_guide(
+            f'.. hpo:refusal::\n\n   {c.text.strip()}\n\n'
+            '.. code-block:: text\n\n   unmarked\n')
+        mine = self.guide_warnings(warnings)
+        self.assertEqual(len(mine), 1, warnings)
+        self.assertRegex(mine[0], r'^nfp/guide\.rst:8: WARNING: program output')
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""The Nested Fitting pages of the built site need no horizontal scroll bar.
+"""The Nested Fitting pages of the built site need no horizontal scroll bar,
+and its compatibility pages lead to pages it has.
 
     check_site_layout.py --docs-source <docs/source> --doxyfile <Doxyfile>
                          --workdir <scratch> [--doxygen <doxygen>]
@@ -16,7 +17,12 @@ documentation*) and checks its pages in a headless browser:
      naming that XML and TADAH_CORE_SOURCE_DIR and TADAH_HPO_SOURCE_DIR the
      sources the build configured (a source that is not given is looked up
      as the documentation build looks it up);
-  3. docs/tools/check_layout.py checks the pages under nfp/
+  3. docs/tools/legacy_routes.py checks the compatibility pages of the
+     built site, the pages of earlier releases that the site no longer
+     builds (docs/tools/legacy_routes.toml): each one is the page the table
+     generates, and its default and each of its anchors lead to a page of
+     the site that has the id they name;
+  4. docs/tools/check_layout.py checks the pages under nfp/
      (``nfp/**/*.html``) at 1280, 1024, 900, 768 and 390 px.
 
 Every page source under <docs-source>/nfp (``.rst`` and ``.md`` outside
@@ -27,8 +33,9 @@ the site, repeatable), without that comparison.
 The scratch directory is <workdir>. The build writes the generated pages
 into <docs-source>, as every documentation build does.
 
-Exit status: 0 when every page fits; 1 when the build fails, a page source
-is not built, or a page overflows; 77, which CTest reports as Skipped,
+Exit status: 0 when every page fits; 1 when the build fails, a
+compatibility page is missing, differs from the table or leads to an id the
+site does not have, a page source is not built, or a page overflows; 77, which CTest reports as Skipped,
 without Doxygen (--doxygen not given or not executable), without a Python
 module that docs/requirements.txt lists, without a Chromium-family browser,
 or, without --pages, while <docs-source>/nfp holds no page source.
@@ -98,6 +105,7 @@ def main(argv=None):
     docs_source = os.path.abspath(args.docs_source)
     sys.path.insert(0, os.path.join(docs_source, '..', 'tools'))
     import check_layout
+    import legacy_routes
 
     if not args.doxygen or not shutil.which(args.doxygen):
         print('SKIP: no Doxygen (the build found none when it was configured)')
@@ -148,6 +156,15 @@ def main(argv=None):
     if build.returncode != 0:
         print(f'FAIL: sphinx-build exited with {build.returncode}:\n{tail(log)}')
         return 1
+
+    problems = legacy_routes.check(html)
+    if problems:
+        print('FAIL: compatibility pages of the built site '
+              f'({legacy_routes.DEFAULT_ROUTES}):\n' + '\n'.join(problems))
+        return 1
+    routed = legacy_routes.load_routes()['pages']
+    print(f'compatibility pages: {", ".join(sorted(routed))} lead to the '
+          'pages of the site', flush=True)
 
     if args.pages:
         pages = check_layout.select_pages(html, args.pages)

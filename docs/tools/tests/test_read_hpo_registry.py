@@ -1441,12 +1441,24 @@ def build_pages(pages, extra=None, toctree=()):
             with open(os.path.join(ref, name + '.rst'), 'w',
                       encoding='utf-8') as fh:
                 fh.write(pages[name])
+        # These fixtures build reference pages alone. Their guide labels
+        # have distinct headings; a caller can omit one to test -W.
+        labels = sorted(set(re.findall(
+            r'^   :Guide:\n      :ref:`([^`]+)`',
+            '\n'.join(pages.values()), re.M)))
+        guides = ['Guidance', '========', '']
+        for i, label in enumerate(labels):
+            title = f'Choice {i}'
+            guides += [f'.. _{label}:', '', title, '-' * len(title), '',
+                       'Choice guidance.', '']
+        toctree = tuple(toctree) + ('guide_targets',)
         entries = ''.join(f'   {t}\n' for t in toctree)
         files = dict({
             'index.rst': 'Fixture\n=======\n\n.. toctree::\n'
                          '   :caption: Nested Fitting\n   :titlesonly:\n\n'
                          '   overview\n   nfp/reference/index\n' + entries,
             'overview.rst': '.. _nested_fitting:\n\nOverview\n========\n',
+            'guide_targets.rst': '\n'.join(guides),
             'conf.py': (f'import sys\nsys.path.insert(0, {TOOLS!r})\n'
                         "project = 'Fixture'\n"
                         "extensions = ['hpotarget_domain', 'nfp_checks']\n"

@@ -80,9 +80,9 @@ Two of them — ``LSCALE`` and the resolved ``ESHIFT`` — belong to the model,
 its length scale and its energy reference: they are key lines of
 ``pot.tadah``, and ``tadah predict`` applies them to the data it predicts.
 The others (``EFILTER``, ``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``,
-``ZERO_COM_FORCE``), and ``WDBFILE``, the priority of each dataset in the
-fit (:ref:`fit_objective`), only prepared the training data: the potential
-lists them in its
+``ZERO_COM_FORCE``) only prepared the training data, and ``WDBFILE``, the
+priority of each dataset, is a setting of the fit (:ref:`fit_objective`):
+the potential lists them in its
 :ref:`training record <training_record>`, not as key lines, ``tadah
 predict`` does not apply them (:ref:`load_transforms_predict`), and a
 retrain from the potential does not take them from it
@@ -554,7 +554,7 @@ before it reads anything::
 A potential that ``tadah refit`` or ``tadah refit --edit`` writes, and the
 ``best_pot.tadah`` of a ``tadah hpo`` run that pins every coefficient, has
 ``FIXINDEX`` and ``FIXWEIGHT`` lines for every coefficient: the seed of a
-``tadah hpo`` coefficient search (:ref:`hpo_fixweight`).  A fit whose
+``tadah hpo`` coefficient search (:ref:`nfp_search_space_coefficients`).  A fit whose
 ``FIXINDEX`` pins every coefficient changes none, so both lines are deleted
 from the copy for a retrain as well::
 
@@ -581,7 +581,7 @@ It is a warning, not a refusal: such a fit can be deliberate.
    coefficient. Tadah! 1.5.0 wrote the same potential without a message.
 
 ``tadah hpo`` runs without a training ``DBFILE`` only when ``FIXINDEX`` and
-``FIXWEIGHT`` pin every coefficient (:ref:`hpo_fixweight`). Its refusals of a
+``FIXWEIGHT`` pin every coefficient (:ref:`nfp_training_hpo_fit`). Its refusals of a
 ``-c`` configuration without one end with the same advice where the
 coefficients cannot be determined (no ``FIXINDEX``/``FIXWEIGHT``, pins that
 do not cover every coefficient, a basis drawn from the training data) and
@@ -589,7 +589,7 @@ where ``ATOM`` is missing. With every coefficient pinned,
 ``GRAD_STRATEGY ANALYTICAL`` is refused
 for the missing ``DBFILE`` with the advice to set ``GRAD_STRATEGY HYBRID``
 instead: with a ``DBFILE`` line the pins would be refused next (``FIXINDEX
-pins model weights``).
+fixes coefficients of the model``).
 
 The fit replaces what the potential holds of its own fit (``WEIGHTS``,
 those ``FIXINDEX`` pins excepted, the ``BASIS`` of a non-linear kernel,
@@ -913,7 +913,7 @@ configuration sets the precision of ``pot.tadah``), to ``tadah refit
 --edit`` (a ``NUMERIC`` set for the run is honoured — the edit is then
 exact only up to that rounding, and a WARNING says so; the edited
 potential's own ``NUMERIC`` line is not read) and to the potentials ``tadah
-hpo`` writes (:ref:`hpo_potential_archives`).
+hpo`` writes (:ref:`nfp_output_archives`).
 
 .. note::
 
@@ -931,6 +931,217 @@ load-time transform summaries, neighbour-finding wall-time, the
 pre-flight audit report, and the regression solver status. None of
 these lines are written to files; shell redirection captures them if
 needed (``tadah train -c config.train -v 2 2>&1 | tee train.log``).
+
+.. _training_hpo:
+
+Training inside tadah hpo
+-------------------------
+
+A ``tadah hpo`` run (:ref:`nested_fitting`) trains one potential in each
+:term:`evaluation`, unless a check rejects its candidate before training. It
+builds each one from its :term:`training configuration`, the ``--config``
+file, which has the format and the keys of a ``tadah train`` configuration
+(:ref:`config_file`, :ref:`ConfigSection`). This section describes what the
+run takes from that file, where the search starts, what a search parameter
+changes, the fit of each evaluation, the lines the run refuses, a potential
+as the training configuration and the validation data. The
+:term:`target file` has a page of its own (:ref:`nfp_target_file`).
+
+.. _nfp_training_hpo_reads:
+
+What the run reads
+~~~~~~~~~~~~~~~~~~
+
+The training configuration sets the model, its descriptors, the settings
+of the fit and the training datasets (:ref:`DBFILE <dbfile>`), as it does
+for ``tadah train``. An option of ``tadah hpo`` that sets a training key,
+such as ``--force``, replaces the line of the file (:ref:`config_file`;
+options in :ref:`cli_hpo`).
+
+The run reads the training and validation datasets once, when it starts.
+The load-time transforms (:ref:`load_transforms`) prepare the training data
+once, and every evaluation fits the data so prepared. A key that prepares
+the data therefore keeps its value from the training configuration in every
+evaluation, and :hpo:key:`OPTIM` refuses it as a search parameter.
+
+.. versionchanged:: 1.6.0
+   :hpo:key:`!OPTIM` of a key that prepares the data is refused at its
+   line. Tadah! 1.5.0 accepted it for :ref:`LSCALE <lscale>`,
+   :ref:`ESHIFT <eshift>`, :ref:`EFILTER <efilter>` and
+   :ref:`FFILTER <ffilter>`, and every evaluation fitted the same data.
+
+.. _nfp_training_hpo_start:
+
+The start of the search
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The values that the training configuration gives the search parameters are
+the starting point of the search. An :hpo:block:`INIT` block with
+:hpo:key:`METHOD <INIT.METHOD>` lines replaces that point with the points
+of its lines, and keeps it only with a :hpo:key:`METHOD CONFIG <METHOD.CONFIG>`
+line (:ref:`nfp_optimizer_block_initialisation`). An optimiser that reads
+no starting point does not start from it, but the run refuses at startup a
+starting point outside its box. An :hpo:block:`!INIT` block without a
+:hpo:key:`!METHOD CONFIG <METHOD.CONFIG>` line leaves out the values of the
+training configuration, which are then not checked against the boxes. The
+boxes that :hpo:key:`AUTO <OPTIM.AUTO>` derives come from the same values
+(:ref:`nfp_search_space_bounds`).
+
+.. _nfp_training_hpo_candidate:
+
+What a search parameter changes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each evaluation starts from the training configuration and replaces the
+values that the :hpo:key:`OPTIM` lines select with those of its candidate.
+Every other value keeps its value from the file, including the values of
+a searched key at indices that no :hpo:key:`!OPTIM` line selects. The
+cutoffs of a knot descriptor are the exception: they follow its largest
+knot in every evaluation (:ref:`refit_rcut_contract`).
+
+The potential of the evaluation, with its fitted coefficients, is the one
+every loss term measures: the validation metrics, the
+:hpo:key:`PC_LAMMPS` scripts and the :hpo:key:`PC_OBSERVABLE` terms
+(:ref:`nfp_targets`). ``best_pot.tadah`` holds the values of the best
+candidate in its key lines, a searched :ref:`WDBFILE <wdbfile>` in its
+:ref:`training record <training_record>` (:ref:`nfp_output_best`).
+
+.. _nfp_training_hpo_fit:
+
+The fit inside each evaluation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each evaluation builds the model from its candidate configuration and fits
+its coefficients to the training data as ``tadah train`` does
+(:ref:`fit_objective`). The fit uses the error scales, priorities,
+:ref:`LAMBDA` and :ref:`OALGO` of that configuration. No fit takes
+anything from an earlier evaluation. A candidate that :hpo:key:`BUMPGATE`,
+:hpo:key:`RHOGATE` or :hpo:key:`RHOBARGATE` rejects is not fitted
+(:ref:`nfp_search_space_feasibility`). A ``LAMBDA -1`` fit starts its evidence
+approximation from the :ref:`ALPHA` and :ref:`BETA` of the training
+configuration every time.
+
+:ref:`FORCE <force>` and :ref:`STRESS <stress>` (or ``-F`` and ``-S``)
+decide whether the fit includes forces and stresses. The validation metrics
+decide what the validation data are predicted for: forces whenever the
+target file has :hpo:key:`PC_FRMSE`, stresses whenever it has
+:hpo:key:`PC_SRMSE_GPA`, whatever ``FORCE`` and ``STRESS`` say.
+
+The ``POTENTIAL SETUP`` section of the journal, ``hpo_run.log``
+(:ref:`nfp_output_histories`), states both switches, where each value comes
+from, and what the validation data are predicted for. In the search of
+:ref:`nfp_unit_2` it reads:
+
+.. output: unit2 hpo_run.log
+
+.. code-block:: text
+
+   -- POTENTIAL SETUP -----------------------------------------------------
+   ...
+   Fit forces (FORCE)    : yes  (configuration file config.train)
+   Fit stresses (STRESS) : yes  (configuration file config.train)
+   Validation predicts   : energies, forces (PC_FRMSE), stresses (PC_SRMSE_GPA)
+
+The coefficients are fitted, not searched: :hpo:key:`OPTIM` refuses
+:ref:`WEIGHTS`. :ref:`FIXINDEX` and :ref:`FIXWEIGHT` pin chosen
+coefficients at given values, and the fit determines the others;
+:hpo:key:`!OPTIM` ``FIXWEIGHT`` searches the pinned values
+(:ref:`nfp_search_space_coefficients`). When ``FIXINDEX`` pins every
+coefficient, no fit runs, the coefficients are the ``FIXWEIGHT`` values,
+and the training configuration needs no ``DBFILE``: :ref:`ATOM` then names
+the elements. An ``M_KRR`` model is the exception. With a kernel other than
+``Kern_Linear`` it draws its basis vectors from the training data, so it
+needs a ``DBFILE``, and every evaluation fits; implementation 2
+(``MODEL M_KRR <kernel> 2``) refuses ``FIXINDEX`` and ``FIXWEIGHT``.
+
+A fit that fails for a candidate, such as an evidence approximation that the
+fit refuses, makes the evaluation a failed one
+(:ref:`nfp_targets_failures`).
+
+.. _nfp_training_hpo_refused:
+
+Lines refused when the run starts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Before the first evaluation the run makes the checks that every fit of the
+run would make, and refuses a training configuration that would fail them,
+as ``tadah train`` refuses it. A line of the first three kinds below is
+refused with its key, its line and its file; a value that every fit refuses
+is refused with the key and its values, without a line, or, for a model
+that cannot be built, with the reason, which can name lines and the file.
+The run refuses:
+
+- a retired key, with its conversion or the keys that take its place
+  (:ref:`fit_objective_conversion`);
+- a line that has no effect on the fit: a deprecated key such as
+  :ref:`MBLOCK`, :ref:`NBLOCK`, :ref:`MPIWPCKG` or :ref:`SIGMA`;
+  :ref:`EMBF0` and :ref:`RHOFORM` without a DM_REAM block
+  (:ref:`DM_REAM <dm_ream_only_keys>`); a :ref:`WATOM` other than 1 when no
+  descriptor reads it (:ref:`ConfigSection`);
+- a command key of another command, such as ``ANALYTICS`` (``-A`` of
+  ``tadah predict``), named with the commands that read it
+  (:ref:`config_file`);
+- a value that every fit refuses, such as a model that cannot be built
+  and, when the evaluations fit the model (with training data, unless
+  ``FIXINDEX`` pins every coefficient), a negative ``LAMBDA`` other than
+  -1, an ``OALGO`` other than 1 to 4 or a second ``OALGO`` value that its
+  solve does not take.
+
+The checks that need the data, such as a priority below 0, follow once the
+data are read, still before the first evaluation. ``tadah hpo --check``
+makes all of these checks and runs no evaluation (:ref:`cli_hpo`).
+
+.. _nfp_training_hpo_potential:
+
+A potential as the training configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A potential, such as the ``best_pot.tadah`` of an earlier run, can be the
+training configuration: its key lines give the model and the start of the
+search. No potential that ``tadah`` writes has a :ref:`DBFILE <dbfile>`
+line (the run reads and adds that of a potential of Tadah! 1.5.x,
+:ref:`retrain_from_potential`), and the run reads its :ref:`LSCALE <lscale>`
+and :ref:`ESHIFT <eshift>`, the model's, but no line of the other keys that
+prepared its training data, :ref:`WDBFILE <wdbfile>` included. A
+configuration that includes the potential with :ref:`CONFIG <CONFIG>` gives
+those. In the directory of :ref:`nfp_unit_2`, after its search,
+``start.train`` below is the ``--config`` file of a search from its best
+potential:
+
+.. code-block:: ini
+
+   CONFIG best_pot.tadah
+   DBFILE ../../data/ta_md_train.tadahdb
+
+The :ref:`WEIGHTS` of the potential are never read: every evaluation fits
+its coefficients again, unless ``FIXINDEX`` pins every coefficient, as in a
+potential of ``tadah refit`` (:ref:`nfp_training_hpo_fit`). The
+:hpo:key:`WARM <METHOD.WARM>` method of an :hpo:block:`INIT` block takes
+the values of the search parameters from a potential, not its model
+(:ref:`nfp_optimizer_block_initialisation`).
+
+.. _nfp_training_hpo_validation:
+
+The validation data
+~~~~~~~~~~~~~~~~~~~
+
+The :term:`validation configuration` (``--validation``) lists the validation
+datasets and their filters (:ref:`validation`); :ref:`nfp_targets_validation`
+describes how to choose them. The run predicts these structures and never fits
+them.
+
+The run gives the validation data the length scale and the energy reference
+of the training data. These are the :ref:`LSCALE <lscale>` of the training
+configuration and the :ref:`ESHIFT <eshift>` resolved from the training
+data; without training data, the ``ESHIFT`` of the configuration. The
+training filters and :ref:`ZERO_COM_FORCE <zero_com_force>` do not apply to
+the validation data; the ``EFILTER`` and ``FFILTER`` of the validation
+configuration do. With training data, every element of the validation data
+must occur in them.
+
+The validation configuration can be left out when :hpo:key:`PC_LAMMPS` or
+:hpo:key:`PC_OBSERVABLE` lines give the loss. A target file with a
+validation metric and no validation configuration is refused.
 
 .. _see_also:
 

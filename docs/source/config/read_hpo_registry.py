@@ -13,6 +13,12 @@ Sources, in HPO's blueprint/ directory:
                                         loader, meta.optimizer_docs)
     anneal_keys.toml                    the PARAM keys of the annealers
 
+The docs-side map docs/tools/hpo_guide_links.toml gives every generated
+entry its guide label. Each entry renders it as a Guide field, with a
+:ref: role so a missing label fails sphinx-build -W. Unknown ids, missing
+coverage and different labels for ids of the same entry stop generation.
+The map holds links only; the registries still own the reference facts.
+
 Pages, written into docs/source/nfp/reference/ (or DIR) and ignored by git;
 the hub, nfp/reference/index.rst, is committed:
 
@@ -52,8 +58,8 @@ block, its doc (and the environment it runs with) the block's caption.
 
 Code lines are at most CODE_WIDTH characters: a longer target-file line is
 continued with a backslash, as the target file allows. The output depends
-only on the registries (no date, no path), so two runs write the same
-files.
+only on the registries and the guide-link map (no date, no path), so two
+runs write the same files.
 
 The HPO checkout is found as read_anneal_keys.py finds it
 (source_locator.py); a checkout without the registry, a registry the
@@ -91,6 +97,8 @@ import source_locator  # noqa: E402
 import read_anneal_keys as rak  # noqa: E402
 
 OUT_DIR = os.path.normpath(os.path.join(HERE, '..', 'nfp', 'reference'))
+GUIDE_LINKS_FILE = os.path.normpath(os.path.join(
+    HERE, '..', '..', 'tools', 'hpo_guide_links.toml'))
 BLUEPRINT = 'blueprint'
 LOADER = 'hpotarget_registry.py'
 #: The loader API this generator reads (hpotarget_registry.API).
@@ -311,6 +319,72 @@ TOLERANCES = ('FTOL_REL', 'FTOL_ABS', 'XTOL_REL', 'XTOL_ABS')
 
 class GenerationError(Exception):
     """The registries cannot be written as reference pages; says why."""
+
+
+def read_guide_links(path=GUIDE_LINKS_FILE):
+    """Read the explicit entry-id -> guide-label map, without defaults.
+
+    The file groups ids by the guide that owns their advice; each id is
+    listed once. Inverting those lists infers nothing from an id's name.
+    Coverage is checked against the generated entries by add_guide_links;
+    Sphinx checks that each :ref: label exists when it builds the pages.
+    """
+    try:
+        with open(path, 'rb') as fh:
+            data = tomllib.load(fh)
+    except (OSError, tomllib.TOMLDecodeError) as err:
+        raise GenerationError(f'cannot read guide links from {path}: {err}') \
+            from None
+    if set(data) != {'guides'} or not isinstance(data['guides'], dict):
+        raise GenerationError(f'guide links in {path} need only a [guides] '
+                              'table of guide labels and entry-id lists')
+    links = {}
+    for label, ids in data['guides'].items():
+        if not re.fullmatch(r'nfp_[a-z0-9_]+', label) \
+                or label.startswith('nfp_ref_'):
+            raise GenerationError(f'guide links in {path}: {label!r} is not '
+                                  'a lowercase nfp_ guide label outside '
+                                  'the reference')
+        if not isinstance(ids, list) or not ids or not all(
+                isinstance(ident, str) and ident.strip() for ident in ids):
+            raise GenerationError(f'guide links in {path}: {label!r} needs '
+                                  'a non-empty list of non-empty entry ids')
+        for ident in ids:
+            if ident in links:
+                raise GenerationError(f'guide links in {path}: {ident} is '
+                                      'listed more than once')
+            links[ident] = label
+    return links
+
+
+def add_guide_links(pages, links):
+    """Add one Guide field per entry, checking all primary and secondary ids.
+
+    Removed entries link to the guidance for their replacement. Library
+    headings are not entries; the algorithms under them have their own
+    links. Secondary ids share their entry's one guide, not another fact.
+    """
+    entries = [entry for page in pages for entry in page.entries()]
+    known = {ident for entry in entries
+             for ident in (entry.ident,) + tuple(entry.also)}
+    unknown = set(links) - known
+    missing = known - set(links)
+    errors = []
+    if unknown:
+        errors.append('guide links name unknown entry ids: '
+                      + ', '.join(sorted(unknown)))
+    if missing:
+        errors.append('reference entries without guide links: '
+                      + ', '.join(sorted(missing)))
+    if errors:
+        raise GenerationError('; '.join(errors))
+    for entry in entries:
+        label = links[entry.ident]
+        for ident in entry.also:
+            if links[ident] != label:
+                raise GenerationError(f'{ident} must have the same guide '
+                                      f'as {entry.ident}')
+        entry.line('Guide', f':ref:`{label}`')
 
 
 def check_fields(root):
@@ -1841,9 +1915,15 @@ def read_sources(hpo_root):
     return reg, optimizers, anneal
 
 
-def render(reg, optimizers, anneal):
-    """{page name: text} for the six reference pages."""
+def render(reg, optimizers, anneal, *, guide_links=None):
+    """{page name: text} for the six reference pages, with guide links.
+
+    *guide_links* supplies a map for tests; otherwise the docs-side file
+    is read on every call, so a changed map reaches the next docs build.
+    """
     pages = Writer(reg, optimizers, anneal).pages()
+    add_guide_links(pages, read_guide_links() if guide_links is None
+                    else guide_links)
     return {p.name: p.render() for p in pages}
 
 

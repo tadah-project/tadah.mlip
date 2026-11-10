@@ -29,8 +29,8 @@ BLOCKED_IMPORT = (
 class ReadAnnealKeysPythonTest(unittest.TestCase):
     def test_python_without_tomllib_stops_with_a_clear_message(self):
         # Pins: without tomllib (Python 3.10 and older) the script -- which
-        # conf.py runs for every docs build -- exits non-zero as it is
-        # imported, with a message that it needs Python 3.11 or later, that
+        # read_hpo_registry.py imports for every docs build -- exits
+        # non-zero as it is imported, with a message that it needs Python 3.11 or later, that
         # it reads HPO's blueprint/anneal_keys.toml with tomllib, and which
         # Python it is; no traceback, nothing written to the working
         # directory, and no fallback to the third-party toml package
@@ -248,6 +248,45 @@ class ReadAnnealKeysTableTest(unittest.TestCase):
                 with self.subTest(kind=kind, key=k['name']):
                     self.assertRegex(rak.default_for(k, kind),
                                      r'^``(ON|OFF)``')
+
+
+
+def conf_exclude_patterns():
+    '''The list docs/source/conf.py assigns to exclude_patterns.'''
+    import ast
+    with open(os.path.join(DOCS, 'source', 'conf.py'), encoding='utf-8') as fh:
+        tree = ast.parse(fh.read())
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+                isinstance(target, ast.Name) and target.id == 'exclude_patterns'
+                for target in node.targets):
+            return ast.literal_eval(node.value)
+    return []
+
+
+@unittest.skipIf(not HAVE_TOMLLIB,
+                 'tomllib needs Python 3.11 or later, as the docs do')
+class FragmentsAreNotPagesTest(unittest.TestCase):
+    # Pins: the fragments that read_anneal_keys.py writes when it runs as a
+    # script (config/anneal_keys_serial.rst, _pt.rst and _pa.rst), which no
+    # page includes, are left out of the pages by conf.py's
+    # exclude_patterns, so a checkout that holds them, from a build that
+    # generated them or a run of the script, builds with sphinx-build -W.
+    # Before the fix: exclude_patterns did not cover them, and the build
+    # warned "document isn't included in any toctree" for each.
+    def test_conf_excludes_the_fragments_of_the_script(self):
+        import fnmatch
+        sys.path.insert(0, CONFIG)
+        try:
+            rak = importlib.import_module('read_anneal_keys')
+        finally:
+            sys.path.remove(CONFIG)
+        patterns = conf_exclude_patterns()
+        for fname, _label in rak.KINDS.values():
+            name = 'config/' + fname
+            with self.subTest(name=name):
+                self.assertTrue(any(fnmatch.fnmatch(name, pattern)
+                                    for pattern in patterns), patterns)
 
 
 if __name__ == '__main__':

@@ -3,10 +3,13 @@
 Examples
 ========
 
-This page collects worked examples of the ``tadah`` command: help,
-training and prediction, nested fitting and a many-body descriptor. They
+The examples on this page show the help of ``tadah``, training and
+prediction, a many-body descriptor and the balance table of a fit. They
 assume a working installation (see :doc:`installation`) and the format of
-the training configuration (see :ref:`config_file`).
+the training configuration (see :ref:`config_file`). The examples of nested
+fitting (``tadah hpo``) are in its chapter: the :ref:`nfp_quickstart` runs a
+first search, the :ref:`nfp_tutorial` builds a Ta potential step by step,
+and :ref:`nfp_examples` shows one decision of a search per example.
 
 .. _cli_example_0:
 
@@ -15,10 +18,6 @@ the training configuration (see :ref:`config_file`).
 .. _cli_example_1:
 
 .. include:: ../../examples/CLI/ex_1/README.rst
-
-.. _cli_example_2:
-
-.. include:: ../../examples/CLI/ex_2/README.rst
 
 .. _cli_example_3:
 

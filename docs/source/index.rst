@@ -8,10 +8,10 @@ Welcome to the Tadah! Website
    :class: note
 
    This release is ready to use: the Tadah! authors fit and run potentials
-   with this version, and feedback on it is welcome. The command-line
-   interface and the ``pot.tadah`` format are stable across 1.x, except for
-   the breaking changes listed in the :doc:`changelog`. The C++ API is
-   **not** stable and may change before 2.0.
+   with this version, and feedback on it is welcome. A ``pot.tadah`` file
+   stays readable by later 1.x releases; one written by 1.6.0 needs
+   ``tadah`` and ``pair_style tadah`` 1.6.0 or later (:ref:`lammps_usage`).
+   The C++ API is **not** stable and may change before 2.0.
 
    The :doc:`changelog` lists the changes of this release. An upgrade starts
    with its breaking changes, notably the error scales and priorities of a
@@ -72,14 +72,16 @@ This site also publishes selected interatomic potentials developed by |gja_link|
    :caption: Nested Fitting
    :titlesonly:
 
-   nfp_background.rst
-   nfp_quickstart.rst
-   nfp_configuration.rst
-   nfp_block_keys.rst
-   nfp_optimizer.rst
-   nfp_reference.rst
-   hpo_examples.rst
-   nfp_review_pending.rst
+   nfp/overview.rst
+   nfp/quickstart.rst
+   nfp/tutorial/index.rst
+   nfp/examples/index.rst
+   nfp/target_file.rst
+   nfp/search_space.rst
+   nfp/targets_losses.rst
+   nfp/optimizer_block.rst
+   nfp/choosing/index.rst
+   nfp/output_files.rst
    nfp/reference/index.rst
 
 ----

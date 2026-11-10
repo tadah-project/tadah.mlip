@@ -153,7 +153,9 @@ flag: `add_test(NAME x COMMAND test_foo "[.tag]" --warn NoTests)`.
 (`tests/catch_discovery`). `ctest -L docs` runs the unit tests of the
 documentation build tools, the layout check of the stylesheet,
 `tadah_docs_layout`, that of the Nested Fitting pages of the built
-site, `tadah_docs_site_layout` (see *Building the documentation*), and
+site, `tadah_docs_site_layout` (see *Building the documentation*), the
+checks of the files the Nested Fitting pages ship, `tadah_nfp_files_static`
+and `tadah_nfp_files_check` (below), and
 `tadah_docs_config_page_example`, which runs the `tadah` command of the
 example of the *Configuration File* page (section "Common Usage", whose
 source is the header of `docs/source/config/read_toml.py`) and checks the
@@ -163,7 +165,7 @@ exit status it states and each line it quotes
 (`tadah_cli_example_<name>`, one per `examples/CLI/<name>/README.rst` that
 `docs/source/examples.rst` includes): `tests/cli_examples` copies the
 example to the build tree, beside links to the other examples (a command
-may read `../ex_2/tdata.db`), runs every `tadah` command of the README's
+may read a file of another example by its relative path), runs every `tadah` command of the README's
 bash code blocks and checks that each exits 0 and leaves its result (the
 potential of `tadah train`, `pot.tadah` or that of `-o`; a best potential
 and a `best_loss.tadah` row for `tadah hpo`). An example that ships
@@ -187,25 +189,115 @@ Catch test cases `quickstart: ...` (test_tadah, NFP builds) run the page's
 LAMMPS example, `in.ml`, with it and check the numbers of its runs.
 The label also has one entry per run of the Nested Fitting pages,
 `tadah_nfp_<id>`, one per line of `docs/source/nfp/files/manifest.txt`
-(`<id> | <page.rst> | <dir> | <labels> | <timeout> | <tolerances>`; the
-file's header and `tests/nfp_docs/check_nfp_run.py` describe the fields).
-The script copies `docs/source/nfp/files` to the build tree, runs the
-`tadah` commands of the page's bash code blocks in the line's directory
-(another command is an error), checks that each exits 0 within the timeout
-and leaves its result, and compares the best loss of the run with the
-directory's `expected.csv`, the table the page quotes, within the line's
-tolerance. A line's labels are added to `examples` (`slow` for a run longer
-than about two minutes: `ctest -LE slow` leaves it out). The configure step
-reads the manifest (`check_nfp_run.py --list`) and stops at a malformed
-line. Every page under `docs/source/nfp` that runs `tadah` in a bash code
-block needs a line, and so does every directory under
-`docs/source/nfp/files` that holds a target file (`*.hpo`) or a training
-configuration (`*.train`): `tadah_docs_tools` fails on the shipped manifest
-otherwise, naming each page and directory without a line and each line
-whose page (under `docs/source/nfp`) or directory (under
-`docs/source/nfp/files`) does not exist (`check_nfp_run.coverage()`).
-`tests/doc_commands/doc_commands.py` reads the commands of a bash code
-block for both scripts.
+(`<id> | <page.rst> | <dir> | <labels> | <timeout> | <tolerances>
+[| <searches>]`; the file's header and `tests/nfp_docs/check_nfp_run.py`
+describe the fields). The script copies `docs/source/nfp/files` to the
+build tree, runs the `tadah` commands of the page's bash code blocks in the
+line's directory (another command is an error), checks that each exits 0
+within the timeout and leaves its result, and checks every search (each
+`tadah hpo` command but `tadah hpo --check`). Just before a search it runs
+`tadah hpo` with the search's arguments and `--check`, which has to exit 0:
+a target file is checked in the state the page runs it, after the commands
+before it (a `METHOD WARM` seed that an earlier search writes). After the
+search, on its own files, which it copies before the next command writes
+over them: the journal's `Optimiser status` is not one of a run that did
+not complete (`FAILED`, `SHUTDOWN`, no usable loss), its `Total
+evaluations` is at least 1, and the best value of every search parameter
+lies inside its box (`hpo_search_space.tsv`). It then compares every row of
+the directory's `expected.csv`, the table the page quotes, with what the
+run wrote, within the line's tolerance of that row: best and start losses,
+the best and start values of search parameters and of `outvar.tadah`
+columns, their differences from `dft_reference.csv`, the per-start results
+of a `MULTISTART`, the calibrated `T_HOT` of `ANNEAL_PT` (that of its
+second calibration when one ran), the evaluation count, the graded
+failures, the status, the RMSE table of a `tadah predict -A` after a
+search, and a coefficient of the potential a `tadah train` command of the
+page writes (its `WEIGHTS` line, as that command wrote it). A row reads the
+file that holds its number (`best_pot.tadah`, the history files, the table
+of `tadah predict`, the potential), and the journal only for what no file
+holds; a history file whose columns do not start as tadah
+writes them (`IMPROVEMENT` and `EVAL` first in `best_params.tadah` and
+`best_outvar.tadah`) is an error. A row gives its quantity in the unit of
+that quantity, as tadah writes it (Å, eV/Å, GPa): `dft_reference.csv` for
+a DFT quantity, `tests/nfp_docs/nfp_files.py` for the validation errors
+and the search parameters (for a grid key, by the descriptor of the
+search's training configuration; for `ESIGMA`, by its `ENORM`), and for an
+RMSE of `tadah predict -A` the unit its row of the table names. On a page
+with several searches a row names its search, by the `--hpotarget`
+argument as the page writes it or as `run <n>`; the script's docstring
+lists the rows and the names of their tolerances. A row it cannot measure
+or place, or whose unit is not that of its quantity, is an error. A
+tolerance is at least that of the class of its rows: a loss within 1e-3, a
+length within 0.01 Å, a count exactly and every other quantity within 1e-2.
+A build that rounds otherwise (another compiler, CPU or BLAS) can send a
+search another way, to another end point or another count of evaluations,
+so a tolerance also covers the results of the line on five BLAS code paths
+(MKL on its default and its compatible path, OpenBLAS loaded in its place on
+three kernels): twice the largest difference, rounded up to one significant
+digit, which the manifest names above the line. A value of `expected.csv`
+is written to about one digit past its tolerance, and a page gives a number
+taken from it to the digits its tolerance holds; a page quotes no count or
+evaluation number that changes with the rounding. In a build with MKL, CTest
+runs each line without `slow` a second time with `MKL_CBWR=COMPATIBLE`,
+MKL's code path for a processor without AVX
+(`tadah_nfp_<id>_mkl_compatible`, labels `examples` and `slow`).
+`check_nfp_run.precision_problems()` (`tadah_docs_tools`) refuses a
+tolerance tighter than its class, a value written with more than two
+digits past its tolerance, a `tol=` of a quote marker that is a number
+below 1e-3 relative or 0.01 absolute, and a `tol=`, a number or the name of
+a tolerance of the line, that gives a number of the quote less than 1e-3 of
+its value. The run
+then checks every quote of program output whose marker names its id, on
+any Nested Fitting page and in `training.rst` (*Building the
+documentation*, Quotes of program output). A line's
+labels are added to `examples` (`slow` for a run longer than about two
+minutes: `ctest -LE slow` leaves it out). A page whose line is `slow` has
+a second line without `slow` that names some of its searches
+(the field `<searches>`): it runs each of them with the commands after it
+up to the next search, and measures their rows only. That is the short
+variant that `ctest -LE slow` runs. The timeout of a line stops a run that
+hangs and is not a measure of speed: about 30 times the time of the run on
+a quiet machine, and at least 900 s, as runs on a shared machine under load
+took up to about 20 times as long. The configure step reads the manifest
+(`check_nfp_run.py --list`) and stops at a malformed line. Every page under
+`docs/source/nfp` that runs `tadah` in a bash code block needs a line, and
+so does every directory under `docs/source/nfp/files` that holds a target
+file (`*.hpo`) or a training configuration (`*.train`): `tadah_docs_tools`
+fails on the shipped manifest otherwise, naming each page and directory
+without a line, each line whose page (under `docs/source/nfp`) or directory
+(under `docs/source/nfp/files`) does not exist, each `slow` line without a
+short variant and each search a line names that its page does not run
+(`check_nfp_run.coverage()`). `tests/doc_commands/doc_commands.py` reads
+the commands of a bash code block for both scripts.
+`tests/nfp_docs/check_nfp_files.py` checks the shipped files without a
+search: `tadah_nfp_files_static` (label `docs`) that each is at most 1 MiB
+and has LF line endings, that every DFT value of a target file (the target
+of a `--varloss`, the `--target` of `PC_OBSERVABLE`, and the initial value
+of a `--hotvar` and the value of an `--invar` whose variable has a DFT
+quantity) equals the value of its quantity in
+`docs/source/nfp/files/dft_reference.csv` (`tests/nfp_docs/nfp_files.py`
+maps each variable and observable to its quantity, and a `--varloss`
+variable or an observable it does not map is an error), and that every
+`SHA256SUMS` lists files of its directory with their SHA-256 and lists
+every `*.tadahdb` file there, and that every target file that runs a search
+(one with an `OPTIMIZER` block) has a `THREADS` line in its `OPTIMIZER`,
+`STRATEGY` or `REFINE` block, so that what the search and its
+`tadah hpo --check` print does not depend on `OMP_NUM_THREADS` (`THREADS 1`
+unless the example is about threads), and that the page of the Ta data
+(`docs/source/nfp/tutorial/index.rst`, `--data-page`) gives the number of
+cells and atoms of each dataset of `docs/source/nfp/files/data` as the
+file holds them (every dataset of a directory the page links has a count,
+and every dataset it counts exists), and that each reference value in the
+term of a definition-list entry of that page, written
+``` ``quantity``: value unit ```, equals the value and unit of its quantity
+in `dft_reference.csv` (a quantity the file lacks is an error);
+`tadah_nfp_files_check` (labels `docs` and
+`examples`) runs `tadah hpo --check` with the arguments of every
+`tadah hpo` command of the manifest's pages (one without `--hpotarget`
+too), and fails on a target file that no page runs. A target file whose
+`METHOD WARM` seed is the best potential of an earlier search of its page,
+which the files do not hold, is left to the run of that page, and the
+check says so.
 `ctest -L e2e` runs HPO's host end-to-end groups
 (`hpo_fixweight_e2e`, `hpo_durable_e2e`, `hpo_embf0_e2e`, `hpo_rcut_e2e`,
 `hpo_rhoform_e2e`, `hpo_rhogate_e2e`, `hpo_rhobargate_e2e`,
@@ -327,7 +419,8 @@ as *Skipped*, so that a passing `ctest` means the checks ran:
   itself;
 - a script entry either exits with a code of its own and sets
   `SKIP_RETURN_CODE` (`hpo_strategy_matrix`, `tadah_cli_example_*`,
-  `tadah_nfp_*`, `tadah_docs_layout` and `tadah_docs_site_layout`: 77),
+  `tadah_nfp_*` but `tadah_nfp_files_static`, `tadah_docs_layout` and
+  `tadah_docs_site_layout`: 77),
   or prints a line that its own `SKIP_REGULAR_EXPRESSION` matches
   (`tadah_docs_tools`, see *Building the documentation*).
 
@@ -344,8 +437,9 @@ of its tools is missing, `tadah_docs_layout` without Sphinx,
 `sphinx_rtd_theme` or a Chromium-family browser, and
 `tadah_docs_site_layout` without Doxygen, a Python module of
 `docs/requirements.txt` or such a browser. A build without
-`TADAH_ENABLE_NFP` also skips `tadah_cli_example_ex_2`, whose README runs
-`tadah hpo`, every `tadah_nfp_*` entry whose page runs it, and every Catch
+`TADAH_ENABLE_NFP` also skips every `tadah_nfp_*` entry whose page runs
+`tadah hpo`,
+`tadah_nfp_files_check`, and every Catch
 case of test_tadah that runs `pair_style tadah`, which is not built there
 (each says `pair_style tadah is not built (TADAH_ENABLE_NFP OFF)`): the
 *Quick Start* case `quickstart: in.ml with the shipped pot.tadah conserves
@@ -354,7 +448,7 @@ of `tests/test_pair_coeff_reload.cpp` (`a second pair_coeff loads its
 potential file` and the others) and the two of `tests/test_dimer_pe_atom.cpp`
 (`... the per-atom energies of a DIMER potential sum to its energy`, `... a
 DIMER atom's per-atom energy is the sum over the molecule pairs it belongs
-to`): with the two NNFinder cases, 17 entries, and
+to`): with the two NNFinder cases, 16 Catch entries, and
 `tadah_docs_site_layout` while `docs/source/nfp` holds no page. A build
 without `TADAH_ENABLE_CERES` skips `RHOFORM NONNEG/MONOTONE: no projection
 WARNING when an optimiser can leave the box: such a point is not evaluated` (its
@@ -541,20 +635,30 @@ need `sphinx_rtd_theme` 3.0 or later). The files the Nested Fitting pages offer
 for download and include live under `docs/source/nfp/files`, which
 `conf.py` excludes from the pages (`exclude_patterns`): an rst or Markdown
 file there, such as an example's README, is not a page. The build needs
-Python 3.11 or later: it generates the ANNEAL key tables and the Nested
-Fitting reference pages from HPO's `blueprint/` TOML files with `tomllib`
-(`docs/source/config/read_anneal_keys.py`,
-`docs/source/config/read_hpo_registry.py`), and on an older Python each
-script stops the build with `<script> needs Python 3.11 or later: ...`,
-naming the interpreter. The build reads
+Python 3.11 or later: its tools read TOML with `tomllib`. The
+`legacy_routes` extension reads its table (`docs/tools/legacy_routes.py`,
+below), and the generator of the Nested Fitting reference pages reads HPO's
+`blueprint/` files (`docs/source/config/read_hpo_registry.py`, which reads
+the annealers' keys through `docs/source/config/read_anneal_keys.py`). On
+an older Python each of these scripts stops with `<script> needs Python
+3.11 or later: ...`, naming the interpreter; Sphinx loads the extension
+before `conf.py` runs the generators, so the build stops with
+`legacy_routes.py needs Python 3.11 or later: ...`. The build reads
 three inputs from outside this repository. It never falls back to
 another branch: when an input is missing it stops and lists every
 location it tried.
 
+The `nfp_archive` extension builds `docs/source/nfp/nfp-files.zip` from the
+files directory before Sphinx reads the pages. It stores members under
+`files/` in sorted order, with fixed timestamps and permissions and without
+compression. The bytes do not depend on source modification times or the
+compression library. Symbolic links are refused. The archive is generated,
+not committed; a download link on the tutorial hub publishes it.
+
 | Input | Where the build looks, in order |
 |-------|---------------------------------|
 | CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the `CORE` checkout next to `Tadah.MLIP`; `$TADAH_PATH/CORE`; on CI and Read the Docs only, a shallow clone, from `${TADAH_GIT_BASE}/core.git` (`https://github.com/tadah-project/core.git` unless `TADAH_GIT_BASE` is set and not empty), of the branch or tag being built, named the way cmake-tools' `tadah_get_git_branch` names it: `$CI_COMMIT_REF_NAME`, else `$READTHEDOCS_GIT_IDENTIFIER` (Read the Docs' `latest` and `stable` versions are named after no ref), `$READTHEDOCS_VERSION_NAME`, `$READTHEDOCS_VERSION` |
-| HPO sources (ANNEAL key tables, Nested Fitting reference pages) | the same, with `$TADAH_HPO_SOURCE_DIR` and `HPO` |
+| HPO sources (Nested Fitting reference pages) | the same, with `$TADAH_HPO_SOURCE_DIR` and `HPO` |
 | Doxygen XML (API pages) | `$TADAH_DOXYGEN_XML_DIR`; otherwise `build/docs/xml`, which `cmake --build build --target docs` writes. Its input is the `include/` directory of each module the build configures (`cmake/doxygen_input.cmake`): CORE, MODELS and MLIP, and HPO only with `TADAH_ENABLE_NFP`, so the Read the Docs build (NFP off) has no HPO API |
 
 A variable that is set must be valid. A source override has to name a
@@ -575,9 +679,11 @@ python3 -m unittest discover -s Tadah.MLIP/docs/tools/tests -v
 ```
 
 The unit tests cover the input lookup (`docs/source/config/source_locator.py`),
-the `hpo.html` redirect check, the configuration-keys page generator
+the compatibility pages of earlier releases (`docs/tools/legacy_routes.py`,
+below), the configuration-keys page generator
 (`docs/source/config/read_toml.py`), the CLI page generator
-(`docs/source/cli/generate_cli.py`), the ANNEAL key tables' generator
+(`docs/source/cli/generate_cli.py`: a label per command, `cli_hpo`,
+`cli_data_print`, ...), the reader of the annealers' keys
 (`docs/source/config/read_anneal_keys.py`: its message on a Python
 without `tomllib`), the Nested Fitting reference pages' generator
 (`docs/source/config/read_hpo_registry.py`) and the `:hpo:` roles
@@ -585,7 +691,8 @@ without `tomllib`), the Nested Fitting reference pages' generator
 build (`docs/tools/nfp_checks.py`,
 below), the browser check of built pages (`docs/tools/check_layout.py`,
 below) and the runs of the Nested Fitting pages
-(`tests/nfp_docs/check_nfp_run.py`, with a stand-in for `tadah`). A browser
+(`tests/nfp_docs/check_nfp_run.py`, with a stand-in for `tadah`) and the
+checks of the shipped files (`tests/nfp_docs/check_nfp_files.py`). A browser
 regression renders reference tables with the shipped stylesheet at desktop
 and mobile widths, checks for horizontal overflow, and checks that code
 lines stay whole at 1024 px and wider and wrap below. It uses a local
@@ -672,6 +779,50 @@ cites it. The cases of `tadah_docs_tools` on the generated pages read the
 HPO checkout the build finds and are skipped without one that has the
 registry; a `$TADAH_HPO_SOURCE_DIR` that names none fails them.
 
+The docs-side `docs/tools/hpo_guide_links.toml` assigns generated reference
+entries to their topic guides. The generator refuses missing or unknown ids,
+conflicting owners and a listed guide with no entries. Each entry renders one
+`Guide` link; Sphinx checks its label. Registry schema changes are not needed
+when advice moves between pages.
+
+The `nfp_voice` extension checks rendered chapter prose for direct address and
+first-person pronouns. Code, quoted program output, literal key names and
+citation labels are not prose. A warning names the page and line, and fails
+`sphinx-build -W`. The lexical check does not judge imperative grammar;
+documentation review also checks sentence voice.
+
+**Quotes of program output.** On a Nested Fitting page, and in the section
+"Training inside tadah hpo" of `training.rst`, program output is a
+`.. code-block:: text` preceded by a one-line marker comment,
+`.. output: <ids> <source> [search=<search>] [command=<n>] [tol=<tol>]`,
+such as `.. output: quickstart hpo_run.log`. The run of each manifest line
+the marker names (`tadah_nfp_<id>`) compares the quote with its source: the
+standard output or error of a command of the line's page, or a file of a
+search. Dates, clock times, durations (minutes and seconds, `1m 5s`,
+included) and rates are masked, a line `...`
+stands for any lines, a number is written as the program writes it and
+compared within a tolerance (a double written in full, with 15 significant
+digits or more, may end at another digit), and a long line is wrapped with a four-blank
+continuation indent; `tests/nfp_docs/nfp_files.py` gives the grammar, the
+masks and the number rule. A refusal of a target-file line is quoted with
+`.. hpo:refusal::` (`docs/tools/hpotarget_domain.py`), which shows the line
+and the error of an invalid case of HPO's registry. `nfp_checks` warns on
+any other text code block there, and on a literal block of the section of
+`training.rst` in a language the chapter's pages do not use; it and
+`check_nfp_run.coverage()`
+(`tadah_docs_tools`) refuse a marker that names no run, source, search or
+command of the manifest. A marker on any other page is a warning: no run
+reads it. So is a comment `.. message: <what>`, the placeholder of a quote
+still to be written (`nfp_message_comments_fail = False` in `conf.py`
+turns this check off).
+
+`docs/tools/legacy_routes.py` generates and checks compatibility HTML from
+`docs/tools/legacy_routes.toml`, including the destination fragments. Its
+standalone check is `python3 docs/tools/legacy_routes.py <html-output> --check`.
+The generated pages have deterministic bytes and no search indexing; invalid
+paths and missing destinations are errors. The site's configuration lists
+it as an extension: see *Pages of earlier releases* below.
+
 **Layout.** No page may need a horizontal scroll bar. The stylesheet
 `docs/source/_static/tables.css` narrows the side padding of the text
 column on windows 1024 px and wider, so that a code line of 80 characters
@@ -689,13 +840,26 @@ build warnings, so `sphinx-build -W` fails on
 
 - a sidebar entry deeper than two levels on any page, and a "Nested
   Fitting" toctree without `:titlesonly:`;
+- a file under `docs/source/nfp/files`, but `manifest.txt`, that no page
+  links: no `:download:`, `literalinclude`, `include` or `:file:` of a
+  `csv-table` names it, as Sphinx records these (a path in a comment or a
+  code block links nothing);
 - in a page under `nfp/`: a code line longer than 80 characters (included
   files too), an inline literal with more than 40 characters without a
   space, a table with more than two columns, `parsed-literal` or `raw`
   content, a toctree outside a hub (an `index.rst`), a hub with more than
-  one toctree or with `:maxdepth:` other than 1, and a page longer than 250
+  one toctree or with `:maxdepth:` other than 1, a page longer than 250
   source lines or seven sections (a tutorial unit under `nfp/tutorial/`:
-  200 lines; the generated pages under `nfp/reference/` have no limit).
+  200 lines; the generated pages under `nfp/reference/` have no limit), a
+  page with three or more sections that does not start with the block
+  `.. contents::` with `:local:`, `:depth: 1` and `:backlinks: none` before
+  its first section, a `literalinclude` without `:language:`, a code
+  block in a language other than bash, ini, none and text (a literal block
+  `::` has none), a bash block that the runs of the pages do not read
+  (they read the lines `.. code-block:: bash` of the page itself, so the
+  directives `code` and `sourcecode`, a `literalinclude`, another spelling
+  or an included file show commands that no test runs), and a
+  `.. code-block:: bash` that the page does not show (in a comment).
 
 `docs/tools/check_layout.py` renders built pages in a headless
 Chromium-family browser at 1280, 1024, 900, 768 and 390 px, without
@@ -734,22 +898,36 @@ build's `docs/Doxyfile` and `sphinx-build -W --keep-going` with that XML and
 the build's CORE and HPO sources (without `TADAH_ENABLE_NFP`, HPO is looked
 up as above), in the build tree (`tests/docs_site`), then the same script on
 every page under `nfp/` at the five widths. Every page source under
-`docs/source/nfp` must be a built page. It takes about 45 s, and is Skipped
+`docs/source/nfp` must be a built page. Before the browser check it checks
+the pages of earlier releases that the build wrote (below): each is the
+page its table generates, and each destination is a page of the site with
+the id it names. It takes about 45 s, and is Skipped
 without Doxygen, a Python module of `docs/requirements.txt` or a
 Chromium-family browser, and while `docs/source/nfp` holds no page.
 
-`hpo.html`, the Nested Fitting page before 1.6.0, is now a redirect
-(`docs/source/_extra/hpo.html`) to the pages it was split into. After
-every build with the `html` builder, the `check_redirect` Sphinx
-extension (`docs/tools/check_redirect.py`, listed in `conf.py`) checks
-that each anchor of the old page (`docs/tools/hpo_legacy_anchors.txt`)
-still reaches a page that has it, and any miss is a build warning. If you
-rename or move a section of the Nested Fitting pages, add a route for its
-old anchor to the routes table in `hpo.html`. The page links to the flat
-page names of the `html` builder; other HTML builders (`dirhtml`,
-`singlehtml`, `epub`) copy it too, and the build then warns that the
-redirect is not checked. `.readthedocs.yaml` keeps it out of the Read the
-Docs search index.
+**Pages of earlier releases.** The released site (1.0.0, 1.1.1,
+1.3.0-beta.1 and 1.5.0) had pages that the site does not build: the Nested
+Fitting pages before the chapter under `nfp/` (`hpo.html`,
+`hpo_examples.html`, and the `optimizer.html`, `anneal.html`,
+`anneal_pt.html` and `asa.html` of 1.5.0), and `cli/cli_auto_gen.html`, the
+command reference that `cli/cli.rst` includes (`conf.py` excludes it from
+the pages, so that each command label, `cli_hpo` and the others, is defined
+once). The `legacy_routes` Sphinx extension (`docs/tools/legacy_routes.py`,
+listed in `conf.py`) writes each of them after every build with the `html`
+builder, from its entry of `docs/tools/legacy_routes.toml`: a page with the
+entry's title that sends each anchor of the old page to the page and id
+that hold its topic (a section label, a reference entry, or the label of
+the page for a topic that spans it), and any other anchor to the entry's
+default. It first checks every destination against the built site, and a
+missing page or id stops the build. Another builder (`dirhtml`,
+`singlehtml`, `epub` and the builders of other formats) writes none, as
+only the `html` builder has the page paths of the released site; an HTML
+builder logs that. `tadah_docs_site_layout` checks the written pages again
+(`legacy_routes.check`), and `test_legacy_routes.py` checks that the table
+holds every anchor of the released pages and that `.readthedocs.yaml`
+keeps each of its pages out of the Read the Docs search index. When a
+section that the table names moves or loses its label, its destination in
+the table changes with it.
 
 ## Coding style
 

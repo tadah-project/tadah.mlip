@@ -6,6 +6,7 @@ The CLI page shows each command in a parsed-literal block, so a key's
 long_description, which is RST (the configuration-keys page renders it as
 such), is shown there as text: these cases pin how.
 """
+import ast
 import importlib
 import importlib.util
 import os
@@ -158,6 +159,56 @@ class GenerateCliTest(unittest.TestCase):
             'train.lambda', {'value_type': ['DOUBLE'],
                              'value_format': ['<double>'], 'value_N': [1]})
         self.assertEqual(plain.retired, {})
+
+    def test_each_command_has_a_label(self):
+        # Pins: the page labels each command's section cli_<words of the
+        # command, joined by _> (cli_hpo, cli_data_print,
+        # cli_analysis_suggest_bounds), the line before its heading, so that
+        # a page links one command (:ref:`cli_hpo`); a family without data
+        # of its own (analysis) is labelled too.
+        # Before the fix: no section had a label, and pages linked the whole
+        # CLI page.
+        def task(name):
+            bt = self.gc.BlueprintTask()
+            bt.taskName = name
+            bt.description = f'The command {name}.'
+            return bt
+        tasks = {name: task(name) for name in (
+            'hpo', 'data', 'data.print', 'analysis.suggest_bounds')}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, 'cli_auto_gen.rst')
+            self.gc.generate_cli_rst(tasks, {}, path)
+            with open(path, encoding='utf-8') as fh:
+                lines = fh.read().split('\n')
+        for label, heading in (('cli_analysis', 'analysis'),
+                               ('cli_analysis_suggest_bounds',
+                                'analysis suggest_bounds'),
+                               ('cli_data', 'data'),
+                               ('cli_data_print', 'data print'),
+                               ('cli_hpo', 'hpo')):
+            with self.subTest(label=label):
+                at = lines.index(heading)
+                self.assertEqual(lines[at - 2:at], [f'.. _{label}:', ''])
+        labels = [l for l in lines if l.startswith('.. _')]
+        self.assertEqual(len(labels), 5)
+
+
+class ConfTest(unittest.TestCase):
+    # Pins: the site builds the generated CLI page only inside cli.rst,
+    # which includes it: conf.py's exclude_patterns leaves
+    # cli/cli_auto_gen.rst out as a page of its own, so that each command
+    # label is defined once.
+    # Before the fix: exclude_patterns was ['nfp/files/**'] and the build
+    # wrote cli/cli_auto_gen.html as a second page with the same sections.
+    def test_the_generated_page_is_not_a_page_of_its_own(self):
+        tree = ast.parse(open(os.path.join(DOCS, 'source', 'conf.py'),
+                              encoding='utf-8').read())
+        patterns = [ast.literal_eval(node.value) for node in tree.body
+                    if isinstance(node, ast.Assign) and
+                    any(isinstance(t, ast.Name) and t.id == 'exclude_patterns'
+                        for t in node.targets)]
+        self.assertEqual(len(patterns), 1)
+        self.assertIn('cli/cli_auto_gen.rst', patterns[0])
 
 
 if __name__ == '__main__':

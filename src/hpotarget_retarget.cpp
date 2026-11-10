@@ -295,7 +295,7 @@ bool group_positive_only(const std::string &key, bool &known) {
   for (const auto &s : hpotarget_group_specs()) {
     if (key == s.key) {
       known = true;
-      return s.positive_only;
+      return hpotarget_group_bound(key).positive_only;
     }
   }
   known = false;
@@ -514,8 +514,15 @@ RetargetReport retarget_hpotarget_lines(std::vector<std::string> &lines,
            (key == "CGRIDMB" && bump_w.count("MB"));
   };
 
+  // A group whose boxes the writer keeps at or above 0: the amplitudes of
+  // a non-negative density (the file's RHOFORM line or its components),
+  // and a key whose values the descriptors declare >= 0 (the centres:
+  // hpotarget_group_bound).
   auto nonneg_key = [&form,&nonnegative_components](const std::string &key) {
     if(nonnegative_components.count(tadah::core::to_upper(key)))return true;
+    if (hpotarget_group_bound(key).lower ==
+        tadah::models::OptimLowerBound::NonNegative)
+      return true;
     return tadah::models::optim_key_lower_bound(key, form) ==
            tadah::models::OptimLowerBound::NonNegative;
   };
@@ -663,7 +670,9 @@ RetargetReport retarget_hpotarget_lines(std::vector<std::string> &lines,
       if (std::fabs(d_obs - d_exp) <= 1e-6 * std::max(d_obs, d_exp))
         continue;  // consistent with the rule: midpoint is the centre
       double v;
-      const bool from_lo = is_bump_cgrid && p < 1.0;
+      // A bump centre's box clamped at 0 (its lo moved, its hi capped or
+      // not) recovers from hi, as a clamped non-negative box does.
+      const bool from_lo = is_bump_cgrid && p < 1.0 && !(nonneg && ol->lo == 0.0);
       if (from_lo) {
         v = ol->lo / (1.0 - p);              // branch p·v >= floor
         if (p * std::fabs(v) < floor) v = ol->lo + floor;  // floor branch

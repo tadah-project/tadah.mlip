@@ -248,12 +248,14 @@ CheckBoundsResult check_bounds_at_corners(
   tadah::core::stats::DataStats data =
       compute_data_stats(stdb, stats_ctx, /*with_descriptor_stats=*/false);
 
-  // The low-bound rules of the seed (models::optim_low_bound_rule(key,
+  // The low-bound rules of the seed (models::optim_box_low_bound_rule(key,
   // ctx)): under RHOFORM NONNEG / MONOTONE AMPGRIDMB >= 0, WATOM > 0 and
   // SGRIDMB > 0 under MONOTONE and, for the Gaussian basis, under NONNEG
-  // (densities DM_REAM refuses), and in every form every radial bump width
+  // (densities DM_REAM refuses), in every form every radial bump width
   // > 0 (SGRIDMB of a Blip/Blip5 density, SGRID2B of a D2_Blip/D2_Blip5
-  // pair term). tadah hpo refuses a box below them at startup, so a corner
+  // pair term), else the lower limit the descriptor reading the key
+  // declares (the widths and RCUTENV > 0, the cutoffs and centres >= 0).
+  // tadah hpo refuses an explicit box below them at its line, so a corner
   // below one is a FAIL finding whatever the dataset says. A DM_REAM seed
   // must declare its form (require_rhoform: the migration text), as tadah
   // hpo requires.
@@ -264,7 +266,7 @@ CheckBoundsResult check_bounds_at_corners(
     for (std::size_t j = 0; j < bounds.size(); ++j) {
       // the rule of the box's entry: on a D2_mJoin line, that of the
       // descriptor whose entry it is
-      const auto rule = tadah::models::optim_low_bound_rule(
+      const auto rule = tadah::models::optim_box_low_bound_rule(
           bounds[j].key, seed,
           bounds[j].arg_pos < 0 ? 0
                                 : static_cast<std::size_t>(bounds[j].arg_pos));

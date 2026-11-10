@@ -531,8 +531,16 @@ std::string missing_run_setting(const std::string &task,
       "tadah " + task + ": no " + key + ": " + what + " is given with ";
   const TaskKeys t = task_keys(task);
   const std::string option = option_of(key);
-  if (t.options.count(key) && !option.empty()) s += option + ", or with ";
-  s += a_line + " in a configuration file without WEIGHTS.";
+  // A configuration file of a command whose -c needs the key's option
+  // refuses a line of the key (tadah hpo: HPOTARGET): the option alone
+  // gives it.
+  if (t.options.count(key) && !option.empty() &&
+      core::config_needs_option(blueprint_task_name(task), key))
+    s += option + ".";
+  else {
+    if (t.options.count(key) && !option.empty()) s += option + ", or with ";
+    s += a_line + " in a configuration file without WEIGHTS.";
+  }
   for (std::size_t f = 0; f < sources.size(); ++f) {
     s += " " + sources[f] + " is a potential (it has WEIGHTS): its " +
          listed(lines[f], "and") +

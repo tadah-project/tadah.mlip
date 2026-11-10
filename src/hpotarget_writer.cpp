@@ -22,16 +22,26 @@ namespace engines {
 
 const std::array<OptimGroupSpec, 8> &hpotarget_group_specs() {
   static const std::array<OptimGroupSpec, 8> specs = {{
-      {"CGRID2B", false},
-      {"SGRID2B", true},
-      {"CGRIDMB", false},
-      {"SGRIDMB", true},
-      {"AMPGRIDMB", false},
-      {"CEMBFUNC", false},
-      {"SEMBFUNC", true},
-      {"FIXWEIGHT", false},
+      {"CGRID2B"},
+      {"SGRID2B"},
+      {"CGRIDMB"},
+      {"SGRIDMB"},
+      {"AMPGRIDMB"},
+      {"CEMBFUNC"},
+      {"SEMBFUNC"},
+      {"FIXWEIGHT"},
   }};
   return specs;
+}
+
+GroupBound hpotarget_group_bound(const std::string &key) {
+  GroupBound b;
+  const auto rule = tadah::models::declared_low_bound_rule(key);
+  if (!rule) return b;
+  if (rule->strict) b.positive_only = true;
+  else if (rule->bound == 0.0)
+    b.lower = tadah::models::OptimLowerBound::NonNegative;
+  return b;
 }
 
 double optim_group_floor(double gmax) {
@@ -127,6 +137,13 @@ void emit_optim_group(std::ostream &os, const std::string &key,
   os << "\n";
 }
 
+static void emit_declared_group(std::ostream &os, const std::string &key,
+                         const tadah::core::v_type &vals, double pct,
+                         bool commented) {
+  const GroupBound b = hpotarget_group_bound(key);
+  emit_optim_group(os, key, vals, pct, b.positive_only, commented, b.lower);
+}
+
 void emit_optim_group_pair(std::ostream &os, const std::string &ckey,
                            const tadah::core::v_type &cvals,
                            const std::string &skey,
@@ -134,8 +151,8 @@ void emit_optim_group_pair(std::ostream &os, const std::string &ckey,
                            bool commented, double w, double rcut) {
   if (cvals.empty() || cvals.size() != svals.size() || rcut <= 0.0) {
     // not a well-formed bump channel: fall back to the plain emitters
-    emit_optim_group(os, ckey, cvals, pct, false, commented);
-    emit_optim_group(os, skey, svals, pct, true, commented);
+    emit_declared_group(os, ckey, cvals, pct, commented);
+    emit_declared_group(os, skey, svals, pct, commented);
     return;
   }
   const double cfloor = group_floor_of(cvals);
@@ -143,9 +160,11 @@ void emit_optim_group_pair(std::ostream &os, const std::string &ckey,
   const double tol = tadah::models::bump_rcut_tol(rcut);
   std::vector<OptimBound> cb(cvals.size()), sb(svals.size());
   std::string spilled;
+  const GroupBound cg = hpotarget_group_bound(ckey);
+  const GroupBound sg = hpotarget_group_bound(skey);
   for (std::size_t i = 0; i < cvals.size(); ++i) {
-    cb[i] = optim_group_bound(cvals[i], pct, cfloor, false);
-    sb[i] = optim_group_bound(svals[i], pct, sfloor, true);
+    cb[i] = optim_group_bound(cvals[i], pct, cfloor, cg.positive_only, cg.lower);
+    sb[i] = optim_group_bound(svals[i], pct, sfloor, sg.positive_only, sg.lower);
     /* Bounds are emitted at FULL width: `tadah hpo` (BUMPGATE CANDIDATE)
      * accepts partially infeasible boxes and rejects violating candidates
      * per evaluation, so pre-shrinking the box here would only re-create
@@ -324,8 +343,8 @@ void write_hpotarget(const std::string &path, const tadah::core::Context &pot,
                           read_vec("SGRID2B"), pct, true, *w2b,
                           pot.get<double>("RCUT2B"));
   } else {
-    emit_optim_group(os, "CGRID2B", read_vec("CGRID2B"), pct, false, true);
-    emit_optim_group(os, "SGRID2B", read_vec("SGRID2B"), pct, true, true);
+    emit_declared_group(os, "CGRID2B", read_vec("CGRID2B"), pct, true);
+    emit_declared_group(os, "SGRID2B", read_vec("SGRID2B"), pct, true);
   }
 
   // ---- DM_Embed components: their named parameters, one section each ----
@@ -382,8 +401,8 @@ void write_hpotarget(const std::string &path, const tadah::core::Context &pot,
                             read_vec("SGRIDMB"), pct, true, *wmb,
                             pot.get<double>("RCUTMB"));
     } else {
-      emit_optim_group(os, "CGRIDMB", read_vec("CGRIDMB"), pct, false, true);
-      emit_optim_group(os, "SGRIDMB", read_vec("SGRIDMB"), pct, true, true);
+      emit_declared_group(os, "CGRIDMB", read_vec("CGRIDMB"), pct, true);
+      emit_declared_group(os, "SGRIDMB", read_vec("SGRIDMB"), pct, true);
     }
     emit_optim_group(os, "AMPGRIDMB", read_vec("AMPGRIDMB"), pct, false, true,
                      tadah::models::optim_key_lower_bound("AMPGRIDMB", form));
@@ -391,8 +410,8 @@ void write_hpotarget(const std::string &path, const tadah::core::Context &pot,
 
   if (pot.contains("CEMBFUNC") && pot.size("CEMBFUNC") > 0) {
     os << "# ---- embedding function shape ----\n";
-    emit_optim_group(os, "CEMBFUNC", read_vec("CEMBFUNC"), pct, false, true);
-    emit_optim_group(os, "SEMBFUNC", read_vec("SEMBFUNC"), pct, true, true);
+    emit_declared_group(os, "CEMBFUNC", read_vec("CEMBFUNC"), pct, true);
+    emit_declared_group(os, "SEMBFUNC", read_vec("SEMBFUNC"), pct, true);
   }
 
   // `OPTIM FIXWEIGHT (i)` indices name MODEL WEIGHTS. The refit pot pins

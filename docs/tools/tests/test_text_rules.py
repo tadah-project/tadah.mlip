@@ -6,8 +6,9 @@ and the program output) and the help text of the CORE and HPO blueprints
 pages and the command-line help show) never address the reader, never use
 the filler, process and invented words the documentation rules ban, and
 never tell history. No hand-written page carries a version note
-(`versionchanged`, `versionadded`): a page states what the program does, and
-the changelog holds the difference between versions.
+(`versionchanged`, `versionadded`, `versionremoved`, `deprecated`): a page
+states what the program does, and the changelog holds the difference
+between versions.
 
 The blueprint cases read the CORE and HPO checkouts the documentation build
 uses (source_locator.py) and are skipped, saying why, without one; a
@@ -48,12 +49,16 @@ HISTORY = re.compile(
 RULES = (('addresses the reader', READER), ('filler wording', FILLER),
          ('process wording', PROCESS), ('invented jargon', JARGON),
          ('tells history', HISTORY))
-VERSION_NOTE = re.compile(r'^\s*\.\.\s+version(changed|added)::')
+# A version note, also as the first thing of a list item or a table cell.
+# docutils reads directive names in any case.
+VERSION_NOTE = re.compile(
+    r'^\s*(?:(?:[-*+]|#\.|\d+\.)\s+)*\.\.\s+'
+    r'(?:version(?:changed|added|removed)|deprecated)::', re.I)
 
 # Directives whose body is not prose of the page.
 OPAQUE = re.compile(
     r'^\s*\.\.\s+(code-block|sourcecode|literalinclude|parsed-literal|'
-    r'deprecated|math|raw|include|toctree|'
+    r'math|raw|include|toctree|'
     r'only|autodoxygen\w*|doxygen\w*|csv-table)::')
 # A comment, label, target, substitution or footnote: ".." not followed by
 # a directive name and "::". The other directives (note, list-table,
@@ -113,9 +118,10 @@ def source_pages(not_pages=NOT_PAGES):
 
 
 def version_notes(text, label):
-    """The version notes of an rst source, as violations."""
+    """The version notes of an rst source, as violations. A note quoted in
+    a literal block or an inline literal is none."""
     return [f'{label}:{number}: version note: {line.strip()}'
-            for number, line in enumerate(text.splitlines(), 1)
+            for number, line in prose_lines(text)
             if VERSION_NOTE.match(line)]
 
 
@@ -229,7 +235,31 @@ class RuleSelfTest(unittest.TestCase):
                 '.. deprecated:: 1.6.0\n   A key.\n')
         self.assertEqual(version_notes(text, 'x.rst'), [
             'x.rst:3: version note: .. versionchanged:: 1.6.0',
-            'x.rst:8: version note: .. versionadded:: 1.6.0'])
+            'x.rst:8: version note: .. versionadded:: 1.6.0',
+            'x.rst:13: version note: .. deprecated:: 1.6.0'])
+
+    def test_every_kind_of_version_note_is_found(self):
+        text = ('.. versionremoved:: 2.0\n   Gone.\n\n'
+                '.. VersionChanged:: 1.6.0\n   It differed.\n\n'
+                '* - .. versionadded:: 1.6.0\n       New.\n\n'
+                '#. .. deprecated:: 1.6.0\n      Old.\n')
+        self.assertEqual([f.split(': ', 2)[2]
+                          for f in version_notes(text, 'x.rst')],
+                         ['.. versionremoved:: 2.0',
+                          '.. VersionChanged:: 1.6.0',
+                          '* - .. versionadded:: 1.6.0',
+                          '#. .. deprecated:: 1.6.0'])
+
+    def test_a_note_shown_in_a_literal_block_is_no_note(self):
+        text = ('The syntax::\n\n   .. versionchanged:: 1.6.0\n\n'
+                '.. code-block:: rst\n\n   .. deprecated:: 1.6.0\n\nProse.\n')
+        self.assertEqual(version_notes(text, 'x.rst'), [])
+
+    def test_the_body_of_a_deprecation_note_is_prose(self):
+        text = '.. deprecated:: 1.6.0\n   Previously you used it.\n'
+        found = violations(prose_lines(text), 'x.rst')
+        self.assertEqual([f.split(': ')[1] for f in found],
+                         ['addresses the reader', 'tells history'])
 
     def test_literal_blocks_after_a_double_colon_are_skipped(self):
         text = 'Run it:\n\n::\n\n   we simply go\n\nBack to prose.\n'

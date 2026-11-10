@@ -754,9 +754,10 @@ and, at startup, by ``tadah hpo``: each entry is a dataset, so each of its
 structures would be fitted twice. ``WDBFILE`` gives a dataset a higher
 priority.
 
-A potential that holds the ``DBFILE`` line it was trained on is refused in
-the same way when a retrain from its copy adds that ``DBFILE`` again. The
-line is deleted from the copy before the ``DBFILE`` of the retrain is added
+A retrain from a copy of a potential that holds the ``DBFILE`` line it was
+trained on is refused in the same way when the copy is given that
+``DBFILE`` again. The line is deleted from the copy before the ``DBFILE`` of
+the retrain is added
 (``tadah predict`` and ``pair_style tadah`` do not read it).
 
 .. _pot_number_format:

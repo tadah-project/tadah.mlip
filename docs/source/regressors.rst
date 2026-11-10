@@ -169,10 +169,10 @@ descriptor has one intercept component per species in training and in
 :math:`D(D+1)/2` coefficients for its :math:`D` descriptor components, and a
 potential of any non-linear model whose ``NMEAN``/``NSTDEV`` (``NORM
 true``) or basis vectors do not fit the descriptor.
-
-A potential with ``BIAS true`` on several species that has one intercept
-component shared by the species is refused, with the instruction to retrain
-it.
+``tadah predict`` and ``pair_style tadah`` refuse a potential with ``BIAS
+true`` on several species whose coefficients or basis vectors are those of a
+descriptor with one intercept component shared by the species. The message
+says to retrain it (:ref:`bias_term`).
 
 **FIXINDEX/FIXWEIGHT** with a kernel pin coefficients of the basis vectors
 (coefficients 1 to :math:`n` belong to the intercept vectors, the others to

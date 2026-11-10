@@ -114,6 +114,11 @@ The layout is the same on every path (``tadah train``, ``predict``,
   them, so with ``LAMBDA > 0`` they are 0). With a non-linear KRR kernel the
   basis starts with one intercept vector per species.
 
+``tadah predict`` and ``pair_style tadah`` refuse a potential with ``BIAS
+true`` and two or more species whose ``WEIGHTS`` are those of one intercept
+column shared by the species. The message names ``WEIGHTS``, ``DSIZE``,
+``BIAS`` and ``ATOM``.
+
 A potential refused for its intercept columns is retrained with its
 training configuration or with the potential itself
 (:ref:`retrain_from_potential`; an ``M_KRR`` potential without a
@@ -205,8 +210,12 @@ Key points
 * Each constituent can target its own element pair(s), cutoff type and
   distance.
 
-A potential that holds values that no descriptor takes loads, with a
-warning that names them.
+In a potential, some of these values give a warning that names them
+instead of a refusal, and the potential loads. They are ``RCTYPE*`` and
+``RCUT*`` values beyond one per descriptor, the list values that the
+descriptors of a joined line leave over, and a list key that a single
+descriptor does not read. A list key of a single descriptor with more
+values than its **TYPE** line asks for is refused in a potential too.
 
 Quick examples
 --------------

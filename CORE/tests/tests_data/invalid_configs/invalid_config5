@@ -1,0 +1,7 @@
+DBFILE path/to/file1
+DBFILE path/to/file2
+DBFILE path/to/file3 path/to/file4
+
+INIT2B true
+
+RCUT2B -5.5

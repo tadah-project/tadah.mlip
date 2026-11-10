@@ -1,0 +1,21 @@
+ALPHA      1.0
+BETA      1.0
+BIAS      false
+CGRID2B     LIN     4     1.0     5.3
+DIMER     false     0     false
+ESIGMA       1
+FSIGMA       1
+INIT2B      true
+INITMB      false
+LAMBDA      0
+MODEL     M_BLR     BF_Linear
+NMEAN          194.0239012     198.413198     167.8651188     8.242704556
+NORM      true
+NSTDEV          2.79425471     2.914508228     1.43784523     0.3225202259
+NUMERIC      10
+RCTYPE2B      Cut_Cos
+RCUT2B      5.3
+SGRID2B     LOG     4     0.1     1.0
+SSIGMA       160.2
+TYPE2B      D2_Blip 4 4 H *
+WEIGHTS       0.4218953511     -0.3750771288     -0.06328812171     -0.05230011264

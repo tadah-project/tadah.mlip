@@ -1,0 +1,13 @@
+#include "blueprint_tadah.hpp"
+
+namespace tadah { namespace core {
+
+//  Definitions – appear in **exactly one** TU
+const char blueprint_tadah[] = R"toml(
+@BLUEPRINT_CONTENT@
+)toml";
+
+const unsigned blueprint_tadah_size = sizeof(blueprint_tadah) - 1;
+
+}} // namespace tadah::core
+

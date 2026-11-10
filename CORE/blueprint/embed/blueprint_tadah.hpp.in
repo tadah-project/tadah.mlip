@@ -1,0 +1,9 @@
+#pragma once
+
+namespace tadah { namespace core {
+
+//  Declarations that every TU can include
+extern const char     blueprint_tadah[];
+extern const unsigned blueprint_tadah_size;
+
+}} // namespace tadah::core

@@ -8,7 +8,6 @@
 #include <tadah/mlip/engines/hpotarget_writer.h>
 #include <tadah/models/descriptors/dm/embed_spec.h>
 #include <tadah/models/descriptors/dm/embf0.h>
-#include <tadah/models/descriptors/param_meta.h>
 
 #include <algorithm>
 #include <cmath>
@@ -882,8 +881,9 @@ OptimLine OptimReader::read(std::istringstream& iss, std::size_t nline) {
             origin = OptimBoxOrigin::AutoLinearNonneg;
           }
           /* The low-bound rule of the entry: a box that reaches below it
-           * is clamped at it (at 1e-6 for a value that must be > 0), before
-           * the LOG check below. */
+           * is clamped at it (half-way to the seed for a value that must be
+           * > 0, as the refit writer clamps the box of a width), before the
+           * LOG check below. */
           if (const auto r = entry_low_rule(ui); r && !r->admits(lo_i)) {
             lo_i = r->clamp_low(x0);
             origin = r->strict ? OptimBoxOrigin::AutoLinearPositive
@@ -963,11 +963,11 @@ OptimLine OptimReader::read(std::istringstream& iss, std::size_t nline) {
         if (std::find(kOptimAutoExcludedKeys.begin(),
                       kOptimAutoExcludedKeys.end(),
                       k) == kOptimAutoExcludedKeys.end())
+          /* a > rule has the bound 0 (OptimLowBoundRule::bound), and
+           * clamp_low halves the seed */
           clamp = entry_rule->strict
-                      ? " (an AUTO FRAC box is clamped at " +
-                            core::format_roundtrip(entry_rule->bound +
-                                                   models::kHardLoPositive) +
-                            ")"
+                      ? std::string(" (an AUTO FRAC box is clamped at half "
+                                    "its seed)")
                       : " (its AUTO FRAC box, the default, is clamped at " +
                             bound + ")";
         throw std::runtime_error(

@@ -73,8 +73,9 @@ OptimBound optim_group_bound(double val, double pct, double floor,
       quantize_optim(std::max(pct / 100.0 * std::fabs(b.v), floor), b.q);
   b.lo = b.v - d;
   b.hi = b.v + d;
-  if (positive_only && b.lo <= 0.0)
-    b.lo = std::max(1e-6, 0.5 * std::fabs(b.v));
+  // a width: half the centre, the low end tadah hpo clamps an AUTO FRAC
+  // box of such a value at (models::positive_box_low)
+  if (positive_only && b.lo <= 0.0) b.lo = models::positive_box_low(b.v);
   // RHOFORM NONNEG / MONOTONE amplitudes: lo = max(0, v - d), exact on the
   // bound grid, so a 0 amplitude keeps the searchable box [0, d]
   if (lower == models::OptimLowerBound::NonNegative && b.lo < 0.0) b.lo = 0.0;

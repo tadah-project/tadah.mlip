@@ -139,7 +139,7 @@ enum class OptimBoxOrigin : std::uint8_t {
   AutoLinear,       ///< AUTO: seed +- max(FRAC |seed|, FLOOR, GROUP_FLOOR max|seed|)
   AutoGeometric,    ///< AUTO: [seed/RATIO, seed*RATIO]
   AutoLinearNonneg,   ///< AUTO linear, its low bound clamped at the >= rule of its key (0)
-  AutoLinearPositive  ///< AUTO linear, its low bound clamped at 1e-6 by the > 0 rule of its key
+  AutoLinearPositive  ///< AUTO linear, its low bound clamped at half its seed by the > 0 rule of its key (models::positive_box_low)
 };
 
 /** \brief The box of one value an OPTIM line selects. */

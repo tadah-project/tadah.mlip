@@ -129,7 +129,8 @@ void read_kept_selector(const std::string &rest, KeptLine &k) {
 // it; a commented one a physical line `# OPTIM <KEY> (...` (its text cut at
 // the next '#'), another comment that starts with OPTIM being prose. A
 // commented line is read as the active one would be, a line the syntax
-// refuses kept with tadah hpo's reason.
+// refuses kept with tadah hpo's reason, as is a box whose low bound breaks
+// the lower limit the descriptors declare for its key.
 struct Classified {
   std::vector<OptimLine> rewritten;
   std::vector<KeptLine> kept;
@@ -173,10 +174,28 @@ Classified classify_optim_lines(const std::vector<std::string> &lines) {
     std::getline(in, rest, '\0');
     return rest;
   };
+  // Why tadah hpo refuses the explicit box of a one-index line, @p syn,
+  // whose low bound breaks the lower limit the descriptors declare for its
+  // key (one per key, so the file needs no potential for it); empty when
+  // the limit admits it.
+  auto limit_reason = [](const OptimSyntax &syn) -> std::string {
+    const auto rule = tadah::models::declared_low_bound_rule(syn.key);
+    if (!rule || rule->admits(syn.box.low)) return {};
+    const std::string low = tadah::core::format_roundtrip(syn.box.low);
+    const std::string bound = tadah::core::format_roundtrip(rule->bound);
+    const std::string broken =
+        rule->strict ? " is not > " + bound
+        : rule->bound == 0.0 ? std::string(" is negative")
+                             : " is below " + bound;
+    return "is one tadah hpo refuses (OPTIM " + syn.key + " (" +
+           std::to_string(syn.selector.indices.front()) + "): the low bound " +
+           low + broken + ", but the descriptors require " +
+           rule->requirement + ")";
+  };
   // The syntax of an OPTIM line, @p rest its text after the word OPTIM, as
   // tadah hpo reads it; a line it refuses is none, with tadah hpo's reason
   // in @p reasons. @p kept takes the key and indices the line selects.
-  auto read_syntax = [&form_reasons](const std::string &rest, KeptLine &kept,
+  auto read_syntax = [&form_reasons, &limit_reason](const std::string &rest, KeptLine &kept,
                                      std::vector<std::string> &reasons)
       -> std::optional<OptimSyntax> {
     std::istringstream in(rest);
@@ -185,6 +204,8 @@ Classified classify_optim_lines(const std::vector<std::string> &lines) {
       kept.key = syn.key;
       kept.indices = syn.selector.indices;
       for (auto &r : form_reasons(syn)) reasons.push_back(r);
+      if (reasons.empty())
+        if (auto r = limit_reason(syn); !r.empty()) reasons.push_back(r);
       return syn;
     } catch (const std::exception &x) {
       reasons.push_back(std::string("is one tadah hpo refuses (") + x.what() +
@@ -613,7 +634,8 @@ RetargetReport retarget_hpotarget_lines(std::vector<std::string> &lines,
         limit = "; the descriptors require " + rule->requirement +
                 (rule->strict ? ", so a low bound at or below " +
                                     tadah::core::format_roundtrip(rule->bound) +
-                                    " is clamped"
+                                    " is clamped at half the midpoint of the "
+                                    "box"
                               : ", so a low bound below " +
                                     tadah::core::format_roundtrip(rule->bound) +
                                     " is clamped at it");
@@ -875,7 +897,7 @@ RetargetReport retarget_hpotarget_lines(std::vector<std::string> &lines,
               what + "lo must be " + (rule->strict ? "> " : ">= ") +
               tadah::core::format_roundtrip(rule->bound) +
               ": the descriptors require " + rule->requirement +
-              " (`tadah hpo` refuses a box below it).");
+              " (`tadah hpo` refuses such a box).");
         ol.lo = s.lo;
         ol.hi = s.hi;
         found = true;

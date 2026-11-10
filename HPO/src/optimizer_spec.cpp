@@ -1,0 +1,581 @@
+#include <tadah/hpo/optimizer_spec.h>
+#include <tadah/hpo/optimizer_caps.h>
+#include <tadah/hpo/optimizer_help.h>
+#include <tadah/hpo/asa_options.h>
+#include <tadah/hpo/anneal_keys_gen.h>
+#include <tadah/hpo/strict_parse.h>
+#include <tadah/hpo/validation_metric.h>
+#include <tadah/core/number_format.h>
+#include <cmath>
+#include <algorithm>
+#include <cctype>
+#include <iomanip>
+#include <stdexcept>
+#include <sstream>
+#include <string_view>
+#include <vector>
+#include <nlopt.hpp>
+#include <dlib/optimization.h>
+
+using namespace tadah::hpo;
+
+/* ANNEAL-family key listing, generated from the registry
+ * (blueprint/anneal_keys.toml -> anneal_keys_gen.h): names, defaults,
+ * enum tokens, grouping, and importance order all come from the same
+ * tables Knobs::parse validates against, so this text cannot drift. A key
+ * the family refuses (a KindReject rule) is not listed, and each default
+ * is a value the family takes or the default_doc of the key in words. */
+static void print_anneal_family_caps(std::ostream& os, unsigned kind_mask)
+{
+    namespace reg = tadah::hpo::anneal_registry;
+    static const char* const group_order[] = {
+        "budget", "temperature", "ladder", "swaps", "steps", "init",
+        "stopping"};
+    const auto refused = [&](const reg::AnnealKeyInfo& k) {
+        for (const auto& r : reg::kRules)
+            if (r.type == reg::AnnealRuleType::KindReject &&
+                std::string_view(r.key) == k.name && (r.kind_mask & kind_mask))
+                return true;
+        return false;
+    };
+    for (const char* group : group_order) {
+        std::vector<const reg::AnnealKeyInfo*> keys;
+        for (const auto& k : reg::kKeys)
+            if ((k.kinds & kind_mask) && std::string_view(group) == k.group &&
+                !refused(k))
+                keys.push_back(&k);
+        if (keys.empty()) continue;
+        std::sort(keys.begin(), keys.end(),
+                  [](const reg::AnnealKeyInfo* a, const reg::AnnealKeyInfo* b) {
+                      return a->rank < b->rank;
+                  });
+        os << "   * " << group << ":\n";
+        for (const auto* k : keys) {
+            bool has = false;
+            double def = 0.0;
+            const char* def_doc = nullptr;
+            if (kind_mask == reg::KIND_SERIAL) {
+                has = k->has_def_serial; def = k->def_serial;
+                def_doc = k->def_doc_serial;
+            } else if (kind_mask == reg::KIND_PT) {
+                has = k->has_def_pt; def = k->def_pt;
+                def_doc = k->def_doc_pt;
+            } else {
+                has = k->has_def_pa; def = k->def_pa;
+                def_doc = k->def_doc_pa;
+            }
+            std::ostringstream head;
+            head << "PARAM " << k->name;
+            if (k->type == reg::AnnealKeyType::Enum) {
+                head << " <";
+                for (std::size_t i = 0; i < k->enum_count; ++i)
+                    head << (i ? "|" : "") << k->enum_values[i];
+                head << ">";
+                if (has)
+                    head << " (default "
+                         << k->enum_values[static_cast<std::size_t>(def)]
+                         << ")";
+            } else if (def_doc) {
+                /* A rule rather than a value (a calibration, AUTO with
+                 * what it takes): the registry's words. */
+                head << " (default: " << def_doc << ")";
+            } else if (k->type == reg::AnnealKeyType::Bool) {
+                head << (def != 0.0 ? " (default ON)" : " (default OFF)");
+            } else if (has && k->accepts_auto &&
+                       (k->auto_kinds & kind_mask) && def == k->auto_value) {
+                /* 1.5.0: print the TOKEN the user has to type. These keys
+                 * carry their AUTO sentinel as the numeric default, so the
+                 * raw value would advertise "(default -1)" for a key that
+                 * rejects -1. */
+                head << " (default AUTO)";
+            } else if (has && k->accepts_off && def == k->off_value) {
+                head << " (default OFF)";
+            } else {
+                /* gen_anneal_keys.py gives every kind that takes the key a
+                 * default or a default_doc. */
+                head << " (default " << def << ")";
+            }
+            /* AUTO only for the kinds that take it (auto_kinds). */
+            const bool takes_auto =
+                k->accepts_auto && (k->auto_kinds & kind_mask);
+            if (k->type != reg::AnnealKeyType::Enum &&
+                (takes_auto || k->accepts_off)) {
+                head << " [accepts ";
+                if (takes_auto) head << "AUTO";
+                if (takes_auto && k->accepts_off) head << "/";
+                if (k->accepts_off) head << "OFF";
+                head << "]";
+            }
+            os << "     " << head.str() << "\n"
+               << "        " << k->doc << "\n";
+            if (k->long_doc)
+                os << "        " << k->long_doc << "\n";
+        }
+    }
+}
+
+/* The stop criteria that end a run of (lib, algo), from the caps registry
+ * (supports_*), and whether one is required (needs_stop). */
+static void print_stops(std::ostream& os, const std::string& lib,
+                        const std::string& algo)
+{
+    const OptimizerCaps* c = nullptr;
+    try { c = &optimizer_caps(lib, algo); } catch (const std::exception&) { return; }
+    std::string list;
+    const auto add = [&](bool on, const char* key) {
+        if (!on) return;
+        if (!list.empty()) list += ", ";
+        list += key;
+    };
+    add(c->supports_maxeval, "MAXEVAL");
+    add(c->supports_maxtime, "MAXTIME");
+    add(c->supports_stopval, "STOPVAL");
+    add(c->supports_ftol_rel, "FTOL_REL");
+    add(c->supports_ftol_abs, "FTOL_ABS");
+    add(c->supports_xtol_rel, "XTOL_REL");
+    add(c->supports_xtol_abs, "XTOL_ABS");
+    os << "   * Stops that end a search: " << list << "\n";
+    if (c->tolerance_note[0])
+        os << "     " << c->tolerance_note << ".\n";
+    /* require_stop() (backend_rules.h): a tolerance counts above 0, and the
+     * stagnation stop of a RESTART block counts too (every RESTART block
+     * the parser takes restarts the search) -- but for a backend that
+     * ignores NLopt's forced stop, only MAXEVAL. */
+    const bool tolerances = c->supports_ftol_rel || c->supports_ftol_abs ||
+                            c->supports_xtol_rel || c->supports_xtol_abs;
+    if (c->needs_stop && c->ignores_forced_stop)
+        os << "     MAXEVAL is required (MAXTIME, STOPVAL and a RESTART "
+              "block are not enough): " << c->stop_note << ".\n";
+    else if (c->needs_stop)
+        os << "     One of them is required"
+           << (tolerances ? " (a tolerance above 0)" : "")
+           << ", or a RESTART block: " << c->stop_note << ".\n";
+}
+
+/* One, easily extendable, registry ---------------------------------*/
+static void print_tadah_caps(std::ostream& os, const std::string& algo)
+{
+    if (algo=="RANDOM") {
+        os<<"   * The INIT point, then uniform draws in the OPTIM box. No PARAM.\n";
+        print_stops(os, "TADAH", algo);
+    } else if(algo=="GRID") {
+        os<<"   * PARAM GRID_POINTS <int>  (default 20 points per dimension;\n"
+            "     spacing = width/(n-1); total cost = n^d in d dimensions).\n"
+            "     STEP and any other PARAM are rejected. The INIT point, then\n"
+            "     the grid in order.\n";
+        print_stops(os, "TADAH", algo);
+    }
+    else if(algo=="ANNEAL")
+    {
+        os<<"   * Serial simulated annealing: classic whole-vector Gaussian kernel\n"
+            "     (Kirkpatrick et al. 1983; Metropolis et al. 1953) by default;\n"
+            "     PARAM CORANA ON selects the per-dimension adaptive kernel\n"
+            "     (Corana et al. 1987). Geometric cooling T <- T*RT; automatic T0\n"
+            "     calibration unless PARAM T_INIT is set; CHAIN_LENGTH/NT default\n"
+            "     AUTO (MAXEVAL budget spread over the cooling schedule).\n"
+            "   * Stops: MAXEVAL / MAXTIME / STOPVAL; FTOL_REL/FTOL_ABS (> 0) arm the\n"
+            "     Corana eps-NEPS plateau; T < T_MIN ends a schedule (REANNEAL\n"
+            "     restarts from the best until the budget runs out).\n"
+            "   * SEED <int>  seed of the random numbers (default: one drawn from\n"
+            "     the system's random source). THREADS <n> sizes the pool of\n"
+            "     workers that run the work of each evaluation (the chain\n"
+            "     itself is serial).\n"
+            "   * Keys it does not read are refused: STEP, XTOL_*, VECTOR_ARR,\n"
+            "     GRAD_STRATEGY, unknown PARAM keys, and\n"
+            "     POPULATION, which TADAH:ANNEAL_PA reads.\n";
+        print_anneal_family_caps(os, tadah::hpo::anneal_registry::KIND_SERIAL);
+    }
+    else if(algo=="ANNEAL_PT")
+    {
+        os<<"   * Parallel tempering (replica exchange): K replicas on a static\n"
+            "     (optionally self-adapting) log temperature ladder, slot 1 coldest.\n"
+            "     A replica runs ONE sweep per epoch (CLASSIC: one whole-vector\n"
+            "     proposal; CORANA: one single-coordinate move per dimension),\n"
+            "     then adjacent pairs attempt a state swap every SWAP_EVERY\n"
+            "     epochs with deterministic even/odd (DEO) pairing.\n"
+            "     With REPLICAS fixed, a deterministic objective, and no\n"
+            "     timing-dependent stop, the same SEED gives the same evaluated\n"
+            "     set for any THREADS.\n"
+            "   * Stops: MAXEVAL / MAXTIME / STOPVAL; FTOL_REL/FTOL_ABS (> 0) arm the\n"
+            "     best-stall stop (global best unimproved over NEPS diagnostics\n"
+            "     windows). One of them is required: the ladder keeps its\n"
+            "     temperatures, so no schedule ends a search. Cooling schedules\n"
+            "     belong to serial ANNEAL: RT/T_MIN are rejected here.\n"
+            "   * THREADS <n>  the workers of the run (the evaluations of the\n"
+            "     replicas, the PC_LAMMPS scripts, the training and prediction);\n"
+            "     also the REPLICAS default.\n"
+            "   * Diagnostics: per-pair swap tables + step reports every SWAP_WINDOW\n"
+            "     epochs; ladder updates in hpo_temperature_ladder.tsv; calibrated\n"
+            "     step scales in hpo_step_scales.tsv. Under CORANA, the\n"
+            "     per-dimension acceptance the stepper adapts on is summarised per\n"
+            "     slot in the journal and written in full to\n"
+            "     hpo_corana_acceptance.tsv (per SLOT/temperature, not per walker).\n";
+        print_anneal_family_caps(os, tadah::hpo::anneal_registry::KIND_PT);
+    }
+    else if(algo=="ANNEAL_PA")
+    {
+        os<<"   * Population annealing over the ANNEAL stepper (classic by\n"
+            "     default, PARAM CORANA ON for the adaptive variant). R walkers\n"
+            "     anneal from T_HOT to T_MIN; each temperature step reweights by\n"
+            "     exp(-dbeta*f), resamples (systematic; FAILSCORE walkers receive zero\n"
+            "     weight when at least one feasible walker exists; all-fail skips\n"
+            "     resampling and continues geometric cooling), then every walker runs\n"
+            "     SWEEPS rungs at the new T. Same SEED => same evaluated set for any\n"
+            "     THREADS.\n"
+            "   * POPULATION <R> population size (default 4*THREADS, min 16).\n"
+            "   * The step scales are part of the state of each walker (children\n"
+            "     inherit the step calibration of their parent on resample).\n"
+            "     Per-step journal line: T, ESS, unique parents, culled, finite\n"
+            "     field (feasible fraction), population best.\n";
+        print_anneal_family_caps(os, tadah::hpo::anneal_registry::KIND_PA);
+    }
+    else
+        os<<"   * (unknown tadah built-in algo)\n";
+}
+
+static void print_dlib_caps(std::ostream& os, const std::string& algo)
+{
+    if(algo=="GFS") {
+        os<<"   * dlib's global optimiser, MaxLIPO+TR; every INIT point seeds it.\n"
+            "     No PARAM.\n"
+            "   * FTOL_ABS     (dlib's solver epsilon, default 1e-3; it ends no\n"
+            "                   search). FTOL_REL/XTOL_REL/XTOL_ABS are rejected.\n";
+        print_stops(os, "DLIB", algo);
+    }
+    else if(algo=="BFGS")
+        os<<"   * MAXEVAL      (objective evaluations, the finite-difference\n"
+            "                   ones included)\n"
+            "   * FTOL_ABS     (objective-delta stop, default 1e-7: the loss\n"
+            "                   changed by less from one iteration to the next)\n"
+            "   * PARAM fd_step <double>      (finite-difference step, default 1e-6)\n"
+            "   * PARAM fd_kernel inhouse|ceres (the step rule)\n"
+            "   * PARAM diff_method 0|1       (CENTRAL, default, or FORWARD)\n"
+            "   * PARAM tol_gradinf <double>  (stop once the largest component of the\n"
+            "                   gradient falls below it, as CERES's; alternative to FTOL_ABS)\n"
+            "   * the search ends with 'no step within the OPTIM box' at a point\n"
+            "                   that no step can move (each coordinate at a bound\n"
+            "                   its gradient points out of, or a step below its\n"
+            "                   rounding), or whose line search from the farthest\n"
+            "                   step comes back to it. The loss does not change\n"
+            "                   there, so FTOL_ABS may end the search first.\n";
+    else
+        os<<"   * (unknown DLIB algo; registered: GFS, BFGS)\n";
+}
+
+static void print_nlopt_caps(std::ostream& os,const std::string& algo)
+{
+  nlopt_algorithm a = nlopt_algorithm_from_string(algo.c_str());
+    if (a==NLOPT_NUM_ALGORITHMS) { os<<"   * (unknown)\n"; return; }
+
+    print_stops(os, "NLOPT", algo);
+    /* The PARAM keys NLopt reads for it (OptimizerCaps::algorithm_params);
+     * any other name is refused, the finite-difference keys aside. */
+    if (const OptimizerCaps* c = find_optimizer_caps("NLOPT", algo)) {
+        if (c->algorithm_params.empty()) {
+            os<<"   * PARAM: NLopt reads no PARAM key of this algorithm\n";
+        } else {
+            const std::string head =
+                "   * PARAM <name> <value>  the PARAM keys NLopt reads for it:";
+            os << head;
+            /* The names after it, on lines of up to 72 characters. */
+            std::size_t width = head.size();
+            for (std::size_t i = 0; i < c->algorithm_params.size(); ++i) {
+                const std::string& p = c->algorithm_params[i];
+                const std::string item = p + (i + 1 < c->algorithm_params.size()
+                                                  ? "," : "");
+                if (width + 1 + item.size() > 72) {
+                    os << "\n    ";
+                    width = 4;
+                }
+                os << " " << item;
+                width += 1 + item.size();
+            }
+            os << "\n";
+        }
+    }
+    if (algo[0]=='G')        os<<"   * global optimiser\n";
+    if (algo[1]=='N') os<<"   * gradient-free\n";
+    /* Initial-step policy from the registry (single source of truth). */
+    try {
+        const auto& c = optimizer_caps("NLOPT", algo);
+        if (step_use_consumes(c.step_use))
+            os<<"   * STEP <double>  initial step; consumption: "
+              << step_use_name(c.step_use) << "\n"
+              << "     " << c.step_note << "\n";
+        else
+            os<<"   * STEP is rejected: " << c.step_note << "\n";
+        /* SEED, as the startup checks read it (seed_use, reads_seed,
+         * phase_specs.h): an algorithm that draws random numbers reads it;
+         * an MLSL or AUGLAG that draws none itself reads it through its
+         * local search, of which only LN_PRAXIS draws. */
+        switch (seed_use(c)) {
+            case SeedUse::ReadInTwoDimensions:
+                os<<"   * SEED <int>  the seed of the random numbers it draws; "
+                    "in one OPTIM\n     dimension it draws none, and SEED is "
+                    "rejected\n";
+                break;
+            case SeedUse::Read:
+                os<<"   * SEED <int>  the seed of the random numbers it draws\n";
+                break;
+            case SeedUse::ThroughLocalSearch:
+                os<<"   * SEED: read only when its local search draws random "
+                    "numbers (an\n     INNER LN_PRAXIS); otherwise rejected\n";
+                break;
+            case SeedUse::Refused:
+                os<<"   * SEED is rejected: it draws no random numbers\n";
+                break;
+        }
+        if (c.ignores_bounds)
+            os<<"   * WARNING: " << c.bounds_note << "\n";
+        /* MLSL and AUGLAG: what their INNER block takes (require_inner_
+         * backend(), strategy_rules.h: a local NLopt algorithm). */
+        if (c.accepts_inner) {
+            const std::string text =
+                std::string("INNER ... ENDINNER: the local search it runs "
+                            "from ") +
+                (c.is_global ? "the points it samples in the OPTIM box"
+                             : "its own starting point") +
+                ". The block takes LIB NLOPT and a local ALGO (`tadah explain "
+                "ALGO` marks each); a global ALGO is refused, and so is one "
+                "that needs an INNER block of its own. " +
+                (c.default_inner
+                     ? std::string("Without one NLopt runs its default ") +
+                           c.default_inner + "."
+                     : std::string("The block is required: NLopt has no "
+                                   "default local optimiser for it."));
+            /* Words, at most 76 columns a line. */
+            std::istringstream words(text);
+            std::string line = "   *", word;
+            while (words >> word) {
+                if (line.size() > 5 && line.size() + 1 + word.size() > 76) {
+                    os << line << "\n";
+                    line = "    ";
+                }
+                line += " " + word;
+            }
+            os << line << "\n";
+        }
+    } catch (const std::exception&) { /* unregistered: nothing to add */ }
+}
+
+static void print_ceres_caps(std::ostream& os, const std::string& algo,
+                             [[maybe_unused]] BuildNotes notes)
+{
+    const OptimizerCaps* c = find_optimizer_caps("CERES", algo);
+    if (!c) { os << "   * (unknown CERES algo; registered: "
+                    "STEEPEST_DESCENT)\n"; return; }
+    const char* what = "steepest descent, Armijo line search";
+    os << "   * Ceres' line-search solver: " << what << "; local, "
+          "gradient-based (GRAD_STRATEGY NUMERICAL by default)\n";
+#ifndef TADAH_USE_CERES
+    if (notes == BuildNotes::Include)
+        os << "   * this build of tadah has no Ceres: a run is refused (a "
+              "build with -DTADAH_ENABLE_CERES=ON has it)\n";
+#endif
+    print_stops(os, "CERES", algo);
+    os << "   * PARAM tol_gradinf <double>  (gradient tolerance, the largest "
+          "component, default 1e-10)\n"
+          "   * PARAM max_iter <int>        (Ceres' max_num_iterations, 0 to "
+          "2147483647; MAXEVAL counts the evaluations)\n"
+          "   * PARAM max_ls_iter <int>     (line-search step-size "
+          "iterations, 1 to 2147483647)\n";
+    os << "   * PARAM fd_step, fd_kernel, diff_method  (the finite "
+          "differences of the gradient)\n";
+    os << "   * STEP is rejected: " << c->step_note << "\n";
+    if (c->ignores_bounds) os << "   * WARNING: " << c->bounds_note << "\n";
+}
+
+static void print_asa_caps(std::ostream& os, const std::string& algo)
+{
+    if (algo != "ASA") { os << "   * (the ASA library has one algorithm: ALGO ASA)\n"; return; }
+    os << "   * Adaptive Simulated Annealing (Lester Ingber, ASA-30.53,\n"
+          "     BSD-3-Clause; its source is part of Tadah!)\n"
+          "   * single-instance: one ASA run per process at a time\n"
+          "   * stops: MAXEVAL / MAXTIME / STOPVAL plus ASA's own\n"
+          "     Limit_* and plateau options below; FTOL/XTOL rejected\n"
+          "   * SEED seeds the proposal stream; ASA starts at the first\n"
+          "     starting point of the INIT block\n"
+          "   * PARAM keys use the original ASA option spellings\n"
+          "     (case-sensitive); an option of each dimension accepts Name[i]\n";
+    print_asa_param_table(os);
+}
+
+std::string tadah::hpo::param_value_text(const OptimizerSpec& sp,
+                                         const std::string& key)
+{
+    if (const auto t = sp.param_text.find(key); t != sp.param_text.end())
+        return t->second;
+    return core::format_roundtrip(sp.param.at(key));
+}
+
+bool tadah::hpo::param_is_integer(const OptimizerSpec& sp,
+                                  const std::string& key)
+{
+    if (const auto t = sp.param_text.find(key); t != sp.param_text.end())
+        return is_integer_token(t->second);
+    const double v = sp.param.at(key);
+    return metric_value_is_finite(v) && v == std::floor(v);
+}
+
+std::optional<OptimizerSpec> tadah::hpo::anchor_seed_points(const OptimizerSpec& sp)
+{
+    if (!sp.space) return std::nullopt;
+    if (sp.optim_init.empty() && sp.space->anchor_count() == 0) return std::nullopt;
+    auto anchored = std::make_shared<const SearchSpace>(
+        sp.space->with_seed_anchors(sp.optim_init));
+    if (anchored->anchor_count() == 0 && sp.space->anchor_count() == 0)
+        return std::nullopt;      // the plain map already returns every seed
+    OptimizerSpec out = sp;
+    out.space = std::move(anchored);
+    return out;
+}
+
+void OptimizerSpec::print_caps(std::ostream& os, const std::string& lib,
+                               const std::string& algo, BuildNotes notes)
+{
+    os<<"Options for "<<lib<<":"<<algo<<"\n";
+    /* A backend the caps registry refuses (optimizer_caps.h), of any
+     * library: why, and what to use instead; it has no stops or STEP to
+     * describe. */
+    if (const char* reason = backend_refusal(lib, algo)) {
+        os<<"   * REFUSED: "<<reason<<"\n";
+        return;
+    }
+    if      (lib=="TADAH") print_tadah_caps(os,algo);
+    else if (lib=="DLIB")  print_dlib_caps (os,algo);
+    else if (lib=="NLOPT") print_nlopt_caps(os,algo);
+    else if (lib=="ASA")   print_asa_caps  (os,algo);
+    else if (lib=="CERES") print_ceres_caps(os,algo,notes);
+    else os<<"   * (no info)\n";
+}
+
+void OptimizerSpec::print_caps(std::ostream& os, const std::string& lib,
+                               const std::string& algo)
+{
+    print_caps(os, lib, algo, BuildNotes::Include);
+}
+
+void OptimizerSpec::print_caps(const std::string& lib,
+                               const std::string& algo)
+{
+    print_caps(std::cout, lib, algo);
+}
+
+namespace {
+
+std::string upper_ascii(std::string s)
+{
+    for (auto& ch : s)
+        ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+    return s;
+}
+
+}  // namespace
+
+std::string tadah::hpo::optimiser_row_text(const OptimizerCaps& c)
+{
+    std::string t = c.is_global ? "global" : "local";
+    if (c.accepts_inner)
+        t += std::string(", runs a local search (") +
+             (c.default_inner ? std::string("NLopt's default ") +
+                                    c.default_inner + ", or an INNER block"
+                              : std::string("an INNER block")) +
+             ")";
+    else
+        t += c.is_gradient_based ? ", gradient-based" : ", gradient-free";
+    if (c.needs_stop) t += ", needs a stop";
+    if (c.ignores_bounds) t += ", ignores the OPTIM box";
+    return t;
+}
+
+void tadah::hpo::print_optimiser_table(std::ostream& out, const std::string& lib)
+{
+    const auto all = filter_optimizer_caps(
+        [](const OptimizerCaps&) { return true; });
+    std::size_t width = 0;
+    for (const auto* c : all) width = std::max(width, c->algo.size());
+    if (lib.empty())
+        out << "ALGO, with LIB its library, names the optimiser of a `tadah "
+               "hpo` target file,\nin its OPTIMIZER block or the block's STRATEGY, "
+               "EXPLORE, REFINE or INNER block.\nThe optimisers of this "
+               "build:\n";
+    for (const std::string& l : optimizer_libraries()) {
+        if (!lib.empty() && l != lib) continue;
+        out << (lib.empty() ? "\n" : "") << "LIB " << l << "\n";
+        std::vector<const OptimizerCaps*> rows;
+        for (const auto* c : all)
+            if (c->lib == l) rows.push_back(c);
+        std::sort(rows.begin(), rows.end(),
+                  [](const OptimizerCaps* a, const OptimizerCaps* b) {
+                      return a->algo < b->algo;
+                  });
+        for (const auto* c : rows)
+            out << "  " << std::left << std::setw(static_cast<int>(width + 2))
+                << c->algo << optimiser_row_text(*c) << "\n";
+#ifndef TADAH_USE_CERES
+        if (l == "CERES")
+            out << "  (this build of tadah has no Ceres: a run of them is "
+                   "refused; a build with -DTADAH_ENABLE_CERES=ON has it)\n";
+#endif
+    }
+    if (!lib.empty()) return;
+    const std::vector<std::string> refused = refused_backend_names();
+    out << "\nRefused (`tadah explain <LIB>:<ALGO>` says why and what to use "
+           "instead):\n";
+    /* comma-separated, lines of at most 80 columns */
+    std::string line = " ";
+    for (std::size_t i = 0; i < refused.size(); ++i) {
+        const std::string item =
+            " " + refused[i] + (i + 1 < refused.size() ? "," : "");
+        if (line.size() > 1 && line.size() + item.size() > 80) {
+            out << line << "\n";
+            line = " ";
+        }
+        line += item;
+    }
+    out << line << "\n";
+    out << "\n`tadah explain <LIB>:<ALGO>`, or `tadah explain <ALGO>`, "
+           "prints the stops, PARAM keys and STEP use of one.\n";
+}
+
+bool tadah::hpo::explain_optimiser(const std::string& name, std::ostream& out)
+{
+    const std::string upper = upper_ascii(name);
+    if (upper == "ALGO" || upper == "LIB") {
+        print_optimiser_table(out);
+        return true;
+    }
+    const std::vector<std::string> libs = optimizer_libraries();
+    const auto colon = upper.find(':');
+    if (colon != std::string::npos) {
+        const std::string lib = upper.substr(0, colon);
+        const std::string algo = upper.substr(colon + 1);
+        if (!backend_refusal(lib, algo) && !find_optimizer_caps(lib, algo)) {
+            try {
+                require_registered_backend(lib, algo);
+            } catch (const std::exception& e) {
+                throw std::runtime_error(std::string("tadah explain: ") +
+                                         e.what());
+            }
+        }
+        OptimizerSpec::print_caps(out, lib, algo);
+        return true;
+    }
+    /* An ALGO alone: every backend of that name, registered or refused. */
+    std::vector<std::pair<std::string, std::string>> named;
+    for (const std::string& lib : libs)
+        if (find_optimizer_caps(lib, upper) || backend_refusal(lib, upper))
+            named.emplace_back(lib, upper);
+    if (!named.empty()) {
+        for (std::size_t i = 0; i < named.size(); ++i) {
+            if (i) out << "\n";
+            OptimizerSpec::print_caps(out, named[i].first, named[i].second);
+        }
+        return true;
+    }
+    if (std::find(libs.begin(), libs.end(), upper) != libs.end()) {
+        print_optimiser_table(out, upper);
+        return true;
+    }
+    return false;
+}

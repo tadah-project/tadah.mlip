@@ -1,0 +1,479 @@
+#!/usr/bin/env python3
+"""Unit tests of tests/check_hpotarget_generated.py on the synthetic
+registry of test_hpotarget_registry.py: the TOML it writes for the runner,
+the frame it reads an error from, the cases each check generates, what
+each check makes of a result the parser could give (a refusal where the
+registry says there is one, an acceptance where it says there is none),
+and the runner's command, which reads with the parser of `tadah hpo` (the
+check takes no --parser), without running the parser; and that each
+section header of the check heads code."""
+
+from __future__ import annotations
+
+import contextlib
+import dataclasses
+import io
+import pathlib
+import sys
+import tempfile
+import textwrap
+import tomllib
+import unittest
+
+HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent / "blueprint"))
+
+import check_hpotarget_generated as gen  # noqa: E402
+import hpotarget_registry as hr  # noqa: E402
+import test_hpotarget_registry as synthetic  # noqa: E402
+
+
+def result(parse="", startup="", values=None):
+    return {"parse_error": parse, "startup_error": startup,
+            "check_error": "", "values": values or {}}
+
+
+class Generated(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        d = pathlib.Path(self._tmp.name)
+        files = {"hpotarget.toml": synthetic.MAIN,
+                 "part_a.toml": synthetic.PART_A,
+                 "part_b.toml": synthetic.PART_B,
+                 "optimizers_gen.toml": synthetic.OPTIMIZERS,
+                 "optimizers_doc.toml": synthetic.OPTIMIZER_DOCS}
+        for name, text in files.items():
+            (d / name).write_text(textwrap.dedent(text))
+        self.reg = hr.load(d, templates=False)
+        self.g = gen.Generator(hr, self.reg)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def cases(self, check):
+        return {c.label: c for c in self.g.cases if c.check == check}
+
+    def test_toml_of_the_cases(self):
+        self.assertEqual(gen.toml_string('a "b"\n\\c\x01'),
+                         '"a \\"b\\"\\n\\\\c\\u0001"')
+        with tempfile.TemporaryDirectory() as d:
+            p = pathlib.Path(d) / "cases.toml"
+            gen.write_cases(p, [{"id": "x", "mode": "parse", "file": "A\n",
+                                 "config": "ATOM H\n", "has_train_db": True,
+                                 "env": {"K": "v"},
+                                 "fixtures": [{"path": "f", "text": "t"}]}])
+            data = tomllib.loads(p.read_text())
+        self.assertEqual(data["case"][0]["file"], "A\n")
+        self.assertEqual(data["case"][0]["env"], {"K": "v"})
+        self.assertEqual(data["case"][0]["fixtures"][0]["path"], "f")
+
+    def test_frame_what(self):
+        err = "line 4 of target.hpo: unknown key 'X' in this block\nLine: X 1"
+        self.assertEqual(self.g.frame_what(err, 4),
+                         "unknown key 'X' in this block")
+        self.assertIsNone(self.g.frame_what(err, 3))
+
+    # Pins: FAILSCORE, which the registry lists at the top level only, is
+    # refused in OPTIMIZER and in INNER as a top-level key in an open block
+    # (root_key_in_block_msg), and the block's unknown-key message for it
+    # is no refusal of a key out of place; SEED, a key of the blocks, is
+    # refused in INNER, which refuses it, and the top-level-key message for
+    # it is no such refusal either.
+    # Before the fix: the generated check took root_key_in_block_msg for
+    # every key in every block, and the unknown-key message for every key
+    # too, so both wrong texts were judged refusals (judge gave None, and
+    # 'is not refused as out of place' is not found in 'None').
+    def test_blocks(self):
+        self.g.gen_blocks()
+        c = self.cases("blocks")
+        self.assertEqual(set(c), {f"{k} in {p}" for k in
+                                  ("FAILSCORE", "LIB", "SEED")
+                                  for p in ("ROOT", "OPTIMIZER", "INNER")})
+        in_opt = c["FAILSCORE in OPTIMIZER"]
+        refused = result("line 3 of target.hpo: FAILSCORE is a top-level key "
+                         "inside OPTIMIZER of line 1 (ENDOPTIMIZER)\n"
+                         "Line: FAILSCORE 10")
+        self.assertIsNone(in_opt.judge(refused))
+        self.assertIsNone(c["FAILSCORE in INNER"].judge(result(
+            "line 4 of target.hpo: FAILSCORE is a top-level key inside INNER of "
+            "line 3 (ENDINNER)\nLine: FAILSCORE 10")))
+        unknown = result("line 3 of target.hpo: unknown key 'FAILSCORE' in this "
+                         "block\nLine: FAILSCORE 10")
+        self.assertIn("is not refused as out of place",
+                      str(in_opt.judge(unknown)))
+        self.assertIn("is not refused as out of place",
+                      in_opt.judge(result()))
+        self.assertIn("is not refused as out of place",
+                      str(c["SEED in INNER"].judge(result(
+                          "line 4 of target.hpo: SEED is a top-level key inside "
+                          "INNER of line 3 (ENDINNER)\nLine: SEED 7"))))
+        self.assertIsNone(c["FAILSCORE in ROOT"].judge(result()))
+        self.assertIn("is refused in ROOT, which the registry lists",
+                      c["FAILSCORE in ROOT"].judge(result(
+                          'line 1 of target.hpo: unknown key "FAILSCORE"\n'
+                          'Line: FAILSCORE 10')))
+        seed = result("line 4 of target.hpo: SEED is not accepted inside an "
+                      "INNER block: the enclosing run draws it; set SEED on "
+                      "the enclosing OPTIMIZER block\nLine: SEED 7")
+        self.assertIsNone(c["SEED in INNER"].judge(seed))
+
+    def test_repeat(self):
+        self.g.gen_repeat()
+        c = self.cases("repeat")
+        # last_wins: the doubled line is read.
+        self.assertIsNone(c["ROOT.FAILSCORE twice"].judge(result()))
+        self.assertIn("is refused", c["ROOT.FAILSCORE twice"].judge(
+            result("line 2 of target.hpo: no\nLine: FAILSCORE 10")))
+        self.assertIn("FAILSCORE 10\nFAILSCORE 10",
+                      c["ROOT.FAILSCORE twice"].case["file"])
+
+    # Pins: a key given twice whose repeat is error_until_read (no line
+    # between reads the first) is refused with its repeat_msg, as one of
+    # repeat error is.
+    # Before the fix: error_until_read was taken as a rule whose second
+    # line is read.
+    def test_repeat_error_until_read(self):
+        fs = next(k for k in self.reg.keys if k.name == "FAILSCORE")
+        fs.repeat = "error_until_read"
+        fs.repeat_msg = "FAILSCORE again (first on line {first_line})"
+        self.g.gen_repeat()
+        c = self.cases("repeat")["ROOT.FAILSCORE twice"]
+        self.assertIsNone(c.judge(result(
+            "line 2 of target.hpo: FAILSCORE again (first on line 1)\n"
+            "Line: FAILSCORE 10")))
+        self.assertIn("is not refused with its repeat_msg",
+                      c.judge(result()))
+
+    # Pins: the word of a word argument, written with the case of one
+    # letter changed, is refused at its line where the registry reads it
+    # as written (case exact, the default) and read where it reads it in
+    # any case; so is the word of a line option and of a form.
+    # Before the fix: there was no such check, and a word argument had no
+    # case.
+    def test_case(self):
+        self.g.gen_case()
+        c = self.cases("case")
+        self.assertEqual(set(c), {"OPTIMIZER.LIB tADAH"})
+        exact = c["OPTIMIZER.LIB tADAH"]
+        self.assertIn("LIB tADAH", exact.case["file"])
+        self.assertIn("is not refused at its line",
+                      exact.judge(result()))
+        self.assertIsNone(exact.judge(result(
+            "line 3 of target.hpo: LIB is wrong\nLine: LIB tADAH")))
+        lib = next(k for k in self.reg.keys if k.name == "LIB")
+        lib.args[0].case = "any"
+        self.g.cases.clear()
+        self.g.gen_case()
+        anycase = self.cases("case")["OPTIMIZER.LIB tADAH"]
+        self.assertIsNone(anycase.judge(result()))
+        self.assertIn("reads it in any case", anycase.judge(result(
+            "line 3 of target.hpo: LIB is wrong\nLine: LIB tADAH")))
+        self.assertEqual(gen.Generator.other_case("inhouse",
+                                                  ["inhouse", "Inhouse"]),
+                         "iNhouse")
+        self.assertEqual(gen.Generator.other_case("--x", ["--x", "--X"]),
+                         None)
+
+    def test_ranges(self):
+        # SEED: an integer from 0 to UINT64_MAX.
+        self.g.gen_ranges()
+        c = self.cases("ranges")
+        self.assertEqual({k for k in c if k.startswith("OPTIMIZER.SEED")},
+                         {"OPTIMIZER.SEED 0", "OPTIMIZER.SEED -1",
+                          "OPTIMIZER.SEED 18446744073709551615",
+                          "OPTIMIZER.SEED 18446744073709551616"})
+        below = c["OPTIMIZER.SEED -1"]
+        self.assertIsNone(below.judge(result(
+            "line 3 of target.hpo: SEED must be an integer >= 0, got '-1'\n"
+            "Line: SEED -1")))
+        self.assertIn("is not refused at its line", below.judge(result()))
+        self.assertIn("a message the registry does not give",
+                      below.judge(result("line 3 of target.hpo: SEED is bad\n"
+                                         "Line: SEED -1")))
+        self.assertIsNone(c["OPTIMIZER.SEED 0"].judge(result()))
+        # FAILSCORE, positive: 0 refused, 1 accepted.
+        self.assertIn("ROOT.FAILSCORE 0", c)
+        self.assertIn("ROOT.FAILSCORE 1", c)
+
+    def test_the_largest_value_runs_through_the_startup_checks(self):
+        # Pins: the max of a range runs as its example does (startup, the
+        # default), so a value the parser takes and the run cannot use
+        # fails; the other values are read only.
+        # Before the fix: every range case was read only, and K, K_TOTAL
+        # and TOPK of 18446744073709551615 passed, which stop tadah hpo
+        # with "vector::reserve".
+        self.g.gen_ranges()
+        c = self.cases("ranges")
+        top = c["OPTIMIZER.SEED 18446744073709551615"]
+        self.assertEqual(top.case["mode"], "startup")
+        for label in ("OPTIMIZER.SEED 0", "OPTIMIZER.SEED -1",
+                      "OPTIMIZER.SEED 18446744073709551616"):
+            self.assertEqual(c[label].case["mode"], "parse")
+        self.assertIn("a value in the range of OPTIMIZER.SEED is refused: "
+                      "vector::reserve",
+                      top.judge(result(startup="vector::reserve")))
+        self.assertIsNone(top.judge(result()))
+
+    def test_ranges_of_every_example(self):
+        # Pins: each example of an entry gives its own cases, so the value
+        # is judged where the file uses it (K_TOTAL caps the points of a
+        # single METHOD line; after two lines it caps what they draw).
+        key = next(k for k in self.reg.keys if k.id == "OPTIMIZER.SEED")
+        key.examples.append(dataclasses.replace(
+            key.examples[0], index=1, wrap="inner_a", doc="In INNER."))
+        self.g.gen_ranges()
+        c = self.cases("ranges")
+        self.assertIn("OPTIMIZER.SEED 0 (example 1)", c)
+        self.assertIn("INNER\nSEED 0\nENDINNER",
+                      c["OPTIMIZER.SEED 0 (example 1)"].case["file"])
+
+    def test_ranges_of_init_methods(self):
+        # Pins: the K of an INIT method is a range too, its line METHOD
+        # <name> <K>, refused with [reading]'s message and the argument's
+        # what.
+        # Before the fix: no case judged an INIT method's argument.
+        case = hr.Case(owner="METHOD.RANDOM", part="part_a.toml",
+                       kind="example", index=0, wrap="optimizer",
+                       text="METHOD RANDOM 3", check="startup")
+        self.reg.init_methods.append(hr.InitMethod(
+            id="METHOD.RANDOM", part="part_a.toml", name="RANDOM",
+            doc="d", examples=[case], args=[hr.Arg(
+                name="K", kind="integer", min=0, max=1000000,
+                what="INIT METHOD RANDOM K")]))
+        self.g.gen_ranges()
+        c = self.cases("ranges")
+        self.assertEqual({k for k in c if k.startswith("METHOD.")},
+                         {"METHOD.RANDOM 0", "METHOD.RANDOM -1",
+                          "METHOD.RANDOM 1000000", "METHOD.RANDOM 1000001"})
+        self.assertIn("METHOD RANDOM 1000001",
+                      c["METHOD.RANDOM 1000001"].case["file"])
+        self.assertEqual(c["METHOD.RANDOM 1000000"].case["mode"], "startup")
+        self.assertIsNone(c["METHOD.RANDOM 1000001"].judge(result(
+            "line 3 of target.hpo: INIT METHOD RANDOM K must be an integer from "
+            "0 to 1000000, got '1000001'\nLine: METHOD RANDOM 1000001")))
+        self.assertIn("is not refused at its line",
+                      c["METHOD.RANDOM 1000001"].judge(result()))
+
+    def test_ranges_of_param_keys(self):
+        # Pins: a PARAM value runs through the startup checks, which read
+        # it, at every value: in the range it starts, past it it is
+        # refused, at parse or at startup and at any line, with a message
+        # of its entry or of [reading].
+        # Before the fix: no case judged a PARAM key's argument.
+        self.g.gen_ranges()
+        c = self.cases("ranges")
+        low = c["PARAM.TADAH:GRID.GRID_POINTS 1"]
+        self.assertEqual(low.case["mode"], "startup")
+        self.assertEqual(c["PARAM.TADAH:GRID.GRID_POINTS 2"].case["mode"],
+                         "startup")
+        self.assertIn("PARAM GRID_POINTS 1", low.case["file"])
+        self.assertIsNone(low.judge(result(startup=(
+            "line 4 of target.hpo: GRID_POINTS must be at least 2\n"
+            "Line: ENDOPTIMIZER"))))
+        self.assertIn("is not refused: tadah hpo starts",
+                      low.judge(result()))
+        self.assertIn("a message the registry does not give",
+                      low.judge(result(startup="line 4 of target.hpo: no\n"
+                                               "Line: ENDOPTIMIZER")))
+        self.assertIn("a value in the range of PARAM.TADAH:GRID.GRID_POINTS "
+                      "is refused",
+                      c["PARAM.TADAH:GRID.GRID_POINTS 2"].judge(result(
+                          startup="no")))
+
+    def test_ranges_of_integral_numbers(self):
+        # Pins: a number argument that takes whole numbers (integral) gets
+        # its min written with a decimal point and with an exponent, each
+        # refused as past the range ("PARAM GRID_POINTS 2.0" and "2e0"); a
+        # number argument without integral gets neither.
+        # Before the fix: no case wrote a whole number with a point or an
+        # exponent, so a PARAM key that read 1e1 as 10 passed.
+        prm = next(p for p in self.reg.params
+                   if p.id == "PARAM.TADAH:GRID.GRID_POINTS")
+        prm.args[0] = dataclasses.replace(prm.args[0], kind="number",
+                                          integral=True)
+        self.g.gen_ranges()
+        c = self.cases("ranges")
+        self.assertEqual({k for k in c if k.startswith("PARAM.TADAH:GRID")},
+                         {"PARAM.TADAH:GRID.GRID_POINTS 2",
+                          "PARAM.TADAH:GRID.GRID_POINTS 1",
+                          "PARAM.TADAH:GRID.GRID_POINTS 2.0",
+                          "PARAM.TADAH:GRID.GRID_POINTS 2e0"})
+        for value in ("2.0", "2e0"):
+            case = c["PARAM.TADAH:GRID.GRID_POINTS " + value]
+            self.assertIn("PARAM GRID_POINTS " + value, case.case["file"])
+            self.assertEqual(case.case["mode"], "startup")
+            self.assertIn("is not refused: tadah hpo starts",
+                          case.judge(result()))
+            self.assertIsNone(case.judge(result(startup=(
+                "line 4 of target.hpo: GRID_POINTS must be at least 2\n"
+                "Line: ENDOPTIMIZER"))))
+        prm.args[0] = dataclasses.replace(prm.args[0], integral=False)
+        self.g.cases = []
+        self.g.gen_ranges()
+        self.assertNotIn("PARAM.TADAH:GRID.GRID_POINTS 2.0",
+                         self.cases("ranges"))
+
+    def test_a_group_passes_when_one_case_does(self):
+        # Pins: an in-range PARAM value passes when it starts in the file
+        # of one example of its entry (ASA's User_Initial_Parameters 0
+        # starts only where the search has no starting point), and fails
+        # with the problem of the first case when it starts in none.
+        self.g.gen_ranges()
+        c = self.cases("ranges")["PARAM.TADAH:GRID.GRID_POINTS 2"]
+        self.assertEqual(c.group, "PARAM.TADAH:GRID.GRID_POINTS 2")
+        other = dataclasses.replace(c, case=dict(c.case, id="other"))
+        self.g.cases = [c, other]
+        refused = result(startup="no")
+        problems, counts = gen.judge_all(
+            self.g, {c.case["id"]: refused, "other": result()})
+        self.assertEqual((problems, counts), ([], {"ranges": 2}))
+        problems, _ = gen.judge_all(
+            self.g, {c.case["id"]: refused, "other": refused})
+        self.assertEqual(len(problems), 1)
+        self.assertIn("GRID_POINTS 2: a value in the range", problems[0])
+
+    def test_frame_any(self):
+        err = "line 12 of target.hpo: it is wrong\nLine: ENDOPTIMIZER"
+        self.assertEqual(self.g.frame_any(err), "it is wrong")
+        self.assertIsNone(self.g.frame_any("vector::reserve"))
+
+    def test_words(self):
+        self.g.gen_words()
+        c = self.cases("words")
+        self.assertEqual(set(c), {"OPTIMIZER.LIB NLOPT",
+                                  "OPTIMIZER.LIB TADAH"})
+        self.assertIsNone(c["OPTIMIZER.LIB NLOPT"].judge(result()))
+        self.assertIn("the word NLOPT is refused",
+                      c["OPTIMIZER.LIB NLOPT"].judge(result(
+                          "line 3 of target.hpo: LIB is wrong\nLine: LIB NLOPT")))
+
+    def test_params_need_wrappers_that_name_their_optimizer(self):
+        self.g.gen_params()
+        self.assertEqual(self.g.problems,
+                         ["params: no wrapper names its optimizer: the PARAM "
+                          "keys of each optimiser cannot be checked"])
+
+    def test_defaults(self):
+        self.g.default_results = [{"ROOT.FAILSCORE": ["1000000"],
+                                   "LOSS.HUBER.delta": ["50"]}]
+        self.assertEqual(self.g.judge_defaults(), [])
+        self.g.default_results = [{"ROOT.FAILSCORE": ["10"],
+                                   "LOSS.HUBER.delta": ["50"],
+                                   "ROOT.QFLUSH": ["10"]}]
+        problems = self.g.judge_defaults()
+        self.assertIn("defaults: ROOT.FAILSCORE: the registry gives '1e6', "
+                      "the code 10", problems)
+        self.assertIn("defaults: the runner reports ROOT.QFLUSH = 10, which "
+                      "has no default in the registry", problems)
+        self.g.default_results = [{"LOSS.HUBER.delta": ["50"]}]
+        self.assertIn("defaults: ROOT.FAILSCORE: the literal default '1e6' "
+                      "is reported by no value of the runner "
+                      "(hpotarget_case_runner, defaults_of)",
+                      self.g.judge_defaults())
+
+    def test_text_defaults(self):
+        # Each number of a text default is a value the runner reports,
+        # unless unchecked says why none holds it; each number the runner
+        # reports is in the text.
+        key = self.reg.keys[0]                   # ROOT.FAILSCORE
+        delta = {"LOSS.HUBER.delta": ["50"]}
+        key.default = hr.Default(text="1e6, or 10 under a grid")
+        self.g.default_results = [{"ROOT.FAILSCORE": ["1000000"], **delta}]
+        self.assertEqual(self.g.judge_defaults(),
+                         ["defaults: ROOT.FAILSCORE: the text default says "
+                          "10, the code gives 1000000"])
+        key.default.unchecked = "The grid applies it; no setting holds it."
+        self.assertEqual(self.g.judge_defaults(), [])
+        self.g.default_results = [{"ROOT.FAILSCORE": ["5"], **delta}]
+        self.assertEqual(self.g.judge_defaults(),
+                         ["defaults: ROOT.FAILSCORE: the code gives 5, which "
+                          "the text default does not say ('1e6, or 10 under "
+                          "a grid')"])
+        key.default.unchecked = None
+        self.g.default_results = [delta]
+        self.assertIn("the text default holds numbers",
+                      self.g.judge_defaults()[0])
+
+    def test_params_take_the_name_of_every_entry(self):
+        # A PARAM name of two entries is listed on the optimisers of both.
+        reg = self.reg
+        w = reg.wrappers["optimizer"]
+        reg.wrappers["opt_grid"] = dataclasses.replace(
+            w, name="opt_grid", optimizer="TADAH:GRID")
+        reg.wrappers["opt_nlopt"] = dataclasses.replace(
+            w, name="opt_nlopt", optimizer="NLOPT:LN_SBPLX")
+        reg.param_policies.append(hr.ParamPolicy(
+            id="POLICY.NLOPT", part="part_b.toml", optimizers=["NLOPT"],
+            doc="d", msg="PARAM {key} is refused"))
+        self.g.gen_params()
+        self.assertEqual(set(self.cases("params")),
+                         {"PARAM.TADAH:GRID.GRID_POINTS on TADAH:GRID",
+                          "PARAM.TADAH:GRID.GRID_POINTS on NLOPT:LN_SBPLX"})
+        reg.params.append(dataclasses.replace(
+            reg.params[0], id="PARAM.NLOPT.GRID_POINTS",
+            optimizers=["NLOPT"]))
+        self.g.cases.clear()
+        self.g.gen_params()
+        self.assertEqual(set(self.cases("params")),
+                         {"PARAM.TADAH:GRID.GRID_POINTS on TADAH:GRID",
+                          "PARAM.NLOPT.GRID_POINTS on NLOPT:LN_SBPLX"})
+
+    def test_option_words_in_any_case(self):
+        # An example may write an option word in lower case; a flag keeps
+        # its case.
+        def option(name, text):
+            case = hr.Case(owner="OPTIMIZER." + name, part="x",
+                           kind="example", index=0, wrap="optimizer",
+                           text=text, check="parse")
+            return hr.LineOption(id="OPTIMIZER." + name, option=name,
+                                 part="x", lines=["SEED"], synopsis=name,
+                                 doc="d", examples=[case])
+        got = self.g.option_in_example(option("WIDE", "SEED 7 wide"))
+        self.assertEqual(got[2][got[3]], "wide")
+        self.assertIsNone(self.g.option_in_example(
+            option("--wide", "SEED 7 --WIDE")))
+
+    # Pins: the runner reads the cases with the parser of `tadah hpo`, the
+    # one parser of the target file: its command names the cases and the
+    # results only, and the check takes no --parser (an argument error).
+    # Before the fix: fails, --parser old, new or both chose the parser.
+    def test_the_runner_reads_with_the_parser_of_the_program(self):
+        self.assertEqual(
+            gen.runner_command(pathlib.Path("/r"), pathlib.Path("c.toml"),
+                               pathlib.Path("o.json")),
+            ["/r", "c.toml", "o.json"])
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), \
+                self.assertRaises(SystemExit) as e:
+            gen.main(["--runner", "/r", "--parser", "old"])
+        self.assertEqual(e.exception.code, 2)
+        self.assertIn("unrecognized arguments: --parser old", err.getvalue())
+
+
+
+class Layout(unittest.TestCase):
+    # Pins: each section header of check_hpotarget_generated.py
+    # ("# ---- <name> ----") heads code: a line of code follows it before
+    # the next header, so a header labels the code under it.
+    # Before the fix: fails, "# ---- words ----" stands directly above
+    # "# ---- case ----", and gen_words() sits under the case header.
+    def test_each_section_header_heads_code(self):
+        import re
+        header = re.compile(r"^\s*# -{4} ?(.*?) ?-{4,}\s*$")
+        lines = pathlib.Path(gen.__file__).read_text().splitlines()
+        empty, current = [], None
+        for n, line in enumerate(lines, 1):
+            m = header.match(line)
+            if m:
+                if current is not None:
+                    empty.append(current)
+                current = f"line {n}: {m.group(1).strip(' -')}"
+            elif line.strip() and not line.lstrip().startswith("#"):
+                current = None
+        if current is not None:
+            empty.append(current)
+        self.assertEqual(empty, [])
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

@@ -1,0 +1,294 @@
+// test_pair_tadah_notices.cpp
+//
+// The notices of the keys a potential carries that have no effect, through
+// the real pair_style tadah (LammpsRunner): a deprecated key (SIGMA, the
+// weight covariance of Tadah! 1.0.0 to 1.5.0 and the 1.6.0 development
+// builds; MBLOCK, a key of the removed MPI training build) and EMBF0 on a
+// potential without a DM_REAM block.
+// pair_coeff writes each as a LAMMPS WARNING (error->warning on rank 0:
+// the screen and log.lammps), not to standard error, where LAMMPS' log
+// never saw it and every MPI rank wrote it once. It does so each time it
+// loads such a potential, so every LAMMPS instance's log.lammps has it,
+// also when the process loaded it before (core::IgnoredKeyNoticeCapture
+// receives a key once per capture, whatever the process reported). And a
+// potential with the retired keys WCOV and WNOISE (the covariance of an
+// OALGO 3 fit a development build of Tadah! 1.6.0 wrote) loads, with one
+// warning of retired keys per pair_coeff.
+//
+// The potential is the D2_LJ pair potential of Tadah.LAMMPS'
+// tests_data/pots/ta_lj_cutcos.tadah.
+
+#include "catch2/catch.hpp"
+
+#include <tadah/core/periodic_table.h>
+#include <tadah/hpo/runners.h>
+
+#include <cmath>
+#include <cstdio>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <sstream>
+#include <string>
+#include <unistd.h>
+#include <vector>
+
+namespace {
+
+const char *kPairPotential =
+    "ATOM     Ta\n"
+    "BIAS     false\n"
+    "DIMER     false     0     false\n"
+    "INIT2B     true\n"
+    "INITMB     false\n"
+    "LAMBDA     0\n"
+    "MODEL     M_KRR     Kern_Linear     1\n"
+    "NORM     false\n"
+    "OALGO     3\n"
+    "RCTYPE2B     Cut_Cos\n"
+    "RCUT2B     6.5\n"
+    "TYPE2B     D2_LJ     Ta     Ta\n"
+    "WATOM     73\n"
+    "WEIGHTS     14.204213349318765225     2604.396965191186154698\n";
+
+std::string slurp(const std::string &path) {
+  std::ifstream in(path);
+  return std::string(std::istreambuf_iterator<char>(in),
+                     std::istreambuf_iterator<char>());
+}
+
+/* The lines of @p text that contain every one of @p needles. */
+std::vector<std::string> lines_with(const std::string &text,
+                                    const std::vector<std::string> &needles) {
+  std::vector<std::string> out;
+  std::istringstream in(text);
+  for (std::string line; std::getline(in, line);) {
+    bool all = true;
+    for (const auto &n : needles) all = all && line.find(n) != std::string::npos;
+    if (all) out.push_back(line);
+  }
+  return out;
+}
+
+struct Run {
+  bool ok = false;
+  std::string log;  // log.lammps
+  std::string err;  // standard error during the run
+  double pe = 0.0;
+};
+
+/* Two Ta atoms 2.9 A apart; pair_coeff * * <the potential file> Ta (the
+ * plain LAMMPS user path), log.lammps written to a file, no screen. */
+Run run_with_potential(const std::string &extra, const std::string &tag,
+                       const std::string &base = kPairPotential) {
+  tadah::core::PeriodicTable::initialize();
+  const std::string stem =
+      "pair_notice_" + std::to_string(::getpid()) + "_" + tag;
+  const std::string pot = stem + ".tadah", script = stem + ".in",
+                    log = stem + ".log";
+  std::ofstream(pot) << base << extra;
+  {
+    std::ofstream ofs(script);
+    for (const char *line :
+         {"units metal", "boundary p p p", "atom_style atomic",
+          "atom_modify map array",
+          "region box block 0 30 0 30 0 30 units box", "create_box 1 box",
+          "create_atoms 1 single 10 10 10 units box",
+          "create_atoms 1 single 12.9 10 10 units box",
+          "mass 1 180.94788", "pair_style tadah"})
+      ofs << line << "\n";
+    ofs << "pair_coeff * * " << pot << " Ta\n";
+    ofs << "neighbor 2.0 nsq\nvariable e equal pe\nrun 0 post no\n";
+  }
+  Run r;
+  std::ostringstream err;
+  std::streambuf *old = std::cerr.rdbuf(err.rdbuf());
+  {
+    LammpsRunner runner;
+    auto lmp = runner.create_instance({"lmp", "-log", log, "-screen", "none"});
+    if (lmp) {
+      r.ok = runner.run_script(lmp, script);
+      if (r.ok) r.pe = std::stod(runner.get_variable(lmp, "e"));
+    }
+  }  // LAMMPS destroyed: log.lammps flushed and closed
+  std::cerr.rdbuf(old);
+  r.log = slurp(log);
+  r.err = err.str();
+  std::remove(pot.c_str());
+  std::remove(script.c_str());
+  std::remove(log.c_str());
+  return r;
+}
+
+}  // namespace
+
+/* Pins: pair_coeff with a potential that carries SIGMA and MBLOCK
+ * (deprecated keys) writes each key's notice to log.lammps once, as a
+ * LAMMPS WARNING naming the potential ("WARNING: pair tadah: potential
+ * '<file>': Deprecated key SIGMA is ignored: ...", likewise MBLOCK), and
+ * nothing of it to standard error; the run succeeds.
+ * Before the fix: the notices went to standard error only ("WARNING:
+ * Deprecated key MBLOCK is ignored: ..."), once per process (on every MPI
+ * rank), and log.lammps had none; and SIGMA was stored, with no notice.
+ * Before the review fix (once per capture): log.lammps had each notice
+ * only when the process had not reported the key before (the count was
+ * 1, or 0 after such a report). */
+TEST_CASE("pair_coeff writes a deprecated key's notice to log.lammps",
+          "[pair_tadah][notices]") {
+  const std::size_t n_sigma = 1;
+  const std::size_t n_mblock = 1;
+  const Run r = run_with_potential("SIGMA     2     1 0 0 1\nMBLOCK     64\n",
+                                   "deprecated");
+  INFO("log.lammps:\n" << r.log << "\nstderr:\n" << r.err);
+  REQUIRE(r.ok);
+  CHECK(lines_with(r.log, {"WARNING: pair tadah: potential '",
+                           "Deprecated key SIGMA is ignored"})
+            .size() == n_sigma);
+  CHECK(lines_with(r.log, {"WARNING: pair tadah: potential '",
+                           "Deprecated key MBLOCK is ignored"})
+            .size() == n_mblock);
+  CHECK(lines_with(r.err, {"Deprecated key"}).empty());
+}
+
+/* Pins: pair_coeff with a potential without a DM_REAM block that carries
+ * EMBF0 (a key only DM_REAM reads) writes its notice to log.lammps once as
+ * a LAMMPS WARNING ("WARNING: pair tadah: potential '<file>': Key EMBF0 is
+ * ignored: ..."), and nothing of it to standard error.
+ * Before the fix: the notice went to standard error only. Before the
+ * review fix (once per capture): only when the process had not reported
+ * EMBF0 before. */
+TEST_CASE("pair_coeff writes the notice of a key without effect to "
+          "log.lammps",
+          "[pair_tadah][notices]") {
+  const std::size_t n = 1;
+  const Run r = run_with_potential("EMBF0     FREE\n", "embf0");
+  INFO("log.lammps:\n" << r.log << "\nstderr:\n" << r.err);
+  REQUIRE(r.ok);
+  CHECK(lines_with(r.log, {"WARNING: pair tadah: potential '",
+                           "Key EMBF0 is ignored"})
+            .size() == n);
+  CHECK(lines_with(r.err, {"Key EMBF0 is ignored"}).empty());
+}
+
+/* Pins: two LAMMPS instances of one process, one after the other, each
+ * with its own log.lammps and pair_coeff of a potential with SIGMA: each
+ * log.lammps has the deprecation notice of SIGMA once, as a LAMMPS
+ * WARNING naming the potential, and nothing of it goes to standard error
+ * in either run (a driver such as the LAMMPS Python module, or tadah hpo's
+ * PC_LAMMPS evaluations, runs several instances in one process).
+ * Before the fix: the first run's log.lammps had it and the second's had
+ * none (report_ignored_key_once() gave SIGMA once per process, so the
+ * second load's capture received nothing). */
+TEST_CASE("pair_coeff writes the notice to the log.lammps of every LAMMPS "
+          "instance of a process",
+          "[pair_tadah][notices]") {
+  for (int run = 0; run < 2; ++run) {
+    INFO("run " << run + 1);
+    const Run r = run_with_potential("SIGMA     2     1 0 0 1\n",
+                                     "twice" + std::to_string(run));
+    INFO("log.lammps:\n" << r.log << "\nstderr:\n" << r.err);
+    REQUIRE(r.ok);
+    CHECK(lines_with(r.log, {"WARNING: pair tadah: potential '",
+                             "Deprecated key SIGMA is ignored"})
+              .size() == 1);
+    CHECK(lines_with(r.err, {"Deprecated key"}).empty());
+  }
+}
+
+/* Pins: pair_coeff loads a potential with the retired keys WCOV and
+ * WNOISE (the covariance of an OALGO 3 fit, written by a development build
+ * of Tadah! 1.6.0) and computes with it the energy of the potential without
+ * them (bit for bit); log.lammps has one WARNING that lists both, "Retired
+ * keys WCOV (line 15 of <file>) and WNOISE (line 16 of <file>) are
+ * ignored", and none naming either otherwise; the potential without them
+ * gives no such WARNING.
+ * Before the fix: log.lammps had no WARNING (the keys were read as the
+ * covariance of the potential). */
+TEST_CASE("pair_coeff loads a potential with WCOV and WNOISE, with one "
+          "warning of retired keys",
+          "[pair_tadah][uncertainty]") {
+  const Run plain = run_with_potential("", "plain");
+  REQUIRE(plain.ok);
+  CHECK(lines_with(plain.log, {"WARNING", "Retired key"}).empty());
+  const Run r = run_with_potential(
+      "WCOV     2     0.5 0.1 0.1 0.25\nWNOISE     E 0.04     F 0.0025\n",
+      "wcov");
+  INFO("log.lammps:\n" << r.log);
+  REQUIRE(r.ok);
+  CHECK(r.pe == plain.pe);
+  CHECK(lines_with(r.log, {"WARNING", "Retired keys WCOV (line 15 of ",
+                           ") and WNOISE (line 16 of ", ") are ignored"})
+            .size() == 1);
+  CHECK(lines_with(r.log, {"WARNING", "WCOV"}).size() == 1);
+  CHECK(lines_with(r.log, {"WARNING", "WNOISE"}).size() == 1);
+}
+
+namespace {
+
+/* A one-element Ta setfl file of analytic tables (cutoff 4.5 A), written to
+ * @p path: F(rho) = -sqrt(rho), rho(r) = (rc - r)^2, phi(r) = 0.5 (rc - r)^3. */
+void write_ta_setfl(const std::string &path) {
+  const int nrho = 501, nr = 501;
+  const double drho = 0.1, dr = 0.01, rc = 4.5;
+  std::ofstream os(path);
+  os.precision(17);
+  os << "Ta setfl of the pair_tadah notice test\nanalytic tables\n\n"
+     << "1 Ta\n"
+     << nrho << " " << drho << " " << nr << " " << dr << " 4.5\n"
+     << "73 180.95 3.304 bcc\n";
+  for (int i = 0; i < nrho; ++i) os << -std::sqrt(i * drho) << "\n";
+  for (int i = 0; i < nr; ++i) {
+    const double r = i * dr;
+    os << (r < rc ? (rc - r) * (rc - r) : 0.0) << "\n";
+  }
+  for (int i = 0; i < nr; ++i) {
+    const double r = i * dr;
+    os << (r < rc ? r * 0.5 * (rc - r) * (rc - r) * (rc - r) : 0.0) << "\n";
+  }
+}
+
+/* A D2_EAM + DM_EAM potential on the setfl file @p setfl, without WATOM. */
+std::string eam_potential(const std::string &setfl) {
+  return "ATOM     Ta\nBIAS     false\nDIMER     false     0     false\n"
+         "INIT2B     true\nINITMB     true\nLAMBDA     0\n"
+         "MODEL     M_BLR     BF_Linear\nNORM     false\nOALGO     1\n"
+         "RCTYPE2B     Cut_Dummy\nRCTYPEMB     Cut_Dummy\nRCUT2B     4.5\n"
+         "RCUTMB     4.5\nSETFL     " +
+         setfl +
+         "\nTYPE2B     D2_EAM     0     Ta     Ta\n"
+         "TYPEMB     DM_EAM     0     Ta     Ta\nWEIGHTS     1     1\n";
+}
+
+}  // namespace
+
+/* Pins: pair_coeff with a D2_EAM + DM_EAM potential whose WATOM is 2.5 (a
+ * pair weight no descriptor of it reads: both take their functions from
+ * the SETFL file, unweighted) writes one LAMMPS WARNING naming the
+ * potential, "WARNING: pair tadah: potential '<file>': Key WATOM (2.5) is
+ * ignored: no descriptor of the potential reads it ...", and nothing of it
+ * to standard error; its energy is that of the potential with WATOM 1 (bit
+ * for bit), whose log.lammps has no notice of WATOM.
+ * Before the fix: no notice; the same energy. */
+TEST_CASE("pair_coeff writes the notice of a WATOM no descriptor reads to "
+          "log.lammps",
+          "[pair_tadah][notices][watom]") {
+  const std::string setfl =
+      "pair_notice_" + std::to_string(::getpid()) + "_ta.alloy";
+  write_ta_setfl(setfl);
+  const Run w = run_with_potential("WATOM     2.5\n", "watom25",
+                                   eam_potential(setfl));
+  const Run one = run_with_potential("WATOM     1\n", "watom1",
+                                     eam_potential(setfl));
+  std::remove(setfl.c_str());
+  INFO("WATOM 2.5 log.lammps:\n" << w.log << "\nstderr:\n" << w.err);
+  REQUIRE(w.ok);
+  REQUIRE(one.ok);
+  CHECK(lines_with(w.log, {"WARNING: pair tadah: potential '",
+                           "Key WATOM (2.5) is ignored: no descriptor of the "
+                           "potential reads it"})
+            .size() == 1);
+  CHECK(lines_with(w.err, {"WATOM"}).empty());
+  CHECK(lines_with(one.log, {"WATOM"}).empty());
+  CHECK(w.pe == one.pe);
+}
+

@@ -1,0 +1,324 @@
+#ifndef TADAH_HPO_BUMP_SUPPORT_GATE_H
+#define TADAH_HPO_BUMP_SUPPORT_GATE_H
+
+// Per-candidate bump-support gate (BUMPGATE CANDIDATE, the default).
+//
+// On a hard (Cut_Dummy) cutoff channel every compact bump must satisfy
+//   c + w/eta <= RCUT
+// or the truncated overhang is an energy/force STEP at the cutoff. The
+// legacy startup gate (BUMPGATE STRICT) enforces this on the OPTIM box
+// CORNER (CGRID high bound, SGRID low bound) — exact per index, since
+// reach(c, eta) = c + w/eta is monotone in both — but rejects the whole
+// box when only the corner region is infeasible, forcing users to shrink
+// boxes until near-cutoff bumps degenerate into spikes.
+//
+// CANDIDATE mode instead allows the full boxes: startup errors only when a
+// box contains NO feasible point, and this header supplies the per-
+// evaluation test HPO_Host::operator() runs BEFORE any training work.
+// Violating candidates return a graded band-D failure (rankable — the
+// annealer keeps a slope back toward feasibility — but never publishable
+// as best). The prebuilt NN list needs no padding: RCUT stays
+// authoritative on bump channels and nn_safe_rcutmax covers every OPTIM
+// RCUT high bound, so any in-box candidate this gate passes is inside the
+// list (a candidate outside the box is not evaluated: box_penalty.h).
+//
+// The table is built ONCE (HPO_Host ctor) and arms only bumps whose box
+// can actually violate — a config that passes the STRICT corner check
+// arms nothing and evaluates byte-identically.
+
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <limits>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <tadah/core/context.h>
+#include <tadah/core/number_format.h>
+#include <tadah/core/utils.h>
+#include <tadah/hpo/cutoff_channels.h>
+#include <tadah/hpo/dloss_dtheta.h>
+#include <tadah/hpo/hpo_targets.h>
+#include <tadah/models/descriptors/basis_kind.h>
+#include <tadah/models/descriptors/d_base.h>
+#include <tadah/models/eam/pot_curve_edit.h>
+
+namespace tadah {
+namespace hpo {
+namespace detail {
+
+/** \brief Effective truncation cutoff of one channel (RCUT{sfx}MAX
+ *  semantics: the cutoff object truncates at the max over the per-pair
+ *  RCUT list). Non-OPT'd entries contribute their config value to
+ *  fixed_max; OPT'd entries contribute their sampled value at eval time
+ *  (flat_idx) and their bounds to the reachable range. */
+struct BindingRcut {
+  /* max over non-OPT'd RCUT entries; -inf when EVERY entry is OPT'd */
+  double fixed_max = -std::numeric_limits<double>::infinity();
+  /* flat theta indices of OPT'd RCUT{sfx} entries */
+  std::vector<long> flat_idx;
+  /* worst / best cutoff any candidate can carry:
+   *   min_reachable = max(fixed_max, max_j lowbound[j])
+   *   max_reachable = max(fixed_max, max_j highbound[j]) */
+  double min_reachable = -std::numeric_limits<double>::infinity();
+  double max_reachable = -std::numeric_limits<double>::infinity();
+};
+
+/** \brief The centres and widths of a bump channel (@p ckey, @p skey),
+ *  read as its descriptor reads them (D_Base::get_grid). A channel whose
+ *  grids cannot be read, or do not pair up, cannot build its descriptor:
+ *  that is an error naming the key, not a channel to skip
+ *  (validate_hpo_setup refuses such a configuration first). */
+inline std::pair<core::v_type, core::v_type>
+read_bump_grids(const core::Context &ctx, const std::string &ckey,
+                const std::string &skey) {
+  std::pair<core::v_type, core::v_type> g;
+  for (const auto &[key, out] :
+       {std::pair<const std::string &, core::v_type &>{ckey, g.first},
+        std::pair<const std::string &, core::v_type &>{skey, g.second}}) {
+    try {
+      models::D_Base::get_grid(ctx, key, out);
+    } catch (const std::exception &e) {
+      throw std::runtime_error("BUMPGATE: " + key + " cannot be read: " +
+                               e.what());
+    }
+  }
+  if (g.first.empty() || g.first.size() != g.second.size())
+    throw std::runtime_error(
+        "BUMPGATE: " + ckey + " has " + std::to_string(g.first.size()) +
+        " value(s) and " + skey + " " + std::to_string(g.second.size()) +
+        ", which do not pair");
+  return g;
+}
+
+/** \brief The BindingRcut of the RCUT`sfx` values of @p ctx: a whole
+ *  configuration, or the own context of a descriptor of a joined line
+ *  (cutoff_channels.h), whose value i is entry @p first + i of the whole
+ *  key, as an OPTIM line numbers it. */
+inline BindingRcut derive_binding_rcut(const core::Context &ctx,
+                                       const HPOTargets &trg,
+                                       const std::string &sfx,
+                                       std::size_t first = 0) {
+  BindingRcut rc;
+  const std::string rkey = std::string("RCUT") + sfx;
+  if (!ctx.contains(rkey) || ctx.size(rkey) == 0) return rc;
+
+  /* the per-pair RCUT list (or its one value), as the cutoff reads it */
+  core::v_type rvals;
+  try {
+    models::D_Base::get_grid(ctx, rkey, rvals);
+  } catch (const std::exception &e) {
+    throw std::runtime_error("BUMPGATE: " + rkey + " cannot be read: " +
+                             e.what());
+  }
+  if (rvals.empty())
+    throw std::runtime_error("BUMPGATE: " + rkey + " has no value");
+
+  /* the OPTIM entry of rkey (OPTIM keys are upper-cased at parse; the
+   * density gates' reach shares this range) */
+  const auto itr = trg.optimap.find(rkey);
+  const bool has_opt = itr != trg.optimap.end();
+
+  /* flat theta indices come from the one shared flattening contract */
+  const auto prefs = make_param_ref_table(trg);
+
+  for (std::size_t i = 0; i < rvals.size(); ++i) {
+    const std::size_t e = first + i;  // its entry of the whole key
+    const bool opt = has_opt && e < itr->second.opt.size() &&
+                     itr->second.opt[e];
+    if (opt) {
+      for (const auto &r : prefs)
+        if (r.theta_name == itr->first && r.token == e)
+          rc.flat_idx.push_back(static_cast<long>(r.flat_idx));
+      rc.min_reachable = std::max(rc.min_reachable, itr->second.lowbound[e]);
+      rc.max_reachable = std::max(rc.max_reachable, itr->second.highbound[e]);
+    } else {
+      rc.fixed_max = std::max(rc.fixed_max, rvals[i]);
+    }
+  }
+  rc.min_reachable = std::max(rc.min_reachable, rc.fixed_max);
+  rc.max_reachable = std::max(rc.max_reachable, rc.fixed_max);
+  return rc;
+}
+
+/** \brief One hard-cutoff bump channel with the bumps that can violate
+ *  c + w/eta <= rcut for SOME candidate in the OPTIM boxes. */
+struct BumpGateChannel {
+  bool physical_width=false;
+  bool exact_support=false;
+  std::string ckey, skey, rkey;  /* "CGRID2B"/"SGRID2B"/"RCUT2B" or MB */
+  double w = 0.0;                /* half-width units: Blip 2, Blip5 3 */
+  BindingRcut rcut;
+  struct Bump {
+    long c_flat = -1;            /* flat theta idx of the centre, or -1 */
+    double c_fix = 0.0;          /*   fixed (seed) centre when c_flat < 0 */
+    long s_flat = -1;            /* flat theta idx of eta, or -1 */
+    double s_fix = 0.0;          /*   fixed (seed) eta when s_flat < 0 */
+    std::size_t index = 0;       /* 0-based entry of the whole CGRID key */
+  };
+  std::vector<Bump> bumps;
+};
+
+/** \brief Build the per-candidate gate table. Empty result = nothing can
+ *  ever violate (smooth cutoffs, non-bump bases, or fully-feasible
+ *  boxes) — the caller skips the per-eval check entirely. Bumps that are
+ *  fully static (centre, eta AND every RCUT entry non-OPT'd) are the seed
+ *  check's job and are never armed. */
+inline std::vector<BumpGateChannel>
+build_bump_gate_table(const core::Context &ctx, const HPOTargets &trg) {
+  std::vector<BumpGateChannel> tbl;
+  const auto prefs = make_param_ref_table(trg);
+  auto flat_of = [&prefs](const std::string &key, std::size_t i) -> long {
+    for (const auto &r : prefs)
+      if (r.theta_name == key && r.token == i)
+        return static_cast<long>(r.flat_idx);
+    return -1;
+  };
+
+  /* Each bump channel: a line of one bump descriptor, or a bump
+   * descriptor of a joined line with its own centres, widths and cutoff
+   * (cutoff_channels.h), whose value i of a key is its entry first + i. */
+  for (const char *sfx : {"2B", "MB"}) {
+    for (const auto &bc : bump_channels(ctx, sfx)) {
+      const core::Context &own = bc.context;
+      const auto wopt = models::potedit::bump_channel_halfwidth(own, sfx);
+      if (!wopt) continue;
+      if (!models::potedit::channel_cutoff_is_discontinuous(own, sfx))
+        continue;  /* smooth cutoff: overhang is damped to zero — no gate */
+      BumpGateChannel ch;
+      ch.w = *wopt;
+      ch.ckey = std::string("CGRID") + sfx;
+      ch.skey = std::string("SGRID") + sfx;
+      ch.rkey = std::string("RCUT") + sfx;
+      const auto [mu, eta] = read_bump_grids(own, ch.ckey, ch.skey);
+      const std::size_t c0 = bc.first(ch.ckey), s0 = bc.first(ch.skey);
+
+      ch.rcut = derive_binding_rcut(own, trg, sfx, bc.rcut_index());
+      if (!std::isfinite(ch.rcut.min_reachable)) continue;
+      const double tol = models::bump_rcut_tol(ch.rcut.min_reachable);
+
+      const auto itc = trg.optimap.find(ch.ckey);
+      const auto its = trg.optimap.find(ch.skey);
+      for (std::size_t i = 0; i < mu.size(); ++i) {
+        const std::size_t ci = c0 + i, si = s0 + i;  // entries of the keys
+        /* A radial bump width is > 0, seed and OPTIM box alike:
+         * validate_hpo_setup refuses a seed width <= 0 and HPOTargets a box
+         * low bound <= 0 (models::optim_low_bound_rule). */
+        const bool s_opt_i = its != trg.optimap.end() &&
+                             si < its->second.opt.size() && its->second.opt[si];
+        const double w_seed = eta[i];
+        const double w_lo = s_opt_i ? its->second.lowbound[si] : w_seed;
+        if (!(w_seed > 0.0) || !(w_lo > 0.0))
+          throw std::logic_error(
+              "internal error: BUMPGATE: " + bc.prefix() + ch.skey + " (" +
+              std::to_string(si + 1) + ") = " + core::to_string(w_seed) +
+              (s_opt_i ? " (OPTIM low bound " + core::to_string(w_lo) + ")"
+                       : std::string()) +
+              ": a radial bump width must be > 0 (validate_hpo_setup and the "
+              "OPTIM box rules refuse it)");
+        BumpGateChannel::Bump b;
+        b.index = ci;
+        b.c_fix = mu[i];
+        b.s_fix = eta[i];
+        const bool c_opt = itc != trg.optimap.end() &&
+                           ci < itc->second.opt.size() && itc->second.opt[ci];
+        if (c_opt) b.c_flat = flat_of(ch.ckey, ci);
+        if (s_opt_i) b.s_flat = flat_of(ch.skey, si);
+        if (b.c_flat < 0 && b.s_flat < 0 && ch.rcut.flat_idx.empty())
+          continue;  /* fully static: the startup seed check owns this bump */
+
+        /* Arm only when the WORST corner (max centre, min eta, min rcut)
+         * violates — otherwise no candidate in the boxes can spill and the
+         * per-eval check would be dead weight. */
+        const double c_hi = b.c_flat >= 0 ? itc->second.highbound[ci] : b.c_fix;
+        if (c_hi + ch.w / w_lo <= ch.rcut.min_reachable + tol) continue;
+        ch.bumps.push_back(b);
+      }
+      if (!ch.bumps.empty()) tbl.push_back(std::move(ch));
+    }
+  }
+  for(const auto &spec:models::embed_specs(ctx))if(spec.cutoff=="NONE") {
+    BumpGateChannel ch;ch.exact_support=true;
+    ch.physical_width=spec.density.coordinates==models::EmbedCoordinates::Widths;
+    ch.w=models::embed_support(spec.density.basis);
+    ch.ckey=core::to_upper(spec.id+".density.centres");
+    ch.skey=core::to_upper(spec.id+(ch.physical_width?".density.widths":".density.eta"));
+    ch.rkey=core::to_upper(spec.id+".density.cutoff.radius");
+    ch.rcut.fixed_max=ch.rcut.min_reachable=ch.rcut.max_reachable=spec.radius;
+    const double tol=16*std::numeric_limits<double>::epsilon()*std::max(1.0,spec.radius);
+    auto limits=[&](const std::string &key,std::size_t i,double value) {
+      auto it=trg.optimap.find(key);
+      if(it!=trg.optimap.end() && i<it->second.opt.size() && it->second.opt[i])
+        return std::make_pair(it->second.lowbound[i],it->second.highbound[i]);
+      return std::make_pair(value,value);
+    };
+    for(std::size_t i=0;i<spec.density.centres.size();++i) {
+      BumpGateChannel::Bump b;b.index=i;b.c_fix=spec.density.centres[i];
+      b.s_fix=spec.density.basis==models::EmbedBasis::Knot5?1:spec.density.scales[i];
+      b.c_flat=flat_of(ch.ckey,i);b.s_flat=flat_of(ch.skey,i);
+      auto c=limits(ch.ckey,i,b.c_fix),s=limits(ch.skey,i,b.s_fix);
+      double least=c.first+ch.w*(ch.physical_width?s.first:1/s.second);
+      double most=c.second+ch.w*(ch.physical_width?s.second:1/s.first);
+      if(least>spec.radius+tol || (trg.BUMPGATE_STRICT && most>spec.radius+tol))
+        throw std::runtime_error("BUMPGATE: "+ch.ckey+" ("+std::to_string(i+1)+") "+
+          (trg.BUMPGATE_STRICT?"has a corner of its OPTIM box whose support ends past RADIUS, which BUMPGATE STRICT refuses"
+                              :"has no point in its OPTIM box whose support ends at or before RADIUS"));
+      if(most>spec.radius+tol && (b.c_flat>=0 || b.s_flat>=0))ch.bumps.push_back(b);
+    }
+    if(!ch.bumps.empty())tbl.push_back(std::move(ch));
+  }
+  return tbl;
+}
+
+/** \brief The per-candidate test. Returns 0 when every armed bump is
+ *  feasible at p; otherwise the summed scale-free overhang
+ *  sum_violating (c + w/eta - rcut) / (w/eta) — additive across bumps and
+ *  strictly monotone in every violating coordinate, so within the graded
+ *  band any move that shrinks any violation is strictly downhill.
+ *  A width eta <= 0 (only an optimiser that leaves the OPTIM box, whose
+ *  width low bound is > 0, evaluates one) has no support edge and is a
+ *  violation too: it counts 1 - eta rcut / w, the continuation of the
+ *  overhang measure (which tends to 1 as eta -> 0+), growing as eta falls;
+ *  a NaN width counts +inf (the top of the graded band).
+ *  p is the REAL-space theta vector (optimizers call host(sp.out(x))). */
+template <class ParamVec>
+inline double bump_gate_violation(const std::vector<BumpGateChannel> &tbl,
+                                  const ParamVec &p) {
+  double v = 0.0;
+  for (const auto &ch : tbl) {
+    double rcut = ch.rcut.fixed_max;
+    for (long j : ch.rcut.flat_idx) rcut = std::max(rcut, p(j));
+    const double tol = ch.exact_support?16*std::numeric_limits<double>::epsilon()*std::max(1.0,rcut):models::bump_rcut_tol(rcut);
+    for (const auto &b : ch.bumps) {
+      const double c = b.c_flat >= 0 ? p(b.c_flat) : b.c_fix;
+      const double eta = b.s_flat >= 0 ? p(b.s_flat) : b.s_fix;
+      if (!(eta > 0.0)) {
+        v += std::isnan(eta) ? std::numeric_limits<double>::infinity()
+                             : 1.0 - eta * rcut / ch.w;
+        continue;
+      }
+      const double support=ch.physical_width?ch.w*eta:ch.w/eta;
+      const double reach = c + support;
+      if (reach > rcut + tol)
+        v += ch.exact_support?(reach-rcut)/(support>0?support:std::max(1.0,rcut)):(reach-rcut)*eta/ch.w;
+    }
+  }
+  return v;
+}
+
+/** \brief The journal text of a BUMPGATE reject, with the violation @p v
+ *  (bump_gate_violation) in the shortest round-trip form
+ *  (core::format_roundtrip): exact, and a v below 5e-7 does not read 0. */
+inline std::string bump_gate_reject_what(double v) {
+  return "BUMPGATE rejected the candidate (c + w/eta past the cutoff, "
+         "violation=" +
+         core::format_roundtrip(v) + ")";
+}
+
+} // namespace detail
+} // namespace hpo
+} // namespace tadah
+
+#endif // TADAH_HPO_BUMP_SUPPORT_GATE_H

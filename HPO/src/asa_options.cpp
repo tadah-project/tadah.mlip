@@ -1,0 +1,538 @@
+/* asa_options.cpp -- PARAM parsing/validation for LIB ASA / ALGO ASA.
+ * One descriptor table drives the parser, print_caps, and the tests; the
+ * text of each row of the PARAM table of `tadah explain ASA:ASA` is the
+ * explain of its PARAM key in the registry (hpotarget_params.toml,
+ * hpo_param_registry_gen.h).
+ * Value ranges mirror asa_test_asa_options() in external/asa/asa.c so
+ * an INVALID_USER_INPUT exit can only indicate a glue bug. */
+
+#include <tadah/hpo/asa_options.h>
+#include <tadah/hpo/hpo_param_registry_gen.h>
+#include <tadah/core/number_format.h>
+#include <tadah/hpo/hpo_log.h>
+#include <tadah/hpo/optimizer_spec.h>
+#include <tadah/hpo/strict_parse.h>
+
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+#include <map>
+#include <ostream>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+
+namespace tadah::hpo {
+
+namespace {
+
+enum class Kind { Real, Count, Bool };  /* Count = integral, range-checked */
+
+struct Desc {
+    const char* name;      /* exact upstream spelling                   */
+    Kind        kind;
+    bool        per_dim;   /* accepts the [i] indexed form              */
+    double      min;       /* inclusive; NaN = unbounded                */
+    double      max;       /* inclusive; NaN = unbounded                */
+    const char* def_str;   /* default, for the help table               */
+};
+
+constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
+
+/* Order = asa_opt file order, then gated groups; the help table prints
+ * in this order. */
+const Desc kDescs[] = {
+  {"Limit_Acceptances", Kind::Count, false, 0, kNaN, "10000"},
+  {"Limit_Generated", Kind::Count, false, 0, kNaN, "99999"},
+  {"Limit_Invalid_Generated_States", Kind::Count, false, -1, kNaN, "1000"},
+  {"Accepted_To_Generated_Ratio", Kind::Real, false, 0, kNaN, "1e-6"},
+  {"Cost_Precision", Kind::Real, false, 0, kNaN, "1e-18"},
+  {"Maximum_Cost_Repeat", Kind::Count, false, 0, kNaN, "5"},
+  {"Number_Cost_Samples", Kind::Count, false, kNaN, kNaN, "5"},
+  {"Temperature_Ratio_Scale", Kind::Real, false, 0, kNaN, "1e-5"},
+  {"Cost_Parameter_Scale_Ratio", Kind::Real, false, 0, kNaN, "1.0"},
+  {"Temperature_Anneal_Scale", Kind::Real, false, 0, kNaN, "100.0"},
+  {"Sequential_Parameters", Kind::Count, false, kNaN, kNaN, "-1"},
+  {"Initial_Parameter_Temperature", Kind::Real, false, 0, kNaN, "1.0"},
+  {"Acceptance_Frequency_Modulus", Kind::Count, false, 0, kNaN, "100"},
+  {"Generated_Frequency_Modulus", Kind::Count, false, 0, kNaN, "10000"},
+  {"Reanneal_Cost", Kind::Count, false, kNaN, kNaN, "1"},
+  {"Reanneal_Parameters", Kind::Bool, false, 0, 1, "1"},
+  {"Delta_X", Kind::Real, false, 0, kNaN, "0.001"},
+  /* every value but 0 is refused with the reason (parse_asa_options) */
+  {"User_Tangents", Kind::Count, false, 0, kNaN, "0"},
+  {"Curvature_0", Kind::Count, false, -1, 1, "1"},
+  /* gated groups */
+  {"User_Quench_Cost_Scale", Kind::Real, false, 0, kNaN, "1.0"},
+  {"User_Quench_Param_Scale", Kind::Real, true, 0, kNaN, "1.0"},
+  {"User_Temperature_Ratio", Kind::Real, true, 0, kNaN, "1.0"},
+  {"User_Delta_Parameter", Kind::Real, true, 0, kNaN, "Delta_X"},
+  {"User_Parameter_Temperature", Kind::Real, true, 0, kNaN, "IPT"},
+  {"Multi_Number", Kind::Count, false, 1, kNaN, "1"},
+  {"Multi_Specify", Kind::Bool, false, 0, 1, "1"},
+  {"Multi_Grid", Kind::Real, true, 0, kNaN, "0.0"},
+  {"Queue_Size", Kind::Count, false, 0, kNaN, "0"},
+  {"Queue_Resolution", Kind::Real, true, 0, kNaN, "0.0"},
+  {"Gener_Block", Kind::Count, false, 1, kNaN, "1"},
+  {"Gener_Block_Max", Kind::Count, false, 1, kNaN, "Gener_Block"},
+  {"Gener_Mov_Avr", Kind::Count, false, 0, kNaN, "3"},
+};
+
+/* Upstream option names deliberately not exposed: tailored errors. Two of
+ * them are set by tadah hpo: Include_Integer_Parameters 0 (no OPTIM
+ * dimension is an integer one) and User_Initial_Parameters from the
+ * starting points (parse_asa_options). */
+const std::map<std::string, const char*> kExcluded = {
+  {"Include_Integer_Parameters",
+   "every OPTIM dimension of tadah hpo takes real values, so ASA has no "
+   "integer dimension to include."},
+  {"User_Initial_Parameters",
+   "ASA starts at the first starting point of the INIT block (the values of "
+   "the training configuration without one); METHOD RANDOM 1 in the INIT "
+   "block draws a random start from its SEED."},
+  {"Coarse_Resolution",
+   "it rounds each generated value to a grid of that width and makes ASA's "
+   "queue compare points within it in place of Queue_Resolution; the ASA of "
+   "tadah hpo leaves it out. PARAM Queue_Size with Queue_Resolution reuses "
+   "the loss of a point within Queue_Resolution of one of the last "
+   "Queue_Size points."},
+  {"User_Cost_Temperature",
+   "it gives the initial cost temperature in place of ASA's sampling of it "
+   "over Number_Cost_Samples states, which tadah hpo runs (PARAM "
+   "Number_Cost_Samples)."},
+  {"Asa_Recursive_Level",
+   "it belongs to ASA's recursive optimisation of its own options, which "
+   "the ASA of tadah hpo leaves out."},
+  {"Asymp_Exp_Param",
+   "it is the parameter of an asymptotic form of the acceptance test (1 "
+   "gives the Boltzmann test), which the ASA of tadah hpo leaves out: it "
+   "accepts by the Boltzmann test."},
+  {"Fit_Local",
+   "it belongs to the local simplex fit that ASA's user module runs after "
+   "the anneal, and tadah hpo does not include that module."},
+  {"Iter_Max",
+   "it belongs to the local simplex fit that ASA's user module runs after "
+   "the anneal, and tadah hpo does not include that module."},
+  {"Penalty",
+   "it belongs to the local simplex fit that ASA's user module runs after "
+   "the anneal, and tadah hpo does not include that module."},
+  {"NoOfSamples",
+   "it belongs to the fuzzy-logic tuning of ASA's options in ASA's user "
+   "module, which tadah hpo does not include."},
+  {"Random_Array_Dim",
+   "it belongs to ASA's saving of its state to resume a run, which the ASA "
+   "of tadah hpo leaves out: tadah hpo does not resume a run."},
+  {"Bias_Acceptance",
+   "it belongs to ASA's importance sampling, which the ASA of tadah hpo "
+   "leaves out."},
+  {"Limit_Weights",
+   "it belongs to ASA's importance sampling, which the ASA of tadah hpo "
+   "leaves out."},
+};
+
+const Desc* find_desc(const std::string& name)
+{
+    for (const auto& d : kDescs)
+        if (name == d.name) return &d;
+    return nullptr;
+}
+
+std::string lower(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return s;
+}
+
+/* The name of PARAM @p key without its index ("Multi_Grid[2]" ->
+ * "Multi_Grid"). */
+std::string base_name(const std::string& key)
+{
+    return key.substr(0, key.find('['));
+}
+
+/* The refusal of PARAM @p key, which names no option ASA:ASA takes: an
+ * option of another case (names are matched in their case), an option
+ * the ASA of tadah hpo leaves out (kExcluded, with why), or the list of
+ * the options. The name is compared without its index. */
+[[noreturn]] void unknown_key_error(const std::string& key)
+{
+    const std::string base = base_name(key);
+    const std::string kl = lower(base);
+    const std::string head = "ASA:ASA: unknown PARAM '" + key + "'";
+    for (const auto& d : kDescs)
+        if (kl == lower(d.name))
+            throw std::runtime_error(head + ": ASA option names are "
+                                     "case-sensitive, and the option of that "
+                                     "name is " + d.name);
+    for (const auto& [name, why] : kExcluded) {
+        if (base == name)
+            throw std::runtime_error("ASA:ASA does not take the ASA option "
+                                     "PARAM " + name + ": " + why);
+        if (kl == lower(name))
+            throw std::runtime_error(head + ": ASA option names are "
+                                     "case-sensitive, and ASA:ASA does not "
+                                     "take the ASA option " + name + ": " +
+                                     why);
+    }
+    std::string list;
+    for (const auto& d : kDescs) list += (list.empty() ? "" : " ") + std::string(d.name);
+    throw std::runtime_error(head + "; accepted keys: " + list);
+}
+
+/* Split "Name[3]" -> {"Name", 3}; plain "Name" -> {"Name", -1}.
+ * The index is 1-based and means the same dimension as the `dim` column
+ * of hpo_search_space.tsv and the `#` column of the journal's SEARCH
+ * SPACE table, so a dimension number a user reads is the one they type.
+ * Index 0 is rejected by the caller (it was the first dimension in
+ * Tadah 1.4 and earlier). */
+std::pair<std::string, long> split_indexed(const std::string& key)
+{
+    const auto lb = key.find('[');
+    if (lb == std::string::npos) return {key, -1};
+    if (key.back() != ']' || lb + 1 >= key.size() - 1u + 1u)
+        throw std::runtime_error(
+            "ASA:ASA: malformed indexed PARAM '" + key +
+            "' (expected Name[<1-based index>])");
+    const std::string base = key.substr(0, lb);
+    const std::string idx  = key.substr(lb + 1, key.size() - lb - 2);
+    if (idx.empty() ||
+        !std::all_of(idx.begin(), idx.end(),
+                     [](unsigned char c) { return std::isdigit(c); }))
+        throw std::runtime_error(
+            "ASA:ASA: malformed index in PARAM '" + key +
+            "' (expected a positive integer)");
+    /* Digits only, so the one failure left is an index too large for a
+     * long (std::stol threw a bare "stol"). */
+    return {base, static_cast<long>(parse_uint(
+                      idx, "ASA:ASA: the index in PARAM '" + key + "'", 0,
+                      static_cast<std::uint64_t>(
+                          std::numeric_limits<long>::max())))};
+}
+
+/* The value `v` of PARAM `key` of `sp` against the kind and range of its
+ * option: an option of whole numbers (Count, Bool) takes the integer
+ * syntax (param_is_integer: 1e3 and 10.0 are refused), and that refusal
+ * quotes the value as written. */
+void check_value(const Desc& d, const OptimizerSpec& sp,
+                 const std::string& key, double v)
+{
+    const std::string got = " (got " + core::format_roundtrip(v) + ")";
+    if (!std::isfinite(v))
+        throw std::runtime_error("ASA:ASA: PARAM " + key +
+                                 " must be finite");
+    if (d.kind != Kind::Real && !param_is_integer(sp, key))
+        throw std::runtime_error("ASA:ASA: PARAM " + key +
+                                 " must be an integer (got '" +
+                                 param_value_text(sp, key) + "')");
+    if (!std::isnan(d.min) && v < d.min)
+        throw std::runtime_error("ASA:ASA: PARAM " + key + " must be >= " +
+                                 core::format_roundtrip(d.min) + got);
+    if (!std::isnan(d.max) && v > d.max)
+        throw std::runtime_error("ASA:ASA: PARAM " + key + " must be <= " +
+                                 core::format_roundtrip(d.max) + got);
+}
+
+/* "ASA:ASA: PARAM <key> must be > 0 (got <v>)". */
+std::runtime_error not_positive(const std::string& key, double v)
+{
+    return std::runtime_error("ASA:ASA: PARAM " + key + " must be > 0 (got " +
+                              core::format_roundtrip(v) + ")");
+}
+
+}  // namespace
+
+AsaOptions parse_asa_options(const OptimizerSpec& sp, std::size_t dim)
+{
+    /* ---- generic spec knobs ASA does not implement ----------------- */
+    if (sp.stop.ftol_rel || sp.stop.ftol_abs)
+        throw std::runtime_error(
+            "ASA:ASA does not take FTOL_REL or FTOL_ABS: ASA's own stops end "
+            "the search, PARAM Cost_Precision with Maximum_Cost_Repeat (a "
+            "plateau of the loss) or Accepted_To_Generated_Ratio");
+    if (sp.stop.xtol_rel || sp.stop.xtol_abs)
+        throw std::runtime_error(
+            "ASA:ASA does not take XTOL_REL or XTOL_ABS");
+    if (sp.pop)
+        throw std::runtime_error(
+            "ASA:ASA does not take POPULATION: ASA runs one chain; PARAM "
+            "Gener_Block sets the number of states it generates at a time at "
+            "the start (the block then adapts up to Gener_Block_Max unless "
+            "Gener_Mov_Avr is 0), and the THREADS workers evaluate each block "
+            "together");
+    if (sp.step)
+        throw std::runtime_error(
+            "ASA:ASA does not accept STEP: the width of the generating "
+            "distribution follows the parameter temperature of each "
+            "dimension (Initial_Parameter_Temperature, "
+            "Temperature_Ratio_Scale)");
+    if (sp.grad_strategy)
+        throw std::runtime_error(
+            "ASA:ASA does not accept GRAD_STRATEGY: it is gradient-free, and "
+            "the reannealing takes its tangents by finite differences (PARAM "
+            "Delta_X)");
+    if (sp.vector_storage)
+        throw std::runtime_error("ASA:ASA does not accept VECTOR_ARR");
+    if (sp.num_threads && *sp.num_threads == 0)
+        throw std::runtime_error("ASA:ASA: THREADS must be >= 1");
+    if (sp.stop.maxtime && !(*sp.stop.maxtime > 0.0))
+        throw std::runtime_error("ASA:ASA: MAXTIME must be > 0 seconds (got " +
+                                 core::format_roundtrip(*sp.stop.maxtime) +
+                                 ")");
+
+    AsaOptions o;
+    /* ASA starts at the first starting point; with none (a WARM seed the
+     * INIT block dropped) it draws its own. */
+    o.user_initial_parameters = sp.optim_init.empty() ? 0 : 1;
+    o.user_quench_param_scale.assign(dim, 1.0);
+    o.user_temperature_ratio.assign(dim, 1.0);
+    o.multi_grid.assign(dim, 0.0);
+    o.queue_resolution.assign(dim, 0.0);
+
+    /* ---- two passes: scalars/unindexed fills, then [i] overrides --- */
+    bool have_gener_block_max = false;
+    std::vector<std::pair<std::string, double>> indexed;
+
+    auto set_scalar = [&](const Desc& d, const std::string& key, double v) {
+        check_value(d, sp, key, v);
+        const std::string n = d.name;
+        if      (n == "Limit_Acceptances")       o.limit_acceptances = (long)v;
+        else if (n == "Limit_Generated")         o.limit_generated = (long)v;
+        else if (n == "Limit_Invalid_Generated_States")
+            o.limit_invalid_generated_states = (int)v;
+        else if (n == "Accepted_To_Generated_Ratio") {
+            if (!(v > 0.0)) throw not_positive(key, v);
+            o.accepted_to_generated_ratio = v;
+        }
+        else if (n == "Cost_Precision") {
+            if (!(v > 0.0)) throw not_positive(key, v);
+            o.cost_precision = v;
+        }
+        else if (n == "Maximum_Cost_Repeat")     o.maximum_cost_repeat = (int)v;
+        else if (n == "Number_Cost_Samples") {
+            if (v == 0.0 || v == -1.0) throw std::runtime_error(
+                "ASA:ASA: PARAM Number_Cost_Samples takes a value above 0 "
+                "(a sample of the mean |cost|) or below -1 (a sample of its "
+                "deviation), got " + std::string(v == 0.0 ? "0" : "-1"));
+            o.number_cost_samples = (int)v;
+        }
+        else if (n == "Temperature_Ratio_Scale") {
+            if (!(v > 0.0)) throw not_positive(key, v);
+            o.temperature_ratio_scale = v;
+        }
+        else if (n == "Cost_Parameter_Scale_Ratio") {
+            if (!(v > 0.0)) throw not_positive(key, v);
+            o.cost_parameter_scale_ratio = v;
+        }
+        else if (n == "Temperature_Anneal_Scale") {
+            if (!(v > 0.0)) throw not_positive(key, v);
+            o.temperature_anneal_scale = v;
+        }
+        else if (n == "Sequential_Parameters") {
+            if (v >= (double)dim) throw std::runtime_error(
+                "ASA:ASA: PARAM Sequential_Parameters must be < the "
+                "number of OPTIM dimensions (" + std::to_string(dim) + ")");
+            o.sequential_parameters = (long)v;
+        }
+        else if (n == "Initial_Parameter_Temperature") {
+            if (!(v > 0.0)) throw not_positive(key, v);
+            o.initial_parameter_temperature = v;
+        }
+        else if (n == "Acceptance_Frequency_Modulus")
+            o.acceptance_frequency_modulus = (int)v;
+        else if (n == "Generated_Frequency_Modulus")
+            o.generated_frequency_modulus = (int)v;
+        else if (n == "Reanneal_Cost") {
+            if (v == -1.0) throw std::runtime_error(
+                "ASA:ASA: PARAM Reanneal_Cost takes 0 (off), 1 (the "
+                "default), or a value above 1 or below -1 (sample variants), "
+                "got -1; ASA refuses -1");
+            o.reanneal_cost = (int)v;
+        }
+        else if (n == "Reanneal_Parameters")     o.reanneal_parameters = (int)v;
+        else if (n == "Delta_X")                 o.delta_x = v;  // >= 0: kDescs
+        else if (n == "User_Tangents") {
+            if (v != 0.0) throw std::runtime_error(
+                "ASA:ASA: PARAM User_Tangents takes 0 only: tadah hpo gives "
+                "ASA no analytic tangents, and the reannealing takes them by "
+                "finite differences (PARAM Delta_X)");
+        }
+        else if (n == "Curvature_0")             o.curvature_0 = (int)v;
+        else if (n == "User_Quench_Cost_Scale") {
+            if (!(v > 0.0)) throw not_positive(key, v);
+            o.user_quench_cost_scale = v;
+        }
+        else if (n == "Multi_Number")            o.multi_number = (int)v;
+        else if (n == "Multi_Specify")           o.multi_specify = (int)v;
+        else if (n == "Queue_Size")              o.queue_size = (long)v;
+        else if (n == "Gener_Block")             o.gener_block = (long)v;
+        else if (n == "Gener_Block_Max") {
+            have_gener_block_max = true;
+            o.gener_block_max = (long)v;
+        }
+        else if (n == "Gener_Mov_Avr")           o.gener_mov_avr = (int)v;
+        /* per-dim uniform fills */
+        else if (n == "User_Quench_Param_Scale") {
+            if (!(v > 0.0)) throw not_positive(key, v);
+            o.user_quench_param_scale.assign(dim, v);
+        }
+        else if (n == "User_Temperature_Ratio") {
+            if (!(v > 0.0)) throw not_positive(key, v);
+            o.user_temperature_ratio.assign(dim, v);
+        }
+        else if (n == "User_Delta_Parameter") {
+            if (!(v > 0.0)) throw not_positive(key, v);
+            o.user_delta_parameter.assign(dim, v);
+        }
+        else if (n == "User_Parameter_Temperature") {
+            if (!(v > 0.0)) throw not_positive(key, v);
+            o.user_parameter_temperature.assign(dim, v);
+        }
+        else if (n == "Multi_Grid")        o.multi_grid.assign(dim, v);
+        else if (n == "Queue_Resolution")  o.queue_resolution.assign(dim, v);
+    };
+
+    /* A word (OptimizerSpec::param_raw): refused under a name ASA does not
+     * take as a number is, and under one of its options, which take
+     * numbers. */
+    for (const auto& [key, word] : sp.param_raw) {
+        const auto [base, idx] = split_indexed(key);
+        (void)idx;
+        if (!find_desc(base)) unknown_key_error(key);
+        throw std::runtime_error("ASA:ASA: PARAM " + key +
+                                 " takes a number (got '" + word + "')");
+    }
+    for (const auto& [key, val] : sp.param) {
+        const auto [base, idx] = split_indexed(key);
+        const Desc* d = find_desc(base);
+        if (!d) unknown_key_error(key);
+        if (idx >= 0) {
+            if (!d->per_dim)
+                throw std::runtime_error(
+                    "ASA:ASA: PARAM " + base +
+                    " is a scalar option (indexed form not accepted)");
+            if (idx == 0)
+                throw std::runtime_error(
+                    "ASA:ASA: PARAM " + key + ": index 0 is no dimension: the "
+                    "indices count the dimensions of the search space from "
+                    "1, as the dim column of hpo_search_space.tsv does");
+            if ((std::size_t)idx > dim)
+                throw std::runtime_error(
+                    "ASA:ASA: PARAM " + key + ": index " +
+                    std::to_string(idx) + " is above the number of "
+                    "dimensions of the search space, " + std::to_string(dim) +
+                    " (indices count from 1)");
+            check_value(*d, sp, key, val);
+            indexed.emplace_back(key, val);
+        } else {
+            set_scalar(*d, key, val);
+        }
+    }
+
+    /* mirrors: fill from scalars unless the uniform form set them */
+    if (o.user_delta_parameter.empty())
+        o.user_delta_parameter.assign(dim, o.delta_x);
+    if (o.user_parameter_temperature.empty())
+        o.user_parameter_temperature.assign(
+            dim, o.initial_parameter_temperature);
+
+    for (const auto& [key, val] : indexed) {
+        const auto [base, idx] = split_indexed(key);
+        auto put = [&](std::vector<double>& v) {
+            v[(std::size_t)(idx - 1)] = val;   /* [i] is 1-based */
+        };
+        if      (base == "User_Quench_Param_Scale") {
+            if (!(val > 0.0)) throw not_positive(key, val);
+            put(o.user_quench_param_scale);
+        }
+        else if (base == "User_Temperature_Ratio") {
+            if (!(val > 0.0)) throw not_positive(key, val);
+            put(o.user_temperature_ratio);
+        }
+        else if (base == "User_Delta_Parameter") {
+            if (!(val > 0.0)) throw not_positive(key, val);
+            put(o.user_delta_parameter);
+        }
+        else if (base == "User_Parameter_Temperature") {
+            if (!(val > 0.0)) throw not_positive(key, val);
+            put(o.user_parameter_temperature);
+        }
+        else if (base == "Multi_Grid")       put(o.multi_grid);
+        else if (base == "Queue_Resolution") put(o.queue_resolution);
+    }
+
+    /* ---- cross-checks ---------------------------------------------- */
+    if (!have_gener_block_max)
+        o.gener_block_max = o.gener_block;
+    if (o.gener_block_max < o.gener_block)
+        throw std::runtime_error(
+            "ASA:ASA: PARAM Gener_Block_Max must be >= Gener_Block "
+            "(buffers are sized once by the cap)");
+    /* The Queue_Resolution hint is the run's (announce_asa_options): this
+     * parse is also the startup check of the spec (backend_rules.h),
+     * which journals nothing. */
+    return o;
+}
+
+void announce_asa_options(const AsaOptions& o)
+{
+    if (o.queue_size > 0 &&
+        std::all_of(o.queue_resolution.begin(), o.queue_resolution.end(),
+                    [](double r) { return r == 0.0; }))
+        HPOLog::instance().hint(
+            "ASA: Queue_Size > 0 with Queue_Resolution 0 reuses the loss of a "
+            "point only when it is generated again exactly; PARAM "
+            "Queue_Resolution gives the distance in each dimension below "
+            "which two points count as the same");
+}
+
+const char* asa_exit_name(int exit_status)
+{
+    switch (exit_status) {
+        case 0:  return "NORMAL_EXIT";
+        case 1:  return "P_TEMP_TOO_SMALL";
+        case 2:  return "C_TEMP_TOO_SMALL";
+        case 3:  return "COST_REPEATING";
+        case 4:  return "TOO_MANY_INVALID_STATES";
+        case 5:  return "IMMEDIATE_EXIT";
+        case 7:  return "INVALID_USER_INPUT";
+        case 8:  return "INVALID_COST_FUNCTION";
+        case 9:  return "INVALID_COST_FUNCTION_DERIV";
+        case -1: return "CALLOC_FAILED";
+        default: return "UNKNOWN_EXIT_CODE";
+    }
+}
+
+namespace {
+
+/* The explain of the ASA:ASA PARAM key `name` in the registry
+ * (hpotarget_params.toml): its row of the PARAM table. */
+std::string_view explain_of(std::string_view name)
+{
+    for (const param_registry::Param& p : param_registry::kParams) {
+        if (p.name != name) continue;
+        for (const std::string_view optimizer : p.optimizers)
+            if (optimizer == "ASA:ASA") return p.explain;
+    }
+    throw std::logic_error("ASA:ASA PARAM " + std::string(name) +
+                           " has no entry in the registry "
+                           "(hpotarget_params.toml)");
+}
+
+}  // namespace
+
+void print_asa_param_table(std::ostream& os)
+{
+    for (const auto& d : kDescs) {
+        os << "  PARAM " << d.name;
+        if (d.per_dim) os << "[/i]";
+        os << "  (default " << d.def_str << ")  " << explain_of(d.name)
+           << "\n";
+    }
+}
+
+}  // namespace tadah::hpo

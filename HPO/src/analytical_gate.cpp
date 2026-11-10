@@ -1,0 +1,306 @@
+#include <tadah/hpo/analytical_gate.h>
+
+#include <tadah/hpo/dloss_dtheta.h>
+#include <tadah/hpo/hpo_targets.h>
+#include <tadah/hpo/loss_function.h>
+#include <tadah/hpo/sims_grad.h>
+#include <tadah/core/element.h>
+#include <tadah/mlip/atom.h>
+#include <tadah/mlip/memory/mlip_workspace_manager.h>
+#include <tadah/mlip/nn_finder.h>
+#include <tadah/mlip/structure.h>
+#include <tadah/mlip/structure_db.h>
+#include <tadah/mlip/trainer.h>
+#include <tadah/mlip/weight_provisioning.h>
+
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <optional>
+#include <sstream>
+
+namespace tadah::hpo {
+
+std::string analytical_gradient_blocker(const core::Context& ctx,
+                                        const HPOTargets& trg,
+                                        bool has_train_db)
+{
+    if (!has_train_db)
+        return "there is no training DBFILE (it differentiates the "
+               "least-squares fit of the coefficients)";
+    if (ctx.contains("FIXINDEX"))
+        return "FIXINDEX fixes coefficients of the model (it assumes every "
+               "coefficient is fitted)";
+    if (ctx.get<bool>("STRESS"))
+        return "STRESS is true (stress rows are not differentiated)";
+    if (ctx.get<bool>("NORM"))
+        return "NORM is true (it works on raw features)";
+    /* It differentiates the least-squares fit of the training rows
+     * (M_BLR, M_KRR implementation 1); implementation 2 solves (K +
+     * LAMBDA sigma^2 I) w = t over its basis vectors instead, and reads no
+     * OALGO (its fit refuses one but the default). */
+    if (mlip::is_krr_implementation_2(ctx)) {
+        const std::string kernel = ctx.get<std::string>("MODEL", 1);
+        return "the model is MODEL M_KRR " + kernel + " 2, implementation "
+               "2 (it differentiates the least-squares fit of the training "
+               "rows, that of M_BLR and of MODEL M_KRR " + kernel + " 1, "
+               "implementation 1, with OALGO 4; implementation 2 solves (K "
+               "+ LAMBDA sigma^2 I) w = t over its basis vectors)";
+    }
+    if (const int oalgo = ctx.get<int>("OALGO", 0); oalgo != 4)
+        return "OALGO is " + std::to_string(oalgo) +
+               " (it needs OALGO 4, the Cholesky normal equations)";
+    {
+        const double lambda = ctx.get<double>("LAMBDA", 0);
+        if (std::abs(lambda + 1.0) < std::numeric_limits<double>::min())
+            return "LAMBDA is -1, the evidence approximation (it needs a "
+                   "fixed LAMBDA >= 0)";
+        if (lambda < 0.0) {
+            std::ostringstream os;
+            os << "LAMBDA is " << lambda << " (it needs a fixed LAMBDA >= 0)";
+            return os.str();
+        }
+    }
+    {
+        const std::string basis = ctx.get<std::string>("MODEL", 1);
+        if (basis != "BF_Linear" && basis != "Kern_Linear")
+            return "the basis is " + basis +
+                   " (it needs MODEL ... BF_Linear or Kern_Linear)";
+    }
+    if (trg.use_srmse)
+        return "PC_SRMSE_GPA is set (stress metrics are not differentiated)";
+    return {};
+}
+
+std::string analytical_loss_term_blocker(const HPOTargets& trg)
+{
+    for (std::size_t k = 0; k < trg.observables.size(); ++k) {
+        const auto& obs = trg.observables[k];
+        if (!obs) continue;
+        const std::string term =
+            "the PC_OBSERVABLE term " + observable_journal_label(*obs, k + 1);
+        if (!loss_has_derivative_wrt_observed(obs->lossfn()))
+            return term + " uses the loss function " +
+                   LossFunction::to_string(obs->lossfn().type()) +
+                   ", which has no derivative with respect to the value";
+        if (const std::string gap = obs->analytical_gradient_gap();
+            !gap.empty())
+            return term + ": " + gap;
+    }
+    return {};
+}
+
+mlip::StructureDB probe_pairs(const core::Context& ctx,
+                              const models::DC_Selector& dcs)
+{
+    mlip::StructureDB db;
+    const double rcut =
+        std::max(dcs.d2b ? dcs.d2b->get_rcut() : 0.0,
+                 dcs.dmb ? dcs.dmb->get_rcut() : 0.0);
+    if (!(rcut > 0.0)) return db;
+    std::vector<core::Element> species;
+    for (std::size_t i = 0;; ++i) {
+        const auto symbol = ctx.stored_value("ATOM", i);
+        if (!symbol) break;
+        species.emplace_back(*symbol);
+    }
+    const double side = 3.0 * rcut;
+    const double closest = std::min(1.0, 0.5 * rcut);
+    for (std::size_t a = 0; a < species.size(); ++a) {
+        for (std::size_t b = a; b < species.size(); ++b) {
+            for (int k = 1;; ++k) {
+                const double r = rcut - 0.25 * k;
+                if (r < closest) break;
+                mlip::Structure st;
+                st.cell.load(side, 0.0, 0.0, 0.0, side, 0.0, 0.0, 0.0, side);
+                st.add_atom(mlip::Atom(species[a], 0.0, 0.0, 0.0,
+                                       0.0, 0.0, 0.0));
+                st.add_atom(mlip::Atom(species[b], r, 0.0, 0.0,
+                                       0.0, 0.0, 0.0));
+                mlip::NNFinder().calc(st, rcut);
+                db.add(st);
+            }
+        }
+    }
+    return db;
+}
+
+namespace {
+
+/* The claims of the two-body and of the many-body descriptor of `dcs`, each
+ * alone, for `p` on the structures of `db` (the force rows asked). */
+struct DescriptorClaims {
+    ThetaClaims d2, dm;
+};
+
+DescriptorClaims descriptor_claims(const mlip::StructureDB& db,
+                                   const models::DC_Selector& dcs,
+                                   const ParamRef& p, std::size_t n_cols)
+{
+    DescriptorClaims c;
+    for (std::size_t s = 0; s < db.size(); ++s) {
+        mlip::StructureDB one;
+        one.add(db(s));
+        std::vector<double> energy_rows(n_cols, 0.0);
+        std::vector<double> force_rows(3 * db(s).natoms() * n_cols, 0.0);
+        const auto c2 = mlip::assemble_dphi_train_both_rows_d2(
+            one, *dcs.d2b, p.theta_name, p.arg_pos, energy_rows.data(),
+            force_rows.data(), n_cols, {0});
+        c.d2.energy = c.d2.energy || c2.first;
+        c.d2.force = c.d2.force || c2.second;
+        if (!dcs.dmb) continue;
+        energy_rows.assign(energy_rows.size(), 0.0);
+        force_rows.assign(force_rows.size(), 0.0);
+        const auto cm = mlip::assemble_dphi_train_both_rows_dm(
+            one, *dcs.dmb, p.theta_name, p.arg_pos, energy_rows.data(),
+            force_rows.data(), n_cols, {0});
+        c.dm.energy = c.dm.energy || cm.first;
+        c.dm.force = c.dm.force || cm.second;
+    }
+    return c;
+}
+
+/* The two-body and the many-body descriptor of `dcs` named as the training
+ * configuration `ctx` writes them, for a message: the first value of its
+ * TYPE2B or TYPEMB line, the registered name it is built from (DM_PS_SQ,
+ * DM_mRLR), not the label of its family (DM_Poly, DM_mEAD); DM_Embed, the
+ * type every DESCRIPTOR line names, for DESCRIPTOR blocks without a TYPEMB
+ * line or with one that starts with a block (@id); the label of a term
+ * that is off (D2_Dummy, DM_Dummy). */
+struct DescriptorNames {
+    std::string d2, dm;
+};
+
+DescriptorNames descriptor_names(const core::Context& ctx,
+                                 const models::DC_Selector& dcs)
+{
+    DescriptorNames n{dcs.d2b->label(), dcs.dmb->label()};
+    if (ctx.get<bool>("INIT2B") && ctx.has_stored("TYPE2B"))
+        n.d2 = ctx.get<std::string>("TYPE2B");
+    const bool blocks = !ctx.blocks("DESCRIPTOR").empty();
+    if (blocks || ctx.get<bool>("INITMB")) {
+        const std::string typemb = ctx.has_stored("TYPEMB")
+                                       ? ctx.get<std::string>("TYPEMB")
+                                       : std::string();
+        if (blocks && (typemb.empty() || typemb.front() == '@'))
+            n.dm = "DM_Embed";
+        else if (!typemb.empty())
+            n.dm = typemb;
+    }
+    return n;
+}
+
+/* The descriptors of `dcs` (named as `names`) that the walker claims `p`
+ * for in the energy rows of the structures of `db` and in none of their
+ * force rows. */
+std::vector<std::string>
+energy_rows_only_descriptors(const mlip::StructureDB& db,
+                             const models::DC_Selector& dcs,
+                             const DescriptorNames& names, const ParamRef& p,
+                             std::size_t n_cols)
+{
+    const DescriptorClaims c = descriptor_claims(db, dcs, p, n_cols);
+    std::vector<std::string> out;
+    if (c.d2.energy && !c.d2.force) out.push_back(names.d2);
+    if (c.dm.energy && !c.dm.force) out.push_back(names.dm);
+    return out;
+}
+
+/* The descriptors of `dcs` (named as `names`) whose values depend on `p`
+ * (D_Base::depends_on) and that the walker claims `p` for in no energy row
+ * of the structures of `db`, when another descriptor claims it there; none
+ * when no descriptor claims it. */
+std::vector<std::string>
+depending_descriptors_without_derivative(const mlip::StructureDB& db,
+                                         const models::DC_Selector& dcs,
+                                         const DescriptorNames& names,
+                                         const ParamRef& p,
+                                         std::size_t n_cols)
+{
+    const DescriptorClaims c = descriptor_claims(db, dcs, p, n_cols);
+    if (!c.d2.energy && !c.dm.energy) return {};
+    const auto depends =
+        mlip::detail::arms_depend_on(dcs, p.theta_name, p.arg_pos);
+    std::vector<std::string> out;
+    if (depends.first && !c.d2.energy) out.push_back(names.d2);
+    if (depends.second && !c.dm.energy) out.push_back(names.dm);
+    return out;
+}
+
+}  // namespace
+
+std::vector<ParameterWithoutDerivative>
+parameters_without_analytical_derivative(const core::Context& ctx,
+                                         const HPOTargets& trg,
+                                         const mlip::StructureDB& train,
+                                         const mlip::StructureDB& val)
+{
+    /* The descriptors an evaluation builds (HPO_Host: a Trainer of its
+     * candidate context), at the configuration's values. */
+    core::Context c = ctx;
+    mlip::memory::MLIPWorkspaceManager ws;
+    mlip::Trainer probe(c, ws);
+    const std::size_t n_cols = probe.DCS.descriptor_size();
+    const bool train_force = probe.context.get<bool>("FORCE");
+    const bool has_val = val.size() > 0;
+    const bool val_force = trg.use_frmse;
+    /* The force rows of the run: the fit's, or those PC_FRMSE measures. */
+    const bool force_rows = train_force || (has_val && val_force);
+
+    /* Built for the first parameter whose rows the data do not claim. */
+    std::optional<mlip::StructureDB> pairs;
+
+    std::vector<ParameterWithoutDerivative> out;
+    for (const ParamRef& p : make_param_ref_table(trg)) {
+        const ThetaClaims t =
+            theta_claims(train, probe.DCS, p, train_force, n_cols);
+        const ThetaClaims v =
+            has_val ? theta_claims(val, probe.DCS, p, val_force, n_cols)
+                    : ThetaClaims{};
+        if (claims_differentiate(t, train_force, v, has_val, val_force))
+            continue;
+        /* Rows the data do not claim are 0 when the descriptors
+         * differentiate the parameter at all (probe_pairs). */
+        if (!pairs) pairs = probe_pairs(ctx, probe.DCS);
+        const ThetaClaims o =
+            theta_claims(*pairs, probe.DCS, p, force_rows, n_cols);
+        if (claims_differentiate(t, train_force, v, has_val, val_force, o))
+            continue;
+        ParameterWithoutDerivative g;
+        g.key = p.theta_name;
+        g.index = static_cast<std::size_t>(p.arg_pos);
+        const auto it = trg.optimap.find(p.theta_name);
+        if (it != trg.optimap.end() && p.token < it->second.line.size())
+            g.line = it->second.line[p.token];
+        if (!o.energy) {
+            /* A descriptor that depends on it gives no derivative beside one
+             * that does, or no descriptor differentiates it. */
+            g.descriptors = depending_descriptors_without_derivative(
+                *pairs, probe.DCS, descriptor_names(ctx, probe.DCS), p,
+                n_cols);
+            g.why = g.descriptors.empty()
+                        ? ParameterWithoutDerivative::Why::NoDerivative
+                        : ParameterWithoutDerivative::Why::
+                              DependsWithoutDerivative;
+        } else {
+            /* The descriptors differentiate it, in the energy rows only:
+             * the force rows of the fit lack it, or those PC_FRMSE
+             * measures. */
+            g.why = ParameterWithoutDerivative::Why::EnergyRowsOnly;
+            g.descriptors = energy_rows_only_descriptors(
+                *pairs, probe.DCS, descriptor_names(ctx, probe.DCS), p,
+                n_cols);
+            g.force_rows_of_fit = !claims_differentiate(
+                t, train_force, ThetaClaims{}, false, false, o);
+        }
+        out.push_back(std::move(g));
+    }
+    std::stable_sort(out.begin(), out.end(),
+                     [](const ParameterWithoutDerivative& a,
+                        const ParameterWithoutDerivative& b) {
+                         return a.line < b.line;
+                     });
+    return out;
+}
+
+}  // namespace tadah::hpo

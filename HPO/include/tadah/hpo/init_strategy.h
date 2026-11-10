@@ -1,0 +1,165 @@
+#pragma once
+/*
+ * InitStrategy -- produces a list of starting points (in real, untransformed
+ * space) for the optimiser, given bounds, the OPTIM map and a seed.
+ *
+ * Concrete strategies live in init_strategies.cpp. A free factory
+ * build_init_strategy() walks the parsed InitStrategySpec and returns
+ * one polymorphic InitStrategy that may be a Chain over several
+ * producers.
+ *
+ * Numerical contract:
+ *   - Sampling happens in the transformed (post analyse_logscale) space
+ *     using spec.low, spec.high, spec.log_scaled.
+ *   - Output points are returned in real space.
+ *   - log_scaled[d] == false => dim d is sampled linearly between low[d]
+ *     and high[d] (already real-valued).
+ *   - log_scaled[d] == true  => dim d is sampled in log-space (low[d] and
+ *     high[d] are already log-transformed by analyse_logscale()) and
+ *     exponentiated before being returned.
+ */
+
+#include <tadah/hpo/optimizer_spec.h>   // InitStrategySpec::Entry
+
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include <tadah/hpo/optimizer_spec.h>   // OptimizerSpec, InitOrigin
+
+namespace tadah::core { class Context; }
+
+namespace tadah::hpo {
+
+class HPOTargets;        // forward-declared -- full type pulled in by .cpp
+
+/* The most starting points one count of the target file asks for: the K of
+ * a METHOD line and STRATEGY TOPK, the candidates a PRESTAGE refinement
+ * starts from (K_TOTAL caps the points of the METHOD lines of its block, so
+ * it asks for none of its own). The points of a block are drawn when the
+ * file is read and held in memory, and each is a start of a search;
+ * the parser of the target file refuses a larger count at its line. */
+inline constexpr std::size_t kMaxStartingPoints = 1000000;
+
+/* Which block's chain draws the points (InitContext::stream): an INIT
+ * block (the run's, a PRESTAGE phase's) or a RESTART round. The random
+ * methods (RANDOM, LHS) of a RESTART round draw a stream of their own
+ * (seed_stream(seed, kRestartPoints)), so a round never draws an INIT
+ * block's points; an INIT block's draw std::mt19937_64(seed), as they
+ * always did. */
+enum class InitStream { Init, Restart };
+
+struct InitContext {
+    const OptimizerSpec& spec;            // bounds, log_scaled (post-transform)
+    const HPOTargets&    targets;         // optimap
+    std::uint64_t        seed;            // resolved INIT_SEED or random_device
+    /* The run's -c configuration (HPOTargets::run_context()), for WARM's
+     * EMBF0 and RHOFORM checks; every resolution in a run passes it (the
+     * INIT chains, a RESTART refresh). nullptr skips the checks. */
+    const core::Context* run_context = nullptr;
+    /** The block the chain belongs to (InitStream); RestartPolicy passes
+     *  Restart. */
+    InitStream           stream = InitStream::Init;
+};
+
+class InitStrategy {
+public:
+    virtual ~InitStrategy() = default;
+
+    /** Produce up to k starting points, the first of those the strategy
+     *  gives (K_TOTAL: a cap, k = 0 for none): RANDOM, LHS and SOBOL draw
+     *  their K points and return the first min(K, k), CONFIG and WARM one
+     *  point, a chain its children's points until it has k. */
+    virtual std::vector<std::vector<double>>
+    generate(const InitContext& ctx, std::size_t k) const = 0;
+
+    /** generate() plus the provenance of every returned point: @p origins
+     *  is overwritten, parallel to the result. The default tags every point
+     *  with origin(); ChainStrategy tags each point with the child that
+     *  produced it and keeps the first origin when it drops a duplicate. */
+    virtual std::vector<std::vector<double>>
+    generate_tagged(const InitContext& ctx, std::size_t k,
+                    std::vector<InitOrigin>& origins) const
+    {
+        auto pts = generate(ctx, k);
+        origins.assign(pts.size(), origin());
+        return pts;
+    }
+
+    /** Provenance of this strategy's points (CONFIG unless overridden). */
+    virtual InitOrigin origin() const { return InitOrigin{}; }
+
+    /** Human-readable name for logs (matches the parser keyword). */
+    virtual std::string name() const = 0;
+
+    /** Natural number of points this strategy produces when no explicit
+     *  K is given. Used by build_init_strategy() to size INIT_K. */
+    virtual std::size_t default_k() const { return 1; }
+
+    /** Whether its points depend on the context's seed: RANDOM, LHS and
+     *  SOBOL, and a chain holding one; CONFIG and WARM take none. */
+    virtual bool draws_from_seed() const { return false; }
+};
+
+/* The -c configuration's point: the config value of every OPTIM-flagged
+ * dim, walking targets.optimap in its (lex-sorted) order, i.e. the dim
+ * order of spec.low / spec.high / spec.optim_init. What INIT CONFIG
+ * produces, and what the density gates recognise as the -c seed. */
+std::vector<double> config_point_from_targets(const HPOTargets& trg);
+
+/* Build the polymorphic InitStrategy from the parsed spec.
+ *
+ *   - Walks ispec.chain in order, instantiating each entry. The chain is
+ *     never reordered -- entries run exactly as the user wrote them.
+ *   - The in-config OPTIM point is part of the chain only when the user
+ *     listed `STRATEGY CONFIG` explicitly. There is no implicit CONFIG.
+ *   - If the chain is empty (no INIT block, or one with no STRATEGY
+ *     lines) a single CONFIG point is used as a safe default.
+ *   - Every WARM entry takes ispec.warm_on_mismatch, the policy of the
+ *     block the chain belongs to (an INIT block, a RESTART block), whatever
+ *     spec the InitContext of a later generate() carries.
+ */
+std::unique_ptr<InitStrategy> build_init_strategy(const struct InitStrategySpec& ispec);
+
+/* Checks one chain entry the way build_init_strategy() instantiates it:
+ * a known METHOD, its arity, and K a whole integer from 1 to
+ * kMaxStartingPoints. The parser of the target file calls it
+ * at the METHOD line, so the error names that line. Throws
+ * std::runtime_error. */
+void validate_init_entry(const InitStrategySpec::Entry& e);
+
+/* The starting points a chain gives as the target file writes it (the
+ * INIT blocks of one optimiser, those inside EXPLORE, or the RESTART
+ * blocks): the K of each RANDOM, LHS and SOBOL line, one point for its
+ * CONFIG lines and one for the WARM lines of each file -- the chain keeps a
+ * point once (ChainStrategy), and every CONFIG line, and every WARM line of
+ * one file, gives the same point -- or the CONFIG point when it has no
+ * METHOD line. The one count of the startup check of N_STARTS
+ * (require_multistart_points), of the K_TOTAL that caps nothing
+ * (the parser of the target file) and of the run-time warning of a RESTART round of
+ * MULTISTART. The chain drawn can give fewer: a WARM point that
+ * WARM_ON_MISMATCH skip drops, a drawn point equal to another. */
+struct ChainPoints {
+    std::size_t distinct = 0;              // before K_TOTAL
+    std::size_t points = 0;                // at most K_TOTAL
+    std::optional<std::size_t> k_total;    // the chain's K_TOTAL
+    bool warm = false;                     // a WARM line
+    /* WARM_ON_MISMATCH skip, which drops a WARM point that does not fit. */
+    bool warm_skip = false;
+    /* The METHOD lines with their values ("CONFIG, CONFIG, RANDOM 2"),
+     * empty without one, and why repeated lines count once ("the CONFIG
+     * lines give one point", "the WARM lines of one file give one point",
+     * both joined with ", and "). */
+    std::string lines;
+    std::string notes;
+    /* What the count is made of, as a message names it: "LHS 6, capped by
+     * K_TOTAL 2", "CONFIG, CONFIG; the CONFIG lines give one point", "the
+     * CONFIG point: the chain has no METHOD line". */
+    std::string from() const;
+};
+ChainPoints chain_points(const InitStrategySpec& init);
+
+}  // namespace tadah::hpo

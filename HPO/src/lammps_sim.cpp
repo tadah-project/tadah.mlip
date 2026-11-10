@@ -1,0 +1,1225 @@
+#include <tadah/core/logger.h>
+#include <tadah/core/number_format.h>
+#include <tadah/hpo/hpo_mpi.h>
+#include <tadah/hpo/lammps_sim.h>
+
+#include "hpotarget_reads.h"
+#include <tadah/hpo/hpo_targets.h>
+#include <tadah/hpo/runners.h>
+#include <tadah/hpo/strict_parse.h>
+#include <iostream>
+
+#include <cstring>
+#include <fstream>
+#include <mutex>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+
+#include <algorithm>
+#include <cctype>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+namespace tadah::hpo { bool try_parse_double(const std::string& s, double& value); }
+
+namespace {
+
+using tadah::hpo::try_parse_double;
+
+inline std::string to_lower_ascii(std::string s)
+{
+    for (char &c : s)
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return s;
+}
+
+inline std::string trim_ascii(std::string s)
+{
+    const auto beg = s.find_first_not_of(" \t\r\n");
+    if (beg == std::string::npos) return "";
+    const auto end = s.find_last_not_of(" \t\r\n");
+    return s.substr(beg, end - beg + 1);
+}
+
+std::vector<std::string> split_lammps_words(const std::string& line)
+{
+    std::vector<std::string> out;
+    std::string cur;
+    bool in_single = false;
+    bool in_double = false;
+
+    for (char c : line) {
+        if (!in_double && c == '\'') {
+            in_single = !in_single;
+            continue;
+        }
+        if (!in_single && c == '"') {
+            in_double = !in_double;
+            continue;
+        }
+
+        if (!in_single && !in_double && std::isspace(static_cast<unsigned char>(c))) {
+            if (!cur.empty()) {
+                out.push_back(cur);
+                cur.clear();
+            }
+            continue;
+        }
+
+        cur.push_back(c);
+    }
+
+    if (!cur.empty()) out.push_back(cur);
+    return out;
+}
+
+/* Whether the LAMMPS command `command` (one logical command of a script)
+ * is `quit`, or an `if` that runs one: the commands of an if are its
+ * quoted words after `then`, after the condition of each `elif` and after
+ * `else` (LAMMPS' if: `if <boolean> then <t1> <t2> ... elif <boolean> <f1>
+ * ... else <e1> ...`), each checked as a command in its turn. A quit in the
+ * text of another command (print "quit") is none. Commands are matched as
+ * LAMMPS matches them, in their case. */
+bool command_quits(const std::string& command)
+{
+    const auto words = split_lammps_words(trim_ascii(command));
+    if (words.empty()) return false;
+    if (words[0] == "quit") return true;
+    if (words[0] != "if") return false;
+    /* words[1] is the condition; from "then" on, commands, except the
+     * condition right after each "elif". */
+    bool after_elif = false;
+    for (std::size_t k = 2; k < words.size(); ++k) {
+        if (words[k] == "then" || words[k] == "else") continue;
+        if (words[k] == "elif") { after_elif = true; continue; }
+        if (after_elif) { after_elif = false; continue; }
+        if (command_quits(words[k])) return true;
+    }
+    return false;
+}
+
+std::optional<std::string>
+try_get_variable_value(const LammpsRunner::LMPPtr& lmp,
+                       const std::string& name)
+{
+    if (!lmp || !lmp->input || !lmp->input->variable) return std::nullopt;
+    try {
+        const int idx = lmp->input->variable->find(name.c_str());
+        if (idx < 0) return std::nullopt;
+        char* raw = lmp->input->variable->retrieve(name.c_str());
+        if (!raw) return std::nullopt;
+        return std::string(raw);
+    } catch (...) {
+        // Validation should not force evaluation of equal-style variables
+        // whose formulas depend on runtime simulation state (e.g. lx,
+        // pe/atoms, computes after run 0, etc.). Treat those as
+        // unavailable for static substitution and fall back to the
+        // literal-scan result or placeholder handling.
+        return std::nullopt;
+    }
+}
+
+bool substitute_known_variables(const LammpsRunner::LMPPtr& lmp,
+                                const std::string& in,
+                                std::string& out)
+{
+    out.clear();
+    out.reserve(in.size());
+
+    for (std::size_t i = 0; i < in.size(); ++i) {
+        if (in[i] != '$') {
+            out.push_back(in[i]);
+            continue;
+        }
+
+        if (i + 1 >= in.size()) {
+            out.push_back(in[i]);
+            continue;
+        }
+
+        if (in[i + 1] == '(') {
+            out.push_back(in[i]);
+            continue;
+        }
+
+        if (in[i + 1] == '{') {
+            const std::size_t close = in.find('}', i + 2);
+            if (close == std::string::npos) return false;
+            const std::string name = in.substr(i + 2, close - (i + 2));
+            auto value = try_get_variable_value(lmp, name);
+            if (!value.has_value()) return false;
+            out += *value;
+            i = close;
+            continue;
+        }
+
+        if (std::isalnum(static_cast<unsigned char>(in[i + 1])) || in[i + 1] == '_') {
+            const std::string name(1, in[i + 1]);
+            auto value = try_get_variable_value(lmp, name);
+            if (!value.has_value()) return false;
+            out += *value;
+            ++i;
+            continue;
+        }
+
+        out.push_back(in[i]);
+    }
+
+    return true;
+}
+
+bool evaluate_condition(const LammpsRunner::LMPPtr& lmp,
+                        const std::string& condition,
+                        bool& value)
+{
+    const auto tokens = split_lammps_words(condition);
+    if (tokens.size() == 3 &&
+        (tokens[1] == "==" || tokens[1] == "!=")) {
+        double lhs = 0.0;
+        double rhs = 0.0;
+        if (!try_parse_double(tokens[0], lhs) || !try_parse_double(tokens[2], rhs)) {
+            value = (tokens[0] == tokens[2]);
+            if (tokens[1] == "!=") value = !value;
+            return true;
+        }
+    }
+
+    if (!lmp || !lmp->input || !lmp->input->variable) return false;
+
+    try {
+        lmp->input->one("variable __tadah_validator_cond equal " + condition);
+        const int idx = lmp->input->variable->find("__tadah_validator_cond");
+        if (idx < 0) return false;
+        value = (lmp->input->variable->compute_equal(idx) != 0.0);
+        lmp->input->one("variable __tadah_validator_cond delete");
+        return true;
+    } catch (...) {
+        try { lmp->input->one("variable __tadah_validator_cond delete"); } catch (...) {}
+        return false;
+    }
+}
+
+void ensure_placeholder_zero(const LammpsRunner::LMPPtr& lmp)
+{
+    if (!lmp || !lmp->input || !lmp->input->variable) return;
+    if (lmp->input->variable->find("__tadah_placeholder_zero") >= 0) return;
+    try {
+        lmp->input->one("variable __tadah_placeholder_zero equal 0.0");
+    } catch (...) {
+    }
+}
+
+std::string placeholder_variable_command(const std::string& name,
+                                         const std::string& style)
+{
+    if (style == "equal") {
+        return "variable " + name + " equal 0.0";
+    }
+    if (style == "string") {
+        return "variable " + name + " string 0";
+    }
+    if (style == "format") {
+        return "variable " + name + " format __tadah_placeholder_zero %.0f";
+    }
+    return {};
+}
+} // anonymous
+
+namespace tadah::hpo {
+
+bool try_parse_double(const std::string& s, double& value)
+{
+    /* std::stod over the whole string, but a subnormal is a number. */
+    return tadah::core::parse_number(s, value);
+}
+
+/* An option token starts with '-' and is not shaped like a number
+ * (strict_parse.h, is_number_shaped): a negative target, weight, bound or
+ * loss parameter is a value; --outvar, -var and the other options are not.
+ * A malformed number that starts with "-" and a digit or '.' ("-3x",
+ * "-0x1p3") or a signed inf/nan is a value too, which the number grammar
+ * rejects, rather than an option passed on to LAMMPS. */
+static bool is_option_token(const std::string& s)
+{
+    return !s.empty() && s[0] == '-' && !is_number_shaped(s);
+}
+
+static std::size_t edit_distance(const std::string& a, const std::string& b)
+{
+    std::vector<std::size_t> prev(b.size() + 1), cur(b.size() + 1);
+    for (std::size_t j = 0; j <= b.size(); ++j) prev[j] = j;
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        cur[0] = i + 1;
+        for (std::size_t j = 0; j < b.size(); ++j)
+            cur[j + 1] = std::min({prev[j + 1] + 1, cur[j] + 1,
+                                   prev[j] + (a[i] == b[j] ? 0 : 1)});
+        prev.swap(cur);
+    }
+    return prev[b.size()];
+}
+
+/* The refusal of `token`, an option that starts with "--" and is none of
+ * the line's own: LAMMPS has no such option (every command-line option of
+ * src/lammps.cpp, lines 193-490 at the pinned commit 50ce71e2e0, starts
+ * with a single '-', and any other argument is "Invalid command-line
+ * argument"), so it would fail every evaluation. Lists the options the line
+ * takes (the line options of the registry the line takes, in its order),
+ * names the closest of them within two edits (a typo such as --hotvars),
+ * and a PC_FAILPROBE option on a PC_LAMMPS line as one. */
+static std::string unknown_option_error(const std::string& token,
+                                        bool failprobe)
+{
+    namespace R = tadah::hpo::hpotarget_registry;
+    const std::string key = failprobe ? "PC_FAILPROBE" : "PC_LAMMPS";
+    std::vector<std::string> known;
+    std::string note;
+    for (const R::LineOption& o : R::kLineOptions) {
+        const bool lammps = R::takes_option(o, "PC_LAMMPS");
+        const bool probe = R::takes_option(o, "PC_FAILPROBE");
+        if (!lammps && !probe) continue;
+        if (failprobe ? probe : lammps)
+            known.push_back(std::string(o.option));
+        else if (!failprobe && token == o.option)
+            note = " (a PC_FAILPROBE option)";
+    }
+    if (note.empty()) {
+        std::size_t best = 3;
+        for (const auto& k : known) {
+            const std::size_t d = edit_distance(token, k);
+            if (d < best) {
+                best = d;
+                note = " (closest option: '" + k + "')";
+            }
+        }
+    }
+    std::string list;
+    for (std::size_t i = 0; i < known.size(); ++i) {
+        if (i) list += (i + 1 == known.size()) ? " and " : ", ";
+        list += known[i];
+    }
+    return key + ": unknown option '" + token + "'" + note + ": a " + key +
+           " line takes the options " + list + ", and LAMMPS command-line "
+           "options, which start with a single '-'";
+}
+
+LammpsSim::LammpsSim() {}
+LammpsSim::LammpsSim(std::string& cmd_,
+                     const std::string& MAX_TIME,
+                     double FAIL_SCORE,
+                     const tadah::LossFunction& defaultLoss,
+                     bool failprobe)
+  : cmd(cmd_)
+  , defLoss(defaultLoss)
+  , maxtime(MAX_TIME)
+  , failscore(FAIL_SCORE)
+{
+  is_failprobe = failprobe;
+  invar.push_back(TADAH_LAMMPS_LIB);
+  tokenise();
+  parse_tokens();
+  /* The root PC_SCRIPT_TIMEOUT (checked at its own line) or this line's
+   * --maxtime (checked in parse_tokens). */
+  maxtime_seconds = parse_script_timeout(maxtime, "PC_SCRIPT_TIMEOUT");
+
+  // set default values if not specified by user
+  auto it_screen = std::find(invar.begin(), invar.end(), "-screen");
+  if (it_screen == invar.end()) {
+    invar.push_back("-screen");
+    invar.push_back("none");
+  }
+  auto it_log = std::find(invar.begin(), invar.end(), "-log");
+  if (it_log == invar.end()) {
+    invar.push_back("-log");
+    invar.push_back("none");
+  }
+  /* The script timeout, as `timer timeout ${maxtime}` reads it
+   * (prep_script_lines). parse_tokens() rejects a -var maxtime of the
+   * user's, which would replace it unchecked. */
+  invar.push_back("-var");
+  invar.push_back("maxtime");
+  invar.push_back(maxtime+" every 1");
+
+  const std::string key = is_failprobe ? "PC_FAILPROBE" : "PC_LAMMPS";
+  if (!script.length())
+    throw std::runtime_error(key + ": the line has no --script option; "
+                             "--script <file> names the LAMMPS script the line "
+                             "runs");
+
+  /* A PC_FAILPROBE sim is forbidden from declaring --varloss (it grades
+   * failures; it must not shape the feasible objective) -- the >=1
+   * requirement applies to ordinary PC_LAMMPS sims only. */
+  if (!n_varloss.size() && !is_failprobe)
+    throw std::runtime_error(
+        "PC_LAMMPS: the line has no --varloss option; a PC_LAMMPS line gives "
+        "at least one --varloss <name> <target> <weight>, a loss term "
+        "(--outvar records a value without one)");
+
+  prep_script_lines();
+
+  /* prep_script_lines() reads the files the script includes before it
+   * drops the comments and blank lines. */
+  if (script_lines.empty()) {
+    throw std::runtime_error(key + ": the script " + script + " has no "
+                             "command: every line of it, and of the files it "
+                             "includes, is blank or a comment");
+  }
+  // Validate PC_LAMMPS contract
+  // every --varloss/--outvar must be defined in the script and must be equal-style.
+  validate_requested_variables_defined_equal();
+
+
+ // prepare containers
+  /* parse_tokens() fills the --varloss vectors together. */
+  if (n_varloss.size() != t_varloss.size() || w_varloss.size() != n_varloss.size()) {
+    throw std::logic_error("LammpsSim: n_varloss, w_varloss and t_varloss have different sizes");
+  }
+  // v_outvar.resize(n_outvar.size());
+  // prepare i_varloss
+  // i_varloss is used to map n_varloss to n_outvar
+  // it is a vector of indices that correspond to the indices of n_outvar
+  // for (const auto& var : n_varloss) {
+  //   auto it = std::find(n_outvar.begin(), n_outvar.end(), var);
+  //   if (it != n_outvar.end()) {
+  //     i_varloss.push_back(std::distance(n_outvar.begin(), it));
+  //   } else {
+  //     continue; // skip if not found
+  //   }
+  // }
+  // check if i_varloss is the same size as n_varloss
+  if (i_varloss.size() != n_varloss.size()) {
+    throw std::logic_error("LammpsSim: i_varloss and n_varloss have different sizes");
+  }
+
+  if (lossFn.size()!=n_varloss.size())
+    throw std::logic_error("LammpsSim: lossFn and n_varloss have different sizes");
+}
+void LammpsSim::tokenise() {
+  std::stringstream ss(cmd);
+  std::string token;
+  while (ss >> token) {
+    if (token[0]=='#') break;
+    tokens.push_back(token);
+  }
+}
+void LammpsSim::parse_tokens() {
+
+  /* A token that is not an option is a value: of the LAMMPS option before
+   * it (`-var x 1 2`, `-pk omp 4 neigh no`: LAMMPS decides how many it
+   * takes), or of an HPO option, which reads exactly its own values. A
+   * bare token after an HPO option's values (`--maxtime 1:30 00`, a typo
+   * for 1:30:00) used to reach LAMMPS as a command-line argument, and every
+   * run failed on it; it is an error naming the option. */
+  const std::string key = is_failprobe ? "PC_FAILPROBE" : "PC_LAMMPS";
+  std::string hpo_values;       /* "<option> takes ...", after its values */
+  bool lammps_values = false;   /* after a LAMMPS option or its values */
+  auto hpo_option_read = [&](const std::string& takes) {
+    hpo_values = key + " " + takes;
+    lammps_values = false;
+  };
+  /* The variable maxtime carries the script timeout (the constructor
+   * passes -var maxtime "<spec> every 1" for `timer timeout ${maxtime}`);
+   * a user's definition would replace the checked, reported value. */
+  auto reject_reserved = [&key](const std::string& option,
+                                const std::string& name) {
+    if (name == "maxtime")
+      throw std::runtime_error(
+          key + " " + option + " maxtime: the variable maxtime is reserved: "
+          "tadah hpo passes the script's time limit to LAMMPS in it, for "
+          "`timer timeout ${maxtime}`; --maxtime on this line or "
+          "PC_SCRIPT_TIMEOUT sets the limit");
+  };
+
+  /* An option that takes one value is given once: a second would replace
+   * the first's value (the later --script ran, the earlier was dropped).
+   * --varloss, --invar, --outvar, --hotvar and --failvar add an entry
+   * each; a variable is declared (defined) once on a line. */
+  std::unordered_set<std::string> once_seen;
+  auto once = [&](const std::string& option) {
+    if (!once_seen.insert(option).second)
+      throw std::runtime_error(key + " " + option + " is given twice on "
+                               "this line; each option is given once");
+  };
+  /* A LAMMPS variable the line defines on LAMMPS' command line (--invar,
+   * -var, -v), once. */
+  auto define_variable = [&](const std::string& option,
+                             const std::string& name) {
+    for (const auto& v : line_variables)
+      if (v.name == name)
+        throw std::runtime_error(
+            option + " " + name + ": the variable " + name + " is defined "
+            "twice on this line (first by " + v.option + " " + name +
+            "); each variable is defined once");
+    line_variables.push_back({name, option});
+  };
+
+  /* The options of the line (the registry's line options and their
+   * handlers, hpotarget_handlers.cpp); a PC_FAILPROBE line is read with
+   * the options of a PC_LAMMPS line too, and HPOTargets refuses there
+   * those a probe takes none of (--varloss, --hotvar, --failvar). */
+  namespace R = tadah::hpo::hpotarget_registry;
+  size_t i = 0;
+  R::ScriptOptions options{*this, key, tokens, i, defLoss, once,
+                           define_variable, reject_reserved, hpo_option_read};
+  while (i < tokens.size()) {
+    const R::LineOption* option = R::find_option(key, tokens[i]);
+    if (!option && is_failprobe)
+      option = R::find_option("PC_LAMMPS", tokens[i]);
+    if (option) {
+      const std::string word = tokens[i];
+      R::OptionRead read{*option, word};
+      read.script = &options;
+      R::call(*option, read);
+    }
+    else if (tokens[i].rfind("--", 0) == 0) {
+      /* None of HPO's options (the line options of the registry, each
+       * read by its handler above), and not a LAMMPS option either: LAMMPS
+       * has none that starts with "--" (unknown_option_error). It used to
+       * go to LAMMPS, and every evaluation failed on it. */
+      throw std::runtime_error(unknown_option_error(tokens[i], is_failprobe));
+    }
+    else if (is_option_token(tokens[i])) {
+      /* A LAMMPS command-line option: it and the values that follow it go
+       * to LAMMPS. -var (-v) maxtime is reserved. -sc and -l are LAMMPS'
+       * short spellings of -screen and -log: they go as the long ones, which
+       * HPO looks for before it adds "-screen none" and "-log none" (a
+       * second -log after the line's would replace it). */
+      if ((tokens[i] == "-var" || tokens[i] == "-v") && i + 1 < tokens.size()) {
+        reject_reserved(tokens[i], tokens[i + 1]);
+        define_variable(tokens[i], tokens[i + 1]);
+      }
+      const std::string option = tokens[i] == "-sc" ? "-screen"
+                               : tokens[i] == "-l"  ? "-log"
+                                                    : tokens[i];
+      invar.push_back(option);
+      ++i;
+      hpo_values.clear();
+      lammps_values = true;
+    }
+    else if (lammps_values) {
+      invar.push_back(tokens[i++]);   /* a value of the LAMMPS option */
+    }
+    else if (!hpo_values.empty()) {
+      throw std::runtime_error(hpo_values + " (unexpected '" + tokens[i] +
+                               "')");
+    }
+    else {
+      throw std::runtime_error(
+          key + ": unexpected '" + tokens[i] + "': every word after " + key +
+          " is an option or a value of one (the options of " + key +
+          " start with --, LAMMPS command-line options with -)");
+    }
+  }
+
+  /* A --hotvar is injected into the line's own script as `variable <name>
+   * equal <value>` before it runs; LAMMPS refuses that for a variable the
+   * line's command line defines (an index-style variable), and every
+   * evaluation would fail. */
+  for (const auto& hv : hotvars)
+    for (const auto& v : line_variables)
+      if (v.name == hv.name)
+        throw std::runtime_error(
+            "--hotvar " + hv.name + ": the variable " + hv.name +
+            " is defined on this line by " + v.option + " " + v.name +
+            " too; a --hotvar variable is injected as `variable " + hv.name +
+            " equal <value>`, which LAMMPS refuses for a variable of another "
+            "style");
+}
+
+
+/* ----------------------------------------------------------------------
+   remove comments while respecting quoting; update quote state flags
+------------------------------------------------------------------------- */
+std::string LammpsSim::stripComments(const std::string& in,
+                                       bool& in_single,
+                                       bool& in_double,
+                                       bool& in_triple) const
+{
+    std::string out;
+    const std::size_t n = in.size();
+
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        char c = in[i];
+
+        /* --- triple quotes ------------------------------------------------ */
+        if (!in_single && !in_double)
+        {
+            if (!in_triple && c == '"' && i + 2 < n &&
+                in[i + 1] == '"' && in[i + 2] == '"')
+            {
+                in_triple = true;
+                out.append("\"\"\"");
+                i += 2;
+                continue;
+            }
+            if (in_triple && c == '"' && i + 2 < n &&
+                in[i + 1] == '"' && in[i + 2] == '"')
+            {
+                in_triple = false;
+                out.append("\"\"\"");
+                i += 2;
+                continue;
+            }
+        }
+
+        /* --- inside triple quotes: copy verbatim ------------------------- */
+        if (in_triple)
+        {
+            out.push_back(c);
+            continue;
+        }
+
+        /* --- single / double --------------------------------------------- */
+        if (!in_double && c == '\'' )
+        {
+            in_single = !in_single;
+            out.push_back(c);
+            continue;
+        }
+        if (!in_single && c == '"' )
+        {
+            in_double = !in_double;
+            out.push_back(c);
+            continue;
+        }
+
+        /* --- comment outside quotes -------------------------------------- */
+        if (!in_single && !in_double && c == '#')
+        {
+            break;                      // discard rest of physical line
+        }
+
+        out.push_back(c);
+    }
+    return out;
+}
+
+/* ----------------------------------------------------------------------
+   read the complete contents of 'filename' into a std::string
+   throws std::runtime_error if the file cannot be opened or read
+------------------------------------------------------------------------- */
+inline std::string read_entire_file(const std::string& filename)
+{
+    std::ifstream file(filename.c_str(), std::ios::in | std::ios::binary);
+    if (!file)
+        throw std::runtime_error("cannot open the LAMMPS script \"" + filename + "\"");
+
+    std::ostringstream buffer;
+    buffer << file.rdbuf();            // read *everything*
+    if (!file.good() && !file.eof())   // eof is fine; any other error is not
+        throw std::runtime_error("cannot read the LAMMPS script \"" + filename + "\"");
+
+    return buffer.str();
+}
+/* ----------------------------------------------------------------------
+   create script_lines from raw script
+------------------------------------------------------------------------- */
+void LammpsSim::prep_script_lines()
+{
+  std::string buffer = expand_includes(script);
+  script_lines.clear();
+
+  std::istringstream iss(buffer);
+  std::string        line;            // current physical line
+  std::string        cmd;             // command under construction
+
+  /* quote states that may span several physical lines */
+  bool in_single  = false;
+  bool in_double  = false;
+  bool in_triple  = false;
+
+  while (std::getline(iss, line))
+  {
+    /* drop trailing CR in CRLF files */
+    if (!line.empty() && line.back() == '\r') line.pop_back();
+
+    /* 1. comment stripping (updates quote state flags) */
+    std::string clean =
+      stripComments(line, in_single, in_double, in_triple);
+
+    /* 2. decide whether this line ends with an ampersand continuation  */
+    bool continuation = false;
+
+
+        if (!in_triple)
+        {
+            std::size_t last_print = clean.find_last_not_of(" \t");
+            if (last_print != std::string::npos && clean[last_print] == '&')
+            {
+                continuation = true;
+
+                // erase everything from the '&' to the end of line
+                clean.erase(last_print);
+
+                // make sure the part we keep ends with *exactly* one space
+                // (so words do not stick together after concatenation)
+                if (clean.empty() || !std::isspace(static_cast<unsigned char>(clean.back())))
+                    clean.push_back(' ');
+                else
+                {
+                    // collapse possible multiple blanks to one
+                    while (clean.size() >= 2 &&
+                           std::isspace(static_cast<unsigned char>(clean[clean.size()-2])))
+                        clean.pop_back();
+                    clean.back() = ' ';
+                }
+            }
+        }
+
+    /* 3. build up the logical command string ------------------------- */
+    if (cmd.empty())
+      cmd = std::move(clean);
+    else
+      cmd += clean;            // keep leading blanks of next line
+
+    /* keep newline inside triple quotes so that user-supplied text   */
+    /* keeps its original layout                                       */
+    if (in_triple)
+    {
+      cmd.push_back('\n');
+      continue;                 // command is definitely not finished
+    }
+
+    if (continuation)
+    {
+      /* no newline -> exactly LAMMPS semantics */
+      continue;                 // wait for next physical line
+    }
+
+    /* 4. command finished ------------------------------------------- */
+    cmd.push_back('\n');
+
+    /* reject blank lines (may happen after stripping) */
+    if (cmd.find_first_not_of(" \t\n") != std::string::npos)
+      script_lines.push_back(cmd);
+
+    cmd.clear();
+  }
+
+  /* file ended but last command not yet pushed */
+  if (!cmd.empty() &&
+      cmd.find_first_not_of(" \t\n") != std::string::npos)
+    script_lines.push_back(cmd);
+
+  /* LAMMPS' quit ends the process (Error::done: MPI_Finalize and exit()):
+   * under PC_ISOLATION THREAD tadah hpo itself, which crashed on it, under
+   * PROCESS the worker, whose evaluations failed with a closed channel.
+   * The script ends at its last line. Refused here, as written (one a
+   * variable spells cannot be seen until it runs). */
+  for (std::size_t li = 0; li < script_lines.size(); ++li)
+    if (command_quits(script_lines[li]))
+      throw std::runtime_error(
+          std::string(is_failprobe ? "PC_FAILPROBE" : "PC_LAMMPS") +
+          ": the script " + script + " has a quit command, command " +
+          std::to_string(li + 1) + " of the script with its include files "
+          "read in (" + trim_ascii(script_lines[li]) + "): quit ends the "
+          "process that runs the script (tadah hpo itself under PC_ISOLATION "
+          "THREAD)");
+
+  /* Per-sim wall-clock enforcement. LAMMPS's native `timer timeout` is the
+   * only mechanism that stops a running minimize cleanly (checked every
+   * minimizer iteration; ends the run with TIMEOUT status, not an error),
+   * and `clear` rebuilds the Timer, so the command must be re-issued after
+   * every clear. ${maxtime} expands to "<seconds> every 1" (the -var
+   * registered in the ctor). Enforcement is opt-in: MAXTIME/--maxtime
+   * default to "off"; a script that issues its own `timer` command keeps
+   * full control and gets no injection.
+   *
+   * Scripts run through Input::file(), which never checks the timer
+   * BETWEEN commands, and `clear` destroys a FIRED Timer -- so on its own
+   * the re-armed timer would let a timed-out section roll silently into
+   * the next section with a fresh budget (and the end-of-script
+   * is_timeout() check would see a healthy timer: a timed-out sim
+   * misreported as OK). The `timeremain` guard injected BEFORE each
+   * mid-script clear aborts the run at the section boundary instead: after
+   * a fire, `$(timeremain)` is exactly 0.0 and the sentinel executes as an
+   * unknown command, failing Input::file() with a message the runner
+   * classifies as a soft-timeout stop. This preserves the per-section
+   * timeout semantics and cost profile of the old per-line executor. The
+   * final section needs no guard: with no clear after it, the fired timer
+   * survives to the end-of-script is_timeout() check.
+   *
+   * Only a limit in seconds is injected: "off" and "unlimited" (LAMMPS'
+   * two spellings of no limit; maxtime_seconds is empty) inject nothing.
+   * An injected `timer timeout unlimited` leaves $(timeremain) at 0.0, so
+   * the guard aborted every multi-section script as timed out. */
+  if (maxtime_seconds && !script_lines.empty()) {
+    bool user_timer = false;
+    for (const auto& l : script_lines) {
+      std::istringstream ls(l);
+      std::string tok;
+      if ((ls >> tok) && to_lower_ascii(tok) == "timer") { user_timer = true; break; }
+    }
+    own_timer = user_timer;
+    if (!user_timer) {
+      const std::string timer_line = "timer timeout ${maxtime}\n";
+      const std::string guard_line =
+          std::string("if \"$(timeremain) == 0.0\" then \"") +
+          tadah::hpo::PC_TIMEOUT_ABORT_SENTINEL + "\"\n";
+      auto first_tok_is_clear = [](const std::string& l) {
+        std::istringstream ls(l);
+        std::string tok;
+        return (ls >> tok) && to_lower_ascii(tok) == "clear";
+      };
+      auto first_tok_creates_box = [](const std::string& l) {
+        std::istringstream ls(l);
+        std::string tok;
+        if (!(ls >> tok)) return false;
+        tok = to_lower_ascii(tok);
+        return tok == "create_box" || tok == "read_data" ||
+               tok == "read_restart";
+      };
+      std::vector<std::string> out;
+      out.reserve(2 * script_lines.size() + 4);
+      bool armed = false;   /* a timer line precedes the current position */
+      /* `$(timeremain)` cannot be evaluated before a simulation box
+       * exists, so the guard is placed only after sections that created
+       * one (create_box/read_data/read_restart since the last clear).
+       * This is exact, not a heuristic: a boxless section has no
+       * run/minimize, so its timer can never fire and the guard would be
+       * a no-op there anyway. Scripts opening with variable-setup lines
+       * followed by a defensive `clear` (vac_bcc_P, eos_deriv_v2, ...)
+       * would otherwise die on the guard itself. */
+      bool section_has_box = false;
+      if (!first_tok_is_clear(script_lines.front())) {
+        out.push_back(timer_line);
+        armed = true;
+      }
+      for (const auto& l : script_lines) {
+        if (first_tok_is_clear(l)) {
+          if (armed && section_has_box) out.push_back(guard_line);
+          out.push_back(l);
+          out.push_back(timer_line);
+          armed = true;
+          section_has_box = false;
+        } else {
+          if (first_tok_creates_box(l)) section_has_box = true;
+          out.push_back(l);
+        }
+      }
+      script_lines.swap(out);
+    }
+  }
+}
+const tadah::hpo::ScriptFile& LammpsSim::script_file() const
+{
+    /* File-local mutex (not a member) so LammpsSim stays copyable/movable
+     * for HPOTargets::LS vector growth. Contention is negligible: one
+     * render per sim per process lifetime. */
+    static std::mutex script_file_mutex;
+    std::lock_guard<std::mutex> lock(script_file_mutex);
+    if (!script_file_)
+        script_file_ = std::make_shared<tadah::hpo::ScriptFile>(script_lines);
+    return *script_file_;
+}
+
+std::unordered_map<std::string, LammpsSim::VarDef>
+LammpsSim::index_defined_variables() const
+{
+    std::unordered_map<std::string, VarDef> defs;
+
+    for (std::size_t li = 0; li < script_lines.size(); ++li) {
+        std::istringstream iss(script_lines[li]);
+
+        std::string cmd, name, style;
+        if (!(iss >> cmd)) continue;
+        cmd = to_lower_ascii(cmd);
+
+        if (cmd != "variable") continue;
+
+        if (!(iss >> name))  continue;   // malformed; let LAMMPS fail later if run
+        if (!(iss >> style)) continue;   // malformed; same
+
+        style = to_lower_ascii(style);
+
+        // Track deletions too (LAMMPS: "variable X delete")
+        if (style == "delete") {
+            defs.erase(name);
+        } else {
+            defs[name] = VarDef{style, li + 1}; // 1-based logical command index
+        }
+    }
+
+    LammpsRunner runner;
+    /* The instance is created with the line's own command-line arguments,
+     * so it is where LAMMPS judges the single-dash options the line passes
+     * on (parse_tokens): one LAMMPS refuses -- a typo such as -sff, an
+     * option this build cannot honour such as -sf omp without the OPENMP
+     * package -- is an error at the line, with LAMMPS' message, rather
+     * than every evaluation failing to create its instance. HPO keeps no
+     * list of LAMMPS's options: they change with the LAMMPS it is built
+     * with. */
+    std::string create_error;
+    /* A file the line names for -log or -screen is written by this
+     * instance on every rank: in a multi-rank run each rank's carries its
+     * ".r<rank>" suffix (hpo_rank_suffix(); none on one rank), as every
+     * rank-local output does, so the ranks never write one file. The
+     * evaluation instances add their slot to it (make_worker_invar). */
+    std::vector<std::string> startup_invar = invar;
+    if (const std::string suffix = hpo_rank_suffix(); !suffix.empty()) {
+        for (const char* flag : {"-log", "-screen"})
+            for (std::size_t k = 0; k + 1 < startup_invar.size(); ++k)
+                if (startup_invar[k] == flag &&
+                    startup_invar[k + 1] != "none") {
+                    startup_invar[k + 1] += suffix;
+                    break;
+                }
+    }
+    auto lmp = runner.create_instance(startup_invar, &create_error);
+    if (!lmp) {
+        create_error = trim_ascii(create_error);
+        throw std::runtime_error(
+            std::string(is_failprobe ? "PC_FAILPROBE" : "PC_LAMMPS") +
+            ": LAMMPS cannot start with this line's command-line options: " +
+            (create_error.empty() ? std::string("no reason given")
+                                  : create_error));
+    }
+    if (!lmp->input || !lmp->input->variable) return defs;
+
+    std::unordered_map<std::string, std::size_t> labels;
+    for (std::size_t li = 0; li < script_lines.size(); ++li) {
+        const auto tokens = split_lammps_words(trim_ascii(script_lines[li]));
+        if (tokens.size() >= 2 && to_lower_ascii(tokens[0]) == "label") {
+            labels[tokens[1]] = li;
+        }
+    }
+
+    auto define_variable = [&](const std::string& resolved_line, std::size_t logical_cmd) {
+        const auto tokens = split_lammps_words(trim_ascii(resolved_line));
+        if (tokens.size() < 3 || to_lower_ascii(tokens[0]) != "variable") return;
+
+        const std::string name = tokens[1];
+        const std::string style = to_lower_ascii(tokens[2]);
+
+        if (style == "delete") {
+            try { lmp->input->one(resolved_line); } catch (...) {}
+            defs.erase(name);
+            return;
+        }
+
+        bool defined_in_lammps = false;
+        if (resolved_line.find("$(") == std::string::npos) {
+            try {
+                lmp->input->one(resolved_line);
+                defined_in_lammps = true;
+            } catch (...) {
+                defined_in_lammps = false;
+            }
+        }
+
+        if (!defined_in_lammps) {
+            ensure_placeholder_zero(lmp);
+            const std::string placeholder = placeholder_variable_command(name, style);
+            if (!placeholder.empty()) {
+                try {
+                    lmp->input->one(placeholder);
+                    defined_in_lammps = true;
+                } catch (...) {
+                    defined_in_lammps = false;
+                }
+            }
+        }
+
+        defs[name] = VarDef{style, logical_cmd};
+    };
+
+    std::size_t pc = 0;
+    std::size_t steps = 0;
+    const std::size_t max_steps = std::max<std::size_t>(script_lines.size() * 8, 64);
+
+    while (pc < script_lines.size() && steps++ < max_steps) {
+        const std::string raw = trim_ascii(script_lines[pc]);
+        const auto raw_tokens = split_lammps_words(raw);
+        if (raw_tokens.empty()) {
+            ++pc;
+            continue;
+        }
+
+        const std::string cmd = to_lower_ascii(raw_tokens[0]);
+
+        if (cmd == "label") {
+            ++pc;
+            continue;
+        }
+
+        if (cmd == "clear") {
+            try { lmp->input->one("clear"); } catch (...) {}
+            ++pc;
+            continue;
+        }
+
+        if (cmd == "jump") {
+            if (raw_tokens.size() >= 3 && raw_tokens[1] == "SELF") {
+                auto it = labels.find(raw_tokens[2]);
+                if (it != labels.end()) {
+                    pc = it->second + 1;
+                    continue;
+                }
+            }
+            ++pc;
+            continue;
+        }
+
+        if (cmd == "if") {
+            std::string substituted;
+            if (substitute_known_variables(lmp, raw, substituted)) {
+                const auto tokens = split_lammps_words(substituted);
+                if (tokens.size() >= 4 && to_lower_ascii(tokens[2]) == "then") {
+                    bool cond_value = false;
+                    if (evaluate_condition(lmp, tokens[1], cond_value)) {
+                        std::string chosen;
+                        if (cond_value) chosen = tokens[3];
+                        else if (tokens.size() >= 6 && to_lower_ascii(tokens[4]) == "else") chosen = tokens[5];
+
+                        if (!chosen.empty()) {
+                            const auto chosen_tokens = split_lammps_words(chosen);
+                            if (!chosen_tokens.empty()) {
+                                const std::string chosen_cmd = to_lower_ascii(chosen_tokens[0]);
+                                if (chosen_cmd == "jump" && chosen_tokens.size() >= 3 && chosen_tokens[1] == "SELF") {
+                                    auto it = labels.find(chosen_tokens[2]);
+                                    if (it != labels.end()) {
+                                        pc = it->second + 1;
+                                        continue;
+                                    }
+                                }
+                                if (chosen_cmd == "variable") {
+                                    define_variable(chosen, pc + 1);
+                                } else if (chosen_cmd == "clear") {
+                                    try { lmp->input->one("clear"); } catch (...) {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            ++pc;
+            continue;
+        }
+
+        if (cmd == "variable") {
+            std::string substituted;
+            if (substitute_known_variables(lmp, raw, substituted)) {
+                define_variable(substituted, pc + 1);
+            }
+            ++pc;
+            continue;
+        }
+
+        ++pc;
+    }
+
+    return defs;
+}
+
+void LammpsSim::validate_requested_variables_defined_equal() const
+{
+    const auto defs = index_defined_variables();
+
+    // Make membership check for varloss to improve error messages for outvar-only requests
+    std::unordered_set<std::string> varloss_set(n_varloss.begin(), n_varloss.end());
+
+    struct Problem {
+        std::string name;
+        std::string origin;   // "--varloss" or "--outvar"
+        std::string kind;     // "missing" or "wrongstyle"
+        std::string style;    // for wrongstyle
+        std::size_t where;    // logical command index where it was defined (if any)
+    };
+
+    std::vector<Problem> problems;
+
+    auto require_equal = [&](const std::string &v, const std::string &origin)
+    {
+        auto it = defs.find(v);
+        if (it == defs.end()) {
+            problems.push_back(Problem{v, origin, "missing", "", 0});
+            return;
+        }
+        if (it->second.style != "equal") {
+            problems.push_back(Problem{v, origin, "wrongstyle", it->second.style, it->second.logical_cmd});
+            return;
+        }
+    };
+
+    // Docs: --varloss vars must be defined & equal-style
+    for (const auto &v : n_varloss)
+        require_equal(v, "--varloss");
+
+    // --outvar variables must be defined and equal-style as well.
+    for (const auto &v : n_outvar) {
+        if (varloss_set.find(v) != varloss_set.end()) continue; // already checked as varloss
+        require_equal(v, "--outvar");
+    }
+
+    // Graded-FAILSCORE: --failvar names get the same static guarantee. A
+    // typo'd failvar would otherwise read back empty at runtime, parse as
+    // "no violation" and silently disable failure detection for that sim.
+    {
+        std::unordered_set<std::string> outvar_set(n_outvar.begin(), n_outvar.end());
+        for (const auto &fv : failvars) {
+            if (varloss_set.count(fv.name) || outvar_set.count(fv.name)) continue;
+            require_equal(fv.name, "--failvar");
+        }
+    }
+
+    if (!problems.empty()) {
+        std::ostringstream oss;
+        oss << "PC_LAMMPS: the script '" << script << "' and the files it "
+            << "includes define each --varloss, --outvar and --failvar "
+            << "variable as an equal-style variable (variable <name> equal "
+            << "...), and these are not:\n";
+        for (const auto &p : problems) {
+            if (p.kind == "missing") {
+                oss << "  - " << p.name << " (" << p.origin << "): not defined\n";
+            } else { // wrongstyle
+                oss << "  - " << p.name << " (" << p.origin
+                    << "): defined with the style '" << p.style << "'"
+                    << " (command " << p.where << " of the script with its "
+                    << "include files read in)\n";
+            }
+        }
+
+        throw std::runtime_error(oss.str());
+    }
+}
+
+
+namespace fs = std::filesystem;
+
+// -----------------------------------------------------------------
+//  Recursive worker that actually performs the include expansion
+// -----------------------------------------------------------------
+std::string LammpsSim::expand_includes_rec(const fs::path &file,
+                                           std::unordered_set<std::string> &stack)
+{
+    const fs::path abs = fs::absolute(file);
+
+    if (!fs::exists(abs))
+        throw std::runtime_error("LAMMPS include file not found: " + abs.string());
+
+    /* Detect circular includes ("A includes B includes A ...")             */
+    if (!stack.insert(abs.string()).second)
+        throw std::runtime_error("Circular include detected at: " + abs.string());
+
+    std::string          text   = read_entire_file(abs);
+    std::ostringstream   out;
+    std::istringstream   iss(text);
+    std::string          line;
+
+    while (std::getline(iss, line))
+  {
+    /* strip trailing CR put there by Windows text files */
+    if (!line.empty() && line.back() == '\r') line.pop_back();
+
+    /* find first non-blank character */
+    const std::size_t first = line.find_first_not_of(" \t");
+    if (first == std::string::npos)        /* completely blank line */
+    {
+      out << '\n';
+      continue;
+    }
+
+    /* test for   include  <filename>   */
+    // if (line.compare(first, 7, "include") == 0 &&
+    //     std::isspace(static_cast<unsigned char>(line[first + 7])))
+    // {
+    //     std::size_t fname_start = line.find_first_not_of(" \t", first + 7);
+    //     if (fname_start == std::string::npos)
+    //         throw std::runtime_error("Missing file name in include statement ("
+    //                                  + abs.string() + ')');
+    //
+    //     std::size_t fname_end = line.find_first_of(" \t#\r\n", fname_start);
+    //     std::string inc_name  = line.substr(fname_start,
+    //                                         fname_end == std::string::npos
+    //                                             ? std::string::npos
+    //                                             : fname_end - fname_start);
+    //
+    //     fs::path inc_path = abs.parent_path() / inc_name;
+    //     out << expand_includes_rec(inc_path, stack);   // recursive step
+    //     continue;                                      // nothing of the original line survives
+    // }
+    /* test for   include  <filename>   (case-insensitive) */
+    if (line.size() >= first + 7) {
+      std::string head = line.substr(first, 7);
+      head = to_lower_ascii(head);
+
+      if (head == "include" &&
+        (line.size() > first + 7) &&
+        std::isspace(static_cast<unsigned char>(line[first + 7])))
+      {
+        std::size_t fname_start = line.find_first_not_of(" \t", first + 7);
+        if (fname_start == std::string::npos)
+          throw std::runtime_error("Missing file name in include statement ("
+                                   + abs.string() + ')');
+
+        std::size_t fname_end = line.find_first_of(" \t#\r\n", fname_start);
+        std::string inc_name  = line.substr(fname_start,
+                                            fname_end == std::string::npos
+                                            ? std::string::npos
+                                            : fname_end - fname_start);
+
+        fs::path inc_path = abs.parent_path() / inc_name;
+        out << expand_includes_rec(inc_path, stack);   // recursive step
+        continue;                                      // nothing of the original line survives
+      }
+    }
+
+
+    /* ordinary line - keep verbatim */
+    out << line << '\n';
+  }
+
+    /* done with this file - pop it from the recursion guard */
+    stack.erase(abs.string());
+
+    return out.str();
+}
+
+// -----------------------------------------------------------------
+//  Public one-liner wrapper that callers can use
+// -----------------------------------------------------------------
+std::string LammpsSim::expand_includes(const fs::path &file)
+{
+    std::unordered_set<std::string> recursion_guard;
+    return expand_includes_rec(file, recursion_guard);
+}
+
+bool script_reads_variable(const std::vector<std::string>& lines,
+                           const std::string& name)
+{
+    if (name.empty()) return false;
+    auto word_char = [](char c) {
+        return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
+    };
+    const std::string brace = "${" + name + "}";
+    const std::string v = "v_" + name;
+    for (const auto& l : lines) {
+        if (l.find(brace) != std::string::npos) return true;
+        for (auto p = l.find(v); p != std::string::npos; p = l.find(v, p + 1)) {
+            const std::size_t e = p + v.size();
+            if ((p == 0 || !word_char(l[p - 1])) &&
+                (e == l.size() || !word_char(l[e])))
+                return true;
+        }
+        /* $x: a one-character name follows the $ directly. */
+        if (name.size() == 1)
+            for (auto p = l.find('$'); p != std::string::npos;
+                 p = l.find('$', p + 1))
+                if (p + 1 < l.size() && l[p + 1] == name[0]) return true;
+    }
+    return false;
+}
+
+std::string hotvar_reject_what(const LammpsSim::HotVarDecl& hv, double v)
+{
+    return hv.name + "=" + tadah::core::format_roundtrip(v) + " outside [" +
+           tadah::core::format_roundtrip(hv.min) + ", " +
+           tadah::core::format_roundtrip(hv.max) + "]";
+}
+
+
+} // namespace tadah::hpo

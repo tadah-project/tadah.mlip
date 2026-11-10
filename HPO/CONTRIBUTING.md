@@ -1,0 +1,128 @@
+# Contributing to HPO
+
+The full multi-repo contributor guide for the Tadah! project lives on
+the umbrella repository:
+<https://github.com/tadah-project/tadah.mlip/blob/v1-dev/CONTRIBUTING.md>
+
+This file covers what is specific to HPO. Bug reports and feature
+requests on this module use the issue tracker of the umbrella project,
+<https://github.com/tadah-project/tadah.mlip/issues>; cross-cutting
+changes (work that touches more than one Tadah! module) should be
+discussed on the umbrella project first.
+
+## Build & test in isolation
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON
+cmake --build build -j
+ctest --test-dir build/tests --output-on-failure
+```
+
+In-source builds are blocked deliberately; always pick a separate
+build directory.
+
+A CTest entry that builds in the build tree it runs in (its command runs
+`--build` on the tree or passes it as `-DBUILD_DIR`) holds
+`RESOURCE_LOCK tadah_header_check`, as the header checks do, so that
+`ctest -j` never runs two such builds at once; `hpo_build_tree_locks`
+fails on an entry without it.
+
+### Dependencies
+
+- C++17 compiler.
+- [CORE](https://github.com/tadah-project/core),
+  [MODELS](https://github.com/tadah-project/models),
+  [MLIP](https://github.com/tadah-project/mlip), and
+  [MD](https://github.com/tadah-project/md) — fetched
+  automatically.
+- [dlib](http://dlib.net/), [NLopt](https://nlopt.readthedocs.io/),
+  [Eigen3](https://eigen.tuxfamily.org/), and (optionally)
+  [Ceres](http://ceres-solver.org/) — fetched automatically at pinned
+  versions.
+- LAPACK / BLAS at link time (provided by the build environment).
+- Python 3.11 or later for the tests (`BUILD_TESTING`): the registry drift
+  gate `hpo_anneal_registry_sync` and the checks of the target-file
+  registry read TOML with `tomllib`, and the configure step refuses an
+  older interpreter
+  (`cmake/hpo_test_python.cmake`).
+- A LAMMPS library built with [Tadah!LAMMPS](https://github.com/tadah-project/tadah.lammps)
+  is needed at link time only when building HPO against the
+  LAMMPS-driven targets (`PC_LAMMPS`). See the umbrella
+  [installation guide](https://tadah.readthedocs.io/v1-dev/installation.html#installation-nfp).
+
+## Layout
+
+| Path | Purpose |
+|---|---|
+| `include/tadah/hpo/` | Public headers (drivers, init strategies, run policies, loss terms). |
+| `src/`               | Implementation translation units. |
+| `tests/`             | Unit and integration tests; `tests/data/` holds their data (`tests/data/ta`: the Ta training and validation configurations, datasets, LAMMPS scripts and target files). |
+| `blueprint/`         | Registry files (read by the documentation, and the source of the generated headers in `include/tadah/hpo/`), the loader of the target-file registry and the generators (see `blueprint/README.md`). |
+
+## The target-file registry
+
+`blueprint/hpotarget.toml` and its part files describe the target file of
+`tadah hpo` (`--hpotarget`) as the parser reads it: every block, key,
+option and `PARAM` key, with the parser's own messages. The files are
+written by hand. Tests compare them with the parser: each example is
+accepted, each invalid line is refused with exactly its message, each
+message of the registry has an invalid line or a stated reason, and every
+name the parser's sources recognise has an entry. Cases generated from the
+entries also compare the blocks of each key, its repeat rule, the ranges
+and words of its arguments, the ranges of the `INIT` methods and `PARAM`
+keys (the largest value through the startup checks of `tadah hpo`), the
+`PARAM` keys of each optimiser, the options of each line and the defaults,
+and each word of an argument is shown by an example. A change to what the
+parser accepts, or to one of its messages, therefore changes the registry in
+the same commit, with the C++ tables generated from it (below). A new
+optimiser needs its description in
+`blueprint/optimizers_doc.toml`, which the check requires, and a new key of
+`blueprint/anneal_keys.toml` an example in the examples of the annealers'
+`PARAM` policy (`blueprint/hpotarget_params.toml`), without which the
+documentation build stops. `blueprint/README.md` ("The target-file
+registry") describes the files and the checks, which run with:
+
+```bash
+python3 blueprint/hpotarget_registry.py --check
+python3 blueprint/gen_hpotarget.py --check
+cmake --build <build directory> --target test_hpo
+ctest --test-dir <build directory> -R hpotarget --output-on-failure
+```
+
+## Generated files
+
+Some checked-in files are generated, and a CTest entry fails when one
+differs from what produces it. Such a file is regenerated and committed
+with the change that alters it.
+
+- `include/tadah/hpo/anneal_keys_gen.h` (CTest `hpo_anneal_registry_sync`)
+  and `blueprint/optimizers_gen.toml` (CTest
+  `hpo_optimizer_registry_sync`): `blueprint/README.md` says what each is
+  generated from and how to regenerate it.
+- `include/tadah/hpo/hpotarget_registry_gen.h`,
+  `include/tadah/hpo/hpo_param_registry_gen.h` and
+  `include/tadah/hpo/hpotarget_handlers_gen.h` (CTest
+  `hpo_hpotarget_registry_sync`): `blueprint/README.md`, "The generated
+  tables", says what they are generated from and how to regenerate them.
+
+## The frozen corpus of target files
+
+`tests/data/hpotarget_corpus` holds the target files that
+`tests/hpotarget_corpus.py` collects from the repositories and what the
+parser of the target file gives for each: the description of the parse or
+the refusal, and what the parse prints on stdout and stderr, compared byte
+for byte (CTest cases `hpotarget corpus: ...`; `blueprint/README.md`, "The
+frozen corpus"). It is written by `tests/hpotarget_corpus.py write`, not
+by hand. A change that changes what `tadah hpo` reads from a target file
+or prints while it reads it writes the corpus again in the same commit,
+and the differences are reviewed with it. So does a change of the inputs
+(a registry example, a target file of the tests or of the documentation
+added, removed or changed): CTest `hpo_hpotarget_corpus` fails while the
+corpus is not the inputs of the sources.
+
+```bash
+python3 tests/hpotarget_corpus.py write tests/data/hpotarget_corpus \
+    --runner <build directory>/tests/hpotarget_case_runner \
+    --tadah-mlip <Tadah.MLIP source directory>
+git diff --stat tests/data/hpotarget_corpus
+```

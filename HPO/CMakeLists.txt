@@ -194,6 +194,23 @@ if(NOT TADAH_BUILD_DOCS_ONLY AND TADAH_ENABLE_CERES)
     GIT_SHALLOW    TRUE
   )
   FetchContent_MakeAvailable(ceres)
+  # Ceres 2.2.0 uses the fixed-width integer types in sources that do not
+  # include <cstdint> (int64_t in internal/ceres/file.cc, which includes
+  # <cstdio> and <string> only). The headers of glibc declare the types all
+  # the same; those of the musl C library (Alpine Linux) do not, and such a
+  # source stops at "'int64_t' was not declared in this scope". GCC and
+  # Clang include the header first in every C++ source of the Ceres
+  # targets; PRIVATE: no source that uses Ceres gets the option. Test:
+  # hpo_ceres_cstdint.
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    foreach(_ceres_target ceres ceres_internal)
+      if(TARGET ${_ceres_target})
+        target_compile_options(${_ceres_target} PRIVATE
+          "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include cstdint>")
+      endif()
+    endforeach()
+    unset(_ceres_target)
+  endif()
 endif()
 
 set(NLOPT_TESTS OFF CACHE BOOL "Build nlopt's own unit tests" FORCE)

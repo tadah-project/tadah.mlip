@@ -295,6 +295,32 @@ add_test(NAME hpo_configure_without_ceres_preset
 set_tests_properties(hpo_configure_without_ceres_preset PROPERTIES
     LABELS cmake
     TIMEOUT 120)
+# hpo_ceres_cstdint: every C++ source of the Ceres library is compiled with
+# <cstdint> included first ("-include cstdint", GCC and Clang) and no other
+# source is (ceres_cstdint/check_ceres_cstdint.cmake). Ceres 2.2.0 uses
+# int64_t in sources that do not include the header (internal/ceres/file.cc
+# includes <cstdio> and <string> only): the headers of glibc declare it all
+# the same, those of the musl C library (Alpine Linux) do not. HPO is
+# configured once more, with Ceres and without tests, from the initial cache
+# of hpo_configure_without_ceres with TADAH_ENABLE_CERES ON (nothing is
+# downloaded), and the check reads the compile command of every source in
+# its codemodel (CMake's file API, so with any generator). Before the fix:
+# fails ("target ceres_internal: ... CXX source(s) ... are compiled without
+# '-include cstdint'"), and with musl the build stopped in file.cc at
+# "'int64_t' was not declared in this scope".
+if(TADAH_ENABLE_CERES)
+    add_test(NAME hpo_ceres_cstdint
+        COMMAND ${CMAKE_COMMAND}
+            -DHPO_DIR=${_hpo_source_dir}
+            -DPRESET=${_hpo_no_ceres_dir}/preset.cmake
+            "-DGENERATOR=${CMAKE_GENERATOR}"
+            -DCOMPILER_ID=${CMAKE_CXX_COMPILER_ID}
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/ceres_cstdint
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/ceres_cstdint/check_ceres_cstdint.cmake)
+    set_tests_properties(hpo_ceres_cstdint PROPERTIES
+        LABELS cmake
+        TIMEOUT 300)
+endif()
 add_test(NAME hpo_anneal_registry_sync
     COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/../blueprint/gen_anneal_keys.py

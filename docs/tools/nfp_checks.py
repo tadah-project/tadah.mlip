@@ -16,9 +16,11 @@ For every document of the Nested Fitting chapter (under ``nfp/``):
   * a toctree in a page that is not a hub (a hub is a file named
     ``index.rst``), and in a hub more than one toctree or a toctree whose
     ``:maxdepth:`` is not 1;
-  * a page longer than its limit: 250 source lines and seven sections (the
-    sections directly under the page title), 200 source lines for a
-    tutorial unit (under ``nfp/tutorial/``). The generated reference pages
+  * a page longer than its limit: 400 source lines and seven sections (the
+    sections directly under the page title), 250 source lines for a
+    tutorial unit (under ``nfp/tutorial/``). A page aims at about 250
+    lines and a tutorial unit at about 200; the limits leave room for a
+    topic that is better kept on one page than split for its length. The generated reference pages
     (under ``nfp/reference/``, except its hub) have no length limit;
   * a page with three or more sections that does not start with the
     navigation block
@@ -103,8 +105,8 @@ CAPTION = 'Nested Fitting'
 MAX_CODE_LINE = 80
 MAX_INLINE_RUN = 40
 MAX_TABLE_COLUMNS = 2
-MAX_PAGE_LINES = 250
-MAX_UNIT_LINES = 200
+MAX_PAGE_LINES = 400
+MAX_UNIT_LINES = 250
 MAX_SECTIONS = 7
 CONTENTS_FROM = 3       # sections from which a page needs the contents block
 UNITS = CHAPTER + 'tutorial/'

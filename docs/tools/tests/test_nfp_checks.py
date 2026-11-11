@@ -155,11 +155,11 @@ GOOD = {
         f"A literal ``{'y' * 40}`` and ``{'z' * 30} {'z' * 30}``.",
         directive('code-block:: none', LINE_80),
         directive('literalinclude:: files/eighty.txt', options=[':language: none']),
-        table(2), CONTENTS, sections(7), lines=250),
+        table(2), CONTENTS, sections(7), lines=400),
     # A tab expands to the next multiple of 8 columns: 8 + 72 = 80.
     'nfp/files/eighty.txt': LINE_80 + '\n\t' + 't' * 72 + '\n',
     'nfp/tutorial/index.rst': page('Tutorial', 'Units.', toctree(['unit1'])),
-    'nfp/tutorial/unit1.rst': page('Unit 1', lines=200),
+    'nfp/tutorial/unit1.rst': page('Unit 1', lines=250),
     'nfp/reference/index.rst': page('Reference', 'Keys.', toctree(['keys'])),
     'nfp/reference/keys.rst': page('Keys', CONTENTS, sections(9), lines=400),
 }
@@ -192,11 +192,11 @@ class ChapterRulesTest(unittest.TestCase):
         files['nfp/files/long.txt'] = (LINE_80 + 'xx\n\t'
                                        + 't' * 73 + '\n')
         files['nfp/leaf.rst'] = page('Leaf')
-        files['nfp/long.rst'] = page('Long', lines=251)
+        files['nfp/long.rst'] = page('Long', lines=401)
         files['nfp/many.rst'] = page('Many', CONTENTS, sections(8))
         files['nfp/tutorial/index.rst'] = page(
             'Tutorial', 'Units.', toctree(['unit1', 'unit2']))
-        files['nfp/tutorial/unit2.rst'] = page('Unit 2', lines=201)
+        files['nfp/tutorial/unit2.rst'] = page('Unit 2', lines=251)
         files['nfp/examples/index.rst'] = page(
             'Examples', toctree(['one'], maxdepth=2), toctree(['two']))
         files['nfp/examples/one.rst'] = page('One')
@@ -215,10 +215,10 @@ class ChapterRulesTest(unittest.TestCase):
             r'nfp/bad\.rst:\d+: WARNING: inline literal with 41 characters',
             r'nfp/bad\.rst:\d+: WARNING: table with 3 columns',
             r'nfp/bad\.rst:\d+: WARNING: toctree in a page that is not a hub',
-            r'nfp/long\.rst: WARNING: the page has 251 source lines \(at most 250',
+            r'nfp/long\.rst: WARNING: the page has 401 source lines \(at most 400',
             r'nfp/many\.rst: WARNING: the page has 8 sections \(at most 7',
-            r'nfp/tutorial/unit2\.rst: WARNING: the page has 201 source lines '
-            r'\(at most 200',
+            r'nfp/tutorial/unit2\.rst: WARNING: the page has 251 source lines '
+            r'\(at most 250',
             r'nfp/examples/index\.rst:\d+: WARNING: a hub holds one toctree; '
             r'this one holds 2',
             r'nfp/examples/index\.rst:\d+: WARNING: the toctree of a hub has '

@@ -830,9 +830,11 @@ build warnings, so `sphinx-build -W` fails on
   files too), an inline literal with more than 40 characters without a
   space, a table with more than two columns, `parsed-literal` or `raw`
   content, a toctree outside a hub (an `index.rst`), a hub with more than
-  one toctree or with `:maxdepth:` other than 1, a page longer than 250
+  one toctree or with `:maxdepth:` other than 1, a page longer than 400
   source lines or seven sections (a tutorial unit under `nfp/tutorial/`:
-  200 lines; the generated pages under `nfp/reference/` have no limit), a
+  250 lines; the generated pages under `nfp/reference/` have no limit; a
+  page aims at about 250 lines, a tutorial unit at about 200, and neither
+  is split only for its length), a
   page with three or more sections that does not start with the block
   `.. contents::` with `:local:`, `:depth: 1` and `:backlinks: none` before
   its first section, a `literalinclude` without `:language:`, a code

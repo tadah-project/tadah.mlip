@@ -8,15 +8,12 @@ Welcome to the Tadah! Website
    :class: note
 
    This release is ready to use: the Tadah! authors fit and run potentials
-   with this version, and feedback on it is welcome. A ``pot.tadah`` file
-   stays readable by later 1.x releases; one written by 1.6.0 needs
-   ``tadah`` and ``pair_style tadah`` 1.6.0 or later (:ref:`lammps_usage`).
-   The C++ API is **not** stable and may change before 2.0.
+   with it, and feedback on it is welcome. The C++ API is **not** stable
+   and may change.
 
-   The :doc:`changelog` lists the changes of this release. An upgrade starts
-   with its breaking changes, notably the error scales and priorities of a
-   fit, which replace ``EWEIGHT``, ``FWEIGHT`` and ``SWEIGHT``
-   (:ref:`fit_objective`).
+   The :doc:`changelog` lists the changes of this release, the breaking
+   changes first. It says which releases read a ``pot.tadah`` file, and what
+   an upgrade asks of existing potentials, datasets and configurations.
    `Issue reports <report any issues_>`_ are welcome.
 
    .. _report any issues: https://github.com/tadah-project/tadah.mlip/issues

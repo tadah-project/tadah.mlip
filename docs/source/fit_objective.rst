@@ -5,8 +5,8 @@ What a Fit Minimises
 
 This page describes the sum that every fit of Tadah! minimises: which
 observations it counts, the :term:`error scales <error scale>` and
-:term:`priorities <priority>` that weight them, and how a configuration of
-Tadah! 1.5.0 is converted. It applies to ``tadah train``
+:term:`priorities <priority>` that weight them, and how a line of a
+retired key is converted. It applies to ``tadah train``
 (:ref:`training_page`), to every fit of ``tadah hpo`` and to the C++ API.
 The keys are listed in :ref:`ConfigSection`; the :term:`balance table` of
 a fit shows how it shares the sum (:ref:`fit_balance`).
@@ -146,8 +146,7 @@ LAMBDA and the coefficients
 above: a larger ``LAMBDA`` pulls the coefficients towards 0. Because the
 sum counts every observation, ``LAMBDA`` acts more weakly on a fit of more
 data. ``LAMBDA -1`` (with ``OALGO 3``) finds it by the evidence
-approximation. A configuration written for Tadah! 1.5.0 may need another
-``LAMBDA``: the error scales change the size of the sum.
+approximation.
 
 .. _fit_objective_wide_range:
 
@@ -184,31 +183,31 @@ Converting the retired keys
 ---------------------------
 
 ``EWEIGHT``, ``FWEIGHT``, ``SWEIGHT``, ``WDBFILE_AUTO`` and
-``EWEIGHT_TEMP`` are retired. A potential that ``tadah train`` or ``tadah
-hpo`` of Tadah! 1.0.0 to 1.5.0 wrote has ``EWEIGHT``, ``FWEIGHT`` and
-``SWEIGHT`` lines, and from 1.3.0 a ``WDBFILE_AUTO`` line. One that
-``tadah train`` wrote has an ``UNCERTAINTY`` line too, which a fit refuses
-until the line is deleted (:ref:`UNCERTAINTY`). Such a
-potential loads wherever it is read (``tadah predict``, ``pair_style
+``EWEIGHT_TEMP`` are retired. A potential that has a line of one of them
+loads wherever it is read (``tadah predict``, ``pair_style
 tadah``, ``tadah analysis``, ``tadah properties``, ``tadah refit
---edit``), with one notice per load that lists the lines. Every fit refuses
-a configuration that has one of these lines. The message names each line and
-its conversion, and marks each line whose conversion is to delete it.
-``tadah refit --edit`` keeps the lines, so the edited potential is refused
-too. The ``SIGMA`` line of an
-``OALGO 3`` potential is refused as well (:ref:`retrain_from_potential`).
+--edit``), with one notice per load that lists the lines.
+
+Every fit refuses a configuration that has one of these lines. The message
+names each line and its conversion, and marks each line whose conversion is
+to delete it. ``tadah refit --edit`` keeps the lines, so the edited
+potential is refused too. The ``SIGMA`` line of an ``OALGO 3`` potential is
+refused as well (:ref:`retrain_from_potential`). So is a line of the
+retired ``UNCERTAINTY``, until it is deleted (:ref:`UNCERTAINTY`).
+
 The conversions:
 
 .. list-table::
    :header-rows: 1
    :widths: 35 65
 
-   * - Line of Tadah! 1.5.0
+   * - Retired line
      - Replacement
    * - ``EWEIGHT w``
      - ``ESIGMA`` = 1000 / (N √w) meV/atom for cells of N atoms. For cells
        of different sizes, ``ESIGMA`` = 1000 / √w with each structure's
-       ``eweight`` multiplied by N² reproduces the sum of Tadah! 1.5.0.
+       ``eweight`` multiplied by N² gives the sum of the retired line: w
+       times the squared residual of each total energy.
    * - ``EWEIGHT 0``
      - ``ENERGY false``
    * - ``FWEIGHT w``
@@ -232,22 +231,19 @@ The conversions:
      - no key: ``WDBFILE`` and the ``eweight`` of each structure
    * - any of them under M_KRR implementation 2 (``MODEL M_KRR <kernel> 2``)
      - the line deleted, with ``ESIGMA 1000`` (or ``LAMBDA`` × 10⁶ with
-       ``ESIGMA 1``): the solve of Tadah! 1.5.0, :math:`(K + \lambda I)\,w
-       = t` on the energies per atom in eV, which read none of them
+       ``ESIGMA 1``): the solve is then :math:`(K + \lambda I)\,w = t` on
+       the energies per atom in eV, which no priority enters
 
 A retrain does not read a potential's ``WDBFILE`` line
 (:ref:`retrain_from_potential`). The ``WDBFILE`` values of a converted
 potential, those of the ``WDBFILE_AUTO`` conversion or of its own
 ``WDBFILE`` line, are given on the command line (``--wdbfile``) or in a
 file that includes the potential with ``CONFIG``. In the potential they
-are not read (a WARNING says so), and the fit differs from that of Tadah!
-1.5.0.
+are not read (a WARNING says so): each dataset of the retrain then has
+the priority 1.
 
-``tadah explain EWEIGHT`` (and so on) prints the same conversion. A
-configuration that sets none of the five keys trains without a message, but
-to another fit: the defaults of Tadah! 1.5.0 (``EWEIGHT``, ``FWEIGHT`` and
-``SWEIGHT`` 1) are ``ESIGMA`` 1000/N meV/atom (18.5 at 54 atoms),
-``FSIGMA`` 1 eV/Å and ``SSIGMA`` 160.2 GPa. ``tadah data balance`` shifts
+``tadah explain EWEIGHT`` (and so on) prints the same conversion.
+``tadah data balance`` shifts
 energies only, and refuses its options ``--rescale``, ``--threshold``,
 ``--force`` and ``--stress``; in a target file of ``tadah hpo``,
 :hpo:key:`PC_SRMSE_GPA` replaces ``PC_SRMSE``.

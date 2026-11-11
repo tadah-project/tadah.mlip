@@ -278,7 +278,8 @@ The dataset has the following structure:
   ASE's ``get_stress()`` gives. It is the negative of the pressure tensor
   that VASP prints (``in kB``) and that LAMMPS reports, and it holds no
   kinetic (ideal-gas) part. ``tadah data convert`` converts every reader
-  to it.
+  to it: an ``in kB`` value of a VASP OUTCAR is stored multiplied by
+  −6.241509074e-4.
 - The number of lines beginning with Element is equal to the number of atoms in a structure.
 - Every value must be a finite number: a dataset with ``nan``, ``inf``, an
   out-of-range number such as ``1e309``, or an atom line with fewer than
@@ -300,59 +301,12 @@ If forces and/or stresses are not available, they can be set to zero to satisfy 
 
 Units are described in :ref:`units`.
 
-A wrong cell in a dataset can occur only in structures whose 3×3 cell block
-is not symmetric; ``tadah analysis dataset_stats`` lists them by index and
-label. Such a structure needs re-converting from its source file if it was
-written
-
-- by Tadah! before 1.3.0-beta.1 from a VASP OUTCAR or a CASTEP
-  ``.castep``, ``.md`` or ``.geom`` file: the cell was stored transposed
-  (the positions are right, so transposing the cell block repairs it);
-- by Tadah! before 1.3.0-beta.1 from a VASP ``vasprun.xml``: the cell is
-  right but the positions are not
-  (:math:`\mathbf{r}_\text{new} = C^\mathsf{T} C^{-1}\,\mathbf{r}_\text{old}`,
-  with :math:`C` the cell block, repairs them).
-
-Structure files that ``tadah data write -s`` of Tadah! before 1.6.0
-exported (VASP POSCAR, LAMMPS data, CASTEP ``.cell``) from a
-non-orthogonal CIF or COD entry hold a transposed cell and need exporting
-again. Potentials and ``tadah hpo`` results fitted to affected structures
-need regenerating.
-
-The stress and energy of a dataset converted from VASP by Tadah! 1.0.0 to
-1.5.x differ from those of 1.6.0. The stress has the opposite sign (VASP's
-pressure, positive under compression), and the energy is not F. The OUTCAR
-reader stored the energy without entropy, which differs from F by the
-electronic entropy term −TS (18.7 meV/atom in a 54-atom Ta test file at
-``SIGMA = 0.2`` with Methfessel–Paxton order 1). With VASP 5.4.4 the
-``vasprun.xml`` reader stored energy(σ→0), which differs from F by a
-fraction of that term (a third for Methfessel–Paxton order 1, half for
-Gaussian smearing; 6.2 meV/atom for the same structures). Both vary by
-structure and grow with the smearing width ``SIGMA``.
-
-A stored stress compared with the OUTCAR's ``in kB`` line tells which
-version converted a dataset: Tadah! 1.6.0 stores the ``in kB`` value
-times −6.241509074e-4 (eV/Å³), Tadah! 1.0.0 to 1.5.x times
-+6.241509074e-4. Such a dataset needs re-converting from the source
-files with ``tadah data convert``; it cannot be repaired in place
-exactly, as the entropy term is not stored. A fit with ``STRESS true``
-on the opposite stress fitted its negative. Datasets from CASTEP, from
-the LAMMPS examples shipped with Tadah!, or written with ASE already
-have the tension-positive sign.
-
-An MD OUTCAR with a step at 10000 K or more, converted by Tadah! 1.0.0
-to 1.5.x, gave structures that are several steps in one. VASP writes
-such a temperature joined to its word (``(temperature10147.82 K)``),
-which the reader did not read. The step then did not end at its
-``EKIN_LAT`` line and was stored with the steps after it, up to the next
-temperature the reader could read. A 6580 K run of 5000 steps of 54 atoms
-gave 4939 structures, one of 3348 atoms: 62 steps in one. A structure
-whose atom count is a multiple of the run's ``NIONS`` tells such a
-dataset; it needs re-converting too.
-
-The stress of a CASTEP ``.md`` file converted by Tadah! 1.0.0 to 1.5.x
-still holds its kinetic part (about :math:`N k_B T / V`, e.g. 0.43 GPa
-at 633 K for 8 Si atoms in 163 Å³); it needs re-converting too.
+``tadah analysis dataset_stats`` lists, by index and label, the structures
+whose 3×3 cell block is not symmetric. Only in these does a cell block that
+holds the lattice vectors as columns differ from one that holds them as
+rows. The :doc:`changelog` says, in the paragraphs on datasets that follow
+its breaking changes, which datasets need a fresh conversion, how they are
+recognised and how a wrong cell is repaired.
 
 .. _lammps_usage:
 
@@ -375,11 +329,11 @@ cannot be loaded, or an element it does not have, stops LAMMPS with an
 ``ERROR: pair_coeff: failed to initialise Tadah potential 'pot.tadah':
 Symbol not in potential file: W``.
 
-A potential needs a ``pair_style tadah`` built from the same or a later
-Tadah! release than the ``tadah`` that wrote it. An older build refuses a key
-it does not know, such as the ``ENERGY`` line of a potential written by
-Tadah! 1.6.0; LAMMPS rebuilt with the matching Tadah!LAMMPS
-(:ref:`installation_lammps`) reads it.
+``pair_style tadah`` refuses a potential that has a key it does not know,
+naming the key and its line. A ``pair_style tadah`` built from the same
+Tadah! sources as the ``tadah`` that wrote the potential knows every key of
+it: LAMMPS rebuilt with the matching Tadah!LAMMPS
+(:ref:`installation_lammps`) reads the file.
 
 Each ``pair_coeff`` line reads the file it names, so one script can run
 several potentials: a later ``pair_coeff * * other.tadah ELEMENT1 ...``

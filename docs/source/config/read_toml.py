@@ -140,7 +140,8 @@ for :ref:`EMBF0 and RHOFORM <dm_ream_only_keys>` and for :ref:`WATOM`.
 
 A key marked **Retired** has no effect: its entry gives the reason, what
 replaces it and its conversion (:ref:`fit_objective_conversion` lists those
-of the keys that weighted the training data of a fit before Tadah! 1.6.0).
+of ``EWEIGHT``, ``FWEIGHT``, ``SWEIGHT``, ``WDBFILE_AUTO`` and
+``EWEIGHT_TEMP``).
 A potential that has it still loads
 (``tadah predict``, ``pair_style tadah``, ``tadah analysis``, ``tadah
 properties``, ``tadah refit --edit``): Tadah!MLIP checks its value, ignores

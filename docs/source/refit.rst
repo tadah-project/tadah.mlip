@@ -372,8 +372,8 @@ Under ``ZERO`` the self-test's ``cohesive`` line is labelled relative to
 the isolated atom.
 
 ``EMBF0 FREE`` in the refit configuration (``REFERENCE FREE`` in a
-component's ``EMBEDDING`` block) fits the raw embedding of tadah 1.5.0
-and earlier (dense mode then pins :math:`F(0)` softly to the table value,
+component's ``EMBEDDING`` block) fits the raw embedding, whose
+:math:`F(0)` is free (dense mode then pins :math:`F(0)` softly to the table value,
 ``REFIT_CONSTRAIN_F0``, which a configuration with blocks refuses); the
 written potential says ``REFERENCE FREE``. The ``refit.hpotarget`` header
 (``# REFERENCE ZERO: F(0) = 0 exactly, ...``; ``EMBF0 ZERO`` for a
@@ -1148,8 +1148,9 @@ with :math:`g(0) \neq 0`, or adjusting a compensating function with
 :math:`g(0) \neq 0`, changes ``F`` by a constant over the whole ``F`` domain,
 so the compensation region is then widened to :math:`[0,` largest support
 :math:`]` (logged). A potential without an ``EMBF0`` line is read as ``ZERO``
-(a WARNING says so; ``EMBF0 FREE`` added to the input edits a tadah 1.5.0 fit
-in its raw reference), and the edited potential always declares its mode.
+(a WARNING says so; ``EMBF0 FREE`` added to the input edits a fit of the
+raw embedding in its own reference), and the edited potential always
+declares its mode.
 
 .. _refit_output_mode_keys:
 
@@ -1181,9 +1182,8 @@ defaults ``tadah`` stores for the keys the configuration does not set are
 not refused. ``NUMERIC``, the
 precision of the potential a refit and ``--edit`` write, is refused under
 ``--retarget`` (:ref:`refit_retarget`). ``--edit`` takes it from its own
-run only: a ``NUMERIC`` line of the edited potential (every
-``best_pot.tadah`` of ``tadah hpo`` 1.5.0 has ``NUMERIC 12``) is not read,
-so without a ``NUMERIC`` of the run the edit is exact.
+run only: a ``NUMERIC`` line of the edited potential, such as ``NUMERIC
+12``, is not read, so without a ``NUMERIC`` of the run the edit is exact.
 
 Conversely a refit of an EAM file reads none of the options of ``--edit``
 and ``--retarget``: ``tadah refit -c refit.cfg --rcut2b 4.5`` (or
@@ -1204,8 +1204,9 @@ it.
 (the log states it), and the edited potential keeps it (a component's
 ``FORM``, a DM_REAM potential's ``RHOFORM`` line). A DM_REAM input must
 declare ``RHOFORM`` (a DM_REAM potential without it stops
-with ``pot edit: DM_REAM: RHOFORM is required: ...``; a tadah 1.5.0 fit
-keeps its :ref:`density <dm_ream_rhoform>` with ``RHOFORM SIGNED`` added),
+with ``pot edit: DM_REAM: RHOFORM is required: ...``; a potential fitted
+without the key keeps its :ref:`density <dm_ream_rhoform>` with ``RHOFORM
+SIGNED`` added),
 and under ``NONNEG`` and
 ``MONOTONE`` its density must pass the checks DM_REAM applies on load (the messages are
 prefixed ``pot edit:``). **Adding** inserts a coefficient of 0, which is
@@ -1466,8 +1467,8 @@ Practical consequences for knot potentials:
   stale RCUT is detected and replaced by whichever command reads the file
   next. ``pair_style tadah`` (LAMMPS) reads the stated ``RCUT`` as it is,
   so under a smooth cutoff LAMMPS and ``tadah train``/``predict``/``hpo``
-  differ on such a file (for the ``~3e-13`` gap of knot potentials written
-  by ``tadah`` 1.5.0 and earlier, about ``1e-13`` relative) until it is
-  re-written: a potential written by ``tadah train``, ``tadah refit
-  --edit`` or ``tadah hpo`` (``best_pot.tadah``) carries the derived value.
-  The WARNING printed in that case says so.
+  differ on such a file until it is re-written: a potential written by
+  ``tadah train``, ``tadah refit --edit`` or ``tadah hpo``
+  (``best_pot.tadah``) carries the derived value. The WARNING printed in
+  that case says so and gives the relative gap of the cutoff, about
+  ``1e-13`` for a stated value ``3e-13`` from the largest knot.

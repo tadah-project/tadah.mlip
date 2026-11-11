@@ -45,7 +45,7 @@ Obtaining Source Code
 ~~~~~~~~~~~~~~~~~~~~~
 
 Tadah!MLIP is cloned at a release tag, or at ``v1-dev``, the development
-branch of the 1.x line, from which the releases are tagged:
+branch, from which the releases are tagged:
 
 .. code-block:: bash
 
@@ -585,7 +585,7 @@ Traditional make-based build
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The classic LAMMPS ``make`` workflow is **not supported** for
-Tadah!LAMMPS in this release. The CMake build documented above replaces it.
+Tadah!LAMMPS. The CMake build documented above is the supported build.
 
 Libraries and C++ Headers
 -------------------------

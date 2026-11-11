@@ -602,9 +602,8 @@ style refuses a key-less potential with ``pair_coeff: failed to load Tadah
 potential from '<file>': DM_REAM: RHOFORM is required: ...``, and on a
 successful load its banner states the form (``Tadah! DM_REAM density form
 RHOFORM <form>``). Every DM_REAM ``pot.tadah`` that tadah writes carries the
-``RHOFORM`` line (``tadah train``, ``refit``, ``refit --edit`` and ``hpo``),
-and binaries older than the key refuse such files with ``Invalid key:
-RHOFORM``. Changing the key of an existing potential is safe only from
+``RHOFORM`` line (``tadah train``, ``refit``, ``refit --edit`` and ``hpo``).
+Changing the key of an existing potential is safe only from
 ``SIGNED`` to ``NONNEG`` when every amplitude is already :math:`\ge 0` and
 every pair weight :math:`> 0` (the density is then unchanged);
 ``MONOTONE`` reads the same amplitudes as step heights, which is a different
@@ -652,13 +651,11 @@ is treated:
   :math:`F(0) = 0` exactly for any coefficients: with a linear model and
   ``BIAS false`` an isolated atom has energy 0.0, on every path (``tadah
   predict``/``train``/``hpo`` and the LAMMPS pair style, all kernels).
-* ``EMBF0 FREE``: the raw basis :math:`\tilde g_m = g_m` of tadah 1.5.0 and
-  earlier, where :math:`F(0) = \sum_m w_m g_m(0)` is whatever the coefficients
-  make it.
+* ``EMBF0 FREE``: the raw basis :math:`\tilde g_m = g_m`, where
+  :math:`F(0) = \sum_m w_m g_m(0)` is whatever the coefficients make it.
 
 ``EMBF0`` is a property of the potential: every DM_REAM ``pot.tadah`` that
-tadah writes carries an explicit ``EMBF0`` line (binaries older than the key
-refuse such files with ``Invalid key: EMBF0``), and a potential without the
+tadah writes carries an explicit ``EMBF0`` line, and a potential without the
 line is read as ``ZERO``. It takes ``ZERO`` or ``FREE`` only, in any case;
 any other value is an error at its line when the configuration file or
 potential is read (``Invalid value for key EMBF0 on line N of
@@ -683,8 +680,9 @@ effect on a potential without a DM_REAM block (:ref:`RHOFORM and EMBF0 without a
      - One global setting for every DM_REAM block; only the DM_REAM block
        vanishes at :math:`\rho = 0`, other many-body blocks keep their value.
 
-A potential written by tadah 1.5.0 or earlier reproduces its energies with
-``EMBF0 FREE`` added. A trained DM_REAM potential loaded without the key
+A potential that has no ``EMBF0`` line and whose coefficients were fitted
+in the raw basis reproduces its energies with ``EMBF0 FREE`` added. A
+trained DM_REAM potential loaded without the key
 prints a warning: ``tadah`` logs it once per process, and the LAMMPS pair
 style prints a LAMMPS ``WARNING`` (screen and ``log.lammps``) on every
 ``pair_coeff`` that loads one, with a banner that reads ``EMBF0 ZERO (key

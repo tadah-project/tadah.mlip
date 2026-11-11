@@ -169,8 +169,8 @@ subtracts the stamped values from the reference energies of the data it
 predicts (``--eshift`` replaces them) and never derives a shift from that
 data: ``--no-eshift`` subtracts none, so ``energy.pred`` compares the
 model's energies, which do not change, with the reference energies as they
-are. A potential written before Tadah! 1.6.0 has its toggle as a key line
-beside ``ESHIFT``; ``tadah predict`` ignores it too.
+are. ``tadah predict`` also ignores the toggle of a potential that has it
+as a key line beside ``ESHIFT``.
 
 .. note::
 
@@ -233,15 +233,13 @@ predicted as it is. A filter applies only when predict is given it:
 * ``WDBFILE``, ``ESHIFT_ATOM`` and ``ESHIFT_DBATOM`` of the potential are
   never applied: they gave the training data their priorities or derived
   its shift, and the data predicted keep their own priorities.
-  ``tadah predict`` has no option for them and fits nothing. A potential of
-  Tadah! 1.5.0 has a line of the
-  retired ``WDBFILE_AUTO``, and one trained with ``EWEIGHT_TEMP`` a line
-  of it: ``tadah predict`` reads them with one notice
-  (:ref:`fit_objective_conversion`).
+  ``tadah predict`` has no option for them and fits nothing. It reads a
+  potential that has a line of the retired ``WDBFILE_AUTO`` or
+  ``EWEIGHT_TEMP`` with one notice (:ref:`fit_objective_conversion`).
 
-A potential written before Tadah! 1.6.0 has these keys as key lines; ``tadah
-predict`` ignores them, and at ``-v 2`` one line names those it ignored
-that are not at their default::
+A potential may have these keys as key lines, not in its training record.
+``tadah predict`` ignores them, and at ``-v 2`` one line names those it
+ignored that are not at their default::
 
    INFO: tadah predict: old.tadah: EFILTER -0.6 -0.4, ESHIFT_DBATOM true
    and ZERO_COM_FORCE true prepared the training data of the potential and
@@ -417,15 +415,12 @@ the record, deleting the end line makes the refusal name the opening line
 and the potential's first key line), an end line without its opening line,
 or a line inside the block that does not start with ``#``.
 
-A potential written by Tadah! 1.5.x or older may have some of these keys
-as key lines. An ``M_BLR`` potential may have its ``DBFILE``. A
-``best_pot.tadah`` may have its run's ``HPOTARGET`` and ``VERBOSE``, and
-its ``VALIDATION`` when the run had a validation file. Every potential of
-``tadah train`` or ``tadah hpo`` may have the keys that prepared its
-training data: ``ESHIFT_ATOM false``, ``ESHIFT_DBATOM false`` and
-``ZERO_COM_FORCE false`` when its configuration set none, and the retired
-``WDBFILE_AUTO 0``. A potential of ``tadah train`` may also have the
-retired ``UNCERTAINTY``.
+A potential may have some of the keys of the record as key lines: its
+``DBFILE``, keys that prepared its training data (such as ``ESHIFT_ATOM
+false``) or settings of the run that wrote it (such as ``HPOTARGET``,
+``VALIDATION`` and ``VERBOSE``). It may also have lines of the retired
+``WDBFILE_AUTO`` or
+``UNCERTAINTY``.
 
 Such a potential loads, and no run takes any of these keys from it as a
 setting. ``tadah refit --edit`` lists them in the edit's record instead,
@@ -465,7 +460,7 @@ training data: no potential that ``tadah train``, ``tadah hpo`` or ``tadah
 refit`` writes has a ``DBFILE`` line, whichever the model (its
 :ref:`training record <training_record>`, a comment, names the datasets its
 coefficients were fitted to, when there were any: a refit has none, and a
-potential written by Tadah! 1.5.x or older has no record). A potential is a
+potential without a record names none). A potential is a
 training configuration without its
 datasets, so it retrains with the ``DBFILE`` lines of the retrain added to a
 copy of it::
@@ -539,29 +534,30 @@ example, ``SBASIS`` or the descriptor. The other key lines are the model of
 the first fit, with its ``LSCALE`` and ``ESHIFT``: the energy reference of
 the retrain is the potential's. Its ``ESIGMA``, ``FSIGMA``, ``SSIGMA``,
 ``ENORM`` and ``ENERGY`` lines are the error scales of the first fit, which
-the retrain fits with (:ref:`fit_objective`). A potential that ``tadah
-train`` or ``tadah hpo`` of Tadah! 1.0.0 to 1.5.0 wrote has ``EWEIGHT``,
-``FWEIGHT`` and ``SWEIGHT`` lines instead (and from 1.3.0 a
-``WDBFILE_AUTO`` line; one of ``tadah train`` an ``UNCERTAINTY``
-line): a retrain from it is refused, naming each line and its conversion,
+the retrain fits with (:ref:`fit_objective`).
+
+A potential may have lines of retired keys in place of the error scales:
+``EWEIGHT``, ``FWEIGHT``, ``SWEIGHT``, ``WDBFILE_AUTO`` or ``UNCERTAINTY``.
+A retrain from it is refused, naming each line and its conversion,
 until the copy has the converted keys in their place or, for a line the
 refusal marks (``UNCERTAINTY``, a quantity the fit leaves out,
 ``WDBFILE_AUTO 0``, or any line under M_KRR implementation 2), none
 (:ref:`fit_objective_conversion` gives the conversions of the keys that
-weighted the training data). A potential of an ``OALGO 3`` fit of Tadah!
-1.0.0 to 1.5.0 also has a :ref:`SIGMA` line, a deprecated key: the same
-refusal names it, and the line is deleted from the copy. A potential of
-Tadah! 1.0.0 to 1.5.0 whose only descriptor is ``D2_EAM`` has a
-:ref:`WATOM` line of the atomic numbers, which no descriptor reads: the
-same refusal names it, and the line is deleted from the copy. The
-``WDBFILE`` values of the
+weighted the training data). The ``WDBFILE`` values of the
 conversion of ``WDBFILE_AUTO`` are not read in the copy: they are given as
 the retrain's own, below.
+
+The refusal also names a line that changes nothing a fit gives, and the
+line is deleted from the copy. One is a :ref:`SIGMA` line, a deprecated key
+that a potential of an ``OALGO 3`` fit may have. Another is a :ref:`WATOM`
+line with a value other than 1 that no descriptor of the potential reads
+(``D2_EAM`` reads none).
 
 The keys that prepared the training data of the first fit (``EFILTER``,
 ``FFILTER``, ``ESHIFT_ATOM``, ``ESHIFT_DBATOM``, ``ZERO_COM_FORCE``,
 ``WDBFILE``) are in its training record, not among its key lines, and a
-retrain does not take them from the potential, whatever version wrote it: a
+retrain does not take them from the potential, key lines of them
+included: a
 retrain works with any number of datasets, and with none of the first fit's
 filters or dataset priorities. The
 retrain's own are given as in any training run, and are recorded in the new
@@ -660,9 +656,7 @@ a configuration file (a ``tadah hpo`` seed too). Its lines of the keys of the tr
 ``DBFILE`` are not read: those of the six, with or without an ``ESHIFT``
 line, and its run settings, ``VALIDATION``,
 ``HPOTARGET``, ``CHECK``, ``VERBOSE``, ``NUMERIC``, ``OUTFILE``, ``AUDIT``,
-``AUDIT_SAMPLE`` and ``HEALTH_LOG`` (a ``best_pot.tadah`` of tadah 1.5.x has
-``HPOTARGET``, ``VERBOSE`` and ``NUMERIC``, and ``VALIDATION`` when its run
-had a validation file); every other line
+``AUDIT_SAMPLE`` and ``HEALTH_LOG``; every other line
 of the run, its ``DBFILE`` included, and the command line, applies as it
 would without them. A ``WARNING`` names the potential's lines that are not
 at their default (the command's default of the key when it has one, such as
@@ -670,8 +664,8 @@ tadah train's ``OUTFILE pot.tadah``, else the key's: ``VERBOSE 1``,
 ``NUMERIC 18``), that the run does not give
 itself and that its command reads (``tadah hpo`` reads no ``OUTFILE``,
 ``tadah train`` no ``VALIDATION``, ``HPOTARGET``, ``CHECK`` or
-``HEALTH_LOG``): a potential written by Tadah! 1.5.x or older has them as key lines,
-and so has a copy with one added::
+``HEALTH_LOG``). A potential that has such key lines gets the
+``WARNING``, and so does a copy with one added::
 
    WARNING: tadah train: the configuration file retrain.train is a potential
    (it has WEIGHTS): its EFILTER 5 6 and WDBFILE 1 1 prepared the training
@@ -825,11 +819,10 @@ hpo`` writes (:ref:`nfp_output_archives`).
 
 .. note::
 
-   Potentials written by ``tadah hpo`` 1.5.0 carry an automatically
-   inserted ``NUMERIC 12`` line. No run reads it: a retrain, ``tadah hpo
-   -c`` and ``tadah refit --edit`` of such a file write exact potentials
-   (the first two name the line in a WARNING, the edit moves it into its
-   training record).
+   No run reads a ``NUMERIC`` line among the key lines of a potential,
+   such as ``NUMERIC 12``: a retrain, ``tadah hpo -c`` and ``tadah refit
+   --edit`` of such a file write exact potentials (the first two name the
+   line in a WARNING, the edit moves it into its training record).
 
 Diagnostic output (verbose 2)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1001,8 +994,9 @@ A potential as the training configuration
 A potential, such as the ``best_pot.tadah`` of an earlier run, can be the
 training configuration: its key lines give the model and the start of the
 search. No potential that ``tadah`` writes has a :ref:`DBFILE <dbfile>`
-line (the run reads and adds that of a potential of Tadah! 1.5.x,
-:ref:`retrain_from_potential`), and the run reads its :ref:`LSCALE <lscale>`
+line (the run reads one that a potential has, and its datasets add to
+those of the run, :ref:`retrain_from_potential`), and the run reads its
+:ref:`LSCALE <lscale>`
 and :ref:`ESHIFT <eshift>`, the model's, but no line of the other keys that
 prepared its training data, :ref:`WDBFILE <wdbfile>` included. A
 configuration that includes the potential with :ref:`CONFIG <CONFIG>` gives

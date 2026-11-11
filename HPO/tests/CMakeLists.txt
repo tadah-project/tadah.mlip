@@ -724,6 +724,22 @@ set_tests_properties(hpo_vendored_asa_gate_tool PROPERTIES
     TIMEOUT 120
     SKIP_REGULAR_EXPRESSION "\nOK \\(skipped=[0-9]+"
     FAIL_REGULAR_EXPRESSION "\nRan 0 tests ")
+# hpo_asa_headers_pedantic: the configuration headers of the vendored ASA and
+# asa_usr_asa.h compile together in a C++ translation unit under
+# -pedantic-errors, as test_asa.cpp and test_asa_golden_pristine_tu.cpp
+# include them (asa_headers/check_asa_headers.cmake). The flags are those of
+# GCC and Clang.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_test(NAME hpo_asa_headers_pedantic
+      COMMAND ${CMAKE_COMMAND}
+          -DCXX=${CMAKE_CXX_COMPILER}
+          -DEXTERNAL=${CMAKE_CURRENT_SOURCE_DIR}/../external
+          -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/asa_headers
+          -P ${CMAKE_CURRENT_SOURCE_DIR}/asa_headers/check_asa_headers.cmake)
+  set_tests_properties(hpo_asa_headers_pedantic PROPERTIES
+      LABELS cmake
+      TIMEOUT 60)
+endif()
 
 # The MPI build's suite (TADAH_HPO_MPI) is not the serial build's, and the
 # serial checks never run it: hpo_mpi_build_tests_lint reads every test

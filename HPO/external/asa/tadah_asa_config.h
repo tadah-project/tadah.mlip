@@ -23,7 +23,9 @@
 
 /* --- embedding: no option file, no user module, library etiquette --- */
 #define OPTIONS_FILE 0        /* options are supplied programmatically  */
-#define OPTIONS_FILE_DATA 0
+/* OPTIONS_FILE_DATA is not set here: with OPTIONS_FILE 0, asa_usr_asa.h
+ * defines it FALSE itself, and a second definition with other tokens is
+ * an error under -pedantic-errors.                                     */
 #define HAVE_ANSI 1
 #define ASA_PRINT 1           /* MUST stay 1 (unguarded fclose)         */
 #define ASA_PRINT_MORE 0

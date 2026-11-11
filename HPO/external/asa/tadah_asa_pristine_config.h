@@ -21,7 +21,9 @@
 
 /* --- embedding gates (trajectory-neutral), as in tadah_asa_config.h - */
 #define OPTIONS_FILE 0
-#define OPTIONS_FILE_DATA 0
+/* OPTIONS_FILE_DATA is not set here: with OPTIONS_FILE 0, asa_usr_asa.h
+ * defines it FALSE itself, and a second definition with other tokens is
+ * an error under -pedantic-errors.                                     */
 #define HAVE_ANSI 1
 #define ASA_PRINT 1
 #define ASA_PRINT_MORE 0

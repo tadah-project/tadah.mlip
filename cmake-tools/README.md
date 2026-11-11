@@ -196,7 +196,7 @@ a message that says so. A module still builds without its tests
   Never on an entry that runs several test cases (a tag): the marker of one
   would report the whole entry as Skipped, failures of the others included.
 - A script entry (not Catch) either exits with a code of its own and sets
-  `SKIP_RETURN_CODE`, as HPO's `hpo_strategy_matrix` does with 77, or
+  `SKIP_RETURN_CODE`, as the `tadah.lammps_mpi_*` entries do with 77, or
   prints a line that its own `SKIP_REGULAR_EXPRESSION` matches.
 
 The regression tests for this machinery live in the umbrella repository,

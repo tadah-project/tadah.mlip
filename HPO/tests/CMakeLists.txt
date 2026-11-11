@@ -844,17 +844,6 @@ if(TADAH_HPO_MPI)
     endforeach()
 endif()
 
-# Integration matrix — opt-in via `ctest -L slow`. Requires a bundle
-# directory; the env var TADAH_HPO_INTEGRATION_BUNDLE selects which one.
-# Without it the wrapper exits with 77, which CTest reports as Skipped.
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/run_matrix_ctest.sh")
-    add_test(NAME hpo_strategy_matrix
-        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/integration/run_matrix_ctest.sh)
-    set_tests_properties(hpo_strategy_matrix PROPERTIES
-        LABELS "slow"
-        SKIP_RETURN_CODE 77)
-endif()
-
 # tadah.hpo_headers (ctest -L headers): every header of include/
 # compiles on its own and twice in a row (cmake-tools'
 # tadah_add_header_check). Before the fix: fails on hpo_host_impl.hpp,

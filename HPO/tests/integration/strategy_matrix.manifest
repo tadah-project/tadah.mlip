@@ -1,14 +1,12 @@
 # strategy_matrix manifest
 # Format:  <name> | <hpo body>
 #
-# - <name> must be a filesystem-safe identifier (used as the scratch dir)
-# - <hpo body> is appended verbatim *before* the user's loss/optim lines
-#   and replaces the user's OPTIMIZER block. Use \n for newlines.
+# - <name> must be a filesystem-safe identifier (the test that reads
+#   this file names a scratch file after it)
+# - <hpo body> is one OPTIMIZER block. Use \n for newlines.
 #
 # Each entry uses the block grammar (INIT / NOISE / STRATEGY blocks).
-# Entries are intentionally short: small MAXEVAL, so the whole matrix
-# completes in minutes on a small bundle. Increase MAXEVAL when running
-# locally for real comparisons.
+# test_strategy_matrix_manifest.cpp checks that every entry parses.
 #
 baseline_bfgs              | OPTIMIZER\n  STRATEGY\n    TYPE PLAIN\n    LIB DLIB\n    ALGO BFGS\n    MAXEVAL 12\n  ENDSTRATEGY\nENDOPTIMIZER\n
 random_then_bfgs           | OPTIMIZER\n  INIT\n    STRATEGY RANDOM 1\n  ENDINIT\n  STRATEGY\n    TYPE PLAIN\n    LIB DLIB\n    ALGO BFGS\n    MAXEVAL 12\n  ENDSTRATEGY\nENDOPTIMIZER\n

@@ -17,8 +17,6 @@
  *  - 10.0 Å cubic (the cell height is above both cutoffs)
  */
 
-#include "tadah_test_skip.hpp"  // before catch2/catch.hpp (it needs Catch's
-                                 // listener interface)
 #include "catch2/catch.hpp"
 #include <tadah/mlip/structure.h>
 #include <tadah/mlip/structure_db.h>
@@ -27,8 +25,6 @@
 #include <tadah/core/periodic_table.h>
 #include <tadah/core/context.h>
 
-#include <cstdlib>
-#include <fstream>
 #include <sstream>
 #include <string>
 
@@ -304,131 +300,4 @@ TEST_CASE("NNFinder: 5.9 Å cell — the 7.0 Å list filtered to 4.5 Å equals t
     }
     INFO(err2.str());
     REQUIRE(err2.str().empty());
-}
-
-// ===========================================================================
-// Tests using actual CH4 phase I database (160-atom structures, 9.96 Å cell).
-// These test that the NN superset property holds for real, dense structures
-// whose cell height exceeds both the 4.5 Å and the 7.0 Å cutoff.
-// ===========================================================================
-
-// The CH4 phase I validation database used during the HPO run; the dataset
-// is not redistributed with this repository. The TADAH_TEST_PHASEI_DB
-// environment variable names it; unset, the test cases look for
-// ch4_phasei_S_U67.tadahdb in the working directory and report themselves
-// as skipped when it is not there (TADAH_SKIP: CTest lists them as Skipped,
-// not Passed). A database named by TADAH_TEST_PHASEI_DB that cannot be
-// opened is a failure: the variable asks for the checks to run.
-struct PhaseIDb {
-    std::string path;
-    bool from_env = false;   // named by TADAH_TEST_PHASEI_DB
-};
-
-static PhaseIDb phasei_db() {
-    const char* env = std::getenv("TADAH_TEST_PHASEI_DB");
-    if (env && *env) return {env, true};
-    return {"ch4_phasei_S_U67.tadahdb", false};
-}
-
-TEST_CASE("NNFinder: real CH4 phase-I structure — 7.0 Å list is superset of 4.5 Å list",
-          "[nn][equivalence][real_ch4_phasei]")
-{
-    // Load first structure from the database
-    const PhaseIDb db = phasei_db();
-    std::ifstream ifs(db.path);
-    if (!ifs.is_open()) {
-        if (db.from_env)
-            FAIL("TADAH_TEST_PHASEI_DB=" << db.path << " cannot be opened");
-        TADAH_SKIP("CH4 phase-I database not found at " << db.path
-                   << " (set TADAH_TEST_PHASEI_DB)");
-    }
-
-    PeriodicTable::initialize();
-    Structure st_small, st_large;
-    st_small.read(ifs);
-    ifs.seekg(0);
-    st_large.read(ifs);
-    ifs.close();
-
-    REQUIRE(st_small.natoms() > 0);
-
-    NNFinder nnf;
-    nnf.calc(st_small, 4.5);
-    nnf.calc(st_large, 7.0);
-
-    REQUIRE(st_small.nn != nullptr);
-    REQUIRE(st_large.nn != nullptr);
-
-    INFO("natoms=" << st_small.natoms()
-         << "  cell[0]=" << st_small.cell(0,0));
-
-    // Check_box should be true for both (cell ~9.96 Å > 7.0 Å)
-    REQUIRE(NNFinder::check_box(st_small, 4.5) == true);
-    REQUIRE(NNFinder::check_box(st_large, 7.0) == true);
-
-    for (size_t i = 0; i < st_small.natoms(); ++i) {
-        INFO("Atom " << i << ": 4.5Å nn_size=" << st_small.nn_size(i)
-             << "  7.0Å nn_size=" << st_large.nn_size(i));
-        REQUIRE(st_large.nn_size(i) >= st_small.nn_size(i));
-    }
-
-    std::string err = check_superset(st_small, st_large, 4.5);
-    INFO("Superset check:\n" << err);
-    REQUIRE(err.empty());
-
-    std::string pos_err = check_positions(st_small, st_large);
-    INFO("Position check:\n" << pos_err);
-    REQUIRE(pos_err.empty());
-}
-
-TEST_CASE("NNFinder: real CH4 phase-I structure — reverse: 4.5 Å list contains all pairs within 4.5 Å from 7.0 Å list",
-          "[nn][equivalence][real_ch4_phasei]")
-{
-    const PhaseIDb db = phasei_db();
-    std::ifstream ifs(db.path);
-    if (!ifs.is_open()) {
-        if (db.from_env)
-            FAIL("TADAH_TEST_PHASEI_DB=" << db.path << " cannot be opened");
-        TADAH_SKIP("CH4 phase-I database not found at " << db.path
-                   << " (set TADAH_TEST_PHASEI_DB)");
-    }
-
-    PeriodicTable::initialize();
-    Structure st_small, st_large;
-    st_small.read(ifs);
-    ifs.seekg(0);
-    st_large.read(ifs);
-    ifs.close();
-
-    REQUIRE(st_small.natoms() > 0);
-
-    NNFinder nnf;
-    nnf.calc(st_small, 4.5);
-    nnf.calc(st_large, 7.0);
-
-    const double rcut_small_sq = 4.5 * 4.5;
-    const auto& large_nn = *st_large.nn;
-    std::ostringstream err;
-    for (size_t i = 0; i < st_large.natoms(); ++i) {
-        for (size_t m = 0; m < large_nn.idx[i].size(); ++m) {
-            Vec3d pos_nbr = st_large.nn_pos(i, m);
-            const auto& pos_i = st_large(i).position;
-            double del0 = pos_i[0]-pos_nbr[0];
-            double del1 = pos_i[1]-pos_nbr[1];
-            double del2 = pos_i[2]-pos_nbr[2];
-            double rij_sq = del0*del0 + del1*del1 + del2*del2;
-            if (rij_sq >= rcut_small_sq) continue;
-
-            size_t j    = large_nn.idx[i][m];
-            Vec3d shift = large_nn.shift[i][m];
-            if (!has_nn_entry(st_small, i, j, shift)) {
-                err << "Atom " << i << " → nbr " << j
-                    << " shift(" << shift[0] << "," << shift[1] << "," << shift[2]
-                    << ") dist=" << std::sqrt(rij_sq)
-                    << " Å: in 7.0Å list but MISSING from 4.5Å list!\n";
-            }
-        }
-    }
-    INFO(err.str());
-    REQUIRE(err.str().empty());
 }

@@ -390,18 +390,16 @@ as *Skipped*, so that a passing `ctest` means the checks ran:
   `SKIP_REGULAR_EXPRESSION "${TADAH_TEST_SKIP_REGULAR_EXPRESSION}"`
   itself;
 - a script entry either exits with a code of its own and sets
-  `SKIP_RETURN_CODE` (`hpo_strategy_matrix`, `tadah_cli_example_*`,
+  `SKIP_RETURN_CODE` (`tadah_cli_example_*`,
   `tadah_nfp_*` but `tadah_nfp_files_static`, `tadah_docs_layout` and
   `tadah_docs_site_layout`: 77),
   or prints a line that its own `SKIP_REGULAR_EXPRESSION` matches
   (`tadah_docs_tools`, see *Building the documentation*).
 
 The CTest summary lists skipped entries under "The following tests did not
-run". With the documentation tools installed and without the optional data,
-the suite skips exactly the two MLIP `NNFinder: real CH4 phase-I structure`
-cases (`TADAH_TEST_PHASEI_DB`), `hpo_strategy_matrix`
-(`TADAH_HPO_INTEGRATION_BUNDLE`) and, while `docs/source/nfp` holds no
-page, `tadah_docs_site_layout`, and in a build with `TADAH_ENABLE_NFP` the
+run". With the documentation tools installed, the suite skips only
+`tadah_docs_site_layout`, while `docs/source/nfp` holds no page, and in a
+build with `TADAH_ENABLE_NFP` the
 six `tadah.lammps_mpi_*` entries unless `TADAH_LMP_MPI` and
 `TADAH_LMP_MPIEXEC` name an MPI `lmp` and its launcher (`ctest -L lammps`
 above); `tadah_docs_tools` is Skipped too when one

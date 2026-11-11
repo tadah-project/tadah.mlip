@@ -3,10 +3,9 @@
  * drift: every entry's <hpo body> must parse cleanly under the current
  * OPTIMIZER block grammar.
  *
- * The integration matrix itself (strategy_matrix.sh) is opt-in and
- * gated on TADAH_HPO_INTEGRATION_BUNDLE, so without this test a stale
- * manifest goes unnoticed until someone runs the slow suite. This test
- * needs no bundle -- it only exercises the parser.
+ * The entries are OPTIMIZER blocks that combine INIT, NOISE, STRATEGY
+ * and RESTART blocks. This test needs no data -- it only exercises the
+ * parser.
  */
 
 #include "catch2/catch.hpp"
@@ -21,8 +20,7 @@
 
 namespace {
 
-/* Expand the manifest's \n escapes -- mirrors `printf '%b'` in
- * strategy_matrix.sh. The manifest only ever uses \n. */
+/* Expand the manifest's \n escapes. The manifest only ever uses \n. */
 std::string expand_escapes(const std::string& in)
 {
     std::string out;

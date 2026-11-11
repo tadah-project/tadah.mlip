@@ -24,9 +24,8 @@ build directory.
 ### Dependencies
 
 - C++17 compiler.
-- [CORE](https://github.com/tadah-project/core) and
-  [MODELS](https://github.com/tadah-project/models) — fetched
-  automatically.
+- CORE and MODELS — the directories `CORE` and `MODELS` of the
+  repository.
 - [Boost.Iostreams](https://www.boost.org/) (linked at link time).
 - [Gemmi](https://gemmi.readthedocs.io/) — fetched automatically
   (used by the CIF reader).

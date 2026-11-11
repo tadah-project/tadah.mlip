@@ -4,9 +4,9 @@ This directory contains the **CMake “injection” hook** that enables **ML‑T
 
 - `pair_style tadah`
 
-The integration compiles the ML‑TADAH sources **directly from your Tadah.LAMMPS checkout into the LAMMPS build**, without copying files into `lammps/src` and without editing the LAMMPS source tree.
+The integration compiles the ML‑TADAH sources **directly from the `Tadah.LAMMPS` directory of a clone of the Tadah! repository into the LAMMPS build**, without copying files into `lammps/src` and without editing the LAMMPS source tree.
 
-> **Note:** ML‑TADAH / Tadah.LAMMPS is **not part of the official LAMMPS distribution**. You must clone Tadah.LAMMPS yourself and enable it in your LAMMPS CMake configure step.
+> **Note:** ML‑TADAH / Tadah.LAMMPS is **not part of the official LAMMPS distribution**. It is built from a clone of the Tadah! repository and enabled in the LAMMPS CMake configure step.
 
 Extended documentation:
 https://tadah.readthedocs.io/
@@ -25,13 +25,16 @@ https://docs.lammps.org/Build_cmake.html
 
 ## Quick start (recommended workflow)
 
-### 1) Clone Tadah.LAMMPS (somewhere outside LAMMPS)
+### 1) Clone Tadah! (somewhere outside LAMMPS)
 
-Name the branch or tag, `v1-dev` (the development line) or a release tag such as `v1.6.0`; a plain `git clone` checks out the repository's default branch:
+Tadah.LAMMPS is a directory of the Tadah! repository and is built from inside it, with the modules it needs (Tadah.MD, Tadah.MODELS and Tadah.CORE) beside it. The repository is cloned anywhere, at `v1-dev` (the development line) or at a release tag such as `v1.6.0`:
 
 ```bash
-git clone -b v1-dev https://github.com/tadah-project/tadah.lammps.git /path/to/Tadah.LAMMPS
+git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git /path/to/tadah
+# or: git clone -b v1.6.0 ...
 ```
+
+A plain `git clone` checks out the repository's default branch, which need not be `v1-dev`. In the steps below `/path/to/Tadah.LAMMPS` stands for `/path/to/tadah/Tadah.LAMMPS`.
 
 ### 2) Configure LAMMPS and add the ML‑TADAH integration options
 
@@ -43,20 +46,13 @@ From the **LAMMPS root directory**, run your usual LAMMPS configure command **an
   -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS
 ```
 
-and the git ref the Tadah modules are fetched at, matching your Tadah.LAMMPS checkout (see `TADAH_GIT_BRANCH` below):
-
-```bash
-  -DTADAH_GIT_BRANCH=v1-dev
-```
-
 Minimal example, for a `v1-dev` checkout:
 
 ```bash
 cmake -S cmake -B build \
   -DPKG_ML-TADAH=ON \
   -DCMAKE_PROJECT_INCLUDE=/path/to/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake \
-  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS \
-  -DTADAH_GIT_BRANCH=v1-dev
+  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS
 ```
 
 ### 3) Build
@@ -113,19 +109,7 @@ Path to your local Tadah.LAMMPS checkout.
 -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS
 ```
 
-### 4) `TADAH_GIT_BRANCH` (a branch or tag of the Tadah modules)
-
-The git ref Tadah.LAMMPS fetches the Tadah modules at (Tadah.MD, and through it Tadah.MODELS and Tadah.CORE). The Tadah.LAMMPS sources themselves are your checkout at `TADAH_LAMMPS_SOURCE_DIR`, whatever it has checked out; pass the ref that matches it:
-
-```bash
--DTADAH_GIT_BRANCH=v1-dev     # the development line
-# or
--DTADAH_GIT_BRANCH=v1.6.0     # a release tag
-```
-
-Without it, cmake-tools' `tadah_get_git_branch` detects the ref: `$CI_COMMIT_REF_NAME` in a CI pipeline that sets it, the Read the Docs variables on Read the Docs, else the upstream branch, then the local branch, of the checkout of the project CMake was started on. In this build that is the **LAMMPS** checkout, whose branch (e.g. `stable` or `develop`) is unrelated to your Tadah.LAMMPS checkout, and a LAMMPS tarball or a detached HEAD gives no ref at all (with a warning). Always pass `-DTADAH_GIT_BRANCH` in the LAMMPS build.
-
-### 5) `TADAH_LAMMPS_QUIET` (ON/OFF)
+### 4) `TADAH_LAMMPS_QUIET` (ON/OFF)
 
 Controls the verbosity of Tadah.LAMMPS when it is configured/built as part of the LAMMPS build.
 
@@ -141,7 +125,7 @@ For debugging:
 -DTADAH_LAMMPS_QUIET=OFF
 ```
 
-### 6) `TADAH_LAMMPS_PAIR_STYLES` (list)
+### 5) `TADAH_LAMMPS_PAIR_STYLES` (list)
 
 Semicolon-separated list of pair styles to register.
 
@@ -186,18 +170,7 @@ Multiple styles (future use):
 cmake -S cmake -B build \
   -DPKG_ML-TADAH=ON \
   -DCMAKE_PROJECT_INCLUDE=/path/to/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake \
-  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS \
-  -DTADAH_GIT_BRANCH=v1-dev
-```
-
-### Fetch the Tadah modules at a release tag
-
-```bash
-cmake -S cmake -B build \
-  -DPKG_ML-TADAH=ON \
-  -DCMAKE_PROJECT_INCLUDE=/path/to/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake \
-  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS \
-  -DTADAH_GIT_BRANCH=v1.6.0
+  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS
 ```
 
 ### Verbose Tadah.LAMMPS output (debugging)
@@ -207,7 +180,6 @@ cmake -S cmake -B build \
   -DPKG_ML-TADAH=ON \
   -DCMAKE_PROJECT_INCLUDE=/path/to/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake \
   -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS \
-  -DTADAH_GIT_BRANCH=v1-dev \
   -DTADAH_LAMMPS_QUIET=OFF
 ```
 
@@ -218,6 +190,5 @@ cmake -S cmake -B build \
   -DPKG_ML-TADAH=ON \
   -DCMAKE_PROJECT_INCLUDE=/path/to/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake \
   -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS \
-  -DTADAH_GIT_BRANCH=v1-dev \
   -DTADAH_LAMMPS_PAIR_STYLES="tadah:PairTadah:pair_tadah.h"
 ```

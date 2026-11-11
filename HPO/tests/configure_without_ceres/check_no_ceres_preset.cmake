@@ -43,6 +43,10 @@ set(inner_build "${WORK_DIR}/inner-build")
 file(WRITE "${prefix}/lib/cmake/TadahProbeDep/TadahProbeDepConfig.cmake"
      "set(TadahProbeDep_FOUND TRUE)\n")
 file(MAKE_DIRECTORY "${given}" "${outer_build}/_deps/probe_unlisted-src")
+# What a build tree made when the Tadah modules were still fetched holds: the
+# modules are the repository's directories, so the preset names none of them.
+file(MAKE_DIRECTORY "${outer_build}/_deps/tadah.core-src"
+                    "${outer_build}/_deps/tadah_cmake-src")
 file(WRITE "${outer}/CMakeLists.txt" [=[
 cmake_minimum_required(VERSION 3.24)
 project(hpo_no_ceres_preset_outer NONE)
@@ -120,6 +124,9 @@ endif()
 
 # The preset's lines, a ';' in them kept (file(STRINGS) would split there).
 file(READ "${outer_build}/preset.cmake" text)
+if(text MATCHES "FETCHCONTENT_SOURCE_DIR_TADAH")
+  fail("the preset names a fetched copy of a Tadah module or of cmake-tools:\n${text}")
+endif()
 string(REPLACE ";" "<SEMICOLON>" text "${text}")
 string(REPLACE "\n" ";" lines "${text}")
 foreach(line IN LISTS lines)

@@ -100,7 +100,7 @@ the version badge in every repo's `README.md`, `CITATION.cff`
 (`version`, `date-released`), the `CHANGELOG.md` files (the
 `## [X.Y.Z] — <date>` heading in every repo; cmake-tools has no
 changelog), and the release tag the install instructions name
-(`git clone -b v1.6.0`, `-DTADAH_GIT_BRANCH=v1.6.0`; `grep -rn 'v1\.6\.0'`
+(`git clone -b v1.6.0`; `grep -rn 'v1\.6\.0'`
 over `docs/source/installation.rst`, the READMEs and the Tadah.LAMMPS
 READMEs finds them).
 
@@ -120,12 +120,9 @@ not run on tags):
   `TADAH_ENABLE_NFP`, so no pipeline builds or tests HPO: validate it
   locally.
 
-A tag pipeline runs the build jobs, which fetch the sibling modules at
-the tag, and `release_tarball`, which uploads a `git archive` of the
-tag to the GitLab project's Generic Package Registry. A tarball has no
-`.git`, so `tadah_get_git_branch` finds no branch in it: users who
-build from a tarball pass the tag, `-DTADAH_GIT_BRANCH=v1.6.0`
-(installation guide, "Which ref the Tadah! modules are fetched at").
+A tag pipeline runs the build jobs and `release_tarball`, which uploads
+a `git archive` of the tag to the project's Generic Package Registry. A tarball holds
+every module, so a build from it needs no ref.
 `lint_codespell` and `docs_sphinx` do not run on tags (`when: never`).
 
 ## Development and public repositories

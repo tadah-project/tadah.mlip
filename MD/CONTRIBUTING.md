@@ -24,8 +24,8 @@ build directory.
 ### Dependencies
 
 - C++17 compiler.
-- [MODELS](https://github.com/tadah-project/models) — fetched
-  automatically (which itself fetches CORE).
+- MODELS and CORE — the directories `MODELS` and `CORE` of the
+  repository.
 - OpenMP (optional; enabled with `-DTADAH_ENABLE_OPENMP=ON`).
 
 ## Layout

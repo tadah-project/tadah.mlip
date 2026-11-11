@@ -64,10 +64,9 @@ repository, the modules in the directories `CORE`, `MODELS`, `MLIP`, `MD`,
 git clone https://github.com/tadah-project/tadah.mlip.git
 cd tadah.mlip
 
-# TADAH_PATH names the root of the clone. With TADAH_DEVELOP=ON the build
-# takes cmake-tools and every module it builds from the directories of
-# $TADAH_PATH.
-export TADAH_PATH="$PWD"
+# The build takes cmake-tools and every module it builds from the
+# directories of the clone. TADAH_DEVELOP=ON adds -Wextra and CMake's
+# deprecation warnings.
 cmake -S . -B build -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON
 cmake --build build -j
 ctest --test-dir build
@@ -78,18 +77,10 @@ This build contains `MLIP`, `MODELS` and `CORE`; with
 `HPO`, `MD` and `Tadah.LAMMPS`. An edit in the directory of a module of
 the build is picked up by the next `cmake --build`.
 
-`TADAH_PATH` is an environment variable. Every configure step of a build
-with `TADAH_DEVELOP=ON` reads it, including the one a later
-`cmake --build` starts by itself, and stops when it is not set. Every
-shell that builds therefore needs it.
-
-Without `-DTADAH_DEVELOP=ON` the configure step does not use the module
-directories and `cmake-tools` of the clone. It fetches cmake-tools at
-`v1-dev` and the modules at the ref `TADAH_GIT_BRANCH`, from
-`https://github.com/tadah-project` or from the base address in
-`TADAH_GIT_BASE`. Without `-DTADAH_GIT_BRANCH=<ref>` that ref is the name
-of the upstream branch of the checkout, else of its local branch (see
-*Installation* in the documentation).
+No option and no environment variable names another source of a module.
+A `FETCHCONTENT_SOURCE_DIR_TADAH.<MODULE>` setting that names another
+directory stops the configure step with an error, and so does a
+`cmake-tools` of another checkout.
 
 LAMMPS integration: see `Tadah.LAMMPS/README.md` and the docs page on
 LAMMPS.
@@ -330,7 +321,7 @@ built outside Tadah! (the docs' *Installation*, *Running pair_style tadah
 on several MPI ranks*) and named at configure time:
 
 ```bash
-cmake -S Tadah.MLIP -B build ... \
+cmake -S . -B build ... \
     -DTADAH_LMP_MPI=/path/to/lammps/build-mpi/lmp_mpi \
     -DTADAH_LMP_MPIEXEC=/usr/bin/mpiexec \
     -DTADAH_LMP_SERIAL=/path/to/lammps/build/lmp_serial   # optional
@@ -453,11 +444,11 @@ from the same sources, each in a build directory of its own:
 ```bash
 # Without Ceres: LIB CERES is refused as not built, and tadah refit
 # refuses REFIT_MODE compact (use REFIT_MODE dense).
-cmake -S Tadah.MLIP -B build_tadah_noceres -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON \
+cmake -S . -B build_tadah_noceres -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON \
     -DTADAH_ENABLE_NFP=ON -DTADAH_ENABLE_CERES=OFF \
     -DTADAH_LAMMPS_DIR=... -DTADAH_LAMMPS_LIB=...    # as for the NFP build
 # Without NFP (the default): no HPO, no LAMMPS.
-cmake -S Tadah.MLIP -B build_tadah_nonfp -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON
+cmake -S . -B build_tadah_nonfp -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON
 
 cmake --build build_tadah_noceres -j     # and build_tadah_nonfp
 ctest --test-dir build_tadah_noceres --output-on-failure --no-tests=error
@@ -513,21 +504,22 @@ ML-TADAH (the docs' *Installation*, *MPI-Parallel Hyperparameter
 Optimisation*). A develop build of both, with the system MPI on `PATH`:
 
 ```bash
+# From the root of the clone, with LAMMPS cloned into its directory LAMMPS.
 # LAMMPS with MPI and ML-TADAH; the library name must contain "mpi"
 cmake -S LAMMPS/cmake -B build_lammps_mpi \
     -DBUILD_MPI=ON -DLAMMPS_MACHINE=develop_mpi \
-    -DPKG_ML-TADAH=ON -DTADAH_LAMMPS_SOURCE_DIR="$TADAH_PATH/Tadah.LAMMPS" \
-    -DCMAKE_PROJECT_INCLUDE="$TADAH_PATH/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake" \
+    -DPKG_ML-TADAH=ON -DTADAH_LAMMPS_SOURCE_DIR="$PWD/Tadah.LAMMPS" \
+    -DCMAKE_PROJECT_INCLUDE="$PWD/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake" \
     -DTADAH_DEVELOP=ON
 cmake --build build_lammps_mpi --target lammps -j
 
 # Tadah with TADAH_HPO_MPI against it, with OpenMP (LAMMPS builds with it
 # when it finds it), and the launcher of the MPI that mpicxx belongs to
 # (MPIEXEC_EXECUTABLE, see below)
-cmake -S Tadah.MLIP -B build_tadah_mpi -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON \
+cmake -S . -B build_tadah_mpi -DTADAH_DEVELOP=ON -DBUILD_TESTING=ON \
     -DTADAH_ENABLE_NFP=ON -DTADAH_HPO_MPI=ON -DTADAH_ENABLE_OPENMP=ON \
-    -DTADAH_LAMMPS_DIR="$TADAH_PATH/LAMMPS" \
-    -DTADAH_LAMMPS_LIB="$TADAH_PATH/build_lammps_mpi/liblammps_develop_mpi.a" \
+    -DTADAH_LAMMPS_DIR="$PWD/LAMMPS" \
+    -DTADAH_LAMMPS_LIB="$PWD/build_lammps_mpi/liblammps_develop_mpi.a" \
     -DMPIEXEC_EXECUTABLE="$(dirname "$(command -v mpicxx)")/mpiexec"
 cmake --build build_tadah_mpi -j
 

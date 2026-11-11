@@ -13,8 +13,8 @@ discussed on the umbrella project first.
 ## Build & test in isolation
 
 CORE depends only on the
-[cmake-tools](https://github.com/tadah-project/cmake-tools) helper repo
-(fetched automatically) and a C++17 compiler.
+cmake-tools helpers (the directory `cmake-tools` of the repository) and a
+C++17 compiler.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON

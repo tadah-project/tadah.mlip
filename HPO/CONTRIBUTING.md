@@ -30,11 +30,8 @@ fails on an entry without it.
 ### Dependencies
 
 - C++17 compiler.
-- [CORE](https://github.com/tadah-project/core),
-  [MODELS](https://github.com/tadah-project/models),
-  [MLIP](https://github.com/tadah-project/mlip), and
-  [MD](https://github.com/tadah-project/md) — fetched
-  automatically.
+- CORE, MODELS, MLIP and MD — the directories of those names in the
+  repository.
 - [dlib](http://dlib.net/), [NLopt](https://nlopt.readthedocs.io/),
   [Eigen3](https://eigen.tuxfamily.org/), and (optionally)
   [Ceres](http://ceres-solver.org/) — fetched automatically at pinned

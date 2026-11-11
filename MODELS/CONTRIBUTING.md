@@ -24,8 +24,7 @@ build directory.
 ### Dependencies
 
 - C++17 compiler.
-- [CORE](https://github.com/tadah-project/core) — fetched
-  automatically.
+- CORE — the directory `CORE` of the repository.
 - OpenMP (optional; enabled with `-DTADAH_ENABLE_OPENMP=ON`).
 - LAPACK / BLAS at link time (provided by the build environment).
 

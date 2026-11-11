@@ -21,7 +21,7 @@ on:
 ## You don't need to use this directly
 
 CORE is an internal module of the Tadah! MLIP toolchain. It is
-fetched automatically (via CMake `FetchContent`) by every Tadah!
+built from its directory of the Tadah! repository by every Tadah!
 consumer (MODELS, MLIP, MD, HPO, Tadah.LAMMPS, Tadah.MLIP). End users
 install the umbrella project
 [Tadah!MLIP](https://github.com/tadah-project/tadah.mlip) — see the

@@ -66,23 +66,20 @@ endif()
 string(REGEX REPLACE "/+$" "" TADAH_GIT_BASE "${TADAH_GIT_BASE}")
 # <<< TADAH_GIT_BASE
 # 2. Bring in the shared compile/link options
-# Developer build (-DTADAH_DEVELOP=ON): use a local cmake-tools checkout
-# rather than fetching it. Skipped when the source dir is already pinned
-# (e.g. -DFETCHCONTENT_SOURCE_DIR_TADAH_CMAKE=...).
-if(TADAH_DEVELOP AND NOT FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE
-   AND DEFINED ENV{TADAH_PATH})
-  foreach(_tadah_ct "$ENV{TADAH_PATH}/cmake-tools"
-                    "$ENV{TADAH_PATH}/../cmake-tools")
-    if(IS_DIRECTORY "${_tadah_ct}")
-      get_filename_component(FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE
-                             "${_tadah_ct}" ABSOLUTE)
-      message(STATUS
-        "TADAH_DEVELOP: cmake-tools taken from ${FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE}")
-      break()
-    endif()
-  endforeach()
-  unset(_tadah_ct)
+# >>> cmake-tools (the same block in every build file of the repository but
+#     for the path and the name; tests/local_module compares them)
+# cmake-tools is the directory of that name in this repository; the file
+# read here refuses a FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE of another one.
+get_filename_component(_tadah_here "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
+if(NOT EXISTS "${_tadah_here}/../cmake-tools/cmake/TadahRepository.cmake")
+  message(FATAL_ERROR
+    "The module CORE is built from inside the Tadah! repository, which holds "
+    "cmake-tools at '${_tadah_here}/../cmake-tools': that directory is missing. "
+    "A copy of this directory alone cannot be built.")
 endif()
+include("${_tadah_here}/../cmake-tools/cmake/TadahRepository.cmake")
+unset(_tadah_here)
+# <<< cmake-tools
 
 if(NOT TARGET tadah::compile_options)
   FetchContent_Declare (

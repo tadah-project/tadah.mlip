@@ -1,44 +1,81 @@
 # ====================================================================
-#  Developer helper: use local working copies of Tadah repositories
+#  Where the Tadah modules of a build come from
 #
-#  Enable by configuring with      -DTADAH_DEVELOP=ON
-#  Environment variable required:  TADAH_PATH   (root that contains the repos)
+#  The repository that holds cmake-tools holds the Tadah modules too, each
+#  in the directory of its name (CORE, MODELS, MLIP, MD, HPO,
+#  Tadah.LAMMPS). A build takes every module from there: no option and no
+#  environment variable chooses another place.
 #
-#  Usage inside a project:
+#  Usage inside a project, before the module is made available:
 #
-#     include(TadahDevelop)               # once
-#     tadah_use_local_module(tadah_core core)
-#     tadah_use_local_module(tadah_models models)
+#     tadah_use_local_module(Tadah.CORE CORE)
 #
 #  where the first argument is the *FetchContent name* (upper-/lower-case
-#  doesn't matter) and the second is the directory name inside $TADAH_PATH.
+#  doesn't matter) and the second is the directory name in the repository.
+#  A FETCHCONTENT_SOURCE_DIR_<NAME> that names another directory is
+#  refused: one build never mixes the modules of two checkouts.
+#
+#  TADAH_DEVELOP is the developer build: -Wextra in every build type
+#  (TadahCompileOptions.cmake) and CMake's deprecation warnings
+#  (TadahProjectSetup.cmake). It does not change where a module comes from.
 # ====================================================================
 
-option(TADAH_DEVELOP "Use local checkouts in \$TADAH_PATH" OFF)
+option(TADAH_DEVELOP "Developer build: -Wextra and CMake deprecation warnings" OFF)
+
+# cmake-tools/cmake/ -> cmake-tools/ -> the repository, from the resolved
+# directory of this file (cmake-tools reached through a symbolic link
+# belongs to the repository that holds it, not to the one that holds the
+# link). A global property: this file is read in cmake-tools' own
+# directory scope, and the function is called from every module.
+get_filename_component(_tadah_repository "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
+get_filename_component(_tadah_repository "${_tadah_repository}/../.." ABSOLUTE)
+set_property(GLOBAL PROPERTY TADAH_REPOSITORY_ROOT "${_tadah_repository}")
+unset(_tadah_repository)
 
 function(tadah_use_local_module fetch_name subdir)
-  if(NOT TADAH_DEVELOP)
-    return()             # feature disabled → keep remote FetchContent
-  endif()
+  get_property(_root GLOBAL PROPERTY TADAH_REPOSITORY_ROOT)
+  get_filename_component(_root_real "${_root}" REALPATH)
 
-  if(NOT DEFINED ENV{TADAH_PATH})
+  # The project that asks is the repository's root or one of its module
+  # directories: a cmake-tools pinned from another checkout would otherwise
+  # move every module to that checkout.
+  get_filename_component(_caller "${CMAKE_CURRENT_SOURCE_DIR}" REALPATH)
+  get_filename_component(_caller_parent "${_caller}/.." REALPATH)
+  if(NOT _caller STREQUAL _root_real AND NOT _caller_parent STREQUAL _root_real)
     message(FATAL_ERROR
-      "TADAH_DEVELOP=ON but environment variable TADAH_PATH is not set.")
+      "cmake-tools was loaded from '${_root}/cmake-tools', which is not the "
+      "repository of the project being configured ('${_caller}'). A build "
+      "takes cmake-tools and every Tadah! module from one repository; remove "
+      "the FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE setting.")
   endif()
 
-  # Absolute path we expect
-  set(local_path "$ENV{TADAH_PATH}/${subdir}")
-
+  set(local_path "${_root}/${subdir}")
   if(NOT IS_DIRECTORY "${local_path}")
     message(FATAL_ERROR
-      "TADAH_DEVELOP=ON but directory '${local_path}' not found.")
+      "The Tadah! module ${subdir} is not in the repository of cmake-tools: "
+      "directory '${local_path}' not found.")
   endif()
 
   # Convert fetch_name to upper case for the magic variable
   string(TOUPPER "${fetch_name}" _uc)
+  set(_given "${FETCHCONTENT_SOURCE_DIR_${_uc}}")
+  if(_given)
+    get_filename_component(_given_real "${_given}" REALPATH)
+    get_filename_component(_local_real "${local_path}" REALPATH)
+    if(NOT _given_real STREQUAL _local_real)
+      message(FATAL_ERROR
+        "FETCHCONTENT_SOURCE_DIR_${_uc}=${_given} (resolved: ${_given_real}) "
+        "names another directory than the module of this repository, "
+        "'${local_path}'. A build takes every Tadah! module from its "
+        "repository; remove the setting.")
+    endif()
+  endif()
+  # In the cache as well as in the caller's scope (see TadahRepository.cmake).
+  set("FETCHCONTENT_SOURCE_DIR_${_uc}" "${local_path}" CACHE PATH
+      "The directory of ${subdir} in this repository (set by its build files)" FORCE)
   set("FETCHCONTENT_SOURCE_DIR_${_uc}" "${local_path}" PARENT_SCOPE)
 
-  message(STATUS "TADAH_DEVELOP: '${fetch_name}' will be taken from ${local_path}")
+  message(STATUS "Tadah! module '${fetch_name}' is taken from ${local_path}")
 endfunction()
 
 #--------------------------------------------------------------------
@@ -68,9 +105,8 @@ endfunction()
 #                        the top-level project (CMAKE_SOURCE_DIR; for the
 #                        LAMMPS plugin build that is the LAMMPS checkout).
 #                        Outside a branch checkout (tarball, detached
-#                        HEAD) <outVar> is left empty with a warning; pass
-#                        -D<outVar>=<ref> when the modules must be
-#                        fetched.
+#                        HEAD) <outVar> is left empty, with a status line:
+#                        no build needs it.
 #--------------------------------------------------------------------
 function(tadah_get_git_branch out_var)
   # Don't override an existing value (set in caller scope or via -D... cache)
@@ -119,10 +155,11 @@ function(tadah_get_git_branch out_var)
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET)
       if("${_branch}" STREQUAL "")
-        message(WARNING
+        message(STATUS
           "tadah_get_git_branch: cannot determine the git branch of "
-          "${CMAKE_SOURCE_DIR} (detached HEAD or not a git checkout). "
-          "A build that fetches the Tadah modules at ${out_var} needs -D${out_var}=<ref>.")
+          "${CMAKE_SOURCE_DIR} (detached HEAD or not a git checkout); "
+          "${out_var} stays empty. No build needs it: the modules come from "
+          "the repository.")
       endif()
       message(STATUS "No tracking branch found, using local branch: ${_branch}")
     endif()

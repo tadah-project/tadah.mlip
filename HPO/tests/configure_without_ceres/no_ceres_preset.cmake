@@ -77,6 +77,11 @@ function(hpo_write_no_ceres_preset file)
       if("FETCHCONTENT_SOURCE_DIR_${dep}" IN_LIST given_sources)
         continue()
       endif()
+      # The Tadah modules and cmake-tools are the repository's directories;
+      # a copy fetched into an older build tree is not one of them.
+      if(dep MATCHES "^TADAH[._]")
+        continue()
+      endif()
       _hpo_bracket(qdir "${dir}")
       string(APPEND text
         "set(FETCHCONTENT_SOURCE_DIR_${dep} ${qdir} CACHE PATH \"\")\n")

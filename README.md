@@ -30,7 +30,7 @@ companion libraries.
 ```bash
 # 1. Clone the development line, v1-dev, and configure with the bundled
 #    defaults preset. For a release, clone its tag instead
-#    (git clone -b v1.6.0 ...) and add -DTADAH_GIT_BRANCH=v1.6.0.
+#    (git clone -b v1.6.0 ...).
 git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git
 cd tadah.mlip
 cmake -S . -B build -C cmake/presets/tadah-linux-defaults.cmake \
@@ -76,8 +76,7 @@ worth a thousand words.
 ## Contributing
 
 Bug reports, feature requests and merge requests are welcome. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for the developer build (multi-repo
-sibling layout, `TADAH_PATH`, FetchContent overrides), test workflow,
+[CONTRIBUTING.md](CONTRIBUTING.md) for the developer build, test workflow,
 and merge-request checklist.
 
 ## License

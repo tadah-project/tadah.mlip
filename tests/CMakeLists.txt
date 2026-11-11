@@ -144,6 +144,37 @@ endforeach()
 
 
 # ------------------------------------------------------------------
+# 4b. Where the modules and cmake-tools come from
+# ------------------------------------------------------------------
+# The directories of this repository, whatever TADAH_DEVELOP and the
+# environment variable TADAH_PATH say; another directory given for a
+# module or for cmake-tools, a repository without the module and a
+# module copied out of its repository are refused. The function cases
+# run local_module/probe.cmake; the project_ cases configure a build file
+# in a scratch directory without network; one case compares the
+# cmake-tools block of the seven build files.
+foreach(_case repository tadah_path_is_not_read same_directory_given
+              cmake_tools_through_link
+              other_directory_refused other_cmake_tools_refused
+              missing_module_refused blocks_identical
+              project_unpinned project_same_cmake_tools_given
+              project_same_module_given project_other_module_refused
+              project_other_cmake_tools_refused project_module_alone_refused)
+  add_test(NAME tadah_local_module_${_case}
+    COMMAND ${CMAKE_COMMAND}
+      -DCASE=${_case}
+      -DREPOSITORY=${PROJECT_SOURCE_DIR}
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/local_module/${_case}
+      "-DGENERATOR=${CMAKE_GENERATOR}"
+      -DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+      -DCXX_COMPILER=${CMAKE_CXX_COMPILER}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/local_module/check_local_module.cmake)
+  set_tests_properties(tadah_local_module_${_case} PROPERTIES
+    LABELS cmake
+    TIMEOUT 120)
+endforeach()
+
+# ------------------------------------------------------------------
 # 5. Doxygen input of the `docs` target (cmake/doxygen_input.cmake)
 # ------------------------------------------------------------------
 # The include/ trees of the configured modules only: HPO with

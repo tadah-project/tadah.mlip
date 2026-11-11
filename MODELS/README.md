@@ -31,7 +31,7 @@ in the umbrella documentation.
 ## You don't need to use this directly
 
 MODELS is an internal module of the Tadah! MLIP toolchain. It is
-fetched automatically (via CMake `FetchContent`) by MLIP, MD, and HPO. End users install the umbrella project
+built from its directory of the Tadah! repository by MLIP, MD, and HPO. End users install the umbrella project
 [Tadah!MLIP](https://github.com/tadah-project/tadah.mlip) — see the
 [installation guide](https://tadah.readthedocs.io/v1-dev/installation.html).
 

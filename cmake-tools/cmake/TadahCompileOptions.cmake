@@ -10,10 +10,9 @@
 #                          -Wshadow -Wconversion -Wsign-conversion
 #                          -Wold-style-cast
 #
-#  TADAH_DEVELOP=ON adds the full Debug-level warning set regardless
-#  of CMAKE_BUILD_TYPE, so e.g.:
+#  TADAH_DEVELOP=ON adds -Wextra regardless of CMAKE_BUILD_TYPE, so e.g.:
 #    cmake .. -DTADAH_DEVELOP=ON -DCMAKE_BUILD_TYPE=Release
-#  produces an optimised -O3 build with all warnings.
+#  produces an optimised -O3 build with -Wall -Wextra.
 #
 #  Removed build options are rejected here, because every Tadah module
 #  configures this file (through FetchContent of cmake-tools) before it

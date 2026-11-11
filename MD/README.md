@@ -20,7 +20,7 @@ the overhead of training-time bookkeeping.
 ## You don't need to use this directly
 
 MD is an internal module of the Tadah! MLIP toolchain. It is
-fetched automatically (via CMake `FetchContent`) by
+built from its directory of the Tadah! repository by
 [Tadah!LAMMPS](https://github.com/tadah-project/tadah.lammps) (the
 `pair_style tadah` implementation) and by
 [HPO](https://github.com/tadah-project/hpo). End users install

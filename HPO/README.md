@@ -24,7 +24,7 @@ For the full grammar and the parallelism / performance notes, see the
 ## You don't need to use this directly
 
 HPO is an internal module of the Tadah! MLIP toolchain. It is
-fetched automatically (via CMake `FetchContent`) by the umbrella
+built from its directory of the Tadah! repository by the umbrella
 project [Tadah!MLIP](https://github.com/tadah-project/tadah.mlip) when
 configured with `-DTADAH_ENABLE_NFP=ON`. End users install the
 umbrella project; the `tadah hpo` CLI lives there.

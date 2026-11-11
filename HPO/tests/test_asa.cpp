@@ -23,7 +23,7 @@
 #include <tadah/hpo/optimizer_spec.h>
 #include <tadah/hpo/warmstart_cache.h>  /* current_chain(): the block slot */
 
-#include "anneal_test_support.h"  /* JournalCapture */
+#include "anneal_test_support.h"  /* JournalCapture, RunDirectory */
 
 #include <dlib/matrix.h>
 
@@ -46,6 +46,7 @@ extern "C" {
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -60,6 +61,10 @@ extern "C" {
 #include <thread>
 #include <utility>
 #include <vector>
+
+#include <fcntl.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 using tadah::hpo::AsaHostFn;
 using tadah::hpo::AsaOptions;
@@ -271,10 +276,10 @@ void check_counter_summary(const std::string& journal, long generated,
           std::string::npos);
 }
 
-/* The upstream exit journal prints the internal totals independently of
- * the callback-visible OPTIONS counters. Read its last such line (one
- * per minimum with Multi_Number > 1). */
-std::pair<long, long> upstream_final_counters(const std::string& journal)
+/* The name of the file that, as the run journal says, the ASA library
+ * wrote its own journal to in the run's working directory (asa_out, and
+ * asa_out.<n> from the second ASA run of a process on). */
+std::string upstream_journal_name(const std::string& journal)
 {
     const std::string head = "ASA: the ASA library writes its journal to ";
     const std::string line = journal_line(journal, head);
@@ -282,7 +287,19 @@ std::pair<long, long> upstream_final_counters(const std::string& journal)
     REQUIRE(begin != std::string::npos);
     const auto end = line.find(" (overwritten", begin);
     REQUIRE(end != std::string::npos);
-    std::ifstream in(line.substr(begin + head.size(), end - begin - head.size()));
+    return line.substr(begin + head.size(), end - begin - head.size());
+}
+
+/* The upstream exit journal prints the internal totals independently of
+ * the callback-visible OPTIONS counters. Read its last such line (one
+ * per minimum with Multi_Number > 1). The file is read from `dir`, the
+ * run directory of the case, in which the run was made: in the directory
+ * the test cases share, a run of another case at the same time writes a
+ * file of the same name. */
+std::pair<long, long> upstream_final_counters(
+    const anneal_test::RunDirectory& dir, const std::string& journal)
+{
+    std::ifstream in(dir.path / upstream_journal_name(journal));
     REQUIRE(in.good());
     const std::regex counters(
         R"(\*number_generated = (\d+), \*number_accepted = (\d+))");
@@ -294,6 +311,43 @@ std::pair<long, long> upstream_final_counters(const std::string& journal)
     }
     REQUIRE(totals.first >= 0);
     return totals;
+}
+
+/* The environment variable that names, for the second test process below,
+ * the ASA library journal its last run is to write. */
+const char* const kSecondProcessJournal =
+    "TADAH_TEST_ASA_SECOND_PROCESS_JOURNAL";
+
+/* Runs this test program on the hidden case "[.asa_second_process]" in the
+ * working directory `cwd`, with kSecondProcessJournal set to `name`, waits
+ * for it and returns its wait status; its output goes to the file `out`.
+ * Everything is prepared before fork(); the child then makes
+ * async-signal-safe calls only. */
+int run_second_process(const std::filesystem::path& cwd,
+                       const std::string& name,
+                       const std::filesystem::path& out)
+{
+    const std::string dir = cwd.string(), out_file = out.string();
+    REQUIRE(::setenv(kSecondProcessJournal, name.c_str(), 1) == 0);
+    std::cout.flush();
+    std::fflush(nullptr);   /* or the child writes this process's buffers */
+    const pid_t child = ::fork();
+    if (child == 0) {
+        const int fd =
+            ::open(out_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd < 0) ::_exit(126);
+        ::dup2(fd, 1);
+        ::dup2(fd, 2);
+        if (::chdir(dir.c_str()) != 0) ::_exit(125);
+        ::execl("/proc/self/exe", "test_hpo", "[.asa_second_process]",
+                static_cast<char*>(nullptr));
+        ::_exit(127);
+    }
+    ::unsetenv(kSecondProcessJournal);
+    REQUIRE(child > 0);
+    int status = 0;
+    REQUIRE(::waitpid(child, &status, 0) == child);
+    return status;
 }
 
 }  // namespace
@@ -719,6 +773,71 @@ TEST_CASE("ASA print_caps names the original option spellings",
 
 /* ================= serial driver =================================== */
 
+TEST_CASE("ASA final counters are those of the case's own run when a "
+          "second process runs ASA in the directory the case was started in",
+          "[HPO][asa][counters]")
+{
+    /* Pins: a case that reads the ASA library's journal back reads the one
+     * of its own run when a second test process runs ASA in the directory
+     * the case was started in, which the cases that CTest runs side by
+     * side share. The case's run (blocks of four, MAXEVAL 13) ends with
+     * totals of 7/7; before the case reads them, the second process (the
+     * hidden case below) makes serial runs with MAXEVAL 9 in that
+     * directory, totals 3/3, the last of which writes a journal of the
+     * same name as the case's; the case still reads 7/7.
+     * Before the fix: the case ran in the start directory as well, the
+     * second process overwrote its asa_out, and the case read 3/3. */
+    const anneal_test::RunDirectory dir;
+    auto sp = counter_spec(4, 1);
+    sp.stop.maxeval = 13;
+    std::atomic<unsigned> calls{0};
+    anneal_test::JournalCapture jc;
+    run_asa_erased(sp, 1, [&](const std::vector<double>&) {
+        return counter_cost(++calls);
+    });
+    CHECK(calls.load() == 13);
+
+    const std::filesystem::path out = dir.path / "second_process.out";
+    const int status = run_second_process(
+        dir.start, upstream_journal_name(jc.read()), out);
+    std::ostringstream text;
+    text << std::ifstream(out).rdbuf();
+    const std::string second = text.str();
+    INFO("the second process printed:\n" << second);
+    REQUIRE(WIFEXITED(status));
+    REQUIRE(WEXITSTATUS(status) == 0);
+    REQUIRE(second.find("All tests passed") != std::string::npos);
+
+    const auto totals = upstream_final_counters(dir, jc.read());
+    CHECK(totals.first == 7);
+    CHECK(totals.second == 7);
+}
+
+/* The second process of the case above: serial ASA runs in the working
+ * directory, MAXEVAL 9 (totals 3/3), until one has written the ASA library
+ * journal that kSecondProcessJournal names -- asa_out for the first run of
+ * a process, asa_out.<n> for run n + 1. */
+TEST_CASE("ASA second process: runs up to the named journal",
+          "[.asa_second_process]")
+{
+    const char* wanted = std::getenv(kSecondProcessJournal);
+    REQUIRE(wanted != nullptr);
+    auto sp = counter_spec(1, 1);
+    sp.stop.maxeval = 9;
+    std::string name;
+    for (int run = 0; run < 10000 && name != wanted; ++run) {
+        std::atomic<unsigned> calls{0};
+        anneal_test::JournalCapture jc;
+        run_asa_erased(sp, 1, [&](const std::vector<double>&) {
+            return counter_cost(++calls);
+        });
+        REQUIRE(calls.load() == 9);
+        check_counter_summary(jc.read(), 3, 3, 9);
+        name = upstream_journal_name(jc.read());
+    }
+    REQUIRE(name == wanted);
+}
+
 TEST_CASE("ASA final counters include a partially consumed block",
           "[HPO][asa][counters]")
 {
@@ -732,6 +851,7 @@ TEST_CASE("ASA final counters include a partially consumed block",
      * Before the fix: MAXEVAL 11, 12 and 13 printed "generated=4
      * accepted=4", the counts the callbacks had seen, instead of 5/5, 6/6
      * and 7/7; MAXEVAL 14 printed 8/8 and passed as well. */
+    const anneal_test::RunDirectory dir;
     for (unsigned threads : {1u, 2u, 4u}) {
         for (unsigned budget : {11u, 12u, 13u, 14u}) {
             CAPTURE(threads, budget);
@@ -743,7 +863,7 @@ TEST_CASE("ASA final counters include a partially consumed block",
                 return counter_cost(++calls);
             });
             CHECK(calls.load() == budget);
-            const auto totals = upstream_final_counters(jc.read());
+            const auto totals = upstream_final_counters(dir, jc.read());
             CHECK(totals == std::make_pair(long(budget - 6), long(budget - 6)));
             check_counter_summary(jc.read(), budget - 6, budget - 6, budget);
         }
@@ -762,6 +882,7 @@ TEST_CASE("ASA final counters include the last native-stop state and cached stat
      * cache (the last state is consumed after its callback), 0/0 serial
      * with the cache on one thread and 7/7 on two, and 4/4 with blocks of
      * four. */
+    const anneal_test::RunDirectory dir;
     for (unsigned threads : {1u, 2u}) {
         for (unsigned block : {1u, 4u}) {
             for (const std::string mode : {"native", "cache", "multi"}) {
@@ -782,7 +903,7 @@ TEST_CASE("ASA final counters include the last native-stop state and cached stat
                 const unsigned expected_calls =
                     mode == "cache" ? 7 : mode == "multi" ? 17 : 15;
                 CHECK(calls.load() == expected_calls);
-                CHECK(upstream_final_counters(jc.read()) ==
+                CHECK(upstream_final_counters(dir, jc.read()) ==
                       std::make_pair(8L, 8L));
                 check_counter_summary(jc.read(), 8, 8, expected_calls);
                 CHECK(journal_line(jc.read(), "ASA summary: ").find(
@@ -800,6 +921,7 @@ TEST_CASE("ASA final counters include states consumed after STOPVAL",
      * whole first block of four ("generated=4 accepted=4 host_evals=10"),
      * with at-best counts of 1/1, on 1 or 2 threads.
      * Before the fix: all four cases printed "generated=0 accepted=0". */
+    const anneal_test::RunDirectory dir;
     for (unsigned threads : {1u, 2u}) {
         for (unsigned block : {1u, 4u}) {
             CAPTURE(threads, block);
@@ -812,7 +934,7 @@ TEST_CASE("ASA final counters include states consumed after STOPVAL",
                 return call >= 7 ? 1.0 : counter_cost(call);
             });
             CHECK(calls.load() == 6 + block);
-            CHECK(upstream_final_counters(jc.read()) ==
+            CHECK(upstream_final_counters(dir, jc.read()) ==
                   std::make_pair(long(block), long(block)));
             check_counter_summary(jc.read(), block, block, 6 + block, 1, 1);
         }
@@ -830,6 +952,7 @@ TEST_CASE("ASA final counters exclude invalid states and survive exceptions",
      * Before the fix: with blocks of four, the exception case printed
      * "generated=0 accepted=0" and the FAILSCORE case 3/3; the serial
      * exception case printed 2/2 and passed as well. */
+    const anneal_test::RunDirectory dir;
     for (unsigned block : {1u, 4u}) {
         auto sp = counter_spec(block, 1);
         std::atomic<unsigned> calls{0};
@@ -843,7 +966,7 @@ TEST_CASE("ASA final counters exclude invalid states and survive exceptions",
         const unsigned consumed = block == 1 ? 2 : 3;
         const unsigned evaluated = block == 1 ? 9 : 10;
         CHECK(calls.load() == evaluated);
-        CHECK(upstream_final_counters(jc.read()) ==
+        CHECK(upstream_final_counters(dir, jc.read()) ==
               std::make_pair(long(consumed), long(consumed)));
         check_counter_summary(jc.read(), consumed, consumed, evaluated);
     }
@@ -857,7 +980,7 @@ TEST_CASE("ASA final counters exclude invalid states and survive exceptions",
         return call == 9 ? 100.0 : counter_cost(call);
     });
     CHECK(calls.load() == 13);
-    CHECK(upstream_final_counters(jc.read()) == std::make_pair(6L, 6L));
+    CHECK(upstream_final_counters(dir, jc.read()) == std::make_pair(6L, 6L));
     check_counter_summary(jc.read(), 6, 6, 13);
 }
 
@@ -914,6 +1037,7 @@ TEST_CASE("ASA final counters match upstream totals with adaptive blocks and rej
      * every trial accepted (improving costs): 84/0 and 84/84.
      * Before the fix: the rejecting run printed "generated=77 accepted=0";
      * the accepting run printed 84/84 and passed as well. */
+    const anneal_test::RunDirectory dir;
     for (const bool improving : {false, true}) {
         auto sp = counter_spec(4, 1);
         sp.param["Gener_Block_Max"] = 8;
@@ -928,7 +1052,7 @@ TEST_CASE("ASA final counters match upstream totals with adaptive blocks and rej
             if (call <= 6) return counter_cost(call);
             return improving ? 1.0 / call : 1e6;
         });
-        const auto totals = upstream_final_counters(jc.read());
+        const auto totals = upstream_final_counters(dir, jc.read());
         CHECK(totals.first > 0);
         if (improving) CHECK(totals.second == totals.first);
         else CHECK(totals.second < totals.first);
@@ -1342,6 +1466,8 @@ TEST_CASE("ASA names a shutdown request or a RESTART stagnation stop, not "
 
 TEST_CASE("ASA writes its upstream journal (asa_out*)", "[HPO][asa]")
 {
+    /* In a directory of its own: a file found there is this run's. */
+    const anneal_test::RunDirectory dir;
     auto sp = make_asa_spec({-1.0}, {1.0});
     set_seed_point(sp, {0.5});
     sp.stop.maxeval = 30;
@@ -1350,7 +1476,7 @@ TEST_CASE("ASA writes its upstream journal (asa_out*)", "[HPO][asa]")
     const AsaHostFn fn = rec.fn();
     run_asa_erased(sp, 1, fn);
     bool found = false;
-    for (const auto& e : std::filesystem::directory_iterator(".")) {
+    for (const auto& e : std::filesystem::directory_iterator(dir.path)) {
         const auto name = e.path().filename().string();
         if (name.rfind("asa_out", 0) == 0) { found = true; break; }
     }

@@ -1,8 +1,8 @@
 #pragma once
-/* Shared fixtures for the annealing test suites: journal capture, a
- * thread-safe counting stub host, a recording ChainObserver, and spec
- * builders. Header-only; used by the lock tests (test_anneal_p2_locks.cpp)
- * and the statistical validation suites. */
+/* Shared fixtures for the annealing test suites: journal capture, a run
+ * directory, a thread-safe counting stub host, a recording ChainObserver,
+ * and spec builders. Header-only; used by the lock tests
+ * (test_anneal_p2_locks.cpp) and the statistical validation suites. */
 
 #include <tadah/hpo/anneal_core.h>
 #include <tadah/hpo/hpo_log.h>
@@ -20,7 +20,10 @@
 #include <regex>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <vector>
+
+#include <unistd.h>
 
 namespace anneal_test {
 
@@ -90,6 +93,39 @@ struct JournalCapture {
         ss << in.rdbuf();
         return ss.str();
     }
+};
+
+/* A fresh, empty directory that is the working directory while it lives;
+ * `start` is the working directory it replaced, restored at the end.
+ *
+ * A run writes some files by a fixed name to its working directory: ASA
+ * the journal of the ASA library, asa_out (asa_out.<n> from the second ASA
+ * run of a process on). CTest starts every test case of a test program in
+ * a process of its own, all in one directory, and runs them side by side,
+ * so there such a file is the last writer's. A case that reads one back
+ * runs in a RunDirectory and reads the file of its own run, whatever runs
+ * beside it. Construct it before the run starts its threads. */
+struct RunDirectory {
+    std::filesystem::path start;
+    std::filesystem::path path;
+    RunDirectory() : start(std::filesystem::current_path())
+    {
+        static unsigned long n = 0;
+        path = std::filesystem::temp_directory_path() /
+               ("anneal_run_" + std::to_string(::getpid()) + "_" +
+                std::to_string(n++));
+        std::filesystem::remove_all(path);
+        std::filesystem::create_directories(path);
+        std::filesystem::current_path(path);
+    }
+    ~RunDirectory()
+    {
+        std::error_code ec;
+        std::filesystem::current_path(start, ec);
+        std::filesystem::remove_all(path, ec);
+    }
+    RunDirectory(const RunDirectory&) = delete;
+    RunDirectory& operator=(const RunDirectory&) = delete;
 };
 
 /* The journal's stop line carries the driver's own eval count. */

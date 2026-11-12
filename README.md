@@ -20,50 +20,15 @@ University of Edinburgh.
 - [Documentation](https://tadah.readthedocs.io/v1-dev/)
 - [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
-- [Citation](CITATION.cff)
 
 ## Quickstart
 
-Tadah!MLIP installs a single `tadah` binary plus a small set of
-companion libraries.
-
-```bash
-# 1. Clone the development line, v1-dev, and configure with the bundled
-#    defaults preset. For a release, clone its tag instead
-#    (git clone -b v2.0.0 ...).
-git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git
-cd tadah.mlip
-cmake -S . -B build -C cmake/presets/tadah-linux-defaults.cmake \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=$HOME/.local
-
-# 2. Build and install.
-cmake --build build --parallel
-cmake --install build
-
-# 3. Train a tiny example potential.
-cd docs/source/quickstart
-tadah train -c config.train -v 2
-
-# 4. Predict on a held-out dataset.
-tadah predict -p pot.tadah -d db.predict -A
-```
-
-Optional features (OpenMP, MPI, the `tadah hpo` Nested Fitting
-Procedure) and the full configuration matrix (Develop vs. Release
-builds, troubleshooting) are covered in the
-[installation guide](https://tadah.readthedocs.io/v1-dev/installation.html).
+The [installation guide](https://tadah.readthedocs.io/v1-dev/installation.html) and the
+[quick start](https://tadah.readthedocs.io/v1-dev/quickstart.html) describe the build and a first run.
 
 ## Status & API stability
 
-Tadah!MLIP is in **public beta**. The CLI surface — subcommand names,
-flags, configuration-file keys, and the `pot.tadah` file format — is
-considered stable for the duration of the 1.x series; existing scripts
-should keep working as we ship bug fixes and feature additions. Any
-necessary breaking change will be called out in the [changelog](CHANGELOG.md)
-with a deprecation window. The C++ API (the `libtadah.*` libraries and
-their headers) is **not yet stable**: function signatures and class
-layouts may change between minor versions until 2.0.
+Tadah!MLIP is in public beta. CLI, interfaces and file formats are subject to change.
 
 ## Reporting issues & getting help
 
@@ -75,9 +40,8 @@ worth a thousand words.
 
 ## Contributing
 
-Bug reports, feature requests and merge requests are welcome. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for the developer build, test workflow,
-and merge-request checklist.
+Bug reports, feature requests and pull requests are welcome:
+[CONTRIBUTING.md](CONTRIBUTING.md) says how a change is proposed, built and tested.
 
 ## License
 

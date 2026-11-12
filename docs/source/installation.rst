@@ -132,9 +132,10 @@ The commands below build, install, test and document an out-of-tree
 
 The ``docs`` target writes the Doxygen XML to ``build/docs/xml``, where the
 Sphinx build of this site looks for it by default. ``CONTRIBUTING.md``
-(*Building the documentation*) lists every input the Sphinx build reads and
-the variables that name them explicitly (``TADAH_DOXYGEN_XML_DIR``,
-``TADAH_CORE_SOURCE_DIR``, ``TADAH_HPO_SOURCE_DIR``).
+(*Building the documentation*) gives the command of the Sphinx build. Three
+variables name its inputs explicitly: ``TADAH_DOXYGEN_XML_DIR`` the XML,
+``TADAH_CORE_SOURCE_DIR`` and ``TADAH_HPO_SOURCE_DIR`` the ``CORE`` and
+``HPO`` directories it reads.
 
 .. _configuration_options:
 
@@ -575,8 +576,7 @@ geom`` the three ``in.ml`` runs print the same thermo rows for all 1000
 steps.
 
 The test suite checks this agreement when it is given an MPI ``lmp``
-(``tadah.lammps_mpi_*``, described in ``CONTRIBUTING.md``, *Running
-tests*): a Tadah!MLIP build with tests and nested fitting (:ref:`installation_nfp`),
+(``tadah.lammps_mpi_*``): a Tadah!MLIP build with tests and nested fitting (:ref:`installation_nfp`),
 configured with ``-DTADAH_LMP_MPI=/path/to/lammps/build-mpi/lmp_mpi`` and
 ``-DTADAH_LMP_MPIEXEC=/path/to/mpiexec``, the launcher of that MPI, runs
 them with ``ctest -L lammps``; without them the entries are *Skipped*.

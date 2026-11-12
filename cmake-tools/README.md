@@ -31,22 +31,33 @@ setting from the cache of the build directory.
 ## Removed build options
 
 `cmake/TadahCompileOptions.cmake` stops the configure step when a removed
-option is switched on. Every Tadah module adds cmake-tools, and so runs
+option is given. Every Tadah module adds cmake-tools, and so runs
 this file, before it declares any target of its own, so the check covers the
 umbrella build, a standalone build of any module and the LAMMPS plugin build
-alike. Setting a removed option to `OFF` (as older presets do) is accepted.
+alike.
 
 | Option | Removed in | Use instead |
 |---|---|---|
 | `TADAH_BUILD_MPI` | 2.0.0 (the legacy ScaLAPACK training build, `tadah_mpi`) | `TADAH_HPO_MPI` for MPI-parallel `TADAH:ANNEAL_PT` / `ANNEAL_PA` in HPO (needs `TADAH_ENABLE_NFP=ON` and an MPI build of LAMMPS); OpenMP threads for training |
+| `TADAH_GIT_BRANCH` | 2.0.0 (the git ref at which a build fetched the modules) | a checkout of the branch or tag (`git clone -b <ref>`, or `git checkout <ref>` in the clone): a build takes the modules from the directories of its repository |
 
-`TADAH_GIT_BRANCH`, which named the git ref of fetched modules, is removed
-too. No build file reads it, so the configure step does not stop: CMake
-reports a `-DTADAH_GIT_BRANCH=<ref>` among the variables the project did
-not use. A LAMMPS configure step prints nothing (the LAMMPS build files
-read every variable), and neither configure step has a message for a value
-that a `-C` preset sets or that the cache of the build directory holds. In
-every case the build takes the modules from the repository's directories.
+`TADAH_BUILD_MPI` is a switch: `ON` is refused, and `OFF` (as older presets
+set it) is accepted.
+
+`TADAH_GIT_BRANCH` is refused with every value, wherever the value comes
+from: a `-D` on the command line, a `-C` preset, or the cache of the build
+directory, which keeps the value of an earlier `cmake` command. The message
+gives the value and names `-UTADAH_GIT_BRANCH`, which removes the value from
+the cache on the next `cmake` command; a preset sets the option again until
+its line is removed. The check asks the cache for the entry
+(`if(DEFINED CACHE{TADAH_GIT_BRANCH})`), so its answer does not depend on a
+variable of the same name. A variable `TADAH_GIT_BRANCH` that a build file
+sets before it adds Tadah! is refused too, with a message that names that
+line.
+
+`ctest -R tadah_removed_option` runs the cases of both options. One of them
+configures LAMMPS with the ML-TADAH package; it is registered when
+`TADAH_LAMMPS_DIR` names LAMMPS sources.
 
 ## Testing
 

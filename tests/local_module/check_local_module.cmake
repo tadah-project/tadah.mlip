@@ -6,7 +6,9 @@
 # Another directory given for a module or for cmake-tools, a repository
 # without the module and a module directory copied out of its repository
 # are refused; the refusal of a setting names the -U that removes it from
-# the cache, and the configure step passes with it. The repository's own
+# the cache, and the configure step passes with it. Every build file
+# refuses the removed option TADAH_GIT_BRANCH in the same way (the cases of
+# the refusal itself: tests/removed_options). The repository's own
 # directory given through a symbolic link is taken, by its resolved path.
 # No build file fetches a Tadah module or cmake-tools.
 #
@@ -129,6 +131,17 @@ if(CASE MATCHES "^project_")
     set(setting "FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE")
     set(defines "-D${setting}=${WORK_DIR}/other/cmake-tools")
     set(needle "names another directory than the cmake-tools of this repository")
+    set(sources "${REPOSITORY}")
+    foreach(module IN LISTS MODULES)
+      list(APPEND sources "${REPOSITORY}/${module}")
+    endforeach()
+  elseif(CASE STREQUAL "project_removed_option_refused")
+    # Every build file refuses the removed TADAH_GIT_BRANCH: each adds
+    # cmake-tools, whose cmake/TadahCompileOptions.cmake stops the
+    # configure step.
+    set(setting "TADAH_GIT_BRANCH")
+    set(defines "-D${setting}=develop")
+    set(needle "TADAH_GIT_BRANCH=develop: the build option is removed")
     set(sources "${REPOSITORY}")
     foreach(module IN LISTS MODULES)
       list(APPEND sources "${REPOSITORY}/${module}")

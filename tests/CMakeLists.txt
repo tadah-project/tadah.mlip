@@ -109,6 +109,62 @@ foreach(_case on preset_on off preset_off unset)
     TIMEOUT 120)
 endforeach()
 
+# TADAH_GIT_BRANCH named the git ref of fetched modules; a build takes the
+# modules from the directories of its repository, and cmake-tools stops the
+# configure step for every value of the option: given with -D, set by a -C
+# preset, left in the cache of the build directory by an earlier cmake
+# command (the message names -UTADAH_GIT_BRANCH, with which the same build
+# directory configures) or set as a variable by the build file. The
+# environment variables TADAH_GIT_BASE, CI_COMMIT_REF_NAME and
+# READTHEDOCS_GIT_IDENTIFIER and a cache entry TADAH_GIT_BASE change
+# nothing: the configure step goes through without a message, and stops
+# for TADAH_GIT_BRANCH beside them.
+# Before the refusal: every case configured; CMake listed a -D among the
+# variables the project did not use, and printed nothing for the others.
+foreach(_case git_branch_command_line git_branch_preset git_branch_cache
+              git_branch_variable git_branch_environment git_base_cache)
+  add_test(NAME tadah_removed_option_${_case}
+    COMMAND ${CMAKE_COMMAND}
+      -DCASE=${_case}
+      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/removed_options/${_case}
+      "-DGENERATOR=${CMAKE_GENERATOR}"
+      -DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+      -DCXX=${CMAKE_CXX_COMPILER}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/removed_options/check_removed_option.cmake)
+  set_tests_properties(tadah_removed_option_${_case} PROPERTIES
+    LABELS cmake
+    TIMEOUT 120)
+endforeach()
+
+# The same refusal in a LAMMPS configure with the ML-TADAH package, which
+# adds Tadah!LAMMPS and with it cmake-tools: for -DTADAH_GIT_BRANCH=<ref>
+# and for the value the cache keeps. The case configures the LAMMPS sources
+# that TADAH_LAMMPS_DIR names, in a scratch build directory; the configure
+# step stops before LAMMPS looks for a library. Before the refusal the
+# LAMMPS configure step went on and printed nothing about the option.
+if(EXISTS "${TADAH_LAMMPS_DIR}/cmake/CMakeLists.txt")
+  add_test(NAME tadah_removed_option_git_branch_lammps
+    COMMAND ${CMAKE_COMMAND}
+      -DCASE=git_branch_lammps
+      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/removed_options/git_branch_lammps
+      "-DGENERATOR=${CMAKE_GENERATOR}"
+      -DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+      -DCXX=${CMAKE_CXX_COMPILER}
+      -DLAMMPS_DIR=${TADAH_LAMMPS_DIR}
+      -DREPOSITORY=${PROJECT_SOURCE_DIR}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/removed_options/check_removed_option.cmake)
+  set_tests_properties(tadah_removed_option_git_branch_lammps PROPERTIES
+    LABELS cmake
+    TIMEOUT 300)
+else()
+  message(STATUS
+    "tadah_removed_option_git_branch_lammps is not registered: "
+    "TADAH_LAMMPS_DIR ('${TADAH_LAMMPS_DIR}') names no LAMMPS sources "
+    "(cmake/CMakeLists.txt)")
+endif()
+
 
 # Git and Python 3, for the tests below: the git cases of the text check's
 # own test, the documentation tools and their unit tests.
@@ -125,14 +181,16 @@ find_package(Python3 COMPONENTS Interpreter REQUIRED)
 # run local_module/probe.cmake; the project_ cases configure a build file
 # in a scratch directory without network; one case compares the
 # cmake-tools block of the seven build files and checks that none of them
-# fetches a Tadah module or cmake-tools.
+# fetches a Tadah module or cmake-tools; one gives every build file the
+# removed option TADAH_GIT_BRANCH, which each refuses.
 foreach(_case repository tadah_path_is_not_read same_directory_given
               cmake_tools_through_link
               other_directory_refused other_cmake_tools_refused
               missing_module_refused blocks_identical
               project_unpinned project_same_cmake_tools_given
               project_same_module_given project_other_module_refused
-              project_other_cmake_tools_refused project_module_alone_refused)
+              project_other_cmake_tools_refused project_module_alone_refused
+              project_removed_option_refused)
   add_test(NAME tadah_local_module_${_case}
     COMMAND ${CMAKE_COMMAND}
       -DCASE=${_case}

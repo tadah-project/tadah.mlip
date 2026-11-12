@@ -38,6 +38,37 @@ if(NOT DEFINED _TADAH_COMPILE_OPTS_INCLUDED)
       "(-UTADAH_BUILD_MPI) and from your preset.")
   endif()
 
+  # TADAH_GIT_BRANCH named the branch or tag at which a build fetched the
+  # Tadah! modules. A build takes them from the directories of its
+  # repository, so every value is an error rather than being ignored: the
+  # build would go on with other sources than the ones asked for.
+  # A -D on the command line, a -C preset and an earlier cmake command on
+  # the build directory each leave the value in the cache, which is asked
+  # for the entry itself (CACHE{...}): the answer depends neither on a
+  # variable of the same name nor on whether a set(... CACHE ...) removed
+  # that variable (policy CMP0126). A variable that a build file sets
+  # before it adds Tadah! is refused as well; no -U removes that one.
+  string(CONCAT _tadah_removed
+    "the build option is removed. A build takes cmake-tools and every "
+    "Tadah! module from the directories of its repository, at the commit "
+    "that is checked out, and fetches none of them. A checkout of another "
+    "branch or tag (git clone -b <ref>, or git checkout <ref> in the "
+    "clone) builds that one.")
+  if(DEFINED CACHE{TADAH_GIT_BRANCH})
+    message(FATAL_ERROR
+      "TADAH_GIT_BRANCH=$CACHE{TADAH_GIT_BRANCH}: ${_tadah_removed} The "
+      "option is to be dropped from the cmake command and from a preset "
+      "(-C) that sets it. The cache of the build directory keeps the "
+      "value: -UTADAH_GIT_BRANCH on the next cmake command removes it, as "
+      "does a new build directory.")
+  elseif(DEFINED TADAH_GIT_BRANCH)
+    message(FATAL_ERROR
+      "TADAH_GIT_BRANCH=${TADAH_GIT_BRANCH}: ${_tadah_removed} A build "
+      "file sets the variable before it adds Tadah!: its line "
+      "set(TADAH_GIT_BRANCH ...) is to be removed.")
+  endif()
+  unset(_tadah_removed)
+
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL
       "Generate compile_commands.json for the whole build" FORCE)
 

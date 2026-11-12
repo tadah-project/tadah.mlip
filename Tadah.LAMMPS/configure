@@ -10,23 +10,23 @@ echo Use CMake instead. This works fine.
 echo You might need to remove build directory before running cmake.
 echo "************************************************************************"
 
+# CORE, MODELS and MD are the directories of those names in the Tadah!
+# repository, beside this one; build/ gets a link to each. Both checks come
+# before anything is created.
+for module in CORE MODELS MD; do
+  if [ ! -d "../$module" ]; then
+    echo "configure: ../$module not found: Tadah.LAMMPS is built from inside the Tadah! repository" >&2
+    exit 1
+  fi
+  if [ -e "build/$module" ] && [ ! -L "build/$module" ]; then
+    echo "configure: build/$module exists and is not a link to ../$module: the make files would read it in place of the repository's $module. Without the directory build/, configure links the repository's directories" >&2
+    exit 1
+  fi
+done
 mkdir -p build
-
-GIT_BRANCH=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
-
-# Base address of the Tadah! repositories: TADAH_GIT_BASE when set and not
-# empty, else the public repositories (as CMake's TADAH_GIT_BASE).
-GIT_BASE=${TADAH_GIT_BASE:-https://github.com/tadah-project}
-GIT_BASE=${GIT_BASE%/}
-CORE_URL=$GIT_BASE/core.git
-MODELS_URL=$GIT_BASE/models.git
-MD_URL=$GIT_BASE/md.git
-
-if ! git clone -b ${GIT_BRANCH} $CORE_URL build/CORE 2>/dev/null && [ -d CORE ] ; then  echo Skipping CORE clone as directory exists;  fi
-
-if ! git clone -b ${GIT_BRANCH} $MODELS_URL build/MODELS 2>/dev/null && [ -d MODELS ] ; then  echo Skipping MODELS clone as directory exists;  fi
-
-if ! git clone -b ${GIT_BRANCH} $MD_URL build/MD 2>/dev/null && [ -d MD ] ; then  echo Skipping MD clone as directory exists;  fi
+for module in CORE MODELS MD; do
+  ln -sfn "../../$module" "build/$module"
+done
 
 cp Makefile.in Makefile
 sed -i '1s/^/TADAH_MD_CONFIGURED=true\n/' Makefile

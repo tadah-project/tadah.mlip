@@ -1,6 +1,6 @@
 # Throw-away project driven by ../check_header_check.cmake. It brings in
-# cmake-tools the way every Tadah module does (FetchContent, source directory
-# overridden to the cmake-tools this build uses) and calls
+# cmake-tools with FetchContent, the source directory overridden to the
+# cmake-tools this build uses, and calls
 # tadah_add_header_check() from tests/, as a module's tests/CMakeLists.txt
 # does. CASE picks the fixture directory (new_header uses good/, and its
 # driver adds a header after the first run):

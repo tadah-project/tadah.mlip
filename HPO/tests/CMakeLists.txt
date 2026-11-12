@@ -283,7 +283,7 @@ set_tests_properties(hpo_configure_without_ceres PROPERTIES
 # FETCHCONTENT_BASE_DIR of its own; TADAH_ENABLE_CERES OFF, BUILD_TESTING
 # OFF and FETCHCONTENT_FULLY_DISCONNECTED ON whatever the build has. Before
 # the fix: the preset held a fixed list (11 dependency names, compilers,
-# build tool and type, LAMMPS paths, TADAH_GIT_BRANCH), so the configure
+# build tool and type, LAMMPS paths, one Tadah! option), so the configure
 # from it did not find the package ("Could not find a package configuration
 # file provided by \"TadahProbeDep\""), and hpo_configure_without_ceres
 # failed in a valid build that finds a dependency through such a hint.
@@ -930,10 +930,3 @@ tadah_add_header_check(tadah.hpo)
 # initials, 55 decision notes, 41 workspace notes and .gitignore's entry for
 # an AI tool's state directory.
 tadah_add_text_check(tadah.hpo)
-
-# tadah.hpo_git_base (label cmake): the top-level CMakeLists.txt carries
-# cmake-tools' TADAH_GIT_BASE block and fetches every Tadah! repository as
-# ${TADAH_GIT_BASE}/<repository>.git (testing/tadah_git_base_check.cmake).
-# Before the fix: fails (no block; the repositories named by the address of
-# the development host).
-tadah_add_git_base_check(tadah.hpo)

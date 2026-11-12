@@ -180,8 +180,7 @@ class LocateTest(unittest.TestCase):
         self.assertEqual(root, os.path.join(self.clones, 'HPO'))
 
     def test_tadah_git_base_names_the_clone_host(self):
-        # TADAH_GIT_BASE replaces the public base address, as it does for
-        # the FetchContent sources (cmake-tools' tadah_git_base); a trailing
+        # TADAH_GIT_BASE replaces the public base address; a trailing
         # '/' is dropped and an empty value counts as unset.
         for base, url in (
                 ('https://mirror.example.org/tadah',
@@ -212,7 +211,7 @@ class LocateTest(unittest.TestCase):
             self.assertNotIn('s3cret', text)
             self.assertIn('https://host.example/tadah/hpo.git', text)
 
-    def test_rtd_branch_order_matches_tadah_get_git_branch(self):
+    def test_rtd_branch_order(self):
         git = FakeGit(marker=CORE_MARKER)
         env = {'READTHEDOCS': 'True', 'READTHEDOCS_VERSION': 'release-x',
                'READTHEDOCS_VERSION_NAME': 'release/x'}
@@ -241,7 +240,7 @@ class LocateTest(unittest.TestCase):
                     os.path.join(self.clones, 'CORE')]])
                 self.assertEqual(root, os.path.join(self.clones, 'CORE'))
 
-    def test_built_branch_order_matches_tadah_get_git_branch(self):
+    def test_built_branch_order(self):
         # CI_COMMIT_REF_NAME, READTHEDOCS_GIT_IDENTIFIER,
         # READTHEDOCS_VERSION_NAME, READTHEDOCS_VERSION: the first one set.
         full = {'CI_COMMIT_REF_NAME': 'ci',
@@ -257,8 +256,7 @@ class LocateTest(unittest.TestCase):
         self.assertEqual(loc.built_branch({}), (None, None))
 
     def test_set_but_empty_variable_names_no_ref(self):
-        # As in tadah_get_git_branch (tests/git_branch checks both): a
-        # variable counts only when it is set and non-empty.
+        # A variable counts only when it is set and non-empty.
         env = {'READTHEDOCS_GIT_IDENTIFIER': '',
                'READTHEDOCS_VERSION_NAME': 'release/x',
                'READTHEDOCS_VERSION': 'release-x'}

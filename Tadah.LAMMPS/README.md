@@ -16,14 +16,14 @@ https://tadah.readthedocs.io/v1-dev/
 
 The **Tadah! repository is cloned** first, since ML‑TADAH is not shipped with LAMMPS; LAMMPS is then built with CMake with the ML‑TADAH package enabled.
 
-For general LAMMPS build options and prerequisites, see:
+The LAMMPS documentation describes the general build options and prerequisites:
 https://docs.lammps.org/Build_cmake.html
 
 ---
 
-## Build with CMake
+## Building with CMake
 
-### Step 1 — Clone Tadah!
+### Step 1 — Cloning Tadah!
 
 Tadah.LAMMPS is a directory of the Tadah! repository and is built from inside it, with the modules it needs (Tadah.MD, Tadah.MODELS and Tadah.CORE) beside it. The repository is cloned anywhere, at `v1-dev` (the development line) or at a release tag such as `v1.6.0`:
 
@@ -36,9 +36,9 @@ A plain `git clone` checks out the repository's default branch, which need not b
 
 ---
 
-### Step 2 — Configure LAMMPS and enable ML‑TADAH
+### Step 2 — Configuring LAMMPS with ML‑TADAH enabled
 
-From the **LAMMPS root directory**, run your usual LAMMPS CMake configure command **and add** the ML‑TADAH integration options below **to that command**:
+The usual LAMMPS CMake configure command runs from the **LAMMPS root directory**, with the ML‑TADAH integration options below **added to that command**:
 
 ```bash
   -DPKG_ML-TADAH=ON \
@@ -49,7 +49,7 @@ From the **LAMMPS root directory**, run your usual LAMMPS CMake configure comman
 Those three options are the "integration hook": they enable the `ML-TADAH` package and tell LAMMPS where to find the Tadah.LAMMPS sources.
 
 #### Example A: minimal LAMMPS configure + ML‑TADAH
-Run from the LAMMPS root directory (for a `v1-dev` checkout):
+From the LAMMPS root directory (for a `v1-dev` checkout):
 ```bash
 cmake -S cmake -B build \
   -DPKG_ML-TADAH=ON \
@@ -57,7 +57,7 @@ cmake -S cmake -B build \
   -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS
 ```
 
-#### Example B: use the LAMMPS GCC preset + build a serial binary + ML‑TADAH
+#### Example B: the LAMMPS GCC preset, a serial binary and ML‑TADAH
 
 This example uses the LAMMPS preset file `lammps/cmake/presets/gcc.cmake`, enables ML‑TADAH, and sets the LAMMPS machine target to `serial`:
 
@@ -71,7 +71,7 @@ cmake -C cmake/presets/gcc.cmake -S cmake -B build \
 
 ---
 
-### Step 3 — Build
+### Step 3 — Building
 
 ```bash
 cmake --build build
@@ -87,12 +87,12 @@ Result: the resulting LAMMPS binary includes **ML‑TADAH** and provides `pair_s
 
 ---
 
-## What’s in this repository?
+## What this directory holds
 
 - **LAMMPS pair style sources**: **ML‑TADAH** (`pair_style tadah`)
 - Supporting **C++ library** used by the integration: `tadah.lammps`
 - CMake integration hook for LAMMPS:
   `integration/TadahLAMMPSProjectInclude.cmake`
 
-For usage, examples, and troubleshooting, see:
+The documentation covers usage, examples and troubleshooting:
 https://tadah.readthedocs.io/v1-dev/

@@ -1,7 +1,7 @@
 # Throw-away project driven by ../check_removed_option.cmake. It brings in
-# cmake-tools the way every Tadah module does (FetchContent, source directory
-# overridden to the cmake-tools this build uses), which runs
-# cmake/TadahCompileOptions.cmake and its check for removed build options.
+# cmake-tools with FetchContent, the source directory overridden to the
+# cmake-tools this build uses, which runs cmake/TadahCompileOptions.cmake
+# and its check for removed build options.
 cmake_minimum_required(VERSION 3.15)
 project(tadah_removed_option_case CXX)
 

@@ -15,8 +15,8 @@
 #  produces an optimised -O3 build with -Wall -Wextra.
 #
 #  Removed build options are rejected here, because every Tadah module
-#  configures this file (through FetchContent of cmake-tools) before it
-#  declares any target of its own.
+#  configures this file (it adds cmake-tools) before it declares any
+#  target of its own.
 # --------------------------------------------------------------------
 if(NOT DEFINED _TADAH_COMPILE_OPTS_INCLUDED)
   set(_TADAH_COMPILE_OPTS_INCLUDED 1)

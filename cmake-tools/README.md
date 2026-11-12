@@ -1,68 +1,37 @@
 # Tadah CMake Tools
 
-Common CMake utilities for the *Tadah* family of repositories.
+Common CMake utilities for the build files of the Tadah! repository: the
+application at its root and the modules in the directories `CORE`,
+`MODELS`, `MLIP`, `MD`, `HPO` and `Tadah.LAMMPS`.
 
-Add to a project with FetchContent:
+Each of those build files carries the same block, between the lines
+`# >>> cmake-tools` and `# <<< cmake-tools`, which reads
+`cmake/TadahRepository.cmake` by its path in the repository
+(`tadah_local_module_blocks_identical` compares the copies). That file adds
+cmake-tools to the build, once: the `tadah_*` functions and the target
+`tadah::compile_options`.
 
 ```cmake
-include(FetchContent)
-FetchContent_Declare(tadah_cmake
-  GIT_REPOSITORY https://github.com/tadah-project/cmake-tools.git
-  GIT_TAG        v1-dev)          # the Tadah modules' development pin
-FetchContent_MakeAvailable(tadah_cmake)
-
 target_link_libraries(myexe PRIVATE tadah::compile_options)
 ```
 
-The Tadah modules fetch cmake-tools at `v1-dev` during development. A
-release tags cmake-tools (`v1.6.0`) and pins that tag in all seven modules
-in the release commit (`Tadah.MLIP/RELEASING.md`).
+## Modules
 
-## Git base address
-
-The Tadah modules fetch cmake-tools and each other as
-`${TADAH_GIT_BASE}/<repository>.git`. `TADAH_GIT_BASE` is set by the
-block of `testing/tadah_git_base_block.cmake`, which each module's
-`CMakeLists.txt` carries unchanged before its first `FetchContent_Declare`
-(it is needed before cmake-tools itself is fetched):
-`-DTADAH_GIT_BASE=<address>`, else the environment variable of that name
-when it is set and not empty, else `https://github.com/tadah-project`.
-`tadah_add_git_base_check(<name>)` (`cmake/TadahTesting.cmake`) adds the
-test `<name>_git_base` (label `cmake`), which checks the block and the
-addresses.
-
-## Branch detection
-
-`tadah_get_git_branch(<var>)` (`cmake/TadahDevelop.cmake`) names the git
-ref every Tadah module fetches its sibling modules at
-(`GIT_TAG ${TADAH_GIT_BRANCH}`). A value already set, such as
-`-DTADAH_GIT_BRANCH=v1.6.0`, is kept. Otherwise the first of these is used:
-
-1. `$CI_COMMIT_REF_NAME` (a CI pipeline that sets it: the branch, or the
-   tag of a tag pipeline);
-2. `$READTHEDOCS_GIT_IDENTIFIER` (Read the Docs: the branch or tag it
-   checked out; its `latest` and `stable` versions are named after no ref),
-   then `$READTHEDOCS_VERSION_NAME` and `$READTHEDOCS_VERSION`;
-3. the upstream branch of the checkout of the top-level project
-   (`origin/v1-dev` gives `v1-dev`), else its local branch. The top-level
-   project is the one CMake was started on: `Tadah.MLIP`, a module built on
-   its own, or LAMMPS itself for the `pair_style tadah` build, where the
-   LAMMPS checkout's branch is not a Tadah branch.
-
-A CI or Read the Docs variable counts only when it is set and not empty; one
-that is set but empty names no ref and is skipped, with a status message.
-A release tarball or a detached HEAD has no branch: the function warns and
-leaves the variable empty. Pass `-DTADAH_GIT_BRANCH=<branch or tag>` (for a
-release tarball, its tag, e.g. `v1.6.0`) so that the modules are fetched at
-the matching ref. The docs build looks up the CORE and HPO sources with the
-same variables, in the same order and by the same rule
-(`Tadah.MLIP/docs/source/config/source_locator.py`); Tadah.MLIP's
-`tadah_git_branch_*` tests check both.
+`tadah_add_module(<name> <directory>)` (`cmake/TadahDevelop.cmake`) adds
+the module a build file builds on: `<name>` is the name of the module's
+`project()` and `<directory>` its directory in the repository, as in
+`tadah_add_module(Tadah.CORE CORE)`. A module is added once, whichever
+build file asks first, and built in `_deps/<name in lower case>-build` of
+the build directory, whatever `FETCHCONTENT_BASE_DIR` is. Nothing is fetched, and no option or environment
+variable names another source: a `FETCHCONTENT_SOURCE_DIR_<NAME>` or
+`FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE` setting that names another directory
+stops the configure step, and the message names the `-U` that removes the
+setting from the cache of the build directory.
 
 ## Removed build options
 
 `cmake/TadahCompileOptions.cmake` stops the configure step when a removed
-option is switched on. Every Tadah module fetches cmake-tools, and so runs
+option is switched on. Every Tadah module adds cmake-tools, and so runs
 this file, before it declares any target of its own, so the check covers the
 umbrella build, a standalone build of any module and the LAMMPS plugin build
 alike. Setting a removed option to `OFF` (as older presets do) is accepted.
@@ -70,6 +39,14 @@ alike. Setting a removed option to `OFF` (as older presets do) is accepted.
 | Option | Removed in | Use instead |
 |---|---|---|
 | `TADAH_BUILD_MPI` | 1.6.0 (the legacy ScaLAPACK training build, `tadah_mpi`) | `TADAH_HPO_MPI` for MPI-parallel `TADAH:ANNEAL_PT` / `ANNEAL_PA` in HPO (needs `TADAH_ENABLE_NFP=ON` and an MPI build of LAMMPS); OpenMP threads for training |
+
+`TADAH_GIT_BRANCH`, which named the git ref of fetched modules, is removed
+too. No build file reads it, so the configure step does not stop: CMake
+reports a `-DTADAH_GIT_BRANCH=<ref>` among the variables the project did
+not use. A LAMMPS configure step prints nothing (the LAMMPS build files
+read every variable), and neither configure step has a message for a value
+that a `-C` preset sets or that the cache of the build directory holds. In
+every case the build takes the modules from the repository's directories.
 
 ## Testing
 
@@ -294,5 +271,4 @@ tadah_add_text_check(cmake-tools ROOT ${tadah_cmake_SOURCE_DIR})
   `ROOT` that is not a directory.
 
 `Tadah.MLIP/tests/text_check` tests the function and the script (`ctest -R
-tadah_text_check_tool`), its refusals included; `Tadah.MLIP/tests/git_base`
-tests the git base address check (`ctest -R tadah_git_base_check_tool`).
+tadah_text_check_tool`), its refusals included.

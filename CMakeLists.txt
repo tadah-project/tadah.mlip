@@ -1,28 +1,9 @@
 cmake_minimum_required(VERSION 3.15)
 
 include(${CMAKE_SOURCE_DIR}/cmake/functions.cmake)
-include(FetchContent)
-# >>> TADAH_GIT_BASE (the same block in every Tadah! repository's
-#     CMakeLists.txt, compared by cmake-tools' tadah_add_git_base_check)
-# Base address of the Tadah! git repositories that FetchContent clones
-# (<base>/<repository>.git): -DTADAH_GIT_BASE=<address>, else the
-# environment variable TADAH_GIT_BASE when it is set and not empty, else
-# the public repositories. A trailing '/' is dropped.
-if(NOT DEFINED TADAH_GIT_BASE)
-  if(NOT "$ENV{TADAH_GIT_BASE}" STREQUAL "")
-    set(_tadah_git_base "$ENV{TADAH_GIT_BASE}")
-  else()
-    set(_tadah_git_base "https://github.com/tadah-project")
-  endif()
-  set(TADAH_GIT_BASE "${_tadah_git_base}" CACHE STRING
-      "Base address of the Tadah! git repositories (<base>/<repository>.git)")
-  unset(_tadah_git_base)
-endif()
-string(REGEX REPLACE "/+$" "" TADAH_GIT_BASE "${TADAH_GIT_BASE}")
-# <<< TADAH_GIT_BASE
 
 set(TADAH "Tadah!")
-# Initial project() call; VERSION is set below once CORE is fetched.
+# Initial project() call; VERSION is set below once CORE is added.
 project(${TADAH} LANGUAGES CXX)
 
 # 0. Guard against in-source builds
@@ -74,11 +55,11 @@ if(BUILD_SHARED_LIBS)
 endif()
 
 # 2. Bring in the shared compile/link options
-include(FetchContent)
 # >>> cmake-tools (the same block in every build file of the repository but
 #     for the path and the name; tests/local_module compares them)
 # cmake-tools is the directory of that name in this repository; the file
-# read here refuses a FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE of another one.
+# read here adds it to the build (tadah::compile_options, the tadah_*
+# functions) and refuses a FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE of another one.
 get_filename_component(_tadah_here "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
 if(NOT EXISTS "${_tadah_here}/cmake-tools/cmake/TadahRepository.cmake")
   message(FATAL_ERROR
@@ -90,57 +71,24 @@ include("${_tadah_here}/cmake-tools/cmake/TadahRepository.cmake")
 unset(_tadah_here)
 # <<< cmake-tools
 
-if(NOT TARGET tadah::compile_options)
-  FetchContent_Declare (
-    tadah_cmake
-    GIT_REPOSITORY  ${TADAH_GIT_BASE}/cmake-tools.git
-    GIT_TAG         v1-dev)
-  FetchContent_MakeAvailable(tadah_cmake)   # defines tadah::compile_options
-endif()
-
 # Declare the BUILD_TESTING switch (default OFF) before any sub-module
-# is fetched, so this top-level value propagates to every consumed
+# is added, so this top-level value propagates to every consumed
 # Tadah module. See cmake-tools/TadahTesting.cmake.
 tadah_declare_testing()
 
-# The module is the directory of its name in this repository.
-tadah_use_local_module(Tadah.MLIP MLIP)  # FetchContent name + folder name
-
-# 3. Git branch information, for informational purposes 
-tadah_get_git_branch(TADAH_GIT_BRANCH)
-tadah_message(STATUS "Using TADAH_GIT_BRANCH:  ${TADAH_GIT_BRANCH}")
-
-
+# 3. The modules, each the directory of its name in this repository:
+# Tadah.HPO adds Tadah.MLIP, Tadah.MD and Tadah!LAMMPS.
 if(TADAH_ENABLE_NFP)
-  tadah_use_local_module(Tadah.HPO HPO)  # FetchContent name + folder name
-  # tadah_use_local_module(Tadah.LAMMPS Tadah.LAMMPS)  # FetchContent name + folder name
   add_compile_definitions(TADAH_ENABLE_NFP)
-  FetchContent_Declare(
-    Tadah.HPO
-    GIT_REPOSITORY ${TADAH_GIT_BASE}/hpo.git
-    GIT_TAG ${TADAH_GIT_BRANCH}
-  )
-  FetchContent_MakeAvailable(Tadah.HPO)
-
-  # FetchContent_Declare(
-  #   Tadah.LAMMPS
-  #   GIT_REPOSITORY ${TADAH_GIT_BASE}/tadah.lammps.git
-  #   GIT_TAG ${TADAH_GIT_BRANCH}
-  # )
-  # FetchContent_MakeAvailable(Tadah.LAMMPS)
+  tadah_add_module(Tadah.HPO HPO)
 else()
   tadah_message("Adding the ${PROJECT_NAME} modules...")
-  FetchContent_Declare(
-    Tadah.MLIP
-    GIT_REPOSITORY ${TADAH_GIT_BASE}/mlip.git
-    GIT_TAG ${TADAH_GIT_BRANCH}
-  )
-  FetchContent_MakeAvailable(Tadah.MLIP)
+  tadah_add_module(Tadah.MLIP MLIP)
 endif()
 
 # Set the project version from the blueprint TOML (single source of truth).
-# CORE has been populated by the FetchContent step above, so its blueprint
-# is available at ${Tadah.CORE_SOURCE_DIR}/blueprint/blueprint_tadah.toml.
+# CORE has been added above, so its blueprint is available at
+# ${Tadah.CORE_SOURCE_DIR}/blueprint/blueprint_tadah.toml.
 if(NOT COMMAND tadah_read_version_from_blueprint)
   message(FATAL_ERROR "cmake-tools is too old: tadah_read_version_from_blueprint() is missing")
 endif()

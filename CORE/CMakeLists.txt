@@ -46,30 +46,12 @@ if(BUILD_SHARED_LIBS)
 
 endif()
 
-include(FetchContent)
-# >>> TADAH_GIT_BASE (the same block in every Tadah! repository's
-#     CMakeLists.txt, compared by cmake-tools' tadah_add_git_base_check)
-# Base address of the Tadah! git repositories that FetchContent clones
-# (<base>/<repository>.git): -DTADAH_GIT_BASE=<address>, else the
-# environment variable TADAH_GIT_BASE when it is set and not empty, else
-# the public repositories. A trailing '/' is dropped.
-if(NOT DEFINED TADAH_GIT_BASE)
-  if(NOT "$ENV{TADAH_GIT_BASE}" STREQUAL "")
-    set(_tadah_git_base "$ENV{TADAH_GIT_BASE}")
-  else()
-    set(_tadah_git_base "https://github.com/tadah-project")
-  endif()
-  set(TADAH_GIT_BASE "${_tadah_git_base}" CACHE STRING
-      "Base address of the Tadah! git repositories (<base>/<repository>.git)")
-  unset(_tadah_git_base)
-endif()
-string(REGEX REPLACE "/+$" "" TADAH_GIT_BASE "${TADAH_GIT_BASE}")
-# <<< TADAH_GIT_BASE
 # 2. Bring in the shared compile/link options
 # >>> cmake-tools (the same block in every build file of the repository but
 #     for the path and the name; tests/local_module compares them)
 # cmake-tools is the directory of that name in this repository; the file
-# read here refuses a FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE of another one.
+# read here adds it to the build (tadah::compile_options, the tadah_*
+# functions) and refuses a FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE of another one.
 get_filename_component(_tadah_here "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
 if(NOT EXISTS "${_tadah_here}/../cmake-tools/cmake/TadahRepository.cmake")
   message(FATAL_ERROR
@@ -81,17 +63,8 @@ include("${_tadah_here}/../cmake-tools/cmake/TadahRepository.cmake")
 unset(_tadah_here)
 # <<< cmake-tools
 
-if(NOT TARGET tadah::compile_options)
-  FetchContent_Declare (
-    tadah_cmake
-    GIT_REPOSITORY  ${TADAH_GIT_BASE}/cmake-tools.git
-    GIT_TAG         v1-dev
-  )
-  FetchContent_MakeAvailable(tadah_cmake)   # defines tadah::compile_options
-endif()
-
 # Declare the BUILD_TESTING switch (default OFF) before any sub-module
-# is fetched, so a parent project's value propagates down. See
+# is added, so a parent project's value propagates down. See
 # cmake-tools/TadahTesting.cmake.
 tadah_declare_testing()
 
@@ -106,10 +79,6 @@ project(Tadah.CORE VERSION ${TADAH_VERSION} LANGUAGES CXX)
 message(STATUS "Tadah.CORE version: ${TADAH_VERSION}")
 
 option(TADAH_ENABLE_ASAN "Enable AddressSanitizer (-fsanitize=address -fno-omit-frame-pointer)" OFF)
-
-# 3. Git branch information, for informational purposes
-tadah_get_git_branch(GIT_BRANCH)
-message(STATUS "${PROJECT_NAME} module is using GIT_BRANCH:  ${GIT_BRANCH}")
 
 #4. Generate blueprint files
 # The blueprint is embedded verbatim (it also carries the version printed by

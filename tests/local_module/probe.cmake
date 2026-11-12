@@ -1,4 +1,4 @@
-# Runs cmake-tools' tadah_use_local_module() once for CORE and prints the
+# Runs cmake-tools' tadah_module_directory() once for CORE and prints the
 # directory it names. Driven by check_local_module.cmake, which starts it in
 # the directory of the project that asks (CMAKE_CURRENT_SOURCE_DIR in script
 # mode):
@@ -13,9 +13,5 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${TADAH_CMAKE_DIR}/cmake")
 include(TadahDevelop)
 
-# The function sets its result in the caller's scope.
-function(probe)
-  tadah_use_local_module(Tadah.CORE CORE)
-  message(STATUS "SOURCE=[${FETCHCONTENT_SOURCE_DIR_TADAH.CORE}]")
-endfunction()
-probe()
+tadah_module_directory(source Tadah.CORE CORE)
+message(STATUS "SOURCE=[${source}]")

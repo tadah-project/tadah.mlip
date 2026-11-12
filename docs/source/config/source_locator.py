@@ -22,15 +22,13 @@ Source checkouts (``locate``), in this order:
   4. ``$TADAH_PATH/CORE`` or ``$TADAH_PATH/core``.
   5. On CI and Read the Docs only: a shallow clone of the branch or
      tag being built from ``<base>/<repository>.git``, where ``<base>`` is
-     ``$TADAH_GIT_BASE`` when it is set and not empty (as for CMake's
-     FetchContent, cmake-tools' TADAH_GIT_BASE block), else
-     ``https://github.com/tadah-project``.  The ref is named the way
-     ``tadah_get_git_branch`` (cmake-tools)
-     names it for FetchContent -- ``$CI_COMMIT_REF_NAME``, else
+     ``$TADAH_GIT_BASE`` when it is set and not empty, else
+     ``https://github.com/tadah-project``.  The ref is
+     ``$CI_COMMIT_REF_NAME``, else
      ``$READTHEDOCS_GIT_IDENTIFIER`` (the ref Read the Docs checked out; its
      ``latest`` and ``stable`` versions are named after no ref), else
-     ``$READTHEDOCS_VERSION_NAME``, else ``$READTHEDOCS_VERSION``.  As
-     there, a variable counts only when it is set and not empty.
+     ``$READTHEDOCS_VERSION_NAME``, else ``$READTHEDOCS_VERSION``.  A
+     variable counts only when it is set and not empty.
 
 Doxygen XML (``doxygen_xml_dir``): ``$TADAH_DOXYGEN_XML_DIR`` when set (it
 must contain ``index.xml``), else the ``build/docs/xml`` directory that
@@ -58,8 +56,7 @@ REPOS = {
             os.path.join('blueprint', 'anneal_keys.toml')),
 }
 
-# The base address of the Tadah! repositories, as cmake-tools' TADAH_GIT_BASE
-# block sets it for FetchContent.
+# The base address of the Tadah! repositories.
 GIT_BASE_VAR = 'TADAH_GIT_BASE'
 DEFAULT_GIT_BASE = 'https://github.com/tadah-project'
 
@@ -83,14 +80,13 @@ def ci_platform(environ):
     return None
 
 
-# The variables that name the ref being built, in tadah_get_git_branch's
-# order (cmake-tools, cmake/TadahDevelop.cmake).
+# The variables that name the ref being built, in the order they are tried.
 BUILT_BRANCH_VARS = ('CI_COMMIT_REF_NAME', 'READTHEDOCS_GIT_IDENTIFIER',
                      'READTHEDOCS_VERSION_NAME', 'READTHEDOCS_VERSION')
 
 
 def built_branch(environ):
-    '''The ref being built on CI/RTD, as tadah_get_git_branch names it:
+    '''The ref being built on CI/RTD:
     (variable, value) of the first of BUILT_BRANCH_VARS that is set and not
     empty, or (None, None).'''
     for var in BUILT_BRANCH_VARS:

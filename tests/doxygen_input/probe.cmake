@@ -1,7 +1,7 @@
 # Checks tadah_doxygen_input() (cmake/doxygen_input.cmake), which names the
 # Doxygen INPUT of the `docs` target (docs/Doxyfile.in): the include/ trees
 # of the Tadah modules the build configures -- CORE, MODELS and MLIP always,
-# HPO only with TADAH_ENABLE_NFP (it is fetched only then). A module that is
+# HPO only with TADAH_ENABLE_NFP (it is part of the build only then). A module that is
 # needed but not configured, or has no include/ directory, is a configure
 # error; nothing is ever listed from an empty source directory (which gave
 # a bare "/include" in a build without NFP, such as the Read the Docs one).
@@ -57,7 +57,7 @@ foreach(m CORE MODELS MLIP HPO)
 endforeach()
 
 if(CASE STREQUAL "nfp_off")
-  # No NFP: HPO is not fetched, so its source directory is empty.
+  # No NFP: HPO is not part of the build, so its source directory is empty.
   set(TADAH_ENABLE_NFP OFF)
   set(Tadah.HPO_SOURCE_DIR "")
 elseif(CASE STREQUAL "nfp_on")

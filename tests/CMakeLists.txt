@@ -60,7 +60,6 @@ set_tests_properties(tadah_version_matches_blueprint PROPERTIES
 # line is a configure error (no 0.0.0 default).
 # Each case configures version_reader/project in a new build directory
 # (version_reader/check_version_reader.cmake removes the last run's).
-FetchContent_GetProperties(tadah_cmake)
 set(_vr ${CMAKE_CURRENT_SOURCE_DIR}/version_reader)
 function(tadah_version_reader_test name case core regex)
   add_test(NAME ${name}
@@ -94,8 +93,7 @@ tadah_version_reader_test(tadah_version_reader_no_core no_core
 # cmake-tools stops the configure step when a removed option is ON
 # (TADAH_BUILD_MPI, the legacy MPI training build removed in 1.6.0), and
 # accepts OFF, as set by older presets, and an unset option. Each case
-# configures removed_options/project, which fetches this build's cmake-tools
-# like every Tadah module does.
+# configures removed_options/project, which runs this build's cmake-tools.
 foreach(_case on preset_on off preset_off unset)
   add_test(NAME tadah_removed_option_build_mpi_${_case}
     COMMAND ${CMAKE_COMMAND}
@@ -112,39 +110,13 @@ foreach(_case on preset_on off preset_off unset)
 endforeach()
 
 
-# ------------------------------------------------------------------
-# 4. Branch detection (cmake-tools' tadah_get_git_branch)
-# ------------------------------------------------------------------
-# The ref every Tadah module fetches its sibling modules at: CI and Read
-# the Docs variables (READTHEDOCS_GIT_IDENTIFIER before the version name,
-# which is 'latest' or 'stable' for those versions; a variable counts only
-# when it is set and non-empty), then the checkout's upstream or local
-# branch. Each case runs git_branch/probe.cmake with a controlled
-# environment; the git cases use throw-away local repositories. Each case
-# also checks that the docs build (docs/source/config/source_locator.py)
-# names the same ref from the same variables.
+# Git and Python 3, for the tests below: the git cases of the text check's
+# own test, the documentation tools and their unit tests.
 find_package(Git REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
-foreach(_case ci rtd_latest rtd_stable rtd_version_name rtd_version
-              rtd_empty_identifier ci_empty preset
-              upstream local_branch detached not_git)
-  add_test(NAME tadah_git_branch_${_case}
-    COMMAND ${CMAKE_COMMAND}
-      -DCASE=${_case}
-      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
-      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/git_branch/${_case}
-      -DGIT=${GIT_EXECUTABLE}
-      -DPYTHON=${Python3_EXECUTABLE}
-      -DLOCATOR_DIR=${PROJECT_SOURCE_DIR}/docs/source/config
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/git_branch/check_git_branch.cmake)
-  set_tests_properties(tadah_git_branch_${_case} PROPERTIES
-    LABELS cmake
-    TIMEOUT 60)
-endforeach()
-
 
 # ------------------------------------------------------------------
-# 4b. Where the modules and cmake-tools come from
+# 4. Where the modules and cmake-tools come from
 # ------------------------------------------------------------------
 # The directories of this repository, whatever TADAH_DEVELOP and the
 # environment variable TADAH_PATH say; another directory given for a
@@ -152,7 +124,8 @@ endforeach()
 # module copied out of its repository are refused. The function cases
 # run local_module/probe.cmake; the project_ cases configure a build file
 # in a scratch directory without network; one case compares the
-# cmake-tools block of the seven build files.
+# cmake-tools block of the seven build files and checks that none of them
+# fetches a Tadah module or cmake-tools.
 foreach(_case repository tadah_path_is_not_read same_directory_given
               cmake_tools_through_link
               other_directory_refused other_cmake_tools_refused
@@ -198,8 +171,9 @@ function(tadah_doxygen_input_test case regex)
       PASS_REGULAR_EXPRESSION "${regex}")
   endif()
 endfunction()
+# nfp_off: also the status line that says why the HPO API is left out.
 tadah_doxygen_input_test(nfp_off
-  "INPUT=\\[\"<W>/CORE/include\" \"<W>/MODELS/include\" \"<W>/MLIP/include\"\\]")
+  "so HPO is not part of the build\\)\n.*INPUT=\\[\"<W>/CORE/include\" \"<W>/MODELS/include\" \"<W>/MLIP/include\"\\]")
 tadah_doxygen_input_test(nfp_on
   "INPUT=\\[\"<W>/CORE/include\" \"<W>/MODELS/include\" \"<W>/MLIP/include\" \"<W>/HPO/include\"\\]")
 # CMake wraps a long error message: allow a line break between words.
@@ -659,7 +633,7 @@ set_tests_properties(tadah_quickstart_numbers PROPERTIES
 tadah_add_header_check(tadah)
 
 # The function itself: each case configures header_check/project, which
-# fetches this build's cmake-tools like every Tadah module does, and runs
+# brings in this build's cmake-tools, and runs
 # its header checks (see header_check/check_header_check.cmake). Before
 # the fix (cmake-tools without the function): every case fails at its
 # configure step ('Unknown CMake command "tadah_add_header_check"').
@@ -734,11 +708,10 @@ endforeach()
 # (--fresh, ctest --test-dir 3.20, string(JSON) 3.19, in its 3.18),
 # removed_options/check_removed_option.cmake (--fresh) and
 # catch_discovery/check_skip.cmake (--test-dir), both 3.18. Before an
-# earlier fix: 9 -- this file's two SKIP_REGULAR_EXPRESSION (3.16) under the
-# umbrella's 3.15, and seven scripts that declare 3.18 above it
+# earlier fix: 7 -- this file's two SKIP_REGULAR_EXPRESSION (3.16) under the
+# umbrella's 3.15, and five scripts that declare 3.18 above it
 # (catch_discovery/check_discovery.cmake, check_module.cmake,
 # check_skip.cmake, doxygen_input/probe.cmake,
-# git_branch/check_git_branch.cmake, git_branch/probe.cmake,
 # removed_options/check_removed_option.cmake), which stopped on CMake
 # 3.15-3.17 ("CMake 3.18 or higher is required").
 add_test(NAME tadah_cmake_minimum_features
@@ -827,13 +800,6 @@ endif()
 # entry for an AI tool's state directory); cmake-tools_text fails, 2 lines
 # (that entry and its comment in .gitignore).
 tadah_add_text_check(tadah)
-
-# tadah_git_base (label cmake): the top-level CMakeLists.txt carries
-# cmake-tools' TADAH_GIT_BASE block and fetches every Tadah! repository as
-# ${TADAH_GIT_BASE}/<repository>.git (testing/tadah_git_base_check.cmake).
-# Before the fix: fails (no block; the repositories named by the address of
-# the development host).
-tadah_add_git_base_check(tadah)
 tadah_add_text_check(cmake-tools ROOT ${tadah_cmake_SOURCE_DIR})
 
 # The function and its script, on throw-away trees and a throw-away project
@@ -855,18 +821,3 @@ add_test(NAME tadah_text_check_tool
 set_tests_properties(tadah_text_check_tool PROPERTIES
   LABELS cmake
   TIMEOUT 300)
-
-# cmake-tools' git base address check (tadah_add_git_base_check, its script
-# testing/tadah_git_base_check.cmake), on throw-away CMakeLists.txt files
-# (git_base/check_git_base_check.cmake lists the cases: the block and the
-# addresses as required, a changed block, a block after the first
-# FetchContent_Declare, no block, a fixed address, no address, the
-# refusals). Before the fix: fails, the script does not exist.
-add_test(NAME tadah_git_base_check_tool
-  COMMAND ${CMAKE_COMMAND}
-    -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
-    -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/git_base
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/git_base/check_git_base_check.cmake)
-set_tests_properties(tadah_git_base_check_tool PROPERTIES
-  LABELS cmake
-  TIMEOUT 120)

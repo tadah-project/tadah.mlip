@@ -154,8 +154,8 @@ class DocsSphinxJobTest(unittest.TestCase):
         return proc, calls
 
     def test_ci_git_base_is_the_projects_own_group(self):
-        # The pipeline's TADAH_GIT_BASE (CMake's FetchContent and the clones
-        # below read it) is the group of the project being built, on the
+        # The pipeline's TADAH_GIT_BASE (the clones below read it) is the
+        # group of the project being built, on the
         # server running the pipeline; a group or project CI/CD variable of
         # that name takes precedence over it.
         # Before the fix: fails: the file defines no variables.

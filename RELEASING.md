@@ -11,12 +11,12 @@ repos (core, models, mlip, md, hpo, tadah.lammps, tadah.mlip) and in
 cmake-tools; it replaces `develop`. Releases are made from `v1-dev`, and
 every repo gets the same tag, `v<X.Y.Z>` (`v1.6.0`).
 
-## Which repo fetches which
+## Which module builds on which
 
-Every module fetches the Tadah modules it builds on with
-`GIT_TAG ${TADAH_GIT_BRANCH}` (its top-level `CMakeLists.txt`):
+Every module adds the Tadah modules it builds on from the directories of
+the repository (`tadah_add_module` in its `CMakeLists.txt`):
 
-| Repo | Fetches |
+| Module | Builds on |
 |------|---------|
 | `core` | — |
 | `models` | `core` |
@@ -26,13 +26,12 @@ Every module fetches the Tadah modules it builds on with
 | `hpo` | `mlip`, `md`, `tadah.lammps` |
 | `tadah.mlip` | `mlip`; with `TADAH_ENABLE_NFP`, `hpo` instead |
 
-Each of them also fetches cmake-tools, at the `GIT_TAG` pinned in its
-`CMakeLists.txt` (see *cmake-tools pin*), not at `TADAH_GIT_BRANCH`.
+Each of them also adds cmake-tools, the directory `cmake-tools` of the
+repository.
 
 ## Repos in tag order
 
-A coordinated release tags the following repos in this order, each
-after every repo it fetches:
+A coordinated release tags the following repos in this order:
 
 1. `cmake-tools`
 2. `core`
@@ -42,37 +41,6 @@ after every repo it fetches:
 6. `tadah.lammps`
 7. `hpo`
 8. `tadah.mlip` (umbrella — last; this is the user-visible release)
-
-The order matters because a repo's tag pipeline fetches the repos it
-builds on at that tag: cmake-tools' `tadah_get_git_branch` sets
-`TADAH_GIT_BRANCH` from `$CI_COMMIT_REF_NAME`, which is the tag name on
-a tag pipeline, so every repo in its row of the table above must carry
-the tag already. cmake-tools itself is fetched at the pinned `GIT_TAG`,
-so it is tagged first and the modules pin its tag.
-
-## cmake-tools pin
-
-Each of the seven repos fetches cmake-tools in its top-level
-`CMakeLists.txt`:
-
-```cmake
-FetchContent_Declare(tadah_cmake
-  GIT_REPOSITORY  ${TADAH_GIT_BASE}/cmake-tools.git
-  GIT_TAG         v1-dev)
-```
-
-`TADAH_GIT_BASE` comes from the block of
-`cmake-tools/testing/tadah_git_base_block.cmake`, which every one of the
-seven `CMakeLists.txt` carries unchanged before its first
-`FetchContent_Declare` (`<name>_git_base`, `ctest -L cmake`, checks it).
-
-During development the pin is `GIT_TAG v1-dev`. At a release, tag
-cmake-tools `v1.6.0` first; then the release commit of each of the seven
-repos switches the pin from `GIT_TAG v1-dev` to `GIT_TAG v1.6.0`, before
-any module is tagged, so a module's tag always builds with the tagged
-cmake-tools. Once the tags are pushed, a commit on `v1-dev` switches the
-pins back to `GIT_TAG v1-dev`, so that development builds follow
-cmake-tools' `v1-dev` again.
 
 ## Single source of truth: blueprint version
 
@@ -85,9 +53,8 @@ Pre-release suffixes (`-beta.1`, `-rc.1`, etc.) are allowed in the
 TOML; CMake's `project(VERSION)` call sees only the numeric M.m.p
 portion (handled by `tadah_read_version_from_blueprint`).
 
-Each module reads the version *after* its Tadah dependencies have been
-made available, so CORE's blueprint is found in both the sibling
-(developer) and the FetchContent layout; a missing blueprint or version
+Each module reads the version *after* the Tadah modules it builds on
+have been added, so CORE's blueprint is found; a missing blueprint or version
 line is a configure error, never a `0.0.0` default. The blueprint is a
 configure dependency, so a bump re-runs CMake on the next build. The
 Sphinx docs read CORE's blueprint as well (`docs/source/config/source_locator.py`:
@@ -122,7 +89,7 @@ not run on tags):
 
 A tag pipeline runs the build jobs and `release_tarball`, which uploads
 a `git archive` of the tag to the project's Generic Package Registry. A tarball holds
-every module, so a build from it needs no ref.
+every module.
 `lint_codespell` and `docs_sphinx` do not run on tags (`when: never`).
 
 ## Development and public repositories
@@ -143,10 +110,10 @@ A pull request opened on GitHub is fetched
 rewriting its commits and pushed to GitLab; the mirror then marks it
 merged. Issues are taken on `tadah.mlip` and `tadah.lammps` only.
 
-Builds read the base address of the repositories from `TADAH_GIT_BASE`
-(CMake, `source_locator.py`, `Tadah.LAMMPS/configure`), by default
+The documentation build reads the base address of the repositories from
+`TADAH_GIT_BASE` (`source_locator.py`, the `docs_sphinx` job), by default
 `https://github.com/tadah-project`. Every `.gitlab-ci.yml` sets it to
-`${CI_SERVER_URL}/${CI_PROJECT_NAMESPACE}`, so that CI fetches from
+`${CI_SERVER_URL}/${CI_PROJECT_NAMESPACE}`, so that CI clones from
 GitLab and never waits for the mirror. When the GitLab group is private,
 a group CI/CD variable `TADAH_GIT_BASE` (masked) with the value
 `https://gitlab-ci-token:${CI_JOB_TOKEN}@<host>/tadah` takes precedence,
@@ -159,50 +126,22 @@ CI does not publish the documentation. Read the Docs builds it from
 `https://github.com/tadah-project/tadah.mlip` (its GitHub integration
 starts a build on every mirror update), with `.readthedocs.yaml`: a docs-only CMake configure
 (`-DTADAH_BUILD_DOCS_ONLY=ON`) and `make docs` for the Doxygen XML, then
-Sphinx with `docs/source/conf.py`. The configure fetches the modules at
-the ref `tadah_get_git_branch` names, and `conf.py` clones CORE and HPO
-at the same ref (`source_locator.py`). On Read the Docs that ref is
-`$READTHEDOCS_GIT_IDENTIFIER`, the branch or tag Read the Docs checked
-out (the version names `latest` and `stable` are not refs), so every
-module must have that branch or tag on GitHub.
+Sphinx with `docs/source/conf.py`. The configure takes the modules from
+the directories of the repository, and `conf.py` reads CORE and HPO from
+them (`source_locator.py`).
 
 In the Read the Docs dashboard (admin access):
 
-- set the project's *Default branch* to `v1-dev`. Read the Docs builds
-  its `latest` version from the default branch, and
-  `$READTHEDOCS_GIT_IDENTIFIER` then names that branch, so it must exist
-  in every module;
+- set the project's *Default branch* to `v1-dev`: Read the Docs builds
+  its `latest` version from the default branch;
 - set the *Default version*, the one the site root
   (`https://tadah.readthedocs.io/`, linked from `CITATION.cff` and the
   installation guide) serves: `v1-dev`, or `stable` once a release tag
-  exists (`stable` builds the highest version tag, which every module
-  carries too);
+  exists (`stable` builds the highest version tag);
 - activate the `v1-dev` version and, once the tags exist, the `v1.6.0`
   version.
 
 The READMEs link to `https://tadah.readthedocs.io/v1-dev/`.
-
-## Pushing `v1-dev`
-
-Push cmake-tools `v1-dev` first: every other repo fetches it. Then push
-the modules from the leaves to the root, each before every repo it
-fetches (see *Which repo fetches which*), `core` last:
-
-1. `cmake-tools`
-2. `tadah.mlip`
-3. `hpo`
-4. `tadah.lammps`
-5. `md`
-6. `mlip`
-7. `models`
-8. `core`
-
-Each push triggers the pipelines downstream of it, and the triggered
-pipelines fetch the modules at `v1-dev`; pushing `core` last runs the
-whole chain once more against the pushed modules. To avoid the
-intermediate pipelines, push all but `core` with
-`git push -o ci.skip origin v1-dev` and let `core`'s push trigger the
-chain.
 
 ## Process for a release
 
@@ -211,25 +150,22 @@ chain.
    `date-released`) and the `## [1.6.0]` CHANGELOG sections. Validate
    locally: full `ctest` (which also runs the CLI examples the
    documentation includes) and a Sphinx build with `-W`.
-2. **Push `v1-dev`** in the order above and watch the pipelines.
+2. **Push `v1-dev`** and watch the pipelines.
 3. **Tag cmake-tools**: `git tag -a v1.6.0 -m "Tadah! 1.6.0"` on its
    `v1-dev`, then `git push origin v1.6.0`.
-4. **Release commit** on `v1-dev` in each of the seven repos: switch the
-   cmake-tools pin to `GIT_TAG v1.6.0`, and set the date of the
-   `## [1.6.0]` CHANGELOG heading (`## [1.6.0] — unreleased` until
-   then) and `date-released` in `CITATION.cff` to the tag date. Push
-   it, in the order above.
+4. **Release commit** on `v1-dev` in each of the seven repos: set the
+   date of the `## [1.6.0]` CHANGELOG heading (`## [1.6.0] — unreleased`
+   until then) and `date-released` in `CITATION.cff` to the tag date.
+   Push it.
 5. **Tag the modules in tag order** (`core`, `models`, `mlip`, `md`,
    `tadah.lammps`, `hpo`, `tadah.mlip`): `git tag -a v1.6.0 -m "Tadah!
    1.6.0"`, then `git push origin v1.6.0`. Let each tag pipeline finish
-   (build and `release_tarball`) before tagging a repo that fetches it.
-6. **Restore the development pin**: a commit on `v1-dev` in the seven
-   repos switches `GIT_TAG v1.6.0` back to `GIT_TAG v1-dev`.
-7. **Read the Docs**: activate `v1.6.0` and check that its build and the
+   (build and `release_tarball`).
+6. **Read the Docs**: activate `v1.6.0` and check that its build and the
    `v1-dev` build succeed.
-8. **Mint a Zenodo DOI** for the umbrella tag, and add it to
+7. **Mint a Zenodo DOI** for the umbrella tag, and add it to
    `CITATION.cff` on `v1-dev`.
-9. **Open a GitHub Release** on `tadah-project/tadah.mlip` (and
+8. **Open a GitHub Release** on `tadah-project/tadah.mlip` (and
    `tadah.lammps`) for the tag, once the mirror carries it:
    `gh release create v1.6.0 --repo tadah-project/tadah.mlip`, with the
    `release_tarball` archives of the tag pipelines attached and a short

@@ -6,7 +6,7 @@
 #
 #   * Tadah.CORE, Tadah.MODELS and Tadah.MLIP: always;
 #   * Tadah.HPO: only with TADAH_ENABLE_NFP, the only configuration that
-#     fetches it. Without NFP (the Read the Docs docs-only build among
+#     builds it. Without NFP (the Read the Docs docs-only build among
 #     them) the HPO API is not documented, and a status line says so.
 #
 # A module that is needed but not configured (<name>_SOURCE_DIR empty), or
@@ -38,7 +38,7 @@ function(tadah_doxygen_input out_var)
 
   if(NOT TADAH_ENABLE_NFP)
     message(STATUS "Doxygen: the docs target leaves out the Tadah.HPO API "
-                   "(TADAH_ENABLE_NFP is OFF, so HPO is not fetched)")
+                   "(TADAH_ENABLE_NFP is OFF, so HPO is not part of the build)")
   endif()
   set(${out_var} "${_input}" PARENT_SCOPE)
 endfunction()

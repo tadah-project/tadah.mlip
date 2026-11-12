@@ -29,8 +29,7 @@
 #   a development host        the address of the development GitLab host,
 #                             which readers outside its network cannot
 #                             reach; a build, a CI job or a page names the
-#                             public host, or takes the base address from
-#                             TADAH_GIT_BASE
+#                             public host
 #   a development host name   the name of the development host's software,
 #                             in published text only: the .rst, .md and .txt
 #                             files under docs/ and examples/ (pages and

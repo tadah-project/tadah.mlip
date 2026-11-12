@@ -1,11 +1,14 @@
 # Checks where a build takes the Tadah modules and cmake-tools from
-# (cmake-tools' tadah_use_local_module, cmake/TadahDevelop.cmake, and the
-# cmake-tools block of every build file with cmake/TadahRepository.cmake):
-# the directories of the repository, whatever TADAH_DEVELOP and the
-# environment variable TADAH_PATH say. Another directory given for a module
-# or for cmake-tools, a repository without the module and a module directory
-# copied out of its repository are refused. The repository's own directory
-# given through a symbolic link is taken, by its resolved path.
+# (cmake-tools' tadah_add_module and tadah_module_directory,
+# cmake/TadahDevelop.cmake, and the cmake-tools block of every build file
+# with cmake/TadahRepository.cmake): the directories of the repository,
+# whatever TADAH_DEVELOP and the environment variable TADAH_PATH say.
+# Another directory given for a module or for cmake-tools, a repository
+# without the module and a module directory copied out of its repository
+# are refused; the refusal of a setting names the -U that removes it from
+# the cache, and the configure step passes with it. The repository's own
+# directory given through a symbolic link is taken, by its resolved path.
+# No build file fetches a Tadah module or cmake-tools.
 #
 #   cmake -DCASE=<case> -DREPOSITORY=<root of the repository>
 #         -DWORK_DIR=<scratch> [-DGENERATOR=<CMake generator>
@@ -33,7 +36,8 @@ file(REMOVE_RECURSE "${WORK_DIR}")
 file(MAKE_DIRECTORY "${WORK_DIR}/elsewhere/CORE")
 set(MODULES CORE MODELS MLIP MD HPO Tadah.LAMMPS)
 
-# ---- the cmake-tools block is the same in every build file ----------------
+# ---- the cmake-tools block is the same in every build file, and none
+# ---- fetches a Tadah module or cmake-tools ---------------------------------
 if(CASE STREQUAL "blocks_identical")
   set(first "")
   foreach(file CMakeLists.txt ${MODULES})
@@ -41,6 +45,14 @@ if(CASE STREQUAL "blocks_identical")
       set(file "${file}/CMakeLists.txt")
     endif()
     file(READ "${REPOSITORY}/${file}" text)
+    # dlib, Eigen and the other third-party sources are fetched; what is
+    # declared under a Tadah name is not.
+    string(REGEX MATCH "FetchContent_Declare[ \t\r\n]*\\([ \t\r\n]*[Tt]adah[^ \t\r\n)]*"
+           fetched "${text}")
+    if(NOT fetched STREQUAL "")
+      message(FATAL_ERROR
+        "${file} fetches a Tadah module or cmake-tools: '${fetched}'")
+    endif()
     string(REGEX MATCH "# >>> cmake-tools.*# <<< cmake-tools" block "${text}")
     if(block STREQUAL "")
       message(FATAL_ERROR "${file}: no cmake-tools block")
@@ -66,7 +78,7 @@ if(CASE STREQUAL "blocks_identical")
         "by more than the path and the name:\n${block}")
     endif()
   endforeach()
-  message(STATUS "case ${CASE}: seven blocks agree")
+  message(STATUS "case ${CASE}: seven blocks agree, and nothing of Tadah is fetched")
   return()
 endif()
 
@@ -80,6 +92,8 @@ function(expect_refusal rc out needle)
   if(rc EQUAL 0)
     message(FATAL_ERROR "case ${CASE}: expected a refusal, got:\n${out}")
   endif()
+  # CMake wraps the text of an error: compare with the line breaks dropped.
+  string(REGEX REPLACE "\n *" " " out "${out}")
   string(FIND "${out}" "${needle}" at)
   if(at EQUAL -1)
     message(FATAL_ERROR
@@ -93,8 +107,9 @@ if(CASE MATCHES "^project_")
   set(sources "${REPOSITORY}/MODELS")
   set(defines "")
   set(needle "")
+  set(setting "")
   if(CASE STREQUAL "project_unpinned")
-    # No pin, no TADAH_DEVELOP, no TADAH_PATH: the repository's directories.
+    # No setting, no TADAH_DEVELOP, no TADAH_PATH: the repository's directories.
   elseif(CASE STREQUAL "project_same_cmake_tools_given")
     # The repository's own cmake-tools, named through a symbolic link.
     file(CREATE_LINK "${REPOSITORY}/cmake-tools" "${WORK_DIR}/link" SYMBOLIC)
@@ -104,13 +119,15 @@ if(CASE MATCHES "^project_")
     file(CREATE_LINK "${REPOSITORY}/CORE" "${WORK_DIR}/link" SYMBOLIC)
     set(defines "-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${WORK_DIR}/link")
   elseif(CASE STREQUAL "project_other_module_refused")
-    set(defines "-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${WORK_DIR}/elsewhere/CORE")
+    set(setting "FETCHCONTENT_SOURCE_DIR_TADAH.CORE")
+    set(defines "-D${setting}=${WORK_DIR}/elsewhere/CORE")
     set(needle "names another directory than the module of this repository")
   elseif(CASE STREQUAL "project_other_cmake_tools_refused")
     # Every build file refuses it, and before it reads a file of the other
     # directory: that one is empty.
     file(MAKE_DIRECTORY "${WORK_DIR}/other/cmake-tools")
-    set(defines "-DFETCHCONTENT_SOURCE_DIR_TADAH_CMAKE=${WORK_DIR}/other/cmake-tools")
+    set(setting "FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE")
+    set(defines "-D${setting}=${WORK_DIR}/other/cmake-tools")
     set(needle "names another directory than the cmake-tools of this repository")
     set(sources "${REPOSITORY}")
     foreach(module IN LISTS MODULES)
@@ -144,6 +161,27 @@ if(CASE MATCHES "^project_")
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
     if(needle)
       expect_refusal("${rc}" "${out}" "${needle}")
+      if(setting)
+        expect_refusal("${rc}" "${out}" "-U${setting} on the next cmake command")
+      endif()
+      if(setting AND source STREQUAL "${REPOSITORY}/MODELS")
+        # The cache keeps the setting; the -U of the message removes it.
+        execute_process(
+          COMMAND "${CMAKE_COMMAND}" -E env --unset=TADAH_PATH
+                  "${CMAKE_COMMAND}" -S "${source}" -B "${WORK_DIR}/build${n}"
+                  ${toolchain} -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+          RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
+        expect_refusal("${rc}" "${out}" "${needle}")
+        execute_process(
+          COMMAND "${CMAKE_COMMAND}" -E env --unset=TADAH_PATH
+                  "${CMAKE_COMMAND}" -S "${source}" -B "${WORK_DIR}/build${n}"
+                  ${toolchain} -DFETCHCONTENT_FULLY_DISCONNECTED=ON "-U${setting}"
+          RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
+        if(NOT rc EQUAL 0)
+          message(FATAL_ERROR
+            "case ${CASE}: configure with -U${setting} failed (${rc}):\n${out}")
+        endif()
+      endif()
     elseif(NOT rc EQUAL 0)
       message(FATAL_ERROR "case ${CASE}: configure failed (${rc}):\n${out}")
     endif()
@@ -152,13 +190,17 @@ if(CASE MATCHES "^project_")
     return()
   endif()
   file(STRINGS "${WORK_DIR}/build1/CMakeCache.txt" cache
-       REGEX "^(tadah_cmake_SOURCE_DIR|Tadah.CORE_SOURCE_DIR|TADAH_DEVELOP|FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE|FETCHCONTENT_SOURCE_DIR_TADAH.CORE):")
-  # The cache entries too: whichever of the variable and the cache entry
-  # the FetchContent of the CMake version reads, it names the repository.
+       REGEX "^(tadah_cmake_(SOURCE|BINARY)_DIR|Tadah.CORE_(SOURCE|BINARY)_DIR|TADAH_DEVELOP):")
+  # The directories the build added, and where it builds them: the build
+  # tree keeps one directory per module, _deps/<name in lower case>-build
+  # (below the build directory as its own cache names it).
+  file(STRINGS "${WORK_DIR}/build1/CMakeCache.txt" build_dir
+       REGEX "^CMAKE_CACHEFILE_DIR:INTERNAL=")
+  string(REGEX REPLACE "^[^=]*=" "" build_dir "${build_dir}")
   foreach(expected "tadah_cmake_SOURCE_DIR:STATIC=${REPOSITORY}/cmake-tools"
                    "Tadah.CORE_SOURCE_DIR:STATIC=${REPOSITORY}/CORE"
-                   "FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE:PATH=${REPOSITORY}/cmake-tools"
-                   "FETCHCONTENT_SOURCE_DIR_TADAH.CORE:PATH=${REPOSITORY}/CORE"
+                   "tadah_cmake_BINARY_DIR:STATIC=${build_dir}/_deps/tadah_cmake-build"
+                   "Tadah.CORE_BINARY_DIR:STATIC=${build_dir}/_deps/tadah.core-build"
                    "TADAH_DEVELOP:BOOL=OFF")
     if(NOT expected IN_LIST cache)
       message(FATAL_ERROR
@@ -214,6 +256,13 @@ execute_process(
 
 if(needle)
   expect_refusal("${rc}" "${out}" "${needle}")
+  if(CASE STREQUAL "other_cmake_tools_refused")
+    # The cause, and no setting to remove: none leads here.
+    expect_refusal("${rc}" "${out}" "the build holds build files of two checkouts")
+    if(out MATCHES "FETCHCONTENT_SOURCE_DIR")
+      message(FATAL_ERROR "case ${CASE}: the refusal names a setting:\n${out}")
+    endif()
+  endif()
   return()
 endif()
 if(NOT rc EQUAL 0)

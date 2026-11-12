@@ -5,7 +5,7 @@
 #
 #     cmake_minimum_required(VERSION 3.15)
 #     project(Tadah.FOO LANGUAGES CXX)
-#     ...                           # FetchContent for cmake-tools
+#     ...                           # the cmake-tools block
 #     tadah_project_setup()
 #
 #  Handles:
@@ -57,6 +57,6 @@ function(tadah_project_setup)
   endif()
 
   # ---- Summary line (one line per module) -----------------------
-  message(STATUS "[${PROJECT_NAME}] ${CMAKE_BUILD_TYPE}, branch: ${TADAH_GIT_BRANCH}")
+  message(STATUS "[${PROJECT_NAME}] ${CMAKE_BUILD_TYPE}")
 
 endfunction()

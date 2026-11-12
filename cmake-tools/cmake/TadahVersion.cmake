@@ -15,13 +15,12 @@
 #  Behaviour:
 #    * If BLUEPRINT_FILE is given, parses exactly that file.
 #    * Otherwise the blueprint is located through Tadah.CORE itself:
-#        - the FetchContent source dir of Tadah.CORE (populated by
-#          FetchContent_MakeAvailable(Tadah.CORE), including the
-#          FETCHCONTENT_SOURCE_DIR_TADAH.CORE override used by
-#          developer builds);
-#        - ${Tadah.CORE_SOURCE_DIR}, set by CORE's own project() call.
-#      Callers therefore read the version AFTER their Tadah dependencies
-#      have been made available, then re-state project(... VERSION ...).
+#        - the FetchContent source dir of a Tadah.CORE made available
+#          with FetchContent_MakeAvailable(Tadah.CORE);
+#        - ${Tadah.CORE_SOURCE_DIR}, set by CORE's own project() call
+#          when a build file adds it (tadah_add_module).
+#      Callers therefore read the version AFTER the Tadah modules they
+#      build on have been added, then re-state project(... VERSION ...).
 #    * The version is the first `version = "..."` (or '...') line of the
 #      [TADAH] table: from the line holding only [TADAH] to the next line
 #      that starts with '['. The file is read as text, so square brackets
@@ -76,9 +75,9 @@ function(tadah_read_version_from_blueprint output_var)
       set(_searched "Searched: ${_candidates}")
     else()
       string(CONCAT _searched
-        "Tadah.CORE has not been made available yet: call "
-        "FetchContent_MakeAvailable() for the Tadah dependencies "
-        "before reading the version, or pass BLUEPRINT_FILE.")
+        "Tadah.CORE has not been made available yet: add the Tadah "
+        "modules (tadah_add_module) before reading the version, or pass "
+        "BLUEPRINT_FILE.")
     endif()
     message(FATAL_ERROR
       "tadah_read_version_from_blueprint: could not find "

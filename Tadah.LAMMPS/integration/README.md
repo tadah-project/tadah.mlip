@@ -25,7 +25,7 @@ https://docs.lammps.org/Build_cmake.html
 
 ## Quick start (recommended workflow)
 
-### 1) Clone Tadah! (somewhere outside LAMMPS)
+### 1) Cloning Tadah! (somewhere outside LAMMPS)
 
 Tadah.LAMMPS is a directory of the Tadah! repository and is built from inside it, with the modules it needs (Tadah.MD, Tadah.MODELS and Tadah.CORE) beside it. The repository is cloned anywhere, at `v1-dev` (the development line) or at a release tag such as `v1.6.0`:
 
@@ -36,9 +36,9 @@ git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git /path/to/tad
 
 A plain `git clone` checks out the repository's default branch, which need not be `v1-dev`. In the steps below `/path/to/Tadah.LAMMPS` stands for `/path/to/tadah/Tadah.LAMMPS`.
 
-### 2) Configure LAMMPS and add the ML‑TADAH integration options
+### 2) Configuring LAMMPS with the ML‑TADAH integration options
 
-From the **LAMMPS root directory**, run your usual LAMMPS configure command **and add** these options to it:
+The usual LAMMPS configure command runs from the **LAMMPS root directory**, with these options **added** to it:
 
 ```bash
   -DPKG_ML-TADAH=ON \
@@ -55,7 +55,7 @@ cmake -S cmake -B build \
   -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS
 ```
 
-### 3) Build
+### 3) Building
 
 ```bash
 cmake --build build
@@ -83,7 +83,7 @@ Result: the LAMMPS binary built from this build directory includes **ML‑TADAH*
 
 ## CMake options supported by the integration
 
-All options below are passed to your **LAMMPS CMake configure** command (i.e. the command you run from the LAMMPS root directory, such as `cmake -S cmake -B build ...`).
+All options below are passed to the **LAMMPS CMake configure** command (the one that runs from the LAMMPS root directory, such as `cmake -S cmake -B build ...`).
 
 ### 1) `PKG_ML-TADAH` (ON/OFF)
 
@@ -103,7 +103,7 @@ CMake hook used by LAMMPS to inject this integration into the configure run.
 
 ### 3) `TADAH_LAMMPS_SOURCE_DIR` (path) — required
 
-Path to your local Tadah.LAMMPS checkout.
+Path to the directory `Tadah.LAMMPS` of a clone of the Tadah! repository.
 
 ```bash
 -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS

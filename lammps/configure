@@ -10,10 +10,10 @@ echo Use CMake instead. This works fine.
 echo You might need to remove build directory before running cmake.
 echo "************************************************************************"
 
-# CORE, MODELS and MD are the directories of those names in the Tadah!
+# CORE, MODELS and MD are the directories core, models and md of the Tadah!
 # repository, beside this one; build/ gets a link to each. Both checks come
 # before anything is created.
-for module in CORE MODELS MD; do
+for module in core models md; do
   if [ ! -d "../$module" ]; then
     echo "configure: ../$module not found: Tadah.LAMMPS is built from inside the Tadah! repository" >&2
     exit 1
@@ -24,7 +24,7 @@ for module in CORE MODELS MD; do
   fi
 done
 mkdir -p build
-for module in CORE MODELS MD; do
+for module in core models md; do
   ln -sfn "../../$module" "build/$module"
 done
 

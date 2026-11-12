@@ -35,8 +35,8 @@ get_filename_component(WORK_DIR "${WORK_DIR}" ABSOLUTE)
 # through a symbolic link included).
 get_filename_component(REPOSITORY "${REPOSITORY}" REALPATH)
 file(REMOVE_RECURSE "${WORK_DIR}")
-file(MAKE_DIRECTORY "${WORK_DIR}/elsewhere/CORE")
-set(MODULES CORE MODELS MLIP MD HPO Tadah.LAMMPS)
+file(MAKE_DIRECTORY "${WORK_DIR}/elsewhere/core")
+set(MODULES core models mlip md hpo lammps)
 
 # ---- the cmake-tools block is the same in every build file, and none
 # ---- fetches a Tadah module or cmake-tools ---------------------------------
@@ -84,10 +84,10 @@ if(CASE STREQUAL "blocks_identical")
   return()
 endif()
 
-# A cmake-tools copied to another place, with a CORE directory beside it.
+# A cmake-tools copied to another place, with a core directory beside it.
 function(make_other_checkout)
   file(COPY "${REPOSITORY}/cmake-tools" DESTINATION "${WORK_DIR}/other")
-  file(MAKE_DIRECTORY "${WORK_DIR}/other/CORE")
+  file(MAKE_DIRECTORY "${WORK_DIR}/other/core")
 endfunction()
 
 function(expect_refusal rc out needle)
@@ -106,7 +106,7 @@ endfunction()
 
 # ---- project cases: a real configure of a build file -----------------------
 if(CASE MATCHES "^project_")
-  set(sources "${REPOSITORY}/MODELS")
+  set(sources "${REPOSITORY}/models")
   set(defines "")
   set(needle "")
   set(setting "")
@@ -118,11 +118,11 @@ if(CASE MATCHES "^project_")
     set(defines "-DFETCHCONTENT_SOURCE_DIR_TADAH_CMAKE=${WORK_DIR}/link")
   elseif(CASE STREQUAL "project_same_module_given")
     # The repository's own CORE, named through a symbolic link.
-    file(CREATE_LINK "${REPOSITORY}/CORE" "${WORK_DIR}/link" SYMBOLIC)
+    file(CREATE_LINK "${REPOSITORY}/core" "${WORK_DIR}/link" SYMBOLIC)
     set(defines "-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${WORK_DIR}/link")
   elseif(CASE STREQUAL "project_other_module_refused")
     set(setting "FETCHCONTENT_SOURCE_DIR_TADAH.CORE")
-    set(defines "-D${setting}=${WORK_DIR}/elsewhere/CORE")
+    set(defines "-D${setting}=${WORK_DIR}/elsewhere/core")
     set(needle "names another directory than the module of this repository")
   elseif(CASE STREQUAL "project_other_cmake_tools_refused")
     # Every build file refuses it, and before it reads a file of the other
@@ -148,8 +148,8 @@ if(CASE MATCHES "^project_")
     endforeach()
   elseif(CASE STREQUAL "project_module_alone_refused")
     # The module's build file without the repository around it.
-    file(COPY "${REPOSITORY}/CORE/CMakeLists.txt" DESTINATION "${WORK_DIR}/alone/CORE")
-    set(sources "${WORK_DIR}/alone/CORE")
+    file(COPY "${REPOSITORY}/core/CMakeLists.txt" DESTINATION "${WORK_DIR}/alone/core")
+    set(sources "${WORK_DIR}/alone/core")
     set(needle "is built from inside the Tadah! repository")
   else()
     message(FATAL_ERROR "check_local_module.cmake: unknown case '${CASE}'")
@@ -177,7 +177,7 @@ if(CASE MATCHES "^project_")
       if(setting)
         expect_refusal("${rc}" "${out}" "-U${setting} on the next cmake command")
       endif()
-      if(setting AND source STREQUAL "${REPOSITORY}/MODELS")
+      if(setting AND source STREQUAL "${REPOSITORY}/models")
         # The cache keeps the setting; the -U of the message removes it.
         execute_process(
           COMMAND "${CMAKE_COMMAND}" -E env --unset=TADAH_PATH
@@ -211,7 +211,7 @@ if(CASE MATCHES "^project_")
        REGEX "^CMAKE_CACHEFILE_DIR:INTERNAL=")
   string(REGEX REPLACE "^[^=]*=" "" build_dir "${build_dir}")
   foreach(expected "tadah_cmake_SOURCE_DIR:STATIC=${REPOSITORY}/cmake-tools"
-                   "Tadah.CORE_SOURCE_DIR:STATIC=${REPOSITORY}/CORE"
+                   "Tadah.CORE_SOURCE_DIR:STATIC=${REPOSITORY}/core"
                    "tadah_cmake_BINARY_DIR:STATIC=${build_dir}/_deps/tadah_cmake-build"
                    "Tadah.CORE_BINARY_DIR:STATIC=${build_dir}/_deps/tadah.core-build"
                    "TADAH_DEVELOP:BOOL=OFF")
@@ -228,8 +228,8 @@ endif()
 set(env "--unset=TADAH_PATH")
 set(defines "")
 set(cmake_dir "${REPOSITORY}/cmake-tools")
-set(caller "${REPOSITORY}/MODELS")
-set(expect "${REPOSITORY}/CORE")
+set(caller "${REPOSITORY}/models")
+set(expect "${REPOSITORY}/core")
 set(needle "")
 if(CASE STREQUAL "repository")
   # No option and no environment variable: the repository's directory.
@@ -237,25 +237,25 @@ elseif(CASE STREQUAL "tadah_path_is_not_read")
   set(env "TADAH_PATH=${WORK_DIR}/elsewhere")
   set(defines "-DTADAH_DEVELOP=ON")
 elseif(CASE STREQUAL "same_directory_given")
-  set(defines "-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${REPOSITORY}/./CORE/")
+  set(defines "-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${REPOSITORY}/./core/")
 elseif(CASE STREQUAL "cmake_tools_through_link")
   # cmake-tools read through a symbolic link in another directory is still
   # the one of the repository.
   file(CREATE_LINK "${REPOSITORY}/cmake-tools" "${WORK_DIR}/link" SYMBOLIC)
   set(cmake_dir "${WORK_DIR}/link")
 elseif(CASE STREQUAL "other_directory_refused")
-  set(defines "-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${WORK_DIR}/elsewhere/CORE")
+  set(defines "-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${WORK_DIR}/elsewhere/core")
   set(needle "FETCHCONTENT_SOURCE_DIR_TADAH.CORE")
 elseif(CASE STREQUAL "other_cmake_tools_refused")
   make_other_checkout()
   set(cmake_dir "${WORK_DIR}/other/cmake-tools")
   set(needle "is not the repository of the project being configured")
 elseif(CASE STREQUAL "missing_module_refused")
-  # cmake-tools alone in a directory: its repository holds no CORE.
+  # cmake-tools alone in a directory: its repository holds no core.
   file(COPY "${REPOSITORY}/cmake-tools/cmake" DESTINATION "${WORK_DIR}/alone/cmake-tools")
   set(cmake_dir "${WORK_DIR}/alone/cmake-tools")
   set(caller "${WORK_DIR}/alone")
-  set(needle "${WORK_DIR}/alone/CORE")
+  set(needle "${WORK_DIR}/alone/core")
 else()
   message(FATAL_ERROR "check_local_module.cmake: unknown case '${CASE}'")
 endif()

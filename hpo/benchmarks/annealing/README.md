@@ -11,8 +11,8 @@ equilibrium suite (`ctest -L statistical`).
 Build the benchmark against any TADAH snapshot without editing its build
 files, using project injection:
 
-    cmake -S HPO -B build_bench \
-      -DCMAKE_PROJECT_INCLUDE=$PWD/HPO/benchmarks/annealing/inject.cmake
+    cmake -S hpo -B build_bench \
+      -DCMAKE_PROJECT_INCLUDE=$PWD/hpo/benchmarks/annealing/inject.cmake
     cmake --build build_bench --target hpo_annealing_benchmark -j
     ./build_bench/hpo_annealing_benchmark 50 > rev_A.tsv
 

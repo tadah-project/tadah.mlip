@@ -2,13 +2,13 @@
 #  Where the Tadah modules of a build come from
 #
 #  The repository that holds cmake-tools holds the Tadah modules too, each
-#  in the directory of its name (CORE, MODELS, MLIP, MD, HPO,
-#  Tadah.LAMMPS). A build takes every module from there: no option and no
+#  in a directory of its own (core, models, mlip, md, hpo, lammps). A
+#  build takes every module from there: no option and no
 #  environment variable chooses another place, and nothing is fetched.
 #
 #  Usage inside a build file of the repository, where it needs the module:
 #
-#     tadah_add_module(Tadah.CORE CORE)
+#     tadah_add_module(Tadah.CORE core)
 #
 #  The first argument is the name of the module's project() and the second
 #  its directory in the repository. The module is added to the build once,

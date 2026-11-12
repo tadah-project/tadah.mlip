@@ -105,16 +105,16 @@ def site_config():
     docs/source/conf.py, read with small local inputs in place of the CORE
     and HPO checkouts and the Doxygen XML."""
     with tempfile.TemporaryDirectory(prefix='tadah_nfp_conf_') as tmp:
-        for name, text in {'CORE/blueprint/blueprint_tadah.toml':
+        for name, text in {'core/blueprint/blueprint_tadah.toml':
                            '[TADAH]\nversion = "0.0.1"\n',
-                           'HPO/blueprint/anneal_keys.toml': '# fixture\n',
+                           'hpo/blueprint/anneal_keys.toml': '# fixture\n',
                            'xml/index.xml': ''}.items():
             path = os.path.join(tmp, name)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, 'w', encoding='utf-8') as fh:
                 fh.write(text)
-        env = dict(os.environ, TADAH_CORE_SOURCE_DIR=os.path.join(tmp, 'CORE'),
-                   TADAH_HPO_SOURCE_DIR=os.path.join(tmp, 'HPO'),
+        env = dict(os.environ, TADAH_CORE_SOURCE_DIR=os.path.join(tmp, 'core'),
+                   TADAH_HPO_SOURCE_DIR=os.path.join(tmp, 'hpo'),
                    TADAH_DOXYGEN_XML_DIR=os.path.join(tmp, 'xml'))
         # overrides and tags by keyword: Sphinx 9 requires both, as
         # keywords; Sphinx 7.4 takes either form. A value reads from conf.py

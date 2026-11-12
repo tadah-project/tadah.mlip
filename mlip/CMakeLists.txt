@@ -68,7 +68,7 @@ option(TADAH_ENABLE_ASAN "Enable AddressSanitizer (-fsanitize=address -fno-omit-
 
 # 3. The module this one builds on: the directory of its name in this
 # repository.
-tadah_add_module(Tadah.MODELS MODELS)
+tadah_add_module(Tadah.MODELS models)
 
 # Single-source-of-truth version (from CORE's blueprint TOML). Read after
 # the Tadah modules this one builds on are added, so that CORE's blueprint

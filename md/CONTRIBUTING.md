@@ -24,7 +24,7 @@ build directory.
 ### Dependencies
 
 - C++17 compiler.
-- MODELS and CORE — the directories `MODELS` and `CORE` of the
+- MODELS and CORE — the directories `models` and `core` of the
   repository.
 - OpenMP (optional; enabled with `-DTADAH_ENABLE_OPENMP=ON`).
 

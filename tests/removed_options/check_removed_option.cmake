@@ -263,8 +263,8 @@ elseif(CASE STREQUAL "git_branch_lammps")
     "-DCMAKE_CXX_COMPILER=${CXX}"
     -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DDOWNLOAD_POTENTIALS=OFF
     -DBUILD_MPI=OFF -DPKG_ML-TADAH=ON
-    "-DTADAH_LAMMPS_SOURCE_DIR=${REPOSITORY}/Tadah.LAMMPS"
-    "-DCMAKE_PROJECT_INCLUDE=${REPOSITORY}/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake")
+    "-DTADAH_LAMMPS_SOURCE_DIR=${REPOSITORY}/lammps"
+    "-DCMAKE_PROJECT_INCLUDE=${REPOSITORY}/lammps/integration/TadahLAMMPSProjectInclude.cmake")
   configure(-DTADAH_GIT_BRANCH=develop)
   expect_refused("the LAMMPS configure given -DTADAH_GIT_BRANCH=develop"
     "TADAH_GIT_BRANCH=develop: the build option is removed"

@@ -74,8 +74,8 @@ option(TADAH_ENABLE_CERES "Enable Ceres Solver (CERES:STEEPEST_DESCENT and the c
 
 # 3. The modules this one builds on: the directories of their names in
 # this repository (Tadah!LAMMPS is added below, after tadah.hpo).
-tadah_add_module(Tadah.MLIP MLIP)
-tadah_add_module(Tadah.MD MD)
+tadah_add_module(Tadah.MLIP mlip)
+tadah_add_module(Tadah.MD md)
 
 # Single-source-of-truth version (from CORE's blueprint TOML). Read after
 # the Tadah modules this one builds on are added, so that CORE's blueprint
@@ -269,7 +269,7 @@ endif()
 #   ${TADAH_LAMMPS_DIR}/lib/tadah.lammps/include
 #   )
 
-tadah_add_module(Tadah.LAMMPS Tadah.LAMMPS)
+tadah_add_module(Tadah.LAMMPS lammps)
 
 
 # target_link_libraries(tadah.lammps

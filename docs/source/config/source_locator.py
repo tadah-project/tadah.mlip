@@ -12,7 +12,7 @@ Source checkouts (``locate``), in this order:
   1. ``$TADAH_CORE_SOURCE_DIR`` / ``$TADAH_HPO_SOURCE_DIR``.  When the
      variable is set it must name a checkout that contains the needed file;
      otherwise the build fails without looking anywhere else.
-  2. The repository that holds these pages: its directory ``CORE`` (``HPO``).
+  2. The repository that holds these pages: its directory ``core`` (``hpo``).
      When that directory exists it must contain the needed file; otherwise
      the build fails without looking anywhere else, so a directory of the
      same name beside the checkout is never read in its place.
@@ -46,8 +46,9 @@ CHECKOUT_ROOT = os.path.normpath(os.path.join(_HERE, '..', '..', '..'))
 WORKSPACE = os.path.dirname(CHECKOUT_ROOT)
 DEFAULT_DOXYGEN_XML_DIR = os.path.join(CHECKOUT_ROOT, 'build', 'docs', 'xml')
 
-# Repository -> (override variable, repository name under the git base,
-# file that identifies a usable checkout).  The marker is the file the docs
+# Repository -> (override variable, the module's directory in this
+# repository, which is also the repository's name under the git base, file
+# that identifies a usable checkout).  The marker is the file the docs
 # generators read from it.
 REPOS = {
     'CORE': ('TADAH_CORE_SOURCE_DIR', 'core',
@@ -151,12 +152,12 @@ def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
     tried = [f"${env_var}: not set"]
 
     # 2. This repository: authoritative when it has the module directory.
-    own = os.path.abspath(os.path.join(CHECKOUT_ROOT, repo))
+    own = os.path.abspath(os.path.join(CHECKOUT_ROOT, name))
     if os.path.isfile(os.path.join(own, marker)):
         return own
     if os.path.isdir(own):
         raise SourceNotFound(
-            f"The directory {repo} of this repository does not contain "
+            f"The directory {name} of this repository does not contain "
             f"{marker} (looked for {os.path.join(own, marker)}); restore it, "
             f"or set {env_var} to build from another {repo} checkout.")
     tried.append(f"this repository: {os.path.join(own, marker)} (not found)")
@@ -208,7 +209,7 @@ def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
     raise SourceNotFound(
         f"Cannot locate the {repo} sources (need {marker}). Tried:\n"
         + "\n".join(f"  {i}. {t}" for i, t in enumerate(tried, 1))
-        + f"\nRestore the directory {repo} of this repository ({own}). "
+        + f"\nRestore the directory {name} of this repository ({own}). "
           f"Set {env_var} to build from another {repo} checkout.")
 
 

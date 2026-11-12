@@ -25,14 +25,14 @@ https://docs.lammps.org/Build_cmake.html
 
 ### Step 1 — Cloning Tadah!
 
-Tadah.LAMMPS is a directory of the Tadah! repository and is built from inside it, with the modules it needs (Tadah.MD, Tadah.MODELS and Tadah.CORE) beside it. The repository is cloned anywhere, at `v1-dev` (the development line) or at a release tag such as `v2.0.0`:
+Tadah.LAMMPS is the directory `lammps` of the Tadah! repository and is built from inside it, with the modules it needs (Tadah.MD, Tadah.MODELS and Tadah.CORE) beside it. The repository is cloned anywhere, at `v1-dev` (the development line) or at a release tag such as `v2.0.0`:
 
 ```bash
 git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git /path/to/tadah
 # or: git clone -b v2.0.0 ...
 ```
 
-A plain `git clone` checks out the repository's default branch, which need not be `v1-dev`. In the steps below `/path/to/Tadah.LAMMPS` stands for `/path/to/tadah/Tadah.LAMMPS`.
+A plain `git clone` checks out the repository's default branch, which need not be `v1-dev`. In the steps below that directory is `/path/to/tadah/lammps`.
 
 ---
 
@@ -42,8 +42,8 @@ The usual LAMMPS CMake configure command runs from the **LAMMPS root directory**
 
 ```bash
   -DPKG_ML-TADAH=ON \
-  -DCMAKE_PROJECT_INCLUDE=/path/to/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake \
-  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS
+  -DCMAKE_PROJECT_INCLUDE=/path/to/tadah/lammps/integration/TadahLAMMPSProjectInclude.cmake \
+  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah/lammps
 ```
 
 Those three options are the "integration hook": they enable the `ML-TADAH` package and tell LAMMPS where to find the Tadah.LAMMPS sources.
@@ -53,8 +53,8 @@ From the LAMMPS root directory (for a `v1-dev` checkout):
 ```bash
 cmake -S cmake -B build \
   -DPKG_ML-TADAH=ON \
-  -DCMAKE_PROJECT_INCLUDE=/path/to/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake \
-  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS
+  -DCMAKE_PROJECT_INCLUDE=/path/to/tadah/lammps/integration/TadahLAMMPSProjectInclude.cmake \
+  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah/lammps
 ```
 
 #### Example B: the LAMMPS GCC preset, a serial binary and ML‑TADAH
@@ -64,8 +64,8 @@ This example uses the LAMMPS preset file `lammps/cmake/presets/gcc.cmake`, enabl
 ```bash
 cmake -C cmake/presets/gcc.cmake -S cmake -B build \
   -DPKG_ML-TADAH=ON \
-  -DCMAKE_PROJECT_INCLUDE=/path/to/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake \
-  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/Tadah.LAMMPS \
+  -DCMAKE_PROJECT_INCLUDE=/path/to/tadah/lammps/integration/TadahLAMMPSProjectInclude.cmake \
+  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah/lammps \
   -DLAMMPS_MACHINE=serial
 ```
 

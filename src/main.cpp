@@ -77,7 +77,7 @@ void exit_handshake(int ret)
  * std::terminate core dump.
  */
 #ifdef TADAH_ENABLE_NFP
-/* PC_ISOLATION worker-process entry (HPO/src/pc_worker_main.cpp), in the
+/* PC_ISOLATION worker-process entry (hpo/src/pc_worker_main.cpp), in the
  * HPO library: a tadah built without TADAH_ENABLE_NFP has no HPO and no
  * PC_LAMMPS workers. Declared here directly (not via header) to keep
  * main.cpp's include surface minimal. */

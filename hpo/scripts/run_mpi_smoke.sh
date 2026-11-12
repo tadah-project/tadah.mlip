@@ -19,7 +19,7 @@
 # Usage:
 #   TADAH_MPI_BIN=/path/to/mpi-enabled/tadah \
 #   MPIRUN=/usr/bin/mpirun \
-#   bash HPO/scripts/run_mpi_smoke.sh [workdir]
+#   bash hpo/scripts/run_mpi_smoke.sh [workdir]
 #
 # Notes:
 #   * The binary must be built with -DTADAH_HPO_MPI=ON against an MPI

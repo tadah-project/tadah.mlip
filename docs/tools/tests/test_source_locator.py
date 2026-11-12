@@ -95,7 +95,7 @@ class LocateTest(unittest.TestCase):
 
     # -- 2. the repository of the pages -----------------------------------------
     def test_own_directory_before_sibling_checkout_and_tadah_path(self):
-        own = make_checkout(os.path.join(self.checkout, 'HPO'), HPO_MARKER)
+        own = make_checkout(os.path.join(self.checkout, 'hpo'), HPO_MARKER)
         make_checkout(os.path.join(self.workspace, 'HPO'), HPO_MARKER)
         make_checkout(os.path.join(self.workspace, 'hpo'), HPO_MARKER)
         make_checkout(os.path.join(self.tadah_path, 'HPO'), HPO_MARKER)
@@ -105,7 +105,7 @@ class LocateTest(unittest.TestCase):
     def test_own_directory_without_the_file_is_an_error_not_a_fallback(self):
         # An incomplete checkout: reading the checkout beside it instead
         # would make the result depend on the surroundings again.
-        own = os.path.join(self.checkout, 'CORE')
+        own = os.path.join(self.checkout, 'core')
         os.makedirs(own)
         make_checkout(os.path.join(self.workspace, 'CORE'), CORE_MARKER)
         make_checkout(os.path.join(self.tadah_path, 'CORE'), CORE_MARKER)
@@ -151,15 +151,15 @@ class LocateTest(unittest.TestCase):
         self.assertEqual(git.calls, [])
         msg = str(cm.exception)
         for expected in ('$TADAH_HPO_SOURCE_DIR: not set',
-                         os.path.join(self.checkout, 'HPO', HPO_MARKER),
+                         os.path.join(self.checkout, 'hpo', HPO_MARKER),
                          os.path.join(self.workspace, 'HPO', HPO_MARKER),
                          os.path.join(self.workspace, 'hpo', HPO_MARKER),
                          os.path.join(self.tadah_path, 'HPO', HPO_MARKER),
                          os.path.join(self.tadah_path, 'hpo', HPO_MARKER),
                          'skipped (not on GitLab CI or Read the Docs)',
                          'Set TADAH_HPO_SOURCE_DIR',
-                         f"Restore the directory HPO of this repository "
-                         f"({os.path.join(self.checkout, 'HPO')})"):
+                         f"Restore the directory hpo of this repository "
+                         f"({os.path.join(self.checkout, 'hpo')})"):
             self.assertIn(expected, msg)
         self.assertNotIn('Tadah.MLIP', msg)
         self.assertNotIn('develop', msg)
@@ -339,7 +339,7 @@ class OwnRepositoryTest(unittest.TestCase):
                 self.assertEqual(
                     loc.locate(repo, environ={}, workspace=tmp,
                                runner=FakeGit(), clone_root=tmp),
-                    os.path.join(loc.CHECKOUT_ROOT, repo))
+                    os.path.join(loc.CHECKOUT_ROOT, repo.lower()))
 
 
 class DoxygenXmlTest(unittest.TestCase):

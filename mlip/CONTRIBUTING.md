@@ -24,7 +24,7 @@ build directory.
 ### Dependencies
 
 - C++17 compiler.
-- CORE and MODELS — the directories `CORE` and `MODELS` of the
+- CORE and MODELS — the directories `core` and `models` of the
   repository.
 - [Boost.Iostreams](https://www.boost.org/) (linked at link time).
 - [Gemmi](https://gemmi.readthedocs.io/) — fetched automatically

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the ANNEAL-family key tables from HPO's key registry.
 
-Single source of truth: HPO/blueprint/anneal_keys.toml (the same file that
+Single source of truth: hpo/blueprint/anneal_keys.toml (the same file that
 generates the C++ parser tables and the CLI capability text, guarded by the
 ctest hpo_anneal_registry_sync drift gate). This script renders it into
 three includable .rst fragments:
@@ -18,7 +18,7 @@ refuse a key its rule does not allow), so documentation cannot drift from
 validation.
 
 The HPO sources are found by source_locator.py: $TADAH_HPO_SOURCE_DIR, else
-the directory HPO of this repository (its docstring gives the full order).
+the directory hpo of this repository (its docstring gives the full order).
 There is no fallback branch: a missing registry fails the docs build with
 the list of locations tried.
 """

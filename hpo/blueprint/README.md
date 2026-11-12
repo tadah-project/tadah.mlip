@@ -662,10 +662,10 @@ it holds with another target file, training configuration, file of its
 tree or setting:
 
 ```bash
-python3 HPO/tests/hpotarget_corpus.py write HPO/tests/data/hpotarget_corpus \
+python3 hpo/tests/hpotarget_corpus.py write hpo/tests/data/hpotarget_corpus \
     --runner build_tadah/_deps/tadah.hpo-build/tests/hpotarget_case_runner \
     --tadah-mlip Tadah.MLIP
-git -C HPO diff --stat tests/data/hpotarget_corpus
+git -C hpo diff --stat tests/data/hpotarget_corpus
 ```
 
 ### Checks
@@ -711,17 +711,17 @@ in: after the headers are regenerated, they compare the regenerated tables
 only once `test_hpo` is built again. One part file is checked with:
 
 ```bash
-python3 HPO/blueprint/hpotarget_registry.py --check --part hpotarget_lines.toml
+python3 hpo/blueprint/hpotarget_registry.py --check --part hpotarget_lines.toml
 build_tadah/_deps/tadah.hpo-build/tests/test_hpo "[hpotarget_lines]"
 ```
 
 and the whole registry with:
 
 ```bash
-python3 HPO/blueprint/hpotarget_registry.py --check
-python3 HPO/blueprint/gen_hpotarget.py --check
-python3 HPO/tests/check_hpotarget_coverage.py HPO --mlip MLIP
-python3 HPO/tests/check_hpotarget_generated.py \
+python3 hpo/blueprint/hpotarget_registry.py --check
+python3 hpo/blueprint/gen_hpotarget.py --check
+python3 hpo/tests/check_hpotarget_coverage.py hpo --mlip mlip
+python3 hpo/tests/check_hpotarget_generated.py \
     --runner build_tadah/_deps/tadah.hpo-build/tests/hpotarget_case_runner
 cmake --build build_tadah --target test_hpo
 ctest --test-dir build_tadah -R hpotarget --output-on-failure

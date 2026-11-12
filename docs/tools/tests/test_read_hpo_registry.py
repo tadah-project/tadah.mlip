@@ -2,7 +2,7 @@
 
 The cases on the pages read HPO's registries from the HPO sources the
 documentation build uses (source_locator.py): $TADAH_HPO_SOURCE_DIR, else
-the directory HPO of this repository. Without one, or
+the directory hpo of this repository. Without one, or
 with one that has no target-file registry, they are skipped, saying why;
 a $TADAH_HPO_SOURCE_DIR that names no such checkout is a failure.
 
@@ -616,7 +616,7 @@ class PagesTest(unittest.TestCase):
 
     def test_a_registry_the_loader_refuses_stops_the_generator(self):
         with tempfile.TemporaryDirectory() as tmp:
-            hpo = os.path.join(tmp, 'HPO')
+            hpo = os.path.join(tmp, 'hpo')
             shutil.copytree(os.path.join(self.hpo, 'blueprint'),
                             os.path.join(hpo, 'blueprint'),
                             ignore=shutil.ignore_patterns('__pycache__'))

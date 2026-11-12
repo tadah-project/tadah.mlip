@@ -1,8 +1,8 @@
 # Tadah CMake Tools
 
 Common CMake utilities for the build files of the Tadah! repository: the
-application at its root and the modules in the directories `CORE`,
-`MODELS`, `MLIP`, `MD`, `HPO` and `Tadah.LAMMPS`.
+application at its root and the modules in the directories `core`,
+`models`, `mlip`, `md`, `hpo` and `lammps`.
 
 Each of those build files carries the same block, between the lines
 `# >>> cmake-tools` and `# <<< cmake-tools`, which reads
@@ -20,7 +20,7 @@ target_link_libraries(myexe PRIVATE tadah::compile_options)
 `tadah_add_module(<name> <directory>)` (`cmake/TadahDevelop.cmake`) adds
 the module a build file builds on: `<name>` is the name of the module's
 `project()` and `<directory>` its directory in the repository, as in
-`tadah_add_module(Tadah.CORE CORE)`. A module is added once, whichever
+`tadah_add_module(Tadah.CORE core)`. A module is added once, whichever
 build file asks first, and built in `_deps/<name in lower case>-build` of
 the build directory, whatever `FETCHCONTENT_BASE_DIR` is. Nothing is fetched, and no option or environment
 variable names another source: a `FETCHCONTENT_SOURCE_DIR_<NAME>` or

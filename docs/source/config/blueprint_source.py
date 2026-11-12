@@ -3,7 +3,7 @@ Locate CORE's blueprint_tadah.toml -- the single source of truth for the
 Tadah! version and the configuration-key reference.
 
 The CORE sources are found by source_locator.py: $TADAH_CORE_SOURCE_DIR,
-else the directory CORE of this repository (its docstring gives the full
+else the directory core of this repository (its docstring gives the full
 order).  There is no default: if the blueprint cannot be found the docs build
 fails with the list of locations tried.
 '''

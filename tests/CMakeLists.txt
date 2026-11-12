@@ -231,14 +231,14 @@ function(tadah_doxygen_input_test case regex)
 endfunction()
 # nfp_off: also the status line that says why the HPO API is left out.
 tadah_doxygen_input_test(nfp_off
-  "so HPO is not part of the build\\)\n.*INPUT=\\[\"<W>/CORE/include\" \"<W>/MODELS/include\" \"<W>/MLIP/include\"\\]")
+  "so HPO is not part of the build\\)\n.*INPUT=\\[\"<W>/core/include\" \"<W>/models/include\" \"<W>/mlip/include\"\\]")
 tadah_doxygen_input_test(nfp_on
-  "INPUT=\\[\"<W>/CORE/include\" \"<W>/MODELS/include\" \"<W>/MLIP/include\" \"<W>/HPO/include\"\\]")
+  "INPUT=\\[\"<W>/core/include\" \"<W>/models/include\" \"<W>/mlip/include\" \"<W>/hpo/include\"\\]")
 # CMake wraps a long error message: allow a line break between words.
 tadah_doxygen_input_test(nfp_on_without_hpo
   "Tadah\\.HPO[ \n]+is[ \n]+not[ \n]+configured")
 tadah_doxygen_input_test(no_include
-  "/MODELS/include[ \n]+is[ \n]+not[ \n]+a[ \n]+directory")
+  "/models/include[ \n]+is[ \n]+not[ \n]+a[ \n]+directory")
 tadah_doxygen_input_test(configured NONE)
 
 

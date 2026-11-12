@@ -80,10 +80,10 @@ tadah_declare_testing()
 # Tadah.HPO adds Tadah.MLIP, Tadah.MD and Tadah!LAMMPS.
 if(TADAH_ENABLE_NFP)
   add_compile_definitions(TADAH_ENABLE_NFP)
-  tadah_add_module(Tadah.HPO HPO)
+  tadah_add_module(Tadah.HPO hpo)
 else()
   tadah_message("Adding the ${PROJECT_NAME} modules...")
-  tadah_add_module(Tadah.MLIP MLIP)
+  tadah_add_module(Tadah.MLIP mlip)
 endif()
 
 # Set the project version from the blueprint TOML (single source of truth).

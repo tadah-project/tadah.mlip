@@ -50,16 +50,16 @@ class TableLayoutTest(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='tadah_table_layout_') as tmp:
             root = Path(tmp)
             # Read the real Sphinx configuration, with small local inputs.
-            inputs = {'CORE/blueprint/blueprint_tadah.toml':
+            inputs = {'core/blueprint/blueprint_tadah.toml':
                           '[TADAH]\nversion = "0.0.1"\n',
-                      'HPO/blueprint/anneal_keys.toml': '# fixture\n',
+                      'hpo/blueprint/anneal_keys.toml': '# fixture\n',
                       'xml/index.xml': ''}
             for name, content in inputs.items():
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content)
-            env = dict(os.environ, TADAH_CORE_SOURCE_DIR=str(root / 'CORE'),
-                       TADAH_HPO_SOURCE_DIR=str(root / 'HPO'),
+            env = dict(os.environ, TADAH_CORE_SOURCE_DIR=str(root / 'core'),
+                       TADAH_HPO_SOURCE_DIR=str(root / 'hpo'),
                        TADAH_DOXYGEN_XML_DIR=str(root / 'xml'))
             # overrides and tags by keyword: Sphinx 9 requires both, as
             # keywords; Sphinx 7.4 takes either form. Before the fix:

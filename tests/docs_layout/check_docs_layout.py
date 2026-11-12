@@ -182,16 +182,16 @@ def site_settings(docs_source, workdir):
     html_css_files of the real configuration, read with small local inputs
     in place of the CORE and HPO checkouts and the Doxygen XML.'''
     inputs = os.path.join(workdir, 'inputs')
-    files = {'CORE/blueprint/blueprint_tadah.toml': '[TADAH]\nversion = "0.0.1"\n',
-             'HPO/blueprint/anneal_keys.toml': '# fixture\n',
+    files = {'core/blueprint/blueprint_tadah.toml': '[TADAH]\nversion = "0.0.1"\n',
+             'hpo/blueprint/anneal_keys.toml': '# fixture\n',
              'xml/index.xml': ''}
     for name, text in files.items():
         path = os.path.join(inputs, name)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w', encoding='utf-8') as fh:
             fh.write(text)
-    env = dict(os.environ, TADAH_CORE_SOURCE_DIR=os.path.join(inputs, 'CORE'),
-               TADAH_HPO_SOURCE_DIR=os.path.join(inputs, 'HPO'),
+    env = dict(os.environ, TADAH_CORE_SOURCE_DIR=os.path.join(inputs, 'core'),
+               TADAH_HPO_SOURCE_DIR=os.path.join(inputs, 'hpo'),
                TADAH_DOXYGEN_XML_DIR=os.path.join(inputs, 'xml'))
     # overrides and tags by keyword: Sphinx 9 requires both, as keywords;
     # Sphinx 7.4 takes either form. A value reads from conf.py once its

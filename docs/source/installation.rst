@@ -239,8 +239,8 @@ One call takes several ``-D<option>=<value>`` pairs.
 Where the Tadah! modules come from
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The repository holds the Tadah! modules as directories: ``CORE``,
-``MODELS``, ``MLIP``, ``MD``, ``HPO`` and ``Tadah.LAMMPS``, beside the shared
+The repository holds the Tadah! modules as directories: ``core``,
+``models``, ``mlip``, ``md``, ``hpo`` and ``lammps``, beside the shared
 CMake helpers in ``cmake-tools``. A build takes every module it needs from
 those directories: Tadah.MLIP, Tadah.MODELS and Tadah.CORE, and with
 ``TADAH_ENABLE_NFP`` also Tadah.HPO, Tadah.MD and Tadah!LAMMPS. No option
@@ -282,7 +282,7 @@ that contains ``mpi`` added (``-DLAMMPS_MACHINE=mpi`` names it
 .. code-block:: bash
 
     cd /path/to/lammps
-    TL=/path/to/tadah/Tadah.LAMMPS
+    TL=/path/to/tadah/lammps
     cmake -S cmake -B build-mpi \
       -DBUILD_MPI=ON -DLAMMPS_MACHINE=mpi \
       -DPKG_ML-TADAH=ON \
@@ -445,7 +445,7 @@ Any LAMMPS version appropriate for the project serves; the example below clones 
 
 **Step 2 — Cloning Tadah!**
 
-Tadah!LAMMPS is the directory ``Tadah.LAMMPS`` of the Tadah! repository and
+Tadah!LAMMPS is the directory ``lammps`` of the Tadah! repository and
 is built from inside it, with the modules it needs beside it. The repository
 is cloned anywhere on the filesystem, at a release tag or at ``v1-dev``, the
 development line (a plain ``git clone`` checks out the repository's default
@@ -466,8 +466,8 @@ branch, which need not be either):
 The usual LAMMPS CMake configure command runs from the **LAMMPS root directory** (``/path/to/lammps``), with these three options **added**:
 
 * ``-DPKG_ML-TADAH=ON``
-* ``-DCMAKE_PROJECT_INCLUDE=<Tadah.LAMMPS>/integration/TadahLAMMPSProjectInclude.cmake``, with ``<Tadah.LAMMPS>`` the directory ``/path/to/tadah/Tadah.LAMMPS``
-* ``-DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah/Tadah.LAMMPS``
+* ``-DCMAKE_PROJECT_INCLUDE=$TL/integration/TadahLAMMPSProjectInclude.cmake``, with ``TL`` the directory ``/path/to/tadah/lammps``
+* ``-DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah/lammps``
 
 A ``DIMER`` potential (*Tadah!N2*, :ref:`mlips`) needs each molecule as two
 bonded atoms, so an atom style with bonds, such as ``bond``. These styles
@@ -478,7 +478,7 @@ Minimal example, for a ``v1-dev`` checkout:
 .. code-block:: bash
 
     cd /path/to/lammps
-    TL=/path/to/tadah/Tadah.LAMMPS
+    TL=/path/to/tadah/lammps
     cmake -S cmake -B build \
       -DPKG_ML-TADAH=ON \
       -DCMAKE_PROJECT_INCLUDE=$TL/integration/TadahLAMMPSProjectInclude.cmake \
@@ -494,7 +494,7 @@ Example using the LAMMPS GCC preset and building a serial binary, for a
 .. code-block:: bash
 
     cd /path/to/lammps
-    TL=/path/to/tadah/Tadah.LAMMPS
+    TL=/path/to/tadah/lammps
     cmake -C cmake/presets/gcc.cmake -S cmake -B build \
       -DPKG_ML-TADAH=ON \
       -DCMAKE_PROJECT_INCLUDE=$TL/integration/TadahLAMMPSProjectInclude.cmake \
@@ -524,7 +524,7 @@ above); ``cmake --build build --target lmp`` builds it alone, and
 
 The CMake integration also supports additional options (e.g. verbosity controls and custom style registration lists), documented in:
 
-- ``Tadah.LAMMPS/integration/README.md`` (in the clone)
+- ``lammps/integration/README.md`` (in the clone)
 
 .. _installation_lammps_mpi:
 
@@ -539,7 +539,7 @@ the ``mpirun`` / ``mpiexec`` of that MPI (or ``srun``):
 .. code-block:: bash
 
     cd /path/to/lammps
-    TL=/path/to/tadah/Tadah.LAMMPS
+    TL=/path/to/tadah/lammps
     cmake -S cmake -B build-mpi -DBUILD_MPI=ON -DLAMMPS_MACHINE=mpi \
       -DPKG_ML-TADAH=ON \
       -DCMAKE_PROJECT_INCLUDE=$TL/integration/TadahLAMMPSProjectInclude.cmake \

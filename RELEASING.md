@@ -45,7 +45,7 @@ A coordinated release tags the following repos in this order:
 ## Single source of truth: blueprint version
 
 The version string is a single field, `version = "..."`, in the
-`[TADAH]` table of `CORE/blueprint/blueprint_tadah.toml`. Every repo's
+`[TADAH]` table of `core/blueprint/blueprint_tadah.toml`. Every repo's
 CMake reads it through `cmake-tools/cmake/TadahVersion.cmake`. Bumping
 the version means editing exactly that one line in `core`.
 
@@ -58,7 +58,7 @@ have been added, so CORE's blueprint is found; a missing blueprint or version
 line is a configure error, never a `0.0.0` default. The blueprint is a
 configure dependency, so a bump re-runs CMake on the next build. The
 Sphinx docs read CORE's blueprint as well (`docs/source/config/source_locator.py`:
-`$TADAH_CORE_SOURCE_DIR`, else the directory `CORE` of the repository; see
+`$TADAH_CORE_SOURCE_DIR`, else the directory `core` of the repository; see
 CONTRIBUTING.md, "Building the documentation"), and `ctest -R
 tadah_version` checks that `tadah --version` matches it.
 

@@ -30,8 +30,8 @@ fails on an entry without it.
 ### Dependencies
 
 - C++17 compiler.
-- CORE, MODELS, MLIP and MD — the directories of those names in the
-  repository.
+- CORE, MODELS, MLIP and MD — the directories `core`, `models`, `mlip`
+  and `md` of the repository.
 - [dlib](http://dlib.net/), [NLopt](https://nlopt.readthedocs.io/),
   [Eigen3](https://eigen.tuxfamily.org/), and (optionally)
   [Ceres](http://ceres-solver.org/) — fetched automatically at pinned

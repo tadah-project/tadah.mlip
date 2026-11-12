@@ -83,7 +83,7 @@ tadah_declare_testing()
 
 # 3. The module this one builds on: the directory of its name in this
 # repository.
-tadah_add_module(Tadah.MD MD)
+tadah_add_module(Tadah.MD md)
 
 # Single-source-of-truth version (from CORE's blueprint TOML). Read after
 # the Tadah modules this one builds on are added, so that CORE's blueprint

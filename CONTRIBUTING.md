@@ -57,8 +57,8 @@ design is still moving.
 ## Setting up a development environment
 
 One clone holds all Tadah! sources: the application at the root of the
-repository, the modules in the directories `CORE`, `MODELS`, `MLIP`, `MD`,
-`HPO` and `Tadah.LAMMPS`, and the shared CMake helpers in `cmake-tools`.
+repository, the modules in the directories `core`, `models`, `mlip`, `md`,
+`hpo` and `lammps`, and the shared CMake helpers in `cmake-tools`.
 
 ```bash
 git clone https://github.com/tadah-project/tadah.mlip.git
@@ -72,9 +72,9 @@ cmake --build build -j
 ctest --test-dir build
 ```
 
-This build contains `MLIP`, `MODELS` and `CORE`; with
+This build contains `mlip`, `models` and `core`; with
 `-DTADAH_ENABLE_NFP=ON` (see *Installation* in the documentation) also
-`HPO`, `MD` and `Tadah.LAMMPS`. An edit in the directory of a module of
+`hpo`, `md` and `lammps`. An edit in the directory of a module of
 the build is picked up by the next `cmake --build`.
 
 No option and no environment variable names another source of a module.
@@ -82,7 +82,7 @@ A `FETCHCONTENT_SOURCE_DIR_TADAH.<MODULE>` setting that names another
 directory stops the configure step with an error, and so does a
 `cmake-tools` of another checkout.
 
-LAMMPS integration: see `Tadah.LAMMPS/README.md` and the docs page on
+LAMMPS integration: see `lammps/README.md` and the docs page on
 LAMMPS.
 
 ## Running tests
@@ -292,7 +292,7 @@ against finite differences), `hpo_bench_pair_tadah` (a `pair_tadah`
 microbench on 256 atoms) and `hpo_host_e2e` (`HPO_Host`'s analytical
 gradient, a `PC_LAMMPS` script among its cases). They run in the full
 suite, in about 8 s. The first three run on the Ta potential shipped with
-HPO's tests, `HPO/tests/data/bench_ta.tadah`: a copy of the *Quick Start*
+HPO's tests, `hpo/tests/data/bench_ta.tadah`: a copy of the *Quick Start*
 potential, whose header gives its provenance. When you regenerate that
 potential, the copy stays as it is. `TADAH_BENCH_POT` names another
 potential, and `TADAH_BENCH_CELL_DATA` a LAMMPS data file for the
@@ -506,8 +506,8 @@ Optimisation*). A develop build of both, with the system MPI on `PATH`:
 # LAMMPS with MPI and ML-TADAH; the library name must contain "mpi"
 cmake -S LAMMPS/cmake -B build_lammps_mpi \
     -DBUILD_MPI=ON -DLAMMPS_MACHINE=develop_mpi \
-    -DPKG_ML-TADAH=ON -DTADAH_LAMMPS_SOURCE_DIR="$PWD/Tadah.LAMMPS" \
-    -DCMAKE_PROJECT_INCLUDE="$PWD/Tadah.LAMMPS/integration/TadahLAMMPSProjectInclude.cmake" \
+    -DPKG_ML-TADAH=ON -DTADAH_LAMMPS_SOURCE_DIR="$PWD/lammps" \
+    -DCMAKE_PROJECT_INCLUDE="$PWD/lammps/integration/TadahLAMMPSProjectInclude.cmake" \
     -DTADAH_DEVELOP=ON
 cmake --build build_lammps_mpi --target lammps -j
 
@@ -617,7 +617,7 @@ before `conf.py` runs the generators, so the build stops with
 `legacy_routes.py needs Python 3.11 or later: ...`. The build reads
 the three inputs of the table below. It never falls back to another
 branch: when an input is missing it stops and lists every location it
-tried. A directory `CORE` or `HPO` of the repository that lacks the
+tried. A directory `core` or `hpo` of the repository that lacks the
 needed file stops the build at once.
 
 The `nfp_archive` extension builds `docs/source/nfp/nfp-files.zip` from the
@@ -629,8 +629,8 @@ not committed; a download link on the tutorial hub publishes it.
 
 | Input | Where the build looks, in order |
 |-------|---------------------------------|
-| CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the directory `CORE` of the repository that holds the pages; a `CORE` checkout next to that repository; `$TADAH_PATH/CORE`; on CI and Read the Docs only, a shallow clone, from `${TADAH_GIT_BASE}/core.git` (`https://github.com/tadah-project/core.git` unless `TADAH_GIT_BASE` is set and not empty), of the branch or tag being built, named by the first of these that is set and not empty: `$CI_COMMIT_REF_NAME`, else `$READTHEDOCS_GIT_IDENTIFIER` (Read the Docs' `latest` and `stable` versions are named after no ref), `$READTHEDOCS_VERSION_NAME`, `$READTHEDOCS_VERSION` |
-| HPO sources (Nested Fitting reference pages) | the same, with `$TADAH_HPO_SOURCE_DIR` and `HPO` |
+| CORE sources (version, configuration keys, CLI pages) | `$TADAH_CORE_SOURCE_DIR`; the directory `core` of the repository that holds the pages; a `CORE` checkout next to that repository; `$TADAH_PATH/CORE`; on CI and Read the Docs only, a shallow clone, from `${TADAH_GIT_BASE}/core.git` (`https://github.com/tadah-project/core.git` unless `TADAH_GIT_BASE` is set and not empty), of the branch or tag being built, named by the first of these that is set and not empty: `$CI_COMMIT_REF_NAME`, else `$READTHEDOCS_GIT_IDENTIFIER` (Read the Docs' `latest` and `stable` versions are named after no ref), `$READTHEDOCS_VERSION_NAME`, `$READTHEDOCS_VERSION` |
+| HPO sources (Nested Fitting reference pages) | the same, with `$TADAH_HPO_SOURCE_DIR`, `hpo` and `HPO` |
 | Doxygen XML (API pages) | `$TADAH_DOXYGEN_XML_DIR`; otherwise `build/docs/xml`, which `cmake --build build --target docs` writes. Its input is the `include/` directory of each module the build configures (`cmake/doxygen_input.cmake`): CORE, MODELS and MLIP, and HPO only with `TADAH_ENABLE_NFP`, so the Read the Docs build (NFP off) has no HPO API |
 
 A variable that is set must be valid. A source override has to name a
@@ -680,7 +680,7 @@ The same unit tests are the CTest entry `tadah_docs_tools` (label `docs`,
 so `ctest -L docs` runs them) in every build configured with
 `-DBUILD_TESTING=ON`, which therefore needs a Python 3 interpreter. With
 `TADAH_ENABLE_NFP` it needs Python 3.11 or later: HPO's tests declare it
-(`HPO/cmake/hpo_test_python.cmake`), because their registry drift gate
+(`hpo/cmake/hpo_test_python.cmake`), because their registry drift gate
 `hpo_anneal_registry_sync` reads TOML with `tomllib`, and the configure step
 stops on an older interpreter; `ctest -R hpo_test_python_minimum` checks
 that. The cases that need `node`, a Chromium-family browser, `sphinx-build` or the Python modules `sphinx`,

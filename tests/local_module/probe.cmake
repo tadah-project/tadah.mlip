@@ -13,5 +13,5 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${TADAH_CMAKE_DIR}/cmake")
 include(TadahDevelop)
 
-tadah_module_directory(source Tadah.CORE CORE)
+tadah_module_directory(source Tadah.CORE core)
 message(STATUS "SOURCE=[${source}]")

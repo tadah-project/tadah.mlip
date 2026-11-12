@@ -27,9 +27,9 @@ author = 'Marcin Kirsz'
 # -- Build inputs -------------------------------------------------------------
 # config/source_locator.py resolves every external input explicitly and fails
 # with the list of locations it tried; nothing falls back to a default branch.
-#   CORE sources:  $TADAH_CORE_SOURCE_DIR, else the directory CORE of this
+#   CORE sources:  $TADAH_CORE_SOURCE_DIR, else the directory core of this
 #                  repository (the full order: config/source_locator.py)
-#   HPO sources:   the same with $TADAH_HPO_SOURCE_DIR and HPO
+#   HPO sources:   the same with $TADAH_HPO_SOURCE_DIR and hpo
 #   Doxygen XML:   $TADAH_DOXYGEN_XML_DIR, else ../../build/docs/xml
 #                  (what `cmake --build build --target docs` writes)
 import os

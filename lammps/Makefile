@@ -13,15 +13,15 @@ CXXFLAGS:= -std=c++11 -g -O3 -Wall -fPIC -Wpedantic -pedantic-errors -Wextra
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 BUILD_DIR:=$(ROOT_DIR)/build
 
-INC=-I$(ROOT_DIR)/build/CORE/external/cmrc-master/
-INC+=-I$(ROOT_DIR)/build/CORE/external/toml11/
-INC+=-I$(ROOT_DIR)/build/CORE/include
-INC+=-I$(ROOT_DIR)/build/MODELS/include
-INC+=-I$(ROOT_DIR)/build/MD/include
+INC=-I$(ROOT_DIR)/build/core/external/cmrc-master/
+INC+=-I$(ROOT_DIR)/build/core/external/toml11/
+INC+=-I$(ROOT_DIR)/build/core/include
+INC+=-I$(ROOT_DIR)/build/models/include
+INC+=-I$(ROOT_DIR)/build/md/include
 
-CORE:=$(ROOT_DIR)/build/CORE
-MODELS:=$(ROOT_DIR)/build/MODELS
-MD:=$(ROOT_DIR)/build/MD
+CORE:=$(ROOT_DIR)/build/core
+MODELS:=$(ROOT_DIR)/build/models
+MD:=$(ROOT_DIR)/build/md
 
 CORE_SRC := $(wildcard $(CORE)/src/*.cpp)
 CORE_SRC := $(filter-out $(CORE)/src/lapack.cpp, $(CORE_SRC))

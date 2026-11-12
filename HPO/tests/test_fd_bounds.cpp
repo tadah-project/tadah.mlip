@@ -19,6 +19,9 @@
 
 #include "catch2/catch.hpp"
 
+#include "fd_bounds_goldens_libm.h"
+#include "other_c_library.h"
+
 #include <tadah/hpo/box_penalty.h>
 #include <tadah/hpo/gradient_provider.h>
 #include <tadah/hpo/hpo_log.h>
@@ -42,6 +45,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -52,6 +56,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -356,8 +361,128 @@ TEST_CASE("fd bounds: Ceres' rule is Ceres' DynamicNumericDiffCostFunction "
 }
 #endif
 
+namespace {
+
+std::uint64_t bits_of(double v)
+{
+    std::uint64_t u;
+    std::memcpy(&u, &v, sizeof u);
+    return u;
+}
+
+std::string hex_of(double v)
+{
+    std::ostringstream os;
+    os << std::hexfloat << v;
+    return os.str();
+}
+
+/* A C library function that gives the results recorded in
+ * fd_bounds_goldens_libm.h: it looks its argument up by its bits and
+ * returns the recorded result. It counts the calls at an argument that has
+ * no recorded result (and returns a NaN for them) and marks the results it
+ * gave. */
+struct Replay {
+    const char* name;
+    const fd_bounds_goldens_libm::Result* tab;
+    std::size_t n;
+    std::unordered_map<std::uint64_t, std::size_t> at;  /* bits of x -> entry */
+    std::vector<bool> used;
+    std::size_t missing = 0;
+    std::string first_missing;
+
+    Replay(const char* nm, const fd_bounds_goldens_libm::Result* t,
+           std::size_t k)
+        : name(nm), tab(t), n(k)
+    {
+        for (std::size_t i = 0; i < k; ++i) at.emplace(bits_of(t[i].x), i);
+        reset();
+    }
+    void reset()
+    {
+        used.assign(n, false);
+        missing = 0;
+        first_missing.clear();
+    }
+    double operator()(double x)
+    {
+        const auto it = at.find(bits_of(x));
+        if (it == at.end()) {
+            if (missing++ == 0)
+                first_missing = std::string(name) + "(" + hex_of(x) + ")";
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        used[it->second] = true;
+        return tab[it->second].y;
+    }
+    std::size_t unused() const
+    {
+        return static_cast<std::size_t>(
+            std::count(used.begin(), used.end(), false));
+    }
+    /* The recorded results that the C library's function @p f gives
+     * differently: their number, and the first in @p first when it is
+     * empty. */
+    std::size_t differing(double (*f)(double), std::string& first) const
+    {
+        std::size_t d = 0;
+        for (std::size_t i = 0; i < n; ++i) {
+            volatile double x = tab[i].x;  /* called here, not folded */
+            const double y = f(x);
+            if (bits_of(y) == bits_of(tab[i].y)) continue;
+            ++d;
+            if (first.empty())
+                first = std::string(name) + "(" + hex_of(tab[i].x) + ") = " +
+                        hex_of(y) + ", recorded " + hex_of(tab[i].y);
+        }
+        return d;
+    }
+};
+
+#define TADAH_FD_TABLE(t) (t), sizeof(t) / sizeof((t)[0])
+Replay& replay_sin()
+{
+    static Replay r("sin", TADAH_FD_TABLE(fd_bounds_goldens_libm::kSin));
+    return r;
+}
+Replay& replay_cos()
+{
+    static Replay r("cos", TADAH_FD_TABLE(fd_bounds_goldens_libm::kCos));
+    return r;
+}
+Replay& replay_exp()
+{
+    static Replay r("exp", TADAH_FD_TABLE(fd_bounds_goldens_libm::kExp));
+    return r;
+}
+#undef TADAH_FD_TABLE
+
+double library_sin(double x) { return std::sin(x); }
+double library_cos(double x) { return std::cos(x); }
+double library_exp(double x) { return std::exp(x); }
+
+}  // namespace
+
+/* Pins: away from the bounds the in-house rule gives the gradients of the
+ * GradientProvider of HPO d5457d0 bit for bit, from the same evaluations.
+ * The goldens are gradients of an objective that calls sin, cos and exp,
+ * whose results the C standard does not fix to the bit; they were printed
+ * with glibc on x86-64. The objective is therefore given those results,
+ * recorded in fd_bounds_goldens_libm.h, in place of the C library's: the
+ * gradients are then the goldens bit for bit whatever the C library, the
+ * objective is asked at the recorded arguments only (a stencil point that
+ * moved has no recorded result), and every recorded result is used.
+ * The case warns of the recorded results that the C library of the run
+ * gives differently, with the first of them. The CTest entry
+ * hpo_fd_bounds_goldens_other_libm runs it with a C library whose sin, cos
+ * and exp are one ulp above (other_c_library.c).
+ * Before the fix: the objective called the C library, and the case failed
+ * with another one: in that entry 20 gradient components of 45, and in a
+ * build with musl (GCC 13, x86-64) one, 'same_bits(g(i), gd.g[i])' for
+ * i = 2 at fd_step 0.05, both sides printed as 0.9036204157. */
 TEST_CASE("fd bounds: the in-house rule's interior gradients are those of "
-          "d5457d0, bit for bit", "[HPO][grad_provider][fd_bounds]")
+          "d5457d0, bit for bit",
+          "[HPO][grad_provider][fd_bounds][fd_goldens]")
 {
     /* Hex-float goldens printed by the GradientProvider of HPO d5457d0
      * (fd_kernel inhouse, the identity map, the box [-5, 5]^3), with the
@@ -380,9 +505,11 @@ TEST_CASE("fd bounds: the in-house rule's interior gradients are those of "
         {0x1.999999999999ap-5, {0x0p+0, 0x1p+0, -0x1.3333333333333p-2}, {0x1.be917b3118a17p+1, -0x1.3333333333324p-1, 0x1.4b9f24c302c8cp+0}, 7},
         {0x1.999999999999ap-5, {0x1p+2, -0x1.2p+2, 0x1.f333333333333p+1}, {0x1.30e8624650e7p+1, -0x1.18cc46fbcd727p+5, 0x1.4eef45529d2fbp+4}, 7},
     };
+    Replay* const libm[3] = {&replay_sin(), &replay_cos(), &replay_exp()};
+    for (Replay* r : libm) r->reset();
     const auto f = [](const Vec& x) {
-        return std::sin(3.0 * x(0)) + std::exp(0.5 * x(0) * x(1)) +
-               x(1) * x(1) * x(2) + std::cos(x(2));
+        return replay_sin()(3.0 * x(0)) + replay_exp()(0.5 * x(0) * x(1)) +
+               x(1) * x(1) * x(2) + replay_cos()(x(2));
     };
     for (const Golden& gd : goldens) {
         OptimizerSpec sp;
@@ -405,6 +532,39 @@ TEST_CASE("fd bounds: the in-house rule's interior gradients are those of "
             CAPTURE(gd.fd_step, i, g(i), gd.g[i]);
             CHECK(same_bits(g(i), gd.g[i]));
         }
+    }
+    for (Replay* r : libm) {
+        INFO(r->name << ": " << r->missing
+                     << " calls at an argument with no recorded result; "
+                        "the first: " << r->first_missing);
+        CHECK(r->missing == 0);
+        INFO(r->name << ": " << r->unused() << " of " << r->n
+                     << " recorded results not used");
+        CHECK(r->unused() == 0);
+    }
+    /* What the C library of this run would have given the objective. */
+    std::string first;
+    const std::size_t differ = replay_sin().differing(&library_sin, first) +
+                               replay_cos().differing(&library_cos, first) +
+                               replay_exp().differing(&library_exp, first);
+    const std::size_t recorded =
+        replay_sin().n + replay_cos().n + replay_exp().n;
+    if (differ > 0)
+        WARN("this C library gives " << differ << " of the " << recorded
+             << " recorded results of sin, cos and exp differently; the "
+                "first: " << first);
+    if (other_c_library("libm")) {
+        /* The stand-in is in effect: sin(0), cos(0) and exp(0), which every
+         * C library gives exactly (0, 1, 1), are one ulp above. Not judged
+         * by the count above: where the C library's own result is one ulp
+         * below a recorded one, the stand-in gives the recorded one. The
+         * bits are compared: a build that treats subnormal numbers as zero
+         * would take the result of sin(0), the smallest of them, for 0. */
+        REQUIRE(other_c_library_loaded());
+        volatile double zero = 0.0;  /* called here, not folded */
+        REQUIRE(bits_of(std::sin(zero)) != bits_of(0.0));
+        REQUIRE(bits_of(std::cos(zero)) != bits_of(1.0));
+        REQUIRE(bits_of(std::exp(zero)) != bits_of(1.0));
     }
 }
 

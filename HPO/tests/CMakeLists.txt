@@ -11,6 +11,8 @@ target_link_libraries(test_hpo PRIVATE
 # gate (test_asa_golden.cpp); the featured tadah_asa arrives through
 # tadah.hpo's link interface.
 target_link_libraries(test_hpo PRIVATE tadah_asa_pristine)
+# dlsym: other_c_library.h asks whether tests/other_c_library.c is loaded.
+target_link_libraries(test_hpo PRIVATE ${CMAKE_DL_LIBS})
 
 # The LAMMPS-driven cases (bench_pot.h) run on the Ta potential shipped
 # with the tests, data/bench_ta.tadah (its header gives its provenance);
@@ -842,6 +844,76 @@ if(TADAH_HPO_MPI)
             TIMEOUT 600
             SKIP_RETURN_CODE 77)
     endforeach()
+endif()
+
+# Tests whose expectations held with one C library only, run with another.
+# other_c_library.c stands in for a C library that makes other choices than
+# the one of this build where the C standard and POSIX leave the choice to
+# the library: the texts of strerror, the last bit of sin, cos and exp, the
+# order in which qsort_r leaves elements that compare equal. Each entry
+# loads it before the C library (LD_PRELOAD, which the dynamic linker of
+# Linux reads) and names the choice in TADAH_TEST_C_LIBRARY; the test case
+# checks, in every build, that the file is loaded and that the choice
+# changes what the program gets from the C library (other_c_library.h).
+#   hpo_check_other_error_texts       the four cases of test_hpo_check.cpp
+#       that expect the text of an error number (tag [error_text]: ELOOP,
+#       EACCES, ENXIO) with other texts. Run by the superuser, the two
+#       EACCES cases skip themselves (no permission stops its writes), and
+#       the entry checks ELOOP and ENXIO only. Before the fix: fails, 8
+#       assertions; the texts were expected in glibc's words ("... cannot
+#       be opened: error 40 in the words of another C library (tadah hpo
+#       rewrites it)" == "... Too many levels of symbolic links ...").
+#   hpo_fd_bounds_goldens_other_libm  "fd bounds: the in-house rule's
+#       interior gradients are those of d5457d0, bit for bit" with sin, cos
+#       and exp one ulp above the C library's. Before the fix: fails, 20 of
+#       the 45 gradient components ('same_bits(g(i), gd.g[i])'); the
+#       objective called the C library.
+#   hpo_compact_ladder_other_order    "compact fitter RHOFORM: SIGNED
+#       reproduces the numbers of the fitter before RHOFORM" with equal
+#       elements reversed by qsort_r. Before the fix: aborts in a build
+#       whose flags are the golden build's ("golden ladder", "entry 1:
+#       0x1.bfe2b5a2dd97ep-14 vs golden 0x1.cd235748f11d5p-16"); the ladder
+#       was compared whatever the order.
+#   hpo_compact_ladder_keep_order     the same case with equal elements
+#       kept in their input order by qsort_r, as the C library of the
+#       goldens leaves them: the ladder is the golden bit for bit whatever
+#       the C library of the build does with them.
+# The ladder is run and compared in the golden build only (x86-64 without
+# -ffast-math, FMA or AVX); in any other build the two ladder entries check
+# that the stand-in reaches NLopt's sort, and the case warns that the ladder
+# is not compared.
+# With AddressSanitizer the entries add verify_asan_link_order=0 to the
+# ASAN_OPTIONS of the run: its runtime then accepts a library loaded
+# before it.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_library(hpo_test_other_c_library MODULE other_c_library.c)
+    target_link_libraries(hpo_test_other_c_library PRIVATE ${CMAKE_DL_LIBS} m)
+    add_dependencies(test_hpo hpo_test_other_c_library)
+    set(_hpo_other_c_library_env
+        "LD_PRELOAD=$<TARGET_FILE:hpo_test_other_c_library>")
+    add_test(NAME hpo_check_other_error_texts
+        COMMAND test_hpo "[error_text]" --warn NoTests)
+    set_tests_properties(hpo_check_other_error_texts PROPERTIES
+        ENVIRONMENT "${_hpo_other_c_library_env};TADAH_TEST_C_LIBRARY=strerror")
+    add_test(NAME hpo_fd_bounds_goldens_other_libm
+        COMMAND test_hpo "[fd_goldens]" --warn NoTests)
+    set_tests_properties(hpo_fd_bounds_goldens_other_libm PROPERTIES
+        ENVIRONMENT "${_hpo_other_c_library_env};TADAH_TEST_C_LIBRARY=libm")
+    foreach(_order other keep)
+        add_test(NAME hpo_compact_ladder_${_order}_order
+            COMMAND test_hpo "compact fitter RHOFORM: SIGNED reproduces the numbers of the fitter before RHOFORM"
+                    --warn NoTests)
+        set_tests_properties(hpo_compact_ladder_${_order}_order PROPERTIES
+            ENVIRONMENT "${_hpo_other_c_library_env};TADAH_TEST_C_LIBRARY=sort_${_order}")
+    endforeach()
+    if(TADAH_ENABLE_ASAN)
+        set_tests_properties(hpo_check_other_error_texts
+                             hpo_fd_bounds_goldens_other_libm
+                             hpo_compact_ladder_other_order
+                             hpo_compact_ladder_keep_order
+            PROPERTIES ENVIRONMENT_MODIFICATION
+                "ASAN_OPTIONS=path_list_append:verify_asan_link_order=0")
+    endif()
 endif()
 
 # tadah.hpo_headers (ctest -L headers): every header of include/

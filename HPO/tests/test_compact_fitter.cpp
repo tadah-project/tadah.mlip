@@ -2782,10 +2782,19 @@ TEST_CASE("compact fitter RHOFORM: ladders per form on a density-like table",
 // ====== RHOFORM SIGNED: the numbers of the fitter before RHOFORM, bit for bit ======
 
 #include "compact_fitter_signed_goldens.h"
+#include "other_c_library.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <sstream>
+
+// The sort of NLopt's Sbplx (src/util/qsort_r.c of NLopt; on Linux it calls
+// the C library's qsort_r). No public header of NLopt declares it.
+extern "C" void nlopt_qsort_r(void *base, std::size_t count, std::size_t size,
+                              void *thunk,
+                              int (*compare)(void *, const void *,
+                                             const void *));
 
 namespace {
 // The goldens were produced by the fitter before RHOFORM (HPO 3ce1001) in the
@@ -2795,13 +2804,58 @@ namespace {
 // A build with -ffast-math or a wider vector ISA (FMA / AVX Eigen kernels)
 // rounds differently (measured: 1e-14 relative on the closed-form values);
 // there every value is compared to 1e-6 relative, and the ladder, whose
-// derivative-free path follows every rounding, is not compared.
+// derivative-free path follows every rounding, is not compared. Nor is the
+// ladder compared where the C library's sort orders equal elements in
+// another way than the reference's (sort_keeps_equal_elements_in_order()).
 #if defined(__x86_64__) && !defined(__FAST_MATH__) && !defined(__FMA__) && \
     !defined(__AVX__)
 constexpr bool golden_bits = true;
 #else
 constexpr bool golden_bits = false;
 #endif
+
+// The ladder golden depends on one thing more, which is the C library's.
+// Every Sbplx search of the ladder (NLopt) sorts its coordinates by the
+// size of their last step, largest first, with the C library's qsort_r, and
+// takes its subspaces from that order; in the golden ladder 47 of the 76
+// sorts (of 4 to 10 coordinates) have coordinates of equal step. Neither C
+// nor POSIX fixes the order in which a sort leaves elements that compare
+// equal. glibc, with which the goldens were produced, leaves them in their
+// input order; another order gives other subspaces, another search and
+// another fit: with the equal ones reversed the ladder ends on the same
+// number of bumps and a curve_rmse of 0x1.bfe2b5a2dd97ep-14 against the
+// golden 0x1.cd235748f11d5p-16 (measured with other_c_library.c). The
+// ladder is therefore compared where the sort keeps equal elements in
+// their input order, as the reference's did, which this function finds
+// out: it sorts, as Sbplx does, index arrays of 2 to 10 elements with few
+// distinct keys. (musl's qsort_r is a smoothsort, which does not keep
+// them.)
+int by_decreasing_key(void *keys, const void *a, const void *b) {
+  const int ka = static_cast<const int *>(keys)[*static_cast<const int *>(a)];
+  const int kb = static_cast<const int *>(keys)[*static_cast<const int *>(b)];
+  return ka > kb ? -1 : (ka < kb ? 1 : 0);
+}
+
+bool sort_keeps_equal_elements_in_order() {
+  std::uint64_t s = 88172645463325252ull;  // xorshift64
+  for (int n = 2; n <= 10; ++n) {
+    for (int rep = 0; rep < 200; ++rep) {
+      int keys[10], p[10];
+      for (int i = 0; i < n; ++i) {
+        s ^= s << 13;
+        s ^= s >> 7;
+        s ^= s << 17;
+        keys[i] = static_cast<int>(s % 3);
+        p[i] = i;
+      }
+      nlopt_qsort_r(p, static_cast<std::size_t>(n), sizeof(int), keys,
+                    by_decreasing_key);
+      for (int i = 0; i + 1 < n; ++i)
+        if (keys[p[i]] == keys[p[i + 1]] && p[i] > p[i + 1]) return false;
+    }
+  }
+  return true;
+}
 
 // `got` is `want`: the same bits in the golden build, else within 1e-6
 // relative. Reports the first differing entry.
@@ -3025,8 +3079,34 @@ TEST_CASE("compact fitter RHOFORM: SIGNED reproduces the numbers of the "
     check_golden(golden_params({mx}, {&phi, &rho, &F}), golden::joint, "joint");
   }
 
+  // The CTest entries hpo_compact_ladder_keep_order and
+  // hpo_compact_ladder_other_order run the case with a qsort_r that keeps
+  // equal elements in their input order, whatever the C library does, and
+  // with one that reverses them (other_c_library.c): in the golden build the
+  // first compares the ladder bit for bit with every C library, the second
+  // does not compare it. In every build both check that the stand-in is
+  // loaded and reaches NLopt's sort. A ladder that is not compared is named
+  // in a warning of the case.
+  // Before the fix: the ladder was compared bit for bit wherever the
+  // compiler flags are the golden build's, and the case stopped in the
+  // second entry ("entry 1: 0x1.bfe2b5a2dd97ep-14 vs golden
+  // 0x1.cd235748f11d5p-16") and with musl (GCC 13, x86-64: "entry 1:
+  // 0x1.bce4a9bfed0bcp-16 vs golden 0x1.cd235748f11d5p-16").
   SECTION("a short ladder (bit for bit in the golden build only)") {
-    if (!golden_bits) return;
+    const bool in_order = sort_keeps_equal_elements_in_order();
+    if (other_c_library("sort_keep")) {
+      REQUIRE(other_c_library_loaded());
+      REQUIRE(in_order);
+    }
+    if (other_c_library("sort_other")) {
+      REQUIRE(other_c_library_loaded());
+      REQUIRE(!in_order);
+    }
+    if (!golden_bits) {
+      WARN("the ladder is not run and not compared: the floating-point "
+           "flags of this build are not those of the golden build");
+      return;
+    }
     CompactConfig lc;
     lc.n_max = 5;
     lc.jitters = 0;
@@ -3038,6 +3118,15 @@ TEST_CASE("compact fitter RHOFORM: SIGNED reproduces the numbers of the "
     std::vector<LadderRow> trace;
     const BlipFit f = fit.fit(
         [](const BlipFit &b) { return b.curve_rmse / 1e-5; }, trace);
+    if (!in_order) {
+      std::ostringstream got;
+      got << f.n() << " bumps, curve_rmse " << std::hexfloat << f.curve_rmse;
+      WARN("the ladder ran and is not compared: the sort NLopt calls does "
+           "not keep equal elements in their input order, as the sort of "
+           "the golden build did (" << got.str() << ")");
+      return;
+    }
+    INFO("the sort NLopt calls keeps equal elements in their input order");
     check_golden(
         golden_params({static_cast<double>(f.n()), f.curve_rmse}, {&f}),
         golden::ladder, "ladder");

@@ -23,6 +23,8 @@
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
 
+#include "other_c_library.h"
+
 #include <tadah/core/context.h>
 #include <tadah/core/core_user_config_parser.h>
 #include <tadah/core/logger.h>
@@ -45,11 +47,13 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cerrno>
 #include <chrono>
 #include <cmath>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -1174,6 +1178,18 @@ std::string in_working_directory(const std::string& file)
            fs::current_path().string() + "' ";
 }
 
+/* "cannot be opened: <text> ", <text> being what the C library says for
+ * the error number @p error, from the call the program takes it from
+ * (std::strerror). The texts are the library's own: for ELOOP glibc says
+ * "Too many levels of symbolic links" and musl "Symbolic link loop". The
+ * four test cases that expect such a text carry the tag [error_text]; the
+ * CTest entry hpo_check_other_error_texts runs them with a C library that
+ * has other texts (other_c_library.c). */
+std::string cannot_be_opened(int error)
+{
+    return std::string("cannot be opened: ") + std::strerror(error) + " ";
+}
+
 }  // namespace
 
 /* Pins: an existing output file of the run is opened as the run opens it
@@ -1199,7 +1215,7 @@ std::string in_working_directory(const std::string& file)
  * stops. */
 TEST_CASE("hpo --check: an output file the run cannot write stops the "
           "check and the run alike, before the journal",
-          "[HPO][hpo_check]")
+          "[HPO][hpo_check][error_text]")
 {
     if (::geteuid() == 0)
         TADAH_SKIP("running as root: file permissions are not enforced");
@@ -1208,7 +1224,7 @@ TEST_CASE("hpo --check: an output file the run cannot write stops the "
         fs::perms perms;
         const char* says;
     };
-    const std::string denied = "cannot be opened: Permission denied ";
+    const std::string denied = cannot_be_opened(EACCES);
     const std::vector<Case> cases = {
         {"loss.tadah", fs::perms::owner_read,
          "(tadah hpo rewrites it)"},
@@ -1256,8 +1272,9 @@ TEST_CASE("hpo --check: an output file the run cannot write stops the "
  *     '<dir>' is a symbolic link to '<dir>/nowhere/loss', which cannot be
  *     created: the directory '<dir>/nowhere' does not exist";
  *   - loss.tadah in a loop of links (loss.tadah -> loop -> loss.tadah)
- *     stops both with the open's own error: "... cannot be opened: Too
- *     many levels of symbolic links (tadah hpo rewrites it)";
+ *     stops both with the open's own error, ELOOP, in the C library's
+ *     words: "... cannot be opened: Too many levels of symbolic links
+ *     (tadah hpo rewrites it)" with glibc;
  *   - loss.tadah a link to a name that ends in '/' (lost/) stops both: a
  *     file cannot be created there ("... is a symbolic link to
  *     '<dir>/lost', which cannot be created: a file name cannot end in '/'
@@ -1273,10 +1290,17 @@ TEST_CASE("hpo --check: an output file the run cannot write stops the "
  * Before the change: a chain was followed one link only (accepted into a
  * missing directory: the run lost every row of loss.tadah), a loop was
  * refused as not writable, and best_pot.tadah was checked through its link
- * (both links refused, though the run replaces them). */
+ * (both links refused, though the run replaces them).
+ * The text of an error number is the C library's: the expectation takes
+ * it from std::strerror, as the program does (cannot_be_opened()).
+ * Before the fix: the loop's message was expected in glibc's words, and
+ * the case failed with another C library: with musl ("... cannot be
+ * opened: Symbolic link loop (tadah hpo rewrites it)") and in the entry
+ * hpo_check_other_error_texts ("... cannot be opened: error 40 in the
+ * words of another C library (tadah hpo rewrites it)"). */
 TEST_CASE("hpo --check: best_pot.tadah as a directory and the symbolic "
           "links of the output files",
-          "[HPO][hpo_check]")
+          "[HPO][hpo_check][error_text]")
 {
     {
         INFO("best_pot.tadah is a directory");
@@ -1319,6 +1343,12 @@ TEST_CASE("hpo --check: best_pot.tadah as a directory and the symbolic "
     }
     {
         INFO("loss.tadah in a loop of links");
+        if (other_c_library("strerror")) {
+            REQUIRE(other_c_library_loaded());
+            REQUIRE(std::string(std::strerror(ELOOP)) ==
+                    "error " + std::to_string(ELOOP) +
+                        " in the words of another C library");
+        }
         ScratchDir sd("loop_result");
         write_inputs(kOptimizer + kRootLines);
         fs::create_symlink("loss.tadah", "loop");
@@ -1327,8 +1357,8 @@ TEST_CASE("hpo --check: best_pot.tadah as a directory and the symbolic "
         const auto [check_error, run_error] = check_and_run_errors();
         INFO("run: " << run_error << "\ncheck: " << check_error);
         CHECK(run_error == in_working_directory("loss.tadah") +
-                               "cannot be opened: Too many levels of "
-                               "symbolic links (tadah hpo rewrites it)");
+                               cannot_be_opened(ELOOP) +
+                               "(tadah hpo rewrites it)");
         CHECK(check_error == run_error);
         CHECK(entries(sd.dir) == before);
     }
@@ -1411,7 +1441,7 @@ TEST_CASE("hpo --check: best_pot.tadah as a directory and the symbolic "
  * permission stops. */
 TEST_CASE("hpo --check: hpo_optim_resolved.hpo is checked only when a box "
           "comes from an AUTO rule",
-          "[HPO][hpo_check]")
+          "[HPO][hpo_check][error_text]")
 {
     if (::geteuid() == 0)
         TADAH_SKIP("running as root: file permissions are not enforced");
@@ -1441,8 +1471,8 @@ TEST_CASE("hpo --check: hpo_optim_resolved.hpo is checked only when a box "
         const auto [check_error, run_error] = check_and_run_errors();
         INFO("run: " << run_error << "\ncheck: " << check_error);
         CHECK(run_error == in_working_directory("hpo_optim_resolved.hpo") +
-                               "cannot be opened: Permission denied (tadah "
-                               "hpo rewrites it)");
+                               cannot_be_opened(EACCES) +
+                               "(tadah hpo rewrites it)");
         CHECK(check_error == run_error);
     }
 }
@@ -1617,9 +1647,9 @@ void make_socket_file(const std::string& name)
  * permission alone was checked); the run then stopped at the lock socket
  * or wrote no history, and waited for ever on the pipe. */
 TEST_CASE("hpo --check: sockets, named pipes and devices among the output "
-          "files", "[HPO][hpo_check]")
+          "files", "[HPO][hpo_check][error_text]")
 {
-    const std::string nxio = "cannot be opened: No such device or address ";
+    const std::string nxio = cannot_be_opened(ENXIO);
     struct Case {
         const char* file;
         const char* purpose;

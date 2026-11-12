@@ -1,12 +1,16 @@
 /* How an HPO run ends: what it leaves on disk and what it reports.
  *
- * The contract (nfp_configuration.rst, "Stopping a run"):
+ * The contract (nfp/output_files.rst: the evaluation numbers, the best
+ * potential and how a run ends):
  *  - best_pot.tadah always holds the incumbent: the lowest feasible loss of
  *    every evaluation that completed, whatever stopped the run;
  *  - the history files are complete: loss.tadah has one row per evaluation,
- *    numbered 1, 2, 3, ... without a gap, and best_params.tadah one row per
- *    improvement, the last improvement's being the incumbent's params.tadah
- *    row;
+ *    in the order of their numbers 1, 2, 3, ..., and best_params.tadah one
+ *    row per improvement, the last improvement's being the incumbent's
+ *    params.tadah row. A number has no row only when a batch (the
+ *    evaluations a search runs at once, eval_batch.h) reserved it for an
+ *    evaluation that a stop kept from starting while a later-numbered
+ *    evaluation of the batch ran; the journal names every such number;
  *  - the journal trailer ("Optimiser status") states why the run ended, and
  *    a run stopped by SIGINT/SIGTERM/SIGUSR2 returns 128 + the signal
  *    number (130, 143, 140 on Linux);
@@ -37,12 +41,14 @@
 #include <tadah/core/context.h>
 #include <tadah/core/periodic_table.h>
 #include <tadah/core/signal_handler.h>
+#include <tadah/hpo/algorithms_asa.h>
 #include <tadah/hpo/algorithms_pa.h>
 #include <tadah/hpo/algorithms_pt.h>
 #include <tadah/hpo/anneal_parallel.h>
 #include <tadah/hpo/box_penalty.h>
 #include <tadah/hpo/ceres_adapter.h>  // run_ceres_steepest_descent
 #include <tadah/hpo/durable_best.h>
+#include <tadah/hpo/eval_batch.h>
 #include <tadah/hpo/hpo.h>
 #include <tadah/hpo/hpo_host.h>
 #include <tadah/hpo/hpo_log.h>
@@ -58,6 +64,7 @@
 #include <tadah/hpo/run_stop.h>
 #include <tadah/hpo/runners.h>
 #include <tadah/hpo/script_executor.h>
+#include <tadah/hpo/warmstart_cache.h>
 #include <tadah/mlip/key_provenance.h>
 #include <tadah/mlip/parallel.h>
 
@@ -72,6 +79,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <condition_variable>
 #include <csignal>
 #include <cstdint>
 #include <cstdlib>
@@ -429,20 +437,86 @@ double loss_value(const std::string& token)
     return v;
 }
 
+/* The evaluation numbers the journal names as having no row, in the line
+ * of the batch that reserved them ("block 1 of ASA:ASA: 1 of its 4
+ * evaluations did not run; evaluation 8 has no row", "...; evaluations
+ * 11-14, 19 and 21 have no rows"; eval_batch.h). */
+std::set<std::size_t> numbers_without_row(const std::string& journal)
+{
+    static const std::regex line_re(
+        R"(did not run; evaluations? ([-0-9, and]+) ha(?:s no row|ve no rows)\n)");
+    static const std::regex range_re(R"((\d+)(?:-(\d+))?)");
+    std::set<std::size_t> out;
+    std::size_t named = 0;
+    for (auto l = std::sregex_iterator(journal.begin(), journal.end(),
+                                       line_re);
+         l != std::sregex_iterator(); ++l) {
+        const std::string list = (*l)[1];
+        for (auto r = std::sregex_iterator(list.begin(), list.end(),
+                                           range_re);
+             r != std::sregex_iterator(); ++r) {
+            const std::size_t first = std::stoull((*r)[1]);
+            const std::size_t last =
+                (*r)[2].matched ? std::stoull((*r)[2]) : first;
+            for (std::size_t n = first; n <= last; ++n, ++named)
+                out.insert(n);
+        }
+    }
+    /* Each of them is named once. */
+    CHECK(named == out.size());
+    return out;
+}
+
+/* How a run's evaluations were made, for the rows of its history files. */
+enum class Evaluations {
+    /* One at a time, or in batches that all ran whole: every number has
+     * its row. */
+    AllRan,
+    /* A stop (a signal) may have arrived while a batch of several
+     * evaluation threads ran: a number of that batch has no row when the
+     * stop kept its evaluation from starting and a later-numbered
+     * evaluation of the batch had started (eval_batch.h). */
+    StoppedInBatch
+};
+
 /* The invariants every ending must leave behind, read from the files in
  * the current directory. */
-void check_run_files()
+void check_run_files(Evaluations evaluations = Evaluations::AllRan)
 {
     const auto loss = data_rows("loss.tadah");
     REQUIRE_FALSE(loss.empty());
 
     /* One row per evaluation the run made (none is missing, none is
-     * extra), numbered 1, 2, 3, ... */
-    CHECK(loss.size() == Host::g_iter_value());
-    for (std::size_t i = 0; i < loss.size(); ++i) {
-        INFO("loss.tadah row " << i);
-        CHECK(std::stoull(loss[i].at(0)) == i + 1);
+     * extra), in the order of their numbers. The host's count is the last
+     * number taken: an evaluation takes the next number when it starts,
+     * and a batch reserves the numbers of its evaluations when its first
+     * one starts. Every number up to the count is therefore an evaluation
+     * with its row, or a number that a batch reserved for an evaluation
+     * that did not run, which has no row and which the journal names (the
+     * unused numbers at the end of a batch go back to the count). So the
+     * rows are 1, 2, 3, ... up to the count without the numbers the
+     * journal names, exactly; and no number is named in a run whose
+     * evaluations all ran.
+     * It said loss.size() == the count and row i numbered i + 1 for every
+     * run, which a signal between the numbering of a batch and one of its
+     * evaluations does not leave ("... leaves that number without a row"
+     * below). */
+    const std::size_t count = Host::g_iter_value();
+    const std::set<std::size_t> no_row =
+        numbers_without_row(read_file("hpo_run.log"));
+    {
+        INFO("numbers the journal names as having no row: "
+             << ::Catch::Detail::stringify(
+                    std::vector<std::size_t>(no_row.begin(), no_row.end())));
+        if (evaluations == Evaluations::AllRan) CHECK(no_row.empty());
+        /* A later number of its batch was taken. */
+        CHECK((no_row.empty() || *no_row.rbegin() < count));
     }
+    std::vector<std::size_t> expected, numbers;
+    for (std::size_t n = 1; n <= count; ++n)
+        if (no_row.count(n) == 0) expected.push_back(n);
+    for (const auto& row : loss) numbers.push_back(std::stoull(row.at(0)));
+    CHECK(numbers == expected);
 
     /* The incumbent: the lowest feasible loss. loss.tadah prints 16
      * significant digits (DIGITS 15), one short of a double's exact round
@@ -647,10 +721,13 @@ std::string describe(const std::exception_ptr& e)
 /* `in_flight`: evaluations that may legitimately start after the signal --
  * those that had passed the stop-flag check (at the start of an
  * evaluation) but not yet taken their number when the count was sampled,
- * i.e. at most one per concurrent evaluation thread. */
+ * i.e. at most one per concurrent evaluation thread. `evaluations`: whether
+ * those threads evaluate the slots of a batch, some of whose numbers the
+ * signal can leave without a row (check_run_files). */
 void check_signal_stop(const SignalOutcome& o, int signo,
                        const std::string& name, int expected_status,
-                       std::size_t in_flight, std::size_t raise_at)
+                       std::size_t in_flight, std::size_t raise_at,
+                       Evaluations evaluations = Evaluations::AllRan)
 {
     REQUIRE(o.raised);
     INFO("evaluations stopped before the signal: " << o.stalled
@@ -667,7 +744,7 @@ void check_signal_stop(const SignalOutcome& o, int signo,
     CHECK(journal_status(journal) == "SHUTDOWN (" + name + ")");
     INFO("evaluations when the signal was raised: " << o.evals_at_raise);
     CHECK(o.evals_final <= o.evals_at_raise + in_flight);
-    check_run_files();
+    check_run_files(evaluations);
 }
 
 /* `more` runs extra checks while the run's files still exist; the signal
@@ -676,12 +753,28 @@ void signal_case(const std::string& optimizer, int signo,
                  const std::string& name, int expected_status,
                  std::size_t in_flight = 1,
                  const std::function<void()>& more = {},
-                 std::size_t raise_at = 3)
+                 std::size_t raise_at = 3,
+                 Evaluations evaluations = Evaluations::AllRan)
 {
     TaRun run(optimizer);
     const SignalOutcome o = run_and_signal(run.ctx, signo, raise_at);
-    check_signal_stop(o, signo, name, expected_status, in_flight, raise_at);
+    check_signal_stop(o, signo, name, expected_status, in_flight, raise_at,
+                      evaluations);
     if (more) more();
+}
+
+/* signal_case() for a search that evaluates the slots of a batch
+ * (eval_batch.h) on `in_flight` threads: the signal can arrive when some
+ * of them have started their evaluations of the batch and others have
+ * not. */
+void batch_signal_case(const std::string& optimizer, int signo,
+                       const std::string& name, int expected_status,
+                       std::size_t in_flight,
+                       const std::function<void()>& more = {},
+                       std::size_t raise_at = 3)
+{
+    signal_case(optimizer, signo, name, expected_status, in_flight, more,
+                raise_at, Evaluations::StoppedInBatch);
 }
 
 /* DLIB BFGS that never stops by itself here: its gradient-norm test cannot
@@ -5972,7 +6065,7 @@ TEST_CASE("Termination: SIGINT stops DLIB GFS with four threads",
 TEST_CASE("Termination: SIGINT stops ANNEAL_PT with two threads",
           "[.shutdown_anneal_pt]")
 {
-    signal_case(plain_block(
+    batch_signal_case(plain_block(
         "    TYPE PLAIN\n    LIB TADAH\n    ALGO ANNEAL_PT\n"
         "    MAXEVAL 100000\n    THREADS 2\n    SEED 7\n"
         "    PARAM REPLICAS 2\n"), SIGINT, "SIGINT", 130, 2);
@@ -5989,7 +6082,7 @@ TEST_CASE("Termination: SIGINT stops ANNEAL_PA", "[.shutdown_anneal_pa]")
 TEST_CASE("Termination: SIGINT stops ANNEAL_PA with four threads",
           "[.shutdown_anneal_pa_threads]")
 {
-    signal_case(plain_block(
+    batch_signal_case(plain_block(
         "    TYPE PLAIN\n    LIB TADAH\n    ALGO ANNEAL_PA\n"
         "    MAXEVAL 100000000\n    POPULATION 8\n    THREADS 4\n"
         "    SEED 7\n"), SIGINT, "SIGINT", 130, 4);
@@ -6018,11 +6111,145 @@ TEST_CASE("Termination: SIGINT stops ASA", "[.shutdown_asa]")
 TEST_CASE("Termination: SIGINT stops ASA block-parallel with four threads",
           "[.shutdown_asa_block]")
 {
-    signal_case(plain_block(
+    batch_signal_case(plain_block(
         "    TYPE PLAIN\n    LIB ASA\n    ALGO ASA\n"
         "    MAXEVAL 100000000\n    THREADS 4\n    SEED 7\n"
         "    PARAM Gener_Block 4\n    PARAM Gener_Block_Max 4\n"),
         SIGINT, "SIGINT", 130, 4, check_asa_names_the_signal);
+}
+
+/* Pins: a signal that arrives while the first block of ASA runs, through
+ * the whole run. On the fixture ASA makes evaluations 1 to 6 one at a time
+ * (the starting point and its cost-temperature samples), and the first
+ * evaluation of its first block to start reserves 7 to 10. The signal is
+ * raised once the count has passed 6: when it arrives some of the four
+ * states have started and the others may not have, in the order their
+ * threads were scheduled. (The case above raises it at the third
+ * evaluation, before any block, unless the thread that raises it is
+ * scheduled late.) Whatever the order, the run ends 130, and its history
+ * files have the rows of the evaluations made: every number up to the
+ * count but those the journal names.
+ * With the expectation of a row for every number up to the count, which
+ * check_run_files() had for every run: failed in 6 of 100 runs on a busy
+ * machine and in 92 of 100 with the process held on one processor (the
+ * rows 1 to 6 and 10, "7 == 10"; 1 to 7, 9 and 10, "9 == 10"; ...). */
+TEST_CASE("Termination: SIGINT stops ASA block-parallel during its first "
+          "block", "[.shutdown_asa_block_first]")
+{
+    batch_signal_case(plain_block(
+        "    TYPE PLAIN\n    LIB ASA\n    ALGO ASA\n"
+        "    MAXEVAL 100000000\n    THREADS 4\n    SEED 7\n"
+        "    PARAM Gener_Block 4\n    PARAM Gener_Block_Max 4\n"),
+        SIGINT, "SIGINT", 130, 4, check_asa_names_the_signal, 7);
+}
+
+namespace {
+
+/* The objective of an ASA run that a real SIGINT stops between the
+ * numbering of its block `block` (the batch's name, eval_batch.h) and the
+ * evaluation of the block's second state. The first evaluation of the block
+ * to start reserves the numbers of its four states. The second state waits
+ * here until the three others have ended, raises the signal on its own
+ * thread -- the handler has run when std::raise returns -- and goes on to
+ * HPO_Host::operator(), which refuses it before it takes its number. No
+ * timing decides the order. */
+struct StopsSecondStateOfBlock {
+    Host&                   host;
+    std::string             block;
+    std::mutex              m;
+    std::condition_variable cv;
+    std::size_t             others_ended = 0;
+    bool                    waited_in_vain = false;
+    std::size_t             count_at_signal = 0;
+
+    double operator()(const ParamVec& x)
+    {
+        const tadah::hpo::EvalBatch* const batch =
+            tadah::hpo::EvalBatch::current();
+        if (!batch || batch->what() != block) return host(x);
+        if (tadah::hpo::warmstart::current_chain() != 1) {
+            struct Ended {
+                StopsSecondStateOfBlock& s;
+                ~Ended()
+                {
+                    {
+                        std::lock_guard<std::mutex> lk(s.m);
+                        ++s.others_ended;
+                    }
+                    s.cv.notify_all();
+                }
+            } ended{*this};
+            return host(x);
+        }
+        {
+            std::unique_lock<std::mutex> lk(m);
+            waited_in_vain = !cv.wait_for(lk, std::chrono::seconds(60),
+                                          [&] { return others_ended == 3; });
+        }
+        count_at_signal = Host::g_iter_value();
+        std::raise(SIGINT);
+        return host(x);
+    }
+};
+
+}  // namespace
+
+/* Pins: what a signal leaves when it arrives between the numbering of a
+ * block and one of its evaluations. ASA with THREADS 4 and Gener_Block 4 on
+ * the fixture makes evaluations 1 to 6 one at a time (the starting point
+ * and its cost-temperature samples); its first block reserves 7 to 10. The
+ * states of 7, 9 and 10 are evaluated; SIGINT arrives before the state of 8
+ * starts, so it is not evaluated. The run ends 130 with the SHUTDOWN
+ * trailer. loss.tadah has the rows 1 to 7, 9 and 10; the journal says
+ * "block 1 of ASA:ASA: 1 of its 4 evaluations did not run; evaluation 8 has
+ * no row" and "ASA stopped: shutdown requested (SIGINT) after 9
+ * evaluation(s)", and the count stands at 10: the run made nine
+ * evaluations and wrote nine rows, and number 8 was never an evaluation.
+ * "Termination: SIGINT stops ASA block-parallel with four threads" met
+ * this order once on a loaded machine, where the thread that raises the
+ * signal and the thread of the second state were scheduled late.
+ * With the expectation of a row for every number up to the count, which
+ * check_run_files() had for every run: fails ("9 == 10", then "9 == 8" and
+ * "10 == 9" for the rows after the seventh). */
+TEST_CASE("Termination: SIGINT between the numbering of an ASA block and "
+          "the evaluation of its second state leaves that number without a "
+          "row", "[.shutdown_asa_block_unused]")
+{
+    HostFixture fx(kRootLines, plain_block(
+        "    TYPE PLAIN\n    LIB ASA\n    ALGO ASA\n"
+        "    MAXEVAL 100000000\n    THREADS 4\n    SEED 7\n"
+        "    PARAM Gener_Block 4\n    PARAM Gener_Block_Max 4\n"));
+    tadah::core::SignalHandler::install();
+    StopsSecondStateOfBlock objective{fx.host, "block 1 of ASA:ASA", {}, {}};
+    int status = -1;
+    REQUIRE_NOTHROW(status = tadah::hpo::drive_run(
+        [&] {
+            const auto anchored =
+                tadah::hpo::anchor_seed_points(fx.trg.spec);
+            tadah::hpo::run_asa_impl<ParamVec>(
+                anchored ? *anchored : fx.trg.spec, objective);
+        }, fx.host, fx.log()));
+    CHECK_FALSE(objective.waited_in_vain);
+    CHECK(status == 130);
+    CHECK(tadah::core::SignalHandler::signal_seen() == SIGINT);
+    const std::string journal = read_file("hpo_run.log");
+    CHECK(journal_status(journal) == "SHUTDOWN (SIGINT)");
+    check_asa_names_the_signal();
+
+    CHECK(objective.count_at_signal == 10);
+    CHECK(Host::g_iter_value() == 10);
+    std::vector<std::string> numbers;
+    for (const auto& row : data_rows("loss.tadah"))
+        numbers.push_back(row.at(0));
+    CHECK(numbers == std::vector<std::string>{"1", "2", "3", "4", "5", "6",
+                                              "7", "9", "10"});
+    CHECK(count_of(journal,
+                   "block 1 of ASA:ASA: 1 of its 4 evaluations did not run; "
+                   "evaluation 8 has no row\n") == 1);
+    CHECK_THAT(journal,
+               Catch::Contains("ASA stopped: shutdown requested (SIGINT) "
+                               "after 9 evaluation(s) "));
+    check_run_files(Evaluations::StoppedInBatch);
 }
 
 TEST_CASE("Termination: SIGTERM stops ASA after the periodic test that "

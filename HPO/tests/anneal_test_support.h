@@ -8,9 +8,10 @@
 #include <tadah/hpo/hpo_log.h>
 #include <tadah/hpo/optimizer_spec.h>
 
+#include "scratch_tmpdir.h"   /* unique_temp_path */
+
 #include <dlib/matrix.h>
 
-#include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -22,8 +23,6 @@
 #include <string>
 #include <system_error>
 #include <vector>
-
-#include <unistd.h>
 
 namespace anneal_test {
 
@@ -68,11 +67,7 @@ struct CountingHost {
 struct JournalCapture {
     std::filesystem::path path;
     JournalCapture()
-        : path(std::filesystem::temp_directory_path() /
-               ("anneal_journal_" +
-                std::to_string(std::chrono::steady_clock::now()
-                                   .time_since_epoch().count()) +
-                ".log"))
+        : path(hpo_test::unique_temp_path("anneal_journal_", ".log"))
     {
         tadah::hpo::HPOLog::instance().reset_for_test();
         tadah::hpo::HPOLog::instance().open(path.string(), "test", "/", 0);
@@ -110,11 +105,7 @@ struct RunDirectory {
     std::filesystem::path path;
     RunDirectory() : start(std::filesystem::current_path())
     {
-        static unsigned long n = 0;
-        path = std::filesystem::temp_directory_path() /
-               ("anneal_run_" + std::to_string(::getpid()) + "_" +
-                std::to_string(n++));
-        std::filesystem::remove_all(path);
+        path = hpo_test::unique_temp_path("anneal_run_");
         std::filesystem::create_directories(path);
         std::filesystem::current_path(path);
     }

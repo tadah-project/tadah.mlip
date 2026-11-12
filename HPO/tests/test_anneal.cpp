@@ -8,6 +8,7 @@
  */
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/hpo/algorithms.h>
 #include <tadah/hpo/hpo_log.h>
@@ -405,11 +406,7 @@ namespace {
  * reads the file back. Resets HPOLog state between cases. */
 struct LoggedRun {
     std::filesystem::path path;
-    LoggedRun() : path(std::filesystem::temp_directory_path() /
-                       ("anneal_log_" +
-                        std::to_string(std::chrono::steady_clock::now()
-                                       .time_since_epoch().count()) +
-                        ".log"))
+    LoggedRun() : path(hpo_test::unique_temp_path("anneal_log_", ".log"))
     {
         tadah::hpo::HPOLog::instance().reset_for_test();
         tadah::hpo::HPOLog::instance().open(path.string(), "test", "/", 0);

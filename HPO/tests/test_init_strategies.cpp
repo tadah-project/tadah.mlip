@@ -10,6 +10,7 @@
 #include "target_file_text.h"
 
 #include "finish_within.h"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/hpo/hpo_log.h>
@@ -37,10 +38,7 @@ namespace {
 struct StrategyTempFile {
     std::filesystem::path path;
     explicit StrategyTempFile(const std::string& body)
-    : path(std::filesystem::temp_directory_path() /
-           ("tadah_init_" +
-            std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-            ".in"))
+    : path(hpo_test::unique_temp_path("tadah_init_", ".in"))
     {
         std::ofstream os(path);
         REQUIRE(os.good());
@@ -57,10 +55,7 @@ struct StrategyTempFile {
 std::string optimizer_section(const tadah::hpo::OptimizerSpec& sp)
 {
     auto& log = tadah::hpo::HPOLog::instance();
-    const auto path = std::filesystem::temp_directory_path() /
-        ("hpo_optsec_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+    const auto path = hpo_test::unique_temp_path("hpo_optsec_", ".log");
     log.open(path.string(), "test", "/tmp", 1);
     log.write_optimizer_section(sp, {});
     log.finish("TEST");
@@ -882,10 +877,7 @@ std::string warm_embf0_journal(const std::string& seed_body,
 
     auto& log = HPOLog::instance();
     if (log.is_open()) log.finish("closed");
-    const auto tmp_log = std::filesystem::temp_directory_path() /
-        ("hpo_warm_embf0_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+    const auto tmp_log = hpo_test::unique_temp_path("hpo_warm_embf0_", ".log");
     log.open(tmp_log.string(), "test", "/tmp", 1);
 
     InitStrategySpec ispec;
@@ -1557,10 +1549,7 @@ ENDOPTIMIZER
     HPOTargets trg(ctx, cfg.path.string());
 
     auto& log = HPOLog::instance();
-    auto tmp_log = std::filesystem::temp_directory_path() /
-        ("hpo_log_test_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+    auto tmp_log = hpo_test::unique_temp_path("hpo_log_test_", ".log");
     log.open(tmp_log.string(), "test", "/tmp", 1);
     log.write_optimizer_section(trg.spec, {"p0","p1","p2","p3"});
     log.finish("TEST");
@@ -1760,10 +1749,7 @@ TEST_CASE("HPOLog::set_status feeds finish() when status is empty",
      * finish() is called with an empty (or default) argument. */
     using namespace tadah::hpo;
     auto& log = HPOLog::instance();
-    auto tmp_log = std::filesystem::temp_directory_path() /
-        ("hpo_setstatus_test_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+    auto tmp_log = hpo_test::unique_temp_path("hpo_setstatus_test_", ".log");
 
     log.open(tmp_log.string(), "test", "/tmp", 1);
     log.set_status("PENULTIMATE");
@@ -1788,10 +1774,7 @@ TEST_CASE("HPOLog::finish explicit arg overrides set_status",
      * override any status the inner driver recorded. */
     using namespace tadah::hpo;
     auto& log = HPOLog::instance();
-    auto tmp_log = std::filesystem::temp_directory_path() /
-        ("hpo_setstatus_test_b_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+    auto tmp_log = hpo_test::unique_temp_path("hpo_setstatus_test_b_", ".log");
 
     log.open(tmp_log.string(), "test", "/tmp", 1);
     log.set_status("MAXEVAL_REACHED");
@@ -1820,10 +1803,7 @@ TEST_CASE("HPOLog::finish writes '(no status recorded)' when no status was "
     using namespace tadah::hpo;
     auto& log = HPOLog::instance();
     log.set_status("");   /* clear any leftover state from prior tests */
-    auto tmp_log = std::filesystem::temp_directory_path() /
-        ("hpo_setstatus_test_c_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+    auto tmp_log = hpo_test::unique_temp_path("hpo_setstatus_test_c_", ".log");
 
     log.open(tmp_log.string(), "test", "/tmp", 1);
     log.finish();   /* no set_status, no explicit status */

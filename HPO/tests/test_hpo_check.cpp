@@ -24,6 +24,7 @@
 #include "catch2/catch.hpp"
 
 #include "other_c_library.h"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/core/core_user_config_parser.h>
@@ -88,10 +89,7 @@ struct ScratchDir {
     fs::path original_cwd;
     explicit ScratchDir(const std::string& tag)
     {
-        dir = fs::temp_directory_path() /
-              ("tadah_hpo_check_" + tag + "_" +
-               std::to_string(std::chrono::steady_clock::now()
-                                  .time_since_epoch().count()));
+        dir = hpo_test::unique_temp_path("tadah_hpo_check_" + tag + "_");
         fs::create_directories(dir);
         original_cwd = fs::current_path();
         fs::current_path(dir);

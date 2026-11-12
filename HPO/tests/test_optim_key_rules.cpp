@@ -11,6 +11,7 @@
 
 #include "catch2/catch.hpp"
 #include "target_file_text.h"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/core/periodic_table.h>
@@ -19,7 +20,6 @@
 #include <tadah/hpo/rcut_derivation.h>
 #include <tadah/hpo/startup_validation.h>
 
-#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -39,10 +39,7 @@ using tadah::hpo::HPOTargets;
 struct KeyRulesTempFile {
   fs::path path;
   explicit KeyRulesTempFile(const std::string& body)
-  : path(fs::temp_directory_path() /
-         ("tadah_optim_key_rules_" +
-          std::to_string(std::chrono::steady_clock::now()
-                             .time_since_epoch().count()) + ".in")) {
+  : path(hpo_test::unique_temp_path("tadah_optim_key_rules_", ".in")) {
     std::ofstream os(path);
     REQUIRE(os.good());
     os << body;
@@ -526,10 +523,7 @@ namespace {
 struct TaSetfl {
   fs::path path;
   TaSetfl()
-  : path(fs::temp_directory_path() /
-         ("tadah_optim_key_rules_" +
-          std::to_string(std::chrono::steady_clock::now()
-                             .time_since_epoch().count()) + ".eam.alloy")) {
+  : path(hpo_test::unique_temp_path("tadah_optim_key_rules_", ".eam.alloy")) {
     const int n = 100;
     const double rcut = 5.0, dr = rcut / (n - 1), drho = 50.0 / (n - 1);
     std::ofstream os(path);

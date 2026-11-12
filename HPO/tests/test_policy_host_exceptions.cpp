@@ -11,6 +11,7 @@
  */
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/checkpoint.h>
 #include <tadah/hpo/anneal_parallel.h>
@@ -45,11 +46,7 @@ using tadah::hpo::detail::run_starts;
 /* An open journal for one test; closed and removed on exit. */
 struct Journal {
     fs::path path;
-    Journal() : path(fs::temp_directory_path() /
-                     ("policy_host_exc_" +
-                      std::to_string(std::chrono::steady_clock::now()
-                                     .time_since_epoch().count()) +
-                      ".log"))
+    Journal() : path(hpo_test::unique_temp_path("policy_host_exc_", ".log"))
     {
         HPOLog::instance().reset_for_test();
         HPOLog::instance().open(path.string(), "test", "/", 0);

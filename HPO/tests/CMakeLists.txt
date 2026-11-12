@@ -778,6 +778,46 @@ set_tests_properties(hpo_mpi_build_tests_lint_tool PROPERTIES
     TIMEOUT 60
     FAIL_REGULAR_EXPRESSION "\nRan 0 tests ")
 
+# CTest runs every test case in a process of its own, many at a time, and
+# all of them share the temporary directory. A file or directory that a test
+# names by a clock reading alone has the same name in two processes that
+# read the same tick: one reads the other's journal, or removes the other's
+# directory. hpo_temp_names_lint reads the sources listed here and fails a
+# statement that makes text from a clock reading (time_since_epoch) without
+# the process id (getpid), mkdtemp or mkstemp (check_temp_names.py; its
+# docstring lists what it does not see). The listed sources take such a name
+# from hpo_test::unique_temp_path (scratch_tmpdir.h): the stem, the process
+# id and a count of the names the process has taken. Other sources of this
+# directory (test_hpo_termination.cpp among them) hold names made from the
+# clock alone and are not read; given a directory, the check reads every
+# source under it.
+# Before the fix: fails, 30 statements in 19 of the listed sources.
+set(_hpo_temp_name_sources
+    anneal_test_support.h scratch_tmpdir.h
+    test_anneal.cpp test_anneal_p2_locks.cpp test_anneal_pa.cpp
+    test_anneal_pt.cpp test_asa.cpp test_backend_end_status.cpp
+    test_fd_bounds.cpp test_hpo.cpp test_hpo_analytical.cpp
+    test_hpo_check.cpp test_hpo_error_scales.cpp test_hpo_host_e2e.cpp
+    test_init_strategies.cpp test_optim_key_rules.cpp
+    test_policy_host_exceptions.cpp test_proposal_order.cpp
+    test_scale_parser.cpp test_startup_validation.cpp
+    test_unique_temp_path.cpp)
+add_test(NAME hpo_temp_names_lint
+    COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/check_temp_names.py
+        ${_hpo_temp_name_sources}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+set_tests_properties(hpo_temp_names_lint PROPERTIES
+    TIMEOUT 60)
+# The check itself, on synthetic sources (tests/test_check_temp_names.py).
+# Before the fix: passes as well (the check's own unit test).
+add_test(NAME hpo_temp_names_lint_tool
+    COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_check_temp_names.py)
+set_tests_properties(hpo_temp_names_lint_tool PROPERTIES
+    TIMEOUT 60
+    FAIL_REGULAR_EXPRESSION "\nRan 0 tests ")
+
 if(TADAH_HPO_MPI)
     add_executable(test_hpo_anneal_mpi mpi/test_anneal_mpi.cpp)
     target_link_libraries(test_hpo_anneal_mpi PRIVATE

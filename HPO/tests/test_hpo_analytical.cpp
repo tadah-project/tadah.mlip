@@ -26,8 +26,8 @@
 // dispatch already exercised in test_hpo.cpp.
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
-#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <tadah/core/context.h>
@@ -1238,11 +1238,7 @@ namespace {
 struct ScopedTempFileLocal {
     std::filesystem::path path;
     explicit ScopedTempFileLocal(const std::string& body)
-    : path(std::filesystem::temp_directory_path() /
-           ("tadah_hpo_anal_" +
-            std::to_string(std::chrono::steady_clock::now()
-                                                .time_since_epoch().count()) +
-            ".in"))
+    : path(hpo_test::unique_temp_path("tadah_hpo_anal_", ".in"))
     {
         std::ofstream os(path);
         REQUIRE(os.good());

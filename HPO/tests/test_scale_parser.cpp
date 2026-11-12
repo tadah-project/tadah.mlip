@@ -3,12 +3,12 @@
  * grammar, registry-driven STEP rejection, seed-in-box validation. */
 #include "catch2/catch.hpp"
 #include "target_file_text.h"
+#include "scratch_tmpdir.h"
 #include <tadah/core/context.h>
 #include <tadah/hpo/hpo_targets.h>
 #include <tadah/hpo/scale_validation.h>
 #include <tadah/hpo/initial_step.h>
 
-#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <filesystem>
@@ -23,10 +23,7 @@ namespace {
 struct ScopedTempFile {
   std::filesystem::path path;
   explicit ScopedTempFile(const std::string& body)
-  : path(std::filesystem::temp_directory_path() /
-         ("tadah_scale_parser_" +
-          std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-          ".in"))
+  : path(hpo_test::unique_temp_path("tadah_scale_parser_", ".in"))
   {
     std::ofstream os(path);
     REQUIRE(os.good());
@@ -702,8 +699,7 @@ ENDOPTIMIZER
     ScopedTempFile in("OPTIM WATOM (1) AUTO FRAC 0.2\nOPTIMIZER\nLIB DLIB\nALGO BFGS\nMAXEVAL 5\nENDOPTIMIZER\n");
     auto ctx = watom_ctx();
     tadah::hpo::HPOTargets trg(ctx, in.path.string());
-    const auto dir = std::filesystem::temp_directory_path() /
-        ("tadah_ss_sidecar_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    const auto dir = hpo_test::unique_temp_path("tadah_ss_sidecar_");
     std::filesystem::create_directories(dir);
     trg.write_search_space_files(dir.string());
     REQUIRE(std::filesystem::exists(dir / "hpo_search_space.tsv"));
@@ -778,8 +774,7 @@ TEST_CASE("FIXWEIGHT dimensions are addressed by the model weight everywhere",
   tadah::hpo::HPOTargets trg(ctx, in.path.string());
   REQUIRE(trg.spec.parameter_labels.size() == 1);
   CHECK(trg.spec.parameter_labels[0] == "FIXWEIGHT[7]");
-  const auto dir = std::filesystem::temp_directory_path() /
-      ("tadah_ss_fixw_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+  const auto dir = hpo_test::unique_temp_path("tadah_ss_fixw_");
   std::filesystem::create_directories(dir);
   trg.write_search_space_files(dir.string());
   std::ifstream f(dir / "hpo_optim_resolved.hpo"); std::string line, all;
@@ -816,8 +811,7 @@ TEST_CASE("hpo_optim_resolved.hpo pins the searched box bit-exactly",
   REQUIRE(d.origin == tadah::hpo::BoxOrigin::AutoLinear);
   REQUIRE(d.tf.kind == tadah::hpo::ScaleKind::Asinh);
 
-  const auto dir = std::filesystem::temp_directory_path() /
-      ("tadah_ss_exact_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+  const auto dir = hpo_test::unique_temp_path("tadah_ss_exact_");
   std::filesystem::create_directories(dir);
   trg.write_search_space_files(dir.string());
   std::ifstream f(dir / "hpo_optim_resolved.hpo");

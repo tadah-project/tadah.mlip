@@ -26,6 +26,7 @@
  * EvalBatch without a host. */
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/checkpoint.h>
 #include <tadah/core/core_user_config_parser.h>
@@ -80,11 +81,7 @@ struct ScratchDir {
     fs::path original_cwd;
     ScratchDir()
     {
-        static unsigned counter = 0;
-        dir = fs::temp_directory_path() /
-              ("tadah_proposal_order_" + std::to_string(counter++) + "_" +
-               std::to_string(std::chrono::steady_clock::now()
-                                  .time_since_epoch().count()));
+        dir = hpo_test::unique_temp_path("tadah_proposal_order_");
         fs::create_directories(dir);
         original_cwd = fs::current_path();
         fs::current_path(dir);

@@ -40,6 +40,7 @@ extern "C" {
 }
 
 #include "finish_within.h"
+#include "scratch_tmpdir.h"
 
 #include <algorithm>
 #include <atomic>
@@ -2128,10 +2129,8 @@ namespace {
 std::vector<double> random_method_draws(std::uint64_t seed, std::size_t n)
 {
     namespace fs = std::filesystem;
-    const fs::path cfg = fs::temp_directory_path() /
-        ("tadah_asa_stream_" + std::to_string(seed) + "_" +
-         std::to_string(std::chrono::steady_clock::now()
-                            .time_since_epoch().count()) + ".hpo");
+    const fs::path cfg = hpo_test::unique_temp_path(
+        "tadah_asa_stream_" + std::to_string(seed) + "_", ".hpo");
     { std::ofstream(cfg) << "OPTIMIZER\nLIB DLIB\nALGO BFGS\nENDOPTIMIZER\n"; }
     tadah::core::Context ctx;
     const tadah::hpo::HPOTargets trg(ctx, cfg.string());

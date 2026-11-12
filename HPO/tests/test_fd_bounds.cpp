@@ -21,6 +21,7 @@
 
 #include "fd_bounds_goldens_libm.h"
 #include "other_c_library.h"
+#include "scratch_tmpdir.h"
 
 #include <tadah/hpo/box_penalty.h>
 #include <tadah/hpo/gradient_provider.h>
@@ -43,7 +44,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -139,10 +139,7 @@ double step_of(bool ceres, double fd_step, double u)
 /* A journal for the case; `text()` finishes it and returns it. */
 struct Journal {
     std::filesystem::path path =
-        std::filesystem::temp_directory_path() /
-        ("tadah_fd_bounds_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+        hpo_test::unique_temp_path("tadah_fd_bounds_", ".log");
     Journal()
     {
         auto& log = HPOLog::instance();

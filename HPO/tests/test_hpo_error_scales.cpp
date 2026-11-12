@@ -36,6 +36,7 @@
 
 #include "catch2/catch.hpp"
 #include "target_file_text.h"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/blueprint_parser.h>
 #include <tadah/core/context.h>
@@ -52,7 +53,6 @@
 
 #include <dlib/matrix.h>
 
-#include <chrono>
 #include <cstddef>
 #include <exception>
 #include <filesystem>
@@ -74,15 +74,10 @@ using tadah::hpo::HPOTargets;
 using ParamVec = dlib::matrix<double, 0, 1>;
 using Host     = tadah::hpo::HPO_Host<ParamVec, ::LammpsRunner>;
 
-std::string stamp() {
-    return std::to_string(
-        std::chrono::steady_clock::now().time_since_epoch().count());
-}
-
 struct TempFile {
     fs::path path;
     TempFile(const std::string& body, const std::string& ext)
-    : path(fs::temp_directory_path() / ("tadah_error_scales_" + stamp() + ext)) {
+    : path(hpo_test::unique_temp_path("tadah_error_scales_", ext)) {
         std::ofstream os(path);
         REQUIRE(os.good());
         os << body;
@@ -98,7 +93,7 @@ struct TempFile {
 struct ScratchDir {
     fs::path dir, original;
     ScratchDir() {
-        dir = fs::temp_directory_path() / ("tadah_error_scales_run_" + stamp());
+        dir = hpo_test::unique_temp_path("tadah_error_scales_run_");
         fs::create_directories(dir);
         original = fs::current_path();
         fs::current_path(dir);

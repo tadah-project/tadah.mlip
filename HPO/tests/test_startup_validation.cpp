@@ -7,6 +7,7 @@
 
 #include "catch2/catch.hpp"
 #include "target_file_text.h"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/core/periodic_table.h>
@@ -16,7 +17,6 @@
 #include <tadah/hpo/startup_validation.h>
 #include <tadah/models/descriptors/basis_dispatch.h>
 
-#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -39,10 +39,7 @@ struct ScopedTempFile {
   std::filesystem::path path;
 
   explicit ScopedTempFile(const std::string& body)
-  : path(std::filesystem::temp_directory_path() /
-         ("tadah_sv_" +
-          std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-          ".in"))
+  : path(hpo_test::unique_temp_path("tadah_sv_", ".in"))
   {
     std::ofstream os(path);
     REQUIRE(os.good());

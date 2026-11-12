@@ -24,6 +24,7 @@
  */
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/hpo/algorithms.h>
 #include <tadah/hpo/algorithms_pa.h>
@@ -65,11 +66,7 @@ struct NoRunner {};   // GradientProvider's Runner is only a type tag
 /* An open journal; status() is the status the driver recorded. */
 struct LoggedRun {
     fs::path path;
-    LoggedRun() : path(fs::temp_directory_path() /
-                       ("end_status_" +
-                        std::to_string(std::chrono::steady_clock::now()
-                                       .time_since_epoch().count()) +
-                        ".log"))
+    LoggedRun() : path(hpo_test::unique_temp_path("end_status_", ".log"))
     {
         HPOLog::instance().reset_for_test();
         HPOLog::instance().open(path.string(), "test", "/", 0);

@@ -9,6 +9,7 @@
  */
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 #include <tadah/hpo/log_index.h>
 
 #include <tadah/hpo/algorithms.h>      /* serial control in the double-well test */
@@ -22,7 +23,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -86,11 +86,7 @@ struct MtStubHost {
 
 struct LoggedRun {
     std::filesystem::path path;
-    LoggedRun() : path(std::filesystem::temp_directory_path() /
-                       ("anneal_pt_log_" +
-                        std::to_string(std::chrono::steady_clock::now()
-                                       .time_since_epoch().count()) +
-                        ".log"))
+    LoggedRun() : path(hpo_test::unique_temp_path("anneal_pt_log_", ".log"))
     {
         tadah::hpo::HPOLog::instance().reset_for_test();
         tadah::hpo::HPOLog::instance().open(path.string(), "test", "/", 0);
@@ -122,10 +118,7 @@ struct TempWorkingDirectory {
     std::filesystem::path path;
     TempWorkingDirectory()
         : old_path(std::filesystem::current_path()),
-          path(std::filesystem::temp_directory_path() /
-               ("anneal_pt_steps_" +
-                std::to_string(std::chrono::steady_clock::now()
-                                   .time_since_epoch().count())))
+          path(hpo_test::unique_temp_path("anneal_pt_steps_"))
     {
         std::filesystem::create_directories(path);
         std::filesystem::current_path(path);

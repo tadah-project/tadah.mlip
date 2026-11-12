@@ -13,6 +13,7 @@
  */
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/hpo/algorithms.h>
 #include <tadah/hpo/algorithms_pt.h>
@@ -22,7 +23,6 @@
 #include <dlib/matrix.h>
 
 #include <atomic>
-#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -67,11 +67,7 @@ struct P2Stub {
 struct P2Log {
     std::filesystem::path path;
     P2Log()
-        : path(std::filesystem::temp_directory_path() /
-               ("anneal_p2_log_" +
-                std::to_string(std::chrono::steady_clock::now()
-                                   .time_since_epoch().count()) +
-                ".log"))
+        : path(hpo_test::unique_temp_path("anneal_p2_log_", ".log"))
     {
         tadah::hpo::HPOLog::instance().reset_for_test();
         tadah::hpo::HPOLog::instance().open(path.string(), "test", "/", 0);

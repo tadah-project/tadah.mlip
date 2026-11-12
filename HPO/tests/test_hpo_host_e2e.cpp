@@ -27,6 +27,7 @@
 // below and read no potential file; they need no skip.
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/core/core_user_config_parser.h>
@@ -40,7 +41,6 @@
 #include <dlib/matrix.h>
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -64,10 +64,7 @@ struct ScratchDir {
     fs::path dir;
     fs::path original_cwd;
     ScratchDir() {
-        dir = fs::temp_directory_path() /
-              ("tadah_hpo_e2e_" +
-               std::to_string(std::chrono::steady_clock::now()
-                                  .time_since_epoch().count()));
+        dir = hpo_test::unique_temp_path("tadah_hpo_e2e_");
         fs::create_directories(dir);
         /* HPO_Host's constructor writes loss.tadah / outvar.tadah /
          * params.tadah / stats.tadah + best_* in CWD. chdir into the

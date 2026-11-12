@@ -1,4 +1,5 @@
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/hpo/ceres_adapter.h>
 #include <tadah/hpo/dlib_adapter.h>
@@ -14,7 +15,6 @@
 #include <cmath>
 #include <dlib/matrix.h>
 
-#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -54,10 +54,7 @@ struct ScopedTempFile {
   std::filesystem::path path;
 
   explicit ScopedTempFile(const std::string& body)
-  : path(std::filesystem::temp_directory_path() /
-         ("tadah_hpo_" +
-          std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-          ".in"))
+  : path(hpo_test::unique_temp_path("tadah_hpo_", ".in"))
   {
     std::ofstream os(path);
     REQUIRE(os.good());

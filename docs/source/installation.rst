@@ -49,8 +49,8 @@ branch, from which the releases are tagged:
 
 .. code-block:: bash
 
-    # the 1.6.0 release
-    git clone -b v1.6.0 https://github.com/tadah-project/tadah.mlip.git
+    # the 2.0.0 release
+    git clone -b v2.0.0 https://github.com/tadah-project/tadah.mlip.git
 
     # or the development line
     git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git
@@ -453,8 +453,8 @@ branch, which need not be either):
 
 .. code-block:: bash
 
-    # the 1.6.0 release
-    git clone -b v1.6.0 \
+    # the 2.0.0 release
+    git clone -b v2.0.0 \
       https://github.com/tadah-project/tadah.mlip.git /path/to/tadah
 
     # or the development line

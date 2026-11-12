@@ -1,12 +1,12 @@
 # A non-linear many-body potential for the multi-rank tests
 # (tests/mpi/check_pair_tadah_mpi.py): the descriptors of the Quick Start
 # potential (D2_Blip + DM_mBlipEnv) with MODEL M_BLR BF_Polynomial2, written by
-# `tadah train` (1.6.0) from Tadah.MLIP's docs/source/quickstart/config.train
+# `tadah train` (2.0.0) from Tadah.MLIP's docs/source/quickstart/config.train
 # with its MODEL and LAMBDA lines replaced by `MODEL M_BLR BF_Polynomial2` and
 # `LAMBDA 1e-6`, on that directory's db.train. pair_style tadah evaluates a
 # non-linear model with the full-list kernel (compute_2b_mb_full, newton on).
 # The lines of the keys EWEIGHT, FWEIGHT, SWEIGHT and WDBFILE_AUTO, which
-# Tadah! 1.6.0 retired and no load of a potential reads, are left out.
+# Tadah! 2.0.0 retired and no load of a potential reads, are left out.
 ATOM              Ta
 BIAS              false
 CEMBFUNC          0.5   0.75   1   1.25   1.5

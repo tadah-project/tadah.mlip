@@ -2,7 +2,7 @@
 //
 // The notices of the keys a potential carries that have no effect, through
 // the real pair_style tadah (LammpsRunner): a deprecated key (SIGMA, the
-// weight covariance of Tadah! 1.0.0 to 1.5.0 and the 1.6.0 development
+// weight covariance of Tadah! 1.0.0 to 1.5.0 and the 2.0.0 development
 // builds; MBLOCK, a key of the removed MPI training build) and EMBF0 on a
 // potential without a DM_REAM block.
 // pair_coeff writes each as a LAMMPS WARNING (error->warning on rank 0:
@@ -12,7 +12,7 @@
 // also when the process loaded it before (core::IgnoredKeyNoticeCapture
 // receives a key once per capture, whatever the process reported). And a
 // potential with the retired keys WCOV and WNOISE (the covariance of an
-// OALGO 3 fit a development build of Tadah! 1.6.0 wrote) loads, with one
+// OALGO 3 fit a development build of Tadah! 2.0.0 wrote) loads, with one
 // warning of retired keys per pair_coeff.
 //
 // The potential is the D2_LJ pair potential of Tadah.LAMMPS'
@@ -197,7 +197,7 @@ TEST_CASE("pair_coeff writes the notice to the log.lammps of every LAMMPS "
 
 /* Pins: pair_coeff loads a potential with the retired keys WCOV and
  * WNOISE (the covariance of an OALGO 3 fit, written by a development build
- * of Tadah! 1.6.0) and computes with it the energy of the potential without
+ * of Tadah! 2.0.0) and computes with it the energy of the potential without
  * them (bit for bit); log.lammps has one WARNING that lists both, "Retired
  * keys WCOV (line 15 of <file>) and WNOISE (line 16 of <file>) are
  * ignored", and none naming either otherwise; the potential without them

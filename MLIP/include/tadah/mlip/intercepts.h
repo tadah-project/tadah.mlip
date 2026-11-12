@@ -47,7 +47,7 @@ void check_bias_constraints(const tadah::core::Context &ctx);
  *  weights are the intercepts (f.intercept_columns: for a linear model
  *  weights 1 to N, and the descriptor weights start at index N + 1; they
  *  started at 2 when BIAS true had one intercept column shared by all
- *  species, before 1.6.0). For a model whose basis its fit draws
+ *  species, before 2.0.0). For a model whose basis its fit draws
  *  (basis_drawn_from_training_data) those of that basis, which starts with
  *  the intercept vectors e_0 .. e_{N-1}: a dot-product kernel's weights 1
  *  to N, named by species; Kern_RBF has none. Empty when it does not

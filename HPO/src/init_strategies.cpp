@@ -619,17 +619,17 @@ private:
             : !seed_form ? std::string("does not declare RHOFORM")
                          : std::string("declares RHOFORM ") +
                                models::rhoform_name(*seed_form);
-        /* A seed written before tadah 1.6.0 (no RHOFORM) is SIGNED:
+        /* A seed written before tadah 2.0.0 (no RHOFORM) is SIGNED:
          * declaring that repairs it for a SIGNED run only; a positive form
          * needs a seed fitted in that form. */
         const std::string remedy =
             run_form == models::RhoForm::Signed
                 ? "The run needs a seed written in RHOFORM SIGNED: a potential "
-                  "written before tadah 1.6.0 has a SIGNED density and a FREE "
+                  "written before tadah 2.0.0 has a SIGNED density and a FREE "
                   "embedding reference, which RHOFORM SIGNED and EMBF0 FREE "
                   "lines added to it declare."
                 : "The run needs a seed written in RHOFORM " + run_name +
-                  ": a potential written before tadah 1.6.0 has a SIGNED "
+                  ": a potential written before tadah 2.0.0 has a SIGNED "
                   "density and cannot seed a " + run_name + " density; tadah "
                   "refit with RHOFORM " + run_name + " refits it.";
         if (!density_dims.empty())

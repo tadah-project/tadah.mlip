@@ -5,7 +5,7 @@
  * descriptor new parameters: a caller with a new context builds a new
  * descriptor (or a new DC_Selector), and the constructor's checks apply.
  *
- * The contexts below are those that D_Base::reinit (removed in Tadah! 1.6.0)
+ * The contexts below are those that D_Base::reinit (removed in Tadah! 2.0.0)
  * accepted although the constructors refused them; on the descriptor it
  * updated, the next evaluation read or wrote out of bounds
  * (AddressSanitizer: heap-buffer-overflow in D2_Blip, D2_Blip5, D2_BP,

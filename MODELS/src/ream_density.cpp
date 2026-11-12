@@ -13,7 +13,7 @@
 // MODELS' own flags, as DM_REAM's density loops before RHOFORM were: the
 // SIGNED sums are those loops. In a MODELS compiled without FMA contraction
 // (the presets' flags on x86-64: no -march=native, no -ffast-math; LTO and
-// a -march=native tadah included) they are the density before 1.6.0 bit
+// a -march=native tadah included) they are the density before 2.0.0 bit
 // for bit, and the bitwise relations of ream_density.h hold
 // (test_ream_goldens.cpp, test_ream_density.cpp,
 // tadah.models_ream_goldens_native_link). Do not move any of it into a

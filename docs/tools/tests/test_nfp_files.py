@@ -555,7 +555,7 @@ class CheckTest(unittest.TestCase):
                     '--check']])
 
     def test_a_command_without_a_target_file_is_checked_too(self):
-        # tadah 1.6.0 reads no task file: a tadah hpo command without
+        # tadah 2.0.0 reads no task file: a tadah hpo command without
         # --hpotarget is checked as the page writes it, and tadah decides.
         write(self.source, 'nfp/unit1.rst', 'U1\n==\n\n.. code-block:: bash\n\n'
               '   tadah hpo --config config.train --hpotarget config.hpo\n'

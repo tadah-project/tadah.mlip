@@ -1,4 +1,4 @@
-/* The DM_REAM density before RHOFORM (every tadah before 1.6.0), frozen, for
+/* The DM_REAM density before RHOFORM (every tadah before 2.0.0), frozen, for
  * the goldens of test_ream_goldens.cpp.
  *
  * ream_density_before_rhoform.cpp copies the code that computed it at

@@ -1,6 +1,6 @@
 # DM_REAM seed of the HPO tests: `tadah refit` (REFIT_MODE compact, REFIT_LEVEL
 # coarse) of MODELS/tests/tests_data/eam.alloy (Ta2, Ravelo 2013), EMBF0 ZERO,
-# written before 1.6.0 (1.6.0's tadah refit writes a DM_Embed component).
+# written before 2.0.0 (2.0.0's tadah refit writes a DM_Embed component).
 # D2_Knot5 13 + DM_REAM Knot5 (8 density / 15 embedding knots; CEMBFUNC 1
 # and 4 are negative, so the raw embedding has F(0) != 0). RHOFORM SIGNED:
 # 4 of the 8 density amplitudes are negative.

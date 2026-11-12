@@ -909,14 +909,14 @@ TEST_CASE("DesignMatrix refuses a descriptor layout that disagrees with "
  * until it built a Trainer per evaluation; reset_trained() stays public.
  * A model with new descriptor parameters is a new Trainer: the library has
  * no in-place update of the descriptors.)
- * Before the fix: passes as well (a pin of the EKM fix of 1.6.0, before
+ * Before the fix: passes as well (a pin of the EKM fix of 2.0.0, before
  * which the first fit threw (the ColumnLayout check); with that check
  * alone fixed, every kernel's second fit wrote SBASIS 10 for 5 basis
  * vectors: EKM::configure appended the indices of every training to a
  * member it never cleared, and replaced M_KRR's basis by a 10-column one;
  * with Kern_Sigmoid the process aborted ("malloc(): invalid size")). It
- * called Trainer::reinit, which 1.6.0 removes, and changed SGRID2B
- * between the fits through DC_Selector::reinit, which 1.6.0 removes too. */
+ * called Trainer::reinit, which 2.0.0 removes, and changed SGRID2B
+ * between the fits through DC_Selector::reinit, which 2.0.0 removes too. */
 TEST_CASE("Retraining one Trainer's model refits every non-linear model",
           "[nonlinear][train][retrain]") {
   PeriodicTable::initialize();

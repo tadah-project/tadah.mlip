@@ -441,7 +441,7 @@ TEST_CASE("pair_coeff states RHOFORM, and a potential without it fails with "
     LammpsRunner runner;
     const std::string banner =
         "Tadah! DM_REAM density form RHOFORM SIGNED (signed amplitudes, the "
-        "density before tadah 1.6.0)\n";
+        "density before tadah 2.0.0)\n";
     const std::string absent = "DM_REAM: RHOFORM is required: SIGNED";
 
     SECTION("pair_coeff * * <file>: the RHOFORM line next to EMBF0") {

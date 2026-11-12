@@ -519,7 +519,7 @@ int RefitEngine::run(tadah::mlip::Task &task) {
       models::rhoform_name(rho_form) +
       (rho_form == models::RhoForm::Signed
            ? ": the density rho = f_c sum_n a_n psi_n(r) with signed "
-             "amplitudes (the density before tadah 1.6.0)"
+             "amplitudes (the density before tadah 2.0.0)"
        : rho_form == models::RhoForm::NonNeg
            ? ": the density amplitudes a_n of rho = f_c sum_n a_n psi_n(r) "
              "are fitted by non-negative least squares (rho >= 0)"

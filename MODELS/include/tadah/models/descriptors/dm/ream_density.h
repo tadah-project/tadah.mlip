@@ -52,7 +52,7 @@ struct RhoBarScan {
  *  RHOFORM was: FMA contraction in a -march=native unit that compiled the
  *  sum would change its bits. In a MODELS compiled without FMA contraction
  *  (the presets' flags on x86-64: no -march=native, no -ffast-math) the
- *  SIGNED form is the density of every tadah before 1.6.0 bit for bit (the
+ *  SIGNED form is the density of every tadah before 2.0.0 bit for bit (the
  *  goldens, test_ream_goldens.cpp), and the bitwise relations below hold:
  *  value_deriv() is value() and deriv(), scan_grid() is value() point by
  *  point, DM_REAM::pair_density() and eam_density() are calc_rho's
@@ -60,7 +60,7 @@ struct RhoBarScan {
  *  FMA machine, AArch64 at default flags) gives them to rounding only.
  *
  *  Guarantees, on a density that passed validate():
- *  - SIGNED: none (bitwise the density of every tadah before 1.6.0 in a
+ *  - SIGNED: none (bitwise the density of every tadah before 2.0.0 in a
  *    MODELS compiled without FMA contraction).
  *  - NONNEG: rho_raw >= 0 exactly.
  *  - MONOTONE: rho_raw >= 0 exactly and non-increasing in r to rounding

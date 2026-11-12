@@ -258,7 +258,7 @@ TEST_CASE("fd stencil: away from the bounds the central difference is "
           "unchanged, bit for bit",
           "[HPO][grad_provider][fd_stencil]")
 {
-    /* The points and the quotient of the pre-1.6.0 kernel: the centre,
+    /* The points and the quotient of the pre-2.0.0 kernel: the centre,
      * then u + h and u - h per dimension, (f+ - f-) / (2.0 * h) with
      * h = fd_step * max(|u|, 1). u = h itself is interior (u - h = 0 is
      * in the box). */

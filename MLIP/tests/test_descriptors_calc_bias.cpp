@@ -1461,7 +1461,7 @@ TEST_CASE("A Trainer built from a potential reads none of the potential's "
 // vectors are e_0 and e_1: for M_KRR Kern_Quadratic "its intercepts are
 // weights 1 (Nb) and 2 (Ta)", for a training configuration and for a
 // potential with one intercept component shared by the species (as tadah
-// trained BIAS true before 1.6.0: BASIS vectors of 1 + 3 values, the first
+// trained BIAS true before 2.0.0: BASIS vectors of 1 + 3 values, the first
 // e_0); for Kern_RBF, which has no intercept column, "weights 1 to 2
 // belong to its intercept basis vectors" (a pin).
 // Before the fix: the WARNING described the kernel's own basis: the

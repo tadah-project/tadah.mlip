@@ -19,7 +19,7 @@
 //    DM_mJoin of DM_Blip 0 2 2 Ta Ta and a knot DM_REAM 2 2 0 2 3 0 0 0 Ta
 //    Ta (knots 4.6 3.0), RCTYPEMB Cut_Cos Cut_Cos, RCUTMB 5.0 5.2:
 //    pot_mb_1.5.0.tadah (RCUTMB 5 5.2; 1.5.0 had no RHOFORM, so the cases
-//    add the line RHOFORM SIGNED, the density of every tadah before 1.6.0,
+//    add the line RHOFORM SIGNED, the density of every tadah before 2.0.0,
 //    as tadah asks of such a potential).
 // The energies per atom tadah 1.5.0 predicted for eos8_333.tadahdb with
 // each potential (`tadah predict -p <pot> -d eos8_333.tadahdb`) are kOld2B

@@ -175,7 +175,7 @@ std::string retired_keys_refusal(const std::vector<RetiredKeyLine> &lines,
       ", a potential's included";
   std::string msg = who + ": the configuration has " +
                     (one ? "a key" : "keys") +
-                    " retired in Tadah! 1.6.0, and a fit refuses " +
+                    " retired in Tadah! 2.0.0, and a fit refuses " +
                     (one ? "it" : "them") + ": " + join_and(named) + ".";
   if (krr2) {
     // The keys' own conversions are those of the other fits: under

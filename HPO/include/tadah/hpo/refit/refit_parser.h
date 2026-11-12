@@ -71,7 +71,7 @@ bool refit_curve_objective(const tadah::core::Context &c);
  *  whatever the LIB, naming the algorithm the refit runs in their place
  *  ("EXPLORE: ALGO GN_MLSL is not run by tadah refit (NLopt's MLSL with
  *  pseudo-random starts); its MLSL is GN_MLSL_LDS");
- *  before 1.6.0 they ran GN_MLSL_LDS, GN_DIRECT_L and GN_CRS2_LM. */
+ *  before 2.0.0 they ran GN_MLSL_LDS, GN_DIRECT_L and GN_CRS2_LM. */
 std::string refit_explore_outer_algo(const OptimizerSpec &s);  ///< -> seed_algo
 std::string refit_explore_inner_algo(const OptimizerSpec &s);  ///< -> explore_algo
 std::string refit_refine_algo(const OptimizerSpec &s);         ///< -> refine_algo

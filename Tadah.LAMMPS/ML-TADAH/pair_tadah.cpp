@@ -1495,7 +1495,7 @@ try {
         utils::logmesg(lmp, "  Tadah! DM_REAM density form RHOFORM {}{}\n",
                        tadah::models::rhoform_name(*form),
                        *form == RhoForm::Signed
-                           ? " (signed amplitudes, the density before tadah 1.6.0)"
+                           ? " (signed amplitudes, the density before tadah 2.0.0)"
                        : *form == RhoForm::NonNeg
                            ? " (rho >= 0 by construction)"
                            : " (rho >= 0 and non-increasing by construction)");

@@ -587,7 +587,7 @@ bool normalize_knot_rcut_lines(core::Context &ctx, const std::string &who,
     // a potential is left as stated, below).
     if (joins_descriptors(ctx, sfx)) {
       // A potential keeps the cutoffs of its joined line: its coefficients
-      // were fitted with them (every fit before Tadah! 1.6.0 kept them).
+      // were fitted with them (every fit before Tadah! 2.0.0 kept them).
       if (!joined) continue;
       // A joined line: each knot descriptor's own RCUT value, derived from
       // its own knots (D_mJoin::parse_context gives each descriptor its

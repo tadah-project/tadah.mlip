@@ -75,7 +75,7 @@ std::string demo_blueprint(const std::string &alpha_fields) {
  * option ALLOWED_KEYS.verbose (--verbose); @p more follows [TADAH]. */
 std::string tadah_blueprint(const std::string &more) {
   return "[ALLOWED_KEYS.verbose]\n" + option_fields("verbose") +
-         "[TADAH]\nlogo = \"Tadah!\"\nversion = \"1.6.0\"\n"
+         "[TADAH]\nlogo = \"Tadah!\"\nversion = \"2.0.0\"\n"
          "website = \"https://tadah.readthedocs.io\"\n"
          "description = \"Tadah!\"\nlong_description = \"\"\n"
          "examples = [\"tadah --version\"]\n" + more;
@@ -264,7 +264,7 @@ TEST_CASE("Blueprint: loading a blueprint refuses an option whose "
 /* Pins: loading a blueprint (BlueprintParser::buildBlueprintTadah, which
  * getBlueprintTadahRef() applies to the embedded one) refuses a keys table
  * of [TADAH]: tadah alone takes no option but -h and --version. A [TADAH]
- * with its mandatory fields and no keys table loads (version "1.6.0", no
+ * with its mandatory fields and no keys table loads (version "2.0.0", no
  * option); the same with a keys table, [TADAH.keys] INHERIT =
  * ["ALLOWED_KEYS.verbose"] (as [TADAH.keys] INHERIT = ["ALLOWED_KEYS.task"]
  * gave tadah alone its option --task), or [TADAH.keys.verbose] written out,
@@ -279,7 +279,7 @@ TEST_CASE("Blueprint: loading a blueprint refuses a keys table of [TADAH]",
   BlueprintTadah top;
   REQUIRE_NOTHROW(top = BlueprintParser::buildBlueprintTadah(
                       parse_toml(tadah_blueprint(""))));
-  CHECK(top.version == "1.6.0");
+  CHECK(top.version == "2.0.0");
   CHECK(top.blueprintKeys.empty());
   CHECK(top.groups.empty());
   for (const std::string &keys :

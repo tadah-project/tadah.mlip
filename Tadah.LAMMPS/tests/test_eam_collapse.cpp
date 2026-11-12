@@ -235,7 +235,7 @@ void require_well_formed(const TableCertificate& cert,
 }
 
 /* The bcc nearest-neighbour distance at a = 3.5 A, the lattice at which the
- * Tadah! 1.6.0 quickstart in.ml ran the D2_LJ potential of
+ * Tadah! 2.0.0 quickstart in.ml ran the D2_LJ potential of
  * ta_lj_cutdummy.tadah (its own bcc lattice is near 2.9 A). */
 double lj_fixture_bcc_nn() { return 3.5 * std::sqrt(3.0) / 2.0; }
 
@@ -350,7 +350,7 @@ TEST_CASE("pair collapse: the Ta D2_LJ table is certified to rel tol 1e-9 "
     const TableCertificate& c = T.phi_cert;
     require_well_formed(c, T.phi);
 
-    /* The table serves the lattice the 1.6.0 quickstart ran this potential
+    /* The table serves the lattice the 2.0.0 quickstart ran this potential
      * at: its bcc nearest neighbours (3.03) lie well inside the certified
      * range. */
     REQUIRE(c.r_lo < 0.95 * lj_fixture_bcc_nn());

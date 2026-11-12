@@ -1,6 +1,6 @@
 // test_retired_keys_fit.cpp
 //
-// The keys retired in 1.6.0 (EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO,
+// The keys retired in 2.0.0 (EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO,
 // EWEIGHT_TEMP, and UNCERTAINTY, which tadah train 1.0.0 to 1.5.0 wrote
 // into every potential) in the programs that load and fit potentials.
 //

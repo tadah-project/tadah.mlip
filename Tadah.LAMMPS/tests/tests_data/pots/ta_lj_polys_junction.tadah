@@ -1,4 +1,4 @@
-# The D2_LJ potential of ta_lj_cutdummy.tadah (the Tadah! 1.6.0 quickstart
+# The D2_LJ potential of ta_lj_cutdummy.tadah (the Tadah! 2.0.0 quickstart
 # potential) with a Cut_PolyS switch. Cut_PolyS is only C^2 at its inner
 # radius rc - 1 (the third derivative jumps there), and
 # with this cutoff that junction, r = 8.00060436239767, lies at t = 0.95 of

@@ -660,7 +660,7 @@ TEST_CASE("tadah hpo refuses a configuration with retired keys when it "
             const std::string err = run_error(c, target(), check);
             CHECK_THAT(err,
                        Contains("tadah hpo: the configuration has keys "
-                                "retired in Tadah! 1.6.0") &&
+                                "retired in Tadah! 2.0.0") &&
                            Contains("EWEIGHT 1.0 (line 18 of outer.train)") &&
                            Contains("FWEIGHT 100 (line 1 of inner.train; "
                                     "FORCE false here: converted by "
@@ -712,7 +712,7 @@ TEST_CASE("tadah hpo refuses a configuration with a line that changes "
                 INFO(err);
                 CHECK_THAT(err,
                            Contains("tadah hpo: the configuration has a "
-                                    "key retired in Tadah! 1.6.0") &&
+                                    "key retired in Tadah! 2.0.0") &&
                                Contains("EWEIGHT 1.0 (line 18 of "
                                         "outer.train)") &&
                                Contains("The configuration also has a line "

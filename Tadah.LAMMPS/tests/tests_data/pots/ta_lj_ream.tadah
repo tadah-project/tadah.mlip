@@ -1,10 +1,10 @@
 # Ta D2_LJ + DM_REAM fixture for the EAM-collapse certificate tests.
-# phi: the LJ pair term of ta_lj_cutdummy.tadah (the Tadah! 1.6.0 quickstart
+# phi: the LJ pair term of ta_lj_cutdummy.tadah (the Tadah! 2.0.0 quickstart
 # potential), its WATOM 73 folded into the two LJ weights (WATOM is 1 here so
 # the REAM density is not rescaled).
 # rho/F: DM_REAM Blip (basis 0) with the grids of MODELS/tests/test_dm_ream.cpp;
 # the last five weights are the embedding coefficients. RHOFORM SIGNED:
-# the density of every tadah before 1.6.0 (every amplitude is > 0 here).
+# the density of every tadah before 2.0.0 (every amplitude is > 0 here).
 ATOM              Ta
 AMPGRIDMB         0.40 0.25 0.12 0.05
 BIAS              false

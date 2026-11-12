@@ -6,7 +6,7 @@
 # tadah hpo wrote on 2026-10-19 (Tadah.MLIP baf39c6, HPO cf43173, MLIP
 # cc39f99, CORE 24e26fd), whose best was its first evaluation, without its
 # header, its training record and its lines of the keys EWEIGHT, FWEIGHT
-# and SWEIGHT, which Tadah! 1.6.0 retired and no load of a potential reads
+# and SWEIGHT, which Tadah! 2.0.0 retired and no load of a potential reads
 # (sha256 of the lines below: 04390ccb362b60dcb6d2c2fca3a880d6a77f4898609006
 # 334f2c630290765a81). tadah train fitted it: D2_Blip (17 functions, RCUT2B
 # 6.621) + DM_mBlipEnv (11 embedding functions, RCUTMB 5.777, SGRIDMB

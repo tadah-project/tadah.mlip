@@ -2133,7 +2133,7 @@ tadah::core::Context with_terms(tadah::core::Context c,
  * writes it, the DM_PS_SQ case read "(DM_Poly depends on it ...)".
  * Tadah! 1.5.0 ran the first, the second and the fourth to
  * the end on that gradient (RHOFORM and DESCRIPTOR blocks are new in
- * 1.6.0: it ran the first without RHOFORM, and had no third). */
+ * 2.0.0: it ran the first without RHOFORM, and had no third). */
 TEST_CASE("hpo --check: GRAD_STRATEGY ANALYTICAL refuses WATOM when a "
           "descriptor that depends on it does not differentiate it, naming "
           "the descriptor",

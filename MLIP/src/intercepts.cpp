@@ -239,7 +239,7 @@ std::string fixindex_intercept_warning(const tadah::core::Context &ctx,
   const std::string head = "FIXINDEX with BIAS true and " + N +
                            " ATOM species (" + atom_list(ctx) + "): ";
   const std::string before =
-      "Before 1.6.0 BIAS true had one intercept shared by all species";
+      "Before 2.0.0 BIAS true had one intercept shared by all species";
   // the weights the fit gives the function (a kernel's: of the basis it draws)
   std::unique_ptr<DM_Function_Base> hold;
   const tadah::models::Function_Base &f = fit_function(ctx, fn, hold);

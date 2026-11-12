@@ -13,7 +13,7 @@ a sentence about files of another release names the property of the file
 that the program tests, such as a key line it has.
 
 What the release rule finds in the prose (release_names): a number of three
-parts (`1.5.0`, `v1.6.0`, `1.3.0-beta.1`, `1.5.x`), a release series (`1.x`),
+parts (`1.5.0`, `v2.0.0`, `1.3.0-beta.1`, `1.5.x`), a release series (`1.x`),
 and the name of the program or of one of its modules followed by a number of
 two parts or more, with or without the word version or release (`Tadah! 2.0`,
 `Tadah!MLIP 1.6`, `tadah version 1.5`). What it does not find, and a review
@@ -360,7 +360,7 @@ class HelpTextRulesTest(unittest.TestCase):
 class RuleSelfTest(unittest.TestCase):
     def test_prose_outside_literals_is_checked(self):
         text = ('Intro.\n\nYou can run it.\n\n.. code-block:: bash\n\n'
-                '   you --simply\n\n.. versionchanged:: 1.6.0\n\n'
+                '   you --simply\n\n.. versionchanged:: 2.0.0\n\n'
                 '   Previously it differed.\n\nThe ``we`` key is simply '
                 'listed.\n')
         found = violations(prose_lines(text), 'x.rst')
@@ -369,30 +369,30 @@ class RuleSelfTest(unittest.TestCase):
                           'filler wording'])
 
     def test_a_version_note_is_found_at_any_indentation(self):
-        text = ('Intro.\n\n.. versionchanged:: 1.6.0\n   It differed.\n\n'
-                '* item\n\n  .. versionadded:: 1.6.0\n     New.\n\n'
+        text = ('Intro.\n\n.. versionchanged:: 2.0.0\n   It differed.\n\n'
+                '* item\n\n  .. versionadded:: 2.0.0\n     New.\n\n'
                 '``.. versionchanged::`` in a literal is no note.\n\n'
-                '.. deprecated:: 1.6.0\n   A key.\n')
+                '.. deprecated:: 2.0.0\n   A key.\n')
         self.assertEqual(version_notes(text, 'x.rst'), [
-            'x.rst:3: version note: .. versionchanged:: 1.6.0',
-            'x.rst:8: version note: .. versionadded:: 1.6.0',
-            'x.rst:13: version note: .. deprecated:: 1.6.0'])
+            'x.rst:3: version note: .. versionchanged:: 2.0.0',
+            'x.rst:8: version note: .. versionadded:: 2.0.0',
+            'x.rst:13: version note: .. deprecated:: 2.0.0'])
 
     def test_every_kind_of_version_note_is_found(self):
         text = ('.. versionremoved:: 2.0\n   Gone.\n\n'
-                '.. VersionChanged:: 1.6.0\n   It differed.\n\n'
-                '* - .. versionadded:: 1.6.0\n       New.\n\n'
-                '#. .. deprecated:: 1.6.0\n      Old.\n')
+                '.. VersionChanged:: 2.0.0\n   It differed.\n\n'
+                '* - .. versionadded:: 2.0.0\n       New.\n\n'
+                '#. .. deprecated:: 2.0.0\n      Old.\n')
         self.assertEqual([f.split(': ', 2)[2]
                           for f in version_notes(text, 'x.rst')],
                          ['.. versionremoved:: 2.0',
-                          '.. VersionChanged:: 1.6.0',
-                          '* - .. versionadded:: 1.6.0',
-                          '#. .. deprecated:: 1.6.0'])
+                          '.. VersionChanged:: 2.0.0',
+                          '* - .. versionadded:: 2.0.0',
+                          '#. .. deprecated:: 2.0.0'])
 
     def test_a_note_shown_in_a_literal_block_is_no_note(self):
-        text = ('The syntax::\n\n   .. versionchanged:: 1.6.0\n\n'
-                '.. code-block:: rst\n\n   .. deprecated:: 1.6.0\n\nProse.\n')
+        text = ('The syntax::\n\n   .. versionchanged:: 2.0.0\n\n'
+                '.. code-block:: rst\n\n   .. deprecated:: 2.0.0\n\nProse.\n')
         self.assertEqual(version_notes(text, 'x.rst'), [])
 
     def test_a_release_of_tadah_named_in_prose_is_found(self):
@@ -400,12 +400,12 @@ class RuleSelfTest(unittest.TestCase):
                 'Datasets converted before 1.3.0-beta.1 differ, as do\n'
                 'those of 1.0.0 to 1.5.x.\n\n'
                 'It stays readable by later 1.x releases.\n\n'
-                '* - Line of tadah 1.5\n     - The tag v1.6.0.\n\n'
+                '* - Line of tadah 1.5\n     - The tag v2.0.0.\n\n'
                 'The API may change in Tadah! 2.0.\n')
         self.assertEqual([f.split('"')[1]
                           for f in release_names(text, 'x.rst')],
                          ['1.5.0', '1.3.0-beta.1', '1.0.0', '1.5.x', '1.x',
-                          'tadah 1.5', 'v1.6.0', 'Tadah! 2.0'])
+                          'tadah 1.5', 'v2.0.0', 'Tadah! 2.0'])
         self.assertEqual(
             release_names(text, 'x.rst')[0],
             'x.rst:1: names a release: "1.5.0" in: A potential written by '
@@ -418,17 +418,17 @@ class RuleSelfTest(unittest.TestCase):
                 'A value of 6.241509074e-3, 0.5 or 1.0 1.0 1.0, CMake 3.24,\n'
                 'the licence GPL-3.0 and section 2.1 are no release, nor is\n'
                 'the date 11.11.2026.\n\n'
-                'The tag is ``v1.6.0``::\n\n   git clone -b v1.6.0 url\n\n'
-                '.. code-block:: text\n\n   Tadah version  : 1.6.0\n\n'
+                'The tag is ``v2.0.0``::\n\n   git clone -b v2.0.0 url\n\n'
+                '.. code-block:: text\n\n   Tadah version  : 2.0.0\n\n'
                 'The run of ``tadah hpo`` 2 is the second.\n')
         self.assertEqual(release_names(text, 'x.rst'), [])
 
     def test_a_number_after_another_program_is_checked_beyond_its_name(self):
         text = ('Converted from a VASP OUTCAR by 1.5.0.\n\n'
-                'LAMMPS and Tadah! 1.6.0 agree.\n')
+                'LAMMPS and Tadah! 2.0.0 agree.\n')
         self.assertEqual([f.split('"')[1]
                           for f in release_names(text, 'x.rst')],
-                         ['1.5.0', '1.6.0'])
+                         ['1.5.0', '2.0.0'])
 
     def test_a_release_of_a_listed_program_is_none_also_over_a_line_end(self):
         text = ('The build needs CMake 3.24.1 and Python 3.11.4, and CMake\n'
@@ -478,7 +478,7 @@ class RuleSelfTest(unittest.TestCase):
         self.assertEqual([f.split(': ')[:2] for f in found],
                          [['x.rst:2', 'addresses the reader']])
         text = ('The release is cloned with ``git clone -b\n'
-                'v1.6.0 url`` and :ref:`a label\n<we_1.5.0>`, then ``you\n'
+                'v2.0.0 url`` and :ref:`a label\n<we_1.5.0>`, then ``you\n'
                 'simply --run`` it.\n')
         self.assertEqual(release_names(text, 'x.rst'), [])
         self.assertEqual(violations(prose_lines(text), 'x.rst'), [])
@@ -520,7 +520,7 @@ class RuleSelfTest(unittest.TestCase):
                          ['addresses the reader', 'filler wording'])
 
     def test_the_body_of_a_deprecation_note_is_prose(self):
-        text = '.. deprecated:: 1.6.0\n   Previously you used it.\n'
+        text = '.. deprecated:: 2.0.0\n   Previously you used it.\n'
         found = violations(prose_lines(text), 'x.rst')
         self.assertEqual([f.split(': ')[1] for f in found],
                          ['addresses the reader', 'tells history'])

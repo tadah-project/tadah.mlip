@@ -586,7 +586,7 @@ is an error (``WATOM entry 1 ('0x1p-1') is not a decimal number: ...``).
 refused with::
 
    DM_REAM: RHOFORM is required: SIGNED (rho = W f_c sum a_n psi_n with signed
-   a_n: the density before tadah 1.6.0, which a RHOFORM SIGNED line declares
+   a_n: the density before tadah 2.0.0, which a RHOFORM SIGNED line declares
    for an existing potential, with an EMBF0 FREE line for its embedding
    reference), NONNEG (the same with every a_n >= 0: rho >= 0 by
    construction) or MONOTONE (rho = W f_c sum a_n S_n(r), S_n the integrated

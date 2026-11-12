@@ -91,7 +91,7 @@ tadah_version_reader_test(tadah_version_reader_no_core no_core
 # 3. Removed build options (cmake-tools)
 # ------------------------------------------------------------------
 # cmake-tools stops the configure step when a removed option is ON
-# (TADAH_BUILD_MPI, the legacy MPI training build removed in 1.6.0), and
+# (TADAH_BUILD_MPI, the legacy MPI training build removed in 2.0.0), and
 # accepts OFF, as set by older presets, and an unset option. Each case
 # configures removed_options/project, which runs this build's cmake-tools.
 foreach(_case on preset_on off preset_off unset)

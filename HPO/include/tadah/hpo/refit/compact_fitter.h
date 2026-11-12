@@ -153,7 +153,7 @@ struct CompactConfig {
   double sbplx_ftol = 1e-13;   ///< local LN_SBPLX): XTOL_REL, FTOL_REL
   /** EXPLORE INNER DLIB_LBFGS: FTOL_ABS, the absolute change of the
    *  objective dlib's L-BFGS stops at (objective_delta_stop_strategy). It
-   *  took sbplx_ftol, the INNER FTOL_REL, before 1.6.0; the default is
+   *  took sbplx_ftol, the INNER FTOL_REL, before 2.0.0; the default is
    *  sbplx_ftol's. */
   double dlib_inner_ftol_abs = 1e-13;
   int mlsl_maxeval = 60000;    ///< EXPLORE seed MLSL|DIRECT|CRS2: evaluations
@@ -167,7 +167,7 @@ struct CompactConfig {
                                ///< FTOL_REL (Ceres, NLOPT_LBFGS)
   double ceres_gtol = 1e-14;   ///< REFINE GTOL (Ceres)
   /** REFINE DLIB_LBFGS: FTOL_ABS (as dlib_inner_ftol_abs). It took
-   *  ceres_ftol, the REFINE FTOL_REL, before 1.6.0; the default is
+   *  ceres_ftol, the REFINE FTOL_REL, before 2.0.0; the default is
    *  ceres_ftol's. */
   double dlib_refine_ftol_abs = 1e-15;
   double target = 1.0;         ///< stop when metric <= target
@@ -580,7 +580,7 @@ HeldPasses run_held_passes(int max_passes, FuseBudget &budget,
  *  @p cfg with FUSE's optimiser and Ceres settings in REFINE's places,
  *  refine_algo = joint_algo, ceres_max_iter = joint_max_iter, ceres_ftol =
  *  joint_ftol and ceres_gtol = joint_gtol. Each function's refine gets the
- *  whole FUSE MAXEVAL (Ceres iterations). Before 1.6.0 the curve FUSE
+ *  whole FUSE MAXEVAL (Ceres iterations). Before 2.0.0 the curve FUSE
  *  refine ran with REFINE's ceres_max_iter, ceres_ftol and ceres_gtol. */
 CompactConfig fuse_curve_config(const CompactConfig &cfg);
 

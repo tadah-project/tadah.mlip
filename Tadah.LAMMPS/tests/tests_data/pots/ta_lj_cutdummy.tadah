@@ -1,10 +1,10 @@
 # Ta D2_LJ, Cut_Dummy at RCUT2B 6.5, M_KRR Kern_Linear, fitted to the
 # energies of the docs quickstart dataset: the Quick Start potential that
-# Tadah! 1.6.0 shipped (docs/source/quickstart/pot.tadah of that release;
+# Tadah! 2.0.0 shipped (docs/source/quickstart/pot.tadah of that release;
 # the quickstart now ships a D2_Blip + DM_mBlipEnv model). A linear,
 # single-species, pure two-body potential: it takes the pair-collapse fast path.
 # The lines of the keys EWEIGHT, FWEIGHT, SWEIGHT and UNCERTAINTY, which
-# Tadah! 1.6.0 retired and no load of a potential reads, are left out.
+# Tadah! 2.0.0 retired and no load of a potential reads, are left out.
 ATOM     Ta
 BIAS     false
 DIMER     false     0     false

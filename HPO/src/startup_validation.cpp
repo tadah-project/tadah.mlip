@@ -957,7 +957,7 @@ void validate_hpo_setup(core::Context &train_ctx, const HPOTargets &trg,
   /* --- FIXINDEX with BIAS true and two or more species ------------------
    * Which weights are the intercepts is the model function's (for a
    * linear model weights 1..N, and the descriptor weights start at index
-   * N + 1; they started at 2 before 1.6.0, when BIAS true had one intercept
+   * N + 1; they started at 2 before 2.0.0, when BIAS true had one intercept
    * shared by all species): built as an evaluation builds it, after
    * probe_model() above checked that it builds. */
   if (train_ctx.has_stored("FIXINDEX") &&

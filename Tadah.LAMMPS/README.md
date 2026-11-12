@@ -1,5 +1,5 @@
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
-[![version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/tadah-project/tadah.lammps/tags)
+[![version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/tadah-project/tadah.lammps/tags)
 
 # ML‑TADAH for LAMMPS (Tadah.LAMMPS)
 
@@ -25,11 +25,11 @@ https://docs.lammps.org/Build_cmake.html
 
 ### Step 1 — Cloning Tadah!
 
-Tadah.LAMMPS is a directory of the Tadah! repository and is built from inside it, with the modules it needs (Tadah.MD, Tadah.MODELS and Tadah.CORE) beside it. The repository is cloned anywhere, at `v1-dev` (the development line) or at a release tag such as `v1.6.0`:
+Tadah.LAMMPS is a directory of the Tadah! repository and is built from inside it, with the modules it needs (Tadah.MD, Tadah.MODELS and Tadah.CORE) beside it. The repository is cloned anywhere, at `v1-dev` (the development line) or at a release tag such as `v2.0.0`:
 
 ```bash
 git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git /path/to/tadah
-# or: git clone -b v1.6.0 ...
+# or: git clone -b v2.0.0 ...
 ```
 
 A plain `git clone` checks out the repository's default branch, which need not be `v1-dev`. In the steps below `/path/to/Tadah.LAMMPS` stands for `/path/to/tadah/Tadah.LAMMPS`.

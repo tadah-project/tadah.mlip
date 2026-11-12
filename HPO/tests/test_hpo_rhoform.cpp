@@ -392,7 +392,7 @@ TEST_CASE("RHOFORM: WARM seed form vs the run's", "[hpo][rhoform][warm]") {
           CHECK_THAT(e, Catch::Contains(c.what) &&
                             Catch::Contains("this run evaluates RHOFORM SIGNED") &&
                             Catch::Contains("a potential written before tadah "
-                                            "1.6.0 has a SIGNED density and a "
+                                            "2.0.0 has a SIGNED density and a "
                                             "FREE embedding reference, which "
                                             "RHOFORM SIGNED and EMBF0 FREE "
                                             "lines added to it declare"));
@@ -407,7 +407,7 @@ TEST_CASE("RHOFORM: WARM seed form vs the run's", "[hpo][rhoform][warm]") {
                       warm_target(seed.path, "OPTIM AMPGRIDMB (1) 0 1\n"));
     CHECK_THAT(e, Catch::Contains("does not declare RHOFORM") &&
                       Catch::Contains("this run evaluates RHOFORM NONNEG") &&
-                      Catch::Contains("a potential written before tadah 1.6.0 "
+                      Catch::Contains("a potential written before tadah 2.0.0 "
                                       "has a SIGNED density and cannot seed a "
                                       "NONNEG density; tadah refit with "
                                       "RHOFORM NONNEG refits it"));

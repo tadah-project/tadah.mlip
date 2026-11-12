@@ -2962,7 +2962,7 @@ TEST_CASE("Subcommand: train warns of FIXINDEX with BIAS true naming the "
 }
 
 /* Pins: a two-species BIAS potential with one intercept column shared by
- * the species (1 + 3 WEIGHTS, as tadah trained it before 1.6.0):
+ * the species (1 + 3 WEIGHTS, as tadah trained it before 2.0.0):
  * `tadah predict` exits 1 without writing energy.pred, naming WEIGHTS,
  * DSIZE, BIAS and ATOM ("has 4 WEIGHTS", "5 components (DSIZE)") and saying
  * to retrain; `tadah train -c` with the potential itself (plus a DBFILE)
@@ -3230,7 +3230,7 @@ TEST_CASE("Subcommand: train -c refuses the UNCERTAINTY line of a potential "
  * the Nb-Ta cells, 5 WEIGHTS) predicts the same energies whatever its NMEAN
  * and NSTDEV hold: a linear model predicts with its converted weights. The
  * potential with NMEAN and NSTDEV of 10 values, the trained 5 preceded by 5
- * others (what `tadah train -c <potential>` wrote before 1.6.0: the
+ * others (what `tadah train -c <potential>` wrote before 2.0.0: the
  * potential's values, then the new fit's), exits 0 and writes an
  * energy.pred identical to the trained potential's, as it did before the
  * per-species fix.
@@ -6954,7 +6954,7 @@ TEST_CASE("Subcommand: a second hpo run in the process evaluates its own "
  * properties pairwise --error are retired options, tadah train
  * --uncertainty the option of the retired key UNCERTAINTY, and ERROR (the
  * key of --error) and WCOV and WNOISE, which a development build of
- * Tadah! 1.6.0 wrote for an OALGO 3 fit, retired keys. The predictions and
+ * Tadah! 2.0.0 wrote for an OALGO 3 fit, retired keys. The predictions and
  * the fit are unaffected. */
 
 namespace {
@@ -6984,8 +6984,8 @@ std::string two_dimers() {
  * fourth column and error.pred; the curve's error column); then the
  * reasons said that they gave standard deviations, too narrow for many
  * structures (what a development build gave, not a release); then that
- * uncertainty output was not part of Tadah! 1.6.0, replaced by "nothing in
- * Tadah! 1.6.0". */
+ * uncertainty output was not part of Tadah! 2.0.0, replaced by "nothing in
+ * Tadah! 2.0.0". */
 TEST_CASE("Subcommand: predict --error and properties pairwise --error are "
           "refused with the reason",
           "[TadahCLI][predict][uncertainty]") {
@@ -7207,7 +7207,7 @@ TEST_CASE("Subcommand: a potential with a QUANTITY line predicts, and train "
  * Before the fix: each explained a working option or key (ERROR the key
  * of a configuration); then the reasons said that the error bars were too
  * narrow for many structures; then that uncertainty output was not part
- * of Tadah! 1.6.0, replaced by "nothing in Tadah! 1.6.0". */
+ * of Tadah! 2.0.0, replaced by "nothing in Tadah! 2.0.0". */
 TEST_CASE("Subcommand: explain gives why --error, --uncertainty, ERROR, "
           "WCOV and WNOISE are retired",
           "[TadahCLI][explain][uncertainty]") {
@@ -7227,7 +7227,7 @@ TEST_CASE("Subcommand: explain gives why --error, --uncertainty, ERROR, "
 }
 
 /* Pins: a potential with the WCOV and WNOISE lines a development build of
- * Tadah! 1.6.0 wrote for an OALGO 3 fit (the [weight0] pair potential with
+ * Tadah! 2.0.0 wrote for an OALGO 3 fit (the [weight0] pair potential with
  * OALGO 3 on line 18, WCOV of N = 4 on line 19 and WNOISE E 1 F 1 S 1 on
  * line 20) predicts what the potential without them predicts (exit 0,
  * energy.pred the same), with one notice "Retired keys WCOV (line 19 of
@@ -8307,7 +8307,7 @@ const char* const kDatasetKeys[] = {"EFILTER",        "FFILTER",
                                     "ESHIFT_ATOM",    "ESHIFT_DBATOM",
                                     "ZERO_COM_FORCE", "WDBFILE"};
 
-/* The keys retired in Tadah! 1.6.0: no potential tadah writes has a line of
+/* The keys retired in Tadah! 2.0.0: no potential tadah writes has a line of
  * them. */
 const char* const kRetiredKeys[] = {"EWEIGHT", "FWEIGHT", "SWEIGHT",
                                     "WDBFILE_AUTO", "EWEIGHT_TEMP"};
@@ -11757,9 +11757,9 @@ TEST_CASE("Subcommand: analysis suggest_bounds of a configuration of a "
  * The potentials published with the documentation (docs/source/mlips:
  * Tadah.Kr1, Tadah.Kr2 and tadah.n2; ta-dah.kr1 and ta-dah.kr2 are in the
  * file format of the discontinued Ta-dah!, which no Tadah! reads) were fitted
- * by Tadah! before 1.6.0. Their key lines are those of the model: the lines
+ * by Tadah! before 2.0.0. Their key lines are those of the model: the lines
  * of the keys that weighted their fit (EWEIGHT, FWEIGHT, SWEIGHT, retired in
- * 1.6.0) and of the run that wrote them (VERBOSE, NUMERIC) are in their
+ * 2.0.0) and of the run that wrote them (VERBOSE, NUMERIC) are in their
  * training record, the comment block above the key lines that no loader
  * reads. A potential with retired keys as key lines (a potential of an
  * earlier version) keeps its tests on the fixtures of Tadah! 1.5.0. */

@@ -82,7 +82,7 @@ the quote are lines of the source in the same order, consecutive between
 two ``...`` lines; the quote may start and end anywhere in the source. A
 line matches when its text is that of the source line and each number (a
 run of digits with an optional sign, decimal point and exponent, not part
-of a word: ``RCUT2B`` and ``1.6.0`` are text) is that of the source line.
+of a word: ``RCUT2B`` and ``2.0.0`` are text) is that of the source line.
 An integer (no decimal point, no exponent) is the same text. Another
 number is written as the source writes it (the same digits after the
 point, an exponent of as many digits, a leading '+' beside a sign) and its

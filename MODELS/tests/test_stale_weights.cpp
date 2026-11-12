@@ -1,7 +1,7 @@
 // A training configuration may carry the WEIGHTS of a potential: `tadah
 // train -c pot.tadah` retrains a potential from its own file (the remedy
 // for a potential whose weights no longer fit its descriptor, e.g. a
-// multi-species BIAS potential trained before 1.6.0). The fit replaces
+// multi-species BIAS potential trained before 2.0.0). The fit replaces
 // those weights; they do not make a model "trained".
 
 #include "catch2/catch.hpp"

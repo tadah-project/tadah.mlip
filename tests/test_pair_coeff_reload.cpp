@@ -146,7 +146,7 @@ const char* const kLjTaNb =
 
 /* E: the descriptors of A, M_BLR BF_Polynomial2 (as in Tadah.LAMMPS, without
  * the lines of the keys EWEIGHT, FWEIGHT, SWEIGHT and WDBFILE_AUTO, which
- * Tadah! 1.6.0 retired and no load of a potential reads). */
+ * Tadah! 2.0.0 retired and no load of a potential reads). */
 const char* const kPoly2Ta =
     "ATOM           Ta\n"
     "BIAS           false\n"
@@ -201,7 +201,7 @@ const char* const kPoly2Ta =
  * 5 A, M_BLR BF_Linear, FORCE true, OALGO 3, EWEIGHT 1.0 and FWEIGHT 100, on
  * three 54-atom bcc Ta cells; MLIP's tests_data/potentials_1_5 has the same
  * file): its EWEIGHT, FWEIGHT, SWEIGHT, UNCERTAINTY and WDBFILE_AUTO lines,
- * retired in Tadah! 1.6.0, are lines 8, 10, 23, 25 and 27. */
+ * retired in Tadah! 2.0.0, are lines 8, 10, 23, 25 and 27. */
 const char* const kTa150 =
     "ATOM              Ta\n"
     "BIAS              false\n"
@@ -674,7 +674,7 @@ TEST_CASE("pair_style tadah: a driver's load() is adopted by EXTERN only",
  * its run 0 wrote through them: SIGSEGV in compute_2b_mb_half (A) and in
  * compute_2b_mb_full (E). With that rule put back in compute_2b_mb_full
  * alone, every other case of this file passes, and the second E object, and
- * the second E file, die with SIGSEGV. (1.6.0 did not read the second
+ * the second E file, die with SIGSEGV. (2.0.0 did not read the second
  * file: the files E, A, E gave E's energy three times.) */
 TEST_CASE("pair_style tadah: a second potential object in the same pair "
           "style gets its own descriptor arrays",
@@ -872,7 +872,7 @@ TEST_CASE("pair_style tadah: a pair_coeff whose file does not load leaves "
  * elements, no element and no file (after the NULL line LAMMPS refused
  * run 0, as it does now); after the EXTERN line the pair style
  * kept the driver's B, run 0 gave B's energy (-223.940 eV) and the next
- * pair_coeff * * EXTERN Ta adopted B again. (1.6.0 also kept A at the
+ * pair_coeff * * EXTERN Ta adopted B again. (2.0.0 also kept A at the
  * pair_coeff * * B Ta after each line: the first case of this file.) */
 TEST_CASE("pair_style tadah: a pair_coeff refused before its file is read "
           "leaves no potential",

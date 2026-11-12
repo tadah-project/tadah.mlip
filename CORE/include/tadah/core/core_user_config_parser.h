@@ -183,7 +183,7 @@ public:
    * per key and process (report_ignored_key_once(): "WARNING: Key ANALYTICS
    * is ignored: ANALYTICS true on line 40 of pot.tadah is the option
    * --analytics (-A) of tadah predict, not a key of a potential; the line is
-   * not read"), so that a potential written before 1.6.0, whose training
+   * not read"), so that a potential written before 2.0.0, whose training
    * configuration held such a key, still loads.
    *
    * With a command, a key of the command's table takes the number of

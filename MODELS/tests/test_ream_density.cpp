@@ -238,7 +238,7 @@ TEST_CASE("ReamDensity::linspace is numpy.linspace, and scan_grid argument "
 
 TEST_CASE("ReamDensity::scan_grid is bitwise value() for a non-finite "
           "SIGNED amplitude too", "[ream][rhoform][density]") {
-  // SIGNED accepts any amplitude, as tadah did before 1.6.0. An infinite a_n makes
+  // SIGNED accepts any amplitude, as tadah did before 2.0.0. An infinite a_n makes
   // its term a_n * 0 = NaN outside the bump as well, so the scan must not
   // skip it there (rho = 0.082 was found where value() is NaN).
   ReamDensity d;
@@ -522,7 +522,7 @@ TEST_CASE_METHOD(DensityFixture, "DM_REAM: density form validation messages",
                             Contains("RHOFORM " + fc.form) &&
                                 Contains("every CGRIDMB entry to be finite; "
                                          "entry 2 is "));
-        // SIGNED is unchanged: tadah accepted it before 1.6.0
+        // SIGNED is unchanged: tadah accepted it before 2.0.0
         REQUIRE_NOTHROW(DM_REAM(ream_ctx(L, "SIGNED", "Cut_Cos")));
       }
     }
@@ -579,7 +579,7 @@ TEST_CASE_METHOD(DensityFixture, "DM_REAM: density form validation messages",
     REQUIRE_THROWS_WITH(DM_REAM(ream_ctx(L, "MONOTONE", "Cut_Cos")),
                         Contains("every SGRIDMB entry to be finite and > 0") &&
                             Contains("entry 5 is -2.5"));
-    REQUIRE_NOTHROW(DM_REAM(ream_ctx(L, "SIGNED", "Cut_Cos")));  // as before 1.6.0
+    REQUIRE_NOTHROW(DM_REAM(ream_ctx(L, "SIGNED", "Cut_Cos")));  // as before 2.0.0
     L.s[4] = std::numeric_limits<double>::infinity();
     REQUIRE_THROWS_WITH(DM_REAM(ream_ctx(L, "NONNEG", "Cut_Cos")),
                         Contains("for the Gaussian basis; entry 5 is inf"));
@@ -677,7 +677,7 @@ TEST_CASE_METHOD(DensityFixture, "rhoform: names, parse and the key contract",
 
   CHECK(rhoform_absent_message() ==
         "DM_REAM: RHOFORM is required: SIGNED (rho = W f_c sum a_n psi_n with "
-        "signed a_n: the density before tadah 1.6.0, which a RHOFORM SIGNED "
+        "signed a_n: the density before tadah 2.0.0, which a RHOFORM SIGNED "
         "line declares for an existing potential, with an EMBF0 FREE line for "
         "its embedding reference), NONNEG (the same with every a_n >= 0: rho "
         ">= 0 by construction) or MONOTONE (rho = W f_c sum a_n S_n(r), S_n "

@@ -13,7 +13,7 @@ Verified against nlopt 2.10 source (phase-0 investigation):
 | DLIB:BFGS | n/a (objective_delta / gradient norm) | n/a |
 | ANNEAL family | rejected | rejected |
 
-The row read `NEWUOA*`, which covered NEWUOA_BOUND too; HPO refuses NEWUOA_BOUND since 1.6.0
+The row read `NEWUOA*`, which covered NEWUOA_BOUND too; HPO refuses NEWUOA_BOUND since 2.0.0
 (`nlopt_newuoa_bound_stall.md`).
 
 Under `OPTIM_SCALE AUTO` (unit box) XTOL_ABS is a fraction of every width and the |x|-relative tests are

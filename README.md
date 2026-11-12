@@ -1,6 +1,6 @@
 [![docs](https://readthedocs.org/projects/tadah/badge/?version=v1-dev)](https://tadah.readthedocs.io/v1-dev/)
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
-[![version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/tadah-project/tadah.mlip/tags)
+[![version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/tadah-project/tadah.mlip/tags)
 
 # Tadah!MLIP
 
@@ -30,7 +30,7 @@ companion libraries.
 ```bash
 # 1. Clone the development line, v1-dev, and configure with the bundled
 #    defaults preset. For a release, clone its tag instead
-#    (git clone -b v1.6.0 ...).
+#    (git clone -b v2.0.0 ...).
 git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git
 cd tadah.mlip
 cmake -S . -B build -C cmake/presets/tadah-linux-defaults.cmake \

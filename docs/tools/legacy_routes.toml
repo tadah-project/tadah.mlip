@@ -5,7 +5,7 @@
 # alone. Paths start at the HTML output root; fragments are rendered HTML
 # ids.
 # The hpo.html anchors include every id of the page in these releases and
-# the ids it had on the development branches before 1.6.0; hpo_examples.html
+# the ids it had on the development branches before 2.0.0; hpo_examples.html
 # has the ids of 1.3.0-beta.1, and optimizer.html, anneal.html,
 # anneal_pt.html and asa.html those of 1.5.0. cli/cli_auto_gen.html, the
 # command reference that cli/cli.html includes, was also built as a page of

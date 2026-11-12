@@ -60,7 +60,7 @@ TEST_CASE_METHOD(PTFixture,
     // SIGNED names the release that introduced the forms
     if (f == RhoForm::Signed)
       CHECK(olog.find("with signed amplitudes (the density before tadah "
-                      "1.6.0)") != std::string::npos);
+                      "2.0.0)") != std::string::npos);
     CHECK(olog.find("self-test (crystal E-V") != std::string::npos);
 
     // The joint refinement optimises the radial bumps in their outer support

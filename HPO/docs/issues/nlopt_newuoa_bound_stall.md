@@ -1,6 +1,6 @@
 # NLopt LN_NEWUOA_BOUND stalls for 10-60 s per step once its model is not finite (refused)
 
-**Status:** refused since 1.6.0. `tadah hpo` stops before it loads any data, naming the phase and
+**Status:** refused since 2.0.0. `tadah hpo` stops before it loads any data, naming the phase and
 `NLOPT:LN_BOBYQA` (until 2026-10-12 also `NLOPT:LN_NEWUOA` where the search may leave the box; that one is
 refused now too, `nlopt_newuoa_ignores_bounds.md`): at `ENDOPTIMIZER` for the
 `STRATEGY`-level optimiser (`PLAIN`, `MULTISTART` or the `PRESTAGE` refinement, whether the `STRATEGY` block,
@@ -114,7 +114,7 @@ jobs, so the seconds are indicative):
 - `tadah hpo`, the two OPTIM dimensions above, a smooth loss: Ctrl-C at about evaluation 70 of a run that
   otherwise takes 0.9 s was honoured 10.2 s later (`LN_BOBYQA`: 0.007 s);
 - `tadah hpo` on a flat loss (an energy-only fit searching `FWEIGHT` and `SWEIGHT`, two parameters it did not
-  depend on; both are retired keys of Tadah! 1.6.0, which refuses such a search) with `MAXEVAL 400` and no
+  depend on; both are retired keys of Tadah! 2.0.0, which refuses such a search) with `MAXEVAL 400` and no
   `XTOL`: 300 evaluations in 5 s, then 20 evaluations in 590 s; `MAXTIME 20` ended after 31 s, and
   `MAXTIME 15` after 40.5 s;
 - a survey of 720 bounded cases without `XTOL` (12 objectives, n = 2-6): 57 stalled with

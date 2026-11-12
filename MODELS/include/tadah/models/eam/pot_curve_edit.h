@@ -206,7 +206,7 @@ bool normalize_knot_rcut(core::Context &ctx, const std::string &who,
  *  (every fit of such a line derives it, so its coefficients were fitted
  *  with the derived value), and the stated cutoffs of a D2_mJoin or
  *  DM_mJoin line are kept: its coefficients were fitted with them (every
- *  fit before Tadah! 1.6.0 kept them; a fit now writes the derived ones),
+ *  fit before Tadah! 2.0.0 kept them; a fit now writes the derived ones),
  *  and pair_style tadah reads them. Logs as the two-argument form; returns
  *  true if anything changed. */
 bool normalize_potential_knot_rcut(core::Context &ctx, const std::string &who);

@@ -10,7 +10,7 @@
 //    UNCERTAINTY, refused with the reason;
 //  - a fit writes no WCOV or WNOISE, and refuses a configuration with
 //    WCOV, WNOISE, UNCERTAINTY or ERROR lines (a potential of a development
-//    build of Tadah! 1.6.0, which wrote WCOV and WNOISE for an OALGO 3 fit,
+//    build of Tadah! 2.0.0, which wrote WCOV and WNOISE for an OALGO 3 fit,
 //    used as the configuration of a retrain), with the reason and the
 //    conversion: deleting the lines.
 
@@ -165,7 +165,7 @@ std::string fit(const std::vector<std::string> &lines, Context &pot) {
  * Before the fix: each option was taken; then the reasons said that the
  * options gave standard deviations, too narrow for many structures (what
  * a development build gave, not a release); then that uncertainty output
- * was not part of Tadah! 1.6.0, replaced by "nothing in Tadah! 1.6.0". */
+ * was not part of Tadah! 2.0.0, replaced by "nothing in Tadah! 2.0.0". */
 TEST_CASE("tadah predict, properties pairwise and train refuse --error and "
           "--uncertainty",
           "[uncertainty][retired][cli]") {
@@ -235,7 +235,7 @@ TEST_CASE("An OALGO 3 fit writes no WCOV or WNOISE",
 
 /* Pins: a fit (Trainer, as the C++ API trains) refuses a configuration
  * with the WCOV and WNOISE lines of a potential of a development build of
- * Tadah! 1.6.0, naming each line (WCOV by its first values), marked as
+ * Tadah! 2.0.0, naming each line (WCOV by its first values), marked as
  * converted by deleting it, with the reason and the conversion of each;
  * and one with an UNCERTAINTY line (as tadah train 1.0.0 to 1.5.0 wrote
  * into every potential) or an ERROR line (the key of --error of tadah

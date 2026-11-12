@@ -2131,7 +2131,7 @@ TEST_CASE("startup validation: NLOPT:LN_NEWUOA_BOUND is refused at the line "
           "[startup_validation][strategy][backend][refused]")
 {
     /* Pins: the parser refuses NLOPT:LN_NEWUOA_BOUND at the lines where the
-     * 1.6.0 rule checks a block's optimiser: ENDOPTIMIZER for the
+     * 2.0.0 rule checks a block's optimiser: ENDOPTIMIZER for the
      * STRATEGY-level optimiser, whether the STRATEGY block, a REFINE block
      * or the OPTIMIZER block itself names it (PLAIN, the short form,
      * MULTISTART, the PRESTAGE refinement; ENDSTRATEGY and ENDREFINE check

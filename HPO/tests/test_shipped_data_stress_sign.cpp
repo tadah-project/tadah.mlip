@@ -27,7 +27,7 @@
 // spin-polarised Ta atom). The reference values below were computed with
 // Python from those OUTCARs, outside the code under test.
 //
-// Before the fix both files hold what the 1.0.0-1.6.0 OUTCAR reader stored:
+// Before the fix both files hold what the 1.0.0-2.0.0 OUTCAR reader stored:
 // VASP's stress as printed ("in kB" times 6.241509074e-4, positive under
 // compression, i.e. -sigma) and the energy without entropy E_wo instead of F.
 

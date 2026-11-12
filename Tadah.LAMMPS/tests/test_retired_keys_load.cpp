@@ -1,7 +1,7 @@
 // pair_style tadah (tadah::LammpsTadah, the object pair_coeff builds from
-// the potential file) and the keys Tadah! 1.6.0 retired: EWEIGHT, FWEIGHT,
+// the potential file) and the keys Tadah! 2.0.0 retired: EWEIGHT, FWEIGHT,
 // SWEIGHT, WDBFILE_AUTO and EWEIGHT_TEMP weighted the training data of a fit
-// before 1.6.0, and UNCERTAINTY asked tadah train for weights.tadah: a
+// before 2.0.0, and UNCERTAINTY asked tadah train for weights.tadah: a
 // potential that tadah train or tadah hpo of 1.0.0 to 1.5.0 wrote has
 // EWEIGHT, FWEIGHT and SWEIGHT lines, from 1.3.0 a WDBFILE_AUTO line, and
 // a potential of tadah train an UNCERTAINTY line. Such a potential loads: the keys change nothing a

@@ -23,13 +23,13 @@ if(NOT DEFINED _TADAH_COMPILE_OPTS_INCLUDED)
 
   # ---- Removed options -------------------------------------------
   # TADAH_BUILD_MPI selected the legacy ScaLAPACK training build
-  # (`tadah_mpi`), removed in 1.6.0. ON is an error rather than being
+  # (`tadah_mpi`), removed in 2.0.0. ON is an error rather than being
   # ignored, so a stale cache or preset cannot silently give a serial
   # build; OFF (as in older presets) is accepted.
   if(TADAH_BUILD_MPI)
     message(FATAL_ERROR
       "TADAH_BUILD_MPI=ON: the legacy MPI training build (tadah_mpi, "
-      "ScaLAPACK) was removed in Tadah 1.6.0. Training runs in one process "
+      "ScaLAPACK) was removed in Tadah 2.0.0. Training runs in one process "
       "(OpenMP threads: TADAH_ENABLE_OPENMP). For MPI-parallel "
       "hyperparameter optimisation (TADAH:ANNEAL_PT / ANNEAL_PA replicas "
       "over MPI ranks) configure with -DTADAH_HPO_MPI=ON instead; it needs "

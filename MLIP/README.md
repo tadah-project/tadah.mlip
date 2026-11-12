@@ -1,5 +1,5 @@
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
-[![version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/tadah-project/mlip/tags)
+[![version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/tadah-project/mlip/tags)
 
 # MLIP (engine library)
 

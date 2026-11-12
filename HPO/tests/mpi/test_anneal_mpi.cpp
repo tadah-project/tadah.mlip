@@ -232,7 +232,7 @@ void require_all(bool condition, const std::string& message, int rank)
 /* Every rank records why the run ended itself (HPOLog::set_status, after
  * the collective stop decision): each rank writes its own journal
  * (hpo_run.log.r<rank>) and its own trailer, so each has the status, and
- * the same one. Before 1.6.0's per-reason statuses the annealers recorded
+ * the same one. Before 2.0.0's per-reason statuses the annealers recorded
  * none (the trailer said COMPLETED). */
 void require_status_on_every_rank(const std::string& expected,
                                   const std::string& what, int rank)

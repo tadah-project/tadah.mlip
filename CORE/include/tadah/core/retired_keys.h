@@ -42,7 +42,7 @@ std::string retired_keys_notice(const std::vector<RetiredKeyLine> &lines);
 
 /** The refusal of a fit whose configuration records the retired lines
  *  @p lines (at least one): "<who>: the configuration has keys retired in
- *  Tadah! 1.6.0, and a fit refuses them: EWEIGHT 1.0 (line 2 of
+ *  Tadah! 2.0.0, and a fit refuses them: EWEIGHT 1.0 (line 2 of
  *  old.tadah), FWEIGHT 100 (line 3 of old.tadah). EWEIGHT: <conversion>
  *  FWEIGHT: <conversion> ...", each line by its key and values (a line of
  *  more than six values by its first three: "WCOV 28 1.2e-05 3e-07 and 782

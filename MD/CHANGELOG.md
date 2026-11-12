@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [1.6.0] — unreleased
+## [2.0.0] — unreleased
 
 ### Added
 - Tests: `tadah.md_headers` (`ctest -L headers`, cmake-tools' `tadah_add_header_check`) compiles every header of `include/` on its own and twice in a row, with what a user of `tadah.md` gets. Every MD header passes.
@@ -13,7 +13,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - **The sources are published at <https://github.com/tadah-project>.** Bugs and feature requests go to the issue tracker of the umbrella project, `tadah.mlip`, and security issues to its private vulnerability reporting (`SECURITY.md`). The README carries no CI badges.
-- Framework version `1.6.0`, read from CORE's `blueprint/blueprint_tadah.toml` after the Tadah dependencies are fetched, so the module reports the right version in every layout (sibling checkout or FetchContent). A missing blueprint is now a configure error instead of a silent `0.0.0`.
+- Framework version `2.0.0`, read from CORE's `blueprint/blueprint_tadah.toml` after the Tadah dependencies are fetched, so the module reports the right version in every layout (sibling checkout or FetchContent). A missing blueprint is now a configure error instead of a silent `0.0.0`.
 - Tests take Catch2 and its test discovery from cmake-tools (`tadah_setup_tests()`, `include(Catch)`); the vendored `tests/catch2/catch.hpp`, `tests/Catch.cmake` and `tests/CatchAddTests.cmake` are removed. Every discovered CTest entry now selects exactly its own test case and passes `--warn NoTests`, so an entry that matches no test case fails instead of passing. New test sources are picked up without a manual re-configure (`CONFIGURE_DEPENDS`).
 - cmake-tools is fetched at `v1-dev` instead of `main`.
 - **The refusal of an in-source build states the rule it checks and gives an example**: `In-source builds are not allowed. The build directory must differ from the source directory (for example: cmake -S . -B build).` (1.5.0: `... Create a separate build directory and run CMake from there.`).

@@ -8,7 +8,7 @@
 // fit the descriptor of its configuration, before anything is predicted:
 // the dot products of the predictors run over the weights, so a potential
 // with weights for another descriptor layout predicted silently wrong
-// energies and forces (a potential trained by tadah before 1.6.0 with
+// energies and forces (a potential trained by tadah before 2.0.0 with
 // BIAS true and two or more species has one intercept column shared by all
 // species, while pair_style tadah builds one per species). It is the one
 // check of a potential's fit: tadah predict (MLIP) and pair_style tadah
@@ -144,7 +144,7 @@ TEST_CASE("require_weights_fit accepts weights that fit the descriptor",
 // Pins: require_weights_fit refuses, with std::runtime_error naming
 // WEIGHTS, DSIZE, BIAS and ATOM:
 //   - BF_Linear, ATOM Nb Ta, BIAS true, DSIZE 4 with 3 WEIGHTS (the layout
-//     of a potential trained before 1.6.0: one intercept column shared by
+//     of a potential trained before 2.0.0: one intercept column shared by
 //     the two species), with the hint that names that layout and says to
 //     retrain; with 5 WEIGHTS without the hint;
 //   - BIAS false, DSIZE 2 with 3 WEIGHTS ("BIAS false"), no hint;
@@ -230,7 +230,7 @@ TEST_CASE("require_weights_fit refuses WEIGHTS that do not fit the "
 // (the one-intercept layout of DSIZE 4 with two species) is refused naming
 // NMEAN, with the legacy hint; NSTDEV 5 naming NSTDEV, without it; NMEAN
 // and NSTDEV of 8 values (twice DSIZE: what `tadah train -c <potential>`
-// wrote before 1.6.0, the new values after the potential's) naming both,
+// wrote before 2.0.0, the new values after the potential's) naming both,
 // with the hint that they were appended and the model read the first 4, the
 // potential's; with NORM false they are not read. A kernel whose basis
 // vectors have 3 entries on DSIZE 4 (5 basis vectors, 5 WEIGHTS) is
@@ -303,7 +303,7 @@ TEST_CASE("require_weights_fit refuses NMEAN, NSTDEV and basis vectors "
 // never reads NMEAN or NSTDEV, so require_weights_fit accepts a NORM true
 // linear potential (ATOM Nb Ta, BIAS true, DSIZE 4, 4 WEIGHTS) whatever
 // NMEAN and NSTDEV hold: 8 values each (what `tadah train -c <potential>`
-// wrote before 1.6.0: the potential's 4 values, then the new fit's 4), 3
+// wrote before 2.0.0: the potential's 4 values, then the new fit's 4), 3
 // values, or none.
 // Before the fix: each was refused with "NORM true: NMEAN has <n> values,
 // but the descriptor has DSIZE 4 entries" (a regression of the first

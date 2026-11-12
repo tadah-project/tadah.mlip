@@ -5,7 +5,7 @@
  *  CheckpointManager — singleton coordinator for checkpoint participants.
  *
  *  No Tadah module registers participants at present: HPO's checkpoint
- *  resume was removed in 1.6.0 together with the BASINS strategies that
+ *  resume was removed in 2.0.0 together with the BASINS strategies that
  *  used it. The intended lifecycle for a host program:
  *    1. main() calls SignalHandler::install().
  *    2. main() calls instance().set_path(<file>) and

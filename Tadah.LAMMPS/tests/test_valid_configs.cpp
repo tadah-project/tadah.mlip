@@ -4,7 +4,7 @@
 // valid_config5 (a trained D2_Blip + M_BLR BF_Linear configuration, used by
 // the M_BLR_MD and M_KRR_MD constructor tests) declared a bare
 // `TYPE2B D2_Blip`, without the two grid sizes and the element pairs that
-// D2_Blip takes, so building its descriptors fails since 1.6.0; it also
+// D2_Blip takes, so building its descriptors fails since 2.0.0; it also
 // had no ATOM key, without which BIAS adds no intercept column (the bias
 // is per species), while its weights include one.
 

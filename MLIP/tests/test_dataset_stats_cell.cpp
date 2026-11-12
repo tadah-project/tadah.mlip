@@ -3,7 +3,7 @@
 // `tadah analysis dataset_stats` reports the structures whose stored cell is
 // not symmetric (max |C - C^T| > 0). Datasets converted by older Tadah
 // versions may hold a transposed cell (OUTCAR/CASTEP before 1.3.0-beta.1,
-// CIF/COD non-orthogonal cells before 1.6.0); a transposed cell can only be
+// CIF/COD non-orthogonal cells before 2.0.0); a transposed cell can only be
 // told apart from a correct one when the cell is not symmetric, so the
 // report lists exactly those structures and points to the data-migration
 // note. It makes no guess about whether a listed cell is transposed.

@@ -6191,7 +6191,7 @@ doc = """\
 Every fit refuses an ESIGMA, or an absolute part of FSIGMA or SSIGMA, that \
 is not a number > 0, a relative part below 0, an error scale other than \
 its default for a quantity the fit does not have (ENERGY, FORCE or STRESS \
-false), ENERGY, FORCE and STRESS all false, and a key that Tadah! 1.6.0 \
+false), ENERGY, FORCE and STRESS all false, and a key that Tadah! 2.0.0 \
 retired (with its conversion); tadah hpo refuses each when the run starts, \
 without a line, with the message of the fit."""
 msg_doc = "The message names the value of ESIGMA and its unit by ENORM: meV/atom, the error of the energy per atom, or under ENORM SQRT meV per sqrt(atom), the error of the energy over the square root of its number of atoms."

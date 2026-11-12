@@ -38,7 +38,7 @@ alike. Setting a removed option to `OFF` (as older presets do) is accepted.
 
 | Option | Removed in | Use instead |
 |---|---|---|
-| `TADAH_BUILD_MPI` | 1.6.0 (the legacy ScaLAPACK training build, `tadah_mpi`) | `TADAH_HPO_MPI` for MPI-parallel `TADAH:ANNEAL_PT` / `ANNEAL_PA` in HPO (needs `TADAH_ENABLE_NFP=ON` and an MPI build of LAMMPS); OpenMP threads for training |
+| `TADAH_BUILD_MPI` | 2.0.0 (the legacy ScaLAPACK training build, `tadah_mpi`) | `TADAH_HPO_MPI` for MPI-parallel `TADAH:ANNEAL_PT` / `ANNEAL_PA` in HPO (needs `TADAH_ENABLE_NFP=ON` and an MPI build of LAMMPS); OpenMP threads for training |
 
 `TADAH_GIT_BRANCH`, which named the git ref of fetched modules, is removed
 too. No build file reads it, so the configure step does not stop: CMake

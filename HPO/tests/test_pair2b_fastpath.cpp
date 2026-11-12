@@ -11,7 +11,7 @@
 //   - adjoint capture under the fast path (pure-2B falls back to the
 //     generic kernel, no error, snapshot filled).
 //
-// Certified tables (the Ta D2_LJ potential of the Tadah! 1.6.0 quickstart,
+// Certified tables (the Ta D2_LJ potential of the Tadah! 2.0.0 quickstart,
 // and D2_LJ + DM_REAM for compute_2b_mb_half_eamfast vs compute_2b_mb_half):
 //   - energy, per-atom force and virial parity on a rattled bcc Ta cell
 //     that holds pairs in the top table segment just below the Cut_Dummy
@@ -142,7 +142,7 @@ double getd(LammpsRunner& runner, const LammpsRunner::LMPPtr& lmp,
     return std::stod(runner.get_variable(lmp, name));
 }
 
-/* The Ta D2_LJ potential that Tadah! 1.6.0 shipped as the docs quickstart
+/* The Ta D2_LJ potential that Tadah! 2.0.0 shipped as the docs quickstart
  * potential (Tadah.MLIP/docs/source/quickstart/pot.tadah of that release;
  * Tadah.LAMMPS/tests/tests_data/pots/ta_lj_cutdummy.tadah): D2_LJ Ta,
  * Cut_Dummy, RCUT2B 6.5, M_KRR Kern_Linear, INITMB false. */

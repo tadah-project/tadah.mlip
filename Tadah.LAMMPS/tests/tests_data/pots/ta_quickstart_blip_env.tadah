@@ -1,12 +1,12 @@
 # The Quick Start potential of Tadah.MLIP (docs/source/quickstart/pot.tadah at
-# Tadah.MLIP 0df2370, 1.6.0): a smooth-cutoff D2_Blip pair term plus a
+# Tadah.MLIP 0df2370, 2.0.0): a smooth-cutoff D2_Blip pair term plus a
 # DM_mBlipEnv embedding, M_KRR Kern_Linear. pair_style tadah evaluates it with
 # the generic many-body kernel (compute_2b_mb_half: reverse comm of the
 # densities and pair descriptors, forward comm of dF/drho), which it does not
 # collapse. Used by tests/mpi/check_pair_tadah_mpi.py. A copy: regenerating the
 # Quick Start potential leaves this file as it is.
 # The lines of the keys EWEIGHT, FWEIGHT, SWEIGHT and WDBFILE_AUTO, which
-# Tadah! 1.6.0 retired and no load of a potential reads, are left out.
+# Tadah! 2.0.0 retired and no load of a potential reads, are left out.
 ATOM              Ta
 BIAS              false
 CEMBFUNC          0.5   0.75   1   1.25   1.5

@@ -705,7 +705,7 @@ TEST_CASE_METHOD(PTFixture,
                  "[refit][edit][rhoform]") {
   ScopedTempDir tmp;
   TrainEngine::dumpPotFile("in.tadah", make_knot_pot());
-  strip_key_line("in.tadah", "RHOFORM");  // as tadah wrote it before 1.6.0
+  strip_key_line("in.tadah", "RHOFORM");  // as tadah wrote it before 2.0.0
   Context c;
   c.add("EDIT", std::string("in.tadah"));
   c.add("FUNC", std::string("phi"));
@@ -1120,7 +1120,7 @@ TEST_CASE_METHOD(PTFixture,
 /* Pins: `tadah refit --edit` writes no SIGMA of its input (a deprecated
  * key: the matrix Tadah! 1.0.0 to 1.5.0 wrote for an OALGO 3 fit, here
  * added to the input's context in code, 6 + 36 values), and keeps the WCOV
- * and WNOISE lines of an input of a development build of Tadah! 1.6.0
+ * and WNOISE lines of an input of a development build of Tadah! 2.0.0
  * (retired keys) as they are, after the key lines, as it keeps every
  * retired line: a fit of the edited potential refuses them as it refuses
  * the input's. (An --add of a phi basis function.)

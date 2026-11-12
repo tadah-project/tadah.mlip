@@ -2,14 +2,14 @@
 
 This document captures the multi-repo release process. It lives in
 the umbrella project (`tadah.mlip`); the per-module repos do not
-duplicate it. The examples use the 1.6.0 release.
+duplicate it. The examples use the 2.0.0 release.
 
 ## Branches and tags
 
 `v1-dev` is the development branch of the 1.x line in the seven Tadah
 repos (core, models, mlip, md, hpo, tadah.lammps, tadah.mlip) and in
 cmake-tools; it replaces `develop`. Releases are made from `v1-dev`, and
-every repo gets the same tag, `v<X.Y.Z>` (`v1.6.0`).
+every repo gets the same tag, `v<X.Y.Z>` (`v2.0.0`).
 
 ## Which module builds on which
 
@@ -67,7 +67,7 @@ the version badge in every repo's `README.md`, `CITATION.cff`
 (`version`, `date-released`), the `CHANGELOG.md` files (the
 `## [X.Y.Z] — <date>` heading in every repo; cmake-tools has no
 changelog), and the release tag the install instructions name
-(`git clone -b v1.6.0`; `grep -rn 'v1\.6\.0'`
+(`git clone -b v2.0.0`; `grep -rn 'v2\.0\.0'`
 over `docs/source/installation.rst`, the READMEs and the Tadah.LAMMPS
 READMEs finds them).
 
@@ -138,7 +138,7 @@ In the Read the Docs dashboard (admin access):
   (`https://tadah.readthedocs.io/`, linked from `CITATION.cff` and the
   installation guide) serves: `v1-dev`, or `stable` once a release tag
   exists (`stable` builds the highest version tag);
-- activate the `v1-dev` version and, once the tags exist, the `v1.6.0`
+- activate the `v1-dev` version and, once the tags exist, the `v2.0.0`
   version.
 
 The READMEs link to `https://tadah.readthedocs.io/v1-dev/`.
@@ -146,28 +146,28 @@ The READMEs link to `https://tadah.readthedocs.io/v1-dev/`.
 ## Process for a release
 
 1. **Prepare `v1-dev`** in every repo: the blueprint `version`
-   (`1.6.0`), the README version badges, `CITATION.cff` (`version`,
-   `date-released`) and the `## [1.6.0]` CHANGELOG sections. Validate
+   (`2.0.0`), the README version badges, `CITATION.cff` (`version`,
+   `date-released`) and the `## [2.0.0]` CHANGELOG sections. Validate
    locally: full `ctest` (which also runs the CLI examples the
    documentation includes) and a Sphinx build with `-W`.
 2. **Push `v1-dev`** and watch the pipelines.
-3. **Tag cmake-tools**: `git tag -a v1.6.0 -m "Tadah! 1.6.0"` on its
-   `v1-dev`, then `git push origin v1.6.0`.
+3. **Tag cmake-tools**: `git tag -a v2.0.0 -m "Tadah! 2.0.0"` on its
+   `v1-dev`, then `git push origin v2.0.0`.
 4. **Release commit** on `v1-dev` in each of the seven repos: set the
-   date of the `## [1.6.0]` CHANGELOG heading (`## [1.6.0] — unreleased`
+   date of the `## [2.0.0]` CHANGELOG heading (`## [2.0.0] — unreleased`
    until then) and `date-released` in `CITATION.cff` to the tag date.
    Push it.
 5. **Tag the modules in tag order** (`core`, `models`, `mlip`, `md`,
-   `tadah.lammps`, `hpo`, `tadah.mlip`): `git tag -a v1.6.0 -m "Tadah!
-   1.6.0"`, then `git push origin v1.6.0`. Let each tag pipeline finish
+   `tadah.lammps`, `hpo`, `tadah.mlip`): `git tag -a v2.0.0 -m "Tadah!
+   2.0.0"`, then `git push origin v2.0.0`. Let each tag pipeline finish
    (build and `release_tarball`).
-6. **Read the Docs**: activate `v1.6.0` and check that its build and the
+6. **Read the Docs**: activate `v2.0.0` and check that its build and the
    `v1-dev` build succeed.
 7. **Mint a Zenodo DOI** for the umbrella tag, and add it to
    `CITATION.cff` on `v1-dev`.
 8. **Open a GitHub Release** on `tadah-project/tadah.mlip` (and
    `tadah.lammps`) for the tag, once the mirror carries it:
-   `gh release create v1.6.0 --repo tadah-project/tadah.mlip`, with the
+   `gh release create v2.0.0 --repo tadah-project/tadah.mlip`, with the
    `release_tarball` archives of the tag pipelines attached and a short
    changelog summary (link to `CHANGELOG.md` for the full list).
 

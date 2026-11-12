@@ -10,7 +10,7 @@ ALGO help (`tadah explain NLOPT:LN_NEWUOA`) prints the refusal. Tests: `test_opt
 optimiser are refused ...`).
 
 **Where:** nlopt 2.10 `src/api/optimize.c:849` calls `newuoa(..., lb=NULL, ub=NULL, ...)`; only
-LN_NEWUOA_BOUND clamps interpolation points, and HPO refuses LN_NEWUOA_BOUND since 1.6.0 (its nested MMA
+LN_NEWUOA_BOUND clamps interpolation points, and HPO refuses LN_NEWUOA_BOUND since 2.0.0 (its nested MMA
 subproblems stall for 10-60 s once its model is not finite: `nlopt_newuoa_bound_stall.md`). Until the
 refusal HPO's registry flagged LN_NEWUOA (`OptimizerCaps::ignores_bounds`) and `scale_validation` printed a
 startup WARNING.

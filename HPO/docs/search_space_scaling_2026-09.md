@@ -11,7 +11,7 @@ unreported, and meant something different per backend.
   byte-identical to 1.4.x). Built once by `HPOTargets`, shared by every sub-spec (`bind_space_recursive`), the
   host and the journal.
 - `OptimizerSpec::low/high` are INTERNAL; `in()/out()` map REAL<->INTERNAL; `host()` receives REAL;
-  persisted artefacts are REAL-space. (The BASINS basin pools, removed in 1.6.0, were REAL-space too.)
+  persisted artefacts are REAL-space. (The BASINS basin pools, removed in 2.0.0, were REAL-space too.)
 - `STEP` = fraction of each dim's internal width, `(0, 0.5]`, per-key overrides, per-dim vector to
   NLopt (`initial_step.h`); rejected via `OptimizerCaps::StepUse` where a backend would ignore it.
 - Analytical gradients are pulled back by `dtheta/du`; NUMERICAL FD uses the in-house width-relative
@@ -31,7 +31,7 @@ reanneal note; DLIB:GFS hidden-ln WARNING (NONE only).
 
 ## Results on the worked examples (2026-09-08)
 Measured on the worked examples of `examples/` and their reference fingerprints, both removed in
-1.6.0 (the Ta data they used is `tests/data/ta/common`, re-converted on 2026-10-01).
+2.0.0 (the Ta data they used is `tests/data/ta/common`, re-converted on 2026-10-01).
 `TADAH_OPTIM_SCALE=NONE`: 21/21 example fingerprints byte-identical. `AUTO`: 14/21 identical; 03/07/08
 within 0.2 %, 06/12/21 better, 04 (DLIB:BFGS, 30 evals) 5.6 % worse = basin selection (at 4x budget NONE
 finds the SGRIDMB~0.34 basin at 0.0643, AUTO the 0.24 basin at 0.0739 that example 03 also finds).

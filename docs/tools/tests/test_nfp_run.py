@@ -64,7 +64,7 @@ MANIFEST = os.path.join(REPO, 'docs', 'source', 'nfp', 'files', 'manifest.txt')
 #                that lead with the column of tadah 1.5.0, #ITERATION, not
 #                with #IMPROVEMENT and EVAL
 #
-# The history files have the headers of tadah 1.6.0: loss.tadah,
+# The history files have the headers of tadah 2.0.0: loss.tadah,
 # params.tadah and outvar.tadah a row per evaluation (#ITERATION ...),
 # best_loss.tadah, best_params.tadah and best_outvar.tadah a row per new
 # best (#IMPROVEMENT EVAL ...): the start (evaluation 1), then the first
@@ -75,7 +75,7 @@ MANIFEST = os.path.join(REPO, 'docs', 'source', 'nfp', 'files', 'manifest.txt')
 # the content of the file `check_exit` when there is one.
 #
 # The file `no_best` makes `hpo` write no best_pot.tadah. For `predict`
-# it prints the table of -A, as tadah 1.6.0 does: a row per metric that
+# it prints the table of -A, as tadah 2.0.0 does: a row per metric that
 # names its unit ("Force RMSE (eV/Å)"), a Mean column and a column per -d
 # file. The RMSE of kind k of the i-th -d file is fake.json's
 # predict[<file name without .tadahdb>][k] (default 1) times the best loss
@@ -796,7 +796,7 @@ class SearchChecksTest(RunFixture):
 
     def test_best_files_without_improvement_and_eval_fail(self):
         # The columns of tadah 1.5.0 (#ITERATION SLOT ...) are not read as
-        # those of 1.6.0.
+        # those of 2.0.0.
         self.fake({'default': {'legacy_best': ['best_params.tadah']}})
         status, out = self.run_check()
         self.assertEqual(status, 1, out)
@@ -960,7 +960,7 @@ class SearchChecksTest(RunFixture):
                 self.assertIn(message, out)
 
     def test_calibrated_t_hot(self):
-        # The journal lines of tadah 1.6.0: the first calibration (pass 1),
+        # The journal lines of tadah 2.0.0: the first calibration (pass 1),
         # its ladder, and the second pass after the step warm-up, which
         # rebuilds the ladder from its T_HOT.
         pass1 = ('[16:22:07]  INFO      ANNEAL_PT: T0=9.458e-01 from 20 probes: '
@@ -1052,7 +1052,7 @@ class SearchChecksTest(RunFixture):
         # The error scales of the fit: ESIGMA in meV/atom (ENORM ATOM, the
         # default), the absolute part of FSIGMA in eV/Å and of SSIGMA in
         # GPa (FSIGMA[1] when the training configuration gives both parts,
-        # FSIGMA when it gives one). The validation errors as tadah 1.6.0
+        # FSIGMA when it gives one). The validation errors as tadah 2.0.0
         # writes them: FRMSE in eV/Å, SRMSE_GPA in GPa.
         self.fake({'default': {
             'dims': [['RCUT2B', 4.0, 6.5, 5.0, 5.3],
@@ -1389,7 +1389,7 @@ class SeveralSearchesTest(RunFixture):
         spec['predict'] = {'a': {'energy': 10.0, 'force': 0.3, 'stress': 0.005},
                            'b': {'energy': 20.0}}
         self.fake(spec)
-        # The table of tadah 1.6.0: each row names its unit, and the Mean
+        # The table of tadah 2.0.0: each row names its unit, and the Mean
         # column comes before Val1 (a: 7, b: 14, mean 10.5).
         self.expect(('Best loss (config.hpo)', '0.4'),
                     ('Energy RMSE a (meV/atom) (../unit2/config.hpo)', '7.0'),
@@ -1525,7 +1525,7 @@ JOURNAL = """\
   Tadah! nested fitting (tadah hpo) -- Run Journal
 ================================================================================
 
-  Tadah version  : 1.6.0
+  Tadah version  : 2.0.0
   Started        : 2026-11-02 22:56:41
 
 -- PROGRESS ------------------------------------------------------------
@@ -1749,7 +1749,7 @@ class MatchTest(unittest.TestCase):
 
     def test_a_line_of_dots_elides_lines(self):
         self.assertIsNone(self.match("""\
-              Tadah version  : 1.6.0
+              Tadah version  : 2.0.0
             ...
               Optimiser status        : TADAH:GRID: all grid points evaluated
             ...
@@ -1759,7 +1759,7 @@ class MatchTest(unittest.TestCase):
         message = self.match("""\
               Best potential saved    : best_pot.tadah
             ...
-              Tadah version  : 1.6.0
+              Tadah version  : 2.0.0
             """)
         self.assertIn('line 3 of the quote', message)
 
@@ -1786,8 +1786,8 @@ class MatchTest(unittest.TestCase):
             'BEST top: ERMSE_global=2.39e-01(100.2%)'))
         self.assertIsNotNone(self.match(
             'BEST top: ERMSE_global=2.39e-01(100.3%)'))
-        # A word with digits is text: 1.6.0, RCUT2B.
-        self.assertIsNotNone(self.match('  Tadah version  : 1.6.1'))
+        # A word with digits is text: 2.0.0, RCUT2B.
+        self.assertIsNotNone(self.match('  Tadah version  : 2.0.1'))
 
     def test_a_stated_tolerance_widens_the_number_check(self):
         line = '  Best total loss         : 2.3970e-01  (eval 6)'

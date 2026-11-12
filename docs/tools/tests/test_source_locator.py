@@ -225,7 +225,7 @@ class LocateTest(unittest.TestCase):
     def test_rtd_latest_and_stable_clone_the_git_identifier(self):
         # 'latest' and 'stable' are Read the Docs version names, not refs;
         # READTHEDOCS_GIT_IDENTIFIER is the branch or tag it checked out.
-        for version, ident in (('latest', 'v1-dev'), ('stable', 'v1.6.0'),
+        for version, ident in (('latest', 'v1-dev'), ('stable', 'v2.0.0'),
                                ('release-x', 'release/x')):
             with self.subTest(version=version):
                 git = FakeGit(marker=CORE_MARKER)

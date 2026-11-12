@@ -409,7 +409,7 @@ namespace {
     // A line of a key that only some commands read
     // (BlueprintKey::command_only), at line @p at (its text @p text, "KEY
     // values" or "KEY" and its block): in a potential it is not read, with
-    // one notice per key (a potential written before 1.6.0 may hold such a
+    // one notice per key (a potential written before 2.0.0 may hold such a
     // line, as tadah train wrote what its configuration held), but for a
     // run setting (OUTFILE), which the potential's lines of the run that
     // wrote it hold and the run-setting rule below skips and lists; in a

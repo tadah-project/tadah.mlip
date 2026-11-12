@@ -9,7 +9,7 @@
 // keep an all-equal order).
 //
 // PC_LAMMPS --ncpu (the per-sim rank count of the legacy MPI build, removed
-// in 1.6.0) is rejected at parse time with the removal hint and the line
+// in 2.0.0) is rejected at parse time with the removal hint and the line
 // number, rather than being ignored or passed to LAMMPS. So is any other
 // option that starts with "--" and is not one of HPO's: LAMMPS has none.
 // A single-dash option LAMMPS refuses is an error at its line too, with
@@ -205,7 +205,7 @@ TEST_CASE("HPOTargets: PC_LAMMPS --ncpu is rejected with the removal hint",
             const std::string msg = hpo_test::as_target(e.what(), cfg_path.string());
             CHECK_THAT(msg, Catch::Contains(
                 "line " + std::to_string(bad_line) + " of <target>:"));
-            /* It was "--ncpu was removed in 1.6.0 (legacy MPI build);
+            /* It was "--ncpu was removed in 2.0.0 (legacy MPI build);
              * parallelism over PC_LAMMPS scripts is THREADS /
              * PC_ISOLATION. Delete --ncpu from this line." */
             CHECK_THAT(msg, Catch::Contains("--ncpu: a removed option"));

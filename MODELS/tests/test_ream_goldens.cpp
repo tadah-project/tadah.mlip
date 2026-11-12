@@ -1,5 +1,5 @@
 /* FEAT-02 goldens: the DM_REAM density paths against the bits of the density
- * before RHOFORM (every tadah before 1.6.0).
+ * before RHOFORM (every tadah before 2.0.0).
  *
  * ream_goldens_data.h holds, for 5 families (Blip, Blip5, Knot5, Knot3,
  * Gaussian) x 3 cutoffs (Cut_Dummy, Cut_Cos, Cut_Poly) x 2 amplitude sets

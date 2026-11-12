@@ -171,7 +171,7 @@ int AnalysisDatasetStatsEngine::run(tadah::mlip::Task& task) {
 
   // Structures whose cell is not symmetric (max |C - C^T| > 0). A cell that
   // an older Tadah stored transposed (see the data-migration note of the
-  // 1.6.0 changelog) can only be told apart from a correct one in these, so
+  // 2.0.0 changelog) can only be told apart from a correct one in these, so
   // they are listed exactly; nothing is guessed about any of them.
   {
     std::vector<std::size_t> nonsym;
@@ -190,7 +190,7 @@ int AnalysisDatasetStatsEngine::run(tadah::mlip::Task& task) {
     } else {
       std::cout << " (only in these can a cell stored transposed by an older "
                    "Tadah be told apart from a correct one; see the "
-                   "data-migration note in the 1.6.0 changelog):"
+                   "data-migration note in the 2.0.0 changelog):"
                 << std::endl;
       for (std::size_t s : nonsym)
         std::cout << "  structure " << s + 1 << ": " << stdb(s).label

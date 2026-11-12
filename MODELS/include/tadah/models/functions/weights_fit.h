@@ -41,15 +41,15 @@ bool is_linear_function(const Function_Base &f);
  *  The message names WEIGHTS (NMEAN, NSTDEV, BASIS), DSIZE, BIAS and
  *  ATOM. When BIAS is true with N >= 2 ATOM species and the sizes are
  *  those of a descriptor with one intercept column instead of N (DSIZE -
- *  N + 1: how tadah before 1.6.0 trained BIAS true), it says so and that
+ *  N + 1: how tadah before 2.0.0 trained BIAS true), it says so and that
  *  the potential has to be retrained; likewise for NMEAN and NSTDEV of
  *  2 x DSIZE values (appended by `tadah train -c <potential>` before
- *  1.6.0).
+ *  2.0.0).
  *
  *  A linear potential with NORM true and BIAS false is refused whatever
  *  its sizes: tadah no longer trains it, and the conversion that wrote one
  *  had no intercept column for the normalisation's constant. M_KRR
- *  Kern_Linear (until 1.6.0) and M_BLR BF_Linear (up to 1.2.0) took
+ *  Kern_Linear (until 2.0.0) and M_BLR BF_Linear (up to 1.2.0) took
  *  descriptor component 0 for an intercept, so the energies and forces of
  *  such a potential are wrong; M_BLR BF_Linear from 1.3.0-beta.1 (written
  *  by tadah hpo and the API; tadah train refused the configuration)

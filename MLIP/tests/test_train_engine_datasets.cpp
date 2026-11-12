@@ -1432,7 +1432,7 @@ TEST_CASE("A retrain refuses an UNCERTAINTY line, of a potential or of the "
  * of Tadah! records the DBFILE it was trained on: remove that line from a
  * potential used as the training configuration.", and writes no pot.tadah.
  * Before the fix: the advice named a development stage, "An M_BLR
- * potential written by Tadah! 1.5.x or earlier, or by a 1.6.0 development
+ * potential written by Tadah! 1.5.x or earlier, or by a 2.0.0 development
  * build, records the DBFILE it was trained on: ...": the CHECK fails.
  * Before the priority wording: "to give a dataset more weight". */
 TEST_CASE("TrainEngine::run refuses a DBFILE that lists one dataset twice, "

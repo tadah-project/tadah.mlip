@@ -41,7 +41,7 @@ TEST_CASE("Blueprint: the legacy MPI keys are deprecated, with the reason",
     INFO(key);
     const BlueprintKey &k = keys.at(key);
     CHECK(k.isDeprecated());
-    CHECK_THAT(k.deprecated, Catch::Matchers::Contains("1.6.0") &&
+    CHECK_THAT(k.deprecated, Catch::Matchers::Contains("2.0.0") &&
                                  Catch::Matchers::Contains("TADAH_BUILD_MPI") &&
                                  Catch::Matchers::Contains("ignored"));
     CHECK(k.default_value.empty());

@@ -122,7 +122,7 @@ void require_weights_fit(const tadah::core::Context &c, std::size_t dsize,
   msg += " (" + layout + ").";
 
   /* The sizes of the same descriptor with one intercept column instead of
-   * N: a multi-species BIAS potential trained before 1.6.0. */
+   * N: a multi-species BIAS potential trained before 2.0.0. */
   bool legacy = false;
   if (n_int >= 2 && dsize >= n_int) {
     const std::size_t one = dsize - (n_int - 1);
@@ -131,7 +131,7 @@ void require_weights_fit(const tadah::core::Context &c, std::size_t dsize,
   }
   if (legacy)
     msg += " Its sizes are those of one intercept column shared by all "
-           "species, the layout in which tadah before 1.6.0 trained BIAS "
+           "species, the layout in which tadah before 2.0.0 trained BIAS "
            "true with several species. pair_style tadah has used one "
            "intercept column per species since 1.3.0-beta.1, so such a "
            "potential gave wrong LAMMPS energies and forces with pair_style "
@@ -140,12 +140,12 @@ void require_weights_fit(const tadah::core::Context &c, std::size_t dsize,
            "matched tadah predict). Its weights do not fit the descriptor of "
            "this version: retrain it (tadah train -c <its training "
            "configuration, or this potential>).";
-  /* NMEAN and NSTDEV of twice the descriptor: before 1.6.0, `tadah train -c
+  /* NMEAN and NSTDEV of twice the descriptor: before 2.0.0, `tadah train -c
    * <potential>` appended the new fit's values to the potential's. */
   if (reads_norm && (s.nmean == 2 * dsize || s.nstdev == 2 * dsize))
     msg += " NMEAN and NSTDEV of " + std::to_string(2 * dsize) +
            " values are those of a potential retrained from another with "
-           "tadah train -c before 1.6.0, which appended the new fit's values "
+           "tadah train -c before 2.0.0, which appended the new fit's values "
            "to the potential's: the model normalised with the first " + D +
            ", the other potential's. Retrain it (tadah train -c <its "
            "training configuration, or this potential>).";

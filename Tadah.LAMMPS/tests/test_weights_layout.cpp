@@ -6,7 +6,7 @@
 // many-body descriptors. Its predictors' dot products run over the weights,
 // so a potential whose WEIGHTS were written for another layout gave
 // silently wrong energies and forces. A multi-species BIAS potential trained
-// by tadah before 1.6.0 has such weights: one intercept column shared by all
+// by tadah before 2.0.0 has such weights: one intercept column shared by all
 // species (Ta-Nb D2_LJ: -622 against -7.65 eV/atom).
 
 #include "catch2/catch.hpp"
@@ -70,7 +70,7 @@ const char *kLegacy = "one intercept column shared by all species";
 // ATOM and the retrain hint ("since 1.3.0-beta.1": the versions whose
 // pair_style tadah used one intercept column per species with such a
 // potential), an ATOM Nb Ta BIAS true potential with 4 WEIGHTS (one
-// intercept shared by the two species, the layout tadah wrote before 1.6.0)
+// intercept shared by the two species, the layout tadah wrote before 2.0.0)
 // for its 5-entry descriptor ("has 4 WEIGHTS", "5 components (DSIZE)"); a
 // 6-weight one without the hint; an M_KRR Kern_RBF potential whose basis
 // vectors have 4 entries (the one-intercept layout: "BASIS holds SBASIS 3
@@ -137,7 +137,7 @@ TEST_CASE("pair_coeff refuses a potential whose weights do not fit the "
 // true, 5 WEIGHTS) loads whatever NMEAN and NSTDEV hold: pair_style tadah
 // predicts a linear model with its converted weights and reads neither.
 // Here they hold 10 values each, twice DSIZE: what `tadah train -c
-// <potential>` wrote before 1.6.0 (the potential's 5 values, then the new
+// <potential>` wrote before 2.0.0 (the potential's 5 values, then the new
 // fit's 5).
 // Before the fix: refused, "NORM true: NMEAN has 10 values, but the
 // descriptor has DSIZE 5 entries" (a regression of the first per-species

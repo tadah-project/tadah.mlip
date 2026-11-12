@@ -138,7 +138,7 @@ const BlueprintKey *task_option(const std::string &task,
  * gave was a standard deviation (neither in the reason nor in the
  * description), that nothing replaces it ("nothing"), its conversion
  * (deleting it; the fit, and the predictions, unaffected), no version of
- * Tadah! that lacks it (no "1.6.0" in the description, the long
+ * Tadah! that lacks it (no "2.0.0" in the description, the long
  * description, the reason or the replacement), and no default or
  * example. */
 void check_retired_output(const BlueprintKey &k, const std::string &what) {
@@ -156,7 +156,7 @@ void check_retired_output(const BlueprintKey &k, const std::string &what) {
        {&k.description, &k.longDescription, &k.retired.reason,
         &k.retired.replacement}) {
     INFO(*text);
-    CHECK(text->find("1.6.0") == std::string::npos);
+    CHECK(text->find("2.0.0") == std::string::npos);
   }
   CHECK_THAT(k.retired.conversion, StartsWith("Deleting the") &&
                                        Contains("unaffected"));
@@ -188,9 +188,9 @@ void check_retired_output(const BlueprintKey &k, const std::string &what) {
  * (what a development build gave, not a release), ERROR was a key of a
  * configuration (written into the potential of a fit, read by nothing),
  * and the help of UNCERTAINTY named tadah train 1.5.0 alone; then each
- * said that uncertainty output was not part of Tadah! 1.6.0, its
- * replacement "nothing in Tadah! 1.6.0", and each description that
- * Tadah! 1.6.0 did not give it; and WCOV and WNOISE said that each held a
+ * said that uncertainty output was not part of Tadah! 2.0.0, its
+ * replacement "nothing in Tadah! 2.0.0", and each description that
+ * Tadah! 2.0.0 did not give it; and WCOV and WNOISE said that each held a
  * quantity for the uncertainty output of tadah predict --error, which no
  * release wrote (WCOV and WNOISE say that no release wrote or read them).
  */
@@ -245,7 +245,7 @@ TEST_CASE("Blueprint: uncertainty output is retired: WCOV, WNOISE, "
 
 /* Pins: a potential with WCOV (N = 2, then the 2 x 2 matrix) and WNOISE
  * (row type and noise variance pairs), as a development build of Tadah!
- * 1.6.0 wrote for an OALGO 3 fit, parses: both lines are recorded
+ * 2.0.0 wrote for an OALGO 3 fit, parses: both lines are recorded
  * (Context::retired_keys(), with their values) and neither is stored, a
  * Context written with operator<< has neither line, and the parse gives
  * one notice, "Retired keys WCOV (line 2) and WNOISE (line 3) are

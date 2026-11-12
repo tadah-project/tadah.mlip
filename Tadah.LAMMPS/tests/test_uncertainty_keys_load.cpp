@@ -2,7 +2,7 @@
 // from the potential file) a potential with the keys of uncertainty output,
 // which is removed: WCOV and WNOISE, the covariance of the
 // WEIGHTS and the noise variance of each quantity that a development build
-// of Tadah! 1.6.0 wrote for an OALGO 3 fit, are retired keys (one notice
+// of Tadah! 2.0.0 wrote for an OALGO 3 fit, are retired keys (one notice
 // per load, not stored), and SIGMA, which Tadah! 1.0.0 to 1.5.0 wrote, is a
 // deprecated key (one notice, not stored).
 //

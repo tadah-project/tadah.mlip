@@ -717,7 +717,7 @@ TEST_CASE("End status: CERES records its iteration cap as max_iter reached",
  * Before the fix: the status quoted the whole message, the step size, cost
  * and gradient of the run included ("... FAILURE (Numerical failure in
  * line search, failed to find a valid step size, ... initial_gradient:
- * -6.40000e+03.)"); before 1.6.0's statuses, no status. */
+ * -6.40000e+03.)"); before 2.0.0's statuses, no status. */
 TEST_CASE("End status: CERES records a line-search failure as STOPPED with "
           "Ceres' message", "[HPO][stop_status][ceres]")
 {

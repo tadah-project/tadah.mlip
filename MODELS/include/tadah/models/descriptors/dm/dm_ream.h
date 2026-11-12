@@ -39,7 +39,7 @@ namespace models {
  * \f$S_n\f$ its integrated bump (d_basis_functions.h: 1 inside the bump's
  * inner support edge, 1/2 at its centre, 0 beyond its outer edge):
  *  - `RHOFORM SIGNED`: \f$\rho = W\sum_n a_n\,\psi_n f_c\f$ with signed
- *    \f$a_n\f$, bit for bit the density of every tadah before 1.6.0 in a
+ *    \f$a_n\f$, bit for bit the density of every tadah before 2.0.0 in a
  *    MODELS compiled without FMA contraction (ReamDensity); no guarantee.
  *  - `RHOFORM NONNEG`: the same with every \f$a_n \ge 0\f$, W > 0 and f_c
  *    replaced by max(f_c, 0): \f$\rho \ge 0\f$ exactly. With the knot family,

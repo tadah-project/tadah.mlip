@@ -126,7 +126,7 @@ void LammpsTadah::initialize(int narg, char **arg)
   // basis vectors (a kernel's: SBASIS vectors stored in BASIS; M_KRR_Core
   // also refuses WEIGHTS without a basis or with another number of vectors)
   // or NMEAN/NSTDEV (a non-linear NORM model) that do not fit this
-  // descriptor, e.g. a multi-species BIAS potential trained before 1.6.0,
+  // descriptor, e.g. a multi-species BIAS potential trained before 2.0.0,
   // with one intercept column shared by all species, and a linear NORM true
   // potential without BIAS, instead of computing with misaligned weights.
   // pair_coeff reports it through error->all.

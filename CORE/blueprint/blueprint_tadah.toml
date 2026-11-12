@@ -760,7 +760,7 @@ it as a LAMMPS warning on rank 0 each time pair_coeff loads such a potential.
 
 Migration: a DM_REAM potential or
 configuration without RHOFORM is an error. A potential written before
-tadah 1.6.0 gives its 1.5.0 energies with both `RHOFORM SIGNED` and `EMBF0 FREE`
+tadah 2.0.0 gives its 1.5.0 energies with both `RHOFORM SIGNED` and `EMBF0 FREE`
 added: `RHOFORM SIGNED` keeps the density, and an absent EMBF0 reads as ZERO,
 which changes the energies (see EMBF0). Older binaries
 refuse a potential carrying RHOFORM (Invalid key).
@@ -3361,19 +3361,19 @@ it.
 [ALLOWED_KEYS.MPIWPCKG]
 INHERIT = ["TYPES.UINT"]
 description = """Number of structures in one MPI work package of the removed MPI training build."""
-deprecated = """Removed in 1.6.0 with the MPI training build (TADAH_BUILD_MPI). A potential that has it loads, and its value is ignored. A fit refuses it."""
+deprecated = """Removed in 2.0.0 with the MPI training build (TADAH_BUILD_MPI). A potential that has it loads, and its value is ignored. A fit refuses it."""
 examples = []
 
 [ALLOWED_KEYS.MBLOCK]
 INHERIT = ["TYPES.UINT"]
 description = """ScaLAPACK row block size MB of the removed MPI training build."""
-deprecated = """Removed in 1.6.0 with the MPI training build (TADAH_BUILD_MPI). A potential that has it loads, and its value is ignored. A fit refuses it."""
+deprecated = """Removed in 2.0.0 with the MPI training build (TADAH_BUILD_MPI). A potential that has it loads, and its value is ignored. A fit refuses it."""
 examples = []
 
 [ALLOWED_KEYS.NBLOCK]
 INHERIT = ["TYPES.UINT"]
 description = """ScaLAPACK column block size NB of the removed MPI training build."""
-deprecated = """Removed in 1.6.0 with the MPI training build (TADAH_BUILD_MPI). A potential that has it loads, and its value is ignored. A fit refuses it."""
+deprecated = """Removed in 2.0.0 with the MPI training build (TADAH_BUILD_MPI). A potential that has it loads, and its value is ignored. A fit refuses it."""
 examples = []
 
 [ALLOWED_KEYS.FIXWEIGHT]
@@ -4580,5 +4580,5 @@ logo = '''
 description = ""  # not
 long_description = ""
 website = "https://tadah.readthedocs.io"
-version = "1.6.0"
+version = "2.0.0"
 examples = ["tadah train -c config.tadah", "tadah predict -p pot.tadah -s crystal.cif", "tadah explain data.balance.eshift"]

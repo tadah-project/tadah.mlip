@@ -8,7 +8,7 @@
 // (DC_Selector::descriptor_size()); M_KRR_Core checks the rest. With BIAS
 // true the descriptor has one intercept (bias) component per ATOM species,
 // as tadah trains it; a potential with one bias component shared by the
-// species (how tadah trained BIAS true with several species before 1.6.0)
+// species (how tadah trained BIAS true with several species before 2.0.0)
 // is refused with the hint to retrain it (models::require_weights_fit).
 //
 // Before the fix: a potential with basis vectors of another length
@@ -166,7 +166,7 @@ std::string values(const std::string& key, std::size_t n) {
 /* Pins: a non-linear potential with BIAS true on two species (ATOM Nb Ta)
  * laid out with one bias component shared by the species (a descriptor of
  * 4 components: 3 D2_Blip and the shared one), the layout in which tadah
- * trained BIAS true with several species before 1.6.0, is refused by
+ * trained BIAS true with several species before 2.0.0, is refused by
  * pair_style tadah, whose descriptor has one intercept component per
  * species (5 components), with the message of models::require_weights_fit:
  * the potential's sizes ("BASIS holds SBASIS 2 basis vectors of 4 values

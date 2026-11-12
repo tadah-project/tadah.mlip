@@ -1,7 +1,7 @@
 # Pure two-body Kr fixture for the pair-collapse (phi-only) fast path tests.
 # D2_Knot5, 21 knots, Cut_Dummy, linear model, INITMB false -- the ROUND6
 # HPO champion of the Kr two-body fit (physical scale, mechanically stable).
-# The lines of the keys EWEIGHT, FWEIGHT and SWEIGHT, which Tadah! 1.6.0
+# The lines of the keys EWEIGHT, FWEIGHT and SWEIGHT, which Tadah! 2.0.0
 # retired and no load of a potential reads, are left out.
 ATOM              Kr
 BIAS              false

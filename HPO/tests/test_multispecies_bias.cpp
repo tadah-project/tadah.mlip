@@ -601,7 +601,7 @@ TEST_CASE("pair_style tadah compute_dimers and the MLIP prediction agree for "
 
 // Pins: pair_coeff refuses an ATOM Nb Ta BIAS true potential with 1 + 3
 // WEIGHTS (one intercept column shared by the two species, as tadah trained
-// it before 1.6.0) for its 2 + 3 descriptor entries, naming WEIGHTS,
+// it before 2.0.0) for its 2 + 3 descriptor entries, naming WEIGHTS,
 // DSIZE, BIAS and ATOM ("has 4 WEIGHTS", "5 components (DSIZE)"), and saying
 // to retrain.
 // Before the fix: pair_coeff accepted it (setup error empty). Before the

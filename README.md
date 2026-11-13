@@ -9,8 +9,8 @@ learning interatomic potentials** (MLIPs). It provides the `tadah` CLI
 for training, prediction, dataset wrangling, and a hyperparameter
 optimisation engine that folds physical-property targets (elastic
 constants, equation-of-state points, surface energies, …) directly
-into the loss. Trained potentials are deployable in LAMMPS via the
-sister project [Tadah!LAMMPS][lammps].
+into the loss. Trained potentials are deployable in LAMMPS through the
+pair style `pair_style tadah`, which this repository holds in `lammps`.
 
 It is built and maintained by [Prof. Ackland's group][group] at the
 University of Edinburgh.
@@ -47,5 +47,4 @@ Bug reports, feature requests and pull requests are welcome:
 
 GPL-3.0; see [LICENSE](LICENSE).
 
-[lammps]: https://github.com/tadah-project/tadah.lammps
 [group]:  https://www.ph.ed.ac.uk/people/graeme-ackland

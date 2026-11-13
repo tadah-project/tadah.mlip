@@ -170,9 +170,9 @@ int AnalysisDatasetStatsEngine::run(tadah::mlip::Task& task) {
   if (closeContact) closePairs = find_close_contacts(stdb, *closeContact);
 
   // Structures whose cell is not symmetric (max |C - C^T| > 0). A cell that
-  // an older Tadah stored transposed (see the data-migration note of the
-  // 2.0.0 changelog) can only be told apart from a correct one in these, so
-  // they are listed exactly; nothing is guessed about any of them.
+  // an older Tadah stored transposed can only be told apart from a correct
+  // one in these, so they are listed exactly; nothing is guessed about any
+  // of them.
   {
     std::vector<std::size_t> nonsym;
     for (std::size_t s = 0; s < stdb.size(); ++s) {
@@ -189,8 +189,9 @@ int AnalysisDatasetStatsEngine::run(tadah::mlip::Task& task) {
       std::cout << "." << std::endl;
     } else {
       std::cout << " (only in these can a cell stored transposed by an older "
-                   "Tadah be told apart from a correct one; see the "
-                   "data-migration note in the 2.0.0 changelog):"
+                   "Tadah be told apart from a correct one; such a "
+                   "dataset needs a fresh conversion with tadah data "
+                   "convert):"
                 << std::endl;
       for (std::size_t s : nonsym)
         std::cout << "  structure " << s + 1 << ": " << stdb(s).label

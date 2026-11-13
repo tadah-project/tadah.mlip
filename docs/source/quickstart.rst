@@ -304,8 +304,7 @@ Units are described in :ref:`units`.
 ``tadah analysis dataset_stats`` lists, by index and label, the structures
 whose 3×3 cell block is not symmetric. Only in these does a cell block that
 holds the lattice vectors as columns differ from one that holds them as
-rows. The :doc:`changelog` says, under *Data migration*, which datasets
-need a fresh conversion.
+rows.
 
 .. _lammps_usage:
 

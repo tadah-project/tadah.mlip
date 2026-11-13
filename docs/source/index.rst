@@ -11,9 +11,8 @@ Welcome to the Tadah! Website
    with it, and feedback on it is welcome. The C++ API is **not** stable
    and may change.
 
-   The :doc:`changelog` lists the changes of this release, the breaking
-   changes first. It says which releases read a ``pot.tadah`` file, and what
-   an upgrade asks of existing potentials, datasets and configurations.
+   The :doc:`changelog` lists what changes on moving from the earlier
+   releases, the breaking changes first.
    `Issue reports <report any issues_>`_ are welcome.
 
    .. _report any issues: https://github.com/tadah-project/tadah.mlip/issues

@@ -5,8 +5,9 @@
 // versions may hold a transposed cell (OUTCAR/CASTEP before 1.3.0-beta.1,
 // CIF/COD non-orthogonal cells before 2.0.0); a transposed cell can only be
 // told apart from a correct one when the cell is not symmetric, so the
-// report lists exactly those structures and points to the data-migration
-// note. It makes no guess about whether a listed cell is transposed.
+// report lists exactly those structures and says that such a dataset needs a
+// fresh conversion. It makes no guess about whether a listed cell is
+// transposed.
 //
 // Report contract pinned here (standard output):
 //   - "<K> of <N> structures have a non-symmetric cell" once per run, at
@@ -15,8 +16,8 @@
 //   - one line "structure <i>: <label>" per listed structure, where i is the
 //     1-based position in the loaded dataset (the INDEX of `tadah data
 //     print` / `tadah data write`), in dataset order;
-//   - when K > 0, the text "migration note" (the pointer to the
-//     CHANGELOG/docs note);
+//   - when K > 0, the text "needs a fresh conversion with tadah data
+//     convert", and no pointer to a note or a changelog;
 //   - the DataStats output file is still written and still loads
 //     (tadah::core::stats::load) with every structure counted.
 
@@ -195,7 +196,10 @@ TEST_CASE("analysis dataset_stats lists exactly the structures whose cell is "
   CHECK(log.find("fccprim-Ta") == std::string::npos);
   CHECK(log.find("structure 1:") == std::string::npos);
   CHECK(log.find("structure 3:") == std::string::npos);
-  CHECK(log.find("migration note") != std::string::npos);
+  CHECK(count_of(log, "needs a fresh conversion with tadah data convert") ==
+        1);
+  CHECK(log.find("migration note") == std::string::npos);
+  CHECK(log.find("changelog") == std::string::npos);
   // Dataset order.
   CHECK(log.find("structure 2: sheared-Ta") <
         log.find("structure 4: hex-Ta"));
@@ -213,7 +217,7 @@ TEST_CASE("analysis dataset_stats lists exactly the structures whose cell is "
 TEST_CASE("analysis dataset_stats states that no cell is non-symmetric",
           "[dataset_stats][cell_convention]") {
   // Only symmetric cells: the count 0 is stated at the CLI default
-  // verbosity, with no list and no pointer to the migration note.
+  // verbosity, with no list and no statement about a conversion.
   PeriodicTable::initialize();
   DsCellTempDir tmp;
   StructureDB db;
@@ -226,5 +230,5 @@ TEST_CASE("analysis dataset_stats states that no cell is non-symmetric",
   CHECK(count_of(log, "0 of 2 structures have a non-symmetric cell") == 1);
   CHECK(log.find("structure 1:") == std::string::npos);
   CHECK(log.find("structure 2:") == std::string::npos);
-  CHECK(log.find("migration note") == std::string::npos);
+  CHECK(log.find("fresh conversion") == std::string::npos);
 }

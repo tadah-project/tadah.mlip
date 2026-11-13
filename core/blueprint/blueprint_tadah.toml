@@ -4310,7 +4310,7 @@ Every pair strictly inside the cutoff counts, a pair at distance 0 (two
 atoms at one position) included, so r_min is 0 for such a dataset.
 It also prints how many structures have a non-symmetric cell and lists
 them by index and label: only in these can a transposed cell be told apart
-(the data-migration note of Dataset Format).
+from a correct one.
 With --close-contact <A> it lists every pair of atoms closer than A
 Angstrom by structure, atoms and distance.
 """

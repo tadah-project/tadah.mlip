@@ -10,6 +10,7 @@
 //     nothing when not armed.
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/hpo/hpo_log.h>
@@ -30,11 +31,7 @@ using tadah::hpo::RawEmbeddingF0;
 struct JournalFile {
   std::filesystem::path path;
   JournalFile()
-  : path(std::filesystem::temp_directory_path() /
-         ("tadah_embf0_journal_" +
-          std::to_string(
-              std::chrono::steady_clock::now().time_since_epoch().count()) +
-          ".log")) {
+  : path(hpo_test::unique_temp_path("tadah_embf0_journal_", ".log")) {
     /* open() cannot reopen a journal another test left open. */
     if (HPOLog::instance().is_open()) HPOLog::instance().finish("closed");
     HPOLog::instance().reset_for_test();

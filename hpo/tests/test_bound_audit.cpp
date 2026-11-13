@@ -2,6 +2,7 @@
  * units (so LOG dims are judged in ln), persists since_eval, and HPOLog
  * prints the milestone/final tables. */
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 #include <tadah/hpo/bound_audit.h>
 #include <tadah/hpo/hpo_log.h>
 #include <tadah/hpo/optimizer_spec.h>
@@ -64,8 +65,7 @@ TEST_CASE("HPOLog prints the bound-occupancy tables",
     auto& log = HPOLog::instance();
     if (log.is_open()) log.finish("reopen-for-test");
     log.reset_for_test();
-    const auto path = std::filesystem::temp_directory_path() /
-        ("tadah_bound_audit_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".log");
+    const auto path = hpo_test::unique_temp_path("tadah_bound_audit_", ".log");
     log.open(path.string(), "test", "test_cwd", 0);
     REQUIRE(log.is_open());
 
@@ -113,8 +113,7 @@ TEST_CASE("BoundOccupancy: a hard lower bound is flagged, not read as bound "
     CHECK_FALSE(occ.marks()[1].hard);
 
     auto& log = HPOLog::instance();
-    const auto path = std::filesystem::temp_directory_path() /
-        ("tadah_bound_audit_hard_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".log");
+    const auto path = hpo_test::unique_temp_path("tadah_bound_audit_hard_", ".log");
     OptimizerSpec spec; spec.lib = "NLOPT"; spec.algo = "LN_SBPLX";
     spec.bind_space(sp);
     auto run = [&](const std::vector<double>& best) {
@@ -166,12 +165,9 @@ TEST_CASE("HPOLog: a second run's journal starts without the first run's "
     auto& log = HPOLog::instance();
     if (log.is_open()) log.finish("reopen-for-test");
     log.reset_for_test();
-    const auto stamp = std::to_string(
-        std::chrono::steady_clock::now().time_since_epoch().count());
-    const auto dir = std::filesystem::temp_directory_path();
-    const auto path1 = dir / ("tadah_two_runs_1_" + stamp + ".log");
-    const auto path2 = dir / ("tadah_two_runs_2_" + stamp + ".log");
-    const auto path3 = dir / ("tadah_two_runs_3_" + stamp + ".log");
+    const auto path1 = hpo_test::unique_temp_path("tadah_two_runs_a_", ".log");
+    const auto path2 = hpo_test::unique_temp_path("tadah_two_runs_b_", ".log");
+    const auto path3 = hpo_test::unique_temp_path("tadah_two_runs_c_", ".log");
     OptimizerSpec sp; sp.lib = "NLOPT"; sp.algo = "LN_SBPLX";
     sp.bind_space(space());
 

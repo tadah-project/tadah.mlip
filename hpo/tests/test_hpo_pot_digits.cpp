@@ -13,6 +13,7 @@
 // such a potential: no parse stores a potential's NUMERIC.)
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/hpo/hpo_log.h>
@@ -28,16 +29,10 @@ namespace {
 
 namespace fs = std::filesystem;
 
-std::string unique_stem(const char* prefix) {
-  return std::string(prefix) +
-         std::to_string(
-             std::chrono::steady_clock::now().time_since_epoch().count());
-}
-
 struct ScopedTempFile {
   fs::path path;
   explicit ScopedTempFile(const std::string& body)
-  : path(fs::temp_directory_path() / (unique_stem("tadah_pot_digits_") + ".in"))
+  : path(hpo_test::unique_temp_path("tadah_pot_digits_", ".in"))
   {
     std::ofstream os(path);
     REQUIRE(os.good());
@@ -50,7 +45,7 @@ struct ScopedTempFile {
 struct ScopedJournal {
   fs::path path;
   ScopedJournal()
-  : path(fs::temp_directory_path() / (unique_stem("tadah_pot_digits_") + ".log"))
+  : path(hpo_test::unique_temp_path("tadah_pot_digits_", ".log"))
   {
     auto& log = tadah::hpo::HPOLog::instance();
     log.reset_for_test();

@@ -1,4 +1,5 @@
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 #include "target_file_text.h"
 #include <tadah/hpo/hpo_targets.h>
 #include <tadah/hpo/hpo_log.h>
@@ -18,10 +19,7 @@ namespace {
 struct ConfigFile {
     std::filesystem::path path;
     explicit ConfigFile(const std::string& lines) {
-        static std::size_t seq = 0;
-        path = std::filesystem::temp_directory_path() / ("pc_dataset_"
-             + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())
-             + "_" + std::to_string(++seq) + ".hpo");
+        path = hpo_test::unique_temp_path("pc_dataset_", ".hpo");
         std::ofstream(path) << "OPTIMIZER\nLIB DLIB\nALGO BFGS\nMAXEVAL 1\nENDOPTIMIZER\n" << lines;
     }
     ~ConfigFile() { std::error_code ec; std::filesystem::remove(path, ec); }

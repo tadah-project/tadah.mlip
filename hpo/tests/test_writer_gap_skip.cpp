@@ -1,4 +1,5 @@
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/hpo/hpo_log.h>
 #include <tadah/hpo/host_messages.h>
@@ -224,10 +225,7 @@ TEST_CASE("Writer gap-skip: the WARNING names the evaluations that did not "
 
     auto& log = tadah::hpo::HPOLog::instance();
     log.reset_for_test();
-    const auto path = std::filesystem::temp_directory_path() /
-        ("tadah_gap_skip_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+    const auto path = hpo_test::unique_temp_path("tadah_gap_skip_", ".log");
     log.open(path.string(), "test", "test_cwd", 0);
     REQUIRE(log.is_open());
     log.warning(result_gap_warning(3459, 3460, 60, ""));

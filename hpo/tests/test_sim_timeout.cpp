@@ -9,6 +9,7 @@
 // command keeps full control.
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 #include "target_file_text.h"
 
 #include <tadah/core/context.h>
@@ -28,10 +29,7 @@ struct ScopedTempFile {
   std::filesystem::path path;
 
   explicit ScopedTempFile(const std::string& body)
-  : path(std::filesystem::temp_directory_path() /
-         ("tadah_hpo_timeout_" +
-          std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-          ".in"))
+  : path(hpo_test::unique_temp_path("tadah_hpo_timeout_", ".in"))
   {
     std::ofstream os(path);
     REQUIRE(os.good());

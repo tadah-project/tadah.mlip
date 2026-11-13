@@ -17,6 +17,7 @@
 //   ./test_hpo "[embf0_e2e]"
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/core/element.h>
@@ -50,10 +51,7 @@ using Host     = tadah::hpo::HPO_Host<ParamVec, ::LammpsRunner>;
 struct ScratchDir {
   fs::path dir, original_cwd;
   ScratchDir() {
-    dir = fs::temp_directory_path() /
-          ("tadah_hpo_embf0_" +
-           std::to_string(
-               std::chrono::steady_clock::now().time_since_epoch().count()));
+    dir = hpo_test::unique_temp_path("tadah_hpo_embf0_");
     fs::create_directories(dir);
     original_cwd = fs::current_path();
     fs::current_path(dir);

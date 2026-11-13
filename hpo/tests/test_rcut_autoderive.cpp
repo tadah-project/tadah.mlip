@@ -8,6 +8,7 @@
 //    the per-eval hook applies it).
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/core/periodic_table.h>
@@ -41,10 +42,7 @@ struct ScratchDir {
     fs::path dir;
     fs::path original_cwd;
     ScratchDir() {
-        dir = fs::temp_directory_path() /
-              ("tadah_hpo_rcut_" +
-               std::to_string(std::chrono::steady_clock::now()
-                                  .time_since_epoch().count()));
+        dir = hpo_test::unique_temp_path("tadah_hpo_rcut_");
         fs::create_directories(dir);
         original_cwd = fs::current_path();
         fs::current_path(dir);
@@ -173,10 +171,7 @@ Context make_blip_ctx() {
 struct ScopedTempFile {
     fs::path path;
     explicit ScopedTempFile(const std::string& body)
-    : path(fs::temp_directory_path() /
-           ("tadah_rcut_" +
-            std::to_string(std::chrono::steady_clock::now()
-                               .time_since_epoch().count()) + ".in")) {
+    : path(hpo_test::unique_temp_path("tadah_rcut_", ".in")) {
         std::ofstream os(path);
         REQUIRE(os.good());
         os << body;

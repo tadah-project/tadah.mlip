@@ -1,6 +1,7 @@
 /* hpo_run.log SEARCH SPACE section under the SearchSpace: policy lines,
  * width ratio, per-dim rows with scale/origin/real and internal bounds. */
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 #include <tadah/hpo/hpo_log.h>
 #include <tadah/hpo/optimizer_spec.h>
 #include <tadah/hpo/search_space.h>
@@ -26,9 +27,7 @@ std::string slurp(const std::filesystem::path& p)
 
 struct JournalCapture {
     std::filesystem::path path =
-        std::filesystem::temp_directory_path() /
-        ("tadah_ss_journal_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".log");
+        hpo_test::unique_temp_path("tadah_ss_journal_", ".log");
     JournalCapture()
     {
         auto& log = HPOLog::instance();

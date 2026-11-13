@@ -1,4 +1,5 @@
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/hpo/hpo_log.h>
 
@@ -24,10 +25,7 @@ namespace {
 
 std::filesystem::path scratch_log_path()
 {
-    return std::filesystem::temp_directory_path() /
-        ("tadah_hpolog_guard_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+    return hpo_test::unique_temp_path("tadah_hpolog_guard_", ".log");
 }
 
 std::string read_log(const std::filesystem::path& path)

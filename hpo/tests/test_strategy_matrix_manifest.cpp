@@ -9,6 +9,7 @@
  */
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/hpo/hpo_targets.h>
@@ -71,10 +72,8 @@ TEST_CASE("strategy_matrix.manifest entries parse under current grammar",
         const std::string body = expand_escapes(t.substr(bar + 1));
         REQUIRE_FALSE(name.empty());
 
-        const auto cfg = fs::temp_directory_path() /
-            ("tadah_manifest_" + name + "_" +
-             std::to_string(std::chrono::steady_clock::now()
-                                .time_since_epoch().count()) + ".hpo");
+        const auto cfg = hpo_test::unique_temp_path(
+            "tadah_manifest_" + name + "_", ".hpo");
         {
             std::ofstream os(cfg);
             REQUIRE(os.good());

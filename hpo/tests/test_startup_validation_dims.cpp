@@ -9,6 +9,7 @@
 // keep accepting it for the native optimisers.
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/core/periodic_table.h>
@@ -30,10 +31,7 @@ using tadah::hpo::validate_hpo_setup;
 struct ScopedTempFile {
   std::filesystem::path path;
   explicit ScopedTempFile(const std::string& body)
-  : path(std::filesystem::temp_directory_path() /
-         ("tadah_svd_" +
-          std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-          ".in"))
+  : path(hpo_test::unique_temp_path("tadah_svd_", ".in"))
   {
     std::ofstream os(path);
     REQUIRE(os.good());

@@ -1,4 +1,5 @@
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/hpo/hpo.h>
@@ -22,10 +23,7 @@ namespace {
 struct ScopedTempFile {
     std::filesystem::path path;
     explicit ScopedTempFile(const std::string& body)
-    : path(std::filesystem::temp_directory_path() /
-           ("tadah_noise_cal_" +
-            std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-            ".in"))
+    : path(hpo_test::unique_temp_path("tadah_noise_cal_", ".in"))
     {
         std::ofstream os(path);
         REQUIRE(os.good());
@@ -110,11 +108,7 @@ TEST_CASE("NOISE CALIBRATION: the note of a large noise floor states what "
           "lowers it", "[HPO][noise][journal]")
 {
     namespace fs = std::filesystem;
-    const fs::path log = fs::temp_directory_path() /
-        ("tadah_noise_note_" +
-         std::to_string(
-             std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+    const fs::path log = hpo_test::unique_temp_path("tadah_noise_note_", ".log");
     tadah::hpo::HPOLog::instance().reset_for_test();
     tadah::hpo::HPOLog::instance().open(log.string(), "test", "/", 0);
     tadah::hpo::HPOLog::instance().write_noise_calibration_section(

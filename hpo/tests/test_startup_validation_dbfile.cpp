@@ -8,6 +8,7 @@
 // its training data added, it listed the dataset twice.)
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/core/periodic_table.h>
@@ -34,10 +35,7 @@ namespace fs = std::filesystem;
 struct ScratchDatasets {
   fs::path dir;
   ScratchDatasets()
-      : dir(fs::temp_directory_path() /
-            ("tadah_sv_dbfile_" +
-             std::to_string(
-                 std::chrono::steady_clock::now().time_since_epoch().count()))) {
+      : dir(hpo_test::unique_temp_path("tadah_sv_dbfile_")) {
     fs::create_directories(dir);
     std::ofstream(dir / "a.db") << "a\n";
     std::ofstream(dir / "b.db") << "b\n";
@@ -56,11 +54,7 @@ struct ScratchDatasets {
 struct ScopedTarget {
   fs::path path;
   ScopedTarget()
-      : path(fs::temp_directory_path() /
-             ("tadah_sv_dbfile_" +
-              std::to_string(
-                  std::chrono::steady_clock::now().time_since_epoch().count()) +
-              ".hpo")) {
+      : path(hpo_test::unique_temp_path("tadah_sv_dbfile_", ".hpo")) {
     std::ofstream(path) << "OPTIM WATOM (1) 0.1 5.0\nPC_ERMSE 0 1\n"
                            "OPTIMIZER\nLIB DLIB\nALGO BFGS\nMAXEVAL 5\n"
                            "ENDOPTIMIZER\n";

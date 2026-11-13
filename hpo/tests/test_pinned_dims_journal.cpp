@@ -12,6 +12,7 @@
  *      printing once nothing is pinned. */
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/hpo/anneal_core.h>
 #include <tadah/hpo/hpo_log.h>
@@ -36,10 +37,7 @@ using Vec = dlib::matrix<double, 0, 1>;
 
 std::filesystem::path scratch_log_path()
 {
-    return std::filesystem::temp_directory_path() /
-        ("tadah_pinned_dims_" +
-         std::to_string(std::chrono::steady_clock::now()
-                            .time_since_epoch().count()) + ".log");
+    return hpo_test::unique_temp_path("tadah_pinned_dims_", ".log");
 }
 
 std::string slurp(const std::filesystem::path& p)

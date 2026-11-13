@@ -114,10 +114,7 @@ bool is_live_worker_child(pid_t pid) {
  * returns it (HPOLog is a process-wide singleton). */
 struct Journal {
   std::filesystem::path path =
-      std::filesystem::temp_directory_path() /
-      ("tadah_pc_pool_" +
-       std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-       ".log");
+      hpo_test::unique_temp_path("tadah_pc_pool_", ".log");
   Journal() {
     auto& log = HPOLog::instance();
     if (log.is_open()) log.finish("reopen-for-test");

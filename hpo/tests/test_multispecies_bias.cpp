@@ -21,6 +21,7 @@
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/core/core_user_config_parser.h>
@@ -646,11 +647,7 @@ namespace {
 struct ScopedFile {
   fs::path path;
   explicit ScopedFile(const std::string &body, const std::string &ext = ".in")
-      : path(fs::temp_directory_path() /
-             ("tadah_hpo_msbias_" +
-              std::to_string(
-                  std::chrono::steady_clock::now().time_since_epoch().count()) +
-              ext)) {
+      : path(hpo_test::unique_temp_path("tadah_hpo_msbias_", ext)) {
     std::ofstream os(path);
     os << body;
   }

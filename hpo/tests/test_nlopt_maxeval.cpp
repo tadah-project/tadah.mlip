@@ -20,6 +20,7 @@
  * The stub hosts record every REAL point asked for. */
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/hpo/optimizer_caps.h>   // OptimizerCaps::reads_seed
 #include <tadah/hpo/backend_rules.h>
@@ -149,11 +150,7 @@ void set_inner(OptimizerSpec& sp, const std::string& algo)
 
 /* An open journal; `text()` closes it and returns it. */
 struct Journal {
-    fs::path path = fs::temp_directory_path() /
-                    ("tadah_nlopt_maxeval_" +
-                     std::to_string(std::chrono::steady_clock::now()
-                                        .time_since_epoch().count()) +
-                     ".log");
+    fs::path path = hpo_test::unique_temp_path("tadah_nlopt_maxeval_", ".log");
     Journal() {
         auto& log = HPOLog::instance();
         log.reset_for_test();

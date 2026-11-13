@@ -1,4 +1,5 @@
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/hpo/hpo_log.h>
 
@@ -100,10 +101,7 @@ TEST_CASE("StagnationStop recovery: warning text format is grep-friendly",
      * Lock the format down so operator tooling can grep it. */
     auto& log = tadah::hpo::HPOLog::instance();
     log.reset_for_test();
-    const auto path = std::filesystem::temp_directory_path() /
-        ("tadah_stagnation_stop_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+    const auto path = hpo_test::unique_temp_path("tadah_stagnation_stop_", ".log");
     log.open(path.string(), "test", "test_cwd", 0);
     REQUIRE(log.is_open());
 

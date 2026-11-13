@@ -17,13 +17,15 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <unistd.h>
 
 using namespace tadah;
 namespace {
+unsigned long &counter(){static unsigned long n=0;return n;}
 struct Temp {
   std::filesystem::path old=std::filesystem::current_path(),dir;
   Temp():dir(std::filesystem::temp_directory_path()/
-    ("tadah-embed-tools-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()))) {
+    ("tadah-embed-tools-"+std::to_string(::getpid())+"_"+std::to_string(counter()++))) {
     std::filesystem::create_directories(dir);std::filesystem::current_path(dir);
     core::PeriodicTable::initialize();
   }

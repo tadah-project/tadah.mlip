@@ -15,6 +15,7 @@
 // box) as a violation instead of skipping it.
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 #include "target_file_text.h"
 
 #include "rhoform_test_support.h"
@@ -49,10 +50,7 @@ namespace bg = tadah::hpo::detail;
 struct WidthTempFile {
   fs::path path;
   explicit WidthTempFile(const std::string& body)
-  : path(fs::temp_directory_path() /
-         ("tadah_bump_width_" +
-          std::to_string(std::chrono::steady_clock::now()
-                             .time_since_epoch().count()) + ".in")) {
+  : path(hpo_test::unique_temp_path("tadah_bump_width_", ".in")) {
     std::ofstream os(path);
     REQUIRE(os.good());
     os << body;

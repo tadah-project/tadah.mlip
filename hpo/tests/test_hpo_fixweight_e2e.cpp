@@ -16,6 +16,7 @@
 // the case as Skipped in one without it.
 
 #include "tadah_test_skip.hpp"  // before catch2/catch.hpp
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/core/logger.h>
@@ -74,10 +75,7 @@ struct ScratchDir {
     fs::path dir;
     fs::path original_cwd;
     ScratchDir() {
-        dir = fs::temp_directory_path() /
-              ("tadah_hpo_fixw_" +
-               std::to_string(std::chrono::steady_clock::now()
-                                  .time_since_epoch().count()));
+        dir = hpo_test::unique_temp_path("tadah_hpo_fixw_");
         fs::create_directories(dir);
         original_cwd = fs::current_path();
         fs::current_path(dir);

@@ -9,6 +9,7 @@
  * few milliseconds. */
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/core_user_config_parser.h>
 #include <tadah/core/periodic_table.h>
@@ -52,10 +53,7 @@ struct ScratchDir {
     fs::path original_cwd;
     ScratchDir()
     {
-        dir = fs::temp_directory_path() /
-              ("tadah_search_steps_" +
-               std::to_string(std::chrono::steady_clock::now()
-                                  .time_since_epoch().count()));
+        dir = hpo_test::unique_temp_path("tadah_search_steps_");
         fs::create_directories(dir);
         original_cwd = fs::current_path();
         fs::current_path(dir);

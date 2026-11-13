@@ -1,4 +1,5 @@
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/hpo/hpo_log.h>
 #include <tadah/hpo/host_messages.h>
@@ -182,10 +183,7 @@ TEST_CASE("Bug 5 fix: HPOLog records the eval-thread catch as a warning",
 
     auto& log = tadah::hpo::HPOLog::instance();
     log.reset_for_test();
-    const auto path = std::filesystem::temp_directory_path() /
-        ("tadah_eval_throw_" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-         ".log");
+    const auto path = hpo_test::unique_temp_path("tadah_eval_throw_", ".log");
     log.open(path.string(), "test", "test_cwd", 0);
     REQUIRE(log.is_open());
     log.warning(evaluation_error_warning(50, "synthetic"));

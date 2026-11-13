@@ -45,6 +45,7 @@
 // weights); the data are H2 cells.
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 #include "target_file_text.h"
 
 #include <tadah/core/context.h>
@@ -89,10 +90,7 @@ using Host     = tadah::hpo::HPO_Host<ParamVec, ::LammpsRunner>;
 struct TargetFile {
     fs::path path;
     explicit TargetFile(const std::string& body)
-    : path(fs::temp_directory_path() /
-           ("tadah_fit_settings_" +
-            std::to_string(std::chrono::steady_clock::now()
-                               .time_since_epoch().count()) + ".hpo")) {
+    : path(hpo_test::unique_temp_path("tadah_fit_settings_", ".hpo")) {
         std::ofstream os(path);
         REQUIRE(os.good());
         os << body;
@@ -108,10 +106,7 @@ struct TargetFile {
 struct ScratchDir {
     fs::path dir, original;
     ScratchDir() {
-        dir = fs::temp_directory_path() /
-              ("tadah_fit_settings_run_" +
-               std::to_string(std::chrono::steady_clock::now()
-                                  .time_since_epoch().count()));
+        dir = hpo_test::unique_temp_path("tadah_fit_settings_run_");
         fs::create_directories(dir);
         original = fs::current_path();
         fs::current_path(dir);

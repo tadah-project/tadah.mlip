@@ -11,6 +11,7 @@
  */
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/checkpoint.h>
 #include <tadah/hpo/optimizer_caps.h>   // OptimizerCaps::reads_seed
@@ -84,11 +85,7 @@ OptimizerSpec make_spec(const std::string& lib, const std::string& algo)
 /* An open journal so the adapter's status/warnings can be inspected. */
 struct LoggedRun {
     fs::path path;
-    LoggedRun() : path(fs::temp_directory_path() /
-                       ("nlopt_host_exc_" +
-                        std::to_string(std::chrono::steady_clock::now()
-                                       .time_since_epoch().count()) +
-                        ".log"))
+    LoggedRun() : path(hpo_test::unique_temp_path("nlopt_host_exc_", ".log"))
     {
         tadah::hpo::HPOLog::instance().reset_for_test();
         tadah::hpo::HPOLog::instance().open(path.string(), "test", "/", 0);

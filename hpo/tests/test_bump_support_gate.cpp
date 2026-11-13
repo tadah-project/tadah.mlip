@@ -12,6 +12,7 @@
 //    FAILSCORE, and BUMPGATE STRICT restores the startup box-corner error.
 
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 
 #include <tadah/core/context.h>
 #include <tadah/core/periodic_table.h>
@@ -47,10 +48,7 @@ namespace bg = tadah::hpo::detail;
 struct BgTempFile {
   fs::path path;
   explicit BgTempFile(const std::string& body)
-  : path(fs::temp_directory_path() /
-         ("tadah_bg_" +
-          std::to_string(std::chrono::steady_clock::now()
-                             .time_since_epoch().count()) + ".in")) {
+  : path(hpo_test::unique_temp_path("tadah_bg_", ".in")) {
     std::ofstream os(path);
     REQUIRE(os.good());
     os << body;
@@ -214,10 +212,7 @@ TEST_CASE("HPO_Host per-candidate bump gate: graded reject before training",
   struct ScratchDir {
     fs::path dir, original_cwd;
     ScratchDir() {
-      dir = fs::temp_directory_path() /
-            ("tadah_bumpgate_e2e_" +
-             std::to_string(std::chrono::steady_clock::now()
-                                .time_since_epoch().count()));
+      dir = hpo_test::unique_temp_path("tadah_bumpgate_e2e_");
       fs::create_directories(dir);
       original_cwd = fs::current_path();
       fs::current_path(dir);

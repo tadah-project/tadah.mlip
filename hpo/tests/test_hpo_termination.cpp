@@ -31,6 +31,7 @@
 #include "pc_process_workers.h"  // before catch2/catch.hpp
 #include "tadah_test_skip.hpp"   // before catch2/catch.hpp
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 #include "target_file_text.h"
 
 #ifdef TADAH_ENABLE_OPENMP
@@ -121,10 +122,7 @@ struct ScratchDir {
     fs::path original_cwd;
     ScratchDir()
     {
-        dir = fs::temp_directory_path() /
-              ("tadah_hpo_termination_" +
-               std::to_string(std::chrono::steady_clock::now()
-                                  .time_since_epoch().count()));
+        dir = hpo_test::unique_temp_path("tadah_hpo_termination_");
         fs::create_directories(dir);
         original_cwd = fs::current_path();
         fs::current_path(dir);

@@ -1,6 +1,7 @@
 /* Per-dimension initial-step plan (initial_step.h) and the NLopt
  * adapter's use of it (make_nlopt + get_initial_step read-back). */
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 #include <tadah/hpo/hpo_log.h>
 #include <tadah/hpo/initial_step.h>
 #include <tadah/hpo/nlopt_adapter.h>
@@ -333,11 +334,7 @@ struct StepRecorder {
 /* An open journal; `text()` closes it and returns it. */
 struct StepJournal {
     std::filesystem::path path =
-        std::filesystem::temp_directory_path() /
-        ("tadah_step_plan_" +
-         std::to_string(std::chrono::steady_clock::now()
-                            .time_since_epoch().count()) +
-         ".log");
+        hpo_test::unique_temp_path("tadah_step_plan_", ".log");
     StepJournal() {
         auto& log = HPOLog::instance();
         log.reset_for_test();

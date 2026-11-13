@@ -1,4 +1,5 @@
 #include "catch2/catch.hpp"
+#include "scratch_tmpdir.h"
 #include <tadah/core/core_user_config_parser.h>
 #include <tadah/core/periodic_table.h>
 #include <tadah/hpo/hpo_targets.h>
@@ -28,8 +29,7 @@ core::Context config() {
 }
 struct File {
   std::filesystem::path path;
-  File(const std::string &s,bool optimizer=true):path(std::filesystem::temp_directory_path()/
-    ("tadah-embed-optim-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()))) {
+  File(const std::string &s,bool optimizer=true):path(hpo_test::unique_temp_path("tadah-embed-optim-")) {
     std::ofstream f(path); f<<s;if(optimizer)f<<"OPTIMIZER\nLIB DLIB\nALGO BFGS\nMAXEVAL 2\nENDOPTIMIZER\n";
   }
   ~File() { std::error_code e; std::filesystem::remove(path,e); }

@@ -783,26 +783,17 @@ set_tests_properties(hpo_mpi_build_tests_lint_tool PROPERTIES
 # all of them share the temporary directory. A file or directory that a test
 # names by a clock reading alone has the same name in two processes that
 # read the same tick: one reads the other's journal, or removes the other's
-# directory. hpo_temp_names_lint reads the sources listed here and fails a
-# statement that makes text from a clock reading (time_since_epoch) without
-# the process id (getpid), mkdtemp or mkstemp (check_temp_names.py; its
-# docstring lists what it does not see). The listed sources take such a name
-# from hpo_test::unique_temp_path (scratch_tmpdir.h): the stem, the process
-# id and a count of the names the process has taken. Other sources of this
-# directory (test_hpo_termination.cpp among them) hold names made from the
-# clock alone and are not read; given a directory, the check reads every
-# source under it.
-# Before the fix: fails, 30 statements in 19 of the listed sources.
+# directory. hpo_temp_names_lint reads every source of this directory and
+# MLIP's test_embed_tools.cpp, and fails a statement that makes text from a
+# clock reading (time_since_epoch) without the process id (getpid), mkdtemp
+# or mkstemp (check_temp_names.py; its docstring lists what it does not
+# see). The tests of HPO take such a name from hpo_test::unique_temp_path
+# (scratch_tmpdir.h): the stem, the process id and a count of the names the
+# process has taken.
+# Before the fix: fails, 71 statements in 53 sources.
 set(_hpo_temp_name_sources
-    anneal_test_support.h scratch_tmpdir.h
-    test_anneal.cpp test_anneal_p2_locks.cpp test_anneal_pa.cpp
-    test_anneal_pt.cpp test_asa.cpp test_backend_end_status.cpp
-    test_fd_bounds.cpp test_hpo.cpp test_hpo_analytical.cpp
-    test_hpo_check.cpp test_hpo_error_scales.cpp test_hpo_host_e2e.cpp
-    test_init_strategies.cpp test_optim_key_rules.cpp
-    test_policy_host_exceptions.cpp test_proposal_order.cpp
-    test_scale_parser.cpp test_startup_validation.cpp
-    test_unique_temp_path.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../mlip/tests/test_embed_tools.cpp)
 add_test(NAME hpo_temp_names_lint
     COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/check_temp_names.py

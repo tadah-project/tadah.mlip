@@ -911,18 +911,19 @@ endif()
 #       objective called the C library.
 #   hpo_compact_ladder_other_order    "compact fitter RHOFORM: SIGNED
 #       reproduces the numbers of the fitter before RHOFORM" with equal
-#       elements reversed by qsort_r. Before the fix: aborts in a build
-#       whose flags are the golden build's ("golden ladder", "entry 1:
-#       0x1.bfe2b5a2dd97ep-14 vs golden 0x1.cd235748f11d5p-16"); the ladder
-#       was compared whatever the order.
+#       elements reversed by qsort_r. Before the fix: fails ("1613 == 0":
+#       NLopt sorted with the C library's qsort_r) and, where the ladder is
+#       compared, aborts ("golden ladder", "entry 1: 0x1.bfe2b5a2dd97ep-14
+#       vs golden 0x1.cd235748f11d5p-16").
 #   hpo_compact_ladder_keep_order     the same case with equal elements
-#       kept in their input order by qsort_r, as the C library of the
-#       goldens leaves them: the ladder is the golden bit for bit whatever
-#       the C library of the build does with them.
-# The ladder is run and compared in the golden build only (x86-64 without
-# -ffast-math, FMA or AVX); in any other build the two ladder entries check
-# that the stand-in reaches NLopt's sort, and the case warns that the ladder
-# is not compared.
+#       kept in their input order by qsort_r. Before the fix: fails
+#       ("778 == 0").
+# NLopt is built to sort with its own sort (CMakeLists.txt of HPO), so the
+# two ladder entries check, in every build, that the stand-in is the
+# qsort_r of the process and that NLopt's sort is not that one. The ladder
+# is run and compared, bit for bit, in the golden build only (x86-64
+# without -ffast-math, FMA or AVX); in any other build the case warns that
+# the ladder is not compared.
 # With AddressSanitizer the entries add verify_asan_link_order=0 to the
 # ASAN_OPTIONS of the run: its runtime then accepts a library loaded
 # before it.

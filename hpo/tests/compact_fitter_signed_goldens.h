@@ -4,7 +4,8 @@
 // hexfloats by a driver built with the flags of the HPO library (-O3, no
 // -march=native, no -ffast-math) against the 3ce1001 sources. The FEAT-02
 // fitter reproduced every value bit for bit when these were generated.
-// Frozen reference data; do not edit.
+// Frozen reference data; do not edit. The ladder alone has another origin,
+// stated above it.
 #ifndef TADAH_HPO_TESTS_COMPACT_FITTER_SIGNED_GOLDENS_H
 #define TADAH_HPO_TESTS_COMPACT_FITTER_SIGNED_GOLDENS_H
 
@@ -113,14 +114,22 @@ const std::vector<double> joint = {
     0x1.0000000000001p-1, 0x1p+0, 0x1.0000000000001p+2, 0x1.bffffffffffffp+2,
     0x1.ccccccccccccdp-2, 0x1.9999999999999p-2, 0x1.cccccccccccccp-2};
 
-// fit() ladder (n_max 5, no jitters): n, curve_rmse, c, mu, eta
+// fit() ladder (n_max 5, no jitters): n, curve_rmse, c, mu, eta. The ladder
+// of the present fitter in a build whose NLopt sorts with its own sort
+// (qsort_r_fallback), printed by the test case in the golden build: the
+// Sbplx searches of the ladder follow the order in which a sort leaves
+// coordinates of equal step, and that sort leaves them in one order with
+// every C library. With the C library's sort of the build that produced the
+// values above (glibc's qsort_r, which keeps equal elements in their input
+// order) the fitter before RHOFORM and the present one ended on the same
+// ladder, bit for bit, of curve_rmse 0x1.cd235748f11d5p-16.
 const std::vector<double> ladder = {
-    0x1.4p+2, 0x1.cd235748f11d5p-16, 0x1.578fb199ac63cp+1,
-    -0x1.1b3b69cf792efp-2, 0x1.199fa886a4d2fp+1, -0x1.0e55e3e1f1f8p-3,
-    0x1.f76aff767b9f9p-8, -0x1.cp+1, 0x1.be8fa12fd6789p+2,
-    -0x1.45bed42aa8218p+1, 0x1.17cdc50ec517p-1, 0x1.9144e21ce6f16p+1,
-    0x1.7ebe1b679f275p-2, 0x1.9f2ae33efc44bp-4, 0x1.2f9274eabc15ap-2,
-    0x1.1713122b8fc57p-1, 0x1.d826164c7cab6p-1};
+    0x1.4p+2, 0x1.b16a9ea5f2cdbp-16, 0x1.9e8efce5c197dp+1,
+    -0x1.183383d416312p-2, 0x1.09892e5bcf425p+0, -0x1.70c4164402884p-3,
+    0x1.c65d17ad32939p-6, -0x1.8c8a3a86378dbp+1, 0x1.a22e301976c3dp+2,
+    -0x1.4b55e90f4a2a9p+1, 0x1.2dc08ddfe3449p-2, 0x1.d28d63dee5ac6p+0,
+    0x1.51437848d5a43p-2, 0x1.e0a0bf37104e5p-4, 0x1.17a9eb222a20bp-2,
+    0x1.eb6d181d6aedep-2, 0x1.cdfc92f5996aep-1};
 
 }  // namespace compact_signed_golden
 

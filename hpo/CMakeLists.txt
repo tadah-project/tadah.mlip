@@ -166,12 +166,25 @@ if(NOT TADAH_BUILD_DOCS_ONLY AND TADAH_ENABLE_CERES)
 endif()
 
 set(NLOPT_TESTS OFF CACHE BOOL "Build nlopt's own unit tests" FORCE)
+# NLopt sorts with its own sort (qsort_r_fallback of its src/util/qsort_r.c)
+# and not with the C library's qsort_r, which it calls where its build
+# finds that function (HAVE_QSORT_R). Sbplx, ISRES, ESCH and the DIRECT
+# variants of cdirect.c take their next step from the order a sort leaves,
+# and neither C nor POSIX fixes the order of elements that compare equal:
+# glibc's qsort_r keeps their input order, musl's does not, and one search
+# ended on another result with each. NLopt's check_function_exists(qsort_r
+# HAVE_QSORT_R) keeps a value that is defined, so the variable is set, for
+# the directory of NLopt alone, before NLopt is added. Tests: "compact
+# fitter RHOFORM: SIGNED reproduces the numbers of the fitter before
+# RHOFORM" and the entries hpo_compact_ladder_*_order.
+set(HAVE_QSORT_R OFF)
 FetchContent_Declare(
   nlopt
   GIT_REPOSITORY https://github.com/stevengj/nlopt.git
   GIT_TAG        v2.10.0
 )
 FetchContent_MakeAvailable(nlopt)
+unset(HAVE_QSORT_R)
 
 # End of the external-dependency fetch region: restore BUILD_TESTING.
 tadah_end_external_deps()

@@ -34,6 +34,7 @@ What a user of Tadah! 1.5.0 has to know to move to 2.0.0, the most important fir
 - Neighbour lists hold every periodic image within the cutoff, also for a cell thinner than the cutoff and a triclinic cell. Results change for such structures, and a potential fitted to them needs a retrain.
 - A `LAMBDA -1` fit counts its observations only, so its λ and its coefficients change.
 - Non-linear models (`M_KRR` with a non-linear kernel, `M_BLR` with `BF_Polynomial2`) train and predict again, and `DIMER` models are trained with the real interatomic distances.
+- A search of `tadah hpo` or `tadah refit` with `NLOPT:LN_SBPLX`, the `NLOPT:GN_DIRECT` family, `NLOPT:GN_ISRES` or `NLOPT:GN_ESCH` gives the same result with every C library; it followed the sort of the C library. Results of such searches change.
 - `tadah predict` applies the `LSCALE` of the potential.
 - The cell of a non-orthogonal CIF or COD structure is read as it is; it was transposed.
 - `pair_style tadah`: a second `pair_coeff` loads its file.

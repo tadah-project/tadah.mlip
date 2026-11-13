@@ -6060,13 +6060,41 @@ TEST_CASE("Termination: SIGINT stops DLIB GFS with four threads",
         "    MAXEVAL 100000000\n    THREADS 4\n"), SIGINT, "SIGINT", 130, 4);
 }
 
-TEST_CASE("Termination: SIGINT stops ANNEAL_PT with two threads",
-          "[.shutdown_anneal_pt]")
+/* ANNEAL_PT with two replicas on two threads, on the fixture. */
+const std::string kAnnealPtTwoThreads =
+    "    TYPE PLAIN\n    LIB TADAH\n    ALGO ANNEAL_PT\n"
+    "    MAXEVAL 100000\n    THREADS 2\n    SEED 7\n"
+    "    PARAM REPLICAS 2\n";
+
+/* The signal is due at the third evaluation, when ANNEAL_PT still evaluates
+ * one point at a time (evaluations 1 to 22, see the next case): the two
+ * threads run no batch yet, unless the thread that raises the signal is
+ * scheduled late. It said "SIGINT stops ANNEAL_PT with two threads". */
+TEST_CASE("Termination: SIGINT due at the third evaluation stops ANNEAL_PT "
+          "with two threads", "[.shutdown_anneal_pt]")
 {
-    batch_signal_case(plain_block(
-        "    TYPE PLAIN\n    LIB TADAH\n    ALGO ANNEAL_PT\n"
-        "    MAXEVAL 100000\n    THREADS 2\n    SEED 7\n"
-        "    PARAM REPLICAS 2\n"), SIGINT, "SIGINT", 130, 2);
+    batch_signal_case(plain_block(kAnnealPtTwoThreads), SIGINT, "SIGINT",
+                      130, 2);
+}
+
+/* Pins: a signal that arrives while ANNEAL_PT evaluates on its two threads,
+ * through the whole run. On the fixture ANNEAL_PT makes evaluations 1 to 22
+ * one at a time (the starting point, the 20 probes of its initial
+ * temperature and the starting point of the second replica); from then on
+ * its replicas are evaluated in batches, one thread each: the rounds of its
+ * warm-up, of one evaluation for each replica, then its epochs. The first
+ * round reserves 23 and 24, and the signal is raised once the count has
+ * passed 22: when it arrives, one replica of a batch may have started its
+ * evaluation and the other not, in the order their threads were scheduled.
+ * Whatever the order, the run ends 130, and its history files have the rows
+ * of the evaluations made: every number up to the count but those the
+ * journal names. */
+TEST_CASE("Termination: SIGINT stops ANNEAL_PT with two threads after its "
+          "first round on them has taken its numbers",
+          "[.shutdown_anneal_pt_batch]")
+{
+    batch_signal_case(plain_block(kAnnealPtTwoThreads), SIGINT, "SIGINT",
+                      130, 2, {}, 23);
 }
 
 TEST_CASE("Termination: SIGINT stops ANNEAL_PA", "[.shutdown_anneal_pa]")
@@ -6077,13 +6105,41 @@ TEST_CASE("Termination: SIGINT stops ANNEAL_PA", "[.shutdown_anneal_pa]")
         SIGINT, "SIGINT", 130);
 }
 
-TEST_CASE("Termination: SIGINT stops ANNEAL_PA with four threads",
-          "[.shutdown_anneal_pa_threads]")
+/* ANNEAL_PA with eight walkers on four threads, on the fixture. */
+const std::string kAnnealPaFourThreads =
+    "    TYPE PLAIN\n    LIB TADAH\n    ALGO ANNEAL_PA\n"
+    "    MAXEVAL 100000000\n    POPULATION 8\n    THREADS 4\n"
+    "    SEED 7\n";
+
+/* The signal is due at the third evaluation, when ANNEAL_PA still evaluates
+ * one point at a time (evaluations 1 to 21, see the next case): the four
+ * threads run no batch yet, unless the thread that raises the signal is
+ * scheduled late. It said "SIGINT stops ANNEAL_PA with four threads". */
+TEST_CASE("Termination: SIGINT due at the third evaluation stops ANNEAL_PA "
+          "with four threads", "[.shutdown_anneal_pa_threads]")
 {
-    batch_signal_case(plain_block(
-        "    TYPE PLAIN\n    LIB TADAH\n    ALGO ANNEAL_PA\n"
-        "    MAXEVAL 100000000\n    POPULATION 8\n    THREADS 4\n"
-        "    SEED 7\n"), SIGINT, "SIGINT", 130, 4);
+    batch_signal_case(plain_block(kAnnealPaFourThreads), SIGINT, "SIGINT",
+                      130, 4);
+}
+
+/* Pins: a signal that arrives while the first temperature step of ANNEAL_PA
+ * runs on its four threads, through the whole run. On the fixture ANNEAL_PA
+ * makes evaluations 1 to 21 one at a time (the starting point and the 20
+ * probes of its initial temperature) and 22 to 28, the starting points of
+ * the walkers 2 to 8, in a batch; its first temperature step reserves 50
+ * numbers for each walker, 29 to 428. The signal is raised once the count
+ * has passed 28: when it arrives, each walker has made some of its 50
+ * evaluations of the step, or none, in the order the threads were
+ * scheduled, and the numbers of the evaluations not made get no rows.
+ * Whatever the order, the run ends 130, and its history files have the rows
+ * of the evaluations made: every number up to the count but those the
+ * journal names. */
+TEST_CASE("Termination: SIGINT stops ANNEAL_PA with four threads after its "
+          "first temperature step has taken its numbers",
+          "[.shutdown_anneal_pa_batch]")
+{
+    batch_signal_case(plain_block(kAnnealPaFourThreads), SIGINT, "SIGINT",
+                      130, 4, {}, 29);
 }
 
 /* Pins: ASA's stop line names the signal stop as a shutdown request with
@@ -6106,8 +6162,12 @@ TEST_CASE("Termination: SIGINT stops ASA", "[.shutdown_asa]")
         check_asa_names_the_signal);
 }
 
-TEST_CASE("Termination: SIGINT stops ASA block-parallel with four threads",
-          "[.shutdown_asa_block]")
+/* The signal is due at the third evaluation, when ASA still evaluates one
+ * point at a time (evaluations 1 to 6, see the next case): the four threads
+ * run no block yet, unless the thread that raises the signal is scheduled
+ * late. It said "SIGINT stops ASA block-parallel with four threads". */
+TEST_CASE("Termination: SIGINT due at the third evaluation stops ASA "
+          "block-parallel with four threads", "[.shutdown_asa_block]")
 {
     batch_signal_case(plain_block(
         "    TYPE PLAIN\n    LIB ASA\n    ALGO ASA\n"
@@ -6203,9 +6263,10 @@ struct StopsSecondStateOfBlock {
  * no row" and "ASA stopped: shutdown requested (SIGINT) after 9
  * evaluation(s)", and the count stands at 10: the run made nine
  * evaluations and wrote nine rows, and number 8 was never an evaluation.
- * "Termination: SIGINT stops ASA block-parallel with four threads" met
- * this order once on a loaded machine, where the thread that raises the
- * signal and the thread of the second state were scheduled late.
+ * "Termination: SIGINT due at the third evaluation stops ASA block-parallel
+ * with four threads" met this order once on a loaded machine, where the
+ * thread that raises the signal and the thread of the second state were
+ * scheduled late.
  * With the expectation of a row for every number up to the count, which
  * check_run_files() had for every run: fails ("9 == 10", then "9 == 8" and
  * "10 == 9" for the rows after the seventh). */
@@ -6252,20 +6313,21 @@ TEST_CASE("Termination: SIGINT between the numbering of an ASA block and "
 
 namespace {
 
-/* The objective of an ANNEAL_PA run that a real SIGINT stops inside its
- * temperature step `step` (the batch's name, eval_batch.h) when one
- * evaluation of the step has been made: the first one of its last walker,
- * whose number is the highest a first evaluation of the step can take. The
- * first evaluation of the step to start reserves the numbers of all its
- * walkers. Every other evaluation of the step waits here until that one
- * has ended; the first of them to go on raises the signal on its own
- * thread -- the handler has run when std::raise returns -- and each goes
- * on to HPO_Host::operator(), which refuses it before it takes its number.
- * No timing decides the order. */
-struct OnlyLastWalkerOfStepEvaluates {
+/* The objective of an ANNEAL_PA or ANNEAL_PT run that a real SIGINT stops
+ * inside its batch `batch` (the batch's name, eval_batch.h: a temperature
+ * step of ANNEAL_PA, a round of ANNEAL_PT) when one evaluation of the batch
+ * has been made: the first one of its last slot `last_slot` (a walker, a
+ * replica), whose number is the highest a first evaluation of the batch
+ * can take. The first evaluation of the batch to start reserves the numbers
+ * of all its slots. Every other evaluation of the batch waits here until
+ * that one has ended; the first of them to go on raises the signal on its
+ * own thread -- the handler has run when std::raise returns -- and each
+ * goes on to HPO_Host::operator(), which refuses it before it takes its
+ * number. No timing decides the order. */
+struct OnlyLastSlotOfBatchEvaluates {
     Host&                   host;
-    std::string             step;
-    std::size_t             last_walker;
+    std::string             batch;
+    std::size_t             last_slot;
     std::mutex              m;
     std::condition_variable cv;
     bool                    started = false;
@@ -6275,16 +6337,16 @@ struct OnlyLastWalkerOfStepEvaluates {
 
     double operator()(const ParamVec& x)
     {
-        const tadah::hpo::EvalBatch* const batch =
+        const tadah::hpo::EvalBatch* const current =
             tadah::hpo::EvalBatch::current();
-        if (!batch || batch->what() != step) return host(x);
+        if (!current || current->what() != batch) return host(x);
         std::unique_lock<std::mutex> lk(m);
         if (!started &&
-            tadah::hpo::warmstart::current_chain() == last_walker) {
+            tadah::hpo::warmstart::current_chain() == last_slot) {
             started = true;
             lk.unlock();
             struct Ended {
-                OnlyLastWalkerOfStepEvaluates& s;
+                OnlyLastSlotOfBatchEvaluates& s;
                 ~Ended()
                 {
                     {
@@ -6358,7 +6420,7 @@ TEST_CASE("Termination: after SIGINT inside a temperature step of ANNEAL_PA "
         "    MAXEVAL 100000000\n    POPULATION 8\n    THREADS 8\n"
         "    SEED 7\n"));
     tadah::core::SignalHandler::install();
-    OnlyLastWalkerOfStepEvaluates objective{
+    OnlyLastSlotOfBatchEvaluates objective{
         fx.host, "temperature step 0 of TADAH:ANNEAL_PA", 7, {}, {}};
     int status = -1;
     REQUIRE_NOTHROW(status = tadah::hpo::drive_run(
@@ -6407,6 +6469,67 @@ TEST_CASE("Termination: after SIGINT inside a temperature step of ANNEAL_PA "
           static_cast<std::size_t>(std::count_if(
               numbers.begin(), numbers.end(),
               [&](std::size_t n) { return n > s.best_eval; })));
+    check_run_files(Evaluations::StoppedInBatch);
+}
+
+/* Pins: what a signal leaves when it arrives between the numbering of a
+ * batch of ANNEAL_PT and one of its evaluations. ANNEAL_PT with THREADS 2
+ * and two replicas on the fixture makes evaluations 1 to 22 one at a time
+ * (the starting point, the 20 probes of its initial temperature and the
+ * starting point of the second replica); the first round of its coordinate
+ * warm-up, of one evaluation for each replica, reserves 23 and 24. The
+ * second replica makes its evaluation, number 24; SIGINT arrives before
+ * the evaluation of the first replica starts, so it is not made. The run
+ * ends 130 with the SHUTDOWN trailer after 23 evaluations: loss.tadah has
+ * the rows 1 to 22 and 24, the journal says "round 1 of the coordinate
+ * warm-up of TADAH:ANNEAL_PT: 1 of its 2 evaluations did not run;
+ * evaluation 23 has no row" and gives "Total evaluations : 23", and the
+ * count stands at 24: number 23 was never an evaluation.
+ * "Termination: SIGINT stops ANNEAL_PT with two threads after its first
+ * round on them has taken its numbers" meets this order, in whichever round
+ * the signal arrives, only when the thread of the first replica is
+ * scheduled after the signal (7 of 60 runs, half of them with the process
+ * held on one processor). */
+TEST_CASE("Termination: SIGINT between the numbering of a round of ANNEAL_PT "
+          "and the evaluation of its first replica leaves that number "
+          "without a row", "[.shutdown_anneal_pt_unused]")
+{
+    HostFixture fx(kRootLines, plain_block(kAnnealPtTwoThreads));
+    tadah::core::SignalHandler::install();
+    const std::string round =
+        "round 1 of the coordinate warm-up of TADAH:ANNEAL_PT";
+    OnlyLastSlotOfBatchEvaluates objective{fx.host, round, 1, {}, {}};
+    int status = -1;
+    REQUIRE_NOTHROW(status = tadah::hpo::drive_run(
+        [&] {
+            const auto anchored =
+                tadah::hpo::anchor_seed_points(fx.trg.spec);
+            tadah::hpo::run_anneal_pt_impl<ParamVec>(
+                anchored ? *anchored : fx.trg.spec, objective);
+        }, fx.host, fx.log()));
+    CHECK(objective.started);
+    CHECK(objective.raised);
+    CHECK_FALSE(objective.waited_in_vain);
+    CHECK(status == 130);
+    CHECK(tadah::core::SignalHandler::signal_seen() == SIGINT);
+    const std::string journal = read_file("hpo_run.log");
+    CHECK(journal_status(journal) == "SHUTDOWN (SIGINT)");
+
+    /* The rows: 1 to 22 and 24. */
+    std::vector<std::size_t> numbers;
+    for (const auto& row : data_rows("loss.tadah"))
+        numbers.push_back(std::stoull(row.at(0)));
+    std::vector<std::size_t> expected;
+    for (std::size_t n = 1; n <= 22; ++n) expected.push_back(n);
+    expected.push_back(24);
+    CHECK(numbers == expected);
+    CHECK(Host::g_iter_value() == 24);
+    CHECK(count_of(journal,
+                   round + ": 1 of its 2 evaluations did not run; "
+                   "evaluation 23 has no row\n") == 1);
+    /* No other batch left an evaluation out. */
+    CHECK(count_of(journal, " did not run") == 1);
+    CHECK(journal_value(journal, "Total evaluations") == "23");
     check_run_files(Evaluations::StoppedInBatch);
 }
 

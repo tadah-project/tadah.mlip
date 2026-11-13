@@ -117,8 +117,7 @@ target_include_directories(tadah.core
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
   PRIVATE
-    ${CMAKE_CURRENT_BINARY_DIR}/generated
-    ${PROJECT_SOURCE_DIR}/external/boost/include)
+    ${CMAKE_CURRENT_BINARY_DIR}/generated)
 
 if(TADAH_ENABLE_ASAN)
   target_compile_options(tadah.core PUBLIC -fsanitize=address -fno-omit-frame-pointer -g)

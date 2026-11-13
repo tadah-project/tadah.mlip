@@ -40,7 +40,7 @@ gives the requirements in full and the build that runs on several MPI ranks.
   built on.
 - `cmake/`: the build support of those libraries.
 - `core/external/`: third-party sources, toml11 (MIT licence, in its
-  directory) and headers of Boost.
+  directory).
 
 ## Licence
 

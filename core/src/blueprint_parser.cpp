@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
-#include <boost/algorithm/string.hpp>
+#include <limits>
+#include <sstream>
+#include <utility>
 #include <blueprint_tadah.hpp>
 
 
@@ -13,6 +15,28 @@ namespace core {
 
 namespace { // Anonymous namespace for internal helper functions
 #define BLUEPRINT_ORIGIN "embedded blueprint_tadah.toml"
+/**
+ * @brief The parts of a dot-separated inheritance path.
+ *
+ * The parts are the runs of characters between the dots of @p path, the
+ * empty ones included: a path of n dots has n + 1 parts. "A..b" gives "A",
+ * "" and "b"; ".b" gives "" and "b"; "A." gives "A" and ""; the empty path
+ * gives one empty part. The result is never empty.
+ */
+std::vector<std::string> inheritPathParts(const std::string &path) {
+  std::vector<std::string> parts;
+  std::string::size_type start = 0;
+  for (;;) {
+    const std::string::size_type dot = path.find('.', start);
+    if (dot == std::string::npos) {
+      parts.push_back(path.substr(start));
+      return parts;
+    }
+    parts.push_back(path.substr(start, dot - start));
+    start = dot + 1;
+  }
+}
+
 /**
  * @brief Recursively expands any INHERIT blocks in a TOML table.
  *
@@ -60,8 +84,7 @@ void expandInheritance(toml::value &table, const toml::value &root,
       // 'table'
       for (const std::string &inheritPath : inheritList) {
         // Split the dot-separated path into individual parts
-        std::vector<std::string> parts;
-        boost::split(parts, inheritPath, boost::is_any_of("."));
+        const std::vector<std::string> parts = inheritPathParts(inheritPath);
 
         // Traverse the root using the path parts
         const toml::value *curr = &root;
@@ -508,8 +531,8 @@ static void prepareKeysInheritanceOneLevelWithMerge(toml::value &table) {
         for (const auto &inheritPath : inheritList) {
           // Use the last token as the subtable name. For "ALLOWED_KEYS.structure", 
           // we call it "structure".
-          std::vector<std::string> parts;
-          boost::split(parts, inheritPath, boost::is_any_of("."));
+          const std::vector<std::string> parts =
+              inheritPathParts(inheritPath);
           if (parts.empty()) {
             throw std::runtime_error("Empty inheritance path encountered.");
           }

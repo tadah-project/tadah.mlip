@@ -51,10 +51,9 @@ core/blueprint/embed/*.in
 cmake/Tadah*.cmake
 
 # Third-party sources bundled with core: toml11 (MIT licence) whole but for
-# its tests, and of Boost the headers that the list names.
+# its tests.
 core/external/toml11/CMakeLists.txt
 core/external/toml11/LICENSE
 core/external/toml11/cmake/*.in
 core/external/toml11/toml.hpp
 core/external/toml11/toml/*.hpp
-@export/boost-headers

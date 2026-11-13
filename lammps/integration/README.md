@@ -27,14 +27,14 @@ https://docs.lammps.org/Build_cmake.html
 
 ### 1) Cloning Tadah! (somewhere outside LAMMPS)
 
-Tadah.LAMMPS is the directory `lammps` of the Tadah! repository and is built from inside it, with the modules it needs (Tadah.MD, Tadah.MODELS and Tadah.CORE) beside it. The repository is cloned anywhere, at `v1-dev` (the development line) or at a release tag such as `v2.0.0`:
+Tadah.LAMMPS is the directory `lammps` of the Tadah! repository and is built from inside it, with the modules it needs (Tadah.MD, Tadah.MODELS and Tadah.CORE) beside it. The repository is cloned anywhere, at the default branch or at a release tag such as `v2.0.0`:
 
 ```bash
-git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git /path/to/tadah
+git clone https://github.com/tadah-project/tadah.mlip.git /path/to/tadah
 # or: git clone -b v2.0.0 ...
 ```
 
-A plain `git clone` checks out the repository's default branch, which need not be `v1-dev`. In the steps below that directory is `/path/to/tadah/lammps`.
+In the steps below that directory is `/path/to/tadah/lammps`.
 
 ### 2) Configuring LAMMPS with the ML‑TADAH integration options
 
@@ -46,7 +46,7 @@ The usual LAMMPS configure command runs from the **LAMMPS root directory**, with
   -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah/lammps
 ```
 
-Minimal example, for a `v1-dev` checkout:
+Minimal example:
 
 ```bash
 cmake -S cmake -B build \

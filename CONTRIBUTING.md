@@ -25,7 +25,7 @@ ctest --test-dir build --output-on-failure
 ```
 
 `TADAH_DEVELOP=ON` adds compiler warnings. The
-[installation page](https://tadah.readthedocs.io/v1-dev/installation.html)
+[installation page](https://tadah.readthedocs.io/latest/installation.html)
 gives the requirements, every build option and the builds with Nested Fitting
 and LAMMPS. [cmake-tools/README.md](cmake-tools/README.md) says how tests are
 registered and discovered.

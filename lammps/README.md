@@ -13,7 +13,7 @@ cmake -S cmake -B build \
 cmake --build build --parallel
 ```
 
-The [installation guide](https://tadah.readthedocs.io/v1-dev/installation.html) gives the requirements and
+The [installation guide](https://tadah.readthedocs.io/latest/installation.html) gives the requirements and
 the build that runs on several MPI ranks, and
 [integration/README.md](integration/README.md) describes the integration
 files.

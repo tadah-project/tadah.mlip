@@ -1,4 +1,4 @@
-[![docs](https://readthedocs.org/projects/tadah/badge/?version=v1-dev)](https://tadah.readthedocs.io/v1-dev/)
+[![docs](https://readthedocs.org/projects/tadah/badge/?version=latest)](https://tadah.readthedocs.io/latest/)
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/tadah-project/tadah.mlip/tags)
 
@@ -17,14 +17,14 @@ University of Edinburgh.
 
 ## Quick links
 
-- [Documentation](https://tadah.readthedocs.io/v1-dev/)
+- [Documentation](https://tadah.readthedocs.io/latest/)
 - [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Quickstart
 
-The [installation guide](https://tadah.readthedocs.io/v1-dev/installation.html) and the
-[quick start](https://tadah.readthedocs.io/v1-dev/quickstart.html) describe the build and a first run.
+The [installation guide](https://tadah.readthedocs.io/latest/installation.html) and the
+[quick start](https://tadah.readthedocs.io/latest/quickstart.html) describe the build and a first run.
 
 ## Status & API stability
 

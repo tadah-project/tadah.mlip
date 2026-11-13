@@ -44,20 +44,17 @@ Tadah!MLIP provides the command-line interface binary, ``tadah``, for developing
 Obtaining Source Code
 ~~~~~~~~~~~~~~~~~~~~~
 
-Tadah!MLIP is cloned at a release tag, or at ``v1-dev``, the development
-branch, from which the releases are tagged:
+Tadah!MLIP is cloned at the default branch or at a release tag:
 
 .. code-block:: bash
 
-    # the 2.0.0 release
+    # the default branch
+    git clone https://github.com/tadah-project/tadah.mlip.git
+
+    # or the 2.0.0 release
     git clone -b v2.0.0 https://github.com/tadah-project/tadah.mlip.git
 
-    # or the development line
-    git clone -b v1-dev https://github.com/tadah-project/tadah.mlip.git
-
-Both commands name the branch or tag: a plain ``git clone`` checks out the
-repository's default branch, which need not be ``v1-dev``. The clone holds
-every Tadah! module, and CMake builds them from it
+The clone holds every Tadah! module, and CMake builds them from it
 (:ref:`installation_modules`).
 
 .. _building_tadah:
@@ -448,18 +445,17 @@ Any LAMMPS version appropriate for the project serves; the example below clones 
 
 Tadah!LAMMPS is the directory ``lammps`` of the Tadah! repository and
 is built from inside it, with the modules it needs beside it. The repository
-is cloned anywhere on the filesystem, at a release tag or at ``v1-dev``, the
-development line (a plain ``git clone`` checks out the repository's default
-branch, which need not be either):
+is cloned anywhere on the filesystem, at the default branch or at a release
+tag:
 
 .. code-block:: bash
 
-    # the 2.0.0 release
-    git clone -b v2.0.0 \
+    # the default branch
+    git clone \
       https://github.com/tadah-project/tadah.mlip.git /path/to/tadah
 
-    # or the development line
-    git clone -b v1-dev \
+    # or the 2.0.0 release
+    git clone -b v2.0.0 \
       https://github.com/tadah-project/tadah.mlip.git /path/to/tadah
 
 **Step 3 — Configuring LAMMPS with ML‑TADAH enabled**
@@ -474,7 +470,7 @@ A ``DIMER`` potential (*Tadah!N2*, :ref:`mlips`) needs each molecule as two
 bonded atoms, so an atom style with bonds, such as ``bond``. These styles
 are part of the LAMMPS MOLECULE package, which ``-DPKG_MOLECULE=ON`` adds.
 
-Minimal example, for a ``v1-dev`` checkout:
+Minimal example:
 
 .. code-block:: bash
 
@@ -489,8 +485,7 @@ Tadah!LAMMPS builds the Tadah! modules it needs (``Tadah.MD``,
 ``Tadah.MODELS`` and ``Tadah.CORE``) from the repository that holds it
 (:ref:`installation_modules`).
 
-Example using the LAMMPS GCC preset and building a serial binary, for a
-``v1-dev`` checkout:
+Example using the LAMMPS GCC preset and building a serial binary:
 
 .. code-block:: bash
 

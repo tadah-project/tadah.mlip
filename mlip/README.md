@@ -6,4 +6,4 @@ analysis commands.
 
 `mlip` is a module of the [Tadah! repository](../README.md) and is built
 with it, on top of [`models`](../models). The
-[installation guide](https://tadah.readthedocs.io/v1-dev/installation.html) describes the build.
+[installation guide](https://tadah.readthedocs.io/latest/installation.html) describes the build.

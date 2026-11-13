@@ -1,0 +1,2 @@
+# Two changes that each add a line to the changelog are joined, not left as a conflict.
+CHANGELOG.md merge=union

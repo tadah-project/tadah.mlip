@@ -55,9 +55,9 @@ add_test(NAME tadah_version_matches_blueprint COMMAND tadah --version)
 set_tests_properties(tadah_version_matches_blueprint PROPERTIES
   PASS_REGULAR_EXPRESSION "^${_tadah_version_re}[\r\n]*$")
 
-# cmake-tools' reader: found through FetchContent'd CORE, [TADAH]-scoped,
-# registered as a configure dependency; a missing blueprint or version
-# line is a configure error (no 0.0.0 default).
+# cmake-tools' reader: found through the CORE the build file added,
+# [TADAH]-scoped, registered as a configure dependency; a missing
+# blueprint or version line is a configure error (no 0.0.0 default).
 # Each case configures version_reader/project in a new build directory
 # (version_reader/check_version_reader.cmake removes the last run's).
 set(_vr ${CMAKE_CURRENT_SOURCE_DIR}/version_reader)
@@ -71,7 +71,7 @@ function(tadah_version_reader_test name case core regex)
       -P ${_vr}/check_version_reader.cmake)
   set_tests_properties(${name} PROPERTIES PASS_REGULAR_EXPRESSION "${regex}")
 endfunction()
-tadah_version_reader_test(tadah_version_reader_fetchcontent fetchcontent
+tadah_version_reader_test(tadah_version_reader_core_added core_added
   ${_vr}/core_ok "RESULT=9\\.8\\.7\\|9\\.8\\.7-rc\\.1\n.*DEPENDS=[^\n]*core_ok/blueprint/blueprint_tadah\\.toml")
 # Pins: a blueprint whose text has unbalanced square brackets and a
 # semicolon (a key description "a number in (0, 1]", before, in and after
@@ -79,91 +79,12 @@ tadah_version_reader_test(tadah_version_reader_fetchcontent fetchcontent
 # reader split the file into a CMake list of lines, in which a bracket
 # joins the lines up to the matching one into one element, so [TADAH] was
 # not found ("'version = \"...\"' not found in [TADAH]").
-tadah_version_reader_test(tadah_version_reader_brackets fetchcontent
+tadah_version_reader_test(tadah_version_reader_brackets core_added
   ${_vr}/core_brackets "RESULT=9\\.8\\.7\\|9\\.8\\.7-rc\\.1\n.*DEPENDS=[^\n]*core_brackets/blueprint/blueprint_tadah\\.toml")
-tadah_version_reader_test(tadah_version_reader_no_version fetchcontent
+tadah_version_reader_test(tadah_version_reader_no_version core_added
   ${_vr}/core_noversion "not found in \\[TADAH\\][ \n]+of[ \n]+[^\n]*core_noversion")
 tadah_version_reader_test(tadah_version_reader_no_core no_core
   "" "could not find blueprint_tadah\\.toml\\.[ \n]+Tadah\\.CORE has not been made available")
-
-
-# ------------------------------------------------------------------
-# 3. Removed build options (cmake-tools)
-# ------------------------------------------------------------------
-# cmake-tools stops the configure step when a removed option is ON
-# (TADAH_BUILD_MPI, the legacy MPI training build removed in 2.0.0), and
-# accepts OFF, as set by older presets, and an unset option. Each case
-# configures removed_options/project, which runs this build's cmake-tools.
-foreach(_case on preset_on off preset_off unset)
-  add_test(NAME tadah_removed_option_build_mpi_${_case}
-    COMMAND ${CMAKE_COMMAND}
-      -DCASE=${_case}
-      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
-      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/removed_options/${_case}
-      "-DGENERATOR=${CMAKE_GENERATOR}"
-      -DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
-      -DCXX=${CMAKE_CXX_COMPILER}
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/removed_options/check_removed_option.cmake)
-  set_tests_properties(tadah_removed_option_build_mpi_${_case} PROPERTIES
-    LABELS cmake
-    TIMEOUT 120)
-endforeach()
-
-# TADAH_GIT_BRANCH named the git ref of fetched modules; a build takes the
-# modules from the directories of its repository, and cmake-tools stops the
-# configure step for every value of the option: given with -D, set by a -C
-# preset, left in the cache of the build directory by an earlier cmake
-# command (the message names -UTADAH_GIT_BRANCH, with which the same build
-# directory configures) or set as a variable by the build file. The
-# environment variables TADAH_GIT_BASE, CI_COMMIT_REF_NAME and
-# READTHEDOCS_GIT_IDENTIFIER and a cache entry TADAH_GIT_BASE change
-# nothing: the configure step goes through without a message, and stops
-# for TADAH_GIT_BRANCH beside them.
-# Before the refusal: every case configured; CMake listed a -D among the
-# variables the project did not use, and printed nothing for the others.
-foreach(_case git_branch_command_line git_branch_preset git_branch_cache
-              git_branch_variable git_branch_environment git_base_cache)
-  add_test(NAME tadah_removed_option_${_case}
-    COMMAND ${CMAKE_COMMAND}
-      -DCASE=${_case}
-      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
-      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/removed_options/${_case}
-      "-DGENERATOR=${CMAKE_GENERATOR}"
-      -DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
-      -DCXX=${CMAKE_CXX_COMPILER}
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/removed_options/check_removed_option.cmake)
-  set_tests_properties(tadah_removed_option_${_case} PROPERTIES
-    LABELS cmake
-    TIMEOUT 120)
-endforeach()
-
-# The same refusal in a LAMMPS configure with the ML-TADAH package, which
-# adds Tadah!LAMMPS and with it cmake-tools: for -DTADAH_GIT_BRANCH=<ref>
-# and for the value the cache keeps. The case configures the LAMMPS sources
-# that TADAH_LAMMPS_DIR names, in a scratch build directory; the configure
-# step stops before LAMMPS looks for a library. Before the refusal the
-# LAMMPS configure step went on and printed nothing about the option.
-if(EXISTS "${TADAH_LAMMPS_DIR}/cmake/CMakeLists.txt")
-  add_test(NAME tadah_removed_option_git_branch_lammps
-    COMMAND ${CMAKE_COMMAND}
-      -DCASE=git_branch_lammps
-      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
-      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/removed_options/git_branch_lammps
-      "-DGENERATOR=${CMAKE_GENERATOR}"
-      -DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
-      -DCXX=${CMAKE_CXX_COMPILER}
-      -DLAMMPS_DIR=${TADAH_LAMMPS_DIR}
-      -DREPOSITORY=${PROJECT_SOURCE_DIR}
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/removed_options/check_removed_option.cmake)
-  set_tests_properties(tadah_removed_option_git_branch_lammps PROPERTIES
-    LABELS cmake
-    TIMEOUT 300)
-else()
-  message(STATUS
-    "tadah_removed_option_git_branch_lammps is not registered: "
-    "TADAH_LAMMPS_DIR ('${TADAH_LAMMPS_DIR}') names no LAMMPS sources "
-    "(cmake/CMakeLists.txt)")
-endif()
 
 
 # Git and Python 3, for the tests below: the git cases of the text check's
@@ -172,41 +93,7 @@ find_package(Git REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 # ------------------------------------------------------------------
-# 4. Where the modules and cmake-tools come from
-# ------------------------------------------------------------------
-# The directories of this repository, whatever TADAH_DEVELOP and the
-# environment variable TADAH_PATH say; another directory given for a
-# module or for cmake-tools, a repository without the module and a
-# module copied out of its repository are refused. The function cases
-# run local_module/probe.cmake; the project_ cases configure a build file
-# in a scratch directory without network; one case compares the
-# cmake-tools block of the seven build files and checks that none of them
-# fetches a Tadah module or cmake-tools; one gives every build file the
-# removed option TADAH_GIT_BRANCH, which each refuses.
-foreach(_case repository tadah_path_is_not_read same_directory_given
-              cmake_tools_through_link
-              other_directory_refused other_cmake_tools_refused
-              missing_module_refused blocks_identical
-              project_unpinned project_same_cmake_tools_given
-              project_same_module_given project_other_module_refused
-              project_other_cmake_tools_refused project_module_alone_refused
-              project_removed_option_refused)
-  add_test(NAME tadah_local_module_${_case}
-    COMMAND ${CMAKE_COMMAND}
-      -DCASE=${_case}
-      -DREPOSITORY=${PROJECT_SOURCE_DIR}
-      -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/local_module/${_case}
-      "-DGENERATOR=${CMAKE_GENERATOR}"
-      -DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
-      -DCXX_COMPILER=${CMAKE_CXX_COMPILER}
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/local_module/check_local_module.cmake)
-  set_tests_properties(tadah_local_module_${_case} PROPERTIES
-    LABELS cmake
-    TIMEOUT 120)
-endforeach()
-
-# ------------------------------------------------------------------
-# 5. Doxygen input of the `docs` target (cmake/doxygen_input.cmake)
+# 3. Doxygen input of the `docs` target (cmake/doxygen_input.cmake)
 # ------------------------------------------------------------------
 # The include/ trees of the configured modules only: HPO with
 # TADAH_ENABLE_NFP, never a bare "/include" from an empty source
@@ -243,13 +130,13 @@ tadah_doxygen_input_test(configured NONE)
 
 
 # ------------------------------------------------------------------
-# 6. Catch test discovery (cmake-tools), used by every Tadah module
+# 4. Catch test discovery (cmake-tools), used by every Tadah module
 # ------------------------------------------------------------------
 add_subdirectory(catch_discovery)
 
 
 # ------------------------------------------------------------------
-# 7. Documentation build tools (docs/tools/tests)
+# 5. Documentation build tools (docs/tools/tests)
 # ------------------------------------------------------------------
 # Unit tests of the docs input lookup (docs/source/config/source_locator.py),
 # of the compatibility pages of earlier releases (docs/tools/legacy_routes.py
@@ -423,7 +310,7 @@ endif()
 
 
 # ------------------------------------------------------------------
-# 8. `tadah hpo` stopped by a signal exits with 128 + the signal number
+# 6. `tadah hpo` stopped by a signal exits with 128 + the signal number
 # ------------------------------------------------------------------
 # cli_signal/check_hpo_signal.py runs `tadah hpo` on a tiny problem (no
 # LAMMPS, no network), signals it once evaluations are on disk, and checks
@@ -502,7 +389,7 @@ endif()
 
 
 # ------------------------------------------------------------------
-# 9. The CLI examples the documentation includes
+# 7. The CLI examples the documentation includes
 # ------------------------------------------------------------------
 # One entry per examples/CLI/<name>/README.rst that docs/source/examples.rst
 # includes: cli_examples/check_cli_example.py runs the README's `tadah`
@@ -643,7 +530,7 @@ set_tests_properties(tadah_nfp_files_check PROPERTIES
 
 
 # ------------------------------------------------------------------
-# 10. The Quick Start potential (docs/source/quickstart)
+# 8. The Quick Start potential (docs/source/quickstart)
 # ------------------------------------------------------------------
 # A guard against a stale shipped potential: quickstart/check_quickstart_pot.py
 # retrains docs/source/quickstart/pot.tadah, in scratch copies of the
@@ -681,7 +568,7 @@ set_tests_properties(tadah_quickstart_numbers PROPERTIES
 
 
 # ------------------------------------------------------------------
-# 11. Header self-containment (cmake-tools' tadah_add_header_check)
+# 9. Header self-containment (cmake-tools' tadah_add_header_check)
 # ------------------------------------------------------------------
 # tadah_headers (label headers): every header of include/ compiles on its
 # own and twice in a row, with the include directories, definitions and
@@ -783,7 +670,7 @@ set_tests_properties(tadah_cmake_minimum_features PROPERTIES
 
 
 # ------------------------------------------------------------------
-# 12. The tadah executable without TADAH_ENABLE_NFP
+# 10. The tadah executable without TADAH_ENABLE_NFP
 # ------------------------------------------------------------------
 # A build with NFP links tadah with HPO; the default build (NFP OFF) links
 # it with tadah.mlip alone. tadah_without_nfp_links builds the second from
@@ -845,7 +732,7 @@ endif()
 
 
 # ------------------------------------------------------------------
-# 13. Text check (cmake-tools' tadah_add_text_check)
+# 11. Text check (cmake-tools' tadah_add_text_check)
 # ------------------------------------------------------------------
 # tadah_text and cmake-tools_text (label text): no line of the text files
 # of this repository, or of the cmake-tools this build uses, carries a

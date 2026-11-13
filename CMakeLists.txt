@@ -56,10 +56,10 @@ endif()
 
 # 2. Bring in the shared compile/link options
 # >>> cmake-tools (the same block in every build file of the repository but
-#     for the path and the name; tests/local_module compares them)
+#     for the path and the name)
 # cmake-tools is the directory of that name in this repository; the file
 # read here adds it to the build (tadah::compile_options, the tadah_*
-# functions) and refuses a FETCHCONTENT_SOURCE_DIR_TADAH_CMAKE of another one.
+# functions).
 get_filename_component(_tadah_here "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
 if(NOT EXISTS "${_tadah_here}/cmake-tools/cmake/TadahRepository.cmake")
   message(FATAL_ERROR
@@ -89,10 +89,7 @@ endif()
 # Set the project version from the blueprint TOML (single source of truth).
 # CORE has been added above, so its blueprint is available at
 # ${Tadah.CORE_SOURCE_DIR}/blueprint/blueprint_tadah.toml.
-if(NOT COMMAND tadah_read_version_from_blueprint)
-  message(FATAL_ERROR "cmake-tools is too old: tadah_read_version_from_blueprint() is missing")
-endif()
-tadah_read_version_from_blueprint(TADAH_VERSION REQUIRED)
+tadah_read_version_from_blueprint(TADAH_VERSION)
 project(${TADAH} VERSION ${TADAH_VERSION} LANGUAGES CXX)
 tadah_message(STATUS "VERSION: ${TADAH_VERSION}")
 

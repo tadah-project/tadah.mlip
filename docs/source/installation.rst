@@ -242,10 +242,7 @@ The repository holds the Tadah! modules as directories: ``core``,
 CMake helpers in ``cmake-tools``. A build takes every module it needs from
 those directories: Tadah.MLIP, Tadah.MODELS and Tadah.CORE, and with
 ``TADAH_ENABLE_NFP`` also Tadah.HPO, Tadah.MD and Tadah!LAMMPS. No option
-and no environment variable names another source. A
-``FETCHCONTENT_SOURCE_DIR_TADAH.<MODULE>`` setting that names another
-directory for a module stops the configure step with an error, and so does
-a ``cmake-tools`` of another checkout.
+and no environment variable names another source.
 
 .. _gofasterstripe:
 
@@ -357,9 +354,6 @@ ranks (``hpo_mpi_e2e_*``). The serial build runs none of them. ``ctest -L
 mpi`` also selects the ``pair_style tadah`` entries of
 :ref:`installation_lammps_mpi`, which every build with nested fitting has: they run an MPI
 ``lmp`` of their own and are *Skipped* unless it is named.
-
-Configuring with ``-DTADAH_BUILD_MPI=ON`` stops with an error that points
-to ``TADAH_HPO_MPI``; ``-DTADAH_BUILD_MPI=OFF`` is accepted.
 
 .. _installation_nfp:
 

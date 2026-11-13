@@ -9,18 +9,16 @@
 #  This module exposes one function:
 #
 #      tadah_read_version_from_blueprint(<output_var>
-#          [BLUEPRINT_FILE <path>]
-#          [REQUIRED])
+#          [BLUEPRINT_FILE <path>])
 #
 #  Behaviour:
 #    * If BLUEPRINT_FILE is given, parses exactly that file.
-#    * Otherwise the blueprint is located through Tadah.CORE itself:
-#        - the FetchContent source dir of a Tadah.CORE made available
-#          with FetchContent_MakeAvailable(Tadah.CORE);
-#        - ${Tadah.CORE_SOURCE_DIR}, set by CORE's own project() call
-#          when a build file adds it (tadah_add_module).
-#      Callers therefore read the version AFTER the Tadah modules they
-#      build on have been added, then re-state project(... VERSION ...).
+#    * Otherwise the blueprint is that of Tadah.CORE:
+#      ${Tadah.CORE_SOURCE_DIR}/blueprint/blueprint_tadah.toml, where
+#      Tadah.CORE_SOURCE_DIR is set by CORE's own project() call when a
+#      build file adds it (tadah_add_module). Callers therefore read the
+#      version AFTER the Tadah modules they build on have been added,
+#      then re-state project(... VERSION ...).
 #    * The version is the first `version = "..."` (or '...') line of the
 #      [TADAH] table: from the line holding only [TADAH] to the next line
 #      that starts with '['. The file is read as text, so square brackets
@@ -28,8 +26,7 @@
 #      (0, 1]") do not move or hide the table.
 #    * A missing blueprint, a missing [TADAH].version line or a version
 #      without a numeric M.m.p prefix is a configure error. There is no
-#      default version. REQUIRED is accepted for backward compatibility
-#      and has no further effect.
+#      default version.
 #    * The blueprint is added to CMAKE_CONFIGURE_DEPENDS of the calling
 #      directory, so bumping the version re-runs the configure step.
 #
@@ -39,26 +36,15 @@
 #      <output_var>_SOURCE   path of the blueprint that was read
 # ====================================================================
 
-include(FetchContent)
-
 function(tadah_read_version_from_blueprint output_var)
-  set(_options REQUIRED)
-  set(_oneValueArgs BLUEPRINT_FILE)
-  set(_multiValueArgs)
-  cmake_parse_arguments(_TVR "${_options}" "${_oneValueArgs}" "${_multiValueArgs}" ${ARGN})
+  cmake_parse_arguments(_TVR "" "BLUEPRINT_FILE" "" ${ARGN})
 
   # ---- Build candidate list -------------------------------------
   set(_candidates "")
   if(_TVR_BLUEPRINT_FILE)
     list(APPEND _candidates "${_TVR_BLUEPRINT_FILE}")
-  else()
-    FetchContent_GetProperties(Tadah.CORE)
-    if(tadah.core_POPULATED)
-      list(APPEND _candidates "${tadah.core_SOURCE_DIR}/blueprint/blueprint_tadah.toml")
-    endif()
-    if(DEFINED Tadah.CORE_SOURCE_DIR)
-      list(APPEND _candidates "${Tadah.CORE_SOURCE_DIR}/blueprint/blueprint_tadah.toml")
-    endif()
+  elseif(DEFINED Tadah.CORE_SOURCE_DIR)
+    list(APPEND _candidates "${Tadah.CORE_SOURCE_DIR}/blueprint/blueprint_tadah.toml")
   endif()
 
   # ---- Pick the first that exists -------------------------------

@@ -19,8 +19,6 @@ file(REMOVE_RECURSE "${WORK_DIR}")
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -S "${CMAKE_CURRENT_LIST_DIR}/project"
           -B "${WORK_DIR}" "-DCASE=${CASE}"
-          "-DTADAH_CMAKE_DIR=${TADAH_CMAKE_DIR}"
-          -DFETCHCONTENT_FULLY_DISCONNECTED=ON
-          "-DFETCHCONTENT_SOURCE_DIR_TADAH.CORE=${CORE}"
+          "-DTADAH_CMAKE_DIR=${TADAH_CMAKE_DIR}" "-DCORE=${CORE}"
   RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
 message(STATUS "configure (exit ${rc}):\n${out}")

@@ -72,7 +72,7 @@ tadah_declare_testing()
 tadah_read_version_from_blueprint(TADAH_VERSION
   BLUEPRINT_FILE ${PROJECT_SOURCE_DIR}/blueprint/blueprint_tadah.toml)
 project(Tadah.CORE VERSION ${TADAH_VERSION} LANGUAGES CXX)
-message(STATUS "Tadah.CORE version: ${TADAH_VERSION}")
+message(STATUS "Tadah.CORE version: ${TADAH_VERSION_FULL}")
 
 option(TADAH_ENABLE_ASAN "Enable AddressSanitizer (-fsanitize=address -fno-omit-frame-pointer)" OFF)
 

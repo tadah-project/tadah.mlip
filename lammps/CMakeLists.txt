@@ -90,7 +90,7 @@ tadah_add_module(Tadah.MD md)
 # is found; then re-state project().
 tadah_read_version_from_blueprint(TADAH_VERSION)
 project(Tadah.LAMMPS VERSION ${TADAH_VERSION} LANGUAGES CXX)
-tadah_lammps_status("Tadah.LAMMPS version: ${TADAH_VERSION}")
+tadah_lammps_status("Tadah.LAMMPS version: ${TADAH_VERSION_FULL}")
 
 add_library(tadah.lammps STATIC src/lammps_tadah.cpp)
 target_include_directories(tadah.lammps

@@ -4580,5 +4580,5 @@ logo = '''
 description = ""  # not
 long_description = ""
 website = "https://tadah.readthedocs.io"
-version = "2.0.0"
+version = "2.0.0-beta.1"
 examples = ["tadah train -c config.tadah", "tadah predict -p pot.tadah -s crystal.cif", "tadah explain data.balance.eshift"]

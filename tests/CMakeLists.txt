@@ -93,6 +93,23 @@ tadah_version_reader_test(tadah_version_reader_no_core no_core
 find_package(Git REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
+# The written copies of the version (version_reader/check_version_copies.py
+# lists them: CITATION.cff, the badge of README.md, the first heading of
+# CHANGELOG.md, the release tag of the clone commands in the installation
+# page and in lammps/integration/README.md) say what the blueprint says.
+# No file holds the date of a release: that heading is "## [<version>]"
+# alone, and CITATION.cff has no date-released. Without the copies changed
+# with the blueprint: fails, a line per copy ("CITATION.cff:16: version is
+# 2.0.0, the blueprint has 2.0.0-beta.1"); with a date after the heading or
+# a date-released line: fails, naming the line.
+add_test(NAME tadah_version_copies_match_blueprint
+  COMMAND ${Python3_EXECUTABLE}
+    ${_vr}/check_version_copies.py --source ${PROJECT_SOURCE_DIR})
+set_tests_properties(tadah_version_copies_match_blueprint PROPERTIES
+  LABELS docs
+  TIMEOUT 60
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
 # ------------------------------------------------------------------
 # 3. Doxygen input of the `docs` target (cmake/doxygen_input.cmake)
 # ------------------------------------------------------------------

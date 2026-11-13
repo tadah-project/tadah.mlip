@@ -91,7 +91,7 @@ endif()
 # ${Tadah.CORE_SOURCE_DIR}/blueprint/blueprint_tadah.toml.
 tadah_read_version_from_blueprint(TADAH_VERSION)
 project(${TADAH} VERSION ${TADAH_VERSION} LANGUAGES CXX)
-tadah_message(STATUS "VERSION: ${TADAH_VERSION}")
+tadah_message(STATUS "VERSION: ${TADAH_VERSION_FULL}")
 
 
 file(GLOB TADAH_SRC_FILES src/*.cpp)

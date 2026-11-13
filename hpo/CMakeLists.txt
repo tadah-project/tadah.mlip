@@ -82,7 +82,7 @@ tadah_add_module(Tadah.MD md)
 # is found; then re-state project().
 tadah_read_version_from_blueprint(TADAH_VERSION)
 project(Tadah.HPO VERSION ${TADAH_VERSION} LANGUAGES CXX C)
-message(STATUS "Tadah.HPO version: ${TADAH_VERSION}")
+message(STATUS "Tadah.HPO version: ${TADAH_VERSION_FULL}")
 
 # 5. External dependencies
 #

@@ -77,7 +77,7 @@ tadah_add_module(Tadah.CORE core)
 # is found; then re-state project().
 tadah_read_version_from_blueprint(TADAH_VERSION)
 project(Tadah.MODELS VERSION ${TADAH_VERSION} LANGUAGES CXX)
-message(STATUS "Tadah.MODELS version: ${TADAH_VERSION}")
+message(STATUS "Tadah.MODELS version: ${TADAH_VERSION_FULL}")
 
 file(GLOB MODELS_SRC CONFIGURE_DEPENDS "src/*.cpp")
 add_library(tadah.models ${MODELS_SRC})

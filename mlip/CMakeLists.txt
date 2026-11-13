@@ -75,7 +75,7 @@ tadah_add_module(Tadah.MODELS models)
 # is found; then re-state project().
 tadah_read_version_from_blueprint(TADAH_VERSION)
 project(Tadah.MLIP VERSION ${TADAH_VERSION} LANGUAGES CXX)
-message(STATUS "Tadah.MLIP version: ${TADAH_VERSION}")
+message(STATUS "Tadah.MLIP version: ${TADAH_VERSION_FULL}")
 
 # 4. External dependencies
 # ---- Tiny Boost ---------------------------------------------------------

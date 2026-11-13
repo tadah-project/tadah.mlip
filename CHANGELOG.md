@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.0.0] — unreleased
+## [2.0.0-beta.1]
 
 What changes on moving from any 1.x.x release, the most important first. A message that refuses a line names the line, and its conversion where there is one.
 

@@ -51,8 +51,8 @@ Tadah!MLIP is cloned at the default branch or at a release tag:
     # the default branch
     git clone https://github.com/tadah-project/tadah.mlip.git
 
-    # or the 2.0.0 release
-    git clone -b v2.0.0 https://github.com/tadah-project/tadah.mlip.git
+    # or the 2.0.0-beta.1 release
+    git clone -b v2.0.0-beta.1 https://github.com/tadah-project/tadah.mlip.git
 
 The clone holds every Tadah! module, and CMake builds them from it
 (:ref:`installation_modules`).
@@ -448,8 +448,8 @@ tag:
     git clone \
       https://github.com/tadah-project/tadah.mlip.git /path/to/tadah
 
-    # or the 2.0.0 release
-    git clone -b v2.0.0 \
+    # or the 2.0.0-beta.1 release
+    git clone -b v2.0.0-beta.1 \
       https://github.com/tadah-project/tadah.mlip.git /path/to/tadah
 
 **Step 3 — Configuring LAMMPS with ML‑TADAH enabled**

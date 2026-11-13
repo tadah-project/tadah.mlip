@@ -1,6 +1,6 @@
 [![docs](https://readthedocs.org/projects/tadah/badge/?version=latest)](https://tadah.readthedocs.io/latest/)
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
-[![version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/tadah-project/tadah.mlip/tags)
+[![version](https://img.shields.io/badge/version-2.0.0--beta.1-blue.svg)](https://github.com/tadah-project/tadah.mlip/tags)
 
 # Tadah!MLIP
 

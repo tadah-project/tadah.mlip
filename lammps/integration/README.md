@@ -27,11 +27,11 @@ https://docs.lammps.org/Build_cmake.html
 
 ### 1) Cloning Tadah! (somewhere outside LAMMPS)
 
-Tadah.LAMMPS is the directory `lammps` of the Tadah! repository and is built from inside it, with the modules it needs (Tadah.MD, Tadah.MODELS and Tadah.CORE) beside it. The repository is cloned anywhere, at the default branch or at a release tag such as `v2.0.0`:
+Tadah.LAMMPS is the directory `lammps` of the Tadah! repository and is built from inside it, with the modules it needs (Tadah.MD, Tadah.MODELS and Tadah.CORE) beside it. The repository is cloned anywhere, at the default branch or at a release tag such as `v2.0.0-beta.1`:
 
 ```bash
 git clone https://github.com/tadah-project/tadah.mlip.git /path/to/tadah
-# or: git clone -b v2.0.0 ...
+# or: git clone -b v2.0.0-beta.1 ...
 ```
 
 In the steps below that directory is `/path/to/tadah/lammps`.

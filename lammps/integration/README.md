@@ -73,10 +73,10 @@ Result: the LAMMPS binary built from this build directory includes **ML‑TADAH*
 
 ## How it works (high level)
 
-- LAMMPS generates `build/styles/style_pair.h` as an include-only file that lists pair style headers (e.g. `#include "pair_*.h"`).
-- This integration appends one or more include lines (e.g. `#include "pair_tadah.h"`) to that generated file.
-- `pair_tadah.h` registers the style via the standard LAMMPS mechanism:
+- The ML‑TADAH sources are outside the LAMMPS source tree, so LAMMPS does not find their styles by itself. The integration calls the LAMMPS function `RegisterStyles()` on the `ML-TADAH` directory, just before LAMMPS generates its style files.
+- `pair_tadah.h` declares the style in the standard LAMMPS way:
   - `PairStyle(tadah,PairTadah)` (inside `#ifdef PAIR_CLASS ... #else ... #endif`)
+- The configure step stops with an error when the generated style files do not name `pair_tadah.h`.
 - The ML‑TADAH sources (`ML-TADAH/*.cpp`) from the Tadah.LAMMPS checkout are compiled directly into the LAMMPS target.
 
 ---
@@ -127,38 +127,7 @@ For debugging:
 
 ### 5) `TADAH_LAMMPS_PAIR_STYLES` (list)
 
-Semicolon-separated list of pair styles to register.
-
-Format:
-- `style:Class[:header]`
-
-Behavior:
-- the integration uses this list to decide which header(s) to include into `style_pair.h`
-- `Class` is currently retained for future expansion
-- if `header` is omitted it defaults to `pair_\<style\>.h`
-
-Default:
-- `tadah:PairTadah`
-
-Examples:
-
-Default:
-
-```bash
--DTADAH_LAMMPS_PAIR_STYLES="tadah:PairTadah"
-```
-
-Explicit header name:
-
-```bash
--DTADAH_LAMMPS_PAIR_STYLES="tadah:PairTadah:pair_tadah.h"
-```
-
-Multiple styles (future use):
-
-```bash
--DTADAH_LAMMPS_PAIR_STYLES="tadah:PairTadah;other:PairOther:pair_other.h"
-```
+Ignored. The styles are discovered from the `PairStyle(...)` markers in the headers of `ML-TADAH`. A value other than the default `tadah:PairTadah` gives a warning at configure time.
 
 ---
 
@@ -181,14 +150,4 @@ cmake -S cmake -B build \
   -DCMAKE_PROJECT_INCLUDE=/path/to/tadah/lammps/integration/TadahLAMMPSProjectInclude.cmake \
   -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah/lammps \
   -DTADAH_LAMMPS_QUIET=OFF
-```
-
-### Custom style list
-
-```bash
-cmake -S cmake -B build \
-  -DPKG_ML-TADAH=ON \
-  -DCMAKE_PROJECT_INCLUDE=/path/to/tadah/lammps/integration/TadahLAMMPSProjectInclude.cmake \
-  -DTADAH_LAMMPS_SOURCE_DIR=/path/to/tadah/lammps \
-  -DTADAH_LAMMPS_PAIR_STYLES="tadah:PairTadah:pair_tadah.h"
 ```

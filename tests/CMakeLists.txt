@@ -840,3 +840,67 @@ foreach(_module IN LISTS _module_alone_modules)
     LABELS cmake
     TIMEOUT 300)
 endforeach()
+
+
+# ------------------------------------------------------------------
+# 14. The LAMMPS package (export/)
+# ------------------------------------------------------------------
+# export/write_package.py writes the package for LAMMPS users, the pair
+# style with the parts of core, models and md it is built from, out of this
+# repository as export/manifest lists it (tests/export/check_export.py says
+# what each test checks).
+# tadah_export_writer: the script on a throw-away repository; a manifest
+# with an entry of each kind gives the expected tree, and a pattern that
+# matches no file, with the other wrong inputs, stops it.
+# tadah_export_builds_lammps (also slow): writes the package into the build
+# tree, configures the LAMMPS sources of TADAH_LAMMPS_DIR with it as a user
+# does, in a build directory of its own, and builds the LAMMPS library with
+# the pair style; fails when a step fails or reads a file of this repository
+# outside the written tree. It is one build of the library without other
+# packages, Debug: about a minute (46 to 66 s measured, on 12 to 20
+# processes).
+# tadah_export_configures_lammps: the same without the build step (4 s), in
+# every run of the tests: a build file of the package that reads a file the
+# package does not hold stops it. Before the manifest: no package to build.
+# The two need the LAMMPS sources and the CMake of the integration file
+# (3.20), and are not added without them.
+add_test(NAME tadah_export_writer
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/export/check_export.py tool
+    --work ${CMAKE_CURRENT_BINARY_DIR}/export/writer)
+set_tests_properties(tadah_export_writer PROPERTIES
+  LABELS export
+  TIMEOUT 60
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+if(NOT EXISTS "${TADAH_LAMMPS_DIR}/cmake/CMakeLists.txt")
+  message(STATUS "The tests tadah_export_*_lammps are not added: "
+                 "TADAH_LAMMPS_DIR='${TADAH_LAMMPS_DIR}' holds no LAMMPS sources")
+elseif(CMAKE_VERSION VERSION_LESS 3.20)
+  message(STATUS "The tests tadah_export_*_lammps are not added: "
+                 "the LAMMPS integration needs CMake 3.20, this is ${CMAKE_VERSION}")
+else()
+  cmake_host_system_information(RESULT _export_jobs QUERY NUMBER_OF_PHYSICAL_CORES)
+  if(NOT _export_jobs GREATER 0)
+    set(_export_jobs 1)
+  endif()
+  foreach(_case configure build)
+    add_test(NAME tadah_export_${_case}s_lammps
+      COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/export/check_export.py ${_case}
+        --lammps ${TADAH_LAMMPS_DIR}
+        --work ${CMAKE_CURRENT_BINARY_DIR}/export/${_case}
+        --cmake ${CMAKE_COMMAND}
+        --generator ${CMAKE_GENERATOR}
+        --cxx ${CMAKE_CXX_COMPILER}
+        --jobs ${_export_jobs})
+  endforeach()
+  set_tests_properties(tadah_export_configures_lammps PROPERTIES
+    LABELS export
+    TIMEOUT 300
+    ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+  set_tests_properties(tadah_export_builds_lammps PROPERTIES
+    LABELS "export;slow"
+    TIMEOUT 1800
+    PROCESSORS ${_export_jobs}
+    ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+endif()

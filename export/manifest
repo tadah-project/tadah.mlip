@@ -1,0 +1,60 @@
+# What the LAMMPS package of Tadah! holds: the pair style `tadah` and the
+# parts of core, models and md it is built from. export/write_package.py
+# writes the package from this list and describes the entries: a pattern of
+# this repository, then the directory of the package when the files do not
+# keep their path; `!` leaves files out; `@` names a file of more entries.
+#
+# The list is what a LAMMPS build with the package reads from this
+# repository: the build files its configure step reads, the sources its
+# libraries compile and the headers those include, with the licences.
+# tests/export builds LAMMPS from the written tree alone.
+
+# The top of the package: its own README and build file, the licence, the
+# pair style and the files that add it to the LAMMPS build.
+export/package/README.md        .
+export/package/CMakeLists.txt   .
+LICENSE
+lammps/ML-TADAH/*.h             ML-TADAH
+lammps/ML-TADAH/*.cpp           ML-TADAH
+lammps/integration/*.cmake      integration
+
+# The library of the pair style and the libraries it is built on, each with
+# its build file, the sources it compiles and its headers.
+lammps/CMakeLists.txt
+lammps/include/**/*.h
+lammps/src/*.cpp
+md/CMakeLists.txt
+md/include/**/*.h
+md/src/*.cpp
+models/CMakeLists.txt
+models/include/**/*.h
+models/include/**/*.hpp
+models/src/*.cpp
+core/CMakeLists.txt
+core/include/**/*.h
+core/src/*.cpp
+
+# Headers that no source or header of the package includes.
+!core/include/tadah/core/small_vec.h
+!core/include/tadah/core/stats/column_stats.h
+!core/include/tadah/core/stats/data_stats_io.h
+!models/include/tadah/models/ekm.h
+!models/include/tadah/models/m_blr_train.h
+!models/include/tadah/models/m_krr_train.h
+
+# The description of the configuration keys, which core compiles in and
+# which holds the version, and the templates it is compiled through.
+core/blueprint/blueprint_tadah.toml
+core/blueprint/embed/*.in
+
+# The build support that every build file above reads.
+cmake/Tadah*.cmake
+
+# Third-party sources bundled with core: toml11 (MIT licence) whole but for
+# its tests, and of Boost the headers that the list names.
+core/external/toml11/CMakeLists.txt
+core/external/toml11/LICENSE
+core/external/toml11/cmake/*.in
+core/external/toml11/toml.hpp
+core/external/toml11/toml/*.hpp
+@export/boost-headers

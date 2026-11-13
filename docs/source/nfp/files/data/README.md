@@ -6,7 +6,7 @@ Licence: the licence of this repository (GPL-3.0).
 The Tutorial section [The Ta data][ta-data] accompanies these files.
 
 [ta-data]:
-  https://tadah.readthedocs.io/v1-dev/nfp/tutorial/index.html#nfp-ta-data
+  https://tadah.readthedocs.io/latest/nfp/tutorial/index.html#nfp-ta-data
 
 ## Files
 

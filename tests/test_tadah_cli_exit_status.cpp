@@ -9820,7 +9820,7 @@ TEST_CASE("Subcommand: predict takes no verbosity from a potential's VERBOSE "
  * Before the fix: no WARNING named a line of old_best.tadah, and without
  * --hpotarget it was refused "analysis check_bounds: HPOTARGET is required
  * (set HPOTARGET in config or pass via the CLI).": the refusal and WARNING
- * CHECKs fail. (On v1-dev the parse stored the seed's HPOTARGET line and
+ * CHECKs fail. (On main the parse stored the seed's HPOTARGET line and
  * the run used it.)
  * Before the fix that states the refusal and the advice in the impersonal
  * voice: the refusal read "tadah analysis check_bounds: no HPOTARGET: name

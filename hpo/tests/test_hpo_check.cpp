@@ -1434,7 +1434,7 @@ TEST_CASE("hpo --check: best_pot.tadah as a directory and the symbolic "
  * and the run refuse it with one message, "'hpo_optim_resolved.hpo' in the
  * working directory '<dir>' cannot be opened: Permission denied (tadah hpo
  * rewrites it)".
- * Before the change: it was refused whatever the boxes (v1-dev ran with
+ * Before the change: it was refused whatever the boxes (main ran with
  * explicit boxes and left it alone). Skipped as root, whose writes no
  * permission stops. */
 TEST_CASE("hpo --check: hpo_optim_resolved.hpo is checked only when a box "

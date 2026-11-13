@@ -252,9 +252,9 @@ std::vector<double> ranged(const aed_type &x) {
  * assignment and aed_type(const double*, size, stride)), and data() and
  * begin() to end() gave M's elements 2 to 5, {20, 1, 11, 21}, not the row;
  * the copy of the strided owner kept its stride 2 (data() {1, 0, 2}). The
- * move paths from a view were new on this branch (v1-dev's moves took the
+ * move paths from a view were new on this branch (main's moves took the
  * view's pointer); the copies and const Matrix::row read past the end on
- * v1-dev too. */
+ * main too. */
 TEST_CASE("aed_type: a copy of a strided view holds its values one after "
           "another", "[aed_type][column_view]") {
   Matrix M = row_view_matrix();
@@ -322,7 +322,7 @@ TEST_CASE("aed_type: a copy of a strided view holds its values one after "
  * Before the fix: the copy assignment freed x's buffer before it copied
  * the view's values, which were in that buffer, so it read freed memory
  * (AddressSanitizer: heap-use-after-free, READ of size 24, in the copy
- * assignment); x was {0, 0, 0} in the Release build. On v1-dev as well. */
+ * assignment); x was {0, 0, 0} in the Release build. On main as well. */
 TEST_CASE("aed_type: an owner assigned from a view of its own values keeps "
           "them", "[aed_type][column_view]") {
   aed_type x({1.0, 2.0, 3.0});

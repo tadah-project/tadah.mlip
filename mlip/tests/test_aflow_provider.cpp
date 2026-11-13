@@ -142,7 +142,7 @@ const std::string kNaclEntry =
  *     "AFLOW: aurl '<aurl>' in the AFLUX answer is not
  *     server:PATH."
  * Before the fix: this already holds on this branch, where
- * entry_url_from_aflux was added. On v1-dev the checks were inline in
+ * entry_url_from_aflux was added. On main the checks were inline in
  * fetchAndParseAflowByAuid, with no function to test: "{}", "[]" and "not
  * json" gave 404 "AFLOWDataProvider: 'aflux' JSON not an array or is
  * empty.", [3] and [{"x":1}] 404 "AFLOWDataProvider: 'aurl' field not found

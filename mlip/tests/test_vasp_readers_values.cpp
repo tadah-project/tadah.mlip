@@ -1115,7 +1115,7 @@ std::string vasprun_refusal(const ScratchDir &tmp, const std::string &name,
  *  - step 1's EKIN_LAT temperature 'abc' (line 2052): "... line 2052:
  *    cannot read the temperature of ionic step 1 from '<line>'";
  *  - a missing file: "VASP OUTCAR <path>: cannot open the file".
- * Before the fix (v1-dev): none named the file: the element was refused as "Unknown
+ * Before the fix (main): none named the file: the element was refused as "Unknown
  * symbol: Qq"; the free energy as "... ionic step 1 has no 'free  energy
  * TOTEN' line before its EKIN_LAT line"; the missing file as "Could not open
  * the file: <path>"; every other defect was a line on standard error
@@ -1445,7 +1445,7 @@ TEST_CASE("VASP vasprun.xml reader: an unreadable stress or force row gives "
  * K up, as in the 6580 K MD runs of the data store): OUTCAR_1 with step 1's
  * temperature 10147.82 gives its 3 steps, step 1 with T 10147.82.
  * Before the fix: refused, "... line 2052: cannot read the temperature of
- * ionic step 1 from '...'"; v1-dev printed 'Warning: Unexpected end of data
+ * ionic step 1 from '...'"; main printed 'Warning: Unexpected end of data
  * when reading temperature' and did not end the step there, so steps 1 and
  * 2 were stored as one structure of 108 atoms (2 structures). */
 TEST_CASE("VASP OUTCAR reader: a temperature of 10000 K and more is read",
@@ -1530,7 +1530,7 @@ TEST_CASE("VASP vasprun.xml reader: a file that ends after its last "
  * it); 0 structure(s) read.". The data store's 24 truncated vasprun.xml
  * files end so.
  * Before the fix: each was refused, "VASP vasprun.xml <path>: not
- * well-formed XML (unexpected end of data)"; v1-dev printed 'Error reading
+ * well-formed XML (unexpected end of data)"; main printed 'Error reading
  * file: unexpected end of data' and 'Root node not found.' and stored
  * nothing. */
 TEST_CASE("VASP vasprun.xml reader: a file that ends early is read up to its "

@@ -821,7 +821,7 @@ TEST_CASE("Long lines are checked by the rules of a short line",
  * exponential in the number of values: the refusals took 6.5 s (CGRID2B),
  * 5.7 s ({DOUBLE}), 5.4 s ({STRING}), 4.1 s (TYPE2B) and 7.8 s
  * ({[DOUBLE | STRING]}), each about twice as long or more for every
- * further value; v1-dev, whose groups took a comma between values,
+ * further value; main, whose groups took a comma between values,
  * accepted the CGRID2B line at once and was as slow on the others. */
 TEST_CASE("A line no blueprint takes is refused in linear time",
           "[blueprint][separators][performance]") {

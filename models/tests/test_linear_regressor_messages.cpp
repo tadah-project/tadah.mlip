@@ -486,9 +486,9 @@ TEST_CASE("LinearRegressor: with FIXINDEX the messages count the data rows "
  *    vector, less the part of the FIXINDEX weights, holds a value that is
  *    not finite (nan or inf) at row 2 (of 6 data rows, then 5 ridge rows);
  *    no weights were fitted".
- * Before the fix: not run before it, since the case is the merge of v1-dev
+ * Before the fix: not run before it, since the case is the merge of main
  * into fix/input-robustness. On that branch M_KRR_Train kept the pinned
- * columns, set to 0 (DesignMatrix's layout, Layout::of(Phi)); v1-dev's
+ * columns, set to 0 (DesignMatrix's layout, Layout::of(Phi)); main's
  * M_KRR_Train removes them and its call takes no layout. With
  * Layout::of(Phi) in the FIXINDEX call, the layout of the matrix without
  * the pinned columns, it fails as M_BLR_Train did before the fix: "these 4
@@ -577,8 +577,8 @@ TEST_CASE("LinearRegressor: with FIXINDEX M_KRR_Train's messages count the "
  * free column the ridge leaves out. Their positions among the free columns
  * and the ridge on the others: test_intercept_ridge.cpp ("M_BLR_Train and
  * M_KRR_Train with FIXINDEX pinning an intercept ...").
- * Before the fix: passes as well (a pin of the merge of v1-dev into
- * fix/input-robustness: v1-dev's free_intercept_columns() gives train() the
+ * Before the fix: passes as well (a pin of the merge of main into
+ * fix/input-robustness: main's free_intercept_columns() gives train() the
  * free intercept columns, the branch's Layout counts the data rows and
  * names the pinned weights). With the intercept columns of the full matrix
  * passed unmapped (bf.intercept_columns(context) in the FIXINDEX call of

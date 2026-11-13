@@ -1558,7 +1558,7 @@ TEST_CASE("A non-linear KRR potential's BASIS must match its descriptor and "
  * vectors against DSIZE and threw std::logic_error ("the descriptor size
  * (DSIZE) is not known ... build the DescriptorsCalc on this context
  * before the model") in both sections, so both REQUIRE_NOTHROWs failed (on
- * v1-dev, without that check, the trained potential predicted). */
+ * main, without that check, the trained potential predicted). */
 TEST_CASE("A non-linear KRR potential built before its DescriptorsCalc "
           "predicts, and a BASIS of another length is refused when it "
           "predicts",

@@ -1925,7 +1925,7 @@ std::string check_bounds_error(const tadah::mlip::ITaskInput &input,
  * Before the fix: no WARNING named a line of old_best.tadah, and every run
  * without HPOTARGET threw "analysis check_bounds: HPOTARGET is required
  * (set HPOTARGET in config or pass via the CLI).": every CHECK of a
- * refusal or a WARNING fails. (On v1-dev the parse stored old_best.tadah's
+ * refusal or a WARNING fails. (On main the parse stored old_best.tadah's
  * HPOTARGET line and the -c run used it.)
  * Before the fix that states the refusal and the advice in the impersonal
  * voice: the refusal read "tadah analysis check_bounds: no HPOTARGET: name

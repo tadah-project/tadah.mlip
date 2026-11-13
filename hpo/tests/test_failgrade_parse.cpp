@@ -631,7 +631,7 @@ TEST_CASE("FAILSCORE_GRADING: every FAILSCORE from the stated bound has its "
  * "A : weight=1.00  target=1.000e+00  loss=L1"; a PC_OBSERVABLE line under
  * LOSS TUKEY 3 reads "weight=1.00  target=8.100e+00  loss=TUKEY 3  columns
  * ...". A file without a metric line has no "Metric loss function" line.
- * Before the fix: the first line read "Loss function : HUBER 50" (v1-dev
+ * Before the fix: the first line read "Loss function : HUBER 50" (main
  * had no such line), given as the loss function of the run although the
  * terms above the last LOSS line take another, and the --varloss and
  * PC_OBSERVABLE lines named no loss function: the checks of the label and

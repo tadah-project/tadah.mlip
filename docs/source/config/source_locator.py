@@ -13,42 +13,24 @@ Source checkouts (``locate``), in this order:
      variable is set it must name a checkout that contains the needed file;
      otherwise the build fails without looking anywhere else.
   2. The repository that holds these pages: its directory ``core`` (``hpo``).
-     When that directory exists it must contain the needed file; otherwise
-     the build fails without looking anywhere else, so a directory of the
-     same name beside the checkout is never read in its place.
-  3. A sibling checkout: ``<workspace>/CORE`` or ``<workspace>/core``, where
-     ``<workspace>`` is the directory that contains the checkout of this
-     repository.
-  4. ``$TADAH_PATH/CORE`` or ``$TADAH_PATH/core``.
-  5. On CI and Read the Docs only: a shallow clone of the branch or
-     tag being built from ``<base>/<repository>.git``, where ``<base>`` is
-     ``$TADAH_GIT_BASE`` when it is set and not empty, else
-     ``https://github.com/tadah-project``.  The ref is
-     ``$CI_COMMIT_REF_NAME``, else
-     ``$READTHEDOCS_GIT_IDENTIFIER`` (the ref Read the Docs checked out; its
-     ``latest`` and ``stable`` versions are named after no ref), else
-     ``$READTHEDOCS_VERSION_NAME``, else ``$READTHEDOCS_VERSION``.  A
-     variable counts only when it is set and not empty.
+     It must contain the needed file; otherwise the build fails without
+     looking anywhere else, so a directory of the same name beside the
+     checkout is never read in its place.
 
 Doxygen XML (``doxygen_xml_dir``): ``$TADAH_DOXYGEN_XML_DIR`` when set (it
 must contain ``index.xml``), else the ``build/docs/xml`` directory that
 ``cmake --build build --target docs`` writes in this checkout.
 '''
 import os
-import subprocess
-import tempfile
-import urllib.parse
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
-# config/ -> source/ -> docs/ -> the repository ; its parent is the workspace.
+# config/ -> source/ -> docs/ -> the repository.
 CHECKOUT_ROOT = os.path.normpath(os.path.join(_HERE, '..', '..', '..'))
-WORKSPACE = os.path.dirname(CHECKOUT_ROOT)
 DEFAULT_DOXYGEN_XML_DIR = os.path.join(CHECKOUT_ROOT, 'build', 'docs', 'xml')
 
 # Repository -> (override variable, the module's directory in this
-# repository, which is also the repository's name under the git base, file
-# that identifies a usable checkout).  The marker is the file the docs
+# repository, file that identifies a usable checkout).  The marker is the file the docs
 # generators read from it.
 REPOS = {
     'CORE': ('TADAH_CORE_SOURCE_DIR', 'core',
@@ -57,10 +39,6 @@ REPOS = {
             os.path.join('blueprint', 'anneal_keys.toml')),
 }
 
-# The base address of the Tadah! repositories.
-GIT_BASE_VAR = 'TADAH_GIT_BASE'
-DEFAULT_GIT_BASE = 'https://github.com/tadah-project'
-
 DOXYGEN_XML_VAR = 'TADAH_DOXYGEN_XML_DIR'
 
 
@@ -68,71 +46,17 @@ class SourceNotFound(RuntimeError):
     '''A docs-build input could not be located.'''
 
 
-def _default_runner(cmd):
-    return subprocess.run(cmd, check=False, capture_output=True, text=True)
-
-
-def ci_platform(environ):
-    '''Return 'GitLab CI', 'Read the Docs' or None.'''
-    if environ.get('GITLAB_CI') == 'true':
-        return 'GitLab CI'
-    if environ.get('READTHEDOCS') == 'True':
-        return 'Read the Docs'
-    return None
-
-
-# The variables that name the ref being built, in the order they are tried.
-BUILT_BRANCH_VARS = ('CI_COMMIT_REF_NAME', 'READTHEDOCS_GIT_IDENTIFIER',
-                     'READTHEDOCS_VERSION_NAME', 'READTHEDOCS_VERSION')
-
-
-def built_branch(environ):
-    '''The ref being built on CI/RTD:
-    (variable, value) of the first of BUILT_BRANCH_VARS that is set and not
-    empty, or (None, None).'''
-    for var in BUILT_BRANCH_VARS:
-        if environ.get(var):
-            return var, environ[var]
-    return None, None
-
-
-def clone_url(name, environ):
-    '''<base>/<name>.git: the base is $TADAH_GIT_BASE when set and not empty
-    (a trailing '/' dropped), else DEFAULT_GIT_BASE.'''
-    base = environ.get(GIT_BASE_VAR) or DEFAULT_GIT_BASE
-    return f"{base.rstrip('/')}/{name}.git"
-
-
-def shown_url(url):
-    '''*url* without the user and password a CI address may carry.'''
-    parts = urllib.parse.urlsplit(url)
-    if parts.username is None and parts.password is None:
-        return url
-    host = parts.hostname or ''
-    if parts.port is not None:
-        host += f':{parts.port}'
-    return urllib.parse.urlunsplit(parts._replace(netloc=host))
-
-
-def _checkout_names(repo):
-    return [repo] if repo == repo.lower() else [repo, repo.lower()]
-
-
-def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
+def locate(repo, environ=None):
     '''Return the root of a checkout of *repo* ('CORE' or 'HPO').
 
     The checkout must contain the repository's marker file (see REPOS).
-    Raises SourceNotFound listing every location tried.  *environ*,
-    *workspace*, *runner* and *clone_root* exist for the tests; the defaults
-    are the process environment, the directory containing the checkout of
-    this repository, ``subprocess.run`` and a fresh temporary directory.
+    Raises SourceNotFound naming the location it looked at.  *environ*
+    exists for the tests; the default is the process environment.
     '''
     if repo not in REPOS:
         raise ValueError(f"unknown repository {repo!r}; known: {sorted(REPOS)}")
     env_var, name, marker = REPOS[repo]
     environ = os.environ if environ is None else environ
-    workspace = WORKSPACE if workspace is None else workspace
-    runner = _default_runner if runner is None else runner
 
     # 1. Explicit override: authoritative, never followed by another lookup.
     if env_var in environ:
@@ -149,68 +73,14 @@ def locate(repo, environ=None, workspace=None, runner=None, clone_root=None):
                 f"{repo} checkout or unset it.")
         return root
 
-    tried = [f"${env_var}: not set"]
-
-    # 2. This repository: authoritative when it has the module directory.
+    # 2. This repository: authoritative.
     own = os.path.abspath(os.path.join(CHECKOUT_ROOT, name))
     if os.path.isfile(os.path.join(own, marker)):
         return own
-    if os.path.isdir(own):
-        raise SourceNotFound(
-            f"The directory {name} of this repository does not contain "
-            f"{marker} (looked for {os.path.join(own, marker)}); restore it, "
-            f"or set {env_var} to build from another {repo} checkout.")
-    tried.append(f"this repository: {os.path.join(own, marker)} (not found)")
-
-    # 3. Sibling checkout, 4. $TADAH_PATH.
-    bases = [('sibling checkout', workspace)]
-    tadah_path = environ.get('TADAH_PATH')
-    if tadah_path:
-        bases.append(('$TADAH_PATH', tadah_path))
-    for label, base in bases:
-        for directory in _checkout_names(repo):
-            root = os.path.abspath(os.path.join(base, directory))
-            if os.path.isfile(os.path.join(root, marker)):
-                return root
-            tried.append(f"{label}: {os.path.join(root, marker)} (not found)")
-    if not tadah_path:
-        tried.append("$TADAH_PATH: not set")
-
-    # 5. Clone of the built branch, on CI/RTD only.
-    platform = ci_platform(environ)
-    branch_var, branch = built_branch(environ)
-    if platform is None:
-        tried.append("clone of the built branch: skipped "
-                     "(not on GitLab CI or Read the Docs)")
-    elif branch is None:
-        tried.append(f"clone of the built branch: skipped (on {platform}, "
-                     f"but none of {', '.join(BUILT_BRANCH_VARS)} is set "
-                     f"to a non-empty value)")
-    else:
-        url = clone_url(name, environ)
-        shown = shown_url(url)
-        dest = os.path.join(
-            clone_root if clone_root is not None
-            else tempfile.mkdtemp(prefix=f'tadah_{repo.lower()}_'), repo)
-        print(f"source_locator: cloning {shown} at {branch} "
-              f"(${branch_var}, {platform}) for {marker}", flush=True)
-        proc = runner(['git', 'clone', '--depth', '1', '--branch', branch,
-                       url, dest])
-        if proc.returncode == 0 and os.path.isfile(os.path.join(dest, marker)):
-            return dest
-        if proc.returncode == 0:
-            reason = f"{marker} not in the clone"
-        else:
-            detail = (proc.stderr or '').strip().splitlines()
-            reason = (f"git clone exited with {proc.returncode}"
-                      + (f": {detail[-1]}" if detail else ''))
-        tried.append(f"clone of {shown} at {branch} (${branch_var}): {reason}")
-
     raise SourceNotFound(
-        f"Cannot locate the {repo} sources (need {marker}). Tried:\n"
-        + "\n".join(f"  {i}. {t}" for i, t in enumerate(tried, 1))
-        + f"\nRestore the directory {name} of this repository ({own}). "
-          f"Set {env_var} to build from another {repo} checkout.")
+        f"The directory {name} of this repository does not contain "
+        f"{marker} (looked for {os.path.join(own, marker)}); restore it, "
+        f"or set {env_var} to build from another {repo} checkout.")
 
 
 def locate_file(repo, relpath, **kwargs):

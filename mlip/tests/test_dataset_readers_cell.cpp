@@ -577,7 +577,7 @@ TEST_CASE("DatasetReaderSelector: sheared OUTCAR and triclinic CASTEP fixtures",
 // unit line with a trailing comment was taken for data ("LATTICE_CART needs
 // exactly three lattice vectors, found 4"), and a block header such as
 // "%BLOCK POSITIONS_FRAC!sites" named no known block, so its atoms were
-// dropped without a word (the v1-dev reader matched it by substring).
+// dropped without a word (the main reader matched it by substring).
 TEST_CASE("CASTEP .cell reader: trailing comments on block headers and unit "
           "lines are ignored",
           "[cell_convention][castep_cell]") {

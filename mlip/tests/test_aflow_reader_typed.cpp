@@ -390,7 +390,7 @@ TEST_CASE("AFLOW reader: a composition count that is not a whole number, "
  *  - text that is not JSON is a std::runtime_error saying it cannot be read
  *    as JSON.
  * Each part runs whatever the outcome of the others.
- * Before the fix (v1-dev): "3.98808224589x" was read as 3.98808224589 and
+ * Before the fix (main): "3.98808224589x" was read as 3.98808224589 and
  * the entry accepted; empty items were dropped ("Cl,,Na" read as Cl, Na and
  * "1,,1" as 1, 1, both accepted); "Cl, Na" kept the blank and failed with
  * 'Unknown symbol:  Na'; an entry without "species" read the absent field
@@ -465,7 +465,7 @@ TEST_CASE("AFLOW reader: the string form is read strictly",
  *    symbol, not the number of species).
  * Before the fix: this already holds on this branch (it is how
  * parseAflowJson refuses a top level that is not an object and a typed
- * symbol that is not a non-empty string). On v1-dev the three texts threw
+ * symbol that is not a non-empty string). On main the three texts threw
  * nlohmann::json::type_error 306 ('cannot use value() with array', ...
  * string, ... number) and species [""] type_error 302 ('type must be
  * string, but is array'), neither a std::runtime_error.

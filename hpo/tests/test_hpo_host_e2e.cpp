@@ -463,7 +463,7 @@ TEST_CASE("HPO_Host::analytical_gradient end-to-end with one PC_LAMMPS "
      * differences and the orchestrator falls back to FD for all of them.
      * Pins: the call returns true, g is finite, and needs_fd lists every
      * θ: flat index 0, the one OPTIM dimension.
-     * Before the fix (src/sims_grad.cpp of v1-dev, the chain through W
+     * Before the fix (src/sims_grad.cpp of main, the chain through W
      * alone): needs_fd was empty, and the case run alone printed the
      * diagnostic "analytical=1 | FD-fallback=0": the chain was taken
      * without the direct θ term. */

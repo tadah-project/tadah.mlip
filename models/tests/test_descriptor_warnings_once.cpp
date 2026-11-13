@@ -195,7 +195,7 @@ TEST_CASE("A non-compact basis with Cut_Dummy is warned of once per "
  * knot density (Knot5 family) whose largest CGRIDMB knot (5.5) lies past
  * RCUTMB (5.0) log the warning "the largest CGRIDMB density knot ... lies
  * beyond RCUTMB" exactly once between them (check_logged_once).
- * Before the fix: three times, once per descriptor object (v1-dev's
+ * Before the fix: three times, once per descriptor object (main's
  * DM_REAM::warn_if_knots_beyond_rcut logged on every call). */
 TEST_CASE("DM_REAM warns once per process of a density knot past RCUTMB",
           "[descriptor][warn_once]") {

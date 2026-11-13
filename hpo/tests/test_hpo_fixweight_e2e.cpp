@@ -742,9 +742,9 @@ TEST_CASE("health monitor: a ridge fit whose coefficients would not be "
  * is not finite (nan or inf) at row 1 (of 1 data row, then 6 ridge rows);
  * no weights were fitted"; it counts one evaluation that threw and no
  * NaN/Inf clamping.
- * Before the fix (fix/input-robustness merged into v1-dev, with the target
+ * Before the fix (fix/input-robustness merged into main, with the target
  * check of LinearRegressor::train removed in a scratch build, as on
- * v1-dev): the target was fitted and the four weights were nan/inf (the
+ * main): the target was fitted and the four weights were nan/inf (the
  * two cases before this one pinned that with 1e308 until then): the
  * trainer was trained, the health monitor printed "iter_health: eval <n>
  * -- weights contain NaN/Inf entries (training likely diverged).", and the

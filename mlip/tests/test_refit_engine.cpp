@@ -1490,7 +1490,7 @@ TEST_CASE_METHOD(PTFixture,
    * compact it passed the rule, so this engine refused compact mode
    * ("tadah refit: REFIT_MODE compact needs the compact fitter, ...") and
    * N2B was refused first (HPO's engine refused the block in
-   * RefitParser::parse only, after it had read the table). On v1-dev,
+   * RefitParser::parse only, after it had read the table). On main,
    * before the mode rule, validate() accepted the block in either mode and
    * run() failed reading the absent EAM file. */
   ScopedTempDir tmp;

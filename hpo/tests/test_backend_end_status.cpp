@@ -236,7 +236,7 @@ TEST_CASE("End status: TADAH:ANNEAL records a MAXTIME that passes between "
  * Before the fix: the REANNEAL_SCALE 0.1 case ended "ANNEAL stopped:
  * MAXTIME exceeded" and "TADAH:ANNEAL: MAXTIME exceeded", though MAXTIME
  * prevented nothing (MAXTIME was tested before the start temperature);
- * before that (v1-dev) the REANNEAL_SCALE 0.25 case ended "T < T_MIN" and
+ * before that (main) the REANNEAL_SCALE 0.25 case ended "T < T_MIN" and
  * "TADAH:ANNEAL: T_MIN reached". REANNEAL OFF: passes as well (a pin). */
 TEST_CASE("End status: TADAH:ANNEAL records the MAXTIME that prevented a "
           "re-anneal, not T_MIN", "[HPO][stop_status][anneal]")

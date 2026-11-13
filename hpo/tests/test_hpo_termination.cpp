@@ -1331,7 +1331,7 @@ int repeat_run_within(TaRun& run, const std::string& what)
  * Before the fix: the reused calls never reached the window, nothing else
  * stops LD_MMA, and the search spun without an evaluation ("100000000
  * calls of this search have asked again ..."): the run did not return
- * within two minutes (v1-dev, which evaluated every repeat: 26 rows, the
+ * within two minutes (main, which evaluated every repeat: 26 rows, the
  * same status); until the run kept one record (2026-10-12) the line said
  * "answered from the search's record" and "each repeat answered from the
  * record counted as one". */
@@ -1368,7 +1368,7 @@ TEST_CASE("Repeated points: the RESTART window counts a reused repeat",
  * after 23 evaluations, as without MAXEVAL.
  * Before the fix: no restart: the reused calls never reached the window,
  * and NLopt's count of 60 calls ended the search after 18 evaluations, 54
- * of its calls reused, MAXEVAL_REACHED (v1-dev: 26 rows, a restart, the
+ * of its calls reused, MAXEVAL_REACHED (main: 26 rows, a restart, the
  * stagnation status). */
 TEST_CASE("Repeated points: the RESTART window ends a search that only "
           "asks again before NLopt's MAXEVAL does",
@@ -1971,7 +1971,7 @@ TEST_CASE("Gradient budget: an MLSL's startup warning under GRAD_STRATEGY "
  *     start is the seed point the calibration evaluated twice (rows 1-2):
  *     no WARNING, rows 3-6 the stencil of the seed and row 7 a step.
  * Before the fix: the warning counted each start as evaluated again (the
- * run's record is new to this branch; v1-dev's was each search's), so the
+ * run's record is new to this branch; main's was each search's), so the
  * MAXEVAL 5 runs, which step, were warned that they take "no step ...,
  * which needs MAXEVAL 6 or more", and the MAXEVAL 4 text was "evaluates the
  * loss at a starting point (1 evaluation) ... needs MAXEVAL 6". */
@@ -9321,9 +9321,9 @@ TEST_CASE("Finite differences: under FAILSCORE_GRADING a graded start next "
      * stencils (1, and 2 for CERES:STEEPEST_DESCENT); no stop line; status 0.
      * Before the fix: passes as well (a pin of the fix of
      * this branch; nothing pinned the reproducer through hpo_run). A mutant
-     * that differences a graded CENTRAL stencil as it is, v1-dev's rule,
+     * that differences a graded CENTRAL stencil as it is, main's rule,
      * fails it: LD_SLSQP 3 evaluations, CERES:STEEPEST_DESCENT 43,
-     * DLIB:BFGS without the mixed-kind line. On v1-dev
+     * DLIB:BFGS without the mixed-kind line. On main
      * before it (19187dd; the same runs through tadah hpo): LD_SLSQP
      * stopped after 3 evaluations,
      * "STOPPED -- bug: more than iter SQP iterations (...)";

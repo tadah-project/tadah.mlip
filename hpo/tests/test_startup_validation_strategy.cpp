@@ -4922,7 +4922,7 @@ std::string global_inner_refusal(const std::string& phase,
  * TOPK 1 to refine the best candidate once."): every refusal check fails;
  * the passing cases pass as well (pins). The checks of the refused CERES
  * drivers pass as well (a pin of the registry this branch merged with; on
- * v1-dev 8a3f95a, which registered the three, the list began "CERES:LBFGS,
+ * main 8a3f95a, which registered the three, the list began "CERES:LBFGS,
  * CERES:NLCG, CERES:STEEPEST_DESCENT, CERES:WOLFE, DLIB:BFGS", and the
  * documentation quoted it).
  * Before the no-nested-global fix: the

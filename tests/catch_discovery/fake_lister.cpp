@@ -1,5 +1,5 @@
 // Stand-in for a Catch2 test executable, used by check_discovery.cmake and
-// check_module.cmake to give cmake-tools' testing/CatchAddTests.cmake
+// check_module.cmake to give cmake/testing/CatchAddTests.cmake
 // listings that a real Catch binary cannot produce on demand (256 names,
 // CRLF line ends, no names, a crash, a count that disagrees with the output,
 // unselectable names).

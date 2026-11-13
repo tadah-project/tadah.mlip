@@ -1,5 +1,5 @@
-// Canary for the Catch2 test discovery in cmake-tools
-// (testing/CatchAddTests.cmake); see check_discovery.cmake.
+// Canary for the Catch2 test discovery in cmake/testing
+// (CatchAddTests.cmake); see check_discovery.cmake.
 //
 // Every test case name below contains something that CMake list handling,
 // CMake bracket arguments, CTest or Catch's test-spec parser treats

@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------
 # 1. Sources
 # ------------------------------------------------------------------
-# Catch2 and its test discovery come from cmake-tools (tadah_setup_tests()).
+# Catch2 and its test discovery come from cmake/ (tadah_setup_tests()).
 tadah_setup_tests()
 
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "*.cpp")
@@ -39,7 +39,7 @@ include(Catch)
 # skipped tests below) through the SKIP_REGULAR_EXPRESSION test property,
 # which it has from 3.16 and ignores before, reporting the test Passed.
 # include(Catch) above already stops on an older CMake, saying so
-# (cmake-tools testing/TadahTestSkip.cmake); the build without tests
+# (cmake/testing/TadahTestSkip.cmake); the build without tests
 # accepts the umbrella's 3.15. The scripts these tests run declare at most
 # this (tadah_cmake_minimum_features).
 cmake_minimum_required(VERSION 3.16)
@@ -55,7 +55,8 @@ add_test(NAME tadah_version_matches_blueprint COMMAND tadah --version)
 set_tests_properties(tadah_version_matches_blueprint PROPERTIES
   PASS_REGULAR_EXPRESSION "^${_tadah_version_re}[\r\n]*$")
 
-# cmake-tools' reader: found through the CORE the build file added,
+# The version reader (cmake/TadahVersion.cmake): found through the CORE
+# the build file added,
 # [TADAH]-scoped, registered as a configure dependency; a missing
 # blueprint or version line is a configure error (no 0.0.0 default).
 # Each case configures version_reader/project in a new build directory
@@ -65,7 +66,7 @@ function(tadah_version_reader_test name case core regex)
   add_test(NAME ${name}
     COMMAND ${CMAKE_COMMAND}
       -DCASE=${case}
-      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+      -DTADAH_CMAKE_DIR=${PROJECT_SOURCE_DIR}/cmake
       "-DCORE=${core}"
       -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/version_reader/${name}
       -P ${_vr}/check_version_reader.cmake)
@@ -130,7 +131,7 @@ tadah_doxygen_input_test(configured NONE)
 
 
 # ------------------------------------------------------------------
-# 4. Catch test discovery (cmake-tools), used by every Tadah module
+# 4. Catch test discovery (cmake/testing), used by every Tadah module
 # ------------------------------------------------------------------
 add_subdirectory(catch_discovery)
 
@@ -568,7 +569,7 @@ set_tests_properties(tadah_quickstart_numbers PROPERTIES
 
 
 # ------------------------------------------------------------------
-# 9. Header self-containment (cmake-tools' tadah_add_header_check)
+# 9. Header self-containment (tadah_add_header_check)
 # ------------------------------------------------------------------
 # tadah_headers (label headers): every header of include/ compiles on its
 # own and twice in a row, with the include directories, definitions and
@@ -578,9 +579,9 @@ set_tests_properties(tadah_quickstart_numbers PROPERTIES
 tadah_add_header_check(tadah)
 
 # The function itself: each case configures header_check/project, which
-# brings in this build's cmake-tools, and runs
+# brings in this build's build support, and runs
 # its header checks (see header_check/check_header_check.cmake). Before
-# the fix (cmake-tools without the function): every case fails at its
+# the fix (a build support without the function): every case fails at its
 # configure step ('Unknown CMake command "tadah_add_header_check"').
 # private_entry: a header of include/ that includes a header of the second
 # HEADER_DIRS entry, a directory PRIVATE to the library (as CORE's
@@ -606,7 +607,7 @@ foreach(_case good bad private_dir private_entry new_header refusals)
   add_test(NAME tadah_header_check_${_case}
     COMMAND ${CMAKE_COMMAND}
       -DCASE=${_case}
-      -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+      -DTADAH_CMAKE_DIR=${PROJECT_SOURCE_DIR}/cmake
       -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/header_check/${_case}
       "-DGENERATOR=${CMAKE_GENERATOR}"
       -DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
@@ -650,15 +651,17 @@ endforeach()
 # (cmake_minimum/check_cmake_features.py, which has the table of features
 # and versions). Before the fix: 17 uses -- tests/CMakeLists.txt (cmake
 # --fresh, 3.24, in the umbrella's 3.15), header_check/check_header_check.cmake
-# (--fresh, ctest --test-dir 3.20, string(JSON) 3.19, in its 3.18),
-# removed_options/check_removed_option.cmake (--fresh) and
+# (--fresh, ctest --test-dir 3.20, string(JSON) 3.19, in its 3.18), the
+# script of a test that is gone (--fresh) and
 # catch_discovery/check_skip.cmake (--test-dir), both 3.18. Before an
 # earlier fix: 7 -- this file's two SKIP_REGULAR_EXPRESSION (3.16) under the
 # umbrella's 3.15, and five scripts that declare 3.18 above it
 # (catch_discovery/check_discovery.cmake, check_module.cmake,
-# check_skip.cmake, doxygen_input/probe.cmake,
-# removed_options/check_removed_option.cmake), which stopped on CMake
-# 3.15-3.17 ("CMake 3.18 or higher is required").
+# check_skip.cmake, doxygen_input/probe.cmake and that script), which
+# stopped on CMake 3.15-3.17 ("CMake 3.18 or higher is required").
+# The files under cmake/ are checked with the umbrella's 3.15; a use inside
+# a bracket comment does not count (the documentation block of
+# cmake/testing/Catch.cmake names SKIP_REGULAR_EXPRESSION).
 add_test(NAME tadah_cmake_minimum_features
   COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake_minimum/check_cmake_features.py
@@ -732,20 +735,21 @@ endif()
 
 
 # ------------------------------------------------------------------
-# 11. Text check (cmake-tools' tadah_add_text_check)
+# 11. Text check (tadah_add_text_check)
 # ------------------------------------------------------------------
-# tadah_text and cmake-tools_text (label text): no line of the text files
-# of this repository, or of the cmake-tools this build uses, carries a
-# person's initials, a reference to co-workers, a decision attributed to
-# the code's owner, the name of an AI tool, a note kept outside the
-# repository or filler wording (testing/tadah_text_check.cmake lists the
-# rules and the files read). Each module checks its own repository the same
-# way (<library>_text). Before the fix: tadah_text fails, 108 lines (97 with
+# tadah_text and tadah_cmake_text (label text): no line of the text files
+# of this repository, or of the build support this build uses (cmake/),
+# carries a person's initials, a reference to co-workers, a decision
+# attributed to the code's owner, the name of an AI tool, a note kept
+# outside the repository or filler wording
+# (cmake/testing/tadah_text_check.cmake lists the rules and the files
+# read). Each module checks its own directory the same way
+# (<library>_text). Before the fix: tadah_text fails, 108 lines (97 with
 # a person's initials, 6 decision notes, 4 workspace notes and .gitignore's
-# entry for an AI tool's state directory); cmake-tools_text fails, 2 lines
-# (that entry and its comment in .gitignore).
+# entry for an AI tool's state directory); the entry of the build support
+# fails, 2 lines (that entry and its comment in a .gitignore it had).
 tadah_add_text_check(tadah)
-tadah_add_text_check(cmake-tools ROOT ${tadah_cmake_SOURCE_DIR})
+tadah_add_text_check(tadah_cmake ROOT ${_TADAH_CMAKE_DIR})
 
 # The function and its script, on throw-away trees and a throw-away project
 # (text_check/check_text_check.cmake lists the cases: a clean tree, a line
@@ -757,7 +761,7 @@ tadah_add_text_check(cmake-tools ROOT ${tadah_cmake_SOURCE_DIR})
 find_package(Git QUIET)
 add_test(NAME tadah_text_check_tool
   COMMAND ${CMAKE_COMMAND}
-    -DTADAH_CMAKE_DIR=${tadah_cmake_SOURCE_DIR}
+    -DTADAH_CMAKE_DIR=${PROJECT_SOURCE_DIR}/cmake
     -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/text_check
     "-DGENERATOR=${CMAKE_GENERATOR}"
     -DCTEST=${CMAKE_CTEST_COMMAND}
@@ -793,3 +797,46 @@ set_tests_properties(tadah_layering_includes tadah_layering_check_tool PROPERTIE
   LABELS layering
   TIMEOUT 60
   ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
+
+# ------------------------------------------------------------------
+# 13. A module directory configured on its own
+# ------------------------------------------------------------------
+# tadah_module_alone_<module> (label cmake), one entry per module directory:
+# `cmake -S <module> -B <build>` from the repository is a supported build.
+# module_alone/check_module_alone.cmake configures the directory, without
+# building it, in a scratch build directory: the configure step succeeds,
+# and its cache names cmake/ of this repository as the build support and
+# the directories of this repository as the sources of the module and of
+# every module it builds on. The module's build file copied out of the
+# repository is refused, with the message that names the cmake/ it did not
+# find. The configure steps read the initial cache that
+# hpo_write_no_ceres_preset() writes here from this build's cache
+# (hpo/tests/configure_without_ceres/no_ceres_preset.cmake: the compilers
+# and hints, the source directory of every dependency, nothing downloaded,
+# no tests). hpo is configured in a build with TADAH_ENABLE_NFP only: such
+# a build has the LAMMPS and the dependencies its configure step needs.
+# Before the fix (a build file that names a directory without
+# TadahRepository.cmake): the entry of that module, and of every module
+# that builds on it, fails at its configure step ("... is built from inside
+# the Tadah! repository ... TadahRepository.cmake is not there").
+include(${PROJECT_SOURCE_DIR}/hpo/tests/configure_without_ceres/no_ceres_preset.cmake)
+set(_module_alone_dir ${CMAKE_CURRENT_BINARY_DIR}/module_alone)
+hpo_write_no_ceres_preset(${_module_alone_dir}/preset.cmake)
+set(_module_alone_modules core models mlip md lammps)
+if(TADAH_ENABLE_NFP)
+  list(APPEND _module_alone_modules hpo)
+endif()
+foreach(_module IN LISTS _module_alone_modules)
+  add_test(NAME tadah_module_alone_${_module}
+    COMMAND ${CMAKE_COMMAND}
+      -DMODULE=${_module}
+      -DREPOSITORY=${PROJECT_SOURCE_DIR}
+      -DPRESET=${_module_alone_dir}/preset.cmake
+      "-DGENERATOR=${CMAKE_GENERATOR}"
+      -DWORK_DIR=${_module_alone_dir}/${_module}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/module_alone/check_module_alone.cmake)
+  set_tests_properties(tadah_module_alone_${_module} PROPERTIES
+    LABELS cmake
+    TIMEOUT 300)
+endforeach()

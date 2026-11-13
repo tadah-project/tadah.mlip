@@ -34,7 +34,7 @@
 - [ ] HPO
 - [ ] Tadah.MLIP (umbrella)
 - [ ] Tadah.LAMMPS
-- [ ] cmake-tools
+- [ ] Build support (`cmake/`)
 - [ ] Docs / examples only
 
 ## Additional context

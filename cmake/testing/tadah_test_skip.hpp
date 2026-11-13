@@ -1,6 +1,5 @@
 // TADAH_SKIP: report a Catch2 (v2) test case as Skipped to CTest.
-// (cmake-tools, testing/tadah_test_skip.hpp; see testing/TadahTestSkip.cmake
-// and the "Testing" section of the cmake-tools README.)
+// (cmake/testing/tadah_test_skip.hpp; see TadahTestSkip.cmake beside it.)
 //
 // Catch2 v2 has no skip: a test case that returns early -- because an
 // optional data file or environment variable is absent -- passes, and CTest

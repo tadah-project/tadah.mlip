@@ -1,8 +1,8 @@
 # ====================================================================
 #  Where the Tadah modules of a build come from
 #
-#  The repository that holds cmake-tools holds the Tadah modules too, each
-#  in a directory of its own (core, models, mlip, md, hpo, lammps). A
+#  The repository that holds this directory holds the Tadah modules too,
+#  each in a directory of its own (core, models, mlip, md, hpo, lammps). A
 #  build takes every module from there: no option and no
 #  environment variable chooses another place, and nothing is fetched.
 #
@@ -22,12 +22,11 @@
 
 option(TADAH_DEVELOP "Developer build: -Wextra in every build type" OFF)
 
-# cmake-tools/cmake/ -> cmake-tools/ -> the repository, from the resolved
-# directory of this file. A global property: this file is read in
-# cmake-tools' own directory scope, and the macro is called from every
-# module.
+# cmake/ -> the repository, from the resolved directory of this file. A
+# global property: this file is read in the directory scope of the build
+# file that asks first, and the macro is called from every module.
 get_filename_component(_tadah_repository "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
-get_filename_component(_tadah_repository "${_tadah_repository}/../.." ABSOLUTE)
+get_filename_component(_tadah_repository "${_tadah_repository}/.." ABSOLUTE)
 set_property(GLOBAL PROPERTY TADAH_REPOSITORY_ROOT "${_tadah_repository}")
 unset(_tadah_repository)
 

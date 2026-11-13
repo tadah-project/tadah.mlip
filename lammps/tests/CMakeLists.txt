@@ -1,4 +1,4 @@
-# Catch2 and its test discovery come from cmake-tools (tadah_setup_tests()).
+# Catch2 and its test discovery come from cmake/ (tadah_setup_tests()).
 tadah_setup_tests()
 
 file(GLOB tests_src CONFIGURE_DEPENDS "*.cpp")
@@ -72,7 +72,7 @@ foreach(_case quickstart two_species dm_ream nonlinear pair_2b dimer)
 endforeach()
 
 # tadah.lammps_headers (ctest -L headers): every header of include/
-# compiles on its own and twice in a row (cmake-tools'
+# compiles on its own and twice in a row (the build support's
 # tadah_add_header_check). Before the fix: passes as well (a pin: no
 # Tadah.LAMMPS header failed when the check was added).
 tadah_add_header_check(tadah.lammps)
@@ -80,7 +80,7 @@ tadah_add_header_check(tadah.lammps)
 # tadah.lammps_text (ctest -L text): no line of the repository's text files
 # carries a person's initials, a reference to co-workers, a decision
 # attributed to the code's owner, the name of an AI tool, a note kept
-# outside the repository or filler wording (cmake-tools'
+# outside the repository or filler wording (the build support's
 # tadah_add_text_check). Before the fix: fails, 10 lines: 9 with a person's
 # initials and .gitignore's entry for an AI tool's state directory.
 tadah_add_text_check(tadah.lammps)

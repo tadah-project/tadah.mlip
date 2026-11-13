@@ -1,5 +1,5 @@
-# End-to-end check of the TADAH-SKIP marker of cmake-tools
-# (testing/tadah_test_skip.hpp, testing/TadahTestSkip.cmake): a test case
+# End-to-end check of the TADAH-SKIP marker of cmake/testing
+# (tadah_test_skip.hpp, TadahTestSkip.cmake): a test case
 # that calls TADAH_SKIP() is reported by CTest as Skipped, not Passed, even
 # though it exits with 0.
 #

@@ -1,11 +1,11 @@
 # Throw-away project driven by the tadah_version_reader_* tests (see
-# ../../CMakeLists.txt). It exercises cmake-tools' TadahVersion.cmake the
+# ../../CMakeLists.txt). It exercises cmake/TadahVersion.cmake the
 # way the Tadah modules use it: Tadah.CORE (a fixture, the directory CORE)
 # is added to the build, then the version is read.
 cmake_minimum_required(VERSION 3.15)
 project(tadah_version_reader_case NONE)
 
-include(${TADAH_CMAKE_DIR}/cmake/TadahVersion.cmake)
+include(${TADAH_CMAKE_DIR}/TadahVersion.cmake)
 
 if(CASE STREQUAL "core_added")
   add_subdirectory("${CORE}" core)

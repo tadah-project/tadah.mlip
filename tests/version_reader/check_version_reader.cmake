@@ -1,11 +1,11 @@
 # Runs one tadah_version_reader_* case (../CMakeLists.txt): configures the
-# throw-away project in project/ with CASE, the cmake-tools of the build and
+# throw-away project in project/ with CASE, the cmake/ of the build and
 # Tadah.CORE's source directory CORE (empty for the no_core case) in
 # WORK_DIR, which is removed first so that no cache of an earlier run
 # carries over, and passes the output on: the entry's
 # PASS_REGULAR_EXPRESSION checks it.
 #
-#   cmake -DCASE=<case> -DTADAH_CMAKE_DIR=<cmake-tools> -DCORE=<CORE fixture>
+#   cmake -DCASE=<case> -DTADAH_CMAKE_DIR=<cmake/> -DCORE=<CORE fixture>
 #         -DWORK_DIR=<scratch> -P check_version_reader.cmake
 cmake_minimum_required(VERSION 3.15)
 

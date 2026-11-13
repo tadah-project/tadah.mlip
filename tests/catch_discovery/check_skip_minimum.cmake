@@ -1,5 +1,5 @@
-# Checks the CMake that the TADAH-SKIP marker of cmake-tools needs
-# (testing/TadahTestSkip.cmake, which Catch.cmake and the discovery script
+# Checks the CMake that the TADAH-SKIP marker of cmake/testing needs
+# (TadahTestSkip.cmake, which Catch.cmake and the discovery script
 # include): CTest reports a test case that calls TADAH_SKIP() as Skipped
 # through the test property SKIP_REGULAR_EXPRESSION, which CTest has from
 # 3.16; an older CTest ignores the property and reports the test Passed.

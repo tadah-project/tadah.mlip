@@ -8,7 +8,7 @@
 # check runs it with no other argument:
 #
 #   CASE=old      AS_CMAKE_VERSION 3.18.4 and 3.15 (the umbrella's minimum;
-#                 its tests stop earlier there, in cmake-tools' Catch.cmake):
+#                 its tests stop earlier there, in cmake/testing/Catch.cmake):
 #                 exit 0, and the output is exactly the line
 #                 "SKIPPED: check_header_check.cmake needs CMake 3.19 or
 #                 later (string(JSON)); this is CMake <v>": the script

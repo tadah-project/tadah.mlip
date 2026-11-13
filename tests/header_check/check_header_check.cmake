@@ -1,4 +1,4 @@
-# Check of cmake-tools' tadah_add_header_check() (cmake/TadahTesting.cmake),
+# Check of tadah_add_header_check() (cmake/TadahTesting.cmake),
 # run on a copy of the throw-away project in project/ (see its CMakeLists.txt
 # for the fixtures). In every case the project configures, `all` builds (the
 # header checks are excluded from it) and `ctest -N -L headers` lists exactly
@@ -35,7 +35,7 @@
 # TADAH_HEADER_CHECK_JOBS that is not a number of processes) and checks that
 # the configure step fails with that call's message.
 #
-#   cmake -DCASE=<case> -DTADAH_CMAKE_DIR=<cmake-tools> -DWORK_DIR=<scratch>
+#   cmake -DCASE=<case> -DTADAH_CMAKE_DIR=<cmake/> -DWORK_DIR=<scratch>
 #         -DGENERATOR=<CMake generator> -DMAKE_PROGRAM=<build tool>
 #         -DCXX=<C++ compiler> -DCTEST=<ctest> -P check_header_check.cmake
 #
@@ -224,8 +224,7 @@ if(CASE STREQUAL "refusals")
         -B "${WORK_DIR}/build_${r}" -G "${GENERATOR}"
         "-DCMAKE_MAKE_PROGRAM=${MAKE_PROGRAM}" "-DCMAKE_CXX_COMPILER=${CXX}"
         "-DCASE=${CASE}" "-DREFUSAL=${r}" ${args_${r}}
-        -DFETCHCONTENT_FULLY_DISCONNECTED=ON
-        "-DFETCHCONTENT_SOURCE_DIR_TADAH_CMAKE=${TADAH_CMAKE_DIR}")
+        "-DTADAH_CMAKE_DIR=${TADAH_CMAKE_DIR}")
     string(REGEX REPLACE "[ \t\r\n]+" " " flat "${out}")
     string(FIND "${flat}" "${message_${r}}" at)
     if(rc EQUAL 0)
@@ -248,8 +247,7 @@ endif()
 run("configure" "${CMAKE_COMMAND}" -S "${src}" -B "${build}"
     -G "${GENERATOR}" "-DCMAKE_MAKE_PROGRAM=${MAKE_PROGRAM}"
     "-DCMAKE_CXX_COMPILER=${CXX}" "-DCASE=${CASE}" ${case_args}
-    -DFETCHCONTENT_FULLY_DISCONNECTED=ON
-    "-DFETCHCONTENT_SOURCE_DIR_TADAH_CMAKE=${TADAH_CMAKE_DIR}")
+    "-DTADAH_CMAKE_DIR=${TADAH_CMAKE_DIR}")
 if(NOT rc EQUAL 0)
   fail("configure failed (exit ${rc})")
 endif()

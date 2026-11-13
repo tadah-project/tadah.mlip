@@ -239,7 +239,7 @@ Where the Tadah! modules come from
 
 The repository holds the Tadah! modules as directories: ``core``,
 ``models``, ``mlip``, ``md``, ``hpo`` and ``lammps``, beside the shared
-CMake helpers in ``cmake-tools``. A build takes every module it needs from
+CMake helpers in ``cmake``. A build takes every module it needs from
 those directories: Tadah.MLIP, Tadah.MODELS and Tadah.CORE, and with
 ``TADAH_ENABLE_NFP`` also Tadah.HPO, Tadah.MD and Tadah!LAMMPS. No option
 and no environment variable names another source.

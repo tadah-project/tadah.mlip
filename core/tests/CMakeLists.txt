@@ -1,4 +1,4 @@
-# Catch2 and its test discovery come from cmake-tools (tadah_setup_tests()).
+# Catch2 and its test discovery come from cmake/ (tadah_setup_tests()).
 tadah_setup_tests()
 
 file(GLOB tests_src CONFIGURE_DEPENDS "*.cpp")
@@ -28,7 +28,7 @@ tadah_add_header_check(tadah.core HEADER_DIRS
 # tadah.core_text (ctest -L text): no line of the repository's text files
 # carries a person's initials, a reference to co-workers, a decision
 # attributed to the code's owner, the name of an AI tool, a note kept
-# outside the repository or filler wording (cmake-tools'
+# outside the repository or filler wording (the build support's
 # tadah_add_text_check). Before the fix: fails, 22 lines: 18 with a person's
 # initials, 3 decision notes and .gitignore's entry for an AI tool's state
 # directory.

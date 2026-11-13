@@ -1,5 +1,5 @@
-// Canary for the TADAH-SKIP marker of cmake-tools (testing/tadah_test_skip.hpp,
-// testing/TadahTestSkip.cmake); see check_skip.cmake.
+// Canary for the TADAH-SKIP marker of cmake/testing (tadah_test_skip.hpp,
+// TadahTestSkip.cmake); see check_skip.cmake.
 //
 // TADAH_SKIP(<reason>) asks for the test case to be reported as skipped and
 // returns from it. When the test case ends without a failed assertion, the

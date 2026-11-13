@@ -1,4 +1,4 @@
-# Catch2 and its test discovery come from cmake-tools (tadah_setup_tests()).
+# Catch2 and its test discovery come from cmake/ (tadah_setup_tests()).
 tadah_setup_tests()
 
 file(GLOB tests_src CONFIGURE_DEPENDS "*.cpp")
@@ -50,7 +50,7 @@ set_tests_properties(hpo_anneal_statistical PROPERTIES
 # Corana et al. (1987) protocol-replication oracle: hidden tag
 # [.corana1987] (one test case), armed by the transcribed reference table
 # tests/data/corana1987_protocol.tsv. While the table is empty the case
-# calls TADAH_SKIP and the entry is reported as Skipped (cmake-tools'
+# calls TADAH_SKIP and the entry is reported as Skipped (the build support's
 # TADAH-SKIP marker; include(Catch) sets the regular expression).
 add_test(NAME hpo_corana1987_protocol
     COMMAND test_hpo "[.corana1987]" --warn NoTests)
@@ -951,7 +951,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 # tadah.hpo_headers (ctest -L headers): every header of include/
-# compiles on its own and twice in a row (cmake-tools'
+# compiles on its own and twice in a row (the build support's
 # tadah_add_header_check). Before the fix: fails on hpo_host_impl.hpp,
 # which does not include hpo_host.h ('expected initializer before <').
 tadah_add_header_check(tadah.hpo)
@@ -959,7 +959,7 @@ tadah_add_header_check(tadah.hpo)
 # tadah.hpo_text (ctest -L text): no line of the repository's text files
 # carries a person's initials, a reference to co-workers, a decision
 # attributed to the code's owner, the name of an AI tool, a note kept
-# outside the repository or filler wording (cmake-tools'
+# outside the repository or filler wording (the build support's
 # tadah_add_text_check). Before the fix: fails, 231 lines: 134 with a person's
 # initials, 55 decision notes, 41 workspace notes and .gitignore's entry for
 # an AI tool's state directory.

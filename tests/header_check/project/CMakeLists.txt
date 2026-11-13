@@ -1,6 +1,6 @@
 # Throw-away project driven by ../check_header_check.cmake. It brings in
-# cmake-tools with FetchContent, the source directory overridden to the
-# cmake-tools this build uses, and calls
+# the build support this build uses (TADAH_CMAKE_DIR, its cmake/) as a
+# build file of the repository does, and calls
 # tadah_add_header_check() from tests/, as a module's tests/CMakeLists.txt
 # does. CASE picks the fixture directory (new_header uses good/, and its
 # driver adds a header after the first run):
@@ -24,11 +24,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(tadah_header_check_case CXX)
 
-include(FetchContent)
-FetchContent_Declare(tadah_cmake
-  URL "file:///tadah-header-check-never-downloaded"
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
-FetchContent_MakeAvailable(tadah_cmake)
+include("${TADAH_CMAKE_DIR}/TadahRepository.cmake")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

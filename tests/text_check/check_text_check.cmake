@@ -1,9 +1,9 @@
-# Check of cmake-tools' tadah_add_text_check() (cmake/TadahTesting.cmake)
-# and of the script its entries run (testing/tadah_text_check.cmake), on
+# Check of tadah_add_text_check() (cmake/TadahTesting.cmake) and of the
+# script its entries run (cmake/testing/tadah_text_check.cmake), on
 # throw-away trees written under WORK_DIR. The phrases the rules refuse are
 # assembled here from pieces, so this file matches none of them.
 #
-#   cmake -DTADAH_CMAKE_DIR=<cmake-tools> -DWORK_DIR=<scratch>
+#   cmake -DTADAH_CMAKE_DIR=<cmake/> -DWORK_DIR=<scratch>
 #         -DGENERATOR=<CMake generator> -DCTEST=<ctest> [-DGIT=<git>]
 #         -P check_text_check.cmake
 #
@@ -250,7 +250,7 @@ file(WRITE "${proj}/CMakeLists.txt"
   "cmake_minimum_required(VERSION 3.15)\n"
   "project(probe LANGUAGES NONE)\n"
   "enable_testing()\n"
-  "include(\"\${TOOLS}/cmake/TadahTesting.cmake\")\n"
+  "include(\"\${TOOLS}/TadahTesting.cmake\")\n"
   "tadah_add_text_check(probe)\n"
   "tadah_add_text_check(probe2 ROOT \"\${OTHER_ROOT}\")\n")
 set(build "${WORK_DIR}/project_build")
@@ -298,7 +298,7 @@ foreach(i RANGE 2)
     "cmake_minimum_required(VERSION 3.15)\n"
     "project(probe LANGUAGES NONE)\n"
     "enable_testing()\n"
-    "include(\"\${TOOLS}/cmake/TadahTesting.cmake\")\n"
+    "include(\"\${TOOLS}/TadahTesting.cmake\")\n"
     "${call}\n")
   execute_process(COMMAND "${CMAKE_COMMAND}" -S "${rproj}"
                           -B "${rproj}/build" -G "${GENERATOR}"

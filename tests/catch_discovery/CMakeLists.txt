@@ -1,5 +1,5 @@
-# Regression tests for the Catch2 test discovery in cmake-tools
-# (testing/Catch.cmake and testing/CatchAddTests.cmake), which every Tadah
+# Regression tests for the Catch2 test discovery in cmake/testing
+# (Catch.cmake and CatchAddTests.cmake), which every Tadah
 # module uses through tadah_setup_tests() + include(Catch). They need no
 # network and no Tadah library.
 #
@@ -27,11 +27,11 @@ add_test(NAME tadah_catch_discovery_script
     -P ${CMAKE_CURRENT_SOURCE_DIR}/check_discovery.cmake)
 
 # catch_discover_tests() end to end on a throw-away project, with the
-# cmake-tools whose tadah_setup_tests() this build uses: every option arrives
+# build support whose tadah_setup_tests() this build uses: every option arrives
 # exactly, re-discovery when the script changes (see check_module.cmake).
 add_test(NAME tadah_catch_discovery_module
   COMMAND ${CMAKE_COMMAND}
-    -DTADAH_CMAKE_DIR=${_TADAH_CMAKE_TOOLS_DIR}
+    -DTADAH_CMAKE_DIR=${_TADAH_CMAKE_DIR}
     -DLISTER_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}/fake_lister.cpp
     -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/module_check
     "-DGENERATOR=${CMAKE_GENERATOR}"
@@ -72,7 +72,7 @@ add_test(NAME tadah_catch_skip_marker
 # skip of the suites was reported Passed.
 add_test(NAME tadah_catch_skip_cmake_minimum
   COMMAND ${CMAKE_COMMAND}
-    -DMODULE=${_TADAH_CMAKE_TOOLS_DIR}/testing/TadahTestSkip.cmake
+    -DMODULE=${_TADAH_CMAKE_DIR}/testing/TadahTestSkip.cmake
     -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/skip_minimum
     -P ${CMAKE_CURRENT_SOURCE_DIR}/check_skip_minimum.cmake)
 set_tests_properties(tadah_catch_skip_cmake_minimum PROPERTIES

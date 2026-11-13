@@ -1,5 +1,5 @@
-# End-to-end check of catch_discover_tests() from cmake-tools
-# (testing/Catch.cmake), on the throw-away project in module_project/:
+# End-to-end check of catch_discover_tests() from cmake/testing
+# (Catch.cmake), on the throw-away project in module_project/:
 #
 #  * every option reaches the discovery script exactly, through the real
 #    Catch.cmake: TEST_SPEC, EXTRA_ARGS, WORKING_DIRECTORY, TEST_PREFIX,
@@ -15,11 +15,11 @@
 #    relinks the test executable and so re-runs discovery (LINK_DEPENDS); a
 #    build without a change re-runs nothing.
 #
-#   cmake -DTADAH_CMAKE_DIR=<cmake-tools> -DLISTER_SOURCE=<fake_lister.cpp>
+#   cmake -DTADAH_CMAKE_DIR=<cmake/> -DLISTER_SOURCE=<fake_lister.cpp>
 #         -DWORK_DIR=<scratch dir> -DGENERATOR=<CMake generator>
 #         -DMAKE_PROGRAM=<build tool> -DCXX=<C++ compiler>
 #         -P check_module.cmake
-# 3.16: module_project includes cmake-tools' Catch.cmake, whose TADAH-SKIP
+# 3.16: module_project includes cmake/testing/Catch.cmake, whose TADAH-SKIP
 # marker needs CTest's SKIP_REGULAR_EXPRESSION.
 cmake_minimum_required(VERSION 3.16)
 

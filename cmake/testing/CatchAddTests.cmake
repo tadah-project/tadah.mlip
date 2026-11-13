@@ -6,7 +6,7 @@
 # catch_discover_tests() (Catch.cmake) runs this script with `cmake -P` after
 # every link of a test executable. It lists the executable's test cases with
 # --list-test-names-only and writes CTEST_FILE, which registers one CTest
-# entry per test case. Guarantees (see also cmake-tools/README.md, "Testing"):
+# entry per test case. Guarantees:
 #
 #  * Names are read verbatim, one per output line. The output is split with
 #    string(FIND)/string(SUBSTRING), never through a CMake list, so ';', '['

@@ -1,5 +1,5 @@
 # Hermetic regression test for the Catch2 test discovery script that every
-# Tadah module uses (cmake-tools testing/CatchAddTests.cmake, wired up by
+# Tadah module uses (cmake/testing/CatchAddTests.cmake, wired up by
 # tadah_setup_tests() + include(Catch)).
 #
 #   cmake -DSCRIPT=<CatchAddTests.cmake> -DCANARY=<canary exe>
@@ -30,7 +30,7 @@
 #  * reporter handling and a missing executable.
 #
 # Every failure is reported; the script fails at the end if there was any.
-# 3.16: the discovery script includes cmake-tools' TadahTestSkip.cmake, whose
+# 3.16: the discovery script includes TadahTestSkip.cmake beside it, whose
 # marker needs CTest's SKIP_REGULAR_EXPRESSION.
 cmake_minimum_required(VERSION 3.16)
 
@@ -193,7 +193,7 @@ set(cd_reporter "")
 
 # Every entry reports a TADAH_SKIP() case as Skipped: the marker line
 # "TADAH-SKIP: <reason>" at the start of a line of the output
-# (cmake-tools testing/tadah_test_skip.hpp).
+# (cmake/testing/tadah_test_skip.hpp).
 set(cd_skip_regex "(^|\n)TADAH-SKIP: ")
 
 # =============================================================================

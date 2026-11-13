@@ -12,23 +12,25 @@
 #     catch_discover_tests(test_foo)
 #
 #  The Catch2 header and discovery scripts (Catch.cmake,
-#  CatchAddTests.cmake) are bundled in cmake-tools/testing/.
+#  CatchAddTests.cmake) are bundled in testing/, beside this file.
 # ====================================================================
 
-# Directory containing Catch2 header and helpers (relative to this file)
-get_filename_component(_TADAH_CMAKE_TOOLS_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
-set(_TADAH_CMAKE_TOOLS_DIR "${_TADAH_CMAKE_TOOLS_DIR}" CACHE INTERNAL
-    "Root of cmake-tools for locating testing helpers")
+# The directory of this file, which holds testing/ (the Catch2 header and
+# the helpers). A cache entry: this file is read in the directory scope of
+# the build file that asks first, and the functions are called from every
+# module.
+set(_TADAH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}" CACHE INTERNAL
+    "Directory of the build support, for locating its testing helpers")
 
 function(tadah_setup_tests)
   if(NOT TARGET Catch2)
     add_library(Catch2 INTERFACE)
     target_include_directories(Catch2 INTERFACE
-      "${_TADAH_CMAKE_TOOLS_DIR}/testing")
+      "${_TADAH_CMAKE_DIR}/testing")
   endif()
 
   # Make Catch.cmake discoverable via include(Catch)
-  list(APPEND CMAKE_MODULE_PATH "${_TADAH_CMAKE_TOOLS_DIR}/testing")
+  list(APPEND CMAKE_MODULE_PATH "${_TADAH_CMAKE_DIR}/testing")
   set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" PARENT_SCOPE)
 endfunction()
 
@@ -44,7 +46,7 @@ endfunction()
 #
 #  Usage in a module's CMakeLists.txt:
 #
-#     ...                              # the cmake-tools block
+#     ...                              # the build support block
 #     tadah_declare_testing()          # once, before any sub-module
 #     ...
 #     tadah_add_tests()                # at the end, after the targets
@@ -193,7 +195,7 @@ function(tadah_add_header_check target)
       set(TADAH_HEADER_CHECK_PATH "${_thc_dir}/${_thc_rel}")
       # configure_file rewrites a file only when its content changes, so a
       # re-configure does not recompile the checks.
-      configure_file("${_TADAH_CMAKE_TOOLS_DIR}/testing/tadah_header_check.cpp.in"
+      configure_file("${_TADAH_CMAKE_DIR}/testing/tadah_header_check.cpp.in"
                      "${_thc_root}/${_thc_rel}.cpp" @ONLY)
       # Its own entry only, so that #include <rel> finds this header; a
       # source file's include directories come before the target's
@@ -309,7 +311,7 @@ function(tadah_add_text_check name)
   add_test(NAME ${name}_text
     COMMAND "${CMAKE_COMMAND}" "-DTADAH_TEXT_ROOT=${_ttc_ROOT}"
             "-DGIT=${GIT_EXECUTABLE}"
-            -P "${_TADAH_CMAKE_TOOLS_DIR}/testing/tadah_text_check.cmake")
+            -P "${_TADAH_CMAKE_DIR}/testing/tadah_text_check.cmake")
   set_tests_properties(${name}_text PROPERTIES
     LABELS text
     TIMEOUT 300)

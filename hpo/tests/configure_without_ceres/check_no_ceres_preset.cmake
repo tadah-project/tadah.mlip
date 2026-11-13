@@ -125,7 +125,7 @@ endif()
 # The preset's lines, a ';' in them kept (file(STRINGS) would split there).
 file(READ "${outer_build}/preset.cmake" text)
 if(text MATCHES "FETCHCONTENT_SOURCE_DIR_TADAH")
-  fail("the preset names a fetched copy of a Tadah module or of cmake-tools:\n${text}")
+  fail("the preset names a fetched copy of a Tadah module or of its build support:\n${text}")
 endif()
 string(REPLACE ";" "<SEMICOLON>" text "${text}")
 string(REPLACE "\n" ";" lines "${text}")

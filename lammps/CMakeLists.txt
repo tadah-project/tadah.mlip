@@ -60,25 +60,25 @@ if(BUILD_SHARED_LIBS)
 endif()
 
 # 2. Bring in the shared compile/link options
-# >>> cmake-tools (the same block in every build file of the repository but
-#     for the path and the name)
-# cmake-tools is the directory of that name in this repository; the file
-# read here adds it to the build (tadah::compile_options, the tadah_*
-# functions).
+# >>> build support (the same block in every build file of the repository
+#     but for the path and the name)
+# The build support is the directory cmake at the root of this repository;
+# the file read here adds it to the build (tadah::compile_options, the
+# tadah_* functions).
 get_filename_component(_tadah_here "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
-if(NOT EXISTS "${_tadah_here}/../cmake-tools/cmake/TadahRepository.cmake")
+if(NOT EXISTS "${_tadah_here}/../cmake/TadahRepository.cmake")
   message(FATAL_ERROR
     "The module Tadah.LAMMPS is built from inside the Tadah! repository, which holds "
-    "cmake-tools at '${_tadah_here}/../cmake-tools': that directory is missing. "
-    "A copy of this directory alone cannot be built.")
+    "its build support in '${_tadah_here}/../cmake': TadahRepository.cmake is "
+    "not there. A copy of this directory alone cannot be built.")
 endif()
-include("${_tadah_here}/../cmake-tools/cmake/TadahRepository.cmake")
+include("${_tadah_here}/../cmake/TadahRepository.cmake")
 unset(_tadah_here)
-# <<< cmake-tools
+# <<< build support
 
 # Declare the BUILD_TESTING switch (default OFF) before any sub-module
 # is added, so a parent project's value propagates down. See
-# cmake-tools/TadahTesting.cmake.
+# cmake/TadahTesting.cmake.
 tadah_declare_testing()
 
 # 3. The module this one builds on: the directory of its name in this

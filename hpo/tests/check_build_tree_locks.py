@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The CTest entries of HPO that build in the build tree they run in hold
 its lock: RESOURCE_LOCK tadah_header_check, which the header checks of
-every repository (cmake-tools, TadahTesting.cmake) and the other entries
+every module (cmake/TadahTesting.cmake) and the other entries
 that build in the tree hold, or RUN_SERIAL.
 
     check_build_tree_locks.py --ctest CTEST --build-dir DIR --source DIR

@@ -16,7 +16,8 @@ for two things.
    fails there, or is ignored, and nothing says why ("Unknown argument
    --fresh"; a SKIP_REGULAR_EXPRESSION that CTest 3.15 ignores reports a
    skipped test Passed). The table below lists those of them, with the
-   version that added them; a use in a comment does not count, nor does a
+   version that added them; a use in a comment (a line comment or a
+   bracket comment) does not count, nor does a
    command or property named inside a quoted argument (a message's text); a
    command-line option counts quoted or not. Keyword arguments that an older
    CMake does not read are not listed (FetchContent_Declare's
@@ -88,19 +89,46 @@ FEATURES = [
 MINIMUM = re.compile(r"\bcmake_minimum_required\s*\(\s*VERSION\s+([0-9]+(?:\.[0-9]+)*)")
 
 
-def code_of(line):
-    """The line without its comment: from a '#' outside a quoted argument,
-    at the start of the line or after a blank (a '#' inside an unquoted
-    argument, as in a regular expression, is kept)."""
-    quoted = False
-    prev = " "
-    for i, ch in enumerate(line):
-        if ch == '"' and prev != "\\":
-            quoted = not quoted
-        elif ch == "#" and not quoted and prev in " \t":
-            return line[:i]
-        prev = ch
-    return line
+BRACKET_COMMENT = re.compile(r"#\[(=*)\[")
+
+
+def code_lines(path):
+    """(line number, code) of each line of the file: the line without its
+    comments. A line comment runs from a '#' outside a quoted argument, at
+    the start of the line or after a blank (a '#' inside an unquoted
+    argument, as in a regular expression, is kept), to the end of the line;
+    a bracket comment, '#[[' or '#[==[' in the same place, to its ']]' or
+    ']==]', on that line or a later one."""
+    closing = None
+    with open(path, encoding="utf-8") as f:
+        for number, line in enumerate(f, start=1):
+            code = []
+            quoted = False
+            prev = " "
+            i = 0
+            while i < len(line):
+                if closing is not None:
+                    end = line.find(closing, i)
+                    if end < 0:
+                        break
+                    i = end + len(closing)
+                    closing = None
+                    prev = " "
+                    continue
+                ch = line[i]
+                if ch == '"' and prev != "\\":
+                    quoted = not quoted
+                elif ch == "#" and not quoted and prev in " \t":
+                    m = BRACKET_COMMENT.match(line, i)
+                    if m is None:
+                        break
+                    closing = "]" + m.group(1) + "]"
+                    i = m.end()
+                    continue
+                code.append(ch)
+                prev = ch
+                i += 1
+            yield number, "".join(code)
 
 
 def unquoted(code):
@@ -130,11 +158,10 @@ def declarations(path):
     """The (line number, version) of each cmake_minimum_required() of the
     file, in order."""
     found = []
-    with open(path, encoding="utf-8") as f:
-        for number, line in enumerate(f, start=1):
-            m = MINIMUM.search(code_of(line))
-            if m:
-                found.append((number, version(m.group(1))))
+    for number, code in code_lines(path):
+        m = MINIMUM.search(code)
+        if m:
+            found.append((number, version(m.group(1))))
     return found
 
 
@@ -215,17 +242,15 @@ def main():
                 "%s:%d: cmake_minimum_required(VERSION %s) is above the %s of %s"
                 % (rel, decls[0][0], shown(decls[0][1]), shown(runner[0]),
                    os.path.relpath(runner[1], root)))
-        with open(path, encoding="utf-8") as f:
-            for number, line in enumerate(f, start=1):
-                code = code_of(line)
-                bare = unquoted(code)
-                for pattern, needs, what in FEATURES:
-                    text = code if pattern[0] in "-$" else bare
-                    if needs > minimum and re.search(pattern, text):
-                        problems.append(
-                            "%s:%d: %s needs CMake %s; the file's minimum is %s (%s)"
-                            % (rel, number, what, shown(needs), shown(minimum),
-                               "its own" if source == rel else source))
+        for number, code in code_lines(path):
+            bare = unquoted(code)
+            for pattern, needs, what in FEATURES:
+                text = code if pattern[0] in "-$" else bare
+                if needs > minimum and re.search(pattern, text):
+                    problems.append(
+                        "%s:%d: %s needs CMake %s; the file's minimum is %s (%s)"
+                        % (rel, number, what, shown(needs), shown(minimum),
+                           "its own" if source == rel else source))
     for p in problems:
         print(p)
     if problems:

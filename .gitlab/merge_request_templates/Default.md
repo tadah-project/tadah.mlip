@@ -26,7 +26,7 @@
 - [ ] HPO
 - [ ] Tadah.MLIP
 - [ ] Tadah.LAMMPS
-- [ ] cmake-tools
+- [ ] Build support (`cmake/`)
 
 ## Tests
 

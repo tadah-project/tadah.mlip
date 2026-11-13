@@ -6252,6 +6252,166 @@ TEST_CASE("Termination: SIGINT between the numbering of an ASA block and "
     check_run_files(Evaluations::StoppedInBatch);
 }
 
+namespace {
+
+/* The objective of an ANNEAL_PA run that a real SIGINT stops inside its
+ * temperature step `step` (the batch's name, eval_batch.h) when one
+ * evaluation of the step has been made: the first one of its last walker,
+ * whose number is the highest a first evaluation of the step can take. The
+ * first evaluation of the step to start reserves the numbers of all its
+ * walkers. Every other evaluation of the step waits here until that one
+ * has ended; the first of them to go on raises the signal on its own
+ * thread -- the handler has run when std::raise returns -- and each goes
+ * on to HPO_Host::operator(), which refuses it before it takes its number.
+ * No timing decides the order. */
+struct OnlyLastWalkerOfStepEvaluates {
+    Host&                   host;
+    std::string             step;
+    std::size_t             last_walker;
+    std::mutex              m;
+    std::condition_variable cv;
+    bool                    started = false;
+    bool                    ended = false;
+    bool                    raised = false;
+    bool                    waited_in_vain = false;
+
+    double operator()(const ParamVec& x)
+    {
+        const tadah::hpo::EvalBatch* const batch =
+            tadah::hpo::EvalBatch::current();
+        if (!batch || batch->what() != step) return host(x);
+        std::unique_lock<std::mutex> lk(m);
+        if (!started &&
+            tadah::hpo::warmstart::current_chain() == last_walker) {
+            started = true;
+            lk.unlock();
+            struct Ended {
+                OnlyLastWalkerOfStepEvaluates& s;
+                ~Ended()
+                {
+                    {
+                        std::lock_guard<std::mutex> g(s.m);
+                        s.ended = true;
+                    }
+                    s.cv.notify_all();
+                }
+            } ended_now{*this};
+            return host(x);
+        }
+        if (!cv.wait_for(lk, std::chrono::seconds(60),
+                         [&] { return ended; }))
+            waited_in_vain = true;
+        if (!raised) {
+            raised = true;
+            std::raise(SIGINT);
+        }
+        lk.unlock();
+        return host(x);
+    }
+};
+
+/* The head line of a milestone SUMMARY of the journal ("SUMMARY  ---
+ * 25 evals done ... best=1.2e-03 (eval 18, 7 evals ago ...") read as its
+ * numbers. */
+struct SummaryLine {
+    std::size_t done = 0;        // "N evals done"
+    std::size_t best_eval = 0;   // "(eval N"
+    std::size_t since_best = 0;  // "N evals ago"
+};
+
+std::vector<SummaryLine> summary_lines(const std::string& journal)
+{
+    static const std::regex line_re(
+        R"(SUMMARY  --- +(\d+) evals done[^\n]* best=\S+ \(eval (\d+), (\d+) evals ago)");
+    std::vector<SummaryLine> out;
+    for (auto l = std::sregex_iterator(journal.begin(), journal.end(),
+                                       line_re);
+         l != std::sregex_iterator(); ++l)
+        out.push_back({std::stoull((*l)[1]), std::stoull((*l)[2]),
+                       std::stoull((*l)[3])});
+    return out;
+}
+
+}  // namespace
+
+/* Pins: the SUMMARY line of the journal counts evaluations, not their
+ * numbers, also after a stop that left numbers of a batch without an
+ * evaluation. ANNEAL_PA with POPULATION 8 and THREADS 8 on the fixture
+ * makes evaluations 1 to 28 one at a time or in a batch that runs whole
+ * (the starting point, the 20 probes of its initial temperature and the
+ * starting points of the walkers 2 to 8); its first temperature step
+ * reserves 50 numbers for each walker, 29 to 428. The last walker makes its
+ * first evaluation, number 379; SIGINT arrives before any other evaluation
+ * of the step starts. The run ends 130 with the SHUTDOWN trailer after 29
+ * evaluations: loss.tadah has the rows 1 to 28 and 379, the journal says
+ * that the evaluations 29-378 have no rows, and DIAGNOSTICS gives
+ * "Total evaluations : 29". The SUMMARY line, which the journal writes
+ * when the number of an evaluation reaches 100, is written with evaluation
+ * 379: it says how many evaluations the run has made (29) and how many it
+ * has made since the best one, whose number it gives.
+ * Before the fix: "---    379 evals done" and, with the best at evaluation
+ * 18, "361 evals ago", in a run of 29 evaluations. */
+TEST_CASE("Termination: after SIGINT inside a temperature step of ANNEAL_PA "
+          "the journal's SUMMARY line counts the evaluations made",
+          "[.shutdown_anneal_pa_summary]")
+{
+    HostFixture fx(kRootLines, plain_block(
+        "    TYPE PLAIN\n    LIB TADAH\n    ALGO ANNEAL_PA\n"
+        "    MAXEVAL 100000000\n    POPULATION 8\n    THREADS 8\n"
+        "    SEED 7\n"));
+    tadah::core::SignalHandler::install();
+    OnlyLastWalkerOfStepEvaluates objective{
+        fx.host, "temperature step 0 of TADAH:ANNEAL_PA", 7, {}, {}};
+    int status = -1;
+    REQUIRE_NOTHROW(status = tadah::hpo::drive_run(
+        [&] {
+            const auto anchored =
+                tadah::hpo::anchor_seed_points(fx.trg.spec);
+            tadah::hpo::run_anneal_pa_impl<ParamVec>(
+                anchored ? *anchored : fx.trg.spec, objective);
+        }, fx.host, fx.log()));
+    CHECK(objective.started);
+    CHECK(objective.raised);
+    CHECK_FALSE(objective.waited_in_vain);
+    CHECK(status == 130);
+    CHECK(tadah::core::SignalHandler::signal_seen() == SIGINT);
+    const std::string journal = read_file("hpo_run.log");
+    CHECK(journal_status(journal) == "SHUTDOWN (SIGINT)");
+
+    /* The rows: 1 to 28 and 379. */
+    std::vector<std::size_t> numbers;
+    for (const auto& row : data_rows("loss.tadah"))
+        numbers.push_back(std::stoull(row.at(0)));
+    std::vector<std::size_t> expected;
+    for (std::size_t n = 1; n <= 28; ++n) expected.push_back(n);
+    expected.push_back(379);
+    CHECK(numbers == expected);
+    CHECK(Host::g_iter_value() == 379);
+    CHECK(count_of(journal,
+                   "temperature step 0 of TADAH:ANNEAL_PA: 399 of its 400 "
+                   "evaluations did not run; evaluations 29-378 have no "
+                   "rows\n") == 1);
+    CHECK(journal_value(journal, "Total evaluations") == "29");
+
+    /* The SUMMARY line counts the rows. */
+    const std::vector<SummaryLine> summaries = summary_lines(journal);
+    REQUIRE(summaries.size() == 1);
+    const SummaryLine& s = summaries.front();
+    CHECK(s.done == numbers.size());
+    CHECK(std::to_string(s.done) ==
+          journal_value(journal, "Total evaluations"));
+    /* Its best evaluation is one of the 28 before the step (the line is
+     * written before evaluation 379 can become the best), and "evals ago"
+     * counts the rows after it. */
+    CHECK(s.best_eval >= 1);
+    CHECK(s.best_eval <= 28);
+    CHECK(s.since_best ==
+          static_cast<std::size_t>(std::count_if(
+              numbers.begin(), numbers.end(),
+              [&](std::size_t n) { return n > s.best_eval; })));
+    check_run_files(Evaluations::StoppedInBatch);
+}
+
 TEST_CASE("Termination: SIGTERM stops ASA after the periodic test that "
           "follows a new best", "[.shutdown_asa_periodic]")
 {

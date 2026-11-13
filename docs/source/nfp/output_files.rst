@@ -135,7 +135,9 @@ Evaluation numbers
 Evaluations are numbered in the order in which the optimiser proposes them;
 those of a :term:`batch <Batch>` slot by slot (:ref:`nfp_annealing_terms`;
 ``SLOT``). Each is recorded once the lower-numbered ones have ended. A stop can
-leave a number without a row, which the journal names.
+leave a number without a row, which the journal names. The ``SUMMARY`` lines
+and ``DIAGNOSTICS`` of the journal count the evaluations made, not their
+numbers.
 
 .. _nfp_output_best:
 

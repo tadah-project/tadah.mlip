@@ -149,7 +149,8 @@ public:
 
     /** The evaluations an earlier run in this process made: this run's are
      *  numbered on from them (HPO_Host's counter), and the journal's
-     *  milestones ("--- N evals done") count this run's alone. Default 0;
+     *  milestones ("--- N evals done") are placed by this run's numbers
+     *  alone (N counts the evaluations this run has made). Default 0;
      *  hpo_run() sets it once the host is built, before any evaluation. */
     void set_eval_base(std::size_t evaluations_before);
 
@@ -865,6 +866,9 @@ private:
     /* best result tracking -- set by log_new_best(), used by finish() */
     double      cur_best_loss_  = std::numeric_limits<double>::max();
     std::size_t cur_best_eval_  = 0;
+    /* The evaluations made (n_eval_) when the best was recorded, itself
+     * included: the milestone's "evals ago" counts from it. */
+    std::size_t cur_best_done_  = 0;
 
     /* EMBF0 journal line (arm_embf0 / record_embf0_*) -- protected by mtx_;
      * reset by open() and reset_for_test(). */

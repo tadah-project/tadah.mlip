@@ -39,5 +39,6 @@ What a user of Tadah! 1.5.0 has to know to move to 2.0.0, the most important fir
 - `pair_style tadah`: a second `pair_coeff` loads its file.
 - Potential and dataset files keep every number at full precision.
 - `tadah` exits with a non-zero status when a command fails.
+- A `SUMMARY` line of the `tadah hpo` journal counts the evaluations made, also after a stop during a batch of an annealing search; it gave the number of the last evaluation.
 
 The notes of 1.5.0 and earlier releases are in the `CHANGELOG.md` of the `v1.5.0` tag.

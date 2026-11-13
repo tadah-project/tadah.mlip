@@ -211,6 +211,7 @@ void HPOLog::reset_run_locked()
     last_status_.clear();
     cur_best_loss_ = std::numeric_limits<double>::max();
     cur_best_eval_ = 0;
+    cur_best_done_ = 0;
     best_emae_ = best_ermse_ = best_errmse_ = best_frmse_ = best_srmse_ = 0.0;
     has_emae_ = has_ermse_ = has_errmse_ = has_frmse_ = has_srmse_ = false;
     cadence_evals_   = 0;
@@ -1619,7 +1620,11 @@ void HPOLog::record_eval(std::size_t eval_num, double wall_ms, EvalLoss loss)
     n_eval_.fetch_add(1, std::memory_order_relaxed);
     /* The evaluation's number in this run: eval_num goes on from an
      * earlier run in the process (set_eval_base), and the milestones are
-     * the run's own, as in a process of its own. */
+     * the run's own, as in a process of its own. The number decides when
+     * a milestone is written and is not a count of evaluations: a stop
+     * inside a batch leaves numbers without an evaluation (eval_batch.h).
+     * What the milestone states is counted in evaluations made (`done`
+     * below, the rows of the history files and DIAGNOSTICS' total). */
     const std::size_t base = eval_base_.load(std::memory_order_relaxed);
     const std::size_t run_count = eval_num > base ? eval_num - base : 0;
     if (loss == EvalLoss::NanClamped) n_nan_.fetch_add(1, std::memory_order_relaxed);
@@ -1666,12 +1671,17 @@ void HPOLog::record_eval(std::size_t eval_num, double wall_ms, EvalLoss loss)
             last_milestone_tp_    = now_tp;
             last_milestone_evals_ = done;
 
+            /* The evaluations made since the best one was recorded. It
+             * was the difference of two evaluation numbers, and the line
+             * began with this evaluation's number: "379 evals done ...
+             * 361 evals ago" in a run of 29 evaluations that a stop had
+             * left with the numbers 29 to 378 unused. */
             const std::size_t evals_since_best =
-                (cur_best_eval_ > 0 && eval_num >= cur_best_eval_)
-                    ? (eval_num - cur_best_eval_) : 0;
+                (cur_best_eval_ > 0 && done >= cur_best_done_)
+                    ? (done - cur_best_done_) : 0;
 
             std::ostringstream msg;
-            msg << "--- " << std::setw(6) << run_count << " evals done";
+            msg << "--- " << std::setw(6) << done << " evals done";
             if (wall_ms_per_eval > 0.0) {
                 std::ostringstream rate;
                 rate << std::fixed << std::setprecision(1)
@@ -1702,9 +1712,9 @@ void HPOLog::record_eval(std::size_t eval_num, double wall_ms, EvalLoss loss)
                 const std::size_t fd = n_fail_band_[4].load(std::memory_order_relaxed);
                 const std::size_t ft = fa + fb + fc + fd;
                 if (ft > 0) {
-                    const double fpct = run_count ? 100.0 * static_cast<double>(ft) /
-                                                        static_cast<double>(run_count)
-                                                 : 0.0;
+                    const double fpct = done ? 100.0 * static_cast<double>(ft) /
+                                                   static_cast<double>(done)
+                                             : 0.0;
                     msg << "   failed=" << ft << " (" << std::fixed
                         << std::setprecision(1) << fpct << "%; A=" << fa
                         << " B=" << fb << " C=" << fc << " D=" << fd << ")";
@@ -1888,7 +1898,7 @@ void HPOLog::record_eval(std::size_t eval_num, double wall_ms, EvalLoss loss)
              * penalty cliff sampling). Single line, only once per
              * milestone. */
             if (cur_best_eval_ > 0 && evals_since_best >= 100 &&
-                evals_since_best * 2 >= run_count) {
+                evals_since_best * 2 >= done) {
                 f_ << "[" << now_hms() << "]  HINT     "
                    << "no new best for " << evals_since_best
                    << " evals (>50% of run). Possible causes: "
@@ -2159,6 +2169,7 @@ void HPOLog::log_new_best(std::size_t eval_num,
 
     cur_best_loss_ = loss;
     cur_best_eval_ = eval_num;
+    cur_best_done_ = n_eval_.load(std::memory_order_relaxed);
     /* Snapshot the recording thread's annealer eval context (log_new_best
      * runs on the thread that evaluated the point). Always overwritten --
      * an untagged best clears a previous tag rather than inheriting it. */

@@ -11,9 +11,8 @@ learning interatomic potentials (MLIPs). It ships:
 - a LAMMPS pair style, ``pair_style tadah``, that runs trained
   potentials in MD without a Python or Tadah! runtime dependency.
 
-The two pieces correspond to two repositories — Tadah!MLIP (training
-side) and Tadah!LAMMPS (deployment side) — that share a common ``pot.tadah``
-file format.
+Both pieces are held by one repository: the program ``tadah`` and the pair
+style (the directory ``lammps``) share the ``pot.tadah`` potential file format.
 
 Key features
 ------------

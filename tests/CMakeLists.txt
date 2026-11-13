@@ -766,3 +766,30 @@ add_test(NAME tadah_text_check_tool
 set_tests_properties(tadah_text_check_tool PROPERTIES
   LABELS cmake
   TIMEOUT 300)
+
+
+# ------------------------------------------------------------------
+# 12. Layering of the prediction side (core, models, md, lammps)
+# ------------------------------------------------------------------
+# tadah_layering_includes (label layering; reads the sources, needs no
+# build): no header or source of core, models, md or lammps includes a
+# header of a directory above its own -- the order is core, models, md,
+# lammps, and mlip, hpo and the application (src/, include/ and external/
+# at the root) lie above all four -- so the four build without the rest.
+# The tests of a module and the code under its external/ are not checked
+# (layering/check_layering.py says how an include is looked up). Before
+# the test: passes as well (a pin: no such include when it was added).
+# tadah_layering_check_tool: the script on a throw-away tree with includes
+# of each kind, allowed and not; it must report exactly the planted ones.
+add_test(NAME tadah_layering_includes
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/layering/check_layering.py
+    ${PROJECT_SOURCE_DIR})
+add_test(NAME tadah_layering_check_tool
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/layering/check_layering.py
+    --self-test ${CMAKE_CURRENT_BINARY_DIR}/layering)
+set_tests_properties(tadah_layering_includes tadah_layering_check_tool PROPERTIES
+  LABELS layering
+  TIMEOUT 60
+  ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)

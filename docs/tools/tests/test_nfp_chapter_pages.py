@@ -53,9 +53,9 @@ class ChapterPagesTest(unittest.TestCase):
     # Pins: the Nested Fitting caption of index.rst lists the pages of the
     # chapter, in the order of MENU and nothing else, with :titlesonly:, so
     # that the sidebar shows the pages and the pages of a hub.
-    # Before the fix: the menu listed the earlier pages (nfp_background,
-    # nfp_quickstart, nfp_configuration, ..., hpo_examples) and only one
-    # page of the chapter, nfp/reference/index.
+    # Before the fix: the menu listed the pages the chapter had before
+    # these, which are removed, and only one page of the chapter,
+    # nfp/reference/index.
     def test_menu_lists_the_chapter_pages_in_order(self):
         options, pages = menu()
         self.assertIn(':titlesonly:', options)

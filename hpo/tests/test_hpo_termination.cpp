@@ -435,31 +435,59 @@ double loss_value(const std::string& token)
     return v;
 }
 
-/* The evaluation numbers the journal names as having no row, in the line
- * of the batch that reserved them ("block 1 of ASA:ASA: 1 of its 4
- * evaluations did not run; evaluation 8 has no row", "...; evaluations
- * 11-14, 19 and 21 have no rows"; eval_batch.h). */
-std::set<std::size_t> numbers_without_row(const std::string& journal)
+/* The journal line of a batch some of whose evaluations did not run
+ * (eval_batch.h): how many did not, of how many, and the numbers it names
+ * as having no row ("block 1 of ASA:ASA: 1 of its 4 evaluations did not
+ * run; evaluation 8 has no row", "...; evaluations 11-14, 19 and 21 have no
+ * rows"). A line names no number ("...: 2 of its 4 evaluations did not
+ * run") when the numbers left were the last of the batch and went back to
+ * the count. */
+struct BatchLeftOut {
+    std::size_t              not_run = 0;
+    std::size_t              size = 0;
+    std::vector<std::size_t> no_row;
+};
+
+/* Every such line of the journal, in its order. */
+std::vector<BatchLeftOut> batches_left_out(const std::string& journal)
 {
     static const std::regex line_re(
-        R"(did not run; evaluations? ([-0-9, and]+) ha(?:s no row|ve no rows)\n)");
+        R"(: (\d+) of its (\d+) evaluations? did not run)"
+        R"((?:; evaluations? ([-0-9, and]+) ha(?:s no row|ve no rows))?\n)");
     static const std::regex range_re(R"((\d+)(?:-(\d+))?)");
-    std::set<std::size_t> out;
-    std::size_t named = 0;
+    std::vector<BatchLeftOut> out;
     for (auto l = std::sregex_iterator(journal.begin(), journal.end(),
                                        line_re);
          l != std::sregex_iterator(); ++l) {
-        const std::string list = (*l)[1];
+        BatchLeftOut b;
+        b.not_run = std::stoull((*l)[1]);
+        b.size    = std::stoull((*l)[2]);
+        const std::string list = (*l)[3];
         for (auto r = std::sregex_iterator(list.begin(), list.end(),
                                            range_re);
              r != std::sregex_iterator(); ++r) {
             const std::size_t first = std::stoull((*r)[1]);
             const std::size_t last =
                 (*r)[2].matched ? std::stoull((*r)[2]) : first;
-            for (std::size_t n = first; n <= last; ++n, ++named)
-                out.insert(n);
+            for (std::size_t n = first; n <= last; ++n) b.no_row.push_back(n);
         }
+        out.push_back(std::move(b));
     }
+    return out;
+}
+
+/* The evaluation numbers the journal names as having no row, in the lines
+ * of the batches that reserved them. */
+std::set<std::size_t> numbers_without_row(
+    const std::vector<BatchLeftOut>& batches)
+{
+    std::set<std::size_t> out;
+    std::size_t named = 0;
+    for (const BatchLeftOut& b : batches)
+        for (const std::size_t n : b.no_row) {
+            out.insert(n);
+            ++named;
+        }
     /* Each of them is named once. */
     CHECK(named == out.size());
     return out;
@@ -500,8 +528,9 @@ void check_run_files(Evaluations evaluations = Evaluations::AllRan)
      * evaluations does not leave ("... leaves that number without a row"
      * below). */
     const std::size_t count = Host::g_iter_value();
-    const std::set<std::size_t> no_row =
-        numbers_without_row(read_file("hpo_run.log"));
+    const std::vector<BatchLeftOut> left_out =
+        batches_left_out(read_file("hpo_run.log"));
+    const std::set<std::size_t> no_row = numbers_without_row(left_out);
     {
         INFO("numbers the journal names as having no row: "
              << ::Catch::Detail::stringify(
@@ -509,6 +538,31 @@ void check_run_files(Evaluations evaluations = Evaluations::AllRan)
         if (evaluations == Evaluations::AllRan) CHECK(no_row.empty());
         /* A later number of its batch was taken. */
         CHECK((no_row.empty() || *no_row.rbegin() < count));
+    }
+    /* A stop ends the search with the batch that ran when it arrived: every
+     * batch before it ran whole, and no evaluation takes a number after
+     * it. So the journal has the line of at most one batch, and the numbers
+     * of that batch are the last the run took: they end at the count plus
+     * the numbers that went back to it, which are the evaluations that did
+     * not run less the numbers the line names. A number the line names is
+     * one of that batch: it lies less than the batch's size below that end.
+     * It accepted the lines of any number of batches, and their numbers
+     * anywhere below the count. */
+    if (evaluations == Evaluations::StoppedInBatch) {
+        INFO("journal lines of batches with evaluations that did not run: "
+             << left_out.size());
+        CHECK(left_out.size() <= 1);
+        for (const BatchLeftOut& b : left_out) {
+            INFO(b.not_run << " of the batch's " << b.size
+                 << " evaluations did not run; the line names "
+                 << b.no_row.size() << " number(s); the count is " << count);
+            REQUIRE(b.no_row.size() <= b.not_run);
+            if (b.no_row.empty()) continue;
+            const std::size_t batch_end =
+                count + (b.not_run - b.no_row.size());
+            CHECK(*std::min_element(b.no_row.begin(), b.no_row.end()) +
+                      b.size > batch_end);
+        }
     }
     std::vector<std::size_t> expected, numbers;
     for (std::size_t n = 1; n <= count; ++n)
@@ -721,7 +775,20 @@ std::string describe(const std::exception_ptr& e)
  * evaluation) but not yet taken their number when the count was sampled,
  * i.e. at most one per concurrent evaluation thread. `evaluations`: whether
  * those threads evaluate the slots of a batch, some of whose numbers the
- * signal can leave without a row (check_run_files). */
+ * signal can leave without a row (check_run_files).
+ *
+ * Each of those evaluations takes a number above the count sampled and
+ * leaves its row, so at most `in_flight` rows are numbered above that
+ * count. Where every number is an evaluation (Evaluations::AllRan) the
+ * count itself rises by no more. In a batch it can: the first evaluation of
+ * a batch to start reserves the numbers of all its evaluations (400 for a
+ * temperature step of ANNEAL_PA with eight walkers), so a signal between
+ * the stop-flag check of that evaluation and its numbering leaves the count
+ * higher by up to the batch's size, with a row for each evaluation made
+ * and the numbers between them named in the journal (check_run_files).
+ * It said evals_final <= evals_at_raise + in_flight for every run, which
+ * that order of events does not leave on four threads (the rows 29, 79, 129
+ * and 179 above a count of 28: "179 <= 32"). */
 void check_signal_stop(const SignalOutcome& o, int signo,
                        const std::string& name, int expected_status,
                        std::size_t in_flight, std::size_t raise_at,
@@ -741,7 +808,12 @@ void check_signal_stop(const SignalOutcome& o, int signo,
     const std::string journal = read_file("hpo_run.log");
     CHECK(journal_status(journal) == "SHUTDOWN (" + name + ")");
     INFO("evaluations when the signal was raised: " << o.evals_at_raise);
-    CHECK(o.evals_final <= o.evals_at_raise + in_flight);
+    std::size_t rows_above = 0;
+    for (const auto& row : data_rows("loss.tadah"))
+        if (std::stoull(row.at(0)) > o.evals_at_raise) ++rows_above;
+    CHECK(rows_above <= in_flight);
+    if (evaluations == Evaluations::AllRan)
+        CHECK(o.evals_final <= o.evals_at_raise + in_flight);
     check_run_files(evaluations);
 }
 
@@ -6144,14 +6216,27 @@ TEST_CASE("Termination: SIGINT stops ANNEAL_PA with four threads after its "
 
 /* Pins: ASA's stop line names the signal stop as a shutdown request with
  * its signal. Before the fix: "ASA stopped: exception raised during
- * evaluation after N evaluation(s)". */
+ * evaluation after N evaluation(s)".
+ * The line counts the evaluations whose losses ASA received, by ASA's own
+ * count, and each of them has its row: an evaluation that was running when
+ * the signal arrived is completed and written like any other. The count of
+ * the host and the rows alone do not show a result dropped after the stop,
+ * when its number goes back to the count or is named as one of a batch
+ * that did not run. */
 void check_asa_names_the_signal()
 {
-    CHECK_THAT(read_file("hpo_run.log"),
+    const std::string journal = read_file("hpo_run.log");
+    CHECK_THAT(journal,
                Catch::Contains("ASA stopped: shutdown requested (SIGINT) "
                                "after "));
-    CHECK_THAT(read_file("hpo_run.log"),
+    CHECK_THAT(journal,
                !Catch::Contains("exception raised during evaluation"));
+    std::smatch m;
+    REQUIRE(std::regex_search(
+        journal, m,
+        std::regex(R"(ASA stopped: shutdown requested \(SIGINT\) after )"
+                   R"((\d+) evaluation\(s\) )")));
+    CHECK(std::stoull(m[1]) == data_rows("loss.tadah").size());
 }
 
 TEST_CASE("Termination: SIGINT stops ASA", "[.shutdown_asa]")

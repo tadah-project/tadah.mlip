@@ -1,7 +1,8 @@
 // test_hpo_parser_contracts.cpp
 //
 // Parser and message contracts of the --hpotarget grammar that the user
-// documentation (Tadah.MLIP/docs/source/nfp_configuration.rst) states:
+// documentation (docs/source/nfp/target_file.rst and the generated pages
+// of docs/source/nfp/reference/) states:
 //   - LOSS HUBER / TUKEY defaults and validation, shared with --varloss
 //     through LossFunction::resolve_params (regression: a bare
 //     `LOSS HUBER` used to set delta = 0, i.e. an identically zero loss);

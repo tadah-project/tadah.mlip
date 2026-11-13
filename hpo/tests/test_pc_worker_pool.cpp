@@ -36,6 +36,7 @@
 #include <system_error>
 #include <vector>
 
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -609,18 +610,38 @@ TEST_CASE("pc pool: repeated deaths throttle a channel, they do not retire it",
    * forever, and (worse) that slot drained the shared task queue faster than
    * the live ones because it failed before doing any work.
    *
-   * A sub-millisecond worker timeout makes EVERY task deadline-expire
-   * deterministically -- deadline_ms_for returns worker_timeout_s * 1000, so
-   * 5e-4 s truncates to a 0 ms RESULT deadline -- while the HELLO_ACK
-   * handshake keeps its own fixed 60 s wait, so every respawn still
-   * succeeds. Each execute() therefore costs one death. */
-  PcWorkerPool pool(1, specs_for(1, minimal_spec()), 0.0005);
+   * Every task of this pool hangs, so every task ends at its deadline and
+   * each execute() costs one death. The worker hangs where it creates its
+   * LAMMPS instance: LAMMPS opens the -log file there, the file is a named
+   * pipe, and opening a named pipe for writing waits for a reader, which
+   * this case never provides. No RESULT is ever sent, so the deadline
+   * expires whatever the machine's load; the HELLO_ACK handshake keeps its
+   * own fixed 60 s wait, so every respawn still succeeds.
+   *
+   * Before this change the tasks were minimal_spec()'s, which answer
+   * POT_BUILD_FAIL within milliseconds, under a worker timeout of 0.0005 s
+   * (a deadline of 0 ms: one look at the channel right after the TASK is
+   * sent). On a busy machine the worker could run before the parent looked,
+   * and the pool, rightly, returned the answer that was there: the case
+   * failed with POT_BUILD_FAIL in place of KILLED (2 of 223 runs with twelve
+   * of them sharing one processor). The deadline bounds the wait for an
+   * answer; it does not discard one that has arrived.
+   *
+   * The deadline is 250 ms, not 0 ms: were the worker to answer after all,
+   * the case would fail on an idle machine too, not once in a while. */
+  hpo_test::ScratchTmpdir tmp("pcpool_hang");
+  const std::filesystem::path never_read = tmp.path() / "never_read.log";
+  REQUIRE(::mkfifo(never_read.c_str(), 0600) == 0);
+  PcScriptSpec hangs = minimal_spec();
+  hangs.invar_final = {"tadah", "-screen", "none", "-log", never_read.string()};
+  PcWorkerPool pool(1, specs_for(1, hangs), 0.25);
   const auto pot = invalid_pot_map();
 
   for (int i = 0; i < PcWorkerPool::PC_MAX_CONSEC_DEATHS; ++i) {
     const PcTaskResult r = pool.execute(0, 0, static_cast<std::uint64_t>(i),
                                         pot, {}, /*script_timeout_s=*/std::nullopt);
     CHECK(r.status == PcTaskStatus::KILLED);
+    CHECK(r.error_msg == "worker task deadline expired");
   }
 
   /* The task that used to throw. It must complete normally -- slower (the
@@ -631,7 +652,7 @@ TEST_CASE("pc pool: repeated deaths throttle a channel, they do not retire it",
       0, 0, static_cast<std::uint64_t>(PcWorkerPool::PC_MAX_CONSEC_DEATHS),
       pot, {}, /*script_timeout_s=*/std::nullopt));
   CHECK(after.status == PcTaskStatus::KILLED);
-  CHECK_FALSE(after.error_msg.empty());
+  CHECK(after.error_msg == "worker task deadline expired");
 
   /* And the channel is genuinely alive afterwards, not merely non-throwing:
    * with a workable deadline the very next task completes a full round trip.
